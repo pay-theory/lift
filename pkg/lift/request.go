@@ -49,6 +49,7 @@ const (
 	TriggerS3           = adapters.TriggerS3
 	TriggerEventBridge  = adapters.TriggerEventBridge
 	TriggerScheduled    = adapters.TriggerScheduled
+	TriggerWebSocket    = adapters.TriggerWebSocket
 	TriggerUnknown      = adapters.TriggerUnknown
 )
 
