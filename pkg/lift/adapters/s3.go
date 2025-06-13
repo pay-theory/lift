@@ -56,23 +56,23 @@ func (a *S3Adapter) Validate(event interface{}) error {
 	// Check for Records field
 	records, exists := eventMap["Records"]
 	if !exists {
-		return fmt.Errorf("missing required field: Records")
+		return fmt.Errorf("missing required field: records")
 	}
 
 	// Validate records structure
 	recordsSlice, ok := records.([]interface{})
 	if !ok {
-		return fmt.Errorf("Records must be a slice")
+		return fmt.Errorf("records must be a slice")
 	}
 
 	if len(recordsSlice) == 0 {
-		return fmt.Errorf("Records slice cannot be empty")
+		return fmt.Errorf("records slice cannot be empty")
 	}
 
 	// Validate first record
 	firstRecord, ok := recordsSlice[0].(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("Records must contain map objects")
+		return fmt.Errorf("records must contain map objects")
 	}
 
 	// Check required fields in record

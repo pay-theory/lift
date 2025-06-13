@@ -542,9 +542,7 @@ func (f *GDPRPrivacyFramework) calculateOverallStatus(articles map[string]*Artic
 }
 
 // validateConsentLawfulness validates consent lawfulness
-func (f *GDPRPrivacyFramework) validateConsentLawfulness(ctx context.Context, app interface{}) (interface{}, error) {
-	_ = ctx // Use context parameter to avoid unused warning
-	_ = app // Use app parameter to avoid unused warning
+func (f *GDPRPrivacyFramework) validateConsentLawfulness(_ context.Context, _ interface{}) (interface{}, error) {
 	return map[string]interface{}{
 		"consent_mechanism_exists": true,
 		"consent_freely_given":     true,
