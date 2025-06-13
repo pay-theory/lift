@@ -1469,6 +1469,7 @@ func (f *ChaosEngineeringFramework) validateExperiment(experiment *ChaosExperime
 // validateHypothesis validates experiment hypothesis against results
 func (f *ChaosEngineeringFramework) validateHypothesis(experiment *ChaosExperiment, results *ExperimentResults) bool {
 	// Simple validation - no critical failures means hypothesis is valid
+	_ = experiment // Use experiment parameter to avoid unused warning
 	for _, failure := range results.Failures {
 		if failure.Severity == CriticalSeverity {
 			return false
@@ -1531,6 +1532,7 @@ func (f *ChaosEngineeringFramework) generateExperimentSummary(experiment *ChaosE
 
 // generateRecommendations generates recommendations based on experiment results
 func (f *ChaosEngineeringFramework) generateRecommendations(experiment *ChaosExperiment, results *ExperimentResults) []string {
+	_ = experiment // Use experiment parameter to avoid unused warning
 	recommendations := []string{}
 
 	if len(results.Failures) == 0 && results.Recovery != nil && results.Recovery.Successful {

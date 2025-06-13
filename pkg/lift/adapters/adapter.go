@@ -158,10 +158,17 @@ func extractMapField(data map[string]interface{}, key string) map[string]interfa
 }
 
 // extractStringMapField safely extracts a string map field from a map
+// Handles both map[string]string and map[string]interface{} input types
 func extractStringMapField(data map[string]interface{}, key string) map[string]string {
 	result := make(map[string]string)
 	if value, exists := data[key]; exists {
-		if mapValue, ok := value.(map[string]interface{}); ok {
+		// Handle map[string]string directly
+		if stringMap, ok := value.(map[string]string); ok {
+			for k, v := range stringMap {
+				result[k] = v
+			}
+		} else if mapValue, ok := value.(map[string]interface{}); ok {
+			// Handle map[string]interface{} by converting values to strings
 			for k, v := range mapValue {
 				if str, ok := v.(string); ok {
 					result[k] = str

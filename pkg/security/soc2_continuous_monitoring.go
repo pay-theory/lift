@@ -488,6 +488,7 @@ func (scm *SOC2ContinuousMonitor) runControlTest(controlID string) error {
 
 	// This would be implemented with actual control testing logic
 	// For now, return success
+	_ = controlID // Use controlID parameter to avoid unused warning
 	return nil
 }
 

@@ -179,6 +179,7 @@ func (e *EnterpriseTestSuite) TestAcrossEnvironments(testCase TestCase) error {
 
 // runTestInEnvironment executes a test case in a specific environment
 func (e *EnterpriseTestSuite) runTestInEnvironment(testCase TestCase, envName string, env *TestEnvironment) error {
+	_ = envName // Use envName parameter to avoid unused warning
 	// Mark environment as busy
 	env.mutex.Lock()
 	env.State.Status = EnvironmentStatusBusy

@@ -250,3 +250,133 @@ func TestMapWebSocketRoute(t *testing.T) {
 		})
 	}
 }
+
+// TestWebSocketQueryParameterBugFix verifies that the bug where query parameters
+// from map[string]string were not being extracted is fixed
+func TestWebSocketQueryParameterBugFix(t *testing.T) {
+	adapter := NewWebSocketAdapter()
+
+	// Test with map[string]string query parameters (the bug case)
+	event := map[string]interface{}{
+		"requestContext": map[string]interface{}{
+			"connectionId": "test-connection-123",
+			"routeKey":     "$connect",
+			"stage":        "test",
+			"requestId":    "test-req-123",
+			"domainName":   "api.example.com",
+			"apiId":        "test-api",
+		},
+		// This is the key: queryStringParameters as map[string]string
+		// (as it comes from AWS Lambda events)
+		"queryStringParameters": map[string]string{
+			"Authorization": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+			"userId":        "12345",
+		},
+	}
+
+	req, err := adapter.Adapt(event)
+	if err != nil {
+		t.Fatalf("Failed to adapt event: %v", err)
+	}
+
+	// Verify query parameters are correctly extracted
+	if req.QueryParams == nil {
+		t.Fatal("QueryParams is nil")
+	}
+
+	if len(req.QueryParams) != 2 {
+		t.Errorf("Expected 2 query parameters, got %d", len(req.QueryParams))
+	}
+
+	if req.QueryParams["Authorization"] != "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." {
+		t.Errorf("Authorization = %s, want eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...", req.QueryParams["Authorization"])
+	}
+
+	if req.QueryParams["userId"] != "12345" {
+		t.Errorf("userId = %s, want 12345", req.QueryParams["userId"])
+	}
+}
+
+// TestExtractStringMapFieldBothTypes tests that extractStringMapField handles both
+// map[string]string and map[string]interface{} input types
+func TestExtractStringMapFieldBothTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     map[string]interface{}
+		key      string
+		expected map[string]string
+	}{
+		{
+			name: "map[string]string input",
+			data: map[string]interface{}{
+				"params": map[string]string{
+					"Authorization": "Bearer token123",
+					"userId":        "12345",
+				},
+			},
+			key: "params",
+			expected: map[string]string{
+				"Authorization": "Bearer token123",
+				"userId":        "12345",
+			},
+		},
+		{
+			name: "map[string]interface{} input",
+			data: map[string]interface{}{
+				"params": map[string]interface{}{
+					"Authorization": "Bearer token123",
+					"userId":        "12345",
+				},
+			},
+			key: "params",
+			expected: map[string]string{
+				"Authorization": "Bearer token123",
+				"userId":        "12345",
+			},
+		},
+		{
+			name: "mixed types in map[string]interface{}",
+			data: map[string]interface{}{
+				"params": map[string]interface{}{
+					"Authorization": "Bearer token123",
+					"userId":        12345, // non-string value should be ignored
+					"active":        true,  // non-string value should be ignored
+				},
+			},
+			key: "params",
+			expected: map[string]string{
+				"Authorization": "Bearer token123",
+			},
+		},
+		{
+			name: "empty map",
+			data: map[string]interface{}{
+				"params": map[string]string{},
+			},
+			key:      "params",
+			expected: map[string]string{},
+		},
+		{
+			name:     "missing key",
+			data:     map[string]interface{}{},
+			key:      "params",
+			expected: map[string]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractStringMapField(tt.data, tt.key)
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("extractStringMapField() returned %d items, expected %d", len(result), len(tt.expected))
+			}
+
+			for k, v := range tt.expected {
+				if result[k] != v {
+					t.Errorf("extractStringMapField()[%s] = %s, want %s", k, result[k], v)
+				}
+			}
+		})
+	}
+}

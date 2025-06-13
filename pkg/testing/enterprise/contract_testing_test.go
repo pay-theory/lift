@@ -111,6 +111,14 @@ func TestContractInteraction(t *testing.T) {
 	}
 
 	// Test interaction structure
+	if interaction.ID != "get-user-001" {
+		t.Error("Interaction ID not set correctly")
+	}
+
+	if interaction.Description != "Get user by ID" {
+		t.Error("Interaction description not set correctly")
+	}
+
 	if interaction.Request.Method != "GET" {
 		t.Error("Request method not set correctly")
 	}

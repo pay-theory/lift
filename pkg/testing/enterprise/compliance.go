@@ -204,6 +204,7 @@ func (s *SOC2TypeIICompliance) executeTest(ctx context.Context, app *lift.App, c
 func (s *SOC2TypeIICompliance) executeInquiryTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
 	// Inquiry tests typically involve reviewing documentation or interviewing personnel
 	// For automated testing, we can check configuration and policy documentation
+	_ = control // Use control parameter to avoid unused warning
 
 	switch test.ID {
 	case "SEC-001-INQ":
@@ -220,6 +221,7 @@ func (s *SOC2TypeIICompliance) executeInquiryTest(ctx context.Context, app *lift
 // executeObservationTest executes an observation-based test
 func (s *SOC2TypeIICompliance) executeObservationTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
 	// Observation tests involve watching processes in action
+	_ = control // Use control parameter to avoid unused warning
 
 	switch test.ID {
 	case "SEC-002-OBS":
@@ -236,6 +238,7 @@ func (s *SOC2TypeIICompliance) executeObservationTest(ctx context.Context, app *
 // executeInspectionTest executes an inspection-based test
 func (s *SOC2TypeIICompliance) executeInspectionTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
 	// Inspection tests involve examining documents, configurations, or evidence
+	_ = control // Use control parameter to avoid unused warning
 
 	switch test.ID {
 	case "SEC-003-INS":
@@ -252,6 +255,7 @@ func (s *SOC2TypeIICompliance) executeInspectionTest(ctx context.Context, app *l
 // executeReperformanceTest executes a reperformance-based test
 func (s *SOC2TypeIICompliance) executeReperformanceTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
 	// Reperformance tests involve re-executing a control to verify it works
+	_ = control // Use control parameter to avoid unused warning
 
 	switch test.ID {
 	case "SEC-004-REP":
@@ -268,6 +272,7 @@ func (s *SOC2TypeIICompliance) executeReperformanceTest(ctx context.Context, app
 // executeAnalyticalTest executes an analytical-based test
 func (s *SOC2TypeIICompliance) executeAnalyticalTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
 	// Analytical tests involve analyzing data to identify anomalies or trends
+	_ = control // Use control parameter to avoid unused warning
 
 	switch test.ID {
 	case "SEC-005-ANA":
@@ -334,6 +339,8 @@ func getSOC2Controls() []SOC2Control {
 // Helper methods for specific test implementations
 func (s *SOC2TypeIICompliance) validateSecurityPolicy(ctx context.Context, app *lift.App) (interface{}, error) {
 	// Implementation for security policy validation
+	_ = ctx // Use context parameter to avoid unused warning
+	_ = app // Use app parameter to avoid unused warning
 	return map[string]interface{}{
 		"policy_exists":    true,
 		"last_updated":     time.Now().AddDate(0, -2, 0),
@@ -344,6 +351,8 @@ func (s *SOC2TypeIICompliance) validateSecurityPolicy(ctx context.Context, app *
 
 func (s *SOC2TypeIICompliance) observeAccessControls(ctx context.Context, app *lift.App) (interface{}, error) {
 	// Implementation for access control observation
+	_ = ctx // Use context parameter to avoid unused warning
+	_ = app // Use app parameter to avoid unused warning
 	return map[string]interface{}{
 		"authentication_required": true,
 		"authorization_enforced":  true,
@@ -354,6 +363,9 @@ func (s *SOC2TypeIICompliance) observeAccessControls(ctx context.Context, app *l
 
 func (s *SOC2TypeIICompliance) analyzeSecurityLogs(ctx context.Context, app *lift.App, period time.Duration) (interface{}, error) {
 	// Implementation for security log analysis
+	_ = ctx    // Use context parameter to avoid unused warning
+	_ = app    // Use app parameter to avoid unused warning
+	_ = period // Use period parameter to avoid unused warning
 	return map[string]interface{}{
 		"total_events":       10000,
 		"security_events":    150,
@@ -365,6 +377,8 @@ func (s *SOC2TypeIICompliance) analyzeSecurityLogs(ctx context.Context, app *lif
 
 // validateAvailabilityPolicy validates availability policies
 func (s *SOC2TypeIICompliance) validateAvailabilityPolicy(ctx context.Context, app *lift.App) (interface{}, error) {
+	_ = ctx // Use context parameter to avoid unused warning
+	_ = app // Use app parameter to avoid unused warning
 	return map[string]interface{}{
 		"policy_exists":      true,
 		"sla_defined":        true,
@@ -376,6 +390,8 @@ func (s *SOC2TypeIICompliance) validateAvailabilityPolicy(ctx context.Context, a
 
 // observeDataProcessing observes data processing integrity
 func (s *SOC2TypeIICompliance) observeDataProcessing(ctx context.Context, app *lift.App) (interface{}, error) {
+	_ = ctx // Use context parameter to avoid unused warning
+	_ = app // Use app parameter to avoid unused warning
 	return map[string]interface{}{
 		"input_validation":    true,
 		"data_transformation": true,
@@ -387,6 +403,8 @@ func (s *SOC2TypeIICompliance) observeDataProcessing(ctx context.Context, app *l
 
 // inspectSecurityConfig inspects security configurations
 func (s *SOC2TypeIICompliance) inspectSecurityConfig(ctx context.Context, app *lift.App) (interface{}, error) {
+	_ = ctx // Use context parameter to avoid unused warning
+	_ = app // Use app parameter to avoid unused warning
 	return map[string]interface{}{
 		"encryption_enabled":     true,
 		"access_controls":        true,
@@ -398,6 +416,8 @@ func (s *SOC2TypeIICompliance) inspectSecurityConfig(ctx context.Context, app *l
 
 // inspectAvailabilityMonitoring inspects availability monitoring
 func (s *SOC2TypeIICompliance) inspectAvailabilityMonitoring(ctx context.Context, app *lift.App) (interface{}, error) {
+	_ = ctx // Use context parameter to avoid unused warning
+	_ = app // Use app parameter to avoid unused warning
 	return map[string]interface{}{
 		"health_checks":       true,
 		"performance_metrics": true,
@@ -409,6 +429,8 @@ func (s *SOC2TypeIICompliance) inspectAvailabilityMonitoring(ctx context.Context
 
 // reperformAccessControl reperforms access control tests
 func (s *SOC2TypeIICompliance) reperformAccessControl(ctx context.Context, app *lift.App) (interface{}, error) {
+	_ = ctx // Use context parameter to avoid unused warning
+	_ = app // Use app parameter to avoid unused warning
 	return map[string]interface{}{
 		"authentication_test": "passed",
 		"authorization_test":  "passed",
@@ -420,6 +442,8 @@ func (s *SOC2TypeIICompliance) reperformAccessControl(ctx context.Context, app *
 
 // reperformDataValidation reperforms data validation tests
 func (s *SOC2TypeIICompliance) reperformDataValidation(ctx context.Context, app *lift.App) (interface{}, error) {
+	_ = ctx // Use context parameter to avoid unused warning
+	_ = app // Use app parameter to avoid unused warning
 	return map[string]interface{}{
 		"input_validation_test":  "passed",
 		"data_integrity_test":    "passed",
@@ -431,6 +455,9 @@ func (s *SOC2TypeIICompliance) reperformDataValidation(ctx context.Context, app 
 
 // analyzeAvailabilityMetrics analyzes availability metrics
 func (s *SOC2TypeIICompliance) analyzeAvailabilityMetrics(ctx context.Context, app *lift.App, period time.Duration) (interface{}, error) {
+	_ = ctx    // Use context parameter to avoid unused warning
+	_ = app    // Use app parameter to avoid unused warning
+	_ = period // Use period parameter to avoid unused warning
 	return map[string]interface{}{
 		"uptime_percentage":     99.95,
 		"average_response_time": "45ms",
@@ -485,6 +512,8 @@ func (s *SOC2TypeIICompliance) evaluateTestResult(actual, expected interface{}) 
 }
 
 func (s *SOC2TypeIICompliance) collectEvidence(ctx context.Context, control SOC2Control, result *ControlResult) ([]Evidence, error) {
+	_ = ctx    // Use context parameter to avoid unused warning
+	_ = result // Use result parameter to avoid unused warning
 	var evidence []Evidence
 
 	for _, req := range control.Evidence {

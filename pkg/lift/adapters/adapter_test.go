@@ -335,6 +335,7 @@ func TestAdapterRegistry_ListSupportedTriggers(t *testing.T) {
 		TriggerS3,
 		TriggerEventBridge,
 		TriggerScheduled,
+		TriggerWebSocket,
 	}
 
 	if len(triggers) != len(expectedTriggers) {
