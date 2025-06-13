@@ -270,8 +270,8 @@ func (a *App) parseEvent(event interface{}) (*Request, error) {
 		return nil, err
 	}
 
-	// Wrap the adapter request in our Request type
-	return &Request{Request: adapterRequest}, nil
+	// Properly wrap the adapter request using NewRequest to copy all fields
+	return NewRequest(adapterRequest), nil
 }
 
 // handleError processes errors and returns appropriate responses
