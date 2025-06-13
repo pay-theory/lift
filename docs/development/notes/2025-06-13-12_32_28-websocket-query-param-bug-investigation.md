@@ -29,7 +29,7 @@ Lift's WebSocket adapter is not properly mapping query parameters from `APIGatew
 
 ## Root Cause Analysis
 
-The issue appears to be in the **type conversion** within the `extractStringMapField` function. Let me examine this function more closely.
+The issue was in the **type conversion** within the `extractStringMapField` function.
 
 ### `extractStringMapField` Function Analysis
 
@@ -49,18 +49,60 @@ func extractStringMapField(data map[string]interface{}, key string) map[string]s
 }
 ```
 
-**Potential Issue**: The function expects `map[string]interface{}` but the AWS Lambda event might be providing `map[string]string` directly.
+**Root Cause**: The function only handled `map[string]interface{}` but not `map[string]string`. When the WebSocket event is converted to generic format, the `QueryStringParameters` field remains as `map[string]string`, but the function expected `map[string]interface{}`.
 
-## Next Steps
+## Solution
 
-1. Create a comprehensive test that reproduces the exact issue
-2. Debug the type conversion in `extractStringMapField`
-3. Fix the type handling to support both `map[string]string` and `map[string]interface{}`
-4. Add additional test coverage for edge cases
+Updated the `extractStringMapField` function in `pkg/lift/adapters/adapter.go` to handle both input types:
 
-## Test Plan
+```go
+// extractStringMapField safely extracts a string map field from a map
+// Handles both map[string]string and map[string]interface{} input types
+func extractStringMapField(data map[string]interface{}, key string) map[string]string {
+	result := make(map[string]string)
+	if value, exists := data[key]; exists {
+		// Handle map[string]string directly
+		if stringMap, ok := value.(map[string]string); ok {
+			for k, v := range stringMap {
+				result[k] = v
+			}
+		} else if mapValue, ok := value.(map[string]interface{}); ok {
+			// Handle map[string]interface{} by converting values to strings
+			for k, v := range mapValue {
+				if str, ok := v.(string); ok {
+					result[k] = str
+				}
+			}
+		}
+	}
+	return result
+}
+```
 
-Create a test that:
-1. Uses the exact same event structure as reported in the bug
-2. Tests both the adapter directly and through the full app flow
-3. Validates that `ctx.Query("Authorization")` returns the expected value 
+## Testing
+
+1. **Added comprehensive test coverage**:
+   - `TestWebSocketQueryParameterBugFix`: Specifically tests the bug scenario
+   - `TestExtractStringMapFieldBothTypes`: Tests the function with both input types
+
+2. **Verified fix works**:
+   - All existing tests continue to pass
+   - New tests pass
+   - Debug script confirms `ctx.Query("Authorization")` now returns the expected value
+
+## Files Modified
+
+1. `pkg/lift/adapters/adapter.go`: Fixed `extractStringMapField` function
+2. `pkg/lift/adapters/adapter_test.go`: Updated trigger count for WebSocket support
+3. `pkg/lift/adapters/websocket_test.go`: Added regression tests
+
+## Impact
+
+- ✅ **Fixed**: WebSocket query parameters are now properly accessible via `ctx.Query()`
+- ✅ **Backward Compatible**: Existing functionality remains unchanged
+- ✅ **Well Tested**: Added comprehensive test coverage to prevent regression
+- ✅ **Standard JWT Authentication**: WebSocket JWT authentication patterns now work correctly
+
+## Resolution Status
+
+**RESOLVED** - The WebSocket query parameter bug has been fixed and thoroughly tested. Users can now access query parameters in WebSocket handlers using `ctx.Query("paramName")` as expected. 
