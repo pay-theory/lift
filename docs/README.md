@@ -41,6 +41,70 @@ Lift is a serverless-native web framework for AWS Lambda that eliminates boilerp
 
 ### Architecture Overview
 
+```mermaid
+graph LR
+    subgraph "Lambda Event Sources"
+        A1[API Gateway V1/V2]
+        A2[WebSocket]
+        A3[SQS]
+        A4[S3]
+        A5[EventBridge]
+        A6[DynamoDB Streams]
+        A7[Scheduled/CloudWatch]
+    end
+    
+    subgraph "Lift Framework"
+        B[Event Detection]
+        C[Event Adapter]
+        D[Router]
+        E[Middleware Chain]
+        F[Handler]
+        G[Response Builder]
+    end
+    
+    subgraph "Middleware Stack"
+        M1[Authentication]
+        M2[Rate Limiting]
+        M3[Logging]
+        M4[Metrics]
+        M5[Error Recovery]
+        M6[Multi-Tenant]
+    end
+    
+    subgraph "Handler Types"
+        H1[Basic Handler]
+        H2[Typed Handler]
+        H3[WebSocket Handler]
+    end
+    
+    A1 --> B
+    A2 --> B
+    A3 --> B
+    A4 --> B
+    A5 --> B
+    A6 --> B
+    A7 --> B
+    
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    
+    E -.-> M1
+    E -.-> M2
+    E -.-> M3
+    E -.-> M4
+    E -.-> M5
+    E -.-> M6
+    
+    F -.-> H1
+    F -.-> H2
+    F -.-> H3
+    
+    G --> Z[Lambda Response]
+```
+
 The diagram above shows how Lift processes Lambda events through a unified pipeline, regardless of the event source. Events are automatically detected, routed through middleware, and handled with type safety.
 
 ## Quick Example
