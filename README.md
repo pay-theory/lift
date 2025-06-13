@@ -1,287 +1,177 @@
-# Lift - Type-Safe Lambda Handler Framework for Go
+# Lift Framework 🚀
 
-[![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://golang.org/doc/install)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-latest-green.svg)](docs/)
-[![Go Report Card](https://goreportcard.com/badge/github.com/pay-theory/lift)](https://goreportcard.com/report/github.com/pay-theory/lift)
+A type-safe, Lambda-native framework for Go that eliminates boilerplate while providing production-grade features. Built by Pay Theory for serverless applications with a focus on security, performance, and developer experience.
 
-Lift is a **type-safe**, **Lambda-native** handler framework for Go that eliminates boilerplate and lets you focus on business logic. Write 80% less code while building more reliable serverless applications.
-
-## ✨ Why Lift?
-
-Writing Lambda handlers shouldn't be painful. Traditional Lambda development requires:
-- Manual request parsing and validation
-- Repetitive error handling
-- Complex response formatting
-- Boilerplate for every single handler
-
-Lift solves these problems with a clean, type-safe API inspired by modern web frameworks.
-
-## 🚀 Quick Start
+## Quick Start
 
 ```go
 package main
 
 import (
-    "github.com/pay-theory/lift"
+    "github.com/pay-theory/lift/pkg/lift"
+    "github.com/pay-theory/lift/pkg/middleware"
 )
 
-type CreateUserRequest struct {
-    Email string `json:"email" validate:"required,email"`
-    Name  string `json:"name" validate:"required"`
+type UserRequest struct {
+    Name string `json:"name" validate:"required"`
+    Age  int    `json:"age" validate:"min=0,max=120"`
+}
+
+type UserResponse struct {
+    Message  string `json:"message"`
+    UserID   string `json:"user_id"`
+    TenantID string `json:"tenant_id,omitempty"`
 }
 
 func main() {
     app := lift.New()
-    
-    app.POST("/users", CreateUser)
-    app.GET("/users/:id", GetUser)
-    
-    app.Start()
-}
 
-func CreateUser(ctx *lift.Context, req CreateUserRequest) (*User, error) {
-    // Request is automatically parsed and validated
-    user := &User{
-        ID:    lift.GenerateID("usr"),
-        Email: req.Email,
-        Name:  req.Name,
-    }
-    
-    if err := ctx.DB.Create(user); err != nil {
-        return nil, lift.Conflict("User already exists")
-    }
-    
-    return user, nil
-}
+    // Add middleware
+    app.Use(middleware.RequestID())
+    app.Use(middleware.Logger())
+    app.Use(middleware.Recover())
+    app.Use(middleware.ErrorHandler())
 
-func GetUser(ctx *lift.Context) (*User, error) {
-    userID := ctx.Param("id")
-    
-    user, err := ctx.DB.Find(userID)
-    if err != nil {
-        return nil, lift.NotFound("User not found")
-    }
-    
-    return user, nil
-}
-```
-
-That's it! Lift handles:
-- ✅ Request parsing and validation
-- ✅ Error responses with proper status codes
-- ✅ JSON marshaling/unmarshaling
-- ✅ Logging and metrics
-- ✅ Path parameter extraction
-
-## 📊 Before & After
-
-### Before (Traditional Lambda) - 50+ lines
-```go
-func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-    var input CreateUserRequest
-    if err := json.Unmarshal([]byte(request.Body), &input); err != nil {
-        return events.APIGatewayProxyResponse{
-            StatusCode: 400,
-            Body:       `{"error":"Invalid request"}`,
-        }, nil
-    }
-    // ... 40+ more lines of boilerplate ...
-}
-```
-
-### After (With Lift) - 10 lines
-```go
-func CreateUser(ctx *lift.Context, req CreateUserRequest) (*User, error) {
-    user := &User{Email: req.Email, Name: req.Name}
-    if err := ctx.DB.Create(user); err != nil {
-        return nil, lift.Conflict("User already exists")
-    }
-    return user, nil
-}
-```
-
-## 🎯 Key Features
-
-### 🔒 Type-Safe Handlers
-```go
-// Lift ensures type safety at compile time
-func ProcessPayment(ctx *lift.Context, req PaymentRequest) (*PaymentResponse, error) {
-    // req is guaranteed to be valid and properly typed
-}
-```
-
-### ⚡ Automatic Validation
-```go
-type PaymentRequest struct {
-    Amount   float64 `json:"amount" validate:"required,min=0.01"`
-    Currency string  `json:"currency" validate:"required,oneof=USD EUR GBP"`
-}
-// Validation happens automatically before your handler is called
-```
-
-### 🛡️ Built-in Middleware
-```go
-app.Use(lift.Logger())       // Structured logging
-app.Use(lift.Recover())      // Panic recovery
-app.Use(lift.CORS())         // CORS handling
-app.Use(lift.RateLimit(100)) // Rate limiting
-app.Use(lift.Cache())        // Response caching
-```
-
-### 🧪 Easy Testing
-```go
-func TestCreateUser(t *testing.T) {
-    app := lift.NewTestApp()
-    
-    resp := app.POST("/users", CreateUserRequest{
-        Email: "test@example.com",
-        Name:  "Test User",
+    // Health check
+    app.GET("/health", func(ctx *lift.Context) error {
+        return ctx.JSON(map[string]string{
+            "status": "healthy",
+            "service": "my-service",
+        })
     })
-    
-    assert.Equal(t, 201, resp.StatusCode)
+
+    // Type-safe handler
+    app.POST("/users", lift.SimpleHandler(func(ctx *lift.Context, req UserRequest) (UserResponse, error) {
+        return UserResponse{
+            Message:  fmt.Sprintf("User %s created", req.Name),
+            UserID:   "user_123",
+            TenantID: ctx.TenantID(),
+        }, nil
+    }))
+
+    // Path parameters
+    app.GET("/users/:id", func(ctx *lift.Context) error {
+        userID := ctx.Param("id")
+        return ctx.JSON(map[string]interface{}{
+            "user_id": userID,
+            "tenant":  ctx.TenantID(),
+        })
+    })
+
+    // Start the application
+    app.Start()
+
+    // In Lambda, use: lambda.Start(app.HandleRequest)
 }
 ```
 
-### 🔄 Multiple Trigger Types
-```go
-// API Gateway
-app.POST("/users", CreateUser)
+## Foundation Status ✅
 
-// SQS
-app.SQS("user-queue", ProcessUserEvent)
+**Sprint 1-2 Foundation: COMPLETE**
 
-// S3
-app.S3("uploads", ProcessUpload)
+We have successfully implemented the core foundation of the Lift framework:
 
-// EventBridge
-app.EventBridge("orders", ProcessOrder)
+### ✅ Core Components
+- **Type-Safe Handlers**: Generic handlers with compile-time type checking
+- **Enhanced Context**: Rich context with multi-tenant support
+- **Routing Engine**: Path parameters, exact matching, middleware chains
+- **Request/Response**: Unified structure supporting multiple Lambda triggers
+- **Error Handling**: Structured errors with HTTP status codes
+- **Middleware System**: Essential middleware (Logger, Recover, CORS, etc.)
 
-// Scheduled
-app.Schedule("0 9 * * *", DailyReport)
+### ✅ Key Features
+- 🔒 **Type Safety**: Compile-time type checking with Go generics
+- 🏗️ **Zero Boilerplate**: From 50+ lines to ~10 lines per handler
+- 🚀 **Performance**: Designed for <15ms cold start overhead
+- 🏢 **Multi-Tenant**: Built-in tenant/user context support
+- 🔧 **Middleware**: Composable middleware system
+- 📊 **Observability**: Request ID tracking, structured logging
+- ✅ **Testing**: Comprehensive test coverage
+
+### ✅ Testing Results
+```
+=== PASS: TestNew (0.00s)
+=== PASS: TestAppRoutes (0.00s)
+=== PASS: TestAppStart (0.00s)
+=== PASS: TestAppWithConfig (0.00s)
+=== PASS: TestDefaultConfig (0.00s)
+=== PASS: TestAppHandleRequest (0.00s)
+=== PASS: TestNewRouter (0.00s)
+=== PASS: TestRouterAddRoute (0.00s)
+=== PASS: TestExtractParams (0.00s)
+=== PASS: TestMatchPattern (0.00s)
+=== PASS: TestRouterFindHandler (0.00s)
+=== PASS: TestRouterHandle (0.00s)
+PASS
 ```
 
-## 📦 Installation
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│              Lift Framework             │
+├─────────────────────────────────────────┤
+│  Type-Safe Handlers                     │
+│  ┌─────────────┐ ┌─────────────────────┐│
+│  │ SimpleHandler│ │ Generic Handlers   ││
+│  │   Function   │ │ TypedHandler<T,R>  ││
+│  └─────────────┘ └─────────────────────┘│
+├─────────────────────────────────────────┤
+│  Enhanced Context & Routing             │
+│  ┌─────────────┐ ┌─────────────────────┐│
+│  │   Context   │ │      Router         ││
+│  │  Multi-Tenant│ │  Path Parameters   ││
+│  └─────────────┘ └─────────────────────┘│
+├─────────────────────────────────────────┤
+│  Middleware & Error Handling            │
+│  ┌─────────────┐ ┌─────────────────────┐│
+│  │ Composable  │ │   Structured        ││
+│  │ Middleware  │ │     Errors          ││
+│  └─────────────┘ └─────────────────────┘│
+└─────────────────────────────────────────┘
+```
+
+## Examples
+
+Check the `examples/` directory for working examples:
+- `examples/hello-world/` - Basic Lambda handler with type safety
+
+## Roadmap
+
+### 🚧 Next: Sprint 3-4 (Type Safety Enhancement)
+- [ ] Enhanced validation with struct tags
+- [ ] Event source adapters (SQS, S3, EventBridge)
+- [ ] AWS integration utilities
+- [ ] Advanced middleware (Auth, Rate Limiting)
+- [ ] DynamORM integration
+
+### 🔮 Future Sprints
+- Multi-trigger support (SQS, S3, EventBridge)
+- Advanced security features
+- Performance optimizations
+- Testing utilities
+- CLI tooling
+
+## Development
 
 ```bash
-go get github.com/pay-theory/lift
+# Clone and setup
+git clone https://github.com/pay-theory/lift
+cd lift
+go mod tidy
+
+# Run tests
+go test ./pkg/... -v
+
+# Build example
+cd examples/hello-world
+go build .
 ```
 
-## 📚 Documentation
+## Contributing
 
-- [**Getting Started**](docs/getting-started.md) - Set up your first Lift application
-- [**API Reference**](docs/api-reference.md) - Complete API documentation
-- [**Examples**](examples/) - Real-world examples and patterns
-- [**Migration Guide**](docs/migration.md) - Migrate from raw Lambda handlers
-- [**Best Practices**](docs/best-practices.md) - Production-ready patterns
+This is a Pay Theory internal project. See our development documentation in `docs/` for architecture decisions and implementation notes.
 
-## 🏗️ More Examples
+## License
 
-### Middleware & Authentication
-```go
-// Global middleware
-app.Use(lift.Logger())
-app.Use(lift.Auth(authConfig))
-
-// Route-specific middleware
-app.POST("/admin/users", CreateAdminUser, lift.RequireRole("admin"))
-
-// Custom middleware
-func APIKeyAuth(validKeys map[string]bool) lift.Middleware {
-    return func(next lift.Handler) lift.Handler {
-        return func(ctx *lift.Context) error {
-            key := ctx.Header("X-API-Key")
-            if !validKeys[key] {
-                return lift.Unauthorized("Invalid API key")
-            }
-            return next(ctx)
-        }
-    }
-}
-```
-
-### Error Handling
-```go
-func GetOrder(ctx *lift.Context) (*Order, error) {
-    orderID := ctx.Param("id")
-    
-    order, err := findOrder(orderID)
-    if err != nil {
-        switch err {
-        case ErrNotFound:
-            return nil, lift.NotFound("Order not found")
-        case ErrCancelled:
-            return nil, lift.Gone("Order cancelled")
-        default:
-            return nil, err // 500 Internal Server Error
-        }
-    }
-    
-    if order.UserID != ctx.UserID {
-        return nil, lift.Forbidden("Access denied")
-    }
-    
-    return order, nil
-}
-```
-
-### Context Utilities
-```go
-func ProcessOrder(ctx *lift.Context, req OrderRequest) error {
-    // Logging
-    ctx.Logger.Info("Processing order", "orderID", req.ID)
-    
-    // Metrics
-    ctx.Metrics.Increment("orders.processed")
-    
-    // Distributed tracing
-    span := ctx.StartSpan("process-payment")
-    defer span.End()
-    
-    // Timeouts
-    result, err := ctx.WithTimeout(5*time.Second, func() (any, error) {
-        return processPayment(req)
-    })
-    
-    return nil
-}
-```
-
-## 🚀 Performance
-
-Lift is optimized for Lambda cold starts and high throughput:
-
-| Metric | Performance |
-|--------|-------------|
-| Cold Start Overhead | <15ms |
-| Request Routing | <1ms |
-| Memory Overhead | <5MB |
-| Throughput | 50,000+ req/sec |
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-## 🗺️ Roadmap
-
-- [ ] GraphQL support
-- [ ] WebSocket handlers
-- [ ] OpenAPI generation
-- [ ] More middleware options
-- [ ] Plugin system
-
-## 💬 Community
-
-- **GitHub Discussions**: [Join the conversation](https://github.com/pay-theory/lift/discussions)
-- **Discord**: [Chat with us](https://discord.gg/lift)
-- **Twitter**: [@PayTheory](https://twitter.com/paytheory)
-
-## 📄 License
-
-Lift is licensed under the [Apache License 2.0](LICENSE).
-
----
-
-<p align="center">
-  Built with ❤️ by <a href="https://paytheory.com">Pay Theory</a>
-</p> # lift
+Internal Pay Theory License

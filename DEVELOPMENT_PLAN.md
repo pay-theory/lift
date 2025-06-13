@@ -27,10 +27,14 @@ lift/
 │   ├── middleware/     # Built-in middleware
 │   ├── validation/     # Request validation
 │   ├── errors/         # Error handling
+│   ├── security/       # Security and authentication
+│   ├── dynamorm/       # DynamORM integration
+│   ├── operations/     # Health checks, circuit breakers
 │   └── testing/        # Testing utilities
 ├── examples/           # Usage examples
 ├── docs/              # Documentation
 ├── internal/          # Internal utilities
+├── pulumi/            # Pulumi components
 ├── cmd/               # CLI tools (future)
 └── benchmarks/        # Performance tests
 ```
@@ -114,6 +118,43 @@ func (a *App) DELETE(path string, handler interface{}) *App
 func (a *App) Handle(method, path string, handler interface{}) *App
 ```
 
+### 1.5 Security Foundation
+
+**Priority: Critical - New Addition**
+
+```go
+// pkg/security/security.go
+type SecurityConfig struct {
+    // Authentication
+    JWTConfig        JWTConfig
+    APIKeyConfig     APIKeyConfig
+    
+    // Authorization
+    RBACEnabled      bool
+    DefaultRoles     []string
+    
+    // Encryption
+    EncryptionAtRest bool
+    KMSKeyID         string
+    
+    // Request Security
+    RequestSigning   bool
+    MaxRequestSize   int64
+    
+    // Secrets Management
+    SecretsProvider  SecretsProvider
+}
+
+// pkg/security/auth.go
+type Principal struct {
+    UserID    string
+    TenantID  string
+    AccountID string // Partner or Kernel account
+    Roles     []string
+    Scopes    []string
+}
+```
+
 ## Phase 2: Type Safety and Validation (Weeks 5-8)
 
 ### 2.1 Automatic Request Parsing
@@ -190,7 +231,7 @@ func Timeout(duration time.Duration) Middleware
 
 ### 3.2 Authentication Middleware
 
-**Based on**: Streamer's JWT validation patterns.
+**Based on**: Streamer's JWT validation patterns with enhanced security.
 
 ```go
 // pkg/middleware/auth.go
@@ -199,6 +240,10 @@ type AuthConfig struct {
     JWTIssuer     string
     RequiredRoles []string
     SkipPaths     []string
+    
+    // Multi-tenant support
+    ValidateTenant   bool
+    CrossAccountAuth bool // For Kernel/Partner communication
 }
 
 func JWT(config AuthConfig) Middleware {
@@ -211,9 +256,17 @@ func JWT(config AuthConfig) Middleware {
                 return Unauthorized("Invalid token")
             }
             
-            // Add claims to context
-            ctx.Set("user_id", claims.Subject)
-            ctx.Set("tenant_id", claims.TenantID)
+            // Create principal
+            principal := &Principal{
+                UserID:    claims.Subject,
+                TenantID:  claims.TenantID,
+                AccountID: claims.AccountID,
+                Roles:     claims.Roles,
+                Scopes:    claims.Scopes,
+            }
+            
+            // Set in context
+            ctx.SetPrincipal(principal)
             
             return next.Handle(ctx)
         })
@@ -328,6 +381,13 @@ type Context struct {
     // Database (optional)
     DB interface{}
     
+    // DynamORM integration
+    DynamORM    *dynamorm.DB
+    Transaction *dynamorm.Transaction
+    
+    // Security
+    Principal *security.Principal
+    
     // Internal
     params map[string]string
     values map[string]interface{}
@@ -341,6 +401,7 @@ func (c *Context) Set(key string, value interface{})
 func (c *Context) Get(key string) interface{}
 func (c *Context) UserID() string
 func (c *Context) TenantID() string
+func (c *Context) AccountID() string // Partner or Kernel account
 
 // Timeout utilities
 func (c *Context) WithTimeout(duration time.Duration, fn func() (interface{}, error)) (interface{}, error)
@@ -360,6 +421,10 @@ type DatabaseConfig struct {
     // Connection pooling
     MaxConnections int
     IdleTimeout    time.Duration
+    
+    // DynamORM specific
+    SingleTableMode bool
+    TablePrefix     string
 }
 
 func (a *App) WithDatabase(config DatabaseConfig) *App {
@@ -367,10 +432,58 @@ func (a *App) WithDatabase(config DatabaseConfig) *App {
     switch config.Type {
     case "dynamodb":
         a.db = initDynamoDB(config)
+        // Special DynamORM initialization
+        if dynamormDB, err := dynamorm.New(config); err == nil {
+            a.dynamorm = dynamormDB
+        }
     case "postgres":
         a.db = initPostgres(config)
     }
     return a
+}
+```
+
+### 5.3 DynamORM Deep Integration
+
+**New Addition**: First-class DynamORM support
+
+```go
+// pkg/dynamorm/middleware.go
+func WithDynamORM(config DynamORMConfig) Middleware {
+    return func(next Handler) Handler {
+        return HandlerFunc(func(ctx *Context) error {
+            // Initialize DynamORM connection
+            db, err := dynamorm.New(config)
+            if err != nil {
+                return err
+            }
+            
+            ctx.DynamORM = db
+            
+            // Automatic transaction for writes
+            if ctx.Request.Method != "GET" {
+                tx := db.BeginTransaction()
+                ctx.Transaction = tx
+                
+                defer func() {
+                    if r := recover(); r != nil {
+                        tx.Rollback()
+                        panic(r)
+                    }
+                }()
+                
+                err := next.Handle(ctx)
+                if err != nil {
+                    tx.Rollback()
+                    return err
+                }
+                
+                return tx.Commit()
+            }
+            
+            return next.Handle(ctx)
+        })
+    }
 }
 ```
 

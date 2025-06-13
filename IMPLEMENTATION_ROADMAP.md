@@ -2,9 +2,47 @@
 
 ## Overview
 
-This roadmap outlines the step-by-step implementation of the Lift framework, broken down into manageable milestones with specific deliverables and success criteria.
+This roadmap outlines the step-by-step implementation of the Lift framework, broken down into manageable milestones with specific deliverables and success criteria. The roadmap is aligned with 2-week sprints including mid-sprint code reviews.
 
-## Milestone 1: Foundation (Weeks 1-4)
+## Sprint Schedule
+
+- **Total Duration**: 40 weeks (20 sprints)
+- **Sprint Length**: 2 weeks
+- **Mid-Sprint Reviews**: Every Wednesday of week 1
+- **Sprint Reviews**: Every Friday of week 2
+- **Code Coverage Target**: 80% enforced via CI/CD
+
+## Milestone 1: Foundation (Weeks 1-4 / Sprints 1-2)
+
+### Sprint 1 (Weeks 1-2)
+**Focus**: Project setup, core types, security foundation
+
+#### Week 1
+- [ ] Initialize Go module with proper structure
+- [ ] Set up CI/CD pipeline with coverage enforcement
+- [ ] Create security package structure
+- [ ] **Mid-Sprint Review**: Architecture validation
+
+#### Week 2
+- [ ] Implement core types (App, Context, Handler)
+- [ ] Basic security configuration
+- [ ] Initial test framework
+- [ ] **Sprint Review**: Foundation deliverables
+
+### Sprint 2 (Weeks 3-4)
+**Focus**: Request/response system, minimal example
+
+#### Week 3
+- [ ] Implement Request/Response structures
+- [ ] Basic routing system
+- [ ] AWS Secrets Manager integration
+- [ ] **Mid-Sprint Review**: API design review
+
+#### Week 4
+- [ ] Create minimal working example
+- [ ] Documentation setup
+- [ ] Performance benchmarks baseline
+- [ ] **Sprint Review**: Working Lambda handler
 
 ### Goals
 - Establish project structure and core types
@@ -18,6 +56,8 @@ This roadmap outlines the step-by-step implementation of the Lift framework, bro
 - [ ] Set up CI/CD pipeline (GitHub Actions)
 - [ ] Configure linting and testing tools
 - [ ] Create initial documentation structure
+- [ ] **Security**: Set up AWS Secrets Manager integration
+- [ ] **Operations**: Create health check endpoints
 
 #### 1.2 Core Types
 ```go
@@ -72,9 +112,15 @@ import "github.com/pay-theory/lift"
 func main() {
     app := lift.New()
     
+    // Security middleware
+    app.Use(lift.SecureHeaders())
+    app.Use(lift.RequestSigning())
+    
+    app.GET("/health", lift.HealthCheck())
     app.GET("/hello", func(ctx *lift.Context) error {
         return ctx.JSON(map[string]string{
             "message": "Hello, World!",
+            "tenant":  ctx.TenantID(),
         })
     })
     
@@ -86,9 +132,17 @@ func main() {
 - [ ] Basic Lambda handler can be created and deployed
 - [ ] Simple GET/POST requests work
 - [ ] JSON responses are properly formatted
+- [ ] **Security**: AWS Secrets Manager connected
+- [ ] **DynamORM**: Basic integration working
 - [ ] Test coverage > 80%
 
-## Milestone 2: Type Safety (Weeks 5-8)
+## Milestone 2: Type Safety (Weeks 5-8 / Sprints 3-4)
+
+### Sprint 3 (Weeks 5-6)
+**Focus**: Generic handlers, request parsing
+
+### Sprint 4 (Weeks 7-8)
+**Focus**: Validation system, error handling
 
 ### Goals
 - Implement type-safe handlers with generics
@@ -505,44 +559,77 @@ lift deploy --stage dev
 - [ ] Local development experience is smooth
 - [ ] Deployment process is automated
 
-## Milestone 10: Documentation and Examples (Weeks 37-40)
+## Milestone 10: Production Excellence (Weeks 37-40 / Sprints 19-20)
+
+### Sprint 19 (Weeks 37-38)
+**Focus**: Production hardening, security audit
+
+### Sprint 20 (Weeks 39-40)
+**Focus**: Final optimizations, launch preparation
 
 ### Goals
-- Create comprehensive documentation
-- Build real-world examples
-- Establish community resources
+- Security audit and penetration testing
+- Performance optimization
+- Production deployment patterns
+- Launch preparation
 
 ### Deliverables
 
-#### 10.1 Documentation
-- [ ] **Getting Started Guide**: 15-minute tutorial
-- [ ] **API Reference**: Complete API documentation
-- [ ] **Best Practices**: Production-ready patterns
-- [ ] **Migration Guide**: From raw Lambda handlers
-- [ ] **Performance Guide**: Optimization techniques
+#### 10.1 Security Hardening
+- [ ] Penetration testing
+- [ ] Security audit
+- [ ] Compliance validation
+- [ ] Cross-account security patterns
 
-#### 10.2 Examples
-```
-examples/
-├── basic-api/          # Simple REST API
-├── auth-service/       # JWT authentication
-├── file-processor/     # S3 + SQS processing
-├── scheduled-tasks/    # CloudWatch Events
-├── websocket-api/      # API Gateway WebSocket
-└── microservice/       # Complete microservice
+#### 10.2 Operations Excellence
+```go
+// pkg/operations/circuit_breaker.go
+type CircuitBreaker struct {
+    MaxFailures      int
+    ResetTimeout     time.Duration
+    OnStateChange    func(from, to State)
+}
+
+// pkg/operations/rate_limiter.go
+type MultiLevelRateLimiter struct {
+    UserLevel   RateLimiter
+    TenantLevel RateLimiter
+    GlobalLevel RateLimiter
+}
 ```
 
-#### 10.3 Community Resources
-- [ ] GitHub repository with issues/discussions
-- [ ] Discord server for community support
-- [ ] Blog posts and tutorials
-- [ ] Conference presentations
+#### 10.3 Pay Theory Integration
+```go
+// pkg/paytheory/kernel.go
+type KernelClient interface {
+    Tokenize(ctx context.Context, data SensitiveData) (Token, error)
+    Detokenize(ctx context.Context, token Token) (SensitiveData, error)
+    ValidateCompliance(ctx context.Context, req ComplianceRequest) error
+}
+
+// pkg/paytheory/partner.go
+func PartnerAccount(config PartnerConfig) Middleware
+```
+
+#### 10.4 Pulumi Components
+```typescript
+// pulumi/lift/index.ts
+export class LiftApplication extends pulumi.ComponentResource {
+    // Complete Pulumi component for Lift apps
+}
+
+export class PartnerAccountDeployment extends pulumi.ComponentResource {
+    // Partner account deployment automation
+}
+```
 
 ### Success Criteria
-- [ ] Documentation is complete and accurate
-- [ ] Examples cover common use cases
-- [ ] Community adoption is growing
-- [ ] Feedback is positive and actionable
+- [ ] Security audit passed
+- [ ] All compliance requirements met
+- [ ] Production deployment successful
+- [ ] Cross-account communication working
+- [ ] Pulumi components tested
+- [ ] Documentation complete
 
 ## Quality Gates
 

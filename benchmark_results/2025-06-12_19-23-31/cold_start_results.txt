@@ -1,0 +1,1081 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/pay-theory/lift/benchmarks
+cpu: VirtualApple @ 2.50GHz
+BenchmarkColdStart                      	 1533931	       920.4 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStart                      	 1890160	       828.4 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStart                      	 1676581	       808.3 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStart-2                    	 1951647	       594.3 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStart-2                    	 2121180	       670.3 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStart-2                    	 2039008	       674.4 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStart-4                    	 2133166	       680.9 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStart-4                    	 1862485	       598.4 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStart-4                    	 2125614	       579.6 ns/op	     808 B/op	      15 allocs/op
+BenchmarkColdStartWithBasicRoute        	 1326368	       893.2 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithBasicRoute        	 1381107	       897.2 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithBasicRoute        	 1300422	       933.3 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithBasicRoute-2      	 1499720	       784.6 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithBasicRoute-2      	 1388367	       778.3 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithBasicRoute-2      	 1545380	       802.6 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithBasicRoute-4      	 1559895	       764.9 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithBasicRoute-4      	 1511343	       764.7 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithBasicRoute-4      	 1571416	       776.0 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithMiddleware        	 1000000	      1096 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithMiddleware        	 1218951	       987.2 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithMiddleware        	 1208686	       981.3 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithMiddleware-2      	 1381314	       894.9 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithMiddleware-2      	 1255471	       871.4 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithMiddleware-2      	 1372632	       874.0 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithMiddleware-4      	 1399426	       862.6 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithMiddleware-4      	 1384515	       910.1 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithMiddleware-4      	 1368207	       875.2 ns/op	    1408 B/op	      21 allocs/op
+BenchmarkColdStartWithEventAdapters     	 1353837	       981.9 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithEventAdapters     	 1000000	      1176 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithEventAdapters     	 1376702	       913.3 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithEventAdapters-2   	 1510185	       793.8 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithEventAdapters-2   	 1525117	       785.0 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithEventAdapters-2   	 1531843	       788.4 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithEventAdapters-4   	 1000000	      1164 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithEventAdapters-4   	 1568811	       895.4 ns/op	    1352 B/op	      18 allocs/op
+BenchmarkColdStartWithEventAdapters-4   	 1600935	       760.5 ns/op	    1352 B/op	      18 allocs/op
+PASS
+ok  	github.com/pay-theory/lift/benchmarks	74.196s
+--- FAIL: TestFactoryPattern (0.02s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.01s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.01s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+--- FAIL: TestFactoryPattern (0.00s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.00s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.00s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+--- FAIL: TestFactoryPattern (0.00s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.00s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.00s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+--- FAIL: TestFactoryPattern (0.00s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.00s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.00s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+--- FAIL: TestFactoryPattern (0.00s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.00s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.00s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+--- FAIL: TestFactoryPattern (0.00s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.00s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.00s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+--- FAIL: TestFactoryPattern (0.00s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.00s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.00s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+--- FAIL: TestFactoryPattern (0.00s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.00s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.00s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+--- FAIL: TestFactoryPattern (0.00s)
+    --- FAIL: TestFactoryPattern/UserNotFound (0.00s)
+        factory_test.go:116: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:116
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestFactoryPattern/UserNotFound
+--- FAIL: TestFactoryPatternWithTenantIsolation (0.00s)
+    --- FAIL: TestFactoryPatternWithTenantIsolation/RequiresTenantID (0.00s)
+        factory_test.go:160: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/factory_test.go:160
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestFactoryPatternWithTenantIsolation/RequiresTenantID
+--- FAIL: TestCRUDAPI (0.00s)
+    --- FAIL: TestCRUDAPI/Health_Check (0.00s)
+        main_test.go:65: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:65
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:66: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:66
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Health_Check
+        main_test.go:67: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:67
+            	Error:      	"Error: [UNAUTHORIZED] Tenant ID required for data access" does not contain "healthy"
+            	Test:       	TestCRUDAPI/Health_Check
+    --- FAIL: TestCRUDAPI/Create_User_-_Success (0.00s)
+        main_test.go:91: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:91
+            	Error:      	Not equal: 
+            	            	expected: 201
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:92: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:92
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "test@example.com"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:93: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:93
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User created successfully"
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+        main_test.go:98: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:98
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Create_User_-_Success
+    --- FAIL: TestCRUDAPI/Create_User_-_Missing_Tenant (0.00s)
+        main_test.go:119: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:119
+            	Error:      	Not equal: 
+            	            	expected: 401
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Missing_Tenant
+    --- FAIL: TestCRUDAPI/Create_User_-_Invalid_Email (0.00s)
+        main_test.go:134: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:134
+            	Error:      	Not equal: 
+            	            	expected: 400
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+        main_test.go:135: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:135
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "validation"
+            	Test:       	TestCRUDAPI/Create_User_-_Invalid_Email
+    --- FAIL: TestCRUDAPI/Get_User_-_Success (0.00s)
+        main_test.go:162: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:162
+            	Error:      	Should be true
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:163: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:163
+            	Error:      	Not equal: 
+            	            	expected: 200
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+        main_test.go:167: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:167
+            	Error:      	Received unexpected error:
+            	            	invalid character 'E' looking for beginning of value
+            	Test:       	TestCRUDAPI/Get_User_-_Success
+    --- FAIL: TestCRUDAPI/Get_User_-_Not_Found (0.00s)
+        main_test.go:193: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:193
+            	Error:      	Not equal: 
+            	            	expected: 404
+            	            	actual  : 500
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:194: 
+            	Error Trace:	/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:194
+            	Error:      	"Error: [INTERNAL_ERROR] DynamORM not initialized" does not contain "User not found"
+            	Test:       	TestCRUDAPI/Get_User_-_Not_Found
+        main_test.go:197: FAIL:	Model(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:184]
+        main_test.go:197: FAIL: 0 out of 1 expectation(s) were met.
+            	The code you are testing needs to make 1 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:197]
+        main_test.go:198: FAIL:	Where(string,string,string)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:185]
+        main_test.go:198: FAIL:	First(mock.anythingOfTypeArgument)
+            		at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:186]
+        main_test.go:198: FAIL: 0 out of 2 expectation(s) were met.
+            	The code you are testing needs to make 2 more call(s).
+            	at: [/Users/aronprice/architect/lift/examples/basic-crud-api/main_test.go:198]
+FAIL
+exit status 1
+FAIL	github.com/pay-theory/lift/examples/basic-crud-api	1.181s
+?   	github.com/pay-theory/lift/examples/dynamorm-integration	[no test files]
+?   	github.com/pay-theory/lift/examples/hello-world	[no test files]
+?   	github.com/pay-theory/lift/examples/jwt-auth	[no test files]
+?   	github.com/pay-theory/lift/examples/observability-demo	[no test files]
+PASS
+ok  	github.com/pay-theory/lift/pkg/dynamorm	1.372s
+?   	github.com/pay-theory/lift/pkg/dynamorm/mocks	[no test files]
+?   	github.com/pay-theory/lift/pkg/errors	[no test files]
+PASS
+ok  	github.com/pay-theory/lift/pkg/lift	0.816s
+PASS
+ok  	github.com/pay-theory/lift/pkg/lift/adapters	0.466s
+PASS
+ok  	github.com/pay-theory/lift/pkg/middleware	0.958s
+?   	github.com/pay-theory/lift/pkg/observability	[no test files]
+--- FAIL: TestCloudWatchLogger_FlushMethod (0.00s)
+    logger_test.go:222: 
+        	Error Trace:	/Users/aronprice/architect/lift/pkg/observability/cloudwatch/logger_test.go:222
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 0
+        	Test:       	TestCloudWatchLogger_FlushMethod
+    logger_test.go:225: 
+        	Error Trace:	/Users/aronprice/architect/lift/pkg/observability/cloudwatch/logger_test.go:225
+        	Error:      	"[]" should have 3 item(s), but has 0
+        	Test:       	TestCloudWatchLogger_FlushMethod
+--- FAIL: TestCloudWatchLogger_FlushMethod (0.00s)
+    logger_test.go:222: 
+        	Error Trace:	/Users/aronprice/architect/lift/pkg/observability/cloudwatch/logger_test.go:222
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 0
+        	Test:       	TestCloudWatchLogger_FlushMethod
+    logger_test.go:225: 
+        	Error Trace:	/Users/aronprice/architect/lift/pkg/observability/cloudwatch/logger_test.go:225
+        	Error:      	"[]" should have 3 item(s), but has 0
+        	Test:       	TestCloudWatchLogger_FlushMethod
+--- FAIL: TestCloudWatchLogger_FlushMethod (0.00s)
+    logger_test.go:222: 
+        	Error Trace:	/Users/aronprice/architect/lift/pkg/observability/cloudwatch/logger_test.go:222
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 0
+        	Test:       	TestCloudWatchLogger_FlushMethod
+    logger_test.go:225: 
+        	Error Trace:	/Users/aronprice/architect/lift/pkg/observability/cloudwatch/logger_test.go:225
+        	Error:      	"[]" should have 3 item(s), but has 0
+        	Test:       	TestCloudWatchLogger_FlushMethod
+FAIL
+exit status 1
+FAIL	github.com/pay-theory/lift/pkg/observability/cloudwatch	14.109s
+?   	github.com/pay-theory/lift/pkg/observability/zap	[no test files]
+?   	github.com/pay-theory/lift/pkg/security	[no test files]
+?   	github.com/pay-theory/lift/pkg/testing	[no test files]
+FAIL
