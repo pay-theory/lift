@@ -146,6 +146,35 @@ func (m *mockServiceMeshMetrics) GetStats() observability.MetricsStats {
 	return observability.MetricsStats{}
 }
 
+// Add missing methods to implement updated MetricsCollector interface
+func (m *mockServiceMeshMetrics) RecordLatency(operation string, duration time.Duration) {
+	m.metrics.Store(operation+".latency", duration.Milliseconds())
+}
+
+func (m *mockServiceMeshMetrics) RecordError(operation string) {
+	key := operation + ".errors"
+	val, _ := m.metrics.LoadOrStore(key, int64(0))
+	for {
+		current := val.(int64)
+		if m.metrics.CompareAndSwap(key, current, current+1) {
+			break
+		}
+		val, _ = m.metrics.Load(key)
+	}
+}
+
+func (m *mockServiceMeshMetrics) RecordSuccess(operation string) {
+	key := operation + ".success"
+	val, _ := m.metrics.LoadOrStore(key, int64(0))
+	for {
+		current := val.(int64)
+		if m.metrics.CompareAndSwap(key, current, current+1) {
+			break
+		}
+		val, _ = m.metrics.Load(key)
+	}
+}
+
 // Helper method to get metrics count for testing
 func (m *mockServiceMeshMetrics) GetMetricsCount() int {
 	count := 0

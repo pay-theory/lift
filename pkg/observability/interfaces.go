@@ -49,7 +49,13 @@ type LogSink interface {
 
 // StructuredLogger extends the basic lift.Logger with additional context methods
 type StructuredLogger interface {
-	lift.Logger
+	// Explicitly declare lift.Logger methods to avoid interface embedding issues
+	Debug(message string, fields ...map[string]interface{})
+	Info(message string, fields ...map[string]interface{})
+	Warn(message string, fields ...map[string]interface{})
+	Error(message string, fields ...map[string]interface{})
+	WithField(key string, value interface{}) lift.Logger
+	WithFields(fields map[string]interface{}) lift.Logger
 
 	// Context methods for multi-tenant logging
 	WithRequestID(requestID string) StructuredLogger
@@ -123,7 +129,16 @@ type MetricEntry struct {
 
 // MetricsCollector extends the basic lift.MetricsCollector with additional functionality
 type MetricsCollector interface {
-	lift.MetricsCollector
+	// Explicitly declare lift.MetricsCollector methods to avoid interface embedding issues
+	Counter(name string, tags ...map[string]string) lift.Counter
+	Histogram(name string, tags ...map[string]string) lift.Histogram
+	Gauge(name string, tags ...map[string]string) lift.Gauge
+	Flush() error
+
+	// Additional methods for enhanced functionality
+	RecordLatency(operation string, duration time.Duration)
+	RecordError(operation string)
+	RecordSuccess(operation string)
 
 	// Context methods
 	WithTags(tags map[string]string) MetricsCollector
@@ -133,7 +148,6 @@ type MetricsCollector interface {
 	RecordBatch(entries []*MetricEntry) error
 
 	// Performance methods
-	Flush() error
 	Close() error
 	GetStats() MetricsStats
 }

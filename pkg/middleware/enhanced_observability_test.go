@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/lift/adapters"
@@ -115,6 +116,29 @@ func (m *mockMetrics) Close() error                                           { 
 func (m *mockMetrics) GetStats() observability.MetricsStats {
 	return observability.MetricsStats{
 		MetricsRecorded: int64(len(m.metrics)),
+	}
+}
+
+// Add missing methods to implement updated MetricsCollector interface
+func (m *mockMetrics) RecordLatency(operation string, duration time.Duration) {
+	m.metrics[operation+".latency"] = duration.Milliseconds()
+}
+
+func (m *mockMetrics) RecordError(operation string) {
+	key := operation + ".errors"
+	if val, exists := m.metrics[key]; exists {
+		m.metrics[key] = val.(int) + 1
+	} else {
+		m.metrics[key] = 1
+	}
+}
+
+func (m *mockMetrics) RecordSuccess(operation string) {
+	key := operation + ".success"
+	if val, exists := m.metrics[key]; exists {
+		m.metrics[key] = val.(int) + 1
+	} else {
+		m.metrics[key] = 1
 	}
 }
 

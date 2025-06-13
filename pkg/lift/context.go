@@ -36,17 +36,23 @@ type Context struct {
 
 	// Performance tracking
 	startTime time.Time
+
+	// Authentication
+	claims          map[string]interface{}
+	isAuthenticated bool
 }
 
 // NewContext creates a new enhanced context
 func NewContext(baseCtx context.Context, req *Request) *Context {
 	return &Context{
-		Context:   baseCtx,
-		Request:   req,
-		Response:  NewResponse(),
-		params:    make(map[string]string),
-		values:    make(map[string]interface{}),
-		startTime: time.Now(),
+		Context:         baseCtx,
+		Request:         req,
+		Response:        NewResponse(),
+		params:          make(map[string]string),
+		values:          make(map[string]interface{}),
+		claims:          make(map[string]interface{}),
+		startTime:       time.Now(),
+		isAuthenticated: false,
 	}
 }
 
@@ -316,4 +322,30 @@ func (c *Context) PathParam(key string) string {
 // QueryParam retrieves a query parameter (alias for Query)
 func (c *Context) QueryParam(key string) string {
 	return c.Query(key)
+}
+
+// Authentication methods
+
+// SetClaims sets JWT claims in the context
+func (c *Context) SetClaims(claims map[string]interface{}) {
+	c.claims = claims
+	c.isAuthenticated = true
+}
+
+// Claims returns the JWT claims from the context
+func (c *Context) Claims() map[string]interface{} {
+	return c.claims
+}
+
+// GetClaim retrieves a specific claim from the JWT
+func (c *Context) GetClaim(key string) interface{} {
+	if c.claims == nil {
+		return nil
+	}
+	return c.claims[key]
+}
+
+// IsAuthenticated returns whether the context has valid authentication
+func (c *Context) IsAuthenticated() bool {
+	return c.isAuthenticated
 }
