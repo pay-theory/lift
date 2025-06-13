@@ -15,6 +15,7 @@ const (
 	TriggerS3           TriggerType = "s3"
 	TriggerEventBridge  TriggerType = "eventbridge"
 	TriggerScheduled    TriggerType = "scheduled"
+	TriggerWebSocket    TriggerType = "websocket"
 	TriggerUnknown      TriggerType = "unknown"
 )
 
@@ -39,6 +40,9 @@ type Request struct {
 	Detail     map[string]interface{} `json:"detail,omitempty"`
 	Source     string                 `json:"source,omitempty"`
 	DetailType string                 `json:"detail_type,omitempty"`
+
+	// Additional metadata for specific event types (e.g., WebSocket)
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // EventAdapter defines the interface for converting Lambda events to normalized requests
@@ -74,6 +78,7 @@ func NewAdapterRegistry() *AdapterRegistry {
 	registry.Register(NewS3Adapter())
 	registry.Register(NewEventBridgeAdapter())
 	registry.Register(NewScheduledAdapter())
+	registry.Register(NewWebSocketAdapter())
 
 	return registry
 }
