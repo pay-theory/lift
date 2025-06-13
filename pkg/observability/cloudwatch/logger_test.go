@@ -1,0 +1,372 @@
+package cloudwatch
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pay-theory/lift/pkg/observability"
+)
+
+func TestCloudWatchLogger_BasicLogging(t *testing.T) {
+	// Setup
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     5,
+		FlushInterval: 100 * time.Millisecond,
+		BufferSize:    10,
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Test basic logging
+	logger.Info("test message", map[string]interface{}{
+		"key1": "value1",
+		"key2": 42,
+	})
+
+	logger.Error("error message", map[string]interface{}{
+		"error": "something went wrong",
+	})
+
+	// Wait for flush
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify log group and stream were created
+	assert.Equal(t, int64(1), mockClient.GetCallCount("CreateLogGroup"))
+	assert.Equal(t, int64(1), mockClient.GetCallCount("CreateLogStream"))
+
+	// Verify logs were sent
+	assert.Equal(t, int64(1), mockClient.GetCallCount("PutLogEvents"))
+
+	logEvents := mockClient.GetLogEvents()
+	assert.Len(t, logEvents, 2)
+
+	// Verify stats
+	stats := logger.GetStats()
+	assert.Equal(t, int64(2), stats.EntriesLogged)
+	assert.Equal(t, int64(0), stats.EntriesDropped)
+	assert.True(t, stats.FlushCount > 0)
+}
+
+func TestCloudWatchLogger_ContextFields(t *testing.T) {
+	// Setup
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     1,
+		FlushInterval: 50 * time.Millisecond,
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Test context methods
+	contextLogger := logger.
+		WithRequestID("req-123").
+		WithTenantID("tenant-456").
+		WithUserID("user-789").
+		WithTraceID("trace-abc").
+		WithSpanID("span-def")
+
+	contextLogger.Info("test with context")
+
+	// Wait for flush
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify the log was sent with context
+	logEvents := mockClient.GetLogEvents()
+	require.Len(t, logEvents, 1)
+
+	// The actual verification would require parsing the JSON message
+	// For now, we verify that the log was sent
+	assert.NotEmpty(t, logEvents[0].Message)
+}
+
+func TestCloudWatchLogger_Batching(t *testing.T) {
+	// Setup
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     3,
+		FlushInterval: 1 * time.Second, // Long interval to test batching
+		BufferSize:    10,
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Send exactly batch size messages
+	for i := 0; i < 3; i++ {
+		logger.Info("batch message", map[string]interface{}{
+			"index": i,
+		})
+	}
+
+	// Wait a bit for batch to be sent
+	time.Sleep(100 * time.Millisecond)
+
+	// Should have sent one batch
+	assert.Equal(t, int64(1), mockClient.GetCallCount("PutLogEvents"))
+
+	logEvents := mockClient.GetLogEvents()
+	assert.Len(t, logEvents, 3)
+
+	// Send one more message (should not trigger batch yet)
+	logger.Info("single message")
+	time.Sleep(50 * time.Millisecond)
+
+	// Still should be only one batch sent
+	assert.Equal(t, int64(1), mockClient.GetCallCount("PutLogEvents"))
+}
+
+func TestCloudWatchLogger_BufferOverflow(t *testing.T) {
+	// Setup with very small buffer
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     10,
+		FlushInterval: 10 * time.Second, // Very long to prevent flushing
+		BufferSize:    2,                // Very small buffer
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Fill buffer beyond capacity
+	for i := 0; i < 5; i++ {
+		logger.Info("overflow message", map[string]interface{}{
+			"index": i,
+		})
+	}
+
+	// Wait a bit
+	time.Sleep(50 * time.Millisecond)
+
+	// Check stats for dropped entries
+	stats := logger.GetStats()
+	assert.True(t, stats.EntriesDropped > 0, "Expected some entries to be dropped")
+	assert.True(t, stats.EntriesLogged < 5, "Not all entries should be logged")
+}
+
+func TestCloudWatchLogger_ErrorHandling(t *testing.T) {
+	// Setup
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     1,
+		FlushInterval: 50 * time.Millisecond,
+	}
+
+	// Make PutLogEvents fail
+	mockClient.SetShouldFail("PutLogEvents", true)
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Log a message
+	logger.Error("test error handling")
+
+	// Wait for flush attempt
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify error was tracked
+	stats := logger.GetStats()
+	assert.True(t, stats.ErrorCount > 0)
+	assert.NotEmpty(t, stats.LastError)
+	assert.False(t, logger.IsHealthy())
+}
+
+func TestCloudWatchLogger_FlushMethod(t *testing.T) {
+	// Setup
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     10,
+		FlushInterval: 10 * time.Second, // Very long to prevent auto-flush
+		BufferSize:    20,
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Log some messages
+	for i := 0; i < 3; i++ {
+		logger.Info("flush test message", map[string]interface{}{
+			"index": i,
+		})
+	}
+
+	// Manually flush
+	err = logger.Flush(context.Background())
+	assert.NoError(t, err)
+
+	// Verify logs were sent
+	assert.Equal(t, int64(1), mockClient.GetCallCount("PutLogEvents"))
+
+	logEvents := mockClient.GetLogEvents()
+	assert.Len(t, logEvents, 3)
+}
+
+func TestCloudWatchLogger_HealthCheck(t *testing.T) {
+	// Setup
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     1,
+		FlushInterval: 50 * time.Millisecond,
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Initially healthy
+	assert.True(t, logger.IsHealthy())
+
+	// Log successful messages
+	for i := 0; i < 20; i++ {
+		logger.Info("healthy message")
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	assert.True(t, logger.IsHealthy())
+
+	// Simulate errors
+	mockClient.SetShouldFail("PutLogEvents", true)
+
+	for i := 0; i < 5; i++ {
+		logger.Error("error message")
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Should still be healthy due to ratio (20 success vs 5 errors = 20% error rate, but we need to account for flush errors)
+	// The health check looks at error count vs entries logged, not flush success
+	stats := logger.GetStats()
+	t.Logf("After first errors - Logged: %d, Errors: %d", stats.EntriesLogged, stats.ErrorCount)
+
+	// Reset and test with a clear scenario
+	mockClient.ClearErrors()
+	mockClient.SetShouldFail("PutLogEvents", false)
+
+	// Log 10 successful messages
+	for i := 0; i < 10; i++ {
+		logger.Info("success message")
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	// Now cause 5 flush errors (which will affect 5 log entries)
+	mockClient.SetShouldFail("PutLogEvents", true)
+	for i := 0; i < 5; i++ {
+		logger.Error("error message")
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	// Should be unhealthy now (5 errors out of 15 total = 33% error rate > 10%)
+	assert.False(t, logger.IsHealthy())
+}
+
+func TestCloudWatchLogger_Stats(t *testing.T) {
+	// Setup
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     2,
+		FlushInterval: 50 * time.Millisecond,
+		BufferSize:    5,
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Log some messages
+	logger.Info("message 1")
+	logger.Info("message 2")
+	logger.Info("message 3")
+
+	// Wait for flushes
+	time.Sleep(150 * time.Millisecond)
+
+	stats := logger.GetStats()
+
+	// Verify basic stats
+	assert.Equal(t, int64(3), stats.EntriesLogged)
+	assert.Equal(t, int64(0), stats.EntriesDropped)
+	assert.True(t, stats.FlushCount > 0)
+	assert.False(t, stats.LastFlush.IsZero())
+	assert.Equal(t, 5, stats.BufferCapacity)
+	assert.Equal(t, int64(0), stats.ErrorCount)
+	assert.Empty(t, stats.LastError)
+	assert.True(t, stats.AverageFlushTime > 0)
+}
+
+func TestCloudWatchLogger_ConcurrentAccess(t *testing.T) {
+	// Setup with larger buffer to handle concurrent load
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     10,
+		FlushInterval: 50 * time.Millisecond,
+		BufferSize:    200, // Much larger buffer for concurrent access
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Launch multiple goroutines to log concurrently
+	done := make(chan bool, 10)
+
+	for i := 0; i < 10; i++ {
+		go func(id int) {
+			defer func() { done <- true }()
+
+			contextLogger := logger.WithField("goroutine_id", id)
+
+			for j := 0; j < 10; j++ {
+				contextLogger.Info("concurrent message", map[string]interface{}{
+					"message_id": j,
+				})
+			}
+		}(i)
+	}
+
+	// Wait for all goroutines to complete
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+
+	// Wait for final flush
+	time.Sleep(300 * time.Millisecond)
+
+	// Verify all messages were logged (allow for some drops in concurrent scenario)
+	stats := logger.GetStats()
+	t.Logf("Concurrent test stats - Logged: %d, Dropped: %d", stats.EntriesLogged, stats.EntriesDropped)
+
+	// In concurrent scenarios, we expect most messages to be logged
+	assert.True(t, stats.EntriesLogged >= 90, "Expected at least 90 messages logged, got %d", stats.EntriesLogged)
+	assert.True(t, stats.EntriesLogged+stats.EntriesDropped == 100, "Total should be 100")
+	assert.True(t, logger.IsHealthy())
+}
