@@ -1,129 +1,89 @@
-# Lift Framework - AI Assistant Guide
+# Lift Framework AI Assistant Guide
 
-*A comprehensive guide for AI assistants working with the Lift serverless framework*
+## Overview
 
-## Table of Contents
+Lift is a type-safe, Lambda-native serverless framework for Go that eliminates boilerplate while providing production-grade features. This guide provides AI assistants with comprehensive knowledge of Lift's types, patterns, testing utilities, and best practices.
 
-1. [Framework Overview](#framework-overview)
-2. [Core Types and Structures](#core-types-and-structures)
-3. [Handler Patterns](#handler-patterns)
-4. [Event Sources and Adapters](#event-sources-and-adapters)
-5. [Middleware System](#middleware-system)
-6. [Error Handling](#error-handling)
-7. [Testing Framework](#testing-framework)
-8. [Mock Utilities](#mock-utilities)
-9. [Implementation Patterns](#implementation-patterns)
-10. [Best Practices](#best-practices)
-11. [Common Code Examples](#common-code-examples)
-
-## Framework Overview
-
-Lift is a type-safe, Lambda-native serverless framework for Go that eliminates boilerplate while providing production-grade features. It follows a middleware-based architecture similar to popular web frameworks but optimized for serverless environments.
-
-### Key Design Principles
-- **Type Safety First**: Leverage Go generics for compile-time type checking
-- **Zero Configuration**: Automatic event detection and routing
-- **Performance Optimized**: <15ms cold start overhead target
-- **Multi-Tenant Ready**: Built-in tenant isolation
-- **Production Grade**: Comprehensive observability and security
-
-### Architecture Flow
-```
-Lambda Event → Event Adapter → Router → Middleware Chain → Handler → Response
-```
+### Key Principles
+- **Type Safety First**: Leverage Go's type system for compile-time safety
+- **Zero Configuration**: Sensible defaults with optional customization
+- **Performance**: <15ms cold start, optimized for Lambda
+- **Multi-Tenant Ready**: Built-in tenant isolation and context management
+- **Production Grade**: Observability, security, and error handling built-in
 
 ## Core Types and Structures
 
 ### App Container
 
-The central orchestrator for your Lambda function:
+The `App` is the central orchestrator of your serverless application:
 
 ```go
 type App struct {
-    // Core components (private)
     router     *Router
     middleware []Middleware
     config     *Config
     
+    // Event handling
+    adapterRegistry *adapters.AdapterRegistry
+    
+    // WebSocket support
+    wsRoutes  map[string]WebSocketHandler
+    wsOptions *WebSocketOptions
+    
     // Optional integrations
-    db         DatabaseClient
-    logger     Logger
-    metrics    MetricsCollector
+    db       interface{}
+    logger   Logger
+    metrics  MetricsCollector
+    features map[string]bool
 }
-
-// Constructor
-func New() *App
-func NewWithConfig(config Config) *App
-
-// HTTP Methods
-func (a *App) GET(path string, handler Handler)
-func (a *App) POST(path string, handler Handler)
-func (a *App) PUT(path string, handler Handler)
-func (a *App) DELETE(path string, handler Handler)
-func (a *App) PATCH(path string, handler Handler)
-
-// Generic handler registration
-func (a *App) Handle(method, path string, handler Handler)
-
-// Middleware
-func (a *App) Use(middleware ...Middleware)
-
-// Main Lambda handler
-func (a *App) HandleRequest(ctx context.Context, event interface{}) (interface{}, error)
 ```
 
-### Context - The Request/Response Hub
+**Key Methods:**
+- `New(options ...AppOption) *App` - Create new app with options
+- `GET/POST/PUT/DELETE/PATCH(path, handler)` - Register HTTP routes
+- `Use(middleware)` - Add middleware
+- `Group(prefix)` - Create route groups
+- `HandleRequest(ctx, event)` - Main Lambda handler
+- `HandleTestRequest(ctx)` - Testing entry point
 
-The enhanced context provides utilities for every request:
+### Context
+
+The `Context` is the enhanced request/response hub:
 
 ```go
 type Context struct {
     context.Context
-    Request    *Request
-    Response   *Response
-    Logger     Logger
-    Metrics    MetricsCollector
     
-    // Private fields for state management
-    params     map[string]string
-    values     map[string]interface{}
-    validator  Validator
+    // Request/Response cycle
+    Request  *Request
+    Response *Response
+    
+    // Observability
+    Logger  Logger
+    Metrics MetricsCollector
+    
+    // Utilities
+    validator Validator
+    params    map[string]string
+    values    map[string]interface{}
+    
+    // Optional database connection
+    DB interface{}
+    
+    // Multi-tenant support
+    claims          map[string]interface{}
+    isAuthenticated bool
 }
-
-// Request data access
-func (c *Context) Param(key string) string                    // Path parameters
-func (c *Context) Query(key string) string                    // Query parameters
-func (c *Context) QueryInt(key string, defaultValue int) int
-func (c *Context) QueryArray(key string) []string
-func (c *Context) Header(key string) string                   // Request headers
-func (c *Context) Body() []byte                              // Raw body
-func (c *Context) ParseJSON(v interface{}) error              // Parse JSON body
-func (c *Context) ParseAndValidate(v interface{}) error       // Parse and validate
-
-// Response building
-func (c *Context) JSON(v interface{}) error                   // JSON response
-func (c *Context) Text(text string) error                     // Plain text
-func (c *Context) Status(code int) *Context                   // Set status code
-func (c *Context) Header(key, value string) *Context          // Set response header
-func (c *Context) NoContent() error                          // 204 No Content
-func (c *Context) Redirect(url string) error                  // 302 redirect
-
-// Multi-tenant support
-func (c *Context) TenantID() string
-func (c *Context) SetTenantID(id string)
-func (c *Context) UserID() string
-func (c *Context) SetUserID(id string)
-
-// State management
-func (c *Context) Set(key string, value interface{})
-func (c *Context) Get(key string) interface{}
-func (c *Context) MustGet(key string) interface{}
-
-// Utilities
-func (c *Context) RequestID() string
-func (c *Context) ClientIP() string
-func (c *Context) Copy() *Context                             // Copy for goroutines
 ```
+
+**Key Methods:**
+- `Param(key)` / `Query(key)` / `Header(key)` - Access request data
+- `Set(key, value)` / `Get(key)` - Context state management
+- `UserID()` / `TenantID()` / `AccountID()` - Multi-tenant helpers
+- `ParseRequest(v)` - Type-safe request parsing with validation
+- `JSON(data)` / `Text(text)` / `HTML(html)` - Response helpers
+- `Status(code)` - Set response status
+- `OK(data)` / `Created(data)` / `BadRequest()` / `NotFound()` / `Unauthorized()` - HTTP convenience methods
 
 ### Request Structure
 
@@ -131,229 +91,167 @@ Unified request format for all Lambda event sources:
 
 ```go
 type Request struct {
-    TriggerType TriggerType             // Event source type
-    Method      string                  // HTTP method
-    Path        string                  // Request path
-    Headers     map[string]string       // Request headers
-    Query       map[string]string       // Query parameters
-    Body        []byte                  // Request body
-    TenantID    string                  // Tenant identifier
-    UserID      string                  // User identifier
-    Records     []interface{}           // Batch event records
-    Metadata    map[string]interface{}  // Event-specific metadata
+    *adapters.Request
+    
+    Method      string            `json:"method,omitempty"`
+    Path        string            `json:"path,omitempty"`
+    Headers     map[string]string `json:"headers,omitempty"`
+    QueryParams map[string]string `json:"query_params,omitempty"`
+    Body        []byte            `json:"body,omitempty"`
 }
-
-// TriggerType enumeration
-type TriggerType string
-
-const (
-    TriggerUnknown       TriggerType = "unknown"
-    TriggerAPIGateway    TriggerType = "api_gateway"
-    TriggerAPIGatewayV2  TriggerType = "api_gateway_v2"
-    TriggerSQS           TriggerType = "sqs"
-    TriggerS3            TriggerType = "s3"
-    TriggerEventBridge   TriggerType = "eventbridge"
-    TriggerScheduled     TriggerType = "scheduled"
-    TriggerWebSocket     TriggerType = "websocket"
-)
 ```
+
+**TriggerType Enumeration:**
+- `TriggerAPIGateway` - API Gateway v1
+- `TriggerAPIGatewayV2` - API Gateway v2 (HTTP API)
+- `TriggerSQS` - SQS messages
+- `TriggerS3` - S3 events
+- `TriggerEventBridge` - EventBridge events
+- `TriggerScheduled` - CloudWatch Events/EventBridge scheduled
+- `TriggerWebSocket` - WebSocket connections
+- `TriggerUnknown` - Fallback
 
 ### Response Structure
 
 ```go
 type Response struct {
-    StatusCode int                    `json:"statusCode"`
-    Body       interface{}            `json:"body"`
-    Headers    map[string]string      `json:"headers"`
-    
-    // Internal state
-    written bool
+    StatusCode      int               `json:"statusCode"`
+    Body            interface{}       `json:"body"`
+    Headers         map[string]string `json:"headers"`
+    IsBase64Encoded bool              `json:"isBase64Encoded"`
 }
 ```
 
 ## Handler Patterns
 
-### Handler Interface
-
-The core interface all handlers implement:
-
-```go
-type Handler interface {
-    Handle(ctx *Context) error
-}
-
-type HandlerFunc func(*Context) error
-
-func (f HandlerFunc) Handle(ctx *Context) error {
-    return f(ctx)
-}
-```
-
 ### Basic Handler Pattern
 
 ```go
-func handleRequest(ctx *lift.Context) error {
-    // Your business logic
-    data := processRequest(ctx)
-    return ctx.JSON(data)
+func MyHandler(ctx *lift.Context) error {
+    // Access request data
+    userID := ctx.Query("user_id")
+    
+    // Business logic
+    result := processRequest(userID)
+    
+    // Return response
+    return ctx.OK(result)
 }
 
-// Register
-app.GET("/users", handleRequest)
+// Register with app
+app.GET("/users", MyHandler)
 ```
 
 ### Type-Safe Handler Pattern
 
-The most powerful pattern with automatic parsing and validation:
-
 ```go
-// Define request/response types
 type CreateUserRequest struct {
-    Name  string `json:"name" validate:"required,min=3,max=100"`
+    Name  string `json:"name" validate:"required"`
     Email string `json:"email" validate:"required,email"`
-    Age   int    `json:"age" validate:"min=18,max=120"`
 }
 
-type UserResponse struct {
-    ID        string    `json:"id"`
-    Name      string    `json:"name"`
-    Email     string    `json:"email"`
-    CreatedAt time.Time `json:"created_at"`
+type CreateUserResponse struct {
+    ID    string `json:"id"`
+    Name  string `json:"name"`
+    Email string `json:"email"`
 }
 
-// Type-safe handler
-func createUser(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
-    // req is already parsed and validated!
-    user, err := userService.Create(req)
-    if err != nil {
-        return UserResponse{}, err
-    }
+func CreateUserHandler(ctx *lift.Context, req CreateUserRequest) (CreateUserResponse, error) {
+    // Request is automatically parsed and validated
+    user := createUser(req.Name, req.Email)
     
-    return UserResponse{
-        ID:        user.ID,
-        Name:      user.Name,
-        Email:     user.Email,
-        CreatedAt: user.CreatedAt,
+    return CreateUserResponse{
+        ID:    user.ID,
+        Name:  user.Name,
+        Email: user.Email,
     }, nil
 }
 
-// Register with TypedHandler wrapper
-app.POST("/users", lift.TypedHandler(createUser))
+// Register with type safety
+app.POST("/users", lift.SimpleHandler(CreateUserHandler))
 ```
 
 ### Struct-Based Handler Pattern
 
-For complex handlers with dependencies:
-
 ```go
-type UserHandler struct {
-    userService UserService
-    logger      Logger
-    metrics     MetricsCollector
+type UserService struct {
+    db     *dynamorm.DynamORM
+    logger lift.Logger
 }
 
-func (h *UserHandler) GetUser(ctx *lift.Context) error {
+func (s *UserService) GetUser(ctx *lift.Context) error {
     userID := ctx.Param("id")
     
-    user, err := h.userService.Get(userID)
+    user, err := s.db.Get(ctx, "users", userID, &User{})
     if err != nil {
-        h.logger.Error("Failed to get user", map[string]interface{}{
-            "user_id": userID,
-            "error":   err.Error(),
-        })
-        return lift.NotFound("User not found")
+        return ctx.NotFound("User not found", err)
     }
     
-    h.metrics.Counter("user.retrieved", map[string]string{
-        "tenant_id": ctx.TenantID(),
-    })
-    
-    return ctx.JSON(user)
+    return ctx.OK(user)
 }
 
-// Register
-handler := &UserHandler{userService, logger, metrics}
-app.GET("/users/:id", handler.GetUser)
+// Register struct method
+userService := &UserService{db: db, logger: logger}
+app.GET("/users/:id", userService.GetUser)
 ```
 
 ## Event Sources and Adapters
 
-### Event Adapter Interface
+### API Gateway Events
 
 ```go
-type EventAdapter interface {
-    CanHandle(event interface{}) bool
-    Adapt(event interface{}) (*Request, error)
-}
+// Automatically handled - no special code needed
+app.GET("/api/users", func(ctx *lift.Context) error {
+    return ctx.OK(map[string]string{"message": "Hello from API Gateway"})
+})
 ```
 
-### Supported Event Sources
+### SQS Events
 
-#### API Gateway (HTTP/REST)
 ```go
-// Automatic routing for HTTP methods
-app.GET("/users", getUsers)
-app.POST("/users", createUser)
-app.PUT("/users/:id", updateUser)
-app.DELETE("/users/:id", deleteUser)
-```
-
-#### SQS (Queue Processing)
-```go
-app.Handle("SQS", "/process-orders", processOrders)
-
-func processOrders(ctx *lift.Context) error {
-    for _, record := range ctx.Request.Records {
-        sqsRecord := record.(map[string]interface{})
-        body := sqsRecord["body"].(string)
-        
-        var order Order
-        json.Unmarshal([]byte(body), &order)
-        
-        if err := processOrder(order); err != nil {
-            return err // Will retry message
+func ProcessSQSMessage(ctx *lift.Context) error {
+    // Access SQS message data
+    if ctx.Request.TriggerType == lift.TriggerSQS {
+        // Process SQS records
+        for _, record := range ctx.Request.SQSRecords {
+            processMessage(record.Body)
         }
     }
     return nil
 }
 ```
 
-#### S3 Events
-```go
-app.Handle("S3", "/process-upload", handleS3Upload)
+### S3 Events
 
-func handleS3Upload(ctx *lift.Context) error {
-    for _, record := range ctx.Request.Records {
-        s3Record := record.(map[string]interface{})
-        s3Data := s3Record["s3"].(map[string]interface{})
-        
-        bucket := s3Data["bucket"].(map[string]interface{})["name"].(string)
-        key := s3Data["object"].(map[string]interface{})["key"].(string)
-        
-        err := processFile(bucket, key)
-        if err != nil {
-            return err
+```go
+func ProcessS3Event(ctx *lift.Context) error {
+    if ctx.Request.TriggerType == lift.TriggerS3 {
+        for _, record := range ctx.Request.S3Records {
+            bucket := record.S3.Bucket.Name
+            key := record.S3.Object.Key
+            processS3Object(bucket, key)
         }
     }
     return nil
 }
 ```
 
-#### WebSocket
-```go
-app.Handle("CONNECT", "/connect", handleConnect)
-app.Handle("DISCONNECT", "/disconnect", handleDisconnect)
-app.Handle("MESSAGE", "/message", handleMessage)
+### WebSocket Events
 
-func handleMessage(ctx *lift.Context) error {
-    wsCtx, _ := ctx.AsWebSocket()
+```go
+func HandleWebSocketConnect(ctx *lift.Context) error {
+    connectionID := ctx.Request.ConnectionID
     
-    var msg ChatMessage
-    ctx.ParseJSON(&msg)
+    // Store connection
+    err := storeConnection(connectionID)
+    if err != nil {
+        return ctx.Status(500).JSON(map[string]string{"error": "Failed to store connection"})
+    }
     
-    // Send to specific connection
-    return wsCtx.SendMessage(targetConnectionID, response)
+    return ctx.Status(200).JSON(map[string]string{"message": "Connected"})
 }
+
+app.WebSocket("$connect", HandleWebSocketConnect)
 ```
 
 ## Middleware System
@@ -366,74 +264,49 @@ type Middleware func(Handler) Handler
 
 ### Built-in Middleware
 
-#### Logger Middleware
+**Logger Middleware:**
 ```go
-func Logger() Middleware
-func LoggerWithConfig(config LoggerConfig) Middleware
-
-type LoggerConfig struct {
-    Level            string
-    SkipPaths        []string
-    SensitiveHeaders []string
-    LogLatency       bool
-    LogRequestBody   bool
-    LogResponseBody  bool
-}
+app.Use(middleware.Logger())
 ```
 
-#### Authentication Middleware
+**Authentication Middleware:**
 ```go
-func JWT(config JWTConfig) Middleware
-
-type JWTConfig struct {
-    SecretKey      []byte
-    PublicKey      interface{}
-    TokenLookup    string
-    AuthScheme     string
-    Claims         jwt.Claims
-    ValidateFunc   func(claims jwt.MapClaims) error
-    ErrorHandler   func(ctx *Context, err error) error
-    SkipPaths      []string
-}
+app.Use(middleware.JWT(middleware.JWTConfig{
+    Secret: "your-secret-key",
+    Claims: &CustomClaims{},
+}))
 ```
 
-#### Rate Limiting Middleware
+**Rate Limiting Middleware:**
 ```go
-func RateLimit(config RateLimitConfig) Middleware
-
-type RateLimitConfig struct {
-    WindowSize       time.Duration
-    MaxRequests      int
-    KeyFunc          func(ctx *Context) string
-    Store            RateLimitStore
-    ExceededHandler  func(ctx *Context) error
-    SkipPaths        []string
-}
+app.Use(middleware.RateLimit(middleware.RateLimitConfig{
+    RequestsPerMinute: 100,
+    BurstSize:        10,
+}))
 ```
 
 ### Custom Middleware Pattern
 
 ```go
-func CustomMiddleware() lift.Middleware {
+func TenantMiddleware() lift.Middleware {
     return func(next lift.Handler) lift.Handler {
         return lift.HandlerFunc(func(ctx *lift.Context) error {
-            // Before handler
-            start := time.Now()
+            // Extract tenant ID from header or JWT
+            tenantID := ctx.Header("X-Tenant-ID")
+            if tenantID == "" {
+                return ctx.BadRequest("Tenant ID required", nil)
+            }
             
-            // Call next handler
-            err := next.Handle(ctx)
+            // Set in context
+            ctx.SetTenantID(tenantID)
             
-            // After handler
-            duration := time.Since(start)
-            ctx.Logger.Info("Request completed", map[string]interface{}{
-                "duration": duration,
-                "path":     ctx.Request.Path,
-            })
-            
-            return err
+            // Continue to next handler
+            return next.Handle(ctx)
         })
     }
 }
+
+app.Use(TenantMiddleware())
 ```
 
 ## Error Handling
@@ -441,55 +314,49 @@ func CustomMiddleware() lift.Middleware {
 ### Built-in Error Types
 
 ```go
-// HTTP error constructors
-func BadRequest(message string) HTTPError           // 400
-func Unauthorized(message string) HTTPError         // 401
-func Forbidden(message string) HTTPError            // 403
-func NotFound(message string) HTTPError             // 404
-func Conflict(message string) HTTPError             // 409
-func TooManyRequests(message string) HTTPError      // 429
-func InternalError(message string) HTTPError        // 500
-func ServiceUnavailable(message string) HTTPError   // 503
+// Create structured errors
+err := lift.NewLiftError("VALIDATION_ERROR", "Invalid input", 400)
+err = err.WithCause(originalError)
+err = err.WithField("field", "email")
 
-// Validation error with details
-func ValidationError(field, message string) HTTPError
+// HTTP convenience errors
+return ctx.BadRequest("Invalid email format", validationErr)
+return ctx.Unauthorized("Invalid token", authErr)
+return ctx.NotFound("User not found", nil)
+return ctx.InternalError("Database error", dbErr)
 ```
 
 ### Custom Error Types
 
 ```go
-type APIError struct {
-    StatusCode int                    `json:"-"`
-    Code       string                 `json:"code"`
-    Message    string                 `json:"message"`
-    Details    map[string]interface{} `json:"details,omitempty"`
-    RequestID  string                 `json:"request_id,omitempty"`
-    Timestamp  int64                  `json:"timestamp"`
+type BusinessError struct {
+    Code    string `json:"code"`
+    Message string `json:"message"`
+    Details interface{} `json:"details,omitempty"`
 }
 
-func (e *APIError) Error() string {
+func (e *BusinessError) Error() string {
     return e.Message
 }
 
-func (e *APIError) Status() int {
-    return e.StatusCode
+func HandleBusinessError(ctx *lift.Context, err *BusinessError) error {
+    return ctx.Status(422).JSON(map[string]interface{}{
+        "error": err.Code,
+        "message": err.Message,
+        "details": err.Details,
+    })
 }
 ```
 
 ### Error Response Format
 
+Standard error responses follow this format:
 ```json
 {
-    "error": {
-        "code": "VALIDATION_ERROR",
-        "message": "Validation failed",
-        "details": {
-            "field": "email",
-            "reason": "invalid format"
-        },
-        "request_id": "req_123",
-        "timestamp": 1234567890
-    }
+    "error": "ERROR_CODE",
+    "message": "Human readable message",
+    "details": "Additional error details",
+    "request_id": "unique-request-id"
 }
 ```
 
@@ -498,36 +365,45 @@ func (e *APIError) Status() int {
 ### Test Context Creation
 
 ```go
-package testing
+import "github.com/pay-theory/lift/pkg/testing"
 
-// Create basic test context
-func NewContext() *lift.Context
-
-// Create context with request data
-func NewContextWithRequest(req *lift.Request) *lift.Context
-
-// Create authenticated context
-func NewAuthenticatedContext(userID, tenantID string) *lift.Context
+func TestMyHandler(t *testing.T) {
+    // Create test context
+    ctx := testing.NewTestContext()
+    ctx.Request.Method = "GET"
+    ctx.Request.Path = "/users/123"
+    ctx.SetParam("id", "123")
+    
+    // Call handler
+    err := MyHandler(ctx)
+    
+    // Assert results
+    assert.NoError(t, err)
+    assert.Equal(t, 200, ctx.Response.StatusCode)
+}
 ```
 
 ### TestApp for Integration Testing
 
 ```go
-type TestApp struct {
-    *lift.App
-    recorder *ResponseRecorder
+func TestUserAPI(t *testing.T) {
+    // Create test app
+    app := lift.New()
+    app.GET("/users/:id", GetUserHandler)
+    
+    // Create test app wrapper
+    testApp := testing.NewTestApp(app)
+    
+    // Make test request
+    resp := testApp.GET("/users/123")
+    
+    // Assert response
+    resp.AssertStatus(200)
+    resp.AssertJSON(map[string]interface{}{
+        "id": "123",
+        "name": "John Doe",
+    })
 }
-
-func NewTestApp() *TestApp
-
-// Make test requests
-func (t *TestApp) GET(path string) *TestResponse
-func (t *TestApp) POST(path string, body interface{}) *TestResponse
-func (t *TestApp) PUT(path string, body interface{}) *TestResponse
-func (t *TestApp) DELETE(path string) *TestResponse
-
-// With headers
-func (t *TestApp) Request(method, path string, body interface{}, headers map[string]string) *TestResponse
 ```
 
 ### TestResponse Utilities
@@ -540,94 +416,83 @@ type TestResponse struct {
 }
 
 // Assertion helpers
-func (r *TestResponse) ExpectStatus(code int) *TestResponse
-func (r *TestResponse) ExpectHeader(key, value string) *TestResponse
-func (r *TestResponse) ExpectJSON(expected interface{}) *TestResponse
-func (r *TestResponse) ExpectContains(text string) *TestResponse
-func (r *TestResponse) JSON(v interface{}) error
+func (r *TestResponse) AssertStatus(expected int)
+func (r *TestResponse) AssertJSON(expected interface{})
+func (r *TestResponse) AssertContains(substring string)
+func (r *TestResponse) AssertHeader(key, value string)
 ```
 
 ## Mock Utilities
 
 ### Mock Interfaces
 
+**Logger Mock:**
 ```go
-// Mock Logger
-type MockLogger struct {
-    Logs []LogEntry
-}
+mockLogger := testing.NewMockLogger()
+mockLogger.WithLevel("DEBUG")
+app.WithLogger(mockLogger)
+```
 
-func (m *MockLogger) Info(message string, fields ...map[string]interface{}) {
-    m.Logs = append(m.Logs, LogEntry{
-        Level:   "info",
-        Message: message,
-        Fields:  mergeFields(fields...),
-    })
-}
+**Metrics Mock:**
+```go
+mockMetrics := testing.NewMockMetricsCollector()
+app.WithMetrics(mockMetrics)
 
-// Mock Metrics Collector
-type MockMetricsCollector struct {
-    Metrics []Metric
-}
+// Verify metrics were recorded
+assert.Equal(t, 1, mockMetrics.GetCallCount("PutMetricData"))
+```
 
-func (m *MockMetricsCollector) Counter(name string, tags ...map[string]string) {
-    m.Metrics = append(m.Metrics, Metric{
-        Type: "counter",
-        Name: name,
-        Tags: mergeTags(tags...),
-    })
-}
-
-// Mock Database
-type MockDB struct {
-    Data map[string]interface{}
-    Calls []DBCall
-}
-
-func (m *MockDB) Get(ctx context.Context, key string, result interface{}) error {
-    m.Calls = append(m.Calls, DBCall{Method: "Get", Key: key})
-    if data, exists := m.Data[key]; exists {
-        // Copy data to result
-        return nil
-    }
-    return ErrNotFound
-}
+**Database Mock:**
+```go
+mockDB := testing.NewMockDynamORM()
+mockDB.WithData("users", "123", User{ID: "123", Name: "John"})
+app.WithDatabase(mockDB)
 ```
 
 ### AWS Service Mocks
 
+**S3 Mock:**
 ```go
-// Mock S3 Client
-type MockS3Client struct {
-    GetObjectFunc func(*s3.GetObjectInput) (*s3.GetObjectOutput, error)
-    PutObjectFunc func(*s3.PutObjectInput) (*s3.PutObjectOutput, error)
-}
+mockS3 := testing.NewMockAWSService()
+mockS3.WithResponse("GetObject", &s3.GetObjectOutput{
+    Body: strings.NewReader("file content"),
+})
+```
 
-// Mock DynamoDB Client
-type MockDynamoDBClient struct {
-    GetItemFunc func(*dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error)
-    PutItemFunc func(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error)
-}
+**DynamoDB Mock:**
+```go
+mockDynamoDB := testing.NewMockDynamORM()
+mockDynamoDB.WithData("table", "key", item)
+mockDynamoDB.WithFailure("put", errors.New("simulated error"))
+```
 
-// Mock API Gateway Management Client (WebSocket)
-type MockAPIGatewayManagementClient struct {
-    PostToConnectionFunc func(*apigatewaymanagementapi.PostToConnectionInput) error
-}
+**API Gateway Management Mock:**
+```go
+mockAPIGW := testing.NewMockAPIGatewayManagementClient()
+mockAPIGW.WithConnection("conn-123", &testing.MockConnection{
+    ID:    "conn-123",
+    State: testing.ConnectionStateConnected,
+})
 ```
 
 ### Test Helpers
 
 ```go
-// Create test JWT token
-func CreateJWT(subject, secret string) string
+// Create test scenarios
+scenario := testing.NewScenario("User Creation")
+scenario.WithRequest("POST", "/users", CreateUserRequest{
+    Name:  "John Doe",
+    Email: "john@example.com",
+})
+scenario.ExpectStatus(201)
+scenario.ExpectJSON(CreateUserResponse{
+    ID:    "generated-id",
+    Name:  "John Doe",
+    Email: "john@example.com",
+})
 
-// Marshal JSON for tests
-func MustMarshalJSON(v interface{}) []byte
-
-// Create test events
-func CreateAPIGatewayEvent(method, path string, body interface{}) events.APIGatewayProxyRequest
-func CreateSQSEvent(messages []string) events.SQSEvent
-func CreateS3Event(bucket, key string) events.S3Event
+// Run scenario
+scenario.Run(t, app)
 ```
 
 ## Implementation Patterns
@@ -635,107 +500,95 @@ func CreateS3Event(bucket, key string) events.S3Event
 ### Basic CRUD API Pattern
 
 ```go
-func main() {
-    app := lift.New()
-    
-    // Middleware
-    app.Use(middleware.Logger())
-    app.Use(middleware.Recover())
-    app.Use(middleware.CORS())
-    
-    // Routes
-    app.GET("/users", getUsers)
-    app.GET("/users/:id", getUser)
-    app.POST("/users", createUser)
-    app.PUT("/users/:id", updateUser)
-    app.DELETE("/users/:id", deleteUser)
-    
-    lambda.Start(app.HandleRequest)
+type UserAPI struct {
+    db     *dynamorm.DynamORM
+    logger lift.Logger
 }
 
-func getUsers(ctx *lift.Context) error {
-    users, err := userService.List(ctx.TenantID())
-    if err != nil {
-        return lift.InternalError("Failed to retrieve users")
-    }
-    return ctx.JSON(users)
+func (api *UserAPI) SetupRoutes(app *lift.App) {
+    users := app.Group("/users")
+    users.GET("", api.ListUsers)
+    users.POST("", api.CreateUser)
+    users.GET("/:id", api.GetUser)
+    users.PUT("/:id", api.UpdateUser)
+    users.DELETE("/:id", api.DeleteUser)
 }
 
-func createUser(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
-    user, err := userService.Create(req)
-    if err != nil {
-        return UserResponse{}, lift.BadRequest("Invalid user data")
+func (api *UserAPI) CreateUser(ctx *lift.Context) error {
+    var req CreateUserRequest
+    if err := ctx.ParseRequest(&req); err != nil {
+        return err
     }
-    return mapToResponse(user), nil
+    
+    user := &User{
+        ID:    generateID(),
+        Name:  req.Name,
+        Email: req.Email,
+    }
+    
+    if err := api.db.Put(ctx, "users", user.ID, user); err != nil {
+        return ctx.InternalError("Failed to create user", err)
+    }
+    
+    return ctx.Created(user)
 }
 ```
 
 ### Multi-Tenant SaaS Pattern
 
 ```go
-func main() {
-    app := lift.New()
-    
-    // Multi-tenant middleware
-    app.Use(middleware.JWT(jwtConfig))
-    app.Use(middleware.TenantIsolation())
-    app.Use(middleware.RateLimit(rateLimitConfig))
-    
-    // Tenant-scoped routes
-    app.GET("/api/v1/data", getTenantData)
-    app.POST("/api/v1/data", createTenantData)
-    
-    lambda.Start(app.HandleRequest)
-}
-
-func getTenantData(ctx *lift.Context) error {
+func TenantAwareHandler(ctx *lift.Context) error {
     tenantID := ctx.TenantID()
-    userID := ctx.UserID()
-    
-    // Automatically scoped to tenant
-    data, err := dataService.GetForTenant(tenantID, userID)
-    if err != nil {
-        return lift.NotFound("Data not found")
+    if tenantID == "" {
+        return ctx.BadRequest("Tenant ID required", nil)
     }
     
-    return ctx.JSON(data)
+    // Use tenant-scoped database operations
+    tenantDB := ctx.DB.(*dynamorm.DynamORM).WithTenant(tenantID)
+    
+    var items []Item
+    err := tenantDB.Query(ctx, &dynamorm.Query{
+        TableName: "items",
+        // Query is automatically scoped to tenant
+    }, &items)
+    
+    if err != nil {
+        return ctx.InternalError("Query failed", err)
+    }
+    
+    return ctx.OK(items)
 }
 ```
 
 ### Event Processing Pattern
 
 ```go
-func main() {
-    app := lift.New()
-    
-    // HTTP API
-    app.GET("/api/status", getStatus)
-    
-    // Event processing
-    app.Handle("SQS", "/process-orders", processOrders)
-    app.Handle("S3", "/process-files", processFiles)
-    app.Handle("Scheduled", "/daily-report", generateReport)
-    
-    lambda.Start(app.HandleRequest)
+func ProcessEvents(ctx *lift.Context) error {
+    switch ctx.Request.TriggerType {
+    case lift.TriggerSQS:
+        return processSQSEvents(ctx)
+    case lift.TriggerS3:
+        return processS3Events(ctx)
+    case lift.TriggerEventBridge:
+        return processEventBridgeEvents(ctx)
+    default:
+        return ctx.BadRequest("Unsupported event type", nil)
+    }
 }
 
-func processOrders(ctx *lift.Context) error {
-    var errors []error
-    
-    for _, record := range ctx.Request.Records {
-        if err := processSingleOrder(record); err != nil {
-            errors = append(errors, err)
-            ctx.Logger.Error("Failed to process order", map[string]interface{}{
-                "error": err.Error(),
-            })
+func processSQSEvents(ctx *lift.Context) error {
+    for _, record := range ctx.Request.SQSRecords {
+        var event BusinessEvent
+        if err := json.Unmarshal([]byte(record.Body), &event); err != nil {
+            ctx.Logger.Error("Failed to parse event", "error", err)
+            continue
+        }
+        
+        if err := handleBusinessEvent(ctx, &event); err != nil {
+            ctx.Logger.Error("Failed to process event", "error", err)
+            // Depending on requirements, might want to return error to trigger retry
         }
     }
-    
-    // Partial batch failure
-    if len(errors) > 0 {
-        return lift.PartialBatchFailure(errors)
-    }
-    
     return nil
 }
 ```
@@ -743,425 +596,420 @@ func processOrders(ctx *lift.Context) error {
 ### WebSocket Real-time Pattern
 
 ```go
-func main() {
-    app := lift.New()
-    
-    // WebSocket handlers
-    app.Handle("CONNECT", "/connect", handleConnect)
-    app.Handle("DISCONNECT", "/disconnect", handleDisconnect)
-    app.Handle("MESSAGE", "/message", handleMessage)
-    app.Handle("MESSAGE", "/chat", handleChat)
-    
-    lambda.Start(app.HandleRequest)
+type WebSocketHandler struct {
+    connections *ConnectionStore
+    broadcaster *MessageBroadcaster
 }
 
-func handleConnect(ctx *lift.Context) error {
-    wsCtx, _ := ctx.AsWebSocket()
-    connectionID := wsCtx.ConnectionID()
+func (h *WebSocketHandler) HandleConnect(ctx *lift.Context) error {
+    connectionID := ctx.Request.ConnectionID
+    userID := ctx.GetClaim("user_id").(string)
     
-    // Authenticate via query params
-    token := ctx.Query("token")
-    userID, err := validateToken(token)
-    if err != nil {
-        return lift.Unauthorized("Invalid token")
+    conn := &Connection{
+        ID:     connectionID,
+        UserID: userID,
+        ConnectedAt: time.Now(),
     }
     
-    // Store connection
-    connectionStore.Save(connectionID, userID)
+    if err := h.connections.Store(ctx, conn); err != nil {
+        return ctx.InternalError("Failed to store connection", err)
+    }
     
-    return ctx.JSON(map[string]string{
-        "message": "Connected successfully",
-    })
+    return ctx.OK(map[string]string{"status": "connected"})
 }
 
-func handleMessage(ctx *lift.Context) error {
-    wsCtx, _ := ctx.AsWebSocket()
+func (h *WebSocketHandler) HandleMessage(ctx *lift.Context) error {
+    connectionID := ctx.Request.ConnectionID
     
-    var msg ChatMessage
-    ctx.ParseJSON(&msg)
+    var msg IncomingMessage
+    if err := ctx.ParseRequest(&msg); err != nil {
+        return err
+    }
     
-    // Broadcast to room
-    connections := connectionStore.GetByRoom(msg.RoomID)
-    return wsCtx.BroadcastMessage(connections, msg)
+    // Process message and broadcast to relevant connections
+    response := processMessage(&msg)
+    return h.broadcaster.SendToConnection(ctx, connectionID, response)
 }
 ```
 
 ## Best Practices
 
-### 1. Handler Design
+### Handler Design
 
 **DO:**
-```go
-// Use TypedHandler for automatic validation
-func createUser(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
-    // Business logic only
-    return userService.Create(req)
-}
-
-// Keep handlers focused on single responsibility
-func getUser(ctx *lift.Context) error {
-    userID := ctx.Param("id")
-    user, err := userService.Get(userID)
-    if err != nil {
-        return lift.NotFound("User not found")
-    }
-    return ctx.JSON(user)
-}
-```
+- Use type-safe handlers with `lift.SimpleHandler()` for complex request/response types
+- Validate input using struct tags and the built-in validator
+- Return structured errors with appropriate HTTP status codes
+- Use context values for request-scoped data (user ID, tenant ID, etc.)
+- Keep handlers focused on HTTP concerns, delegate business logic to services
 
 **DON'T:**
-```go
-// Avoid manual parsing when TypedHandler can do it
-func createUser(ctx *lift.Context) error {
-    var req CreateUserRequest
-    if err := ctx.ParseJSON(&req); err != nil {
-        return lift.BadRequest("Invalid JSON")
-    }
-    if err := validate(req); err != nil {
-        return lift.BadRequest(err.Error())
-    }
-    // ... business logic
-}
-```
+- Perform heavy computation directly in handlers
+- Ignore error handling or return generic errors
+- Access database directly without proper error handling
+- Mix business logic with HTTP handling code
 
-### 2. Error Handling
+### Error Handling
 
 **DO:**
-```go
-func handler(ctx *lift.Context) error {
-    resource, err := service.Get(id)
-    if err != nil {
-        // Use specific error types
-        if errors.Is(err, ErrNotFound) {
-            return lift.NotFound("Resource not found")
-        }
-        if errors.Is(err, ErrUnauthorized) {
-            return lift.Unauthorized("Access denied")
-        }
-        // Log internal errors but return generic message
-        ctx.Logger.Error("Service error", map[string]interface{}{
-            "error": err.Error(),
-        })
-        return lift.InternalError("Failed to retrieve resource")
-    }
-    return ctx.JSON(resource)
-}
-```
-
-### 3. Middleware Usage
-
-**DO:**
-```go
-// Use middleware for cross-cutting concerns
-app.Use(middleware.Logger())
-app.Use(middleware.Auth())
-app.Use(middleware.RateLimit())
-
-// Keep handlers clean
-app.GET("/users", getUsers) // No auth/logging logic here
-```
+- Use structured errors with codes and messages
+- Log errors with appropriate context
+- Return user-friendly error messages
+- Use appropriate HTTP status codes
+- Handle partial failures gracefully in batch operations
 
 **DON'T:**
-```go
-// Avoid repeating logic in handlers
-func getUsers(ctx *lift.Context) error {
-    // Log request
-    // Check auth
-    // Check rate limit
-    // Actual logic
-}
-```
+- Expose internal error details to clients
+- Use generic error messages
+- Ignore errors or fail silently
+- Return 500 errors for client mistakes
 
-### 4. Testing Strategy
+### Middleware Usage
 
 **DO:**
-```go
-// Test handlers in isolation
-func TestGetUser(t *testing.T) {
-    // Arrange
-    mockService := &MockUserService{
-        GetFunc: func(id string) (*User, error) {
-            return &User{ID: id}, nil
-        },
-    }
-    handler := NewUserHandler(mockService)
-    
-    // Act
-    ctx := testing.NewContext()
-    ctx.SetParam("id", "123")
-    err := handler.GetUser(ctx)
-    
-    // Assert
-    assert.NoError(t, err)
-    assert.Equal(t, 200, ctx.Response.StatusCode)
-}
+- Use middleware for cross-cutting concerns (auth, logging, metrics)
+- Order middleware appropriately (auth before business logic)
+- Keep middleware focused and composable
+- Use built-in middleware when available
 
-// Use table-driven tests for multiple scenarios
-func TestValidation(t *testing.T) {
-    tests := []struct {
-        name    string
-        input   CreateUserRequest
-        wantErr bool
-    }{
-        {"valid", CreateUserRequest{Name: "John", Email: "john@example.com"}, false},
-        {"missing name", CreateUserRequest{Email: "john@example.com"}, true},
-        {"invalid email", CreateUserRequest{Name: "John", Email: "invalid"}, true},
-    }
-    
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            err := validateUser(tt.input)
-            if tt.wantErr {
-                assert.Error(t, err)
-            } else {
-                assert.NoError(t, err)
-            }
-        })
-    }
-}
-```
+**DON'T:**
+- Put business logic in middleware
+- Create overly complex middleware chains
+- Ignore middleware order dependencies
 
-### 5. Performance Optimization
+### Testing Strategy
 
 **DO:**
-```go
-// Use context copying for goroutines
-func asyncHandler(ctx *lift.Context) error {
-    asyncCtx := ctx.Copy()
-    
-    go func() {
-        // Use copied context
-        processInBackground(asyncCtx)
-    }()
-    
-    return ctx.JSON(map[string]string{"status": "processing"})
-}
+- Write unit tests for individual handlers
+- Use integration tests for complete request flows
+- Mock external dependencies (databases, APIs)
+- Test error conditions and edge cases
+- Use table-driven tests for multiple scenarios
 
-// Pool expensive resources
-var dbPool = &ConnectionPool{
-    factory: createDBConnection,
-    maxSize: 10,
-}
+**DON'T:**
+- Test only happy paths
+- Use real AWS services in unit tests
+- Write tests that depend on external state
+- Ignore test coverage for error handling
 
-// Use efficient JSON handling
-func handler(ctx *lift.Context) error {
-    // Stream large responses
-    return ctx.Stream(largeDataStream)
-}
-```
-
-### 6. Security Best Practices
+### Performance Optimization
 
 **DO:**
-```go
-// Always validate input
-func updateUser(ctx *lift.Context, req UpdateUserRequest) (UserResponse, error) {
-    // Validation happens automatically with TypedHandler
-    
-    // Check permissions
-    if !ctx.HasPermission("user:update") {
-        return UserResponse{}, lift.Forbidden("Insufficient permissions")
-    }
-    
-    // Tenant isolation
-    if req.TenantID != ctx.TenantID() {
-        return UserResponse{}, lift.Forbidden("Cross-tenant access denied")
-    }
-    
-    return userService.Update(req)
-}
+- Use connection pooling for database connections
+- Implement proper caching strategies
+- Monitor cold start times and optimize initialization
+- Use appropriate timeout values
+- Batch operations when possible
 
-// Use structured logging for security events
-func authMiddleware(next lift.Handler) lift.Handler {
-    return lift.HandlerFunc(func(ctx *lift.Context) error {
-        token := ctx.Header("Authorization")
-        
-        user, err := validateToken(token)
-        if err != nil {
-            ctx.Logger.Warn("Authentication failed", map[string]interface{}{
-                "ip":         ctx.ClientIP(),
-                "user_agent": ctx.Header("User-Agent"),
-                "path":       ctx.Request.Path,
-            })
-            return lift.Unauthorized("Invalid token")
-        }
-        
-        ctx.SetUserID(user.ID)
-        return next.Handle(ctx)
-    })
-}
-```
+**DON'T:**
+- Initialize heavy resources in handler functions
+- Make unnecessary database calls
+- Ignore Lambda memory and timeout limits
+- Perform synchronous operations that could be async
+
+### Security Practices
+
+**DO:**
+- Validate all input data
+- Use proper authentication and authorization
+- Implement rate limiting for public endpoints
+- Log security events
+- Use HTTPS and secure headers
+
+**DON'T:**
+- Trust client-provided data without validation
+- Log sensitive information (passwords, tokens)
+- Use weak authentication mechanisms
+- Ignore CORS configuration
+- Expose internal system details in error messages
 
 ## Common Code Examples
 
 ### Complete CRUD Handler Set
 
 ```go
-type UserHandler struct {
-    service UserService
-    logger  Logger
+type ItemService struct {
+    db     *dynamorm.DynamORM
+    logger lift.Logger
 }
 
-func (h *UserHandler) List(ctx *lift.Context) error {
+// List items with pagination
+func (s *ItemService) ListItems(ctx *lift.Context) error {
     tenantID := ctx.TenantID()
+    limit := ctx.Query("limit")
+    cursor := ctx.Query("cursor")
     
-    // Parse query parameters
-    page := ctx.QueryInt("page", 1)
-    limit := ctx.QueryInt("limit", 20)
-    search := ctx.Query("search")
-    
-    users, total, err := h.service.List(tenantID, page, limit, search)
-    if err != nil {
-        return lift.InternalError("Failed to retrieve users")
+    query := &dynamorm.Query{
+        TableName: "items",
+        Limit:     parseLimit(limit, 20),
+        Cursor:    cursor,
     }
     
-    return ctx.JSON(map[string]interface{}{
-        "users": users,
-        "total": total,
-        "page":  page,
-        "limit": limit,
+    result, err := s.db.Query(ctx, query)
+    if err != nil {
+        return ctx.InternalError("Failed to query items", err)
+    }
+    
+    return ctx.OK(map[string]interface{}{
+        "items":      result.Items,
+        "next_cursor": result.NextCursor,
+        "count":      result.Count,
     })
 }
 
-func (h *UserHandler) Get(ctx *lift.Context) error {
-    userID := ctx.Param("id")
+// Create new item
+func (s *ItemService) CreateItem(ctx *lift.Context, req CreateItemRequest) (CreateItemResponse, error) {
+    item := &Item{
+        ID:        generateID(),
+        TenantID:  ctx.TenantID(),
+        Name:      req.Name,
+        Category:  req.Category,
+        CreatedAt: time.Now(),
+        UpdatedAt: time.Now(),
+    }
+    
+    if err := s.db.Put(ctx, "items", item.ID, item); err != nil {
+        return CreateItemResponse{}, fmt.Errorf("failed to create item: %w", err)
+    }
+    
+    return CreateItemResponse{
+        ID:        item.ID,
+        Name:      item.Name,
+        Category:  item.Category,
+        CreatedAt: item.CreatedAt,
+    }, nil
+}
+
+// Get single item
+func (s *ItemService) GetItem(ctx *lift.Context) error {
+    itemID := ctx.Param("id")
     tenantID := ctx.TenantID()
     
-    user, err := h.service.Get(tenantID, userID)
+    var item Item
+    err := s.db.Get(ctx, "items", buildKey(tenantID, itemID), &item)
     if err != nil {
-        if errors.Is(err, ErrNotFound) {
-            return lift.NotFound("User not found")
+        if isDynamoNotFoundError(err) {
+            return ctx.NotFound("Item not found", nil)
         }
-        return lift.InternalError("Failed to retrieve user")
+        return ctx.InternalError("Failed to get item", err)
     }
     
-    return ctx.JSON(user)
+    return ctx.OK(item)
 }
 
-func (h *UserHandler) Create(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
-    req.TenantID = ctx.TenantID()
-    req.CreatedBy = ctx.UserID()
-    
-    user, err := h.service.Create(req)
-    if err != nil {
-        if errors.Is(err, ErrDuplicateEmail) {
-            return UserResponse{}, lift.Conflict("Email already exists")
-        }
-        return UserResponse{}, lift.InternalError("Failed to create user")
-    }
-    
-    h.logger.Info("User created", map[string]interface{}{
-        "user_id":   user.ID,
-        "tenant_id": user.TenantID,
-        "created_by": req.CreatedBy,
-    })
-    
-    return mapToUserResponse(user), nil
-}
-
-func (h *UserHandler) Update(ctx *lift.Context, req UpdateUserRequest) (UserResponse, error) {
-    userID := ctx.Param("id")
-    req.ID = userID
-    req.TenantID = ctx.TenantID()
-    req.UpdatedBy = ctx.UserID()
-    
-    user, err := h.service.Update(req)
-    if err != nil {
-        if errors.Is(err, ErrNotFound) {
-            return UserResponse{}, lift.NotFound("User not found")
-        }
-        return UserResponse{}, lift.InternalError("Failed to update user")
-    }
-    
-    return mapToUserResponse(user), nil
-}
-
-func (h *UserHandler) Delete(ctx *lift.Context) error {
-    userID := ctx.Param("id")
+// Update item
+func (s *ItemService) UpdateItem(ctx *lift.Context, req UpdateItemRequest) (UpdateItemResponse, error) {
+    itemID := ctx.Param("id")
     tenantID := ctx.TenantID()
     
-    err := h.service.Delete(tenantID, userID)
+    // Get existing item
+    var item Item
+    err := s.db.Get(ctx, "items", buildKey(tenantID, itemID), &item)
     if err != nil {
-        if errors.Is(err, ErrNotFound) {
-            return lift.NotFound("User not found")
+        if isDynamoNotFoundError(err) {
+            return UpdateItemResponse{}, lift.NewLiftError("NOT_FOUND", "Item not found", 404)
         }
-        return lift.InternalError("Failed to delete user")
+        return UpdateItemResponse{}, fmt.Errorf("failed to get item: %w", err)
     }
     
-    return ctx.NoContent()
+    // Update fields
+    if req.Name != "" {
+        item.Name = req.Name
+    }
+    if req.Category != "" {
+        item.Category = req.Category
+    }
+    item.UpdatedAt = time.Now()
+    
+    // Save updated item
+    if err := s.db.Put(ctx, "items", buildKey(tenantID, itemID), &item); err != nil {
+        return UpdateItemResponse{}, fmt.Errorf("failed to update item: %w", err)
+    }
+    
+    return UpdateItemResponse{
+        ID:        item.ID,
+        Name:      item.Name,
+        Category:  item.Category,
+        UpdatedAt: item.UpdatedAt,
+    }, nil
+}
+
+// Delete item
+func (s *ItemService) DeleteItem(ctx *lift.Context) error {
+    itemID := ctx.Param("id")
+    tenantID := ctx.TenantID()
+    
+    err := s.db.Delete(ctx, "items", buildKey(tenantID, itemID))
+    if err != nil {
+        if isDynamoNotFoundError(err) {
+            return ctx.NotFound("Item not found", nil)
+        }
+        return ctx.InternalError("Failed to delete item", err)
+    }
+    
+    return ctx.Status(204).JSON(nil)
 }
 ```
 
-### Complete Test Suite Example
+### Comprehensive Test Suite
 
 ```go
-func TestUserHandler(t *testing.T) {
+func TestItemService(t *testing.T) {
     // Setup
-    mockService := &MockUserService{}
-    handler := &UserHandler{
-        service: mockService,
-        logger:  &MockLogger{},
+    mockDB := testing.NewMockDynamORM()
+    service := &ItemService{
+        db:     mockDB,
+        logger: testing.NewMockLogger(),
     }
     
-    t.Run("List", func(t *testing.T) {
-        mockService.ListFunc = func(tenantID string, page, limit int, search string) ([]User, int, error) {
-            return []User{{ID: "1", Name: "John"}}, 1, nil
+    app := lift.New()
+    app.WithDatabase(mockDB)
+    
+    // Register routes
+    items := app.Group("/items")
+    items.GET("", service.ListItems)
+    items.POST("", lift.SimpleHandler(service.CreateItem))
+    items.GET("/:id", service.GetItem)
+    items.PUT("/:id", lift.SimpleHandler(service.UpdateItem))
+    items.DELETE("/:id", service.DeleteItem)
+    
+    testApp := testing.NewTestApp(app)
+    
+    t.Run("CreateItem", func(t *testing.T) {
+        req := CreateItemRequest{
+            Name:     "Test Item",
+            Category: "test",
         }
         
-        ctx := testing.NewAuthenticatedContext("user1", "tenant1")
-        ctx.Request.Query["page"] = "1"
-        ctx.Request.Query["limit"] = "10"
+        resp := testApp.POST("/items", req)
+        resp.AssertStatus(201)
         
-        err := handler.List(ctx)
-        assert.NoError(t, err)
-        assert.Equal(t, 200, ctx.Response.StatusCode)
-        
-        var resp map[string]interface{}
-        ctx.ParseResponseJSON(&resp)
-        assert.Len(t, resp["users"], 1)
+        var result CreateItemResponse
+        resp.ParseJSON(&result)
+        assert.Equal(t, "Test Item", result.Name)
+        assert.NotEmpty(t, result.ID)
     })
     
-    t.Run("Create", func(t *testing.T) {
-        mockService.CreateFunc = func(req CreateUserRequest) (*User, error) {
-            return &User{
-                ID:       "new-123",
-                Name:     req.Name,
-                Email:    req.Email,
-                TenantID: req.TenantID,
-            }, nil
+    t.Run("GetItem", func(t *testing.T) {
+        // Pre-populate mock data
+        item := &Item{
+            ID:       "item-123",
+            TenantID: "tenant-1",
+            Name:     "Existing Item",
+            Category: "existing",
         }
+        mockDB.WithData("items", "tenant-1#item-123", item)
         
-        req := CreateUserRequest{
-            Name:  "Jane Doe",
-            Email: "jane@example.com",
-        }
+        // Set tenant context
+        ctx := testing.NewTestContext()
+        ctx.SetTenantID("tenant-1")
+        ctx.SetParam("id", "item-123")
         
-        ctx := testing.NewAuthenticatedContext("user1", "tenant1")
-        ctx.Request.Body = testing.MustMarshalJSON(req)
-        
-        typedHandler := lift.TypedHandler(handler.Create)
-        err := typedHandler.Handle(ctx)
-        
+        err := service.GetItem(ctx)
         assert.NoError(t, err)
         assert.Equal(t, 200, ctx.Response.StatusCode)
     })
     
-    t.Run("Get_NotFound", func(t *testing.T) {
-        mockService.GetFunc = func(tenantID, userID string) (*User, error) {
-            return nil, ErrNotFound
+    t.Run("GetItem_NotFound", func(t *testing.T) {
+        ctx := testing.NewTestContext()
+        ctx.SetTenantID("tenant-1")
+        ctx.SetParam("id", "nonexistent")
+        
+        err := service.GetItem(ctx)
+        assert.NoError(t, err) // Handler handles error internally
+        assert.Equal(t, 404, ctx.Response.StatusCode)
+    })
+    
+    t.Run("ListItems_WithPagination", func(t *testing.T) {
+        // Setup mock query result
+        mockDB.WithQueryResult("items", &dynamorm.QueryResult{
+            Items: []interface{}{
+                &Item{ID: "1", Name: "Item 1"},
+                &Item{ID: "2", Name: "Item 2"},
+            },
+            Count:      2,
+            NextCursor: "cursor-123",
+        })
+        
+        resp := testApp.GET("/items?limit=10&cursor=start")
+        resp.AssertStatus(200)
+        
+        var result map[string]interface{}
+        resp.ParseJSON(&result)
+        assert.Equal(t, 2, int(result["count"].(float64)))
+        assert.Equal(t, "cursor-123", result["next_cursor"])
+    })
+    
+    t.Run("UpdateItem", func(t *testing.T) {
+        // Pre-populate existing item
+        existingItem := &Item{
+            ID:       "item-123",
+            TenantID: "tenant-1",
+            Name:     "Old Name",
+            Category: "old",
+        }
+        mockDB.WithData("items", "tenant-1#item-123", existingItem)
+        
+        req := UpdateItemRequest{
+            Name:     "New Name",
+            Category: "updated",
         }
         
-        ctx := testing.NewAuthenticatedContext("user1", "tenant1")
-        ctx.SetParam("id", "999")
+        // Create context with tenant and param
+        ctx := testing.NewTestContext()
+        ctx.SetTenantID("tenant-1")
+        ctx.SetParam("id", "item-123")
+        ctx.Request.Body, _ = json.Marshal(req)
         
-        err := handler.Get(ctx)
+        result, err := service.UpdateItem(ctx, req)
+        assert.NoError(t, err)
+        assert.Equal(t, "New Name", result.Name)
+        assert.Equal(t, "updated", result.Category)
+    })
+    
+    t.Run("DeleteItem", func(t *testing.T) {
+        ctx := testing.NewTestContext()
+        ctx.SetTenantID("tenant-1")
+        ctx.SetParam("id", "item-123")
+        
+        err := service.DeleteItem(ctx)
+        assert.NoError(t, err)
+        assert.Equal(t, 204, ctx.Response.StatusCode)
+    })
+}
+
+func TestItemService_ErrorHandling(t *testing.T) {
+    mockDB := testing.NewMockDynamORM()
+    service := &ItemService{db: mockDB, logger: testing.NewMockLogger()}
+    
+    t.Run("DatabaseError", func(t *testing.T) {
+        // Configure mock to return error
+        mockDB.WithFailure("get", errors.New("database connection failed"))
+        
+        ctx := testing.NewTestContext()
+        ctx.SetTenantID("tenant-1")
+        ctx.SetParam("id", "item-123")
+        
+        err := service.GetItem(ctx)
+        assert.NoError(t, err) // Handler handles error internally
+        assert.Equal(t, 500, ctx.Response.StatusCode)
+    })
+    
+    t.Run("ValidationError", func(t *testing.T) {
+        req := CreateItemRequest{
+            Name:     "", // Invalid - empty name
+            Category: "test",
+        }
+        
+        ctx := testing.NewTestContext()
+        ctx.Request.Body, _ = json.Marshal(req)
+        
+        _, err := service.CreateItem(ctx, req)
         assert.Error(t, err)
-        
-        httpErr, ok := err.(lift.HTTPError)
-        assert.True(t, ok)
-        assert.Equal(t, 404, httpErr.Status())
+        // Validation error should be handled by the framework
     })
 }
 ```
 
+This guide provides comprehensive coverage of the Lift framework for AI assistants, including all major types, patterns, testing utilities, and best practices needed to effectively work with the framework.
 This comprehensive guide provides AI assistants with all the essential information needed to work effectively with the Lift framework, including types, patterns, testing utilities, and best practices for building production-ready serverless applications.
