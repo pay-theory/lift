@@ -42,6 +42,9 @@ func DefaultConfig() *Config {
 	}
 }
 
+// AppOption is a function that configures an App
+type AppOption func(*App)
+
 // App represents the main application container
 type App struct {
 	// Core components
@@ -52,10 +55,15 @@ type App struct {
 	// Event handling
 	adapterRegistry *adapters.AdapterRegistry
 
+	// WebSocket support
+	wsRoutes  map[string]WebSocketHandler
+	wsOptions *WebSocketOptions
+
 	// Optional integrations
-	db      interface{}
-	logger  Logger
-	metrics MetricsCollector
+	db       interface{}
+	logger   Logger
+	metrics  MetricsCollector
+	features map[string]bool
 
 	// Runtime state
 	started bool
@@ -63,14 +71,22 @@ type App struct {
 }
 
 // New creates a new Lift application
-func New() *App {
-	return &App{
+func New(options ...AppOption) *App {
+	app := &App{
 		router:          NewRouter(),
 		middleware:      make([]Middleware, 0),
 		config:          DefaultConfig(),
 		adapterRegistry: adapters.NewAdapterRegistry(),
+		features:        make(map[string]bool),
 		started:         false,
 	}
+
+	// Apply options
+	for _, opt := range options {
+		opt(app)
+	}
+
+	return app
 }
 
 // Use adds middleware to the application

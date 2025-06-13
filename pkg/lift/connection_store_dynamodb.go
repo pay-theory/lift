@@ -1,0 +1,378 @@
+package lift
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+)
+
+// DynamoDBConnectionStore implements ConnectionStore using DynamoDB
+type DynamoDBConnectionStore struct {
+	client    *dynamodb.Client
+	tableName string
+	ttlHours  int
+}
+
+// DynamoDBConnectionStoreConfig configures the DynamoDB connection store
+type DynamoDBConnectionStoreConfig struct {
+	TableName string
+	Region    string
+	TTLHours  int // Hours until connection records expire (default: 24)
+}
+
+// NewDynamoDBConnectionStore creates a new DynamoDB-backed connection store
+func NewDynamoDBConnectionStore(ctx context.Context, config DynamoDBConnectionStoreConfig) (*DynamoDBConnectionStore, error) {
+	if config.TableName == "" {
+		return nil, fmt.Errorf("table name is required")
+	}
+
+	if config.TTLHours <= 0 {
+		config.TTLHours = 24 // Default to 24 hours
+	}
+
+	// Load AWS configuration
+	cfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithRegion(config.Region),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	// Create DynamoDB client
+	client := dynamodb.NewFromConfig(cfg)
+
+	return &DynamoDBConnectionStore{
+		client:    client,
+		tableName: config.TableName,
+		ttlHours:  config.TTLHours,
+	}, nil
+}
+
+// DynamoDBConnection represents a connection record in DynamoDB
+type DynamoDBConnection struct {
+	PK        string                 `dynamodbav:"pk"`     // Primary key: "CONNECTION#<connectionId>"
+	SK        string                 `dynamodbav:"sk"`     // Sort key: "CONNECTION"
+	GSI1PK    string                 `dynamodbav:"gsi1pk"` // GSI1 primary key: "USER#<userId>"
+	GSI1SK    string                 `dynamodbav:"gsi1sk"` // GSI1 sort key: "CONNECTION#<connectionId>"
+	GSI2PK    string                 `dynamodbav:"gsi2pk"` // GSI2 primary key: "TENANT#<tenantId>"
+	GSI2SK    string                 `dynamodbav:"gsi2sk"` // GSI2 sort key: "CONNECTION#<connectionId>"
+	ID        string                 `dynamodbav:"id"`
+	UserID    string                 `dynamodbav:"user_id"`
+	TenantID  string                 `dynamodbav:"tenant_id"`
+	CreatedAt string                 `dynamodbav:"created_at"`
+	TTL       int64                  `dynamodbav:"ttl"`
+	Metadata  map[string]interface{} `dynamodbav:"metadata,omitempty"`
+}
+
+// Save stores a connection in DynamoDB
+func (s *DynamoDBConnectionStore) Save(ctx context.Context, conn *Connection) error {
+	if conn.ID == "" {
+		return fmt.Errorf("connection ID is required")
+	}
+
+	// Create DynamoDB record
+	dbConn := DynamoDBConnection{
+		PK:        fmt.Sprintf("CONNECTION#%s", conn.ID),
+		SK:        "CONNECTION",
+		ID:        conn.ID,
+		UserID:    conn.UserID,
+		TenantID:  conn.TenantID,
+		CreatedAt: conn.CreatedAt,
+		TTL:       time.Now().Add(time.Duration(s.ttlHours) * time.Hour).Unix(),
+		Metadata:  conn.Metadata,
+	}
+
+	// Set GSI keys if user/tenant IDs are present
+	if conn.UserID != "" {
+		dbConn.GSI1PK = fmt.Sprintf("USER#%s", conn.UserID)
+		dbConn.GSI1SK = fmt.Sprintf("CONNECTION#%s", conn.ID)
+	}
+	if conn.TenantID != "" {
+		dbConn.GSI2PK = fmt.Sprintf("TENANT#%s", conn.TenantID)
+		dbConn.GSI2SK = fmt.Sprintf("CONNECTION#%s", conn.ID)
+	}
+
+	// Marshal to DynamoDB attribute values
+	item, err := attributevalue.MarshalMap(dbConn)
+	if err != nil {
+		return fmt.Errorf("failed to marshal connection: %w", err)
+	}
+
+	// Put item in DynamoDB
+	_, err = s.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(s.tableName),
+		Item:      item,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to save connection: %w", err)
+	}
+
+	return nil
+}
+
+// Get retrieves a connection by ID
+func (s *DynamoDBConnectionStore) Get(ctx context.Context, connectionID string) (*Connection, error) {
+	if connectionID == "" {
+		return nil, fmt.Errorf("connection ID is required")
+	}
+
+	// Get item from DynamoDB
+	result, err := s.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(s.tableName),
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("CONNECTION#%s", connectionID)},
+			"sk": &types.AttributeValueMemberS{Value: "CONNECTION"},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get connection: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, nil // Not found
+	}
+
+	// Unmarshal from DynamoDB
+	var dbConn DynamoDBConnection
+	if err := attributevalue.UnmarshalMap(result.Item, &dbConn); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal connection: %w", err)
+	}
+
+	// Convert to Connection
+	return &Connection{
+		ID:        dbConn.ID,
+		UserID:    dbConn.UserID,
+		TenantID:  dbConn.TenantID,
+		CreatedAt: dbConn.CreatedAt,
+		Metadata:  dbConn.Metadata,
+	}, nil
+}
+
+// Delete removes a connection by ID
+func (s *DynamoDBConnectionStore) Delete(ctx context.Context, connectionID string) error {
+	if connectionID == "" {
+		return fmt.Errorf("connection ID is required")
+	}
+
+	// Delete item from DynamoDB
+	_, err := s.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(s.tableName),
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("CONNECTION#%s", connectionID)},
+			"sk": &types.AttributeValueMemberS{Value: "CONNECTION"},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete connection: %w", err)
+	}
+
+	return nil
+}
+
+// ListByUser retrieves all connections for a user
+func (s *DynamoDBConnectionStore) ListByUser(ctx context.Context, userID string) ([]*Connection, error) {
+	if userID == "" {
+		return nil, fmt.Errorf("user ID is required")
+	}
+
+	// Query GSI1 for user connections
+	result, err := s.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:              aws.String(s.tableName),
+		IndexName:              aws.String("gsi1"),
+		KeyConditionExpression: aws.String("gsi1pk = :pk"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query connections by user: %w", err)
+	}
+
+	// Convert results
+	connections := make([]*Connection, 0, len(result.Items))
+	for _, item := range result.Items {
+		var dbConn DynamoDBConnection
+		if err := attributevalue.UnmarshalMap(item, &dbConn); err != nil {
+			continue // Skip invalid items
+		}
+
+		connections = append(connections, &Connection{
+			ID:        dbConn.ID,
+			UserID:    dbConn.UserID,
+			TenantID:  dbConn.TenantID,
+			CreatedAt: dbConn.CreatedAt,
+			Metadata:  dbConn.Metadata,
+		})
+	}
+
+	return connections, nil
+}
+
+// ListByTenant retrieves all connections for a tenant
+func (s *DynamoDBConnectionStore) ListByTenant(ctx context.Context, tenantID string) ([]*Connection, error) {
+	if tenantID == "" {
+		return nil, fmt.Errorf("tenant ID is required")
+	}
+
+	// Query GSI2 for tenant connections
+	result, err := s.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:              aws.String(s.tableName),
+		IndexName:              aws.String("gsi2"),
+		KeyConditionExpression: aws.String("gsi2pk = :pk"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("TENANT#%s", tenantID)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query connections by tenant: %w", err)
+	}
+
+	// Convert results
+	connections := make([]*Connection, 0, len(result.Items))
+	for _, item := range result.Items {
+		var dbConn DynamoDBConnection
+		if err := attributevalue.UnmarshalMap(item, &dbConn); err != nil {
+			continue // Skip invalid items
+		}
+
+		connections = append(connections, &Connection{
+			ID:        dbConn.ID,
+			UserID:    dbConn.UserID,
+			TenantID:  dbConn.TenantID,
+			CreatedAt: dbConn.CreatedAt,
+			Metadata:  dbConn.Metadata,
+		})
+	}
+
+	return connections, nil
+}
+
+// CountActive returns the number of active connections (optional method)
+func (s *DynamoDBConnectionStore) CountActive(ctx context.Context) (int64, error) {
+	// This would require a scan, which is expensive
+	// Consider maintaining a counter in a separate item if needed
+	return 0, fmt.Errorf("count not implemented - use CloudWatch metrics instead")
+}
+
+// CreateTable creates the DynamoDB table with proper indexes
+func (s *DynamoDBConnectionStore) CreateTable(ctx context.Context) error {
+	_, err := s.client.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName: aws.String(s.tableName),
+		KeySchema: []types.KeySchemaElement{
+			{
+				AttributeName: aws.String("pk"),
+				KeyType:       types.KeyTypeHash,
+			},
+			{
+				AttributeName: aws.String("sk"),
+				KeyType:       types.KeyTypeRange,
+			},
+		},
+		AttributeDefinitions: []types.AttributeDefinition{
+			{
+				AttributeName: aws.String("pk"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("sk"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("gsi1pk"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("gsi1sk"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("gsi2pk"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("gsi2sk"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+		},
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+			{
+				IndexName: aws.String("gsi1"),
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("gsi1pk"),
+						KeyType:       types.KeyTypeHash,
+					},
+					{
+						AttributeName: aws.String("gsi1sk"),
+						KeyType:       types.KeyTypeRange,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll,
+				},
+				ProvisionedThroughput: &types.ProvisionedThroughput{
+					ReadCapacityUnits:  aws.Int64(5),
+					WriteCapacityUnits: aws.Int64(5),
+				},
+			},
+			{
+				IndexName: aws.String("gsi2"),
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("gsi2pk"),
+						KeyType:       types.KeyTypeHash,
+					},
+					{
+						AttributeName: aws.String("gsi2sk"),
+						KeyType:       types.KeyTypeRange,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll,
+				},
+				ProvisionedThroughput: &types.ProvisionedThroughput{
+					ReadCapacityUnits:  aws.Int64(5),
+					WriteCapacityUnits: aws.Int64(5),
+				},
+			},
+		},
+		BillingMode: types.BillingModePayPerRequest,
+		StreamSpecification: &types.StreamSpecification{
+			StreamEnabled:  aws.Bool(true),
+			StreamViewType: types.StreamViewTypeNewAndOldImages,
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to create table: %w", err)
+	}
+
+	// Wait for table to be active
+	waiter := dynamodb.NewTableExistsWaiter(s.client)
+	if err := waiter.Wait(ctx, &dynamodb.DescribeTableInput{
+		TableName: aws.String(s.tableName),
+	}, 5*time.Minute); err != nil {
+		return fmt.Errorf("failed waiting for table to be active: %w", err)
+	}
+
+	// Enable TTL
+	_, err = s.client.UpdateTimeToLive(ctx, &dynamodb.UpdateTimeToLiveInput{
+		TableName: aws.String(s.tableName),
+		TimeToLiveSpecification: &types.TimeToLiveSpecification{
+			AttributeName: aws.String("ttl"),
+			Enabled:       aws.Bool(true),
+		},
+	})
+	if err != nil {
+		// TTL update might fail if already enabled, ignore the error
+		fmt.Printf("Warning: failed to enable TTL: %v\n", err)
+	}
+
+	return nil
+}
