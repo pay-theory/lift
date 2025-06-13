@@ -635,11 +635,9 @@ func (mrs *MLRiskScorer) getDayOfWeekRisk(day time.Weekday) float64 {
 	return 0.7
 }
 
-func (mrs *MLRiskScorer) getFrequencyRisk(ctx context.Context, event *AuditEvent) float64 {
+func (mrs *MLRiskScorer) getFrequencyRisk(_ context.Context, _ *AuditEvent) float64 {
 	// This would analyze frequency patterns
 	// For now, return a default value
-	_ = ctx   // Use context parameter to avoid unused warning
-	_ = event // Use event parameter to avoid unused warning
 	return 0.3
 }
 

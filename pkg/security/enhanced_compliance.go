@@ -633,51 +633,43 @@ func (ecf *EnhancedComplianceFramework) runComplianceTest(ctx LiftContext, contr
 }
 
 // Helper methods for extracting context information
-func (ecf *EnhancedComplianceFramework) getUserRole(ctx LiftContext) string {
+func (ecf *EnhancedComplianceFramework) getUserRole(_ LiftContext) string {
 	// Extract user role from context
-	_ = ctx       // Use context parameter to avoid unused warning
 	return "user" // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) getUserPermissions(ctx LiftContext) []string {
+func (ecf *EnhancedComplianceFramework) getUserPermissions(_ LiftContext) []string {
 	// Extract user permissions from context
-	_ = ctx                          // Use context parameter to avoid unused warning
 	return []string{"read", "write"} // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) getAuthMethod(ctx LiftContext) string {
+func (ecf *EnhancedComplianceFramework) getAuthMethod(_ LiftContext) string {
 	// Extract authentication method from context
-	_ = ctx      // Use context parameter to avoid unused warning
 	return "jwt" // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) isMFAEnabled(ctx LiftContext) bool {
+func (ecf *EnhancedComplianceFramework) isMFAEnabled(_ LiftContext) bool {
 	// Check if MFA is enabled for user
-	_ = ctx     // Use context parameter to avoid unused warning
 	return true // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) isPrivilegedAccess(ctx LiftContext) bool {
+func (ecf *EnhancedComplianceFramework) isPrivilegedAccess(_ LiftContext) bool {
 	// Check if this is privileged access
-	_ = ctx      // Use context parameter to avoid unused warning
 	return false // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) getDataClassification(ctx LiftContext) string {
+func (ecf *EnhancedComplianceFramework) getDataClassification(_ LiftContext) string {
 	// Get data classification level
-	_ = ctx               // Use context parameter to avoid unused warning
 	return "confidential" // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) isDataMaskingRequired(ctx LiftContext) bool {
+func (ecf *EnhancedComplianceFramework) isDataMaskingRequired(_ LiftContext) bool {
 	// Check if data masking is required
-	_ = ctx     // Use context parameter to avoid unused warning
 	return true // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) getDataRetentionPeriod(ctx LiftContext) time.Duration {
+func (ecf *EnhancedComplianceFramework) getDataRetentionPeriod(_ LiftContext) time.Duration {
 	// Get data retention period
-	_ = ctx                         // Use context parameter to avoid unused warning
 	return 7 * 365 * 24 * time.Hour // 7 years
 }
 
@@ -686,21 +678,18 @@ func (ecf *EnhancedComplianceFramework) getDataSubject(ctx LiftContext) string {
 	return ctx.UserID()
 }
 
-func (ecf *EnhancedComplianceFramework) getDataController(ctx LiftContext) string {
+func (ecf *EnhancedComplianceFramework) getDataController(_ LiftContext) string {
 	// Get data controller information
-	_ = ctx             // Use context parameter to avoid unused warning
 	return "pay-theory" // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) getProcessingBasis(ctx LiftContext) string {
+func (ecf *EnhancedComplianceFramework) getProcessingBasis(_ LiftContext) string {
 	// Get GDPR processing basis
-	_ = ctx                       // Use context parameter to avoid unused warning
 	return "legitimate_interests" // Mock implementation
 }
 
-func (ecf *EnhancedComplianceFramework) getDataCategories(ctx LiftContext) []string {
+func (ecf *EnhancedComplianceFramework) getDataCategories(_ LiftContext) []string {
 	// Get data categories being processed
-	_ = ctx                                            // Use context parameter to avoid unused warning
 	return []string{"personal_data", "financial_data"} // Mock implementation
 }
 
