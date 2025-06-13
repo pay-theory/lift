@@ -828,17 +828,17 @@ func (cd *ComplianceDashboard) validateLayout(layout *DashboardLayout) error {
 	return nil
 }
 
-func (cd *ComplianceDashboard) exportJSON(metrics *DashboardMetrics) ([]byte, error) {
+func (cd *ComplianceDashboard) exportJSON(_ *DashboardMetrics) ([]byte, error) {
 	// This would implement JSON export
 	return []byte("{}"), nil
 }
 
-func (cd *ComplianceDashboard) exportCSV(metrics *DashboardMetrics) ([]byte, error) {
+func (cd *ComplianceDashboard) exportCSV(_ *DashboardMetrics) ([]byte, error) {
 	// This would implement CSV export
 	return []byte(""), nil
 }
 
-func (cd *ComplianceDashboard) exportPDF(metrics *DashboardMetrics) ([]byte, error) {
+func (cd *ComplianceDashboard) exportPDF(_ *DashboardMetrics) ([]byte, error) {
 	// This would implement PDF export
 	return []byte(""), nil
 }

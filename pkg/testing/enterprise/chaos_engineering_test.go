@@ -45,6 +45,7 @@ func TestChaosEngineeringFramework_Creation(t *testing.T) {
 }
 
 func TestChaosExperiment_Creation(t *testing.T) {
+	now := time.Now()
 	experiment := &ChaosExperiment{
 		ID:          "test-experiment-1",
 		Name:        "Network Latency Test",
@@ -77,8 +78,8 @@ func TestChaosExperiment_Creation(t *testing.T) {
 		Hypothesis: "System should maintain <200ms response time with graceful degradation",
 		Duration:   10 * time.Minute,
 		Status:     ExperimentPending,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 
 	if experiment.ID != "test-experiment-1" {
@@ -107,6 +108,21 @@ func TestChaosExperiment_Creation(t *testing.T) {
 	}
 	if experiment.Status != ExperimentPending {
 		t.Errorf("Expected status ExperimentPending, got %s", experiment.Status)
+	}
+	if experiment.Description != "Test system resilience to network latency" {
+		t.Errorf("Expected Description 'Test system resilience to network latency', got %s", experiment.Description)
+	}
+	if experiment.Hypothesis != "System should maintain <200ms response time with graceful degradation" {
+		t.Errorf("Expected Hypothesis 'System should maintain <200ms response time with graceful degradation', got %s", experiment.Hypothesis)
+	}
+	if experiment.Duration != 10*time.Minute {
+		t.Errorf("Expected Duration 10m, got %v", experiment.Duration)
+	}
+	if experiment.CreatedAt.IsZero() {
+		t.Error("CreatedAt should not be zero")
+	}
+	if experiment.UpdatedAt.IsZero() {
+		t.Error("UpdatedAt should not be zero")
 	}
 }
 
@@ -470,6 +486,7 @@ func TestFaultInjectors(t *testing.T) {
 }
 
 func TestChaosGameDay(t *testing.T) {
+	now := time.Now()
 	gameDay := &ChaosGameDay{
 		ID:          "game-day-1",
 		Name:        "Q4 Resilience Game Day",
@@ -510,14 +527,14 @@ func TestChaosGameDay(t *testing.T) {
 			},
 		},
 		Schedule: &GameDaySchedule{
-			StartTime: time.Now().Add(24 * time.Hour),
-			EndTime:   time.Now().Add(28 * time.Hour),
+			StartTime: now.Add(24 * time.Hour),
+			EndTime:   now.Add(28 * time.Hour),
 			Duration:  4 * time.Hour,
 			TimeZone:  "UTC",
 			Breaks: []Break{
 				{
 					Name:      "Lunch Break",
-					StartTime: time.Now().Add(26 * time.Hour),
+					StartTime: now.Add(26 * time.Hour),
 					Duration:  1 * time.Hour,
 					Type:      LunchBreak,
 				},
@@ -547,8 +564,8 @@ func TestChaosGameDay(t *testing.T) {
 			},
 		},
 		Status:    PlannedGameDay,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 
 	if gameDay.ID != "game-day-1" {
@@ -575,20 +592,36 @@ func TestChaosGameDay(t *testing.T) {
 	if gameDay.Scenarios[0].Type != DisasterRecoveryScenario {
 		t.Errorf("Expected scenario type DisasterRecoveryScenario, got %s", gameDay.Scenarios[0].Type)
 	}
+	if gameDay.Description != "Quarterly chaos engineering exercise" {
+		t.Errorf("Expected Description 'Quarterly chaos engineering exercise', got %s", gameDay.Description)
+	}
+	if gameDay.Schedule == nil {
+		t.Error("Schedule should not be nil")
+	}
+	if len(gameDay.Objectives) != 3 {
+		t.Errorf("Expected 3 objectives, got %d", len(gameDay.Objectives))
+	}
+	if gameDay.CreatedAt.IsZero() {
+		t.Error("CreatedAt should not be zero")
+	}
+	if gameDay.UpdatedAt.IsZero() {
+		t.Error("UpdatedAt should not be zero")
+	}
 }
 
 func TestResilienceMetrics(t *testing.T) {
+	now := time.Now()
 	metrics := &ResilienceMetrics{
 		MTTR:            15 * time.Minute,
 		MTBF:            72 * time.Hour,
 		Availability:    99.9,
 		ErrorBudget:     85.0,
-		LastIncident:    time.Now().Add(-24 * time.Hour),
+		LastIncident:    now.Add(-24 * time.Hour),
 		IncidentCount:   3,
 		ResilienceScore: 95.0,
 		Trends:          make(map[string]interface{}),
 		ExperimentCount: 10,
-		LastUpdated:     time.Now(),
+		LastUpdated:     now,
 	}
 
 	// Create ExperimentResults for testing the score calculation
@@ -633,6 +666,26 @@ func TestResilienceMetrics(t *testing.T) {
 	}
 	if highScore > 100.0 {
 		t.Error("Score should not exceed 100")
+	}
+
+	// Test that metrics fields are properly set and accessible
+	if metrics.LastIncident.IsZero() {
+		t.Error("LastIncident should not be zero")
+	}
+	if metrics.IncidentCount != 3 {
+		t.Errorf("Expected IncidentCount 3, got %d", metrics.IncidentCount)
+	}
+	if metrics.ResilienceScore != 95.0 {
+		t.Errorf("Expected ResilienceScore 95.0, got %f", metrics.ResilienceScore)
+	}
+	if metrics.Trends == nil {
+		t.Error("Trends should not be nil")
+	}
+	if metrics.ExperimentCount != 10 {
+		t.Errorf("Expected ExperimentCount 10, got %d", metrics.ExperimentCount)
+	}
+	if metrics.LastUpdated.IsZero() {
+		t.Error("LastUpdated should not be zero")
 	}
 }
 

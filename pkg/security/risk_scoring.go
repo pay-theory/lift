@@ -638,16 +638,18 @@ func (mrs *MLRiskScorer) getDayOfWeekRisk(day time.Weekday) float64 {
 func (mrs *MLRiskScorer) getFrequencyRisk(ctx context.Context, event *AuditEvent) float64 {
 	// This would analyze frequency patterns
 	// For now, return a default value
+	_ = ctx   // Use context parameter to avoid unused warning
+	_ = event // Use event parameter to avoid unused warning
 	return 0.3
 }
 
-func (mrs *MLRiskScorer) getLocationRisk(ipAddress string) float64 {
+func (mrs *MLRiskScorer) getLocationRisk(_ string) float64 {
 	// This would check against known good/bad IP ranges
 	// For now, return a default value
 	return 0.3
 }
 
-func (mrs *MLRiskScorer) getUserAgentRisk(userAgent string) float64 {
+func (mrs *MLRiskScorer) getUserAgentRisk(_ string) float64 {
 	// This would analyze user agent patterns
 	// For now, return a default value
 	return 0.2
@@ -737,21 +739,21 @@ func (mrs *MLRiskScorer) calculateWeightedScore(factors []RiskFactor) float64 {
 }
 
 // applyContextualAdjustments applies contextual adjustments to the score
-func (mrs *MLRiskScorer) applyContextualAdjustments(ctx context.Context, event *AuditEvent, baseScore float64) float64 {
+func (mrs *MLRiskScorer) applyContextualAdjustments(_ context.Context, _ *AuditEvent, baseScore float64) float64 {
 	// This would apply contextual adjustments based on user/tenant profiles
 	// For now, return the base score
 	return baseScore
 }
 
 // applyTemporalAdjustments applies temporal adjustments to the score
-func (mrs *MLRiskScorer) applyTemporalAdjustments(ctx context.Context, event *AuditEvent, score float64) float64 {
+func (mrs *MLRiskScorer) applyTemporalAdjustments(_ context.Context, _ *AuditEvent, score float64) float64 {
 	// This would apply temporal pattern adjustments
 	// For now, return the score
 	return score
 }
 
 // applyBehavioralAdjustments applies behavioral adjustments to the score
-func (mrs *MLRiskScorer) applyBehavioralAdjustments(ctx context.Context, event *AuditEvent, score float64) float64 {
+func (mrs *MLRiskScorer) applyBehavioralAdjustments(_ context.Context, _ *AuditEvent, score float64) float64 {
 	// This would apply behavioral pattern adjustments
 	// For now, return the score
 	return score

@@ -422,12 +422,7 @@ func TestSOC2Control_Validation(t *testing.T) {
 	control := SOC2Control{
 		ID:               "CC1",
 		Name:             "Control Environment",
-		Description:      "Establish control environment",
-		Category:         "CC1",
-		Type:             "preventive",
-		Frequency:        24 * time.Hour,
 		AutomatedTesting: true,
-		EvidenceRequired: []string{"policy_documentation", "training_records"},
 		ComplianceTarget: 95.0,
 		CriticalControl:  true,
 	}
@@ -441,17 +436,10 @@ func TestSOC2Control_Validation(t *testing.T) {
 
 func TestControlTestResult_Validation(t *testing.T) {
 	result := &ControlTestResult{
-		ControlID:    "CC1",
-		TestID:       "CC1-T1",
-		TestDate:     time.Now(),
-		TestType:     "automated",
-		Status:       "effective",
-		Score:        95.0,
-		Threshold:    90.0,
-		Passed:       true,
-		Findings:     []string{"Control operating effectively"},
-		TestDuration: 5 * time.Minute,
-		TesterID:     "system",
+		ControlID: "CC1",
+		Status:    "effective",
+		Score:     95.0,
+		Passed:    true,
 	}
 
 	assert.Equal(t, "CC1", result.ControlID)
@@ -462,16 +450,10 @@ func TestControlTestResult_Validation(t *testing.T) {
 
 func TestControlEvidence_Validation(t *testing.T) {
 	evidence := &ControlEvidence{
-		ID:             "EV-001",
-		ControlID:      "CC1",
-		EvidenceType:   "log_file",
-		Description:    "Access control logs",
-		Source:         "security_system",
-		CollectionDate: time.Now(),
-		Verified:       true,
-		Integrity:      "sha256:abc123",
-		RetentionDate:  time.Now().AddDate(7, 0, 0), // 7 years
-		Archived:       false,
+		ID:           "EV-001",
+		ControlID:    "CC1",
+		EvidenceType: "log_file",
+		Verified:     true,
 	}
 
 	assert.Equal(t, "EV-001", evidence.ID)
@@ -482,19 +464,10 @@ func TestControlEvidence_Validation(t *testing.T) {
 
 func TestComplianceException_Validation(t *testing.T) {
 	exception := &ComplianceException{
-		ID:            "EX-001",
-		ControlID:     "CC1",
-		ExceptionType: "control_weakness",
-		Severity:      "medium",
-		Description:   "Control not operating as designed",
-		DetectedDate:  time.Now(),
-		ReportedBy:    "auditor",
-		Status:        "open",
-		AssignedTo:    "security_team",
-		DueDate:       time.Now().AddDate(0, 0, 30), // 30 days
-		Impact:        "medium",
-		RootCause:     "insufficient_training",
-		Remediation:   "Provide additional training",
+		ID:        "EX-001",
+		ControlID: "CC1",
+		Severity:  "medium",
+		Status:    "open",
 	}
 
 	assert.Equal(t, "EX-001", exception.ID)
@@ -508,15 +481,8 @@ func TestComplianceAlert_Validation(t *testing.T) {
 		ID:           "AL-001",
 		Type:         "control_failure",
 		Severity:     "high",
-		Title:        "Control CC1 Failed",
-		Description:  "Control CC1 has failed testing",
-		ControlID:    "CC1",
-		Timestamp:    time.Now(),
-		Recipients:   []string{"security@company.com"},
-		Channels:     []string{"email", "slack"},
 		Escalated:    false,
 		Acknowledged: false,
-		Resolved:     false,
 	}
 
 	assert.Equal(t, "AL-001", alert.ID)
@@ -528,16 +494,11 @@ func TestComplianceAlert_Validation(t *testing.T) {
 
 func TestExceptionTrends_Calculation(t *testing.T) {
 	trends := &ExceptionTrends{
-		Period:                "monthly",
-		TotalExceptions:       10,
-		OpenExceptions:        3,
-		ResolvedExceptions:    7,
-		ExceptionsByControl:   map[string]int{"CC1": 5, "CC2": 3, "CC3": 2},
-		ExceptionsBySeverity:  map[string]int{"high": 2, "medium": 5, "low": 3},
-		TrendDirection:        "improving",
-		AverageResolutionTime: 5 * 24 * time.Hour, // 5 days
-		ComplianceRate:        85.0,
-		Recommendations:       []string{"Focus on CC1 controls", "Improve training"},
+		TotalExceptions:    10,
+		OpenExceptions:     3,
+		ResolvedExceptions: 7,
+		TrendDirection:     "improving",
+		ComplianceRate:     85.0,
 	}
 
 	assert.Equal(t, 10, trends.TotalExceptions)
@@ -549,12 +510,9 @@ func TestExceptionTrends_Calculation(t *testing.T) {
 
 func TestSOC2ComplianceStatus_Calculation(t *testing.T) {
 	status := &SOC2ComplianceStatus{
-		Timestamp:         time.Now(),
 		TotalControls:     5,
 		EffectiveControls: 4,
 		ComplianceRate:    80.0,
-		ControlResults:    []*ControlTestResult{},
-		Recommendations:   []string{"Improve CC2 control"},
 	}
 
 	assert.Equal(t, 5, status.TotalControls)

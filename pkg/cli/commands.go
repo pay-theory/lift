@@ -151,7 +151,7 @@ func (c *NewCommand) createProject(name, template string) error {
 	return nil
 }
 
-func (c *NewCommand) generateMainFile(name, template string) string {
+func (c *NewCommand) generateMainFile(name, _ string) string {
 	return fmt.Sprintf(`package main
 
 import (

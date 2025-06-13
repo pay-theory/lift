@@ -23,7 +23,7 @@ type ChaosScenario interface {
 	Description() string
 	InjectFailure(ctx context.Context) (ChaosFailure, error)
 	ExecuteOperations(ctx context.Context) ([]OperationResult, error)
-	ValidateRecovery(ctx context.Context, metrics ChaosMetrics) error
+	ValidateRecovery(ctx context.Context, metrics *ChaosMetrics) error
 }
 
 // ChaosFailure represents an injected failure
@@ -170,12 +170,12 @@ func (c *ChaosTest) executeScenario(ctx context.Context, scenario ChaosScenario)
 	time.Sleep(failure.Duration())
 
 	// Validate recovery
-	if err := c.recovery.ValidateRecovery(ctx, *c.metrics); err != nil {
+	if err := c.recovery.ValidateRecovery(ctx, c.metrics); err != nil {
 		return fmt.Errorf("recovery validation failed: %w", err)
 	}
 
 	// Validate scenario-specific recovery
-	if err := scenario.ValidateRecovery(ctx, *c.metrics); err != nil {
+	if err := scenario.ValidateRecovery(ctx, c.metrics); err != nil {
 		return fmt.Errorf("scenario recovery validation failed: %w", err)
 	}
 
@@ -233,7 +233,7 @@ func (r *RecoveryValidator) AddHealthCheck(check HealthCheck) {
 }
 
 // ValidateRecovery validates system recovery after chaos
-func (r *RecoveryValidator) ValidateRecovery(ctx context.Context, metrics ChaosMetrics) error {
+func (r *RecoveryValidator) ValidateRecovery(ctx context.Context, metrics *ChaosMetrics) error {
 	recoveryStart := time.Now()
 
 	// Wait for system to recover
@@ -267,7 +267,7 @@ func (r *RecoveryValidator) isSystemHealthy(ctx context.Context) bool {
 }
 
 // validateMetrics validates recovery metrics against thresholds
-func (r *RecoveryValidator) validateMetrics(metrics ChaosMetrics) error {
+func (r *RecoveryValidator) validateMetrics(metrics *ChaosMetrics) error {
 	if metrics.ErrorRate > r.thresholds.MaxErrorRate {
 		return fmt.Errorf("error rate too high: %.2f%% > %.2f%%",
 			metrics.ErrorRate*100, r.thresholds.MaxErrorRate*100)
@@ -348,7 +348,7 @@ func (n *NetworkLatencyScenario) ExecuteOperations(ctx context.Context) ([]Opera
 	return results, nil
 }
 
-func (n *NetworkLatencyScenario) ValidateRecovery(ctx context.Context, metrics ChaosMetrics) error {
+func (n *NetworkLatencyScenario) ValidateRecovery(ctx context.Context, metrics *ChaosMetrics) error {
 	// Validate that latency has returned to normal
 	if metrics.AverageLatency > n.latency*2 {
 		return fmt.Errorf("latency still elevated: %v", metrics.AverageLatency)
@@ -443,7 +443,7 @@ func (s *ServiceUnavailableScenario) ExecuteOperations(ctx context.Context) ([]O
 	return results, nil
 }
 
-func (s *ServiceUnavailableScenario) ValidateRecovery(ctx context.Context, metrics ChaosMetrics) error {
+func (s *ServiceUnavailableScenario) ValidateRecovery(ctx context.Context, metrics *ChaosMetrics) error {
 	// Validate that service is available again
 	if metrics.ErrorRate > 0.1 { // Allow 10% error rate during recovery
 		return fmt.Errorf("service still experiencing high error rate: %.2f%%", metrics.ErrorRate*100)

@@ -183,7 +183,7 @@ func handleBroadcast(ctx *lift.Context) error {
 		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(ctx.Request.Body, &request); err != nil {
-		return ws.SendMessage(ws.ConnectionID(), []byte(`{"error":"Invalid broadcast format"}`))
+		return ws.SendMessage([]byte(`{"error":"Invalid broadcast format"}`))
 	}
 
 	// Get tenant ID from context
@@ -203,5 +203,5 @@ func handleBroadcast(ctx *lift.Context) error {
 	// 2. Send to all connections using ws.BroadcastMessage(connectionIDs, broadcastData)
 
 	// For demo, just echo back to sender
-	return ws.SendMessage(ws.ConnectionID(), broadcastData)
+	return ws.SendMessage(broadcastData)
 }
