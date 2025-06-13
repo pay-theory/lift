@@ -29,31 +29,29 @@ Lift's WebSocket adapter is not properly mapping query parameters from `APIGatew
 
 ## Root Cause Analysis
 
-The issue was in the **type conversion** within the `extractStringMapField` function.
+**Two separate issues were identified:**
 
-### `extractStringMapField` Function Analysis
+### Issue 1: Type Conversion in `extractStringMapField`
+
+The `extractStringMapField` function only handled `map[string]interface{}` but not `map[string]string`. When the WebSocket event is converted to generic format, the `QueryStringParameters` field remains as `map[string]string`, but the function expected `map[string]interface{}`.
+
+### Issue 2: Request Wrapper Creation in `parseEvent`
+
+The `parseEvent` method in `pkg/lift/app.go` was incorrectly creating the request wrapper:
 
 ```go
-func extractStringMapField(data map[string]interface{}, key string) map[string]string {
-	result := make(map[string]string)
-	if value, exists := data[key]; exists {
-		if mapValue, ok := value.(map[string]interface{}); ok {
-			for k, v := range mapValue {
-				if str, ok := v.(string); ok {
-					result[k] = str
-				}
-			}
-		}
-	}
-	return result
-}
-```
+// WRONG: Only sets embedded field, doesn't copy QueryParams
+return &Request{Request: adapterRequest}, nil
 
-**Root Cause**: The function only handled `map[string]interface{}` but not `map[string]string`. When the WebSocket event is converted to generic format, the `QueryStringParameters` field remains as `map[string]string`, but the function expected `map[string]interface{}`.
+// CORRECT: Uses NewRequest to properly copy all fields
+return NewRequest(adapterRequest), nil
+```
 
 ## Solution
 
-Updated the `extractStringMapField` function in `pkg/lift/adapters/adapter.go` to handle both input types:
+### Fix 1: Updated `extractStringMapField` Function
+
+Updated the function in `pkg/lift/adapters/adapter.go` to handle both input types:
 
 ```go
 // extractStringMapField safely extracts a string map field from a map
@@ -79,6 +77,24 @@ func extractStringMapField(data map[string]interface{}, key string) map[string]s
 }
 ```
 
+### Fix 2: Corrected Request Creation in `parseEvent`
+
+Updated the `parseEvent` method in `pkg/lift/app.go`:
+
+```go
+// parseEvent converts a Lambda event to our Request structure
+func (a *App) parseEvent(event interface{}) (*Request, error) {
+	// Use the adapter registry to automatically detect and parse the event
+	adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
+	if err != nil {
+		return nil, err
+	}
+
+	// Properly wrap the adapter request using NewRequest to copy all fields
+	return NewRequest(adapterRequest), nil
+}
+```
+
 ## Testing
 
 1. **Added comprehensive test coverage**:
@@ -88,13 +104,15 @@ func extractStringMapField(data map[string]interface{}, key string) map[string]s
 2. **Verified fix works**:
    - All existing tests continue to pass
    - New tests pass
-   - Debug script confirms `ctx.Query("Authorization")` now returns the expected value
+   - Full integration test confirms `ctx.Query("Authorization")` returns the expected value
+   - WebSocket JWT authentication patterns now work correctly
 
 ## Files Modified
 
 1. `pkg/lift/adapters/adapter.go`: Fixed `extractStringMapField` function
-2. `pkg/lift/adapters/adapter_test.go`: Updated trigger count for WebSocket support
-3. `pkg/lift/adapters/websocket_test.go`: Added regression tests
+2. `pkg/lift/app.go`: Fixed `parseEvent` method to use `NewRequest`
+3. `pkg/lift/adapters/adapter_test.go`: Updated trigger count for WebSocket support
+4. `pkg/lift/adapters/websocket_test.go`: Added regression tests
 
 ## Impact
 
@@ -102,7 +120,13 @@ func extractStringMapField(data map[string]interface{}, key string) map[string]s
 - ✅ **Backward Compatible**: Existing functionality remains unchanged
 - ✅ **Well Tested**: Added comprehensive test coverage to prevent regression
 - ✅ **Standard JWT Authentication**: WebSocket JWT authentication patterns now work correctly
+- ✅ **Full Integration**: End-to-end flow from AWS Lambda event to handler context works correctly
 
 ## Resolution Status
 
-**RESOLVED** - The WebSocket query parameter bug has been fixed and thoroughly tested. Users can now access query parameters in WebSocket handlers using `ctx.Query("paramName")` as expected. 
+**RESOLVED** - The WebSocket query parameter bug has been completely fixed and thoroughly tested. The issue involved two separate problems:
+
+1. **Type handling** in the adapter's `extractStringMapField` function
+2. **Request creation** in the app's `parseEvent` method
+
+Both issues have been resolved, and users can now access query parameters in WebSocket handlers using `ctx.Query("paramName")` as expected. This enables standard WebSocket JWT authentication patterns where tokens are passed via query parameters during the WebSocket handshake. 
