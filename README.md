@@ -135,6 +135,29 @@ PASS
 
 Check the `examples/` directory for working examples:
 - `examples/hello-world/` - Basic Lambda handler with type safety
+- `examples/basic-crud-api/` - Complete CRUD API with middleware
+- `examples/jwt-auth/` - JWT authentication example
+- `examples/websocket-enhanced/` - WebSocket implementation
+- `examples/observability-demo/` - Comprehensive observability setup
+
+## Documentation
+
+### 📚 Main Documentation
+- [`docs/getting-started.md`](docs/getting-started.md) - Getting started guide
+- [`docs/api-reference.md`](docs/api-reference.md) - Complete API reference
+- [`docs/middleware.md`](docs/middleware.md) - Middleware configuration
+- [`docs/security.md`](docs/security.md) - Security features and JWT
+- [`docs/observability.md`](docs/observability.md) - Logging and monitoring
+- [`docs/testing.md`](docs/testing.md) - Testing utilities and patterns
+
+### 🏗️ Architecture & Planning
+- [`docs/architecture/`](docs/architecture/) - Technical and security architecture
+- [`docs/planning/`](docs/planning/) - Development plans and roadmaps
+- [`docs/LESSONS_LEARNED.md`](docs/LESSONS_LEARNED.md) - Key insights and learnings
+
+### 🗃️ Historical Documentation
+- [`docs/archive/`](docs/archive/) - Archived sprint history and decisions
+- [`docs/development/`](docs/development/) - Active development notes
 
 ## Roadmap
 
