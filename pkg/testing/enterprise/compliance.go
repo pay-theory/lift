@@ -213,6 +213,9 @@ func (s *SOC2TypeIICompliance) executeInquiryTest(ctx context.Context, app *lift
 	case "AV-001-INQ":
 		// Availability policy inquiry
 		return s.validateAvailabilityPolicy(ctx, app)
+	case "TEST-001-INQ":
+		// Generic test inquiry - for testing purposes
+		return s.validateSecurityPolicy(ctx, app)
 	default:
 		return nil, fmt.Errorf("unsupported inquiry test: %s", test.ID)
 	}

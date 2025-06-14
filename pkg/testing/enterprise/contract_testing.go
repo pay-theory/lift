@@ -352,20 +352,23 @@ func (f *ContractTestingFramework) validateInteraction(interaction *ContractInte
 
 	// Validate request
 	if interaction.Request != nil {
-		if check := f.validateHTTPMethod(interaction.Request.Method); !check.Valid {
-			validation.Checks["http_method"] = check
+		check := f.validateHTTPMethod(interaction.Request.Method)
+		validation.Checks["http_method"] = check
+		if !check.Valid {
 			validation.Status = "failed"
 			validation.Errors = append(validation.Errors, check.Errors...)
 		}
 
-		if check := f.validateHTTPPath(interaction.Request.Path); !check.Valid {
-			validation.Checks["http_path"] = check
+		check = f.validateHTTPPath(interaction.Request.Path)
+		validation.Checks["http_path"] = check
+		if !check.Valid {
 			validation.Status = "failed"
 			validation.Errors = append(validation.Errors, check.Errors...)
 		}
 
-		if check := f.validateHeaders(interaction.Request.Headers); !check.Valid {
-			validation.Checks["request_headers"] = check
+		check = f.validateHeaders(interaction.Request.Headers)
+		validation.Checks["request_headers"] = check
+		if !check.Valid {
 			validation.Status = "failed"
 			validation.Errors = append(validation.Errors, check.Errors...)
 		}
@@ -373,8 +376,9 @@ func (f *ContractTestingFramework) validateInteraction(interaction *ContractInte
 
 	// Validate response
 	if interaction.Response != nil {
-		if check := f.validateHeaders(interaction.Response.Headers); !check.Valid {
-			validation.Checks["response_headers"] = check
+		check := f.validateHeaders(interaction.Response.Headers)
+		validation.Checks["response_headers"] = check
+		if !check.Valid {
 			validation.Status = "failed"
 			validation.Errors = append(validation.Errors, check.Errors...)
 		}
@@ -603,6 +607,9 @@ func (f *ContractTestingFramework) generateValidationSummary(validations map[str
 
 // calculateValidationStatus calculates overall validation status
 func (f *ContractTestingFramework) calculateValidationStatus(validations map[string]*InteractionValidation) string {
+	if len(validations) == 0 {
+		return "unknown"
+	}
 	for _, validation := range validations {
 		if validation.Status == "failed" {
 			return "failed"
@@ -613,6 +620,9 @@ func (f *ContractTestingFramework) calculateValidationStatus(validations map[str
 
 // calculateInteractionStatus calculates interaction status from checks
 func (f *ContractTestingFramework) calculateInteractionStatus(checks map[string]*ValidationCheck) string {
+	if len(checks) == 0 {
+		return "unknown"
+	}
 	for _, check := range checks {
 		if check.Status == "failed" {
 			return "failed"

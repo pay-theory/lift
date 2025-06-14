@@ -755,6 +755,10 @@ func (gcm *GDPRConsentManager) GetConsent(ctx context.Context, dataSubjectID, pu
 	gcm.mu.RLock()
 	defer gcm.mu.RUnlock()
 
+	if dataSubjectID == "" {
+		return nil, fmt.Errorf("data subject ID is required")
+	}
+
 	if gcm.consentStore == nil {
 		return nil, fmt.Errorf("consent store not configured")
 	}
@@ -766,6 +770,14 @@ func (gcm *GDPRConsentManager) GetConsent(ctx context.Context, dataSubjectID, pu
 func (gcm *GDPRConsentManager) WithdrawConsent(ctx context.Context, consentID string, withdrawal *ConsentWithdrawal) error {
 	gcm.mu.RLock()
 	defer gcm.mu.RUnlock()
+
+	if consentID == "" {
+		return fmt.Errorf("consent ID is required")
+	}
+
+	if withdrawal == nil {
+		return fmt.Errorf("withdrawal information is required")
+	}
 
 	if !gcm.config.ConsentWithdrawalEnabled {
 		return fmt.Errorf("consent withdrawal not enabled")
@@ -847,16 +859,39 @@ func (gcm *GDPRConsentManager) ProcessDataSubjectRequest(ctx context.Context, re
 
 // validateConsent validates a consent record
 func (gcm *GDPRConsentManager) validateConsent(consent *ConsentRecord) error {
+	if consent == nil {
+		return fmt.Errorf("consent record is required")
+	}
+
 	if consent.DataSubjectID == "" {
 		return fmt.Errorf("data subject ID is required")
 	}
 
-	if len(consent.ProcessingPurposes) == 0 {
-		return fmt.Errorf("processing purposes are required")
+	// Check for purpose - support both legacy Purpose field and ProcessingPurposes
+	if consent.Purpose == "" && len(consent.ProcessingPurposes) == 0 {
+		return fmt.Errorf("purpose is required")
 	}
 
 	if consent.LegalBasis == "" {
 		return fmt.Errorf("legal basis is required")
+	}
+
+	// Validate legal basis values
+	validLegalBases := []string{"consent", "contract", "legal_obligation", "vital_interests", "public_task", "legitimate_interests"}
+	isValidLegalBasis := false
+	for _, validBasis := range validLegalBases {
+		if consent.LegalBasis == validBasis {
+			isValidLegalBasis = true
+			break
+		}
+	}
+	if !isValidLegalBasis {
+		return fmt.Errorf("invalid legal basis")
+	}
+
+	// Check for expired consent
+	if consent.ExpiryDate != nil && consent.ExpiryDate.Before(time.Now()) {
+		return fmt.Errorf("consent has expired")
 	}
 
 	if gcm.config.GranularConsentRequired && !consent.Granular {
@@ -939,6 +974,14 @@ func (gcm *GDPRConsentManager) HandleAccessRequest(ctx context.Context, request 
 	gcm.mu.RLock()
 	defer gcm.mu.RUnlock()
 
+	if request == nil {
+		return nil, fmt.Errorf("request is required")
+	}
+
+	if request.DataSubjectID == "" {
+		return nil, fmt.Errorf("data subject ID is required")
+	}
+
 	if gcm.dataSubjectRights == nil {
 		return nil, fmt.Errorf("data subject rights handler not configured")
 	}
@@ -950,6 +993,14 @@ func (gcm *GDPRConsentManager) HandleAccessRequest(ctx context.Context, request 
 func (gcm *GDPRConsentManager) ConductPIA(ctx context.Context, request *PIARequest) (*PIAResult, error) {
 	gcm.mu.RLock()
 	defer gcm.mu.RUnlock()
+
+	if request == nil {
+		return nil, fmt.Errorf("PIA request is required")
+	}
+
+	if request.ProjectName == "" {
+		return nil, fmt.Errorf("project name is required")
+	}
 
 	if gcm.privacyAssessment == nil {
 		return nil, fmt.Errorf("privacy impact assessment handler not configured")

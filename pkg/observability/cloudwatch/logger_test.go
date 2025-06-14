@@ -214,14 +214,27 @@ func TestCloudWatchLogger_FlushMethod(t *testing.T) {
 		})
 	}
 
+	// Give a small delay to ensure entries are buffered
+	time.Sleep(50 * time.Millisecond)
+
+	// Check buffer state before flush
+	stats := logger.GetStats()
+	t.Logf("Before flush - Buffer size: %d, Entries logged: %d", stats.BufferSize, stats.EntriesLogged)
+
 	// Manually flush
 	err = logger.Flush(context.Background())
 	assert.NoError(t, err)
 
-	// Verify logs were sent
-	assert.Equal(t, int64(1), mockClient.GetCallCount("PutLogEvents"))
+	// Check state after flush
+	stats = logger.GetStats()
+	t.Logf("After flush - Buffer size: %d, Entries logged: %d, Flush count: %d", stats.BufferSize, stats.EntriesLogged, stats.FlushCount)
 
+	// Verify logs were sent
+	callCount := mockClient.GetCallCount("PutLogEvents")
 	logEvents := mockClient.GetLogEvents()
+	t.Logf("PutLogEvents call count: %d, Log events count: %d", callCount, len(logEvents))
+
+	assert.Equal(t, int64(1), callCount)
 	assert.Len(t, logEvents, 3)
 }
 

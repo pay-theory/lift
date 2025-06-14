@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Lift v1.0.12 WebSocket Verification Script ===\n")
+	fmt.Println("=== Lift v1.0.12 WebSocket Verification Script ===")
 
 	// Check Go version
 	fmt.Println("1. Checking Go version...")

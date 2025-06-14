@@ -299,7 +299,25 @@ func (a *App) HandleTestRequest(ctx *Context) error {
 	}
 
 	// Use the router directly to handle the request
-	return a.router.Handle(ctx)
+	if err := a.router.Handle(ctx); err != nil {
+		// Handle Lift errors properly by setting appropriate status codes
+		if liftErr, ok := err.(*LiftError); ok {
+			ctx.Status(liftErr.StatusCode).JSON(map[string]interface{}{
+				"error":   liftErr.Code,
+				"message": liftErr.Message,
+			})
+			return nil // Don't return error, status is set in response
+		}
+
+		// For non-Lift errors, set 500 status
+		ctx.Status(500).JSON(map[string]interface{}{
+			"error":   "Internal Server Error",
+			"message": err.Error(),
+		})
+		return nil // Don't return error, status is set in response
+	}
+
+	return nil
 }
 
 // convertHandlerUsingReflection converts various handler function types to the Handler interface using reflection

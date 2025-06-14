@@ -190,15 +190,13 @@ func TestRouterHandle(t *testing.T) {
 	}))
 
 	// Create test context
-	req := &Request{
-		Request: &adapters.Request{
-			Method:      "GET",
-			Path:        "/test/123",
-			Headers:     make(map[string]string),
-			QueryParams: make(map[string]string),
-			PathParams:  make(map[string]string),
-		},
-	}
+	req := NewRequest(&adapters.Request{
+		Method:      "GET",
+		Path:        "/test/123",
+		Headers:     make(map[string]string),
+		QueryParams: make(map[string]string),
+		PathParams:  make(map[string]string),
+	})
 
 	ctx := NewContext(context.Background(), req)
 

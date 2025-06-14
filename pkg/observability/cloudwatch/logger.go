@@ -24,6 +24,7 @@ type CloudWatchLogger struct {
 	batchSize     int
 	flushInterval time.Duration
 	buffer        chan *observability.LogEntry
+	flushSignal   chan struct{} // Signal to force immediate flush
 	done          chan struct{}
 	wg            sync.WaitGroup
 	mu            sync.RWMutex
@@ -62,6 +63,7 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 		batchSize:     config.BatchSize,
 		flushInterval: config.FlushInterval,
 		buffer:        make(chan *observability.LogEntry, config.BufferSize),
+		flushSignal:   make(chan struct{}),
 		done:          make(chan struct{}),
 		stats:         &loggerStats{},
 		contextFields: make(map[string]interface{}),
@@ -125,6 +127,7 @@ func (l *CloudWatchLogger) WithFields(fields map[string]interface{}) lift.Logger
 		batchSize:     l.batchSize,
 		flushInterval: l.flushInterval,
 		buffer:        l.buffer,        // Share the same buffer
+		flushSignal:   l.flushSignal,   // Share the same flush signal
 		done:          l.done,          // Share the same done channel
 		stats:         l.stats,         // Share the same stats
 		contextFields: newFields,       // Only context fields are different
@@ -229,6 +232,13 @@ func (l *CloudWatchLogger) flushLoop() {
 			if len(batch) >= l.batchSize {
 				l.flushBatch(batch)
 				batch = batch[:0] // Reset slice
+			}
+
+		case <-l.flushSignal:
+			// Force immediate flush of current batch
+			if len(batch) > 0 {
+				l.flushBatch(batch)
+				batch = batch[:0]
 			}
 
 		case <-ticker.C:
@@ -354,31 +364,23 @@ func (l *CloudWatchLogger) ensureLogStreamExists(ctx context.Context) error {
 
 // Flush forces a flush of buffered log entries
 func (l *CloudWatchLogger) Flush(ctx context.Context) error {
-	// Create a temporary slice to collect buffered entries
-	var entries []*observability.LogEntry
+	// Give a small delay to ensure any recent log entries have been buffered
+	time.Sleep(25 * time.Millisecond)
 
-	// Drain the buffer with timeout
-	timeout := time.After(1 * time.Second)
-
-	for {
-		select {
-		case entry := <-l.buffer:
-			entries = append(entries, entry)
-			// Continue draining until buffer is empty
-		case <-timeout:
-			// Timeout reached, flush what we have
-			if len(entries) > 0 {
-				l.flushBatch(entries)
-			}
-			return nil
-		default:
-			// Buffer is empty, flush collected entries
-			if len(entries) > 0 {
-				l.flushBatch(entries)
-			}
-			return nil
-		}
+	// Send flush signal to background loop
+	select {
+	case l.flushSignal <- struct{}{}:
+		// Signal sent successfully
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(1 * time.Second):
+		return fmt.Errorf("flush signal timeout")
 	}
+
+	// Give a little time for the background loop to process the flush
+	time.Sleep(50 * time.Millisecond)
+
+	return nil
 }
 
 // Close gracefully shuts down the logger
