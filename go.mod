@@ -1,8 +1,6 @@
 module github.com/pay-theory/lift
 
-go 1.23.0
-
-toolchain go1.23.9
+go 1.23.10
 
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
@@ -19,9 +17,11 @@ require (
 	github.com/aws/aws-xray-sdk-go v1.8.5
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pay-theory/dynamorm v1.0.9
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
+	golang.org/x/text v0.23.0
 )
 
 require (
@@ -52,7 +52,6 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/grpc v1.64.1 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect

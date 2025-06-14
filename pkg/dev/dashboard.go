@@ -39,6 +39,15 @@ func (d *DevDashboard) Start() error {
 	d.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", d.port),
 		Handler: mux,
+
+		// Security timeouts to prevent DoS attacks
+		ReadTimeout:       15 * time.Second, // Maximum time to read request including body
+		ReadHeaderTimeout: 5 * time.Second,  // Maximum time to read request headers (prevents Slowloris)
+		WriteTimeout:      15 * time.Second, // Maximum time to write response
+		IdleTimeout:       60 * time.Second, // Maximum time for keep-alive connections
+
+		// Additional security settings
+		MaxHeaderBytes: 1 << 20, // 1 MB max header size
 	}
 
 	return d.httpServer.ListenAndServe()
@@ -62,7 +71,7 @@ func (d *DevDashboard) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		Title        string
 		ServerPort   int
 		ProfilerPort int
-		Stats        DevStats
+		Stats        SafeDevStats
 	}{
 		Title:        "Lift Development Dashboard",
 		ServerPort:   d.server.config.Port,

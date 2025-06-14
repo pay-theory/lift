@@ -125,11 +125,9 @@ func NewServiceClient(registry *ServiceRegistry, config ServiceClientConfig) *Se
 	}
 
 	client := &ServiceClient{
-		registry: registry,
-		config:   config,
-		httpClient: &http.Client{
-			Timeout: config.DefaultTimeout,
-		},
+		registry:   registry,
+		config:     config,
+		httpClient: NewSecureHTTPClient(ProductionHTTPClientConfig()),
 		retryPolicy: &RetryPolicy{
 			MaxRetries:           config.MaxRetries,
 			InitialBackoff:       config.RetryBackoff,

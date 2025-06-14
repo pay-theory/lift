@@ -2,7 +2,7 @@ package features
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -288,9 +288,9 @@ func (c *CacheMiddleware) hashQueryParams(params map[string]string) uint64 {
 	return h.Sum64()
 }
 
-// hashString creates a hash of a string
-func (c *CacheMiddleware) hashString(s string) [16]byte {
-	return md5.Sum([]byte(s))
+// hashString creates a hash of a string using SHA-256 (secure)
+func (c *CacheMiddleware) hashString(s string) [32]byte {
+	return sha256.Sum256([]byte(s))
 }
 
 // executeAndCapture executes the handler and captures the response

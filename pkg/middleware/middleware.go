@@ -73,10 +73,17 @@ func Recover() Middleware {
 					}
 
 					// Set error response
-					ctx.Response.Status(500).JSON(map[string]interface{}{
+					if err := ctx.Response.Status(500).JSON(map[string]interface{}{
 						"error": "Internal server error",
 						"code":  "PANIC_RECOVERED",
-					})
+					}); err != nil {
+						// Log that we couldn't send the error response
+						if ctx.Logger != nil {
+							ctx.Logger.Error("Failed to send panic recovery response", map[string]interface{}{
+								"response_error": err.Error(),
+							})
+						}
+					}
 				}
 			}()
 
@@ -201,15 +208,31 @@ func ErrorHandler() Middleware {
 
 			// Handle LiftError specifically
 			if liftErr, ok := err.(*errors.LiftError); ok {
-				ctx.Response.Status(liftErr.StatusCode).JSON(liftErr)
+				if jsonErr := ctx.Response.Status(liftErr.StatusCode).JSON(liftErr); jsonErr != nil {
+					// Log that we couldn't send the error response
+					if ctx.Logger != nil {
+						ctx.Logger.Error("Failed to send LiftError response", map[string]interface{}{
+							"original_error": liftErr.Error(),
+							"response_error": jsonErr.Error(),
+						})
+					}
+				}
 				return nil
 			}
 
 			// Handle generic errors
-			ctx.Response.Status(500).JSON(map[string]interface{}{
+			if jsonErr := ctx.Response.Status(500).JSON(map[string]interface{}{
 				"error": "Internal server error",
 				"code":  "GENERIC_ERROR",
-			})
+			}); jsonErr != nil {
+				// Log that we couldn't send the error response
+				if ctx.Logger != nil {
+					ctx.Logger.Error("Failed to send generic error response", map[string]interface{}{
+						"original_error": err.Error(),
+						"response_error": jsonErr.Error(),
+					})
+				}
+			}
 
 			return nil // Error handled, don't propagate
 		})

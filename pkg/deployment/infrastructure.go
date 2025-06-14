@@ -6,6 +6,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // InfrastructureProvider defines the supported IaC providers
@@ -626,7 +629,7 @@ func (ig *InfrastructureGenerator) generateDatabaseResources(template *Infrastru
 
 	if dbConfig.Type == "DynamoDB" {
 		for _, tableConfig := range dbConfig.Tables {
-			tableName := fmt.Sprintf("DynamoTable%s", strings.Title(tableConfig.Name))
+			tableName := fmt.Sprintf("DynamoTable%s", cases.Title(language.English).String(tableConfig.Name))
 
 			table := Resource{
 				Type: "AWS::DynamoDB::Table",
@@ -695,7 +698,7 @@ func (ig *InfrastructureGenerator) generateMonitoringResources(template *Infrast
 
 	// CloudWatch Log Groups
 	for _, logGroup := range monConfig.CloudWatch.LogGroups {
-		logGroupName := fmt.Sprintf("LogGroup%s", strings.Title(strings.ReplaceAll(logGroup.Name, "-", "")))
+		logGroupName := fmt.Sprintf("LogGroup%s", cases.Title(language.English).String(strings.ReplaceAll(logGroup.Name, "-", "")))
 
 		logGroupResource := Resource{
 			Type: "AWS::Logs::LogGroup",
@@ -716,7 +719,7 @@ func (ig *InfrastructureGenerator) generateMonitoringResources(template *Infrast
 
 	// CloudWatch Alarms
 	for _, alarm := range monConfig.Alarms {
-		alarmName := fmt.Sprintf("Alarm%s", strings.Title(strings.ReplaceAll(alarm.Name, "-", "")))
+		alarmName := fmt.Sprintf("Alarm%s", cases.Title(language.English).String(strings.ReplaceAll(alarm.Name, "-", "")))
 
 		alarmResource := Resource{
 			Type: "AWS::CloudWatch::Alarm",
@@ -751,7 +754,7 @@ func (ig *InfrastructureGenerator) generateSecurityResources(template *Infrastru
 
 	// IAM Roles
 	for _, role := range secConfig.IAMRoles {
-		roleName := fmt.Sprintf("IAMRole%s", strings.Title(strings.ReplaceAll(role.Name, "-", "")))
+		roleName := fmt.Sprintf("IAMRole%s", cases.Title(language.English).String(strings.ReplaceAll(role.Name, "-", "")))
 
 		roleResource := Resource{
 			Type: "AWS::IAM::Role",
@@ -780,7 +783,7 @@ func (ig *InfrastructureGenerator) generateSecurityResources(template *Infrastru
 
 	// KMS Keys
 	for _, key := range secConfig.KMSKeys {
-		keyName := fmt.Sprintf("KMSKey%s", strings.Title(strings.ReplaceAll(key.Alias, "-", "")))
+		keyName := fmt.Sprintf("KMSKey%s", cases.Title(language.English).String(strings.ReplaceAll(key.Alias, "-", "")))
 
 		keyResource := Resource{
 			Type: "AWS::KMS::Key",
@@ -871,7 +874,7 @@ func (ig *InfrastructureGenerator) generateNetworkingResources(template *Infrast
 
 		// Subnets
 		for i, subnet := range netConfig.Subnets {
-			subnetName := fmt.Sprintf("%sSubnet%d", strings.Title(subnet.Type), i+1)
+			subnetName := fmt.Sprintf("%sSubnet%d", cases.Title(language.English).String(subnet.Type), i+1)
 
 			subnetResource := Resource{
 				Type: "AWS::EC2::Subnet",
@@ -894,7 +897,7 @@ func (ig *InfrastructureGenerator) generateNetworkingResources(template *Infrast
 
 		// Security Groups
 		for _, sg := range netConfig.SecurityGroups {
-			sgName := fmt.Sprintf("SecurityGroup%s", strings.Title(strings.ReplaceAll(sg.Name, "-", "")))
+			sgName := fmt.Sprintf("SecurityGroup%s", cases.Title(language.English).String(strings.ReplaceAll(sg.Name, "-", "")))
 
 			sgResource := Resource{
 				Type: "AWS::EC2::SecurityGroup",
@@ -955,8 +958,8 @@ func (ig *InfrastructureGenerator) generateOutputs(template *InfrastructureTempl
 
 	// DynamoDB Table Names
 	for _, tableConfig := range ig.config.Database.Tables {
-		tableName := fmt.Sprintf("DynamoTable%s", strings.Title(tableConfig.Name))
-		outputName := fmt.Sprintf("%sTableName", strings.Title(tableConfig.Name))
+		tableName := fmt.Sprintf("DynamoTable%s", cases.Title(language.English).String(tableConfig.Name))
+		outputName := fmt.Sprintf("%sTableName", cases.Title(language.English).String(tableConfig.Name))
 
 		template.Outputs[outputName] = Output{
 			Value:       fmt.Sprintf("${%s.TableName}", tableName),

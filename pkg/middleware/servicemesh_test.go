@@ -133,7 +133,11 @@ func (m *mockServiceMeshMetrics) WithTags(tags map[string]string) observability.
 	for k, v := range tags {
 		newTags[k] = v
 	}
-	return &mockServiceMeshMetrics{metrics: m.metrics, tags: newTags, mu: m.mu}
+	return &mockServiceMeshMetrics{
+		metrics: m.metrics,
+		tags:    newTags,
+		mu:      sync.RWMutex{},
+	}
 }
 
 func (m *mockServiceMeshMetrics) WithTag(key, value string) observability.MetricsCollector {

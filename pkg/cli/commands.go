@@ -93,7 +93,7 @@ func (c *NewCommand) Execute(ctx context.Context, args []string) error {
 
 func (c *NewCommand) createProject(name, template string) error {
 	// Create project directory
-	if err := os.MkdirAll(name, 0755); err != nil {
+	if err := os.MkdirAll(name, 0750); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
@@ -108,32 +108,32 @@ func (c *NewCommand) createProject(name, template string) error {
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(filepath.Join(name, dir), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Join(name, dir), 0750); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
 
 	// Create main.go
 	mainContent := c.generateMainFile(name, template)
-	if err := os.WriteFile(filepath.Join(name, "cmd", "main.go"), []byte(mainContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(name, "cmd", "main.go"), []byte(mainContent), 0600); err != nil {
 		return fmt.Errorf("failed to create main.go: %w", err)
 	}
 
 	// Create go.mod
 	goModContent := c.generateGoMod(name)
-	if err := os.WriteFile(filepath.Join(name, "go.mod"), []byte(goModContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(name, "go.mod"), []byte(goModContent), 0600); err != nil {
 		return fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
 	// Create README.md
 	readmeContent := c.generateReadme(name)
-	if err := os.WriteFile(filepath.Join(name, "README.md"), []byte(readmeContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(name, "README.md"), []byte(readmeContent), 0600); err != nil {
 		return fmt.Errorf("failed to create README.md: %w", err)
 	}
 
 	// Create deployment configuration
 	deployContent := c.generateDeploymentConfig(name)
-	if err := os.WriteFile(filepath.Join(name, "deployments", "config.json"), []byte(deployContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(name, "deployments", "config.json"), []byte(deployContent), 0600); err != nil {
 		return fmt.Errorf("failed to create deployment config: %w", err)
 	}
 
