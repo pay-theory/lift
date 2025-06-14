@@ -1423,6 +1423,14 @@ func NewChaosReporter() *ChaosReporter {
 
 // RunExperiment runs a chaos experiment
 func (f *ChaosEngineeringFramework) RunExperiment(ctx context.Context, experiment *ChaosExperiment) (*ExperimentResults, error) {
+	// Validate experiment first
+	if err := f.validateExperiment(experiment); err != nil {
+		return nil, fmt.Errorf("experiment validation failed: %w", err)
+	}
+
+	// Store the experiment in the framework
+	f.experiments[experiment.ID] = experiment
+
 	// Implementation would go here
 	return &ExperimentResults{
 		ExperimentID:    experiment.ID,

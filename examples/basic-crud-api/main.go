@@ -109,11 +109,13 @@ func CreateUser(ctx *lift.Context) error {
 	}
 
 	// Log the creation
-	ctx.Logger.Info("User created", map[string]interface{}{
-		"user_id":   user.ID,
-		"tenant_id": user.TenantID,
-		"email":     user.Email,
-	})
+	if ctx.Logger != nil {
+		ctx.Logger.Info("User created", map[string]interface{}{
+			"user_id":   user.ID,
+			"tenant_id": user.TenantID,
+			"email":     user.Email,
+		})
+	}
 
 	// Return response
 	return ctx.Status(201).JSON(&UserResponse{
@@ -231,11 +233,13 @@ func UpdateUser(ctx *lift.Context) error {
 	}
 
 	// Log the update
-	ctx.Logger.Info("User updated", map[string]interface{}{
-		"user_id":   user.ID,
-		"tenant_id": user.TenantID,
-		"email":     user.Email,
-	})
+	if ctx.Logger != nil {
+		ctx.Logger.Info("User updated", map[string]interface{}{
+			"user_id":   user.ID,
+			"tenant_id": user.TenantID,
+			"email":     user.Email,
+		})
+	}
 
 	return ctx.JSON(&UserResponse{
 		User:    &user,
@@ -273,11 +277,13 @@ func DeleteUser(ctx *lift.Context) error {
 	}
 
 	// Log the deletion
-	ctx.Logger.Info("User deleted", map[string]interface{}{
-		"user_id":   user.ID,
-		"tenant_id": user.TenantID,
-		"email":     user.Email,
-	})
+	if ctx.Logger != nil {
+		ctx.Logger.Info("User deleted", map[string]interface{}{
+			"user_id":   user.ID,
+			"tenant_id": user.TenantID,
+			"email":     user.Email,
+		})
+	}
 
 	return ctx.JSON(&UserResponse{
 		Message: "User deleted successfully",

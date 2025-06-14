@@ -420,6 +420,14 @@ func (ta *TestApp) Start() error {
 			w.Write(bodyBytes)
 		} else if bodyStr, ok := ctx.Response.Body.(string); ok {
 			w.Write([]byte(bodyStr))
+		} else if ctx.Response.Body != nil {
+			// Handle interface{} types (from ctx.JSON calls) by marshaling to JSON
+			jsonBytes, err := json.Marshal(ctx.Response.Body)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Failed to marshal response: %v", err), 500)
+				return
+			}
+			w.Write(jsonBytes)
 		}
 	}))
 

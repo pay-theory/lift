@@ -219,7 +219,7 @@ func TestGDPRConsentManager_RecordConsent(t *testing.T) {
 			name:    "successful consent recording",
 			consent: createTestConsentRecord(),
 			setupMock: func(m *MockConsentStore) {
-				m.On("RecordConsent", mock.Anything, mock.Anything).Return(nil)
+				m.On("StoreConsent", mock.Anything, mock.Anything).Return(nil)
 			},
 			expectedError: "",
 		},
@@ -239,15 +239,15 @@ func TestGDPRConsentManager_RecordConsent(t *testing.T) {
 				LegalBasis:    "consent",
 			},
 			setupMock:     func(m *MockConsentStore) {},
-			expectedError: "processing purposes are required",
+			expectedError: "purpose is required",
 		},
 		{
 			name:    "store error",
 			consent: createTestConsentRecord(),
 			setupMock: func(m *MockConsentStore) {
-				m.On("RecordConsent", mock.Anything, mock.Anything).Return(assert.AnError)
+				m.On("StoreConsent", mock.Anything, mock.Anything).Return(assert.AnError)
 			},
-			expectedError: "failed to record consent",
+			expectedError: "failed to store consent",
 		},
 	}
 
@@ -533,7 +533,7 @@ func TestGDPRConsentManager_Integration_ConsentLifecycle(t *testing.T) {
 	consent := createTestConsentRecord()
 
 	// Record consent
-	mockStore.On("RecordConsent", ctx, consent).Return(nil)
+	mockStore.On("StoreConsent", ctx, consent).Return(nil)
 	err := manager.RecordConsent(ctx, consent)
 	require.NoError(t, err)
 
@@ -627,7 +627,7 @@ func BenchmarkGDPRConsentManager_RecordConsent(b *testing.B) {
 	manager := createTestGDPRManager()
 	manager.SetConsentStore(mockStore)
 
-	mockStore.On("RecordConsent", mock.Anything, mock.Anything).Return(nil)
+	mockStore.On("StoreConsent", mock.Anything, mock.Anything).Return(nil)
 
 	ctx := context.Background()
 	consent := createTestConsentRecord()
@@ -691,7 +691,7 @@ func TestGDPRConsentManager_ConcurrentOperations(t *testing.T) {
 	manager.SetConsentStore(mockStore)
 
 	// Setup mocks for concurrent operations
-	mockStore.On("RecordConsent", mock.Anything, mock.Anything).Return(nil)
+	mockStore.On("StoreConsent", mock.Anything, mock.Anything).Return(nil)
 	mockStore.On("GetConsent", mock.Anything, mock.Anything, mock.Anything).Return(createTestConsentRecord(), nil)
 	mockStore.On("UpdateConsent", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
@@ -962,17 +962,24 @@ func generateTestConsents(count int) []*ConsentRecord {
 	for i := 0; i < count; i++ {
 		timestamp := time.Now().Add(-time.Duration(i) * time.Minute)
 		expiryDate := time.Now().Add(365 * 24 * time.Hour)
+		purposeIndex := i % len(purposes)
 		consents[i] = &ConsentRecord{
-			ID:            fmt.Sprintf("consent-%d", i),
-			DataSubjectID: fmt.Sprintf("user-%d", i%1000), // 1000 unique users
-			Purpose:       purposes[i%len(purposes)],
-			LegalBasis:    "consent",
-			ConsentGiven:  i%10 != 0, // 90% consent given
-			Timestamp:     &timestamp,
-			ExpiryDate:    &expiryDate,
-			Source:        "web_form",
-			IPAddress:     fmt.Sprintf("192.168.1.%d", i%255),
-			UserAgent:     "Mozilla/5.0",
+			ID:                 fmt.Sprintf("consent-%d", i),
+			DataSubjectID:      fmt.Sprintf("user-%d", i%1000), // 1000 unique users
+			Purpose:            purposes[purposeIndex],
+			ProcessingPurposes: []string{purposes[purposeIndex]}, // Add ProcessingPurposes
+			LegalBasis:         "consent",
+			ConsentGiven:       i%10 != 0, // 90% consent given
+			Timestamp:          &timestamp,
+			ExpiryDate:         &expiryDate,
+			Source:             "web_form",
+			IPAddress:          fmt.Sprintf("192.168.1.%d", i%255),
+			UserAgent:          "Mozilla/5.0",
+			// Add required GDPR validation fields
+			Granular:    true,
+			Specific:    true,
+			Informed:    true,
+			Unambiguous: true,
 			ConsentProof: &ConsentProof{
 				Method:    "digital_signature",
 				Signature: fmt.Sprintf("signature-%d", i),
@@ -996,7 +1003,7 @@ func TestGDPRConsentManager_LoadTest(t *testing.T) {
 	manager.SetConsentStore(mockStore)
 
 	// Setup mocks for load test
-	mockStore.On("RecordConsent", mock.Anything, mock.Anything).Return(nil)
+	mockStore.On("StoreConsent", mock.Anything, mock.Anything).Return(nil)
 	mockStore.On("GetConsent", mock.Anything, mock.Anything, mock.Anything).Return(createTestConsentRecord(), nil)
 
 	ctx := context.Background()
