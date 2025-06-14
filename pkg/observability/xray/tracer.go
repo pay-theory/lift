@@ -56,29 +56,58 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			var segment *xray.Segment
 			ctx.Context, segment = xray.BeginSegment(ctx.Context, config.ServiceName)
 
+			// Add panic recovery to prevent crashes
+			defer func() {
+				if r := recover(); r != nil {
+					if segment != nil {
+						if err := segment.AddError(fmt.Errorf("panic in xray middleware: %v", r)); err != nil {
+							// Log error but don't fail the request
+							fmt.Printf("Failed to add panic error to XRay segment: %v\n", err)
+						}
+						segment.Close(fmt.Errorf("panic: %v", r))
+					}
+					panic(r) // Re-panic after logging
+				}
+			}()
+
 			// Ensure segment is closed
-			defer segment.Close(nil)
+			defer func() {
+				if segment != nil {
+					segment.Close(nil)
+				}
+			}()
 
 			// Add standard annotations
 			tracer.addStandardAnnotations(segment, ctx)
 
 			// Add custom annotations from config
-			for key, value := range config.Annotations {
-				segment.AddAnnotation(key, value)
+			if config.Annotations != nil {
+				for key, value := range config.Annotations {
+					segment.AddAnnotation(key, value)
+				}
 			}
 
 			// Add metadata
 			tracer.addStandardMetadata(segment, ctx)
-			for key, value := range config.Metadata {
-				segment.AddMetadata("custom", map[string]interface{}{key: value})
+			if config.Metadata != nil {
+				for key, value := range config.Metadata {
+					segment.AddMetadata("custom", map[string]interface{}{key: value})
+				}
 			}
 
 			// Add trace information to context for logging
-			if traceID := segment.TraceID; traceID != "" {
-				ctx.Request.Headers["X-Trace-Id"] = traceID
-			}
-			if segmentID := segment.ID; segmentID != "" {
-				ctx.Request.Headers["X-Span-Id"] = segmentID
+			if ctx.Request != nil {
+				// Ensure Headers map is initialized
+				if ctx.Request.Headers == nil {
+					ctx.Request.Headers = make(map[string]string)
+				}
+
+				if traceID := segment.TraceID; traceID != "" {
+					ctx.Request.Headers["X-Trace-Id"] = traceID
+				}
+				if segmentID := segment.ID; segmentID != "" {
+					ctx.Request.Headers["X-Span-Id"] = segmentID
+				}
 			}
 
 			// Execute handler
@@ -93,7 +122,10 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 
 			// Handle errors
 			if err != nil {
-				segment.AddError(err)
+				if addErr := segment.AddError(err); addErr != nil {
+					// Log error but don't fail the request
+					fmt.Printf("Failed to add error to XRay segment: %v\n", addErr)
+				}
 				segment.AddAnnotation("error", "true")
 				segment.AddMetadata("error", map[string]interface{}{
 					"message": err.Error(),
@@ -115,9 +147,11 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 
 // addStandardAnnotations adds standard annotations to the segment
 func (t *XRayTracer) addStandardAnnotations(segment *xray.Segment, ctx *lift.Context) {
-	// HTTP information
-	segment.AddAnnotation("http.method", ctx.Request.Method)
-	segment.AddAnnotation("http.url", ctx.Request.Path)
+	// HTTP information (only if request is not nil)
+	if ctx.Request != nil {
+		segment.AddAnnotation("http.method", ctx.Request.Method)
+		segment.AddAnnotation("http.url", ctx.Request.Path)
+	}
 
 	// Multi-tenant information
 	if tenantID := ctx.TenantID(); tenantID != "" {
@@ -144,13 +178,26 @@ func (t *XRayTracer) addStandardAnnotations(segment *xray.Segment, ctx *lift.Con
 
 // addStandardMetadata adds standard metadata to the segment
 func (t *XRayTracer) addStandardMetadata(segment *xray.Segment, ctx *lift.Context) {
+	if ctx.Request == nil {
+		return // Skip if request is nil
+	}
+
 	// HTTP metadata
 	httpMetadata := map[string]interface{}{
-		"method":       ctx.Request.Method,
-		"path":         ctx.Request.Path,
-		"query_params": ctx.Request.QueryParams,
-		"headers":      filterSensitiveHeaders(ctx.Request.Headers),
+		"method": ctx.Request.Method,
+		"path":   ctx.Request.Path,
 	}
+
+	// Add query params if not nil
+	if ctx.Request.QueryParams != nil {
+		httpMetadata["query_params"] = ctx.Request.QueryParams
+	}
+
+	// Add filtered headers if headers exist
+	if ctx.Request.Headers != nil {
+		httpMetadata["headers"] = filterSensitiveHeaders(ctx.Request.Headers)
+	}
+
 	segment.AddMetadata("http", httpMetadata)
 
 	// Request metadata
@@ -244,7 +291,10 @@ func TraceHTTPCall(ctx context.Context, method, url string) (context.Context, fu
 		}
 
 		if err != nil {
-			subsegment.AddError(err)
+			if addErr := subsegment.AddError(err); addErr != nil {
+				// Log error but don't fail the operation
+				fmt.Printf("Failed to add HTTP error to XRay subsegment: %v\n", addErr)
+			}
 		}
 
 		subsegment.Close(err)
@@ -269,7 +319,10 @@ func TraceCustomOperation(ctx context.Context, operationName string, metadata ma
 
 	return newCtx, func(err error) {
 		if err != nil {
-			subsegment.AddError(err)
+			if addErr := subsegment.AddError(err); addErr != nil {
+				// Log error but don't fail the operation
+				fmt.Printf("Failed to add custom operation error to XRay subsegment: %v\n", addErr)
+			}
 			subsegment.AddAnnotation("error", "true")
 		} else {
 			subsegment.AddAnnotation("error", "false")
@@ -312,6 +365,9 @@ func AddMetadata(ctx context.Context, namespace, key string, value interface{}) 
 // SetError marks the current segment as having an error
 func SetError(ctx context.Context, err error) {
 	if segment := xray.GetSegment(ctx); segment != nil {
-		segment.AddError(err)
+		if addErr := segment.AddError(err); addErr != nil {
+			// Log error but don't fail the operation
+			fmt.Printf("Failed to add error to XRay segment: %v\n", addErr)
+		}
 	}
 }

@@ -50,7 +50,7 @@ func NewContext(baseCtx context.Context, req *Request) *Context {
 		Response:        NewResponse(),
 		params:          make(map[string]string),
 		values:          make(map[string]interface{}),
-		claims:          make(map[string]interface{}),
+		claims:          nil, // Initialize as nil, will be set when claims are provided
 		startTime:       time.Now(),
 		isAuthenticated: false,
 	}
@@ -326,10 +326,36 @@ func (c *Context) QueryParam(key string) string {
 
 // Authentication methods
 
-// SetClaims sets JWT claims in the context
+// SetClaims sets JWT claims in the context and extracts user/tenant information
 func (c *Context) SetClaims(claims map[string]interface{}) {
-	c.claims = claims
+	// Initialize claims map if nil
+	if c.claims == nil {
+		c.claims = make(map[string]interface{})
+	}
+
+	// Copy claims to avoid external modifications
+	for key, value := range claims {
+		c.claims[key] = value
+	}
+
 	c.isAuthenticated = true
+
+	// Extract user_id from claims (prefer user_id, fallback to sub)
+	if userID, ok := claims["user_id"].(string); ok && userID != "" {
+		c.SetUserID(userID)
+	} else if sub, ok := claims["sub"].(string); ok && sub != "" {
+		c.SetUserID(sub)
+	}
+
+	// Extract tenant_id from claims
+	if tenantID, ok := claims["tenant_id"].(string); ok && tenantID != "" {
+		c.SetTenantID(tenantID)
+	}
+
+	// Extract account_id from claims if present
+	if accountID, ok := claims["account_id"].(string); ok && accountID != "" {
+		c.Set("account_id", accountID)
+	}
 }
 
 // Claims returns the JWT claims from the context

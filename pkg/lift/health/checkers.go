@@ -2,8 +2,10 @@ package health
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"fmt"
+	"net"
 	"net/http"
 	"runtime"
 	"time"
@@ -176,14 +178,48 @@ type HTTPHealthChecker struct {
 
 // NewHTTPHealthChecker creates a new HTTP health checker
 func NewHTTPHealthChecker(name, url string) *HTTPHealthChecker {
+	// Create secure HTTP transport with comprehensive timeouts
+	transport := &http.Transport{
+		// Connection timeouts (prevent slow connections)
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,  // Connection timeout
+			KeepAlive: 30 * time.Second, // Keep-alive timeout
+		}).DialContext,
+
+		// TLS security
+		TLSHandshakeTimeout: 5 * time.Second,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: false,            // Verify TLS certificates
+			MinVersion:         tls.VersionTLS12, // Minimum TLS 1.2
+		},
+
+		// Connection limits (prevent resource exhaustion)
+		MaxIdleConns:        10,
+		MaxIdleConnsPerHost: 2, // Limited for health checks
+		MaxConnsPerHost:     5, // Limited for health checks
+		IdleConnTimeout:     30 * time.Second,
+
+		// Response limits (prevent large response attacks)
+		MaxResponseHeaderBytes: 64 * 1024, // 64KB max headers for health checks
+		DisableKeepAlives:      true,      // No keep-alive for health checks
+		DisableCompression:     false,
+
+		// Response timeout (prevent slow response attacks)
+		ResponseHeaderTimeout: 3 * time.Second,
+	}
+
+	// Create HTTP client with secure transport and total timeout
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   10 * time.Second, // Total request timeout
+	}
+
 	return &HTTPHealthChecker{
 		name:           name,
 		url:            url,
 		timeout:        10 * time.Second,
 		expectedStatus: http.StatusOK,
-		client: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		client:         client,
 	}
 }
 

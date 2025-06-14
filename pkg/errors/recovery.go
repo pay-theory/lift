@@ -18,8 +18,8 @@ type RetryRecoveryStrategy struct {
 
 // CanRecover determines if this strategy can handle the error
 func (r *RetryRecoveryStrategy) CanRecover(err error) bool {
-	// Check for network errors
-	if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+	// Check for network timeout errors (modern replacement for Temporary())
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 		return true
 	}
 
@@ -30,8 +30,20 @@ func (r *RetryRecoveryStrategy) CanRecover(err error) bool {
 		}
 	}
 
-	// Check for timeout errors
+	// Check for context timeout errors
+	if err == context.DeadlineExceeded {
+		return true
+	}
+
+	// Check for timeout errors in error message
 	if strings.Contains(err.Error(), "timeout") {
+		return true
+	}
+
+	// Check for other retryable network conditions
+	if strings.Contains(err.Error(), "connection reset") ||
+		strings.Contains(err.Error(), "connection refused") ||
+		strings.Contains(err.Error(), "no route to host") {
 		return true
 	}
 

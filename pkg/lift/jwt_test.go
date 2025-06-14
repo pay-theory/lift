@@ -129,8 +129,9 @@ func TestJWTContextMethods(t *testing.T) {
 
 		ctx.SetClaims(claims)
 
-		// Verify claims are stored
-		assert.Equal(t, claims, ctx.Claims())
+		// Verify claims are stored (convert to map[string]interface{} for comparison)
+		expectedClaims := map[string]interface{}(claims)
+		assert.Equal(t, expectedClaims, ctx.Claims())
 
 		// Verify user and tenant IDs are extracted
 		assert.Equal(t, "user-123", ctx.UserID())

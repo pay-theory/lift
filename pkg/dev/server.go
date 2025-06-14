@@ -66,7 +66,7 @@ type DevServer struct {
 	startTime time.Time
 }
 
-// DevStats tracks development server statistics
+// DevStats holds internal development server statistics (with mutex)
 type DevStats struct {
 	Requests       int64         `json:"requests"`
 	Errors         int64         `json:"errors"`
@@ -77,6 +77,18 @@ type DevStats struct {
 	HotReloads     int64         `json:"hot_reloads"`
 	BuildTime      time.Duration `json:"build_time"`
 	mu             sync.RWMutex
+}
+
+// SafeDevStats holds development server statistics without mutex (safe for copying)
+type SafeDevStats struct {
+	Requests       int64         `json:"requests"`
+	Errors         int64         `json:"errors"`
+	Restarts       int64         `json:"restarts"`
+	LastRestart    time.Time     `json:"last_restart"`
+	AverageLatency time.Duration `json:"average_latency"`
+	Uptime         time.Duration `json:"uptime"`
+	HotReloads     int64         `json:"hot_reloads"`
+	BuildTime      time.Duration `json:"build_time"`
 }
 
 // NewDevServer creates a new development server
@@ -210,6 +222,15 @@ func (s *DevServer) startHTTPServer(ctx context.Context) error {
 	s.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.config.Port),
 		Handler: handler,
+
+		// Security timeouts to prevent DoS attacks
+		ReadTimeout:       15 * time.Second, // Maximum time to read request including body
+		ReadHeaderTimeout: 5 * time.Second,  // Maximum time to read request headers (prevents Slowloris)
+		WriteTimeout:      15 * time.Second, // Maximum time to write response
+		IdleTimeout:       60 * time.Second, // Maximum time for keep-alive connections
+
+		// Additional security settings
+		MaxHeaderBytes: 1 << 20, // 1 MB max header size
 	}
 
 	// Start server in goroutine
@@ -263,10 +284,7 @@ func (s *DevServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 // handleStats returns development server statistics
 func (s *DevServer) handleStats(w http.ResponseWriter, r *http.Request) {
-	s.stats.mu.RLock()
-	stats := *s.stats
-	stats.Uptime = time.Since(s.startTime)
-	s.stats.mu.RUnlock()
+	stats := s.GetStats()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
@@ -410,13 +428,21 @@ func (s *DevServer) performRestart() {
 }
 
 // GetStats returns current development server statistics
-func (s *DevServer) GetStats() DevStats {
+func (s *DevServer) GetStats() SafeDevStats {
 	s.stats.mu.RLock()
 	defer s.stats.mu.RUnlock()
 
-	stats := *s.stats
-	stats.Uptime = time.Since(s.startTime)
-	return stats
+	// Create a safe copy without the mutex
+	return SafeDevStats{
+		Requests:       s.stats.Requests,
+		Errors:         s.stats.Errors,
+		Restarts:       s.stats.Restarts,
+		LastRestart:    s.stats.LastRestart,
+		AverageLatency: s.stats.AverageLatency,
+		Uptime:         time.Since(s.startTime),
+		HotReloads:     s.stats.HotReloads,
+		BuildTime:      s.stats.BuildTime,
+	}
 }
 
 // ProfilerServer provides pprof endpoints for performance profiling
@@ -446,6 +472,15 @@ func (p *ProfilerServer) Start() error {
 	p.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", p.port),
 		Handler: mux,
+
+		// Security timeouts to prevent DoS attacks
+		ReadTimeout:       10 * time.Second, // Shorter timeout for profiler
+		ReadHeaderTimeout: 3 * time.Second,  // Prevent Slowloris attacks
+		WriteTimeout:      30 * time.Second, // Longer write timeout for profile data
+		IdleTimeout:       60 * time.Second, // Standard idle timeout
+
+		// Additional security settings
+		MaxHeaderBytes: 1 << 20, // 1 MB max header size
 	}
 
 	return p.server.ListenAndServe()

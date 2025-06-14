@@ -351,14 +351,20 @@ func (bal *BufferedAuditLogger) VerifyIntegrity(ctx context.Context, auditID str
 // generateAuditID generates a unique audit ID
 func (bal *BufferedAuditLogger) generateAuditID() string {
 	bytes := make([]byte, 16)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to timestamp-based ID if random generation fails
+		return fmt.Sprintf("audit_%d_fallback", time.Now().UnixNano())
+	}
 	return fmt.Sprintf("audit_%d_%s", time.Now().Unix(), hex.EncodeToString(bytes))
 }
 
 // generateEntryID generates a unique entry ID
 func (bal *BufferedAuditLogger) generateEntryID() string {
 	bytes := make([]byte, 8)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to timestamp-based ID if random generation fails
+		return fmt.Sprintf("entry_%d_fallback", time.Now().UnixNano())
+	}
 	return fmt.Sprintf("entry_%d_%s", time.Now().UnixNano(), hex.EncodeToString(bytes))
 }
 

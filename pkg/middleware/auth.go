@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -382,7 +382,7 @@ func createPrincipalFromClaims(claims *JWTClaims, ctx *lift.Context) *security.P
 
 // loadRSAPublicKey loads an RSA public key from a PEM file
 func loadRSAPublicKey(path string) (*rsa.PublicKey, error) {
-	keyData, err := ioutil.ReadFile(path)
+	keyData, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read key file: %w", err)
 	}

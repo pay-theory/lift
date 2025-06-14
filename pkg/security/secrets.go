@@ -16,10 +16,12 @@ import (
 
 // AWSSecretsManager implements the SecretsProvider interface using AWS Secrets Manager
 type AWSSecretsManager struct {
-	client    *secretsmanager.Client
-	cache     *SecretCache
-	keyPrefix string
-	region    string
+	client         *secretsmanager.Client
+	cache          *SecretCache          // Legacy plain text cache (deprecated)
+	encryptedCache *EncryptedSecretCache // New encrypted cache
+	keyPrefix      string
+	region         string
+	useEncryption  bool // Flag to control cache type
 }
 
 // SecretCache provides in-memory caching for secrets with TTL
@@ -35,7 +37,7 @@ type CachedSecret struct {
 	ExpiresAt time.Time
 }
 
-// NewAWSSecretsManager creates a new AWS Secrets Manager provider
+// NewAWSSecretsManager creates a new AWS Secrets Manager provider with plain text cache (deprecated)
 func NewAWSSecretsManager(ctx context.Context, region, keyPrefix string) (*AWSSecretsManager, error) {
 	// Load AWS configuration
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
@@ -46,10 +48,36 @@ func NewAWSSecretsManager(ctx context.Context, region, keyPrefix string) (*AWSSe
 	client := secretsmanager.NewFromConfig(cfg)
 
 	return &AWSSecretsManager{
-		client:    client,
-		cache:     NewSecretCache(5 * time.Minute), // 5-minute cache TTL
-		keyPrefix: keyPrefix,
-		region:    region,
+		client:        client,
+		cache:         NewSecretCache(5 * time.Minute), // 5-minute cache TTL
+		keyPrefix:     keyPrefix,
+		region:        region,
+		useEncryption: false, // Legacy mode
+	}, nil
+}
+
+// NewSecureAWSSecretsManager creates a new AWS Secrets Manager provider with encrypted cache
+func NewSecureAWSSecretsManager(ctx context.Context, region, keyPrefix string, encryptionKey []byte) (*AWSSecretsManager, error) {
+	// Load AWS configuration
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	client := secretsmanager.NewFromConfig(cfg)
+
+	// Create encrypted cache
+	encryptedCache, err := NewEncryptedSecretCache(5*time.Minute, encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create encrypted cache: %w", err)
+	}
+
+	return &AWSSecretsManager{
+		client:         client,
+		encryptedCache: encryptedCache,
+		keyPrefix:      keyPrefix,
+		region:         region,
+		useEncryption:  true,
 	}, nil
 }
 
@@ -63,9 +91,17 @@ func NewSecretCache(ttl time.Duration) *SecretCache {
 
 // GetSecret retrieves a secret from AWS Secrets Manager (with caching)
 func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (string, error) {
-	// Check cache first
-	if value := asm.cache.Get(name); value != "" {
-		return value, nil
+	// Check cache first (encrypted or plain text)
+	if asm.useEncryption && asm.encryptedCache != nil {
+		if value, err := asm.encryptedCache.Get(name); err != nil {
+			// Log error but continue to fetch from AWS
+		} else if value != "" {
+			return value, nil
+		}
+	} else if asm.cache != nil {
+		if value := asm.cache.Get(name); value != "" {
+			return value, nil
+		}
 	}
 
 	// Build full secret name with prefix
@@ -87,8 +123,15 @@ func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (strin
 
 	value := *result.SecretString
 
-	// Cache the secret
-	asm.cache.Set(name, value)
+	// Cache the secret (encrypted or plain text)
+	if asm.useEncryption && asm.encryptedCache != nil {
+		if err := asm.encryptedCache.Set(name, value); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: failed to cache secret in encrypted cache: %v\n", err)
+		}
+	} else if asm.cache != nil {
+		asm.cache.Set(name, value)
+	}
 
 	return value, nil
 }
@@ -123,8 +166,14 @@ func (asm *AWSSecretsManager) PutSecret(ctx context.Context, name string, value 
 		}
 	}
 
-	// Update cache
-	asm.cache.Set(name, value)
+	// Update cache (encrypted or plain text)
+	if asm.useEncryption && asm.encryptedCache != nil {
+		if err := asm.encryptedCache.Set(name, value); err != nil {
+			fmt.Printf("Warning: failed to update secret in encrypted cache: %v\n", err)
+		}
+	} else if asm.cache != nil {
+		asm.cache.Set(name, value)
+	}
 
 	return nil
 }
@@ -142,8 +191,12 @@ func (asm *AWSSecretsManager) RotateSecret(ctx context.Context, name string) err
 		return fmt.Errorf("failed to rotate secret %s: %w", fullName, err)
 	}
 
-	// Invalidate cache
-	asm.cache.Delete(name)
+	// Invalidate cache (encrypted or plain text)
+	if asm.useEncryption && asm.encryptedCache != nil {
+		asm.encryptedCache.Delete(name)
+	} else if asm.cache != nil {
+		asm.cache.Delete(name)
+	}
 
 	return nil
 }
@@ -162,8 +215,12 @@ func (asm *AWSSecretsManager) DeleteSecret(ctx context.Context, name string) err
 		return fmt.Errorf("failed to delete secret %s: %w", fullName, err)
 	}
 
-	// Remove from cache
-	asm.cache.Delete(name)
+	// Remove from cache (encrypted or plain text)
+	if asm.useEncryption && asm.encryptedCache != nil {
+		asm.encryptedCache.Delete(name)
+	} else if asm.cache != nil {
+		asm.cache.Delete(name)
+	}
 
 	return nil
 }
