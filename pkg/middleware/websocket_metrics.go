@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -97,27 +98,49 @@ func WebSocketConnectionMetrics(metrics lift.MetricsCollector, store lift.Connec
 				return next.Handle(ctx)
 			}
 
-			// Track connection count periodically
+			// Track connection count periodically for connect events
 			if wsCtx.IsConnectEvent() {
-				go func() {
-					// Count active connections every minute
-					ticker := time.NewTicker(1 * time.Minute)
-					defer ticker.Stop()
-
-					for range ticker.C {
-						if store != nil {
-							// This would need to be implemented in the store
-							// count, err := store.CountActive(context.Background())
-							// if err == nil {
-							//     metrics.RecordGauge("websocket.connections.total", float64(count), nil)
-							// }
-						}
-					}
-				}()
+				go trackConnectionCount(metrics, store)
 			}
 
 			return next.Handle(ctx)
 		})
+	}
+}
+
+// trackConnectionCount periodically updates connection count metrics
+func trackConnectionCount(metrics lift.MetricsCollector, store lift.ConnectionStore) {
+	if store == nil {
+		return
+	}
+
+	// Count active connections every minute
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	// Also do an immediate count
+	updateConnectionCount(metrics, store)
+
+	// Then update periodically
+	for range ticker.C {
+		updateConnectionCount(metrics, store)
+	}
+}
+
+// updateConnectionCount gets current connection count and updates metrics
+func updateConnectionCount(metrics lift.MetricsCollector, store lift.ConnectionStore) {
+	ctx := context.Background()
+	count, err := store.CountActive(ctx)
+	if err != nil {
+		// Log error but don't fail metrics collection
+		if metrics != nil {
+			metrics.Counter("websocket.connection_count_errors", nil).Inc()
+		}
+		return
+	}
+
+	if metrics != nil {
+		metrics.Gauge("websocket.connections.total", nil).Set(float64(count))
 	}
 }
 

@@ -404,6 +404,10 @@ func (bm *bulkheadManager) recordCompletion(tenantID, operation string, duration
 	histogram := metrics.Histogram("bulkhead.execution_duration")
 	histogram.Observe(float64(duration.Milliseconds()))
 
+	// Record wait time for completed requests
+	waitTimeHist := metrics.Histogram("bulkhead.completion_wait_time")
+	waitTimeHist.Observe(float64(waitTime.Milliseconds()))
+
 	// Record resource utilization
 	utilization := float64(bm.globalSemaphore.active()) / float64(bm.globalSemaphore.capacity())
 	gauge := metrics.Gauge("bulkhead.utilization")

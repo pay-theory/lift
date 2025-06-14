@@ -351,3 +351,7 @@ func (m *mockConnectionStore) ListByTenant(ctx context.Context, tenantID string)
 	}
 	return conns, nil
 }
+
+func (m *mockConnectionStore) CountActive(ctx context.Context) (int64, error) {
+	return int64(len(m.connections)), nil
+}

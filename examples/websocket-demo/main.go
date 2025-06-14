@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
@@ -15,10 +17,32 @@ type JWTClaims struct {
 	UserID   string `json:"user_id"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
+	jwt.RegisteredClaims
 }
 
+// ConnectionStore interface for WebSocket connection management
+type ConnectionStore interface {
+	StoreConnection(ctx context.Context, conn *WebSocketConnection) error
+	RemoveConnection(ctx context.Context, connectionID string) error
+	GetActiveConnections(ctx context.Context) ([]*WebSocketConnection, error)
+	GetConnectionByID(ctx context.Context, connectionID string) (*WebSocketConnection, error)
+}
+
+// WebSocketConnection represents a stored WebSocket connection
+type WebSocketConnection struct {
+	ConnectionID string    `json:"connection_id"`
+	UserID       string    `json:"user_id"`
+	Username     string    `json:"username"`
+	Role         string    `json:"role"`
+	ConnectedAt  time.Time `json:"connected_at"`
+	LastSeen     time.Time `json:"last_seen"`
+}
+
+// Global connection store (in production, this would be injected via dependency injection)
+var connectionStore ConnectionStore
+
 // WebSocketJWTMiddleware validates JWT tokens from query parameters for WebSocket connections
-func WebSocketJWTMiddleware() lift.Middleware {
+func WebSocketJWTMiddleware(jwtSecret string) lift.Middleware {
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			// Only validate on $connect events
@@ -35,13 +59,13 @@ func WebSocketJWTMiddleware() lift.Middleware {
 				// Remove "Bearer " prefix if present
 				token = strings.TrimPrefix(token, "Bearer ")
 
-				// TODO: Validate JWT token here
-				// For demo purposes, we'll just decode a simple claim
-				// In production, use a proper JWT library
-				claims := &JWTClaims{
-					UserID:   "user123",
-					Username: "demo_user",
-					Role:     "user",
+				// Validate JWT token
+				claims, err := validateJWTToken(token, jwtSecret)
+				if err != nil {
+					return ctx.Status(401).JSON(map[string]string{
+						"error":   "Invalid or expired token",
+						"details": err.Error(),
+					})
 				}
 
 				// Store claims in context
@@ -54,8 +78,73 @@ func WebSocketJWTMiddleware() lift.Middleware {
 	}
 }
 
+// validateJWTToken validates and parses a JWT token
+func validateJWTToken(tokenString, secret string) (*JWTClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Validate the signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
+		// Additional validation can be added here (expiration, issuer, etc.)
+		return claims, nil
+	}
+
+	return nil, fmt.Errorf("invalid token claims")
+}
+
+// storeConnection stores connection information in DynamoDB
+func storeConnection(ctx context.Context, connectionID, userID, username, role string) error {
+	if connectionStore == nil {
+		// In production, initialize with actual DynamoDB connection store
+		return fmt.Errorf("connection store not configured")
+	}
+
+	conn := &WebSocketConnection{
+		ConnectionID: connectionID,
+		UserID:       userID,
+		Username:     username,
+		Role:         role,
+		ConnectedAt:  time.Now(),
+		LastSeen:     time.Now(),
+	}
+
+	return connectionStore.StoreConnection(ctx, conn)
+}
+
+// removeConnection removes connection information from DynamoDB
+func removeConnection(ctx context.Context, connectionID string) error {
+	if connectionStore == nil {
+		return fmt.Errorf("connection store not configured")
+	}
+
+	return connectionStore.RemoveConnection(ctx, connectionID)
+}
+
+// getActiveConnections retrieves all active connections from DynamoDB
+func getActiveConnections(ctx context.Context) ([]*WebSocketConnection, error) {
+	if connectionStore == nil {
+		return nil, fmt.Errorf("connection store not configured")
+	}
+
+	return connectionStore.GetActiveConnections(ctx)
+}
+
 func main() {
 	app := lift.New()
+
+	// Initialize connection store (in production, use actual DynamoDB implementation)
+	// connectionStore = lift.NewDynamoDBConnectionStore(context.Background(), lift.DynamoDBConnectionStoreConfig{
+	//     TableName: "websocket-connections",
+	//     Region:    "us-east-1",
+	// })
 
 	// Add logging middleware
 	app.Use(func(next lift.Handler) lift.Handler {
@@ -71,8 +160,8 @@ func main() {
 		})
 	})
 
-	// Add WebSocket JWT middleware
-	app.Use(WebSocketJWTMiddleware())
+	// Add WebSocket JWT middleware with secret (in production, load from environment)
+	app.Use(WebSocketJWTMiddleware("your-jwt-secret-key"))
 
 	// Handle WebSocket $connect events
 	app.Handle("CONNECT", "/connect", handleConnect)
@@ -115,26 +204,13 @@ func handleConnect(ctx *lift.Context) error {
 		})
 	}
 
-	// TODO: Store connection info in DynamoDB for tracking active connections
-	// Example:
-	// err = storeConnection(wsCtx.ConnectionID(), claims.UserID, claims.Username)
-	// if err != nil {
-	//     return ctx.Status(500).JSON(map[string]string{"error": "Failed to store connection"})
-	// }
-
-	// Send welcome message
-	welcomeMsg := map[string]interface{}{
-		"type":    "welcome",
-		"message": fmt.Sprintf("Welcome %s! You are now connected.", claims.Username),
-		"userId":  claims.UserID,
-	}
-
-	if err := wsCtx.SendJSONMessage(welcomeMsg); err != nil {
-		// Note: $connect can't send messages back through the response
-		// This would need to be sent after connection is established
-		ctx.Logger.Error("Failed to send welcome message", map[string]interface{}{
+	// Store connection info in DynamoDB for tracking active connections
+	err = storeConnection(ctx.Context, wsCtx.ConnectionID(), claims.UserID, claims.Username, claims.Role)
+	if err != nil {
+		ctx.Logger.Error("Failed to store connection", map[string]interface{}{
 			"error": err.Error(),
 		})
+		// Continue anyway - don't fail connection for storage issues
 	}
 
 	// Return success response
@@ -157,14 +233,14 @@ func handleDisconnect(ctx *lift.Context) error {
 		})
 	}
 
-	// TODO: Remove connection from DynamoDB
-	// Example:
-	// err = removeConnection(wsCtx.ConnectionID())
-	// if err != nil {
-	//     ctx.Logger.Error("Failed to remove connection", map[string]interface{}{
-	//         "error": err.Error(),
-	//     })
-	// }
+	// Remove connection from DynamoDB
+	err = removeConnection(ctx.Context, wsCtx.ConnectionID())
+	if err != nil {
+		ctx.Logger.Error("Failed to remove connection", map[string]interface{}{
+			"error": err.Error(),
+		})
+		// Continue anyway - connection cleanup is best effort
+	}
 
 	// No response needed for disconnect
 	return ctx.Status(200).JSON(map[string]string{
@@ -215,27 +291,63 @@ func handleBroadcast(ctx *lift.Context) error {
 		})
 	}
 
-	// TODO: Get all active connections from DynamoDB
-	// Example:
-	// connections, err := getActiveConnections()
-	// if err != nil {
-	//     return wsCtx.SendJSONMessage(map[string]string{
-	//         "error": "Failed to get connections",
-	//     })
-	// }
+	// Get all active connections from DynamoDB
+	connections, err := getActiveConnections(ctx.Context)
+	if err != nil {
+		return wsCtx.SendJSONMessage(map[string]string{
+			"error":   "Failed to get active connections",
+			"details": err.Error(),
+		})
+	}
 
-	// For demo, we'll just send back to the sender
+	// Extract connection IDs for broadcasting
+	var connectionIDs []string
+	for _, conn := range connections {
+		// Don't send back to the sender
+		if conn.ConnectionID != wsCtx.ConnectionID() {
+			connectionIDs = append(connectionIDs, conn.ConnectionID)
+		}
+	}
+
+	if len(connectionIDs) == 0 {
+		return wsCtx.SendJSONMessage(map[string]string{
+			"message": "No other active connections to broadcast to",
+		})
+	}
+
+	// Create broadcast message
 	broadcastMsg := map[string]interface{}{
 		"type":    "broadcast",
 		"from":    wsCtx.ConnectionID(),
 		"message": request.Message,
+		"time":    time.Now().Format(time.RFC3339),
 	}
 
-	// In a real implementation, you would:
-	// connectionIDs := extractConnectionIDs(connections)
-	// err = wsCtx.BroadcastMessage(connectionIDs, broadcastData)
+	broadcastData, err := json.Marshal(broadcastMsg)
+	if err != nil {
+		return wsCtx.SendJSONMessage(map[string]string{
+			"error": "Failed to encode broadcast message",
+		})
+	}
 
-	return wsCtx.SendJSONMessage(broadcastMsg)
+	// Broadcast to all active connections
+	err = wsCtx.BroadcastMessage(connectionIDs, broadcastData)
+	if err != nil {
+		ctx.Logger.Error("Broadcast failed", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return wsCtx.SendJSONMessage(map[string]string{
+			"error":   "Failed to broadcast message",
+			"details": err.Error(),
+		})
+	}
+
+	// Send confirmation back to sender
+	return wsCtx.SendJSONMessage(map[string]interface{}{
+		"type":       "broadcast_sent",
+		"message":    fmt.Sprintf("Message broadcasted to %d connections", len(connectionIDs)),
+		"recipients": len(connectionIDs),
+	})
 }
 
 // handlePing responds to ping messages

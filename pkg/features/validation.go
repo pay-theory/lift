@@ -132,6 +132,7 @@ func (vm *ValidationMiddleware) validateRequest(ctx *lift.Context) error {
 }
 
 func (vm *ValidationMiddleware) validateResponse(ctx *lift.Context) error {
+	_ = ctx // TODO: Implement response validation using ctx
 	// This would need to capture the response data
 	// For now, we'll skip response validation
 	return nil

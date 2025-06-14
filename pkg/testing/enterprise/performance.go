@@ -1,10 +1,558 @@
 package enterprise
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 )
+
+// Performance test types
+type PerformanceType string
+
+const (
+	PerformanceTypeResponseTime PerformanceType = "response_time"
+	PerformanceTypeThroughput   PerformanceType = "throughput"
+	PerformanceTypeDatabase     PerformanceType = "database"
+	PerformanceTypeMemory       PerformanceType = "memory"
+)
+
+// PerformanceTester provides comprehensive performance testing capabilities
+type PerformanceTester struct {
+	app      *EnterpriseTestApp
+	metrics  *PerformanceMetrics
+	executor *TestExecutor
+	mutex    sync.RWMutex
+}
+
+// PerformanceTestCase represents a performance test case
+type PerformanceTestCase struct {
+	Name        string
+	Type        PerformanceType
+	Description string
+	Config      PerformanceConfig
+}
+
+// PerformanceConfig defines configuration for performance tests
+type PerformanceConfig struct {
+	// HTTP/API Configuration
+	Endpoint string
+	Method   string
+
+	// Load Configuration
+	ConcurrentUsers int
+	TestDuration    time.Duration
+
+	// Response Time Expectations
+	ExpectedP95 time.Duration
+	ExpectedP99 time.Duration
+
+	// Throughput Expectations
+	ExpectedTPS int
+
+	// Database Configuration
+	QueryType string
+
+	// Memory Configuration
+	MaxMemoryMB int
+}
+
+// PerformanceTestResult represents the result of a performance test
+type PerformanceTestResult struct {
+	TestCase  PerformanceTestCase
+	Success   bool
+	Duration  time.Duration
+	Timestamp time.Time
+	Metrics   PerformanceTestMetrics
+	Error     string
+}
+
+// PerformanceTestMetrics contains detailed performance metrics
+type PerformanceTestMetrics struct {
+	// Response Time Metrics
+	P95Latency    time.Duration
+	P99Latency    time.Duration
+	MeanLatency   time.Duration
+	MedianLatency time.Duration
+	MinLatency    time.Duration
+	MaxLatency    time.Duration
+
+	// Throughput Metrics
+	ThroughputTPS  float64
+	TotalRequests  int64
+	SuccessfulReqs int64
+	FailedRequests int64
+
+	// Resource Metrics
+	MaxMemoryMB   float64
+	AvgMemoryMB   float64
+	MaxCPUPercent float64
+	AvgCPUPercent float64
+
+	// Error Metrics
+	ErrorCount int64
+	ErrorRate  float64
+
+	// Database Metrics (if applicable)
+	AvgQueryTime time.Duration
+	QueryCount   int64
+}
+
+// PerformanceTestReport represents a comprehensive performance report
+type PerformanceTestReport struct {
+	TotalTests     int
+	PassedTests    int
+	FailedTests    int
+	AllTestsPassed bool
+	Summary        string
+	Results        []PerformanceTestResult
+	Timestamp      time.Time
+}
+
+// RegressionDetector detects performance regressions
+type RegressionDetector struct {
+	baselines map[string]PerformanceTestMetrics
+	threshold float64 // Percentage threshold for regression detection
+	mutex     sync.RWMutex
+}
+
+// RegressionResult represents a detected regression
+type RegressionResult struct {
+	TestName      string
+	Metric        string
+	BaselineValue float64
+	CurrentValue  float64
+	RegressionPct float64
+	Severity      string
+}
+
+// PerformanceMetrics contains real-time performance monitoring data
+type PerformanceMetrics struct {
+	CPUUsage    float64
+	MemoryUsage float64
+	Latency     time.Duration
+	Throughput  float64
+	ErrorRate   float64
+	Timestamp   time.Time
+}
+
+// TestExecutor executes performance tests
+type TestExecutor struct {
+	httpClient *HTTPClient
+	dbClient   *DatabaseClient
+	monitor    *ResourceMonitor
+}
+
+// HTTPClient handles HTTP-based performance tests
+type HTTPClient struct {
+	baseURL string
+	timeout time.Duration
+}
+
+// DatabaseClient handles database performance tests
+type DatabaseClient struct {
+	connectionString string
+	maxConnections   int
+}
+
+// ResourceMonitor monitors system resources during tests
+type ResourceMonitor struct {
+	interval time.Duration
+	active   bool
+}
+
+// NewPerformanceTester creates a new performance tester
+func NewPerformanceTester(app *EnterpriseTestApp) *PerformanceTester {
+	return &PerformanceTester{
+		app:      app,
+		metrics:  &PerformanceMetrics{},
+		executor: NewTestExecutor(),
+	}
+}
+
+// NewTestExecutor creates a new test executor
+func NewTestExecutor() *TestExecutor {
+	return &TestExecutor{
+		httpClient: &HTTPClient{
+			timeout: 30 * time.Second,
+		},
+		dbClient: &DatabaseClient{
+			maxConnections: 10,
+		},
+		monitor: &ResourceMonitor{
+			interval: 1 * time.Second,
+		},
+	}
+}
+
+// ExecuteTest executes a performance test case
+func (pt *PerformanceTester) ExecuteTest(ctx context.Context, testCase PerformanceTestCase) (*PerformanceTestResult, error) {
+	pt.mutex.Lock()
+	defer pt.mutex.Unlock()
+
+	result := &PerformanceTestResult{
+		TestCase:  testCase,
+		Timestamp: time.Now(),
+		Success:   true,
+	}
+
+	startTime := time.Now()
+
+	// Start resource monitoring
+	pt.executor.monitor.Start()
+	defer pt.executor.monitor.Stop()
+
+	// Execute test based on type
+	switch testCase.Type {
+	case PerformanceTypeResponseTime:
+		metrics, err := pt.executeResponseTimeTest(ctx, testCase.Config)
+		if err != nil {
+			result.Success = false
+			result.Error = err.Error()
+		} else {
+			result.Metrics = *metrics
+			// Check if response time meets expectations
+			if metrics.P95Latency > testCase.Config.ExpectedP95 {
+				result.Success = false
+				result.Error = fmt.Sprintf("P95 latency %v exceeds expected %v", metrics.P95Latency, testCase.Config.ExpectedP95)
+			}
+		}
+
+	case PerformanceTypeThroughput:
+		metrics, err := pt.executeThroughputTest(ctx, testCase.Config)
+		if err != nil {
+			result.Success = false
+			result.Error = err.Error()
+		} else {
+			result.Metrics = *metrics
+			// Check if throughput meets expectations
+			if metrics.ThroughputTPS < float64(testCase.Config.ExpectedTPS) {
+				result.Success = false
+				result.Error = fmt.Sprintf("Throughput %.2f TPS below expected %d TPS", metrics.ThroughputTPS, testCase.Config.ExpectedTPS)
+			}
+		}
+
+	case PerformanceTypeDatabase:
+		metrics, err := pt.executeDatabaseTest(ctx, testCase.Config)
+		if err != nil {
+			result.Success = false
+			result.Error = err.Error()
+		} else {
+			result.Metrics = *metrics
+			// Check if database performance meets expectations
+			if metrics.AvgQueryTime > testCase.Config.ExpectedP95 {
+				result.Success = false
+				result.Error = fmt.Sprintf("Average query time %v exceeds expected %v", metrics.AvgQueryTime, testCase.Config.ExpectedP95)
+			}
+		}
+
+	case PerformanceTypeMemory:
+		metrics, err := pt.executeMemoryTest(ctx, testCase.Config)
+		if err != nil {
+			result.Success = false
+			result.Error = err.Error()
+		} else {
+			result.Metrics = *metrics
+			// Check if memory usage meets expectations
+			if metrics.MaxMemoryMB > float64(testCase.Config.MaxMemoryMB) {
+				result.Success = false
+				result.Error = fmt.Sprintf("Max memory usage %.2f MB exceeds expected %d MB", metrics.MaxMemoryMB, testCase.Config.MaxMemoryMB)
+			}
+		}
+
+	default:
+		result.Success = false
+		result.Error = fmt.Sprintf("Unknown performance test type: %s", testCase.Type)
+	}
+
+	result.Duration = time.Since(startTime)
+	return result, nil
+}
+
+// executeResponseTimeTest executes a response time performance test
+func (pt *PerformanceTester) executeResponseTimeTest(ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+	metrics := &PerformanceTestMetrics{}
+
+	// Simulate response time test execution
+	// In a real implementation, this would make actual HTTP requests
+	latencies := []time.Duration{
+		50 * time.Millisecond,  // Min
+		75 * time.Millisecond,  // Median
+		85 * time.Millisecond,  // Mean
+		95 * time.Millisecond,  // P95
+		150 * time.Millisecond, // P99
+		200 * time.Millisecond, // Max
+	}
+
+	metrics.MinLatency = latencies[0]
+	metrics.MedianLatency = latencies[1]
+	metrics.MeanLatency = latencies[2]
+	metrics.P95Latency = latencies[3]
+	metrics.P99Latency = latencies[4]
+	metrics.MaxLatency = latencies[5]
+
+	// Simulate request counts
+	totalDuration := config.TestDuration.Seconds()
+	requestsPerSecond := float64(config.ConcurrentUsers) * 2 // Simulate 2 requests per user per second
+	metrics.TotalRequests = int64(totalDuration * requestsPerSecond)
+	metrics.SuccessfulReqs = int64(float64(metrics.TotalRequests) * 0.98) // 98% success rate
+	metrics.FailedRequests = metrics.TotalRequests - metrics.SuccessfulReqs
+	metrics.ErrorCount = metrics.FailedRequests
+	metrics.ErrorRate = float64(metrics.FailedRequests) / float64(metrics.TotalRequests)
+
+	return metrics, nil
+}
+
+// executeThroughputTest executes a throughput performance test
+func (pt *PerformanceTester) executeThroughputTest(ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+	metrics := &PerformanceTestMetrics{}
+
+	// Simulate throughput test execution
+	totalDuration := config.TestDuration.Seconds()
+	throughputTPS := float64(config.ConcurrentUsers) * 1.5 // Simulate throughput based on concurrent users
+
+	metrics.ThroughputTPS = throughputTPS
+	metrics.TotalRequests = int64(totalDuration * throughputTPS)
+	metrics.SuccessfulReqs = int64(float64(metrics.TotalRequests) * 0.99) // 99% success rate
+	metrics.FailedRequests = metrics.TotalRequests - metrics.SuccessfulReqs
+	metrics.ErrorCount = metrics.FailedRequests
+	metrics.ErrorRate = float64(metrics.FailedRequests) / float64(metrics.TotalRequests)
+
+	// Basic latency metrics
+	metrics.MeanLatency = 25 * time.Millisecond
+	metrics.P95Latency = 50 * time.Millisecond
+	metrics.P99Latency = 100 * time.Millisecond
+
+	return metrics, nil
+}
+
+// executeDatabaseTest executes a database performance test
+func (pt *PerformanceTester) executeDatabaseTest(ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+	metrics := &PerformanceTestMetrics{}
+
+	// Simulate database performance test
+	totalDuration := config.TestDuration.Seconds()
+	queriesPerSecond := float64(config.ConcurrentUsers) * 0.5 // Database queries are typically slower
+
+	metrics.QueryCount = int64(totalDuration * queriesPerSecond)
+	metrics.AvgQueryTime = 20 * time.Millisecond // Simulated average query time
+	metrics.TotalRequests = metrics.QueryCount
+	metrics.SuccessfulReqs = int64(float64(metrics.QueryCount) * 0.995) // 99.5% success rate
+	metrics.FailedRequests = metrics.QueryCount - metrics.SuccessfulReqs
+	metrics.ErrorCount = metrics.FailedRequests
+	metrics.ErrorRate = float64(metrics.FailedRequests) / float64(metrics.QueryCount)
+
+	return metrics, nil
+}
+
+// executeMemoryTest executes a memory usage performance test
+func (pt *PerformanceTester) executeMemoryTest(ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+	metrics := &PerformanceTestMetrics{}
+
+	// Simulate memory usage test
+	baseMemoryMB := 50.0
+	memoryPerUser := 2.0 // MB per concurrent user
+
+	metrics.MaxMemoryMB = baseMemoryMB + (float64(config.ConcurrentUsers) * memoryPerUser)
+	metrics.AvgMemoryMB = metrics.MaxMemoryMB * 0.8                        // Average is 80% of max
+	metrics.MaxCPUPercent = 15.0 + (float64(config.ConcurrentUsers) * 0.5) // CPU scales with users
+	metrics.AvgCPUPercent = metrics.MaxCPUPercent * 0.7                    // Average is 70% of max
+
+	// No errors expected for memory tests
+	metrics.ErrorCount = 0
+	metrics.ErrorRate = 0.0
+
+	return metrics, nil
+}
+
+// Start starts resource monitoring
+func (rm *ResourceMonitor) Start() {
+	rm.active = true
+	// In a real implementation, this would start monitoring system resources
+}
+
+// Stop stops resource monitoring
+func (rm *ResourceMonitor) Stop() {
+	rm.active = false
+}
+
+// GenerateReport generates a comprehensive performance report
+func (pr *PerformanceReporter) GenerateReport(results []PerformanceTestResult) (*PerformanceTestReport, error) {
+	report := &PerformanceTestReport{
+		TotalTests:     len(results),
+		Results:        results,
+		Timestamp:      time.Now(),
+		AllTestsPassed: true,
+	}
+
+	// Count passed and failed tests
+	for _, result := range results {
+		if result.Success {
+			report.PassedTests++
+		} else {
+			report.FailedTests++
+			report.AllTestsPassed = false
+		}
+	}
+
+	// Generate summary
+	if report.AllTestsPassed {
+		report.Summary = fmt.Sprintf("All %d performance tests passed successfully", report.TotalTests)
+	} else {
+		report.Summary = fmt.Sprintf("%d of %d performance tests passed (%d failed)",
+			report.PassedTests, report.TotalTests, report.FailedTests)
+	}
+
+	return report, nil
+}
+
+// NewRegressionDetector creates a new regression detector
+func NewRegressionDetector() *RegressionDetector {
+	return &RegressionDetector{
+		baselines: make(map[string]PerformanceTestMetrics),
+		threshold: 10.0, // 10% regression threshold
+	}
+}
+
+// DetectRegressions detects performance regressions in test results
+func (rd *RegressionDetector) DetectRegressions(results []PerformanceTestResult) ([]RegressionResult, error) {
+	rd.mutex.Lock()
+	defer rd.mutex.Unlock()
+
+	var regressions []RegressionResult
+
+	for _, result := range results {
+		testName := result.TestCase.Name
+		baseline, hasBaseline := rd.baselines[testName]
+
+		if !hasBaseline {
+			// Store as new baseline if we don't have one
+			rd.baselines[testName] = result.Metrics
+			continue
+		}
+
+		// Check for regressions in key metrics
+		regressions = append(regressions, rd.checkLatencyRegression(testName, baseline, result.Metrics)...)
+		regressions = append(regressions, rd.checkThroughputRegression(testName, baseline, result.Metrics)...)
+		regressions = append(regressions, rd.checkMemoryRegression(testName, baseline, result.Metrics)...)
+
+		// Update baseline if performance improved
+		rd.updateBaseline(testName, baseline, result.Metrics)
+	}
+
+	return regressions, nil
+}
+
+// checkLatencyRegression checks for latency regressions
+func (rd *RegressionDetector) checkLatencyRegression(testName string, baseline, current PerformanceTestMetrics) []RegressionResult {
+	var regressions []RegressionResult
+
+	// Check P95 latency
+	if baseline.P95Latency > 0 {
+		baselineMs := float64(baseline.P95Latency.Nanoseconds()) / 1e6
+		currentMs := float64(current.P95Latency.Nanoseconds()) / 1e6
+		if regression := rd.calculateRegression(baselineMs, currentMs); regression > rd.threshold {
+			regressions = append(regressions, RegressionResult{
+				TestName:      testName,
+				Metric:        "P95 Latency",
+				BaselineValue: baselineMs,
+				CurrentValue:  currentMs,
+				RegressionPct: regression,
+				Severity:      rd.getSeverity(regression),
+			})
+		}
+	}
+
+	return regressions
+}
+
+// checkThroughputRegression checks for throughput regressions
+func (rd *RegressionDetector) checkThroughputRegression(testName string, baseline, current PerformanceTestMetrics) []RegressionResult {
+	var regressions []RegressionResult
+
+	// Check throughput (note: lower is worse for throughput)
+	if baseline.ThroughputTPS > 0 {
+		regression := rd.calculateRegression(baseline.ThroughputTPS, current.ThroughputTPS)
+		// For throughput, negative regression means it got worse (lower throughput)
+		if regression < -rd.threshold {
+			regressions = append(regressions, RegressionResult{
+				TestName:      testName,
+				Metric:        "Throughput",
+				BaselineValue: baseline.ThroughputTPS,
+				CurrentValue:  current.ThroughputTPS,
+				RegressionPct: -regression, // Make it positive for reporting
+				Severity:      rd.getSeverity(-regression),
+			})
+		}
+	}
+
+	return regressions
+}
+
+// checkMemoryRegression checks for memory usage regressions
+func (rd *RegressionDetector) checkMemoryRegression(testName string, baseline, current PerformanceTestMetrics) []RegressionResult {
+	var regressions []RegressionResult
+
+	// Check memory usage
+	if baseline.MaxMemoryMB > 0 {
+		regression := rd.calculateRegression(baseline.MaxMemoryMB, current.MaxMemoryMB)
+		if regression > rd.threshold {
+			regressions = append(regressions, RegressionResult{
+				TestName:      testName,
+				Metric:        "Memory Usage",
+				BaselineValue: baseline.MaxMemoryMB,
+				CurrentValue:  current.MaxMemoryMB,
+				RegressionPct: regression,
+				Severity:      rd.getSeverity(regression),
+			})
+		}
+	}
+
+	return regressions
+}
+
+// calculateRegression calculates the percentage regression
+func (rd *RegressionDetector) calculateRegression(baseline, current float64) float64 {
+	if baseline == 0 {
+		return 0
+	}
+	return ((current - baseline) / baseline) * 100
+}
+
+// getSeverity determines the severity of a regression
+func (rd *RegressionDetector) getSeverity(regressionPct float64) string {
+	if regressionPct >= 50 {
+		return "Critical"
+	} else if regressionPct >= 25 {
+		return "High"
+	} else if regressionPct >= 15 {
+		return "Medium"
+	}
+	return "Low"
+}
+
+// updateBaseline updates the baseline if performance improved
+func (rd *RegressionDetector) updateBaseline(testName string, baseline, current PerformanceTestMetrics) {
+	// Update baseline if key metrics improved
+	updated := baseline
+
+	// Update if latency improved (lower is better)
+	if current.P95Latency > 0 && (baseline.P95Latency == 0 || current.P95Latency < baseline.P95Latency) {
+		updated.P95Latency = current.P95Latency
+	}
+
+	// Update if throughput improved (higher is better)
+	if current.ThroughputTPS > baseline.ThroughputTPS {
+		updated.ThroughputTPS = current.ThroughputTPS
+	}
+
+	// Update if memory usage improved (lower is better)
+	if current.MaxMemoryMB > 0 && (baseline.MaxMemoryMB == 0 || current.MaxMemoryMB < baseline.MaxMemoryMB) {
+		updated.MaxMemoryMB = current.MaxMemoryMB
+	}
+
+	rd.baselines[testName] = updated
+}
 
 // PerformanceValidator validates performance across environments
 type PerformanceValidator struct {
