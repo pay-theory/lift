@@ -3,12 +3,20 @@ package middleware
 import (
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
 	"github.com/pay-theory/lift/pkg/observability/xray"
 )
+
+// Global tracing statistics
+var tracingStats struct {
+	tracesGenerated int64
+	lastTrace       int64
+	errorCount      int64
+}
 
 // EnhancedObservabilityConfig holds configuration for the complete observability stack
 type EnhancedObservabilityConfig struct {
@@ -276,6 +284,9 @@ func EnhancedObservabilityMiddleware(config EnhancedObservabilityConfig) lift.Mi
 
 			// Enhanced tracing
 			if config.EnableTracing {
+				// Record that we generated a trace
+				recordTraceGenerated()
+
 				// Add timing information
 				xray.AddMetadata(ctx.Context, "timing", "duration_ms", duration.Milliseconds())
 				xray.AddMetadata(ctx.Context, "timing", "start_time", start.Format(time.RFC3339Nano))
@@ -287,6 +298,7 @@ func EnhancedObservabilityMiddleware(config EnhancedObservabilityConfig) lift.Mi
 
 				// Add error information
 				if err != nil {
+					recordTraceError()
 					xray.SetError(ctx.Context, err)
 					xray.AddAnnotation(ctx.Context, "error", "true")
 					xray.AddMetadata(ctx.Context, "error", "type", fmt.Sprintf("%T", err))
@@ -328,15 +340,25 @@ func GetObservabilityStats(config EnhancedObservabilityConfig) ObservabilityStat
 		stats.Metrics = &metricsStats
 	}
 
-	// Note: X-Ray doesn't provide built-in stats, so we'd need to track these separately
-	// This is a placeholder for future implementation
+	// Get actual tracing statistics
 	stats.Tracing = &TracingStats{
-		TracesGenerated: 0,
-		LastTrace:       time.Now(),
-		ErrorCount:      0,
+		TracesGenerated: atomic.LoadInt64(&tracingStats.tracesGenerated),
+		LastTrace:       time.Unix(atomic.LoadInt64(&tracingStats.lastTrace), 0),
+		ErrorCount:      atomic.LoadInt64(&tracingStats.errorCount),
 	}
 
 	return stats
+}
+
+// recordTraceGenerated increments the trace counter
+func recordTraceGenerated() {
+	atomic.AddInt64(&tracingStats.tracesGenerated, 1)
+	atomic.StoreInt64(&tracingStats.lastTrace, time.Now().Unix())
+}
+
+// recordTraceError increments the error counter
+func recordTraceError() {
+	atomic.AddInt64(&tracingStats.errorCount, 1)
 }
 
 // HealthCheckObservability creates a health check for the observability stack

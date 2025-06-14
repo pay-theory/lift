@@ -113,6 +113,13 @@ func (s *DynamoDBConnectionStore) Save(ctx context.Context, conn *Connection) er
 		return fmt.Errorf("failed to save connection: %w", err)
 	}
 
+	// Atomically increment the connection counter
+	if err := s.incrementConnectionCounter(ctx); err != nil {
+		// Log the error but don't fail the connection save
+		// The counter is for monitoring, not critical functionality
+		fmt.Printf("Warning: failed to increment connection counter: %v\n", err)
+	}
+
 	return nil
 }
 
@@ -170,6 +177,13 @@ func (s *DynamoDBConnectionStore) Delete(ctx context.Context, connectionID strin
 	})
 	if err != nil {
 		return fmt.Errorf("failed to delete connection: %w", err)
+	}
+
+	// Atomically decrement the connection counter
+	if err := s.decrementConnectionCounter(ctx); err != nil {
+		// Log the error but don't fail the connection deletion
+		// The counter is for monitoring, not critical functionality
+		fmt.Printf("Warning: failed to decrement connection counter: %v\n", err)
 	}
 
 	return nil
@@ -253,11 +267,46 @@ func (s *DynamoDBConnectionStore) ListByTenant(ctx context.Context, tenantID str
 	return connections, nil
 }
 
-// CountActive returns the number of active connections (optional method)
+// CountActive returns the number of active connections using efficient counter pattern
 func (s *DynamoDBConnectionStore) CountActive(ctx context.Context) (int64, error) {
-	// This would require a scan, which is expensive
-	// Consider maintaining a counter in a separate item if needed
-	return 0, fmt.Errorf("count not implemented - use CloudWatch metrics instead")
+	// Use DynamoDB counter item for efficient connection counting
+	counterKey := "CONNECTION_COUNTER"
+
+	// Get the counter item
+	result, err := s.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(s.tableName),
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: counterKey},
+			"sk": &types.AttributeValueMemberS{Value: "COUNTER"},
+		},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to get connection counter: %w", err)
+	}
+
+	// If counter doesn't exist, return 0
+	if result.Item == nil {
+		return 0, nil
+	}
+
+	// Extract the count value
+	if countAttr, exists := result.Item["count"]; exists {
+		if countNum, ok := countAttr.(*types.AttributeValueMemberN); ok {
+			count := int64(0)
+			if _, err := fmt.Sscanf(countNum.Value, "%d", &count); err != nil {
+				return 0, fmt.Errorf("failed to parse connection count: %w", err)
+			}
+
+			// Ensure count is never negative
+			if count < 0 {
+				count = 0
+			}
+
+			return count, nil
+		}
+	}
+
+	return 0, fmt.Errorf("invalid counter format in DynamoDB")
 }
 
 // CreateTable creates the DynamoDB table with proper indexes
@@ -372,6 +421,44 @@ func (s *DynamoDBConnectionStore) CreateTable(ctx context.Context) error {
 	if err != nil {
 		// TTL update might fail if already enabled, ignore the error
 		fmt.Printf("Warning: failed to enable TTL: %v\n", err)
+	}
+
+	return nil
+}
+
+// incrementConnectionCounter atomically increments the connection counter
+func (s *DynamoDBConnectionStore) incrementConnectionCounter(ctx context.Context) error {
+	return s.updateConnectionCounter(ctx, 1)
+}
+
+// decrementConnectionCounter atomically decrements the connection counter
+func (s *DynamoDBConnectionStore) decrementConnectionCounter(ctx context.Context) error {
+	return s.updateConnectionCounter(ctx, -1)
+}
+
+// updateConnectionCounter atomically updates the connection counter by the specified delta
+func (s *DynamoDBConnectionStore) updateConnectionCounter(ctx context.Context, delta int64) error {
+	counterKey := "CONNECTION_COUNTER"
+
+	// Use atomic ADD operation to update the counter
+	_, err := s.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(s.tableName),
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: counterKey},
+			"sk": &types.AttributeValueMemberS{Value: "COUNTER"},
+		},
+		UpdateExpression: aws.String("ADD #count :delta"),
+		ExpressionAttributeNames: map[string]string{
+			"#count": "count",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":delta": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", delta)},
+		},
+		ReturnValues: types.ReturnValueNone,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to update connection counter: %w", err)
 	}
 
 	return nil

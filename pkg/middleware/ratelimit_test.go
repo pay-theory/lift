@@ -118,18 +118,8 @@ func TestRateLimitKeyFunctions(t *testing.T) {
 	})
 
 	t.Run("tenant rate limit key", func(t *testing.T) {
-		config := RateLimitConfig{
-			DefaultLimit: 100,
-			Window:       time.Minute,
-		}
 		middleware := TenantRateLimit(100, time.Minute)
 		assert.NotNil(t, middleware)
-
-		// Test key generation
-		key := config.KeyFunc
-		if key != nil {
-			// Key function would be tested with actual context
-		}
 	})
 
 	t.Run("user rate limit key", func(t *testing.T) {

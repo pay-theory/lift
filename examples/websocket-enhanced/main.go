@@ -59,6 +59,13 @@ func (s *DynamoDBConnectionStore) ListByTenant(ctx context.Context, tenantID str
 	return []*lift.Connection{}, nil
 }
 
+func (s *DynamoDBConnectionStore) CountActive(ctx context.Context) (int64, error) {
+	// Count active connections in DynamoDB
+	// In a real implementation, this would use a DynamoDB counter or query
+	log.Printf("Counting active connections")
+	return 0, nil // Return 0 for demo
+}
+
 func main() {
 	// Create app with WebSocket support
 	app := lift.New(lift.WithWebSocketSupport(lift.WebSocketOptions{

@@ -620,3 +620,5 @@ func (f *ContractTestingFramework) calculateInteractionStatus(checks map[string]
 	}
 	return "passed"
 }
+
+// Contract Testing Implementation leverages existing framework

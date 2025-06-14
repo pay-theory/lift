@@ -198,6 +198,14 @@ func (h *DefaultErrorHandler) logError(ctx context.Context, err error) {
 		"timestamp":  liftErr.Timestamp,
 	}
 
+	// Add additional context information if available
+	if userID := ctx.Value("user_id"); userID != nil {
+		logData["user_id"] = userID
+	}
+	if tenantID := ctx.Value("tenant_id"); tenantID != nil {
+		logData["tenant_id"] = tenantID
+	}
+
 	if liftErr.Cause != nil {
 		logData["cause"] = liftErr.Cause.Error()
 	}

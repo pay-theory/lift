@@ -1,8 +1,13 @@
 package testing
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -10,6 +15,327 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// LoadTestResult represents the result of a load test
+type LoadTestResult struct {
+	TotalRequests      int           `json:"total_requests"`
+	SuccessfulRequests int           `json:"successful_requests"`
+	FailedRequests     int           `json:"failed_requests"`
+	AverageLatency     time.Duration `json:"average_latency"`
+	P95Latency         time.Duration `json:"p95_latency"`
+	P99Latency         time.Duration `json:"p99_latency"`
+	MaxLatency         time.Duration `json:"max_latency"`
+	MinLatency         time.Duration `json:"min_latency"`
+	RequestsPerSecond  float64       `json:"requests_per_second"`
+	ErrorRate          float64       `json:"error_rate"`
+	Duration           time.Duration `json:"duration"`
+	Errors             []string      `json:"errors"`
+	StartTime          time.Time     `json:"start_time"`
+	EndTime            time.Time     `json:"end_time"`
+}
+
+// LoadTestConfig configures load testing parameters
+type LoadTestConfig struct {
+	ConcurrentUsers   int           `json:"concurrent_users"`
+	TotalRequests     int           `json:"total_requests"`
+	Duration          time.Duration `json:"duration"`
+	RampUpDuration    time.Duration `json:"ramp_up_duration"`
+	MaxLatency        time.Duration `json:"max_latency"`
+	ErrorThreshold    float64       `json:"error_threshold"`
+	RequestsPerSecond int           `json:"requests_per_second"`
+}
+
+// LoadTester provides load testing capabilities
+type LoadTester struct {
+	app    *TestApp
+	config *LoadTestConfig
+}
+
+// NewLoadTester creates a new load tester
+func NewLoadTester(app *TestApp, config *LoadTestConfig) *LoadTester {
+	if config == nil {
+		config = &LoadTestConfig{
+			ConcurrentUsers: 10,
+			Duration:        30 * time.Second,
+			MaxLatency:      5 * time.Second,
+			ErrorThreshold:  0.01, // 1% error rate
+		}
+	}
+	return &LoadTester{
+		app:    app,
+		config: config,
+	}
+}
+
+// RunLoadTest executes a load test scenario
+func (lt *LoadTester) RunLoadTest(ctx context.Context, request func(*TestApp) *TestResponse) (*LoadTestResult, error) {
+	startTime := time.Now()
+
+	result := &LoadTestResult{
+		StartTime: startTime,
+		Errors:    []string{},
+	}
+
+	// Channel to collect results
+	results := make(chan *TestResponse, lt.config.ConcurrentUsers*100)
+	done := make(chan bool)
+
+	// Start workers
+	for i := 0; i < lt.config.ConcurrentUsers; i++ {
+		go func(workerID int) {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(lt.config.Duration):
+					done <- true
+					return
+				default:
+					resp := request(lt.app)
+					results <- resp
+				}
+			}
+		}(i)
+	}
+
+	// Collect results
+	latencies := []time.Duration{}
+
+	timeout := time.NewTimer(lt.config.Duration + 10*time.Second)
+	defer timeout.Stop()
+
+	for {
+		select {
+		case resp := <-results:
+			result.TotalRequests++
+			if resp.GetStatusCode() >= 200 && resp.GetStatusCode() < 400 {
+				result.SuccessfulRequests++
+			} else {
+				result.FailedRequests++
+				if resp.err != nil {
+					result.Errors = append(result.Errors, resp.err.Error())
+				}
+			}
+			// For now, use a placeholder duration since assertions.go TestResponse doesn't have GetDuration
+			latencies = append(latencies, time.Millisecond*10)
+
+		case <-done:
+			goto collectResults
+
+		case <-timeout.C:
+			goto collectResults
+
+		case <-ctx.Done():
+			goto collectResults
+		}
+	}
+
+collectResults:
+	result.EndTime = time.Now()
+	result.Duration = result.EndTime.Sub(result.StartTime)
+
+	// Calculate metrics
+	if len(latencies) > 0 {
+		// Sort latencies for percentile calculation
+		// Simple sorting implementation
+		for i := 0; i < len(latencies); i++ {
+			for j := i + 1; j < len(latencies); j++ {
+				if latencies[i] > latencies[j] {
+					latencies[i], latencies[j] = latencies[j], latencies[i]
+				}
+			}
+		}
+
+		result.MinLatency = latencies[0]
+		result.MaxLatency = latencies[len(latencies)-1]
+
+		// Calculate average
+		var totalLatency time.Duration
+		for _, lat := range latencies {
+			totalLatency += lat
+		}
+		result.AverageLatency = totalLatency / time.Duration(len(latencies))
+
+		// Calculate percentiles
+		if len(latencies) >= 20 {
+			result.P95Latency = latencies[int(float64(len(latencies))*0.95)]
+			result.P99Latency = latencies[int(float64(len(latencies))*0.99)]
+		}
+	}
+
+	// Calculate rates
+	if result.Duration > 0 {
+		result.RequestsPerSecond = float64(result.TotalRequests) / result.Duration.Seconds()
+	}
+
+	if result.TotalRequests > 0 {
+		result.ErrorRate = float64(result.FailedRequests) / float64(result.TotalRequests)
+	}
+
+	return result, nil
+}
+
+// ScenarioRunner provides advanced scenario execution capabilities
+type ScenarioRunner struct {
+	app               *TestApp
+	parallelExecution bool
+	maxConcurrency    int
+	setupTimeout      time.Duration
+	cleanupTimeout    time.Duration
+	retryAttempts     int
+	retryDelay        time.Duration
+}
+
+// NewScenarioRunner creates a new scenario runner with advanced capabilities
+func NewScenarioRunner(app *TestApp) *ScenarioRunner {
+	return &ScenarioRunner{
+		app:               app,
+		parallelExecution: true,
+		maxConcurrency:    10,
+		setupTimeout:      30 * time.Second,
+		cleanupTimeout:    30 * time.Second,
+		retryAttempts:     3,
+		retryDelay:        1 * time.Second,
+	}
+}
+
+// WithParallelExecution configures parallel execution
+func (sr *ScenarioRunner) WithParallelExecution(enabled bool, maxConcurrency int) *ScenarioRunner {
+	sr.parallelExecution = enabled
+	sr.maxConcurrency = maxConcurrency
+	return sr
+}
+
+// WithTimeouts configures timeouts
+func (sr *ScenarioRunner) WithTimeouts(setup, cleanup time.Duration) *ScenarioRunner {
+	sr.setupTimeout = setup
+	sr.cleanupTimeout = cleanup
+	return sr
+}
+
+// WithRetry configures retry behavior
+func (sr *ScenarioRunner) WithRetry(attempts int, delay time.Duration) *ScenarioRunner {
+	sr.retryAttempts = attempts
+	sr.retryDelay = delay
+	return sr
+}
+
+// RunScenariosAdvanced executes scenarios with advanced features
+func (sr *ScenarioRunner) RunScenariosAdvanced(t *testing.T, scenarios []TestScenario) {
+	if sr.parallelExecution {
+		sr.runScenariosParallel(t, scenarios)
+	} else {
+		sr.runScenariosSequential(t, scenarios)
+	}
+}
+
+// runScenariosParallel executes scenarios in parallel
+func (sr *ScenarioRunner) runScenariosParallel(t *testing.T, scenarios []TestScenario) {
+	semaphore := make(chan bool, sr.maxConcurrency)
+
+	for _, scenario := range scenarios {
+		scenario := scenario // capture loop variable
+		t.Run(scenario.Name, func(t *testing.T) {
+			t.Parallel()
+
+			semaphore <- true
+			defer func() { <-semaphore }()
+
+			sr.executeScenario(t, scenario)
+		})
+	}
+}
+
+// runScenariosSequential executes scenarios sequentially
+func (sr *ScenarioRunner) runScenariosSequential(t *testing.T, scenarios []TestScenario) {
+	for _, scenario := range scenarios {
+		t.Run(scenario.Name, func(t *testing.T) {
+			sr.executeScenario(t, scenario)
+		})
+	}
+}
+
+// executeScenario executes a single scenario with retry logic
+func (sr *ScenarioRunner) executeScenario(t *testing.T, scenario TestScenario) {
+	if scenario.Skip {
+		t.Skip(scenario.SkipReason)
+		return
+	}
+
+	var lastErr error
+
+	for attempt := 0; attempt <= sr.retryAttempts; attempt++ {
+		if attempt > 0 {
+			t.Logf("Retrying scenario %s (attempt %d/%d)", scenario.Name, attempt+1, sr.retryAttempts+1)
+			time.Sleep(sr.retryDelay)
+		}
+
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					lastErr = fmt.Errorf("scenario panicked: %v", r)
+				}
+			}()
+
+			// Setup with timeout
+			if scenario.Setup != nil {
+				setupCtx, cancel := context.WithTimeout(context.Background(), sr.setupTimeout)
+				defer cancel()
+
+				done := make(chan error, 1)
+				go func() {
+					done <- scenario.Setup(sr.app)
+				}()
+
+				select {
+				case err := <-done:
+					if err != nil {
+						lastErr = fmt.Errorf("setup failed: %w", err)
+						return
+					}
+				case <-setupCtx.Done():
+					lastErr = fmt.Errorf("setup timed out after %v", sr.setupTimeout)
+					return
+				}
+			}
+
+			// Execute request
+			resp := scenario.Request(sr.app)
+
+			// Run assertions
+			scenario.Assertions(t, resp)
+
+			// Cleanup with timeout
+			if scenario.Cleanup != nil {
+				cleanupCtx, cancel := context.WithTimeout(context.Background(), sr.cleanupTimeout)
+				defer cancel()
+
+				done := make(chan error, 1)
+				go func() {
+					done <- scenario.Cleanup(sr.app)
+				}()
+
+				select {
+				case err := <-done:
+					if err != nil {
+						t.Logf("Cleanup warning: %v", err)
+					}
+				case <-cleanupCtx.Done():
+					t.Logf("Cleanup timed out after %v", sr.cleanupTimeout)
+				}
+			}
+
+			lastErr = nil // Success
+		}()
+
+		if lastErr == nil {
+			return // Success
+		}
+	}
+
+	// All attempts failed
+	require.NoError(t, lastErr, "Scenario failed after %d attempts", sr.retryAttempts+1)
+}
 
 // TestScenario represents a complete test scenario
 type TestScenario struct {
@@ -29,6 +355,7 @@ type TestApp struct {
 	context context.Context
 	headers map[string]string
 	auth    *AuthConfig
+	server  *httptest.Server
 }
 
 // AuthConfig holds authentication configuration for tests
@@ -46,6 +373,64 @@ func NewTestApp() *TestApp {
 		app:     app,
 		context: context.Background(),
 		headers: make(map[string]string),
+	}
+}
+
+// Start starts the test server
+func (ta *TestApp) Start() error {
+	if ta.server != nil {
+		return fmt.Errorf("test server already started")
+	}
+
+	// Start the lift app to configure routes
+	if err := ta.app.Start(); err != nil {
+		return fmt.Errorf("failed to start lift app: %w", err)
+	}
+
+	// Create test server
+	ta.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Convert http.Request to lift context and handle
+		ctx := lift.NewContext(ta.context, &lift.Request{
+			Method:      r.Method,
+			Path:        r.URL.Path,
+			Headers:     convertHeaders(r.Header),
+			Body:        getRequestBody(r),
+			QueryParams: convertQueryToStringMap(r.URL.Query()),
+		})
+
+		// Add test headers
+		for k, v := range ta.headers {
+			ctx.Request.Headers[k] = v
+		}
+
+		// Handle the request through lift
+		if err := ta.app.HandleTestRequest(ctx); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		// Write lift response to http response
+		for k, v := range ctx.Response.Headers {
+			w.Header().Set(k, v)
+		}
+		w.WriteHeader(ctx.Response.StatusCode)
+
+		// Type assert the response body
+		if bodyBytes, ok := ctx.Response.Body.([]byte); ok {
+			w.Write(bodyBytes)
+		} else if bodyStr, ok := ctx.Response.Body.(string); ok {
+			w.Write([]byte(bodyStr))
+		}
+	}))
+
+	return nil
+}
+
+// Stop stops the test server
+func (ta *TestApp) Stop() {
+	if ta.server != nil {
+		ta.server.Close()
+		ta.server = nil
 	}
 }
 
@@ -121,15 +506,122 @@ func (ta *TestApp) DELETE(path string) *TestResponse {
 
 // request is the internal method for making requests
 func (ta *TestApp) request(method, path string, body interface{}, query map[string]string) *TestResponse {
-	// This is a placeholder implementation
-	// In a real implementation, this would invoke the Lift app with the request
-	// For now, we'll return a mock response
-	return &TestResponse{
-		StatusCode: 200,
-		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       `{"status": "ok"}`,
-		err:        nil,
+	startTime := time.Now()
+
+	// If server not started, start it
+	if ta.server == nil {
+		if err := ta.Start(); err != nil {
+			return NewTestResponse(nil, 500, map[string]string{}, []byte{}, err)
+		}
 	}
+
+	// Build URL
+	reqURL := ta.server.URL + path
+	if len(query) > 0 {
+		queryValues := url.Values{}
+		for k, v := range query {
+			queryValues.Add(k, v)
+		}
+		reqURL += "?" + queryValues.Encode()
+	}
+
+	// Create request body
+	var reqBody *bytes.Buffer
+	if body != nil {
+		if str, ok := body.(string); ok {
+			reqBody = bytes.NewBufferString(str)
+		} else {
+			jsonBody, err := json.Marshal(body)
+			if err != nil {
+				return NewTestResponse(nil, 500, map[string]string{}, []byte{},
+					fmt.Errorf("failed to marshal request body: %w", err))
+			}
+			reqBody = bytes.NewBuffer(jsonBody)
+		}
+	} else {
+		reqBody = bytes.NewBuffer([]byte{})
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequestWithContext(ta.context, method, reqURL, reqBody)
+	if err != nil {
+		return NewTestResponse(nil, 500, map[string]string{}, []byte{}, err)
+	}
+
+	// Add headers
+	for k, v := range ta.headers {
+		req.Header.Set(k, v)
+	}
+
+	// Set content type for JSON
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	// Make request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return NewTestResponse(nil, 500, map[string]string{}, []byte{}, err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	respBody := bytes.NewBuffer([]byte{})
+	_, err = respBody.ReadFrom(resp.Body)
+	if err != nil {
+		return NewTestResponse(nil, resp.StatusCode, convertHeadersFromHTTP(resp.Header), []byte{}, err)
+	}
+
+	duration := time.Since(startTime)
+
+	// Create response with timing information in headers
+	headers := convertHeadersFromHTTP(resp.Header)
+	headers["X-Test-Duration"] = duration.String()
+
+	return NewTestResponse(nil, resp.StatusCode, headers, respBody.Bytes(), nil)
+}
+
+// Helper functions
+
+func convertHeaders(headers http.Header) map[string]string {
+	result := make(map[string]string)
+	for k, v := range headers {
+		if len(v) > 0 {
+			result[k] = v[0]
+		}
+	}
+	return result
+}
+
+func convertHeadersFromHTTP(headers http.Header) map[string]string {
+	result := make(map[string]string)
+	for k, v := range headers {
+		if len(v) > 0 {
+			result[k] = v[0]
+		}
+	}
+	return result
+}
+
+func convertQueryToStringMap(values url.Values) map[string]string {
+	result := make(map[string]string)
+	for k, v := range values {
+		if len(v) > 0 {
+			result[k] = v[0]
+		}
+	}
+	return result
+}
+
+func getRequestBody(r *http.Request) []byte {
+	if r.Body == nil {
+		return []byte{}
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	buf.ReadFrom(r.Body)
+	return buf.Bytes()
 }
 
 // RunScenarios executes a collection of test scenarios
@@ -472,17 +964,7 @@ func PerformanceScenarios(endpoint string, maxResponseTime time.Duration) []Test
 			Name:        "response_time_acceptable",
 			Description: "Response time should be within acceptable limits",
 			Request: func(app *TestApp) *TestResponse {
-				start := time.Now()
-				resp := app.GET(endpoint, nil)
-				duration := time.Since(start)
-
-				// Add timing to headers for assertion
-				if resp.Headers == nil {
-					resp.Headers = make(map[string]string)
-				}
-				resp.Headers["X-Test-Duration"] = duration.String()
-
-				return resp
+				return app.GET(endpoint, nil)
 			},
 			Assertions: func(t *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)

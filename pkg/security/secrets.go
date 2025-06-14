@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -331,13 +332,39 @@ type FileSecretsProvider struct {
 	basePath string
 	cache    map[string]string
 	mu       sync.RWMutex
+	// Rotation simulation
+	rotationHistory map[string][]RotationRecord
+	enableRotation  bool
+}
+
+// RotationRecord tracks rotation events for testing
+type RotationRecord struct {
+	Timestamp  time.Time `json:"timestamp"`
+	OldValue   string    `json:"old_value,omitempty"` // For testing only
+	NewValue   string    `json:"new_value,omitempty"` // For testing only
+	RotationID string    `json:"rotation_id"`
+	Method     string    `json:"method"`
+	Success    bool      `json:"success"`
+	Error      string    `json:"error,omitempty"`
 }
 
 // NewFileSecretsProvider creates a file-based secrets provider for development
 func NewFileSecretsProvider(basePath string) *FileSecretsProvider {
 	return &FileSecretsProvider{
-		basePath: basePath,
-		cache:    make(map[string]string),
+		basePath:        basePath,
+		cache:           make(map[string]string),
+		rotationHistory: make(map[string][]RotationRecord),
+		enableRotation:  true,
+	}
+}
+
+// NewFileSecretsProviderWithConfig creates a file-based secrets provider with configuration
+func NewFileSecretsProviderWithConfig(basePath string, enableRotation bool) *FileSecretsProvider {
+	return &FileSecretsProvider{
+		basePath:        basePath,
+		cache:           make(map[string]string),
+		rotationHistory: make(map[string][]RotationRecord),
+		enableRotation:  enableRotation,
 	}
 }
 
@@ -365,9 +392,161 @@ func (fsp *FileSecretsProvider) PutSecret(ctx context.Context, name string, valu
 	return nil
 }
 
-// RotateSecret is not implemented for file provider
+// RotateSecret implements rotation for file provider with simulation
 func (fsp *FileSecretsProvider) RotateSecret(ctx context.Context, name string) error {
-	return fmt.Errorf("rotation not supported by file provider")
+	if !fsp.enableRotation {
+		return fmt.Errorf("rotation not enabled for file provider")
+	}
+
+	fsp.mu.Lock()
+	defer fsp.mu.Unlock()
+
+	// Check if secret exists
+	oldValue, exists := fsp.cache[name]
+	if !exists {
+		record := RotationRecord{
+			Timestamp:  time.Now(),
+			RotationID: fmt.Sprintf("rot_%d", time.Now().UnixNano()),
+			Method:     "file_provider_simulation",
+			Success:    false,
+			Error:      "secret not found",
+		}
+		fsp.addRotationRecord(name, record)
+		return fmt.Errorf("secret %s not found", name)
+	}
+
+	// Simulate rotation by generating a new value
+	newValue := fsp.generateRotatedValue(oldValue, name)
+
+	// Update the secret with new value
+	fsp.cache[name] = newValue
+
+	// Record the rotation
+	record := RotationRecord{
+		Timestamp:  time.Now(),
+		OldValue:   oldValue, // Only for testing
+		NewValue:   newValue, // Only for testing
+		RotationID: fmt.Sprintf("rot_%d", time.Now().UnixNano()),
+		Method:     "file_provider_simulation",
+		Success:    true,
+	}
+	fsp.addRotationRecord(name, record)
+
+	return nil
+}
+
+// generateRotatedValue generates a new value for rotation simulation
+func (fsp *FileSecretsProvider) generateRotatedValue(oldValue, secretName string) string {
+	// For development, we'll use different strategies based on the secret type
+
+	// If it looks like a JWT token or API key, append a version
+	if strings.Contains(oldValue, ".") || len(oldValue) > 32 {
+		timestamp := time.Now().Unix()
+		return fmt.Sprintf("%s-rotated-%d", oldValue, timestamp)
+	}
+
+	// If it looks like a password, generate a new one
+	if len(oldValue) >= 8 && len(oldValue) <= 64 {
+		return fsp.generateSimulatedPassword()
+	}
+
+	// For other types, append rotation indicator
+	return fmt.Sprintf("%s-rotated-%d", oldValue, time.Now().Unix())
+}
+
+// generateSimulatedPassword generates a simulated password for testing
+func (fsp *FileSecretsProvider) generateSimulatedPassword() string {
+	// Generate a simple password for testing
+	timestamp := time.Now().Unix()
+	return fmt.Sprintf("TestPass%d!", timestamp)
+}
+
+// addRotationRecord adds a rotation record to history
+func (fsp *FileSecretsProvider) addRotationRecord(name string, record RotationRecord) {
+	if fsp.rotationHistory[name] == nil {
+		fsp.rotationHistory[name] = make([]RotationRecord, 0)
+	}
+
+	// Keep only last 10 rotation records per secret
+	history := fsp.rotationHistory[name]
+	if len(history) >= 10 {
+		history = history[1:] // Remove oldest
+	}
+
+	fsp.rotationHistory[name] = append(history, record)
+}
+
+// GetRotationHistory returns rotation history for a secret (testing/debugging)
+func (fsp *FileSecretsProvider) GetRotationHistory(name string) []RotationRecord {
+	fsp.mu.RLock()
+	defer fsp.mu.RUnlock()
+
+	history := fsp.rotationHistory[name]
+	if history == nil {
+		return []RotationRecord{}
+	}
+
+	// Return a copy to prevent external modification
+	result := make([]RotationRecord, len(history))
+	copy(result, history)
+	return result
+}
+
+// GetAllRotationHistory returns rotation history for all secrets (testing/debugging)
+func (fsp *FileSecretsProvider) GetAllRotationHistory() map[string][]RotationRecord {
+	fsp.mu.RLock()
+	defer fsp.mu.RUnlock()
+
+	result := make(map[string][]RotationRecord)
+	for name, history := range fsp.rotationHistory {
+		historyCopy := make([]RotationRecord, len(history))
+		copy(historyCopy, history)
+		result[name] = historyCopy
+	}
+
+	return result
+}
+
+// SimulateRotationFailure simulates a rotation failure for testing
+func (fsp *FileSecretsProvider) SimulateRotationFailure(ctx context.Context, name string, errorMessage string) error {
+	if !fsp.enableRotation {
+		return fmt.Errorf("rotation not enabled for file provider")
+	}
+
+	fsp.mu.Lock()
+	defer fsp.mu.Unlock()
+
+	record := RotationRecord{
+		Timestamp:  time.Now(),
+		RotationID: fmt.Sprintf("rot_fail_%d", time.Now().UnixNano()),
+		Method:     "file_provider_simulation_failure",
+		Success:    false,
+		Error:      errorMessage,
+	}
+	fsp.addRotationRecord(name, record)
+
+	return fmt.Errorf("simulated rotation failure: %s", errorMessage)
+}
+
+// SetRotationEnabled enables or disables rotation for testing
+func (fsp *FileSecretsProvider) SetRotationEnabled(enabled bool) {
+	fsp.mu.Lock()
+	defer fsp.mu.Unlock()
+	fsp.enableRotation = enabled
+}
+
+// IsRotationEnabled returns whether rotation is enabled
+func (fsp *FileSecretsProvider) IsRotationEnabled() bool {
+	fsp.mu.RLock()
+	defer fsp.mu.RUnlock()
+	return fsp.enableRotation
+}
+
+// ClearRotationHistory clears all rotation history (testing utility)
+func (fsp *FileSecretsProvider) ClearRotationHistory() {
+	fsp.mu.Lock()
+	defer fsp.mu.Unlock()
+	fsp.rotationHistory = make(map[string][]RotationRecord)
 }
 
 // DeleteSecret removes a secret from memory
@@ -376,6 +555,10 @@ func (fsp *FileSecretsProvider) DeleteSecret(ctx context.Context, name string) e
 	defer fsp.mu.Unlock()
 
 	delete(fsp.cache, name)
+
+	// Also clear rotation history for the deleted secret
+	delete(fsp.rotationHistory, name)
+
 	return nil
 }
 

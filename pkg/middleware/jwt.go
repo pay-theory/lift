@@ -153,9 +153,7 @@ func createExtractor(lookup string) func(*lift.Context) (string, error) {
 		}
 	case "cookie":
 		return func(ctx *lift.Context) (string, error) {
-			// Cookie extraction would go here
-			// For now, return error
-			return "", fmt.Errorf("cookie extraction not implemented")
+			return extractJWTFromCookie(ctx, parts[1])
 		}
 	default:
 		panic(fmt.Sprintf("unsupported token lookup: %s", parts[0]))
@@ -193,4 +191,127 @@ func WithJWTAuth(secret string) lift.Middleware {
 		Secret:    secret,
 		Algorithm: "HS256",
 	})
+}
+
+// extractJWTFromCookie extracts JWT token from HTTP cookies with security validation
+func extractJWTFromCookie(ctx *lift.Context, cookieName string) (string, error) {
+	// Parse cookies from the Cookie header
+	cookieHeader := ctx.Header("Cookie")
+	if cookieHeader == "" {
+		return "", fmt.Errorf("no cookies found in request")
+	}
+
+	// Parse individual cookies
+	cookies := parseCookies(cookieHeader)
+
+	// Find the JWT cookie
+	tokenCookie, exists := cookies[cookieName]
+	if !exists {
+		return "", fmt.Errorf("JWT cookie '%s' not found", cookieName)
+	}
+
+	// Validate the cookie token
+	if err := validateJWTCookie(tokenCookie); err != nil {
+		return "", fmt.Errorf("invalid JWT cookie: %w", err)
+	}
+
+	return tokenCookie.Value, nil
+}
+
+// CookieToken represents a parsed HTTP cookie
+type CookieToken struct {
+	Name     string
+	Value    string
+	HttpOnly bool
+	Secure   bool
+	SameSite string
+	Path     string
+	Domain   string
+	MaxAge   int
+}
+
+// parseCookies parses the Cookie header value into individual cookies
+func parseCookies(cookieHeader string) map[string]*CookieToken {
+	cookies := make(map[string]*CookieToken)
+
+	// Split by semicolon to get individual cookies
+	parts := strings.Split(cookieHeader, ";")
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		// Find the first equals sign to separate name from value
+		equalIndex := strings.Index(part, "=")
+		if equalIndex == -1 {
+			continue // Skip malformed cookies
+		}
+
+		name := strings.TrimSpace(part[:equalIndex])
+		value := strings.TrimSpace(part[equalIndex+1:])
+
+		// Remove quotes if present
+		if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+			value = value[1 : len(value)-1]
+		}
+
+		cookies[name] = &CookieToken{
+			Name:  name,
+			Value: value,
+			// Note: Cookie header only contains name=value pairs
+			// Attributes like HttpOnly, Secure, etc. are only in Set-Cookie response headers
+		}
+	}
+
+	return cookies
+}
+
+// validateJWTCookie performs security validation on the JWT cookie
+func validateJWTCookie(cookie *CookieToken) error {
+	// Validate cookie name
+	if cookie.Name == "" {
+		return fmt.Errorf("cookie name cannot be empty")
+	}
+
+	// Validate token value is not empty
+	if cookie.Value == "" {
+		return fmt.Errorf("JWT token value cannot be empty")
+	}
+
+	// Basic JWT format validation (header.payload.signature)
+	parts := strings.Split(cookie.Value, ".")
+	if len(parts) != 3 {
+		return fmt.Errorf("invalid JWT format: expected 3 parts separated by dots, got %d", len(parts))
+	}
+
+	// Validate each part is base64-encoded (basic check)
+	for i, part := range parts {
+		if part == "" {
+			return fmt.Errorf("JWT part %d is empty", i+1)
+		}
+
+		// Check for valid base64url characters
+		for _, char := range part {
+			if !isValidBase64URLChar(char) {
+				return fmt.Errorf("JWT part %d contains invalid base64url character: %c", i+1, char)
+			}
+		}
+	}
+
+	// Validate token length (prevent extremely long tokens)
+	if len(cookie.Value) > 8192 { // 8KB limit
+		return fmt.Errorf("JWT token too long: %d bytes (max 8192)", len(cookie.Value))
+	}
+
+	return nil
+}
+
+// isValidBase64URLChar checks if a character is valid in base64url encoding
+func isValidBase64URLChar(c rune) bool {
+	return (c >= 'A' && c <= 'Z') ||
+		(c >= 'a' && c <= 'z') ||
+		(c >= '0' && c <= '9') ||
+		c == '-' || c == '_' // base64url uses - and _ instead of + and /
 }

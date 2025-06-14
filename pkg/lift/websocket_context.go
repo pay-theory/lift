@@ -3,6 +3,7 @@ package lift
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -13,6 +14,7 @@ import (
 type WebSocketContext struct {
 	*Context
 	managementAPI *apigatewaymanagementapi.ApiGatewayManagementApi
+	region        string // Configurable AWS region
 }
 
 // AsWebSocket converts a regular context to a WebSocket context
@@ -23,7 +25,26 @@ func (c *Context) AsWebSocket() (*WebSocketContext, error) {
 
 	return &WebSocketContext{
 		Context: c,
+		region:  c.getRegionFromContext(), // Get region from context or environment
 	}, nil
+}
+
+// WithRegion sets a specific AWS region for the WebSocket context
+func (wc *WebSocketContext) WithRegion(region string) *WebSocketContext {
+	wc.region = region
+	// Reset managementAPI to force re-initialization with new region
+	wc.managementAPI = nil
+	return wc
+}
+
+// GetRegion returns the configured AWS region
+func (wc *WebSocketContext) GetRegion() string {
+	if wc.region != "" {
+		return wc.region
+	}
+
+	// Fallback to environment variable or default
+	return wc.getRegionFromContext()
 }
 
 // ConnectionID returns the WebSocket connection ID
@@ -105,7 +126,7 @@ func (wc *WebSocketContext) GetManagementAPI() (*apigatewaymanagementapi.ApiGate
 
 	sess := session.Must(session.NewSession(&aws.Config{
 		Endpoint: aws.String(endpoint),
-		Region:   aws.String("us-east-1"), // TODO: Make this configurable
+		Region:   aws.String(wc.GetRegion()), // Use configurable region
 	}))
 
 	wc.managementAPI = apigatewaymanagementapi.New(sess)
@@ -220,4 +241,44 @@ func (wc *WebSocketContext) IsMessageEvent() bool {
 // This is commonly used in WebSocket $connect events since headers aren't always available
 func (wc *WebSocketContext) GetAuthorizationFromQuery() string {
 	return wc.Query("Authorization")
+}
+
+// getRegionFromContext extracts AWS region from context, environment, or defaults
+func (c *Context) getRegionFromContext() string {
+	// 1. Check if region is set in context values
+	if region := c.Get("aws_region"); region != nil {
+		if regionStr, ok := region.(string); ok && regionStr != "" {
+			return regionStr
+		}
+	}
+
+	// 2. Check request metadata for region information
+	if c.Request != nil && c.Request.Metadata != nil {
+		if region, ok := c.Request.Metadata["region"].(string); ok && region != "" {
+			return region
+		}
+
+		// Check request context for region (Lambda execution context)
+		if requestContext := c.Request.RequestContext(); len(requestContext) > 0 {
+			if region, ok := requestContext["region"].(string); ok && region != "" {
+				return region
+			}
+		}
+	}
+
+	// 3. Check environment variables
+	if region := os.Getenv("AWS_REGION"); region != "" {
+		return region
+	}
+	if region := os.Getenv("AWS_DEFAULT_REGION"); region != "" {
+		return region
+	}
+
+	// 4. Default to us-east-1 (most common Lambda region)
+	return "us-east-1"
+}
+
+// getRegionFromContext for WebSocketContext (delegate to embedded Context)
+func (wc *WebSocketContext) getRegionFromContext() string {
+	return wc.Context.getRegionFromContext()
 }

@@ -1073,4 +1073,3 @@ type DistributedEventBus struct{}
 type ConsensusManager struct{}
 type MonitoringConfig struct{}
 type DistributedSecurityConfig struct{}
-type PerformanceConfig struct{}

@@ -2,6 +2,8 @@ package lift
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/pay-theory/lift/pkg/lift/adapters"
@@ -130,8 +132,12 @@ func (a *App) Handle(method, path string, handler interface{}) *App {
 	case func(*Context) error:
 		h = HandlerFunc(v)
 	default:
-		// TODO: Add support for typed handlers via reflection
-		panic("unsupported handler type")
+		// Use reflection to support additional handler types
+		reflectedHandler, err := convertHandlerUsingReflection(handler)
+		if err != nil {
+			panic(fmt.Sprintf("unsupported handler type: %v", err))
+		}
+		h = reflectedHandler
 	}
 
 	a.router.AddRoute(method, path, h)
@@ -294,4 +300,182 @@ func (a *App) HandleTestRequest(ctx *Context) error {
 
 	// Use the router directly to handle the request
 	return a.router.Handle(ctx)
+}
+
+// convertHandlerUsingReflection converts various handler function types to the Handler interface using reflection
+func convertHandlerUsingReflection(handler interface{}) (Handler, error) {
+	v := reflect.ValueOf(handler)
+	t := reflect.TypeOf(handler)
+
+	// Ensure handler is a function
+	if t.Kind() != reflect.Func {
+		return nil, fmt.Errorf("handler must be a function, got %T", handler)
+	}
+
+	// Validate handler function signature at registration time for security
+	if err := validateHandlerSignature(t); err != nil {
+		return nil, err
+	}
+
+	// Convert to our Handler interface based on the function signature
+	return createReflectedHandler(v, t), nil
+}
+
+// validateHandlerSignature validates that the handler function has a supported signature
+func validateHandlerSignature(t reflect.Type) error {
+	numIn := t.NumIn()
+	numOut := t.NumOut()
+
+	// Pattern 1: func(*Context) error
+	if numIn == 1 && numOut == 1 {
+		// Already handled in the switch statement, but included for completeness
+		if isContextType(t.In(0)) && isErrorType(t.Out(0)) {
+			return nil
+		}
+	}
+
+	// Pattern 2: func(*Context) (interface{}, error)
+	if numIn == 1 && numOut == 2 {
+		if isContextType(t.In(0)) && isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
+			return nil
+		}
+	}
+
+	// Pattern 3: func() error (no context - simple handlers)
+	if numIn == 0 && numOut == 1 {
+		if isErrorType(t.Out(0)) {
+			return nil
+		}
+	}
+
+	// Pattern 4: func() (interface{}, error) (no context - simple handlers with return value)
+	if numIn == 0 && numOut == 2 {
+		if isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
+			return nil
+		}
+	}
+
+	// Pattern 5: func(interface{}) error (request model binding)
+	if numIn == 1 && numOut == 1 {
+		if !isContextType(t.In(0)) && isErrorType(t.Out(0)) {
+			return nil
+		}
+	}
+
+	// Pattern 6: func(interface{}) (interface{}, error) (request/response model binding)
+	if numIn == 1 && numOut == 2 {
+		if !isContextType(t.In(0)) && isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("unsupported handler signature: %s", t.String())
+}
+
+// createReflectedHandler creates a Handler from a reflected function
+func createReflectedHandler(v reflect.Value, t reflect.Type) Handler {
+	return HandlerFunc(func(ctx *Context) error {
+		// Determine the handler pattern and call appropriately
+		numIn := t.NumIn()
+		numOut := t.NumOut()
+
+		var callArgs []reflect.Value
+		var results []reflect.Value
+
+		switch {
+		// Pattern 1: func(*Context) error - already handled by main switch but included here
+		case numIn == 1 && numOut == 1 && isContextType(t.In(0)):
+			callArgs = []reflect.Value{reflect.ValueOf(ctx)}
+
+		// Pattern 2: func(*Context) (interface{}, error)
+		case numIn == 1 && numOut == 2 && isContextType(t.In(0)):
+			callArgs = []reflect.Value{reflect.ValueOf(ctx)}
+
+		// Pattern 3: func() error
+		case numIn == 0 && numOut == 1:
+			callArgs = []reflect.Value{}
+
+		// Pattern 4: func() (interface{}, error)
+		case numIn == 0 && numOut == 2:
+			callArgs = []reflect.Value{}
+
+		// Pattern 5: func(RequestModel) error
+		case numIn == 1 && numOut == 1 && !isContextType(t.In(0)):
+			// Create instance of the expected input type
+			requestType := t.In(0)
+			requestValue := reflect.New(requestType).Interface()
+
+			// Parse request body into the model
+			if err := ctx.ParseRequest(requestValue); err != nil {
+				return err
+			}
+
+			callArgs = []reflect.Value{reflect.ValueOf(requestValue).Elem()}
+
+		// Pattern 6: func(RequestModel) (ResponseModel, error)
+		case numIn == 1 && numOut == 2 && !isContextType(t.In(0)):
+			// Create instance of the expected input type
+			requestType := t.In(0)
+			requestValue := reflect.New(requestType).Interface()
+
+			// Parse request body into the model
+			if err := ctx.ParseRequest(requestValue); err != nil {
+				return err
+			}
+
+			callArgs = []reflect.Value{reflect.ValueOf(requestValue).Elem()}
+
+		default:
+			return fmt.Errorf("unsupported handler pattern during execution")
+		}
+
+		// Call the handler function
+		results = v.Call(callArgs)
+
+		// Handle return values
+		switch len(results) {
+		case 1:
+			// Only error return
+			if !results[0].IsNil() {
+				return results[0].Interface().(error)
+			}
+			return nil
+
+		case 2:
+			// (value, error) return
+			errValue := results[1]
+			if !errValue.IsNil() {
+				return errValue.Interface().(error)
+			}
+
+			// Send the response value as JSON
+			responseValue := results[0].Interface()
+			return ctx.JSON(responseValue)
+
+		default:
+			return fmt.Errorf("unexpected number of return values: %d", len(results))
+		}
+	})
+}
+
+// Helper functions for type checking
+
+func isContextType(t reflect.Type) bool {
+	// Check if it's a pointer to Context
+	if t.Kind() != reflect.Ptr {
+		return false
+	}
+	elem := t.Elem()
+	return elem.Name() == "Context" && elem.PkgPath() == "github.com/pay-theory/lift/pkg/lift"
+}
+
+func isErrorType(t reflect.Type) bool {
+	// Check if it implements the error interface
+	errorInterface := reflect.TypeOf((*error)(nil)).Elem()
+	return t.Implements(errorInterface)
+}
+
+func isInterfaceType(t reflect.Type) bool {
+	// Accept any type for response values (interface{})
+	return true
 }

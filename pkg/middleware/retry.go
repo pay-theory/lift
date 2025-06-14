@@ -308,6 +308,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 
 // shouldRetry determines if an error should be retried
 func (rm *retryManager) shouldRetry(err error, attempt int) bool {
+	_ = attempt // TODO: Consider attempt-based retry logic (e.g., different rules for different attempts)
 	// Check custom retry condition first
 	if !rm.config.RetryCondition(err) {
 		return false

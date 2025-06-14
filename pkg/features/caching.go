@@ -327,6 +327,7 @@ func (c *CacheMiddleware) serveResult(ctx *lift.Context, result interface{}) err
 
 // invalidateCache invalidates relevant cache entries
 func (c *CacheMiddleware) invalidateCache(ctx *lift.Context) {
+	_ = ctx // TODO: Use ctx for more sophisticated invalidation
 	// For now, implement simple invalidation
 	// In a production system, this would be more sophisticated
 	if c.config.TenantIsolation {

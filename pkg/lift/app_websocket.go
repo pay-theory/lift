@@ -287,6 +287,7 @@ type ConnectionStore interface {
 	Delete(ctx context.Context, connectionID string) error
 	ListByUser(ctx context.Context, userID string) ([]*Connection, error)
 	ListByTenant(ctx context.Context, tenantID string) ([]*Connection, error)
+	CountActive(ctx context.Context) (int64, error) // Count total active connections
 }
 
 // Connection represents a WebSocket connection

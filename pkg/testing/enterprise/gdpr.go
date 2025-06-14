@@ -498,6 +498,8 @@ func (f *GDPRPrivacyFramework) ValidateGDPRCompliance(ctx context.Context, app i
 
 // testArticle tests a specific GDPR article
 func (f *GDPRPrivacyFramework) testArticle(ctx context.Context, app interface{}, article GDPRArticle) (*ArticleResult, error) {
+	_ = ctx // TODO: Use ctx for timeout/cancellation in article testing
+	_ = app // TODO: Use app for actual compliance testing implementation
 	startTime := time.Now()
 
 	result := &ArticleResult{
