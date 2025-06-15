@@ -524,7 +524,7 @@ func (mrs *MLRiskScorer) extractBehavioralFeatures(ctx context.Context, event *A
 }
 
 // extractContextualFeatures extracts contextual features
-func (mrs *MLRiskScorer) extractContextualFeatures(ctx context.Context, event *AuditEvent) ([]float64, []RiskFactor) {
+func (mrs *MLRiskScorer) extractContextualFeatures(_ctx context.Context, event *AuditEvent) ([]float64, []RiskFactor) {
 	var features []float64
 	var factors []RiskFactor
 

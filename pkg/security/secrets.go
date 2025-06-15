@@ -436,7 +436,7 @@ func (fsp *FileSecretsProvider) RotateSecret(ctx context.Context, name string) e
 }
 
 // generateRotatedValue generates a new value for rotation simulation
-func (fsp *FileSecretsProvider) generateRotatedValue(oldValue, secretName string) string {
+func (fsp *FileSecretsProvider) generateRotatedValue(oldValue, _secretName string) string {
 	// For development, we'll use different strategies based on the secret type
 
 	// If it looks like a JWT token or API key, append a version

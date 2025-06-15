@@ -142,7 +142,7 @@ func RateLimitMiddleware(config RateLimitConfig) lift.Middleware {
 				// Log rate limit exceeded
 				if ctx.Logger != nil {
 					ctx.Logger.Warn("Rate limit exceeded", map[string]interface{}{
-						"key":       key,
+						"key":       "[SANITIZED_RATE_LIMIT_KEY]", // Sanitized for security
 						"limit":     result.Limit,
 						"remaining": result.Remaining,
 						"reset_at":  result.ResetAt,

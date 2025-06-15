@@ -125,7 +125,7 @@ func BulkheadMiddleware(config BulkheadConfig) lift.Middleware {
 						"operation":     operation,
 						"priority":      priority,
 						"wait_time":     waitTime.String(),
-						"error":         err.Error(),
+						"error":         "[REDACTED_ERROR_DETAIL]", // Sanitized for security
 					})
 				}
 

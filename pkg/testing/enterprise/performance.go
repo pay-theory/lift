@@ -270,7 +270,7 @@ func (pt *PerformanceTester) ExecuteTest(ctx context.Context, testCase Performan
 }
 
 // executeResponseTimeTest executes a response time performance test
-func (pt *PerformanceTester) executeResponseTimeTest(ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+func (pt *PerformanceTester) executeResponseTimeTest(_ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
 	metrics := &PerformanceTestMetrics{}
 
 	// Simulate response time test execution
@@ -304,7 +304,7 @@ func (pt *PerformanceTester) executeResponseTimeTest(ctx context.Context, config
 }
 
 // executeThroughputTest executes a throughput performance test
-func (pt *PerformanceTester) executeThroughputTest(ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+func (pt *PerformanceTester) executeThroughputTest(_ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
 	metrics := &PerformanceTestMetrics{}
 
 	// Simulate throughput test execution
@@ -332,7 +332,7 @@ func (pt *PerformanceTester) executeThroughputTest(ctx context.Context, config P
 }
 
 // executeDatabaseTest executes a database performance test
-func (pt *PerformanceTester) executeDatabaseTest(ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+func (pt *PerformanceTester) executeDatabaseTest(_ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
 	metrics := &PerformanceTestMetrics{}
 
 	// Simulate database performance test
@@ -351,7 +351,7 @@ func (pt *PerformanceTester) executeDatabaseTest(ctx context.Context, config Per
 }
 
 // executeMemoryTest executes a memory usage performance test
-func (pt *PerformanceTester) executeMemoryTest(ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+func (pt *PerformanceTester) executeMemoryTest(_ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
 	metrics := &PerformanceTestMetrics{}
 
 	// Simulate memory usage test

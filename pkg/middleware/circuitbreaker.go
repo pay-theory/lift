@@ -158,7 +158,7 @@ func CircuitBreakerMiddleware(config CircuitBreakerConfig) lift.Middleware {
 				if config.Logger != nil {
 					config.Logger.Error("Circuit breaker recorded failure", map[string]interface{}{
 						"breaker_name": breaker.name,
-						"error":        err.Error(),
+						"error":        "[REDACTED_ERROR_DETAIL]", // Sanitized for security
 						"duration":     duration.String(),
 						"tenant_id":    ctx.TenantID(),
 					})

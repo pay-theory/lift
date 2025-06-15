@@ -119,20 +119,17 @@ func EnhancedObservabilityMiddleware(config EnhancedObservabilityConfig) lift.Mi
 					"operation":    operation,
 					"method":       ctx.Request.Method,
 					"path":         ctx.Request.Path,
-					"query_params": ctx.Request.QueryParams,
+					"query_params": "[SANITIZED_QUERY_PARAMS]", // Sanitized for security
 					"source_ip":    ctx.Request.Headers["X-Forwarded-For"],
 					"user_agent":   ctx.Request.Headers["User-Agent"],
 					"tenant_id":    tenantID,
 					"user_id":      userID,
 				}
 
-				// Optionally log request body
+				// Request body logging disabled for security - contains user data
 				if config.LogRequestBody && len(ctx.Request.Body) > 0 {
-					bodyStr := string(ctx.Request.Body)
-					if len(bodyStr) > config.MaxBodyLogSize {
-						bodyStr = bodyStr[:config.MaxBodyLogSize] + "...[truncated]"
-					}
-					logFields["request_body"] = bodyStr
+					logFields["request_body_size"] = len(ctx.Request.Body)
+					logFields["request_body"] = "[USER_CONTENT_REDACTED]" // Sanitized for security
 				}
 
 				contextLogger.Info("Request started", logFields)
@@ -189,27 +186,25 @@ func EnhancedObservabilityMiddleware(config EnhancedObservabilityConfig) lift.Mi
 					"status":    statusCode,
 				}
 
-				// Optionally log response body
+				// Response body logging disabled for security - may contain user data
 				if config.LogResponseBody && ctx.Response.Body != nil {
-					var bodyStr string
+					var bodySize int
 					switch v := ctx.Response.Body.(type) {
 					case string:
-						bodyStr = v
+						bodySize = len(v)
 					case []byte:
-						bodyStr = string(v)
+						bodySize = len(v)
 					default:
 						if data, jsonErr := json.Marshal(v); jsonErr == nil {
-							bodyStr = string(data)
+							bodySize = len(data)
 						}
 					}
-					if len(bodyStr) > config.MaxBodyLogSize {
-						bodyStr = bodyStr[:config.MaxBodyLogSize] + "...[truncated]"
-					}
-					logFields["response_body"] = bodyStr
+					logFields["response_body_size"] = bodySize
+					logFields["response_body"] = "[RESPONSE_CONTENT_REDACTED]" // Sanitized for security
 				}
 
 				if err != nil {
-					logFields["error"] = err.Error()
+					logFields["error"] = "[SANITIZED_ERROR]" // Sanitized for security
 					contextLogger.Error("Request failed", logFields)
 				} else {
 					contextLogger.Info("Request completed", logFields)

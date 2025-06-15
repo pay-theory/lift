@@ -214,7 +214,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 				rm.config.Logger.Error("Request failed (not retryable)", map[string]interface{}{
 					"retry_name":     rm.config.Name,
 					"attempt":        attempt,
-					"error":          err.Error(),
+					"error":          "[SANITIZED_ERROR]", // Sanitized for security
 					"total_duration": totalDuration.String(),
 				})
 			}
@@ -236,7 +236,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 				rm.config.Logger.Error("Request failed after max attempts", map[string]interface{}{
 					"retry_name":     rm.config.Name,
 					"max_attempts":   rm.config.MaxAttempts,
-					"error":          err.Error(),
+					"error":          "[SANITIZED_ERROR]", // Sanitized for security
 					"total_duration": totalDuration.String(),
 					"total_delay":    totalDelay.String(),
 				})
@@ -281,7 +281,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 				"attempt":      attempt,
 				"next_attempt": attempt + 1,
 				"delay":        delay.String(),
-				"error":        err.Error(),
+				"error":        "[SANITIZED_ERROR]", // Sanitized for security
 			})
 		}
 

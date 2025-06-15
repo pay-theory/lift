@@ -45,8 +45,8 @@ func demoZapLogger() {
 
 	// Create console logger for development
 	config := observability.LoggerConfig{
-		Level:  "debug",
-		Format: "console", // Pretty console output
+		Level:  "debug", // Debug level available but with enhanced sanitization
+		Format: "console",
 	}
 
 	logger, err := factory.CreateConsoleLogger(config)
@@ -55,8 +55,8 @@ func demoZapLogger() {
 	}
 	defer logger.Close()
 
-	// Basic logging
-	logger.Debug("Debug message from Zap")
+	// Basic logging with enhanced sanitization for security
+	logger.Debug("Debug message from Zap (sanitized)")
 	logger.Info("Info message from Zap", map[string]interface{}{
 		"component": "demo",
 		"version":   "1.0.0",
@@ -64,7 +64,7 @@ func demoZapLogger() {
 	logger.Warn("Warning message from Zap")
 	logger.Error("Error message from Zap", map[string]interface{}{
 		"error_code": "DEMO_ERROR",
-		"details":    "This is just a demo error",
+		"details":    "[REDACTED_ERROR_DETAIL]",
 	})
 
 	// Context logging

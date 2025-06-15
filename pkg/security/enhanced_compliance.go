@@ -541,7 +541,7 @@ func (ecf *EnhancedComplianceFramework) createControlMiddleware(control Complian
 }
 
 // runComplianceTest executes an automated compliance test
-func (ecf *EnhancedComplianceFramework) runComplianceTest(ctx LiftContext, control ComplianceControl) *ComplianceTestResult {
+func (ecf *EnhancedComplianceFramework) runComplianceTest(_ctx LiftContext, control ComplianceControl) *ComplianceTestResult {
 	// Run automated compliance test
 	return &ComplianceTestResult{
 		TestID:          fmt.Sprintf("test_%s_%d", control.ID, time.Now().Unix()),
@@ -617,13 +617,13 @@ func (ecf *EnhancedComplianceFramework) validateLawfulBasis(ctx LiftContext) boo
 	return false
 }
 
-func (ecf *EnhancedComplianceFramework) enforceDataMinimization(ctx LiftContext) error {
+func (ecf *EnhancedComplianceFramework) enforceDataMinimization(_ctx LiftContext) error {
 	// Implement data minimization checks
 	// This would analyze the request to ensure only necessary data is processed
 	return nil
 }
 
-func (ecf *EnhancedComplianceFramework) isDataDeletionRequest(ctx LiftContext) bool {
+func (ecf *EnhancedComplianceFramework) isDataDeletionRequest(_ctx LiftContext) bool {
 	// Check if this is a data deletion request (right to be forgotten)
 	// Note: This would need to be implemented based on the actual LiftContext interface
 	return false // Simplified for now
@@ -717,9 +717,9 @@ func (ecf *EnhancedComplianceFramework) handleDataDeletion(ctx LiftContext) erro
 
 	// Check if any critical deletions failed
 	if len(deletionErrors) > 0 {
-		// Log all errors
-		for _, err := range deletionErrors {
-			ctx.Logger().Error("Data deletion provider failed", "error", err)
+		// Log all errors (sanitized for security)
+		for range deletionErrors {
+			ctx.Logger().Error("Data deletion provider failed", "error", "[SANITIZED_ERROR]")
 		}
 
 		// If any required providers failed, return error
@@ -776,8 +776,8 @@ func (ecf *EnhancedComplianceFramework) handleDataDeletion(ctx LiftContext) erro
 
 	// Log successful completion
 	ctx.Logger().Info("Data deletion request completed successfully",
-		"data_subject_id", dataSubjectID,
-		"request_id", request.ID,
+		"data_subject_id", "[SANITIZED_USER_ID]", // Sanitized for security
+		"request_id", "[SANITIZED_REQUEST_ID]", // Sanitized for security
 		"deleted_count", response.DeletedCount,
 		"providers_processed", len(deletionProviders),
 	)
@@ -877,7 +877,7 @@ func (ecf *EnhancedComplianceFramework) extractDeletionReason(ctx LiftContext) s
 	return "user_request" // Default reason
 }
 
-func (ecf *EnhancedComplianceFramework) getVerificationMethod(ctx LiftContext) string {
+func (ecf *EnhancedComplianceFramework) getVerificationMethod(_ctx LiftContext) string {
 	// In a real implementation, this would check how the user was authenticated
 	return "authenticated_session"
 }
@@ -969,12 +969,12 @@ func (ecf *EnhancedComplianceFramework) buildRetentionReason(retainForLegal bool
 	return fmt.Sprintf("Provider-specific retention: %v", reasonList)
 }
 
-func (ecf *EnhancedComplianceFramework) notifyThirdParties(ctx LiftContext, request *DataErasureRequest) bool {
+func (ecf *EnhancedComplianceFramework) notifyThirdParties(ctx LiftContext, _request *DataErasureRequest) bool {
 	// In a real implementation, this would notify third parties about the data deletion
 	// For now, return true to indicate notifications were sent
 	ctx.Logger().Info("Third party notifications would be sent here",
-		"request_id", request.ID,
-		"data_subject_id", request.DataSubjectID,
+		"request_id", "[SANITIZED_REQUEST_ID]", // Sanitized for security
+		"data_subject_id", "[SANITIZED_USER_ID]", // Sanitized for security
 	)
 	return true
 }
@@ -991,7 +991,7 @@ func (ecf *EnhancedComplianceFramework) storeErasureResponse(ctx LiftContext, re
 	// In a real implementation, this would store the response for compliance tracking
 	// For now, just log it
 	ctx.Logger().Info("Erasure response stored for compliance tracking",
-		"request_id", response.RequestID,
+		"request_id", "[SANITIZED_REQUEST_ID]", // Sanitized for security
 		"deleted_count", response.DeletedCount,
 	)
 	return nil

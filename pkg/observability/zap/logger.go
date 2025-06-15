@@ -2,6 +2,8 @@ package zap
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -64,6 +66,8 @@ func buildZapConfig(config observability.LoggerConfig) zap.Config {
 		level = zapcore.WarnLevel
 	case "error":
 		level = zapcore.ErrorLevel
+	default:
+		level = zapcore.InfoLevel // Default to info level for production security
 	}
 
 	zapConfig := zap.Config{
@@ -100,7 +104,7 @@ func buildZapConfig(config observability.LoggerConfig) zap.Config {
 	return zapConfig
 }
 
-// Debug logs a debug message
+// Debug logs a debug message (with enhanced sanitization for security)
 func (z *ZapLogger) Debug(message string, fields ...map[string]interface{}) {
 	z.log(zapcore.DebugLevel, message, fields...)
 }
@@ -182,14 +186,16 @@ func (z *ZapLogger) log(level zapcore.Level, message string, fieldMaps ...map[st
 		zapFields = append(zapFields, zap.Any(k, v))
 	}
 
-	// Add provided fields
+	// Add provided fields (sanitize sensitive data)
 	for _, fieldMap := range fieldMaps {
 		for k, v := range fieldMap {
-			zapFields = append(zapFields, zap.Any(k, v))
+			// Sanitize field values to prevent sensitive data leakage
+			sanitizedValue := z.sanitizeFieldValue(k, v)
+			zapFields = append(zapFields, zap.Any(k, sanitizedValue))
 		}
 	}
 
-	// Log with appropriate level
+	// Log with appropriate level (all levels supported with enhanced sanitization)
 	switch level {
 	case zapcore.DebugLevel:
 		z.logger.Debug(message, zapFields...)
@@ -200,6 +206,59 @@ func (z *ZapLogger) log(level zapcore.Level, message string, fieldMaps ...map[st
 	case zapcore.ErrorLevel:
 		z.logger.Error(message, zapFields...)
 	}
+}
+
+// sanitizeFieldValue sanitizes field values to prevent sensitive data exposure
+func (z *ZapLogger) sanitizeFieldValue(key string, value interface{}) interface{} {
+	keyLower := strings.ToLower(key)
+
+	// Always sanitize highly sensitive field names
+	highSensitiveFields := []string{
+		"password", "token", "secret", "key", "auth", "credential",
+		"email", "phone", "ssn", "card", "account", "routing",
+		"pin", "cvv", "security", "private", "confidential",
+	}
+
+	for _, sensitive := range highSensitiveFields {
+		if strings.Contains(keyLower, sensitive) {
+			return "[REDACTED]"
+		}
+	}
+
+	// Sanitize user-generated content fields
+	userContentFields := []string{
+		"body", "request_body", "response_body", "user_input",
+		"query", "search", "message", "comment", "description",
+	}
+
+	for _, userField := range userContentFields {
+		if strings.Contains(keyLower, userField) {
+			if str, ok := value.(string); ok && len(str) > 0 {
+				// For user content, only show length and type
+				return fmt.Sprintf("[USER_CONTENT_%d_CHARS]", len(str))
+			}
+			return "[USER_CONTENT]"
+		}
+	}
+
+	// Sanitize error messages that might contain user data
+	if keyLower == "error" || strings.Contains(keyLower, "error") {
+		if str, ok := value.(string); ok {
+			// Only show system error types, not detailed messages
+			if len(str) > 50 ||
+				strings.Contains(strings.ToLower(str), "input") ||
+				strings.Contains(strings.ToLower(str), "invalid") {
+				return "[SANITIZED_ERROR]"
+			}
+		}
+	}
+
+	// Check for very long strings that likely contain user data
+	if str, ok := value.(string); ok && len(str) > 200 {
+		return fmt.Sprintf("[LARGE_STRING_%d_CHARS]", len(str))
+	}
+
+	return value
 }
 
 // Flush syncs the logger (Zap handles this automatically)
@@ -258,7 +317,7 @@ func (f *ZapLoggerFactory) CreateCloudWatchLogger(config observability.LoggerCon
 // CreateTestLogger creates a logger suitable for testing
 func (f *ZapLoggerFactory) CreateTestLogger() observability.StructuredLogger {
 	config := observability.LoggerConfig{
-		Level:  "debug",
+		Level:  "debug", // Debug level available for testing with enhanced sanitization
 		Format: "json",
 	}
 	logger, _ := NewZapLogger(config)

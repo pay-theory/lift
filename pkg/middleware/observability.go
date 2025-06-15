@@ -52,7 +52,7 @@ func ObservabilityMiddleware(config ObservabilityConfig) lift.Middleware {
 				ctx.Logger.Info("Request started", map[string]interface{}{
 					"method":     ctx.Request.Method,
 					"path":       ctx.Request.Path,
-					"query":      ctx.Request.QueryParams,
+					"query":      "[SANITIZED_QUERY_PARAMS]", // Sanitized for security
 					"source_ip":  ctx.Request.Headers["X-Forwarded-For"],
 					"user_agent": ctx.Request.Headers["User-Agent"],
 				})
@@ -85,7 +85,7 @@ func ObservabilityMiddleware(config ObservabilityConfig) lift.Middleware {
 				// Log error
 				if ctx.Logger != nil {
 					ctx.Logger.Error("Request failed", map[string]interface{}{
-						"error":    err.Error(),
+						"error":    "[SANITIZED_ERROR]", // Sanitized for security
 						"duration": duration.String(),
 						"status":   ctx.Response.StatusCode,
 					})
