@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -85,7 +86,7 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 	return logger, nil
 }
 
-// Debug logs a debug message
+// Debug logs a debug message (with enhanced sanitization for security)
 func (l *CloudWatchLogger) Debug(message string, fields ...map[string]interface{}) {
 	l.log("DEBUG", message, fields...)
 }
@@ -195,14 +196,14 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]in
 				entry.SpanID = s
 			}
 		default:
-			entry.Fields[k] = v
+			entry.Fields[k] = l.sanitizeFieldValue(k, v)
 		}
 	}
 
-	// Merge all field maps
+	// Merge all field maps with sanitization
 	for _, fieldMap := range fieldMaps {
 		for k, v := range fieldMap {
-			entry.Fields[k] = v
+			entry.Fields[k] = l.sanitizeFieldValue(k, v)
 		}
 	}
 
@@ -214,6 +215,59 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]in
 		// Buffer full, drop log entry
 		atomic.AddInt64(&l.stats.entriesDropped, 1)
 	}
+}
+
+// sanitizeFieldValue sanitizes field values to prevent sensitive data exposure
+func (l *CloudWatchLogger) sanitizeFieldValue(key string, value interface{}) interface{} {
+	keyLower := strings.ToLower(key)
+
+	// Always sanitize highly sensitive field names
+	highSensitiveFields := []string{
+		"password", "token", "secret", "key", "auth", "credential",
+		"email", "phone", "ssn", "card", "account", "routing",
+		"pin", "cvv", "security", "private", "confidential",
+	}
+
+	for _, sensitive := range highSensitiveFields {
+		if strings.Contains(keyLower, sensitive) {
+			return "[REDACTED]"
+		}
+	}
+
+	// Sanitize user-generated content fields
+	userContentFields := []string{
+		"body", "request_body", "response_body", "user_input",
+		"query", "search", "message", "comment", "description",
+	}
+
+	for _, userField := range userContentFields {
+		if strings.Contains(keyLower, userField) {
+			if str, ok := value.(string); ok && len(str) > 0 {
+				// For user content, only show length and type
+				return fmt.Sprintf("[USER_CONTENT_%d_CHARS]", len(str))
+			}
+			return "[USER_CONTENT]"
+		}
+	}
+
+	// Sanitize error messages that might contain user data
+	if keyLower == "error" || strings.Contains(keyLower, "error") {
+		if str, ok := value.(string); ok {
+			// Only show system error types, not detailed messages
+			if len(str) > 50 ||
+				strings.Contains(strings.ToLower(str), "input") ||
+				strings.Contains(strings.ToLower(str), "invalid") {
+				return "[SANITIZED_ERROR]"
+			}
+		}
+	}
+
+	// Check for very long strings that likely contain user data
+	if str, ok := value.(string); ok && len(str) > 200 {
+		return fmt.Sprintf("[LARGE_STRING_%d_CHARS]", len(str))
+	}
+
+	return value
 }
 
 // flushLoop runs in background to batch and send logs

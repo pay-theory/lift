@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"runtime/debug"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/errors"
@@ -45,7 +44,7 @@ func Logger() Middleware {
 				}
 
 				if err != nil {
-					fields["error"] = err.Error()
+					fields["error"] = "[REDACTED_ERROR_DETAIL]" // Sanitized for security
 					ctx.Logger.Error("Request failed", fields)
 				} else {
 					ctx.Logger.Info("Request completed", fields)
@@ -63,12 +62,9 @@ func Recover() Middleware {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			defer func() {
 				if r := recover(); r != nil {
-					stack := debug.Stack()
-
 					if ctx.Logger != nil {
 						ctx.Logger.Error("Handler panicked", map[string]interface{}{
-							"panic": r,
-							"stack": string(stack),
+							"panic": "[REDACTED_PANIC_DETAIL]", // Sanitized for security
 						})
 					}
 
@@ -80,7 +76,7 @@ func Recover() Middleware {
 						// Log that we couldn't send the error response
 						if ctx.Logger != nil {
 							ctx.Logger.Error("Failed to send panic recovery response", map[string]interface{}{
-								"response_error": err.Error(),
+								"response_error": "[SANITIZED_ERROR]", // Sanitized for security
 							})
 						}
 					}
