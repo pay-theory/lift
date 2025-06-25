@@ -160,7 +160,13 @@ return lift.NewError(http.StatusBadRequest, "Invalid request", map[string]interf
 ## Important Files
 
 - **Documentation**: `docs/` directory contains comprehensive guides
-- **Examples**: `examples/` directory has working implementations
+- **Examples**: `examples/` directory has 27+ working implementations including:
+  - Basic patterns: `hello-world/`, `basic-crud-api/`, `error-handling/`
+  - Authentication: `jwt-auth/`, `jwt-auth-demo/`, `rate-limiting/`
+  - Event handling: `event-adapters/`, `multi-event-handler/`, `eventbridge-wakeup/`
+  - Enterprise apps: `multi-tenant-saas/`, `enterprise-banking/`, `enterprise-healthcare/`
+  - Production patterns: `production-api/`, `observability-demo/`, `health-monitoring/`
+  - WebSocket support: `websocket-demo/`, `websocket-enhanced/`
 - **Tests**: Look for `*_test.go` files for usage patterns
 - **AI Guide**: `docs/ai-guide/lift-ai-assistant-guide.md` has detailed framework documentation
 
