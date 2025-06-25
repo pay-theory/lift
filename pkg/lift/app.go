@@ -354,6 +354,65 @@ func (a *App) HandleTestRequest(ctx *Context) error {
 	return nil
 }
 
+// GetEventRouter returns the EventRouter for accessing event routes (mainly for testing)
+func (a *App) GetEventRouter() *EventRouter {
+	return a.eventRouter
+}
+
+// SQS registers a handler for SQS events
+func (a *App) SQS(pattern string, handler interface{}) *App {
+	h, err := a.convertEventHandler(handler)
+	if err != nil {
+		panic(fmt.Errorf("invalid SQS handler: %w", err))
+	}
+	a.eventRouter.AddEventRoute(TriggerSQS, pattern, h)
+	return a
+}
+
+// S3 registers a handler for S3 events
+func (a *App) S3(pattern string, handler interface{}) *App {
+	h, err := a.convertEventHandler(handler)
+	if err != nil {
+		panic(fmt.Errorf("invalid S3 handler: %w", err))
+	}
+	a.eventRouter.AddEventRoute(TriggerS3, pattern, h)
+	return a
+}
+
+// EventBridge registers a handler for EventBridge events
+func (a *App) EventBridge(pattern string, handler interface{}) *App {
+	h, err := a.convertEventHandler(handler)
+	if err != nil {
+		panic(fmt.Errorf("invalid EventBridge handler: %w", err))
+	}
+	a.eventRouter.AddEventRoute(TriggerEventBridge, pattern, h)
+	return a
+}
+
+// convertEventHandler converts various handler types to EventHandler
+func (a *App) convertEventHandler(handler interface{}) (EventHandler, error) {
+	// Check if it's already an EventHandler
+	if eh, ok := handler.(EventHandler); ok {
+		return eh, nil
+	}
+	
+	// Check if it's an EventHandlerFunc
+	if ehf, ok := handler.(func(*Context) error); ok {
+		return EventHandlerFunc(ehf), nil
+	}
+	
+	// Try to convert as HTTP handler and wrap it
+	httpHandler, err := convertHandlerUsingReflection(handler)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Wrap HTTP handler as EventHandler
+	return EventHandlerFunc(func(ctx *Context) error {
+		return httpHandler.Handle(ctx)
+	}), nil
+}
+
 // convertHandlerUsingReflection converts various handler function types to the Handler interface using reflection
 func convertHandlerUsingReflection(handler interface{}) (Handler, error) {
 	v := reflect.ValueOf(handler)
