@@ -73,7 +73,7 @@ func TestNonHTTPEventRouting(t *testing.T) {
 		{
 			name:   "Scheduled event routes as EventBridge",
 			method: "EventBridge",
-			path:   "aws.events",
+			path:   "my-rule",
 			event: map[string]interface{}{
 				"version":     "0",
 				"id":          "scheduled-123",
@@ -84,6 +84,58 @@ func TestNonHTTPEventRouting(t *testing.T) {
 					"arn:aws:events:us-east-1:123456789012:rule/my-rule",
 				},
 				"detail": map[string]interface{}{},
+			},
+			wantStatus: 200,
+			wantCalled: true,
+		},
+		{
+			name:   "S3 event through EventBridge routes to S3 handler",
+			method: "S3",
+			path:   "*",
+			event: map[string]interface{}{
+				"version":     "0",
+				"id":          "s3-eb-123",
+				"detail-type": "Object Created:Put",
+				"source":      "aws.s3",
+				"time":        "2023-10-04T12:00:00Z",
+				"resources": []interface{}{
+					"arn:aws:s3:::my-bucket",
+				},
+				"detail": map[string]interface{}{
+					"bucket": map[string]interface{}{
+						"name": "my-bucket",
+					},
+					"object": map[string]interface{}{
+						"key": "test.jpg",
+						"size": 12345,
+					},
+				},
+			},
+			wantStatus: 200,
+			wantCalled: true,
+		},
+		{
+			name:   "S3 object key pattern matching",
+			method: "S3",
+			path:   "/uploads/*",
+			event: map[string]interface{}{
+				"version":     "0",
+				"id":          "s3-eb-456",
+				"detail-type": "Object Created:Put",
+				"source":      "aws.s3",
+				"time":        "2023-10-04T12:00:00Z",
+				"resources": []interface{}{
+					"arn:aws:s3:::my-bucket",
+				},
+				"detail": map[string]interface{}{
+					"bucket": map[string]interface{}{
+						"name": "my-bucket",
+					},
+					"object": map[string]interface{}{
+						"key":  "uploads/file.txt",
+						"size": 12345,
+					},
+				},
 			},
 			wantStatus: 200,
 			wantCalled: true,

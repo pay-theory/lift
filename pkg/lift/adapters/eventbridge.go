@@ -69,8 +69,18 @@ func (a *EventBridgeAdapter) Adapt(rawEvent interface{}) (*Request, error) {
 	// Extract resources (for scheduled events)
 	resources := extractSliceField(eventMap, "resources")
 
+	// Determine the actual trigger type based on source
+	triggerType := TriggerEventBridge
+	switch source {
+	case "aws.s3":
+		triggerType = TriggerS3
+	case "aws.sqs":
+		triggerType = TriggerSQS
+	// aws.events remains as EventBridge for scheduled events
+	}
+
 	return &Request{
-		TriggerType: TriggerEventBridge,
+		TriggerType: triggerType,
 		RawEvent:    rawEvent,
 		EventID:     eventID,
 		Timestamp:   timestamp,
