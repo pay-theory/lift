@@ -76,8 +76,8 @@ github.com/klauspost/compress v1.17.6 h1:60eq2E/jlfwQXtvZEeBUYADs+BwKBWURIY+Gj2e
 github.com/klauspost/compress v1.17.6/go.mod h1:/dCuZOvVtNoHsyb+cuJD3itjs3NbnF6KH9zAO4BDxPM=
 github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
 github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
-github.com/pay-theory/dynamorm v1.0.9 h1:2B4S51YBsbRIVw7LPqBv5g9sCZIpaLRlEfQ5Bh9HC5M=
-github.com/pay-theory/dynamorm v1.0.9/go.mod h1:EwJf2E8ldesemFyZBs/w9Wx6jRMJeHX2Op3IboWmcr0=
+github.com/pay-theory/dynamorm v1.0.19 h1:XNEzaEcz8qhZ+Rl7Gt21MN9pRcitMKXrb2znHX76k5s=
+github.com/pay-theory/dynamorm v1.0.19/go.mod h1:EwJf2E8ldesemFyZBs/w9Wx6jRMJeHX2Op3IboWmcr0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
