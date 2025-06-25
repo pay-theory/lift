@@ -89,8 +89,6 @@ func (er *EventRouter) matchesPattern(ctx *Context, route *EventRoute) bool {
 		return er.matchS3Pattern(ctx, route.Pattern)
 	case TriggerEventBridge:
 		return er.matchEventBridgePattern(ctx, route.Pattern)
-	case TriggerScheduled:
-		return er.matchScheduledPattern(ctx, route.Pattern)
 	default:
 		return true // Default to match for unknown types
 	}
@@ -153,24 +151,6 @@ func (er *EventRouter) matchEventBridgePattern(ctx *Context, pattern string) boo
 	return source == pattern
 }
 
-// matchScheduledPattern matches scheduled event rule names
-func (er *EventRouter) matchScheduledPattern(ctx *Context, pattern string) bool {
-	// Extract rule name from resources
-	if len(ctx.Request.Records) == 0 {
-		return pattern == "*"
-	}
-
-	for _, resource := range ctx.Request.Records {
-		if resourceStr, ok := resource.(string); ok {
-			// Rule ARN format: arn:aws:events:region:account:rule/rule-name
-			if strings.Contains(resourceStr, ":rule/"+pattern) {
-				return true
-			}
-		}
-	}
-
-	return pattern == "*"
-}
 
 // HandleEvent routes an event to the appropriate handler
 func (er *EventRouter) HandleEvent(ctx *Context) error {
@@ -217,14 +197,6 @@ type EventBridgeEvent struct {
 	Resources  []string               `json:"resources"`
 }
 
-// ScheduledEvent represents a parsed scheduled event for type-safe handling
-type ScheduledEvent struct {
-	Source     string   `json:"source"`
-	DetailType string   `json:"detail-type"`
-	Time       string   `json:"time"`
-	ID         string   `json:"id"`
-	Resources  []string `json:"resources"`
-}
 
 // ParseSQSMessages extracts SQS messages from the request
 func (ctx *Context) ParseSQSMessages() ([]SQSMessage, error) {
@@ -310,28 +282,33 @@ func (ctx *Context) ParseEventBridgeEvent() (*EventBridgeEvent, error) {
 	return event, nil
 }
 
-// ParseScheduledEvent extracts scheduled event information
-func (ctx *Context) ParseScheduledEvent() (*ScheduledEvent, error) {
-	if ctx.Request.TriggerType != TriggerScheduled {
-		return nil, fmt.Errorf("not a scheduled event")
+// IsScheduledEvent checks if this EventBridge event is a scheduled event
+func (ctx *Context) IsScheduledEvent() bool {
+	return ctx.Request.TriggerType == TriggerEventBridge && 
+		ctx.Request.Source == "aws.events" && 
+		ctx.Request.DetailType == "Scheduled Event"
+}
+
+// GetScheduledRuleName extracts the rule name from a scheduled event
+func (ctx *Context) GetScheduledRuleName() string {
+	if !ctx.IsScheduledEvent() {
+		return ""
 	}
 
-	event := &ScheduledEvent{
-		Source:     ctx.Request.Source,
-		DetailType: ctx.Request.DetailType,
-		Time:       ctx.Request.Timestamp,
-		ID:         ctx.Request.EventID,
-	}
-
-	// Convert Records to string slice (contains rule ARNs)
+	// Extract rule name from resources
 	for _, record := range ctx.Request.Records {
-		if str, ok := record.(string); ok {
-			event.Resources = append(event.Resources, str)
+		if resourceStr, ok := record.(string); ok {
+			// Rule ARN format: arn:aws:events:region:account:rule/rule-name
+			parts := strings.Split(resourceStr, "/")
+			if len(parts) > 1 && strings.Contains(resourceStr, ":rule/") {
+				return parts[len(parts)-1]
+			}
 		}
 	}
 
-	return event, nil
+	return ""
 }
+
 
 // Helper functions for safe field extraction
 func getStringField(data map[string]interface{}, key string) string {

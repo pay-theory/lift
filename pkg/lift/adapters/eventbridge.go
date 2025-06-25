@@ -65,6 +65,9 @@ func (a *EventBridgeAdapter) Adapt(rawEvent interface{}) (*Request, error) {
 	detail := extractMapField(eventMap, "detail")
 	timestamp := extractStringField(eventMap, "time")
 	eventID := extractStringField(eventMap, "id")
+	
+	// Extract resources (for scheduled events)
+	resources := extractSliceField(eventMap, "resources")
 
 	return &Request{
 		TriggerType: TriggerEventBridge,
@@ -74,5 +77,6 @@ func (a *EventBridgeAdapter) Adapt(rawEvent interface{}) (*Request, error) {
 		Source:      source,
 		DetailType:  detailType,
 		Detail:      detail,
+		Records:     resources,
 	}, nil
 }

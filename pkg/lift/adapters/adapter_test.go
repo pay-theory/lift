@@ -101,15 +101,16 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 			shouldError:  false,
 		},
 		{
-			name: "Scheduled Event",
+			name: "Scheduled Event (via EventBridge)",
 			event: map[string]interface{}{
 				"source":      "aws.events",
 				"detail-type": "Scheduled Event",
 				"time":        "2023-01-01T00:00:00Z",
 				"id":          "test-event-id",
 				"resources":   []interface{}{"arn:aws:events:us-east-1:123456789012:rule/my-rule"},
+				"detail":      map[string]interface{}{},
 			},
-			expectedType: TriggerScheduled,
+			expectedType: TriggerEventBridge,
 			shouldError:  false,
 		},
 		{
@@ -334,7 +335,6 @@ func TestAdapterRegistry_ListSupportedTriggers(t *testing.T) {
 		TriggerSQS,
 		TriggerS3,
 		TriggerEventBridge,
-		TriggerScheduled,
 		TriggerWebSocket,
 	}
 
