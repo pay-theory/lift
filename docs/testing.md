@@ -6,38 +6,67 @@ Comprehensive testing is crucial for building reliable serverless applications. 
 
 Lift provides extensive testing support including:
 
-- **Test Utilities**: Helper functions for creating test contexts
-- **Mock Support**: Built-in mocks for AWS services
+- **Test Utilities**: Helper functions for creating test contexts and apps
+- **Mock Support**: Built-in mocks for AWS services and DynamORM
 - **Handler Testing**: Easy testing of individual handlers
 - **Middleware Testing**: Test middleware in isolation
-- **Integration Testing**: Test complete request flows
+- **Integration Testing**: Test complete request flows with TestApp
 - **Load Testing**: Performance and scalability testing
+
+## Import Pattern (Avoiding Naming Conflicts)
+
+```go
+import (
+    "testing"  // Go standard testing
+    lifttesting "github.com/pay-theory/lift/pkg/testing"  // Lift testing utilities
+    "github.com/pay-theory/lift/pkg/lift"
+    "github.com/pay-theory/lift/pkg/lift/adapters"
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+)
+```
 
 ## Unit Testing
 
-### Testing Handlers
+### Testing Handlers - Current Pattern
 
 ```go
 package handlers_test
 
 import (
+    "context"
+    "encoding/json"
     "testing"
+    
     "github.com/stretchr/testify/assert"
     "github.com/pay-theory/lift/pkg/lift"
-    "github.com/pay-theory/lift/pkg/testing"
+    "github.com/pay-theory/lift/pkg/lift/adapters"
+    lifttesting "github.com/pay-theory/lift/pkg/testing"
 )
+
+// Test context helper (copy this pattern from jwt_test.go)
+func createTestContext(method, path string, body []byte) *lift.Context {
+    adapterReq := &adapters.Request{
+        Method:      method,
+        Path:        path,
+        Headers:     make(map[string]string),
+        QueryParams: make(map[string]string),
+        PathParams:  make(map[string]string),
+        Body:        body,
+    }
+    req := lift.NewRequest(adapterReq)
+    return lift.NewContext(context.Background(), req)
+}
 
 func TestGetUserHandler(t *testing.T) {
     // Create test context
-    ctx := testing.NewContext()
+    ctx := createTestContext("GET", "/users/123", nil)
     
-    // Set up request
-    ctx.Request.Method = "GET"
-    ctx.Request.Path = "/users/123"
+    // Set path parameters
     ctx.SetParam("id", "123")
     
-    // Mock dependencies
-    userService := &MockUserService{
+    // Mock dependencies via ctx.Set()
+    mockUserService := &MockUserService{
         GetFunc: func(id string) (*User, error) {
             return &User{
                 ID:    id,
@@ -46,9 +75,10 @@ func TestGetUserHandler(t *testing.T) {
             }, nil
         },
     }
+    ctx.Set("userService", mockUserService)
     
-    // Create handler with mocks
-    handler := NewUserHandler(userService)
+    // Create handler
+    handler := NewUserHandler()
     
     // Execute handler
     err := handler.GetUser(ctx)
@@ -57,32 +87,65 @@ func TestGetUserHandler(t *testing.T) {
     assert.NoError(t, err)
     assert.Equal(t, 200, ctx.Response.StatusCode)
     
-    // Check response body
+    // Check JSON response
     var response UserResponse
-    err = ctx.ParseResponseJSON(&response)
+    err = json.Unmarshal(ctx.Response.Body.([]byte), &response)
     assert.NoError(t, err)
     assert.Equal(t, "123", response.ID)
     assert.Equal(t, "Test User", response.Name)
 }
 
 func TestGetUserHandler_NotFound(t *testing.T) {
-    ctx := testing.NewContext()
+    ctx := createTestContext("GET", "/users/999", nil)
     ctx.SetParam("id", "999")
     
-    userService := &MockUserService{
+    mockUserService := &MockUserService{
         GetFunc: func(id string) (*User, error) {
             return nil, ErrNotFound
         },
     }
+    ctx.Set("userService", mockUserService)
     
-    handler := NewUserHandler(userService)
+    handler := NewUserHandler()
     err := handler.GetUser(ctx)
     
-    // Should return 404 error
-    assert.Error(t, err)
-    httpErr, ok := err.(lift.HTTPError)
-    assert.True(t, ok)
-    assert.Equal(t, 404, httpErr.Status())
+    // Should handle error internally and set status
+    assert.NoError(t, err)
+    assert.Equal(t, 404, ctx.Response.StatusCode)
+}
+```
+
+### Testing with Dependencies and Mocks
+
+```go
+func TestUserHandlerWithDatabase(t *testing.T) {
+    // Create mock database using Lift's built-in mocks
+    mockDB := lifttesting.NewMockDynamORM()
+    
+    // Create test context
+    ctx := createTestContext("GET", "/users/123", nil)
+    ctx.SetParam("id", "123")
+    
+    // Inject dependencies (this is the key pattern!)
+    ctx.Set("db", mockDB)
+    ctx.Set("dynamorm", mockDB)
+    
+    // Set up mock expectations
+    expectedUser := &User{ID: "123", Name: "Test User"}
+    mockDB.On("Get", mock.Anything, "123").Return(expectedUser, nil)
+    
+    // Create handler
+    handler := NewUserHandler()
+    
+    // Call handler
+    err := handler.GetUser(ctx)
+    
+    // Assertions
+    assert.NoError(t, err)
+    assert.Equal(t, 200, ctx.Response.StatusCode)
+    
+    // Verify mock was called
+    mockDB.AssertExpectations(t)
 }
 ```
 
@@ -97,8 +160,13 @@ func TestCreateUserTypedHandler(t *testing.T) {
         Age:   30,
     }
     
+    // Create context with JSON body
+    reqBody, _ := json.Marshal(req)
+    ctx := createTestContext("POST", "/users", reqBody)
+    ctx.Request.Headers["Content-Type"] = "application/json"
+    
     // Mock service
-    userService := &MockUserService{
+    mockUserService := &MockUserService{
         CreateFunc: func(req CreateUserRequest) (*User, error) {
             return &User{
                 ID:    "new-123",
@@ -107,10 +175,12 @@ func TestCreateUserTypedHandler(t *testing.T) {
             }, nil
         },
     }
+    ctx.Set("userService", mockUserService)
     
     // Create typed handler
     handler := func(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
-        user, err := userService.Create(req)
+        service := ctx.Get("userService").(*MockUserService)
+        user, err := service.Create(req)
         if err != nil {
             return UserResponse{}, err
         }
@@ -122,11 +192,6 @@ func TestCreateUserTypedHandler(t *testing.T) {
         }, nil
     }
     
-    // Test the handler
-    ctx := testing.NewContext()
-    ctx.Request.Method = "POST"
-    ctx.Request.Body = testing.MustMarshalJSON(req)
-    
     // Wrap with TypedHandler
     typedHandler := lift.TypedHandler(handler)
     err := typedHandler.Handle(ctx)
@@ -135,7 +200,7 @@ func TestCreateUserTypedHandler(t *testing.T) {
     assert.Equal(t, 200, ctx.Response.StatusCode)
     
     var resp UserResponse
-    ctx.ParseResponseJSON(&resp)
+    json.Unmarshal(ctx.Response.Body.([]byte), &resp)
     assert.Equal(t, "new-123", resp.ID)
 }
 ```
@@ -205,6 +270,144 @@ func TestValidateUser(t *testing.T) {
 }
 ```
 
+## Integration Testing with TestApp
+
+### Testing Complete Request Flow
+
+```go
+func TestUserAPIIntegration(t *testing.T) {
+    // Create test app using Lift's TestApp
+    testApp := lifttesting.NewTestApp()
+    app := testApp.App()
+    
+    // Configure your routes
+    userHandler := NewUserHandler()
+    app.GET("/users/:id", userHandler.GetUser)
+    app.POST("/users", userHandler.CreateUser)
+    
+    // Start the test server
+    err := testApp.Start()
+    require.NoError(t, err)
+    defer testApp.Stop()
+    
+    // Test user creation
+    t.Run("create user", func(t *testing.T) {
+        req := map[string]interface{}{
+            "name":  "Jane Doe",
+            "email": "jane@example.com",
+        }
+        
+        resp := testApp.POST("/users", req)
+        resp.AssertStatus(201).
+            AssertJSONPath("$.name", "Jane Doe").
+            AssertJSONPath("$.email", "jane@example.com").
+            AssertHeaderExists("Content-Type")
+        
+        // Extract ID for next test
+        userID := resp.GetJSONPath("$.id").(string)
+        t.Setenv("TEST_USER_ID", userID)
+    })
+    
+    // Test user retrieval
+    t.Run("get user", func(t *testing.T) {
+        userID := os.Getenv("TEST_USER_ID")
+        
+        resp := testApp.GET("/users/"+userID, nil)
+        resp.AssertStatus(200).
+            AssertJSONPath("$.id", userID).
+            AssertJSONPath("$.name", "Jane Doe")
+    })
+}
+```
+
+### Testing with Authentication
+
+```go
+func TestProtectedEndpoints(t *testing.T) {
+    testApp := lifttesting.NewTestApp()
+    app := testApp.App()
+    
+    // Add JWT auth middleware
+    app.Use(middleware.JWT(middleware.JWTConfig{
+        SecretKey: []byte("test-secret"),
+    }))
+    
+    // Protected route
+    app.GET("/profile", func(ctx *lift.Context) error {
+        userID := ctx.UserID()
+        return ctx.JSON(map[string]string{"user_id": userID})
+    })
+    
+    testApp.Start()
+    defer testApp.Stop()
+    
+    // Test without auth - should fail
+    t.Run("unauthenticated", func(t *testing.T) {
+        resp := testApp.GET("/profile", nil)
+        resp.AssertStatus(401)
+    })
+    
+    // Test with auth - should succeed
+    t.Run("authenticated", func(t *testing.T) {
+        testApp.WithAuth(&lifttesting.AuthConfig{
+            Token:    createValidJWT("user-123", "test-secret"),
+            UserID:   "user-123",
+            TenantID: "tenant-456",
+        })
+        
+        resp := testApp.GET("/profile", nil)
+        resp.AssertStatus(200).
+            AssertJSONPath("$.user_id", "user-123")
+    })
+}
+```
+
+### Testing with Database Integration
+
+```go
+func TestDatabaseIntegration(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping integration test")
+    }
+    
+    testApp := lifttesting.NewTestApp()
+    app := testApp.App()
+    
+    // Add DynamORM middleware
+    app.Use(dynamorm.WithDynamORM(&dynamorm.DynamORMConfig{
+        TableName: "test-users-" + uuid.New().String(),
+        Region:    "us-east-1",
+        Endpoint:  "http://localhost:8000", // Local DynamoDB
+    }))
+    
+    // Add handlers
+    app.POST("/users", handlers.CreateUser)
+    app.GET("/users/:id", handlers.GetUser)
+    
+    testApp.Start()
+    defer testApp.Stop()
+    
+    // Test create and retrieve
+    t.Run("create and get user", func(t *testing.T) {
+        // Create user
+        createReq := map[string]interface{}{
+            "name":  "Integration Test User",
+            "email": "integration@example.com",
+        }
+        
+        createResp := testApp.POST("/users", createReq)
+        createResp.AssertStatus(201)
+        
+        userID := createResp.GetJSONPath("$.id").(string)
+        
+        // Retrieve user
+        getResp := testApp.GET("/users/"+userID, nil)
+        getResp.AssertStatus(200).
+            AssertJSONPath("$.name", "Integration Test User")
+    })
+}
+```
+
 ## Testing Middleware
 
 ### Basic Middleware Testing
@@ -219,9 +422,9 @@ func TestAuthMiddleware(t *testing.T) {
     // Create test handler
     testHandler := lift.HandlerFunc(func(ctx *lift.Context) error {
         // This should only be called if auth succeeds
-        claims := ctx.Get("claims").(jwt.MapClaims)
+        userID := ctx.UserID()
         return ctx.JSON(map[string]interface{}{
-            "user_id": claims["sub"],
+            "user_id": userID,
         })
     })
     
@@ -229,10 +432,10 @@ func TestAuthMiddleware(t *testing.T) {
     handler := authMiddleware(testHandler)
     
     t.Run("valid token", func(t *testing.T) {
-        ctx := testing.NewContext()
+        ctx := createTestContext("GET", "/protected", nil)
         
         // Create valid token
-        token := testing.CreateJWT("user-123", "test-secret")
+        token := createValidJWT("user-123", "test-secret")
         ctx.Request.Headers["Authorization"] = "Bearer " + token
         
         err := handler.Handle(ctx)
@@ -241,20 +444,20 @@ func TestAuthMiddleware(t *testing.T) {
     })
     
     t.Run("missing token", func(t *testing.T) {
-        ctx := testing.NewContext()
+        ctx := createTestContext("GET", "/protected", nil)
         
         err := handler.Handle(ctx)
-        assert.Error(t, err)
-        assert.Equal(t, 401, err.(lift.HTTPError).Status())
+        assert.NoError(t, err) // Middleware handles error internally
+        assert.Equal(t, 401, ctx.Response.StatusCode)
     })
     
     t.Run("invalid token", func(t *testing.T) {
-        ctx := testing.NewContext()
+        ctx := createTestContext("GET", "/protected", nil)
         ctx.Request.Headers["Authorization"] = "Bearer invalid-token"
         
         err := handler.Handle(ctx)
-        assert.Error(t, err)
-        assert.Equal(t, 401, err.(lift.HTTPError).Status())
+        assert.NoError(t, err) // Middleware handles error internally
+        assert.Equal(t, 401, ctx.Response.StatusCode)
     })
 }
 ```
@@ -290,7 +493,7 @@ func TestMiddlewareChain(t *testing.T) {
     chain = createMiddleware("first")(chain)
     
     // Execute
-    ctx := testing.NewContext()
+    ctx := createTestContext("GET", "/test", nil)
     err := chain.Handle(ctx)
     
     // Verify order
@@ -307,112 +510,32 @@ func TestMiddlewareChain(t *testing.T) {
 }
 ```
 
-## Integration Testing
-
-### Testing Complete Request Flow
-
-```go
-func TestCompleteUserFlow(t *testing.T) {
-    // Set up test app
-    app := createTestApp()
-    
-    // Test user registration
-    t.Run("register user", func(t *testing.T) {
-        req := map[string]interface{}{
-            "name":     "Jane Doe",
-            "email":    "jane@example.com",
-            "password": "SecurePass123!",
-        }
-        
-        resp := app.TestRequest("POST", "/register", req)
-        assert.Equal(t, 201, resp.StatusCode)
-        
-        var user UserResponse
-        json.Unmarshal(resp.Body, &user)
-        assert.NotEmpty(t, user.ID)
-        
-        // Store for next tests
-        t.Setenv("TEST_USER_ID", user.ID)
-    })
-    
-    // Test login
-    t.Run("login", func(t *testing.T) {
-        req := map[string]interface{}{
-            "email":    "jane@example.com",
-            "password": "SecurePass123!",
-        }
-        
-        resp := app.TestRequest("POST", "/login", req)
-        assert.Equal(t, 200, resp.StatusCode)
-        
-        var loginResp LoginResponse
-        json.Unmarshal(resp.Body, &loginResp)
-        assert.NotEmpty(t, loginResp.Token)
-        
-        // Store token for authenticated requests
-        t.Setenv("TEST_TOKEN", loginResp.Token)
-    })
-    
-    // Test authenticated request
-    t.Run("get profile", func(t *testing.T) {
-        token := os.Getenv("TEST_TOKEN")
-        headers := map[string]string{
-            "Authorization": "Bearer " + token,
-        }
-        
-        resp := app.TestRequestWithHeaders("GET", "/profile", nil, headers)
-        assert.Equal(t, 200, resp.StatusCode)
-        
-        var profile ProfileResponse
-        json.Unmarshal(resp.Body, &profile)
-        assert.Equal(t, "jane@example.com", profile.Email)
-    })
-}
-```
-
-### Testing with Real AWS Services
-
-```go
-func TestDynamoDBIntegration(t *testing.T) {
-    if testing.Short() {
-        t.Skip("Skipping integration test")
-    }
-    
-    // Use local DynamoDB or test table
-    db := dynamorm.New(dynamorm.Config{
-        TableName: "test-users-" + uuid.New().String(),
-        Region:    "us-east-1",
-        Endpoint:  "http://localhost:8000", // Local DynamoDB
-    })
-    
-    // Create table
-    err := db.CreateTable(&User{})
-    require.NoError(t, err)
-    defer db.DeleteTable(&User{})
-    
-    // Test operations
-    t.Run("create and retrieve user", func(t *testing.T) {
-        user := &User{
-            ID:    "test-123",
-            Name:  "Test User",
-            Email: "test@example.com",
-        }
-        
-        // Create
-        err := db.Save(user)
-        assert.NoError(t, err)
-        
-        // Retrieve
-        var retrieved User
-        err = db.Get(&retrieved, "test-123")
-        assert.NoError(t, err)
-        assert.Equal(t, user.Name, retrieved.Name)
-        assert.Equal(t, user.Email, retrieved.Email)
-    })
-}
-```
-
 ## Mock Strategies
+
+### Using Lift's Built-in Mocks
+
+```go
+func TestWithMockDynamORM(t *testing.T) {
+    // Use Lift's built-in DynamORM mock
+    mockDB := lifttesting.NewMockDynamORM()
+    
+    // Set up expectations
+    expectedUser := &User{ID: "123", Name: "Test User"}
+    mockDB.On("Get", mock.Anything, "123").Return(expectedUser, nil)
+    mockDB.On("Save", mock.AnythingOfType("*User")).Return(nil)
+    
+    // Create context with mock
+    ctx := createTestContext("GET", "/users/123", nil)
+    ctx.Set("dynamorm", mockDB)
+    
+    // Test your handler
+    handler := NewUserHandler()
+    err := handler.GetUser(ctx)
+    
+    assert.NoError(t, err)
+    mockDB.AssertExpectations(t)
+}
+```
 
 ### Interface-Based Mocks
 
@@ -427,74 +550,58 @@ type UserService interface {
 
 // Mock implementation
 type MockUserService struct {
-    GetFunc    func(id string) (*User, error)
-    CreateFunc func(user *User) error
-    UpdateFunc func(user *User) error
-    DeleteFunc func(id string) error
-    
-    // Track calls for assertions
-    Calls []MockCall
+    mock.Mock
 }
 
 func (m *MockUserService) Get(id string) (*User, error) {
-    m.Calls = append(m.Calls, MockCall{Method: "Get", Args: []interface{}{id}})
-    if m.GetFunc != nil {
-        return m.GetFunc(id)
-    }
-    return nil, nil
+    args := m.Called(id)
+    return args.Get(0).(*User), args.Error(1)
+}
+
+func (m *MockUserService) Create(user *User) error {
+    args := m.Called(user)
+    return args.Error(0)
 }
 
 // Use in tests
-func TestHandler(t *testing.T) {
-    mock := &MockUserService{
-        GetFunc: func(id string) (*User, error) {
-            return &User{ID: id, Name: "Mock User"}, nil
-        },
-    }
+func TestHandlerWithMock(t *testing.T) {
+    mockService := &MockUserService{}
+    mockService.On("Get", "123").Return(&User{ID: "123", Name: "Test"}, nil)
     
-    handler := NewHandler(mock)
-    // Test handler...
+    ctx := createTestContext("GET", "/users/123", nil)
+    ctx.Set("userService", mockService)
     
-    // Assert mock was called correctly
-    assert.Len(t, mock.Calls, 1)
-    assert.Equal(t, "Get", mock.Calls[0].Method)
+    handler := NewUserHandler()
+    err := handler.GetUser(ctx)
+    
+    assert.NoError(t, err)
+    mockService.AssertExpectations(t)
 }
 ```
 
 ### AWS Service Mocks
 
 ```go
-// Mock S3 client
-type MockS3Client struct {
-    s3iface.S3API
-    GetObjectFunc func(*s3.GetObjectInput) (*s3.GetObjectOutput, error)
-    PutObjectFunc func(*s3.PutObjectInput) (*s3.PutObjectOutput, error)
-}
-
-func (m *MockS3Client) GetObject(input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-    if m.GetObjectFunc != nil {
-        return m.GetObjectFunc(input)
-    }
-    return &s3.GetObjectOutput{
-        Body: ioutil.NopCloser(strings.NewReader("mock content")),
-    }, nil
-}
-
-// Use in tests
-func TestS3Handler(t *testing.T) {
-    mockS3 := &MockS3Client{
-        GetObjectFunc: func(input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
-            assert.Equal(t, "my-bucket", *input.Bucket)
-            assert.Equal(t, "test.txt", *input.Key)
-            
-            return &s3.GetObjectOutput{
-                Body: ioutil.NopCloser(strings.NewReader("file content")),
-            }, nil
-        },
-    }
+func TestWithAWSMocks(t *testing.T) {
+    // Use Lift's CloudWatch mock
+    mockCloudWatch := lifttesting.NewMockCloudWatchClient()
     
-    handler := NewS3Handler(mockS3)
-    // Test handler...
+    // Set up expectations
+    mockCloudWatch.On("PutMetricData", 
+        mock.Anything, 
+        mock.AnythingOfType("*cloudwatch.PutMetricDataInput"),
+        mock.Anything,
+    ).Return(&cloudwatch.PutMetricDataOutput{}, nil)
+    
+    // Test your handler that uses CloudWatch
+    ctx := createTestContext("POST", "/metrics", nil)
+    ctx.Set("cloudwatch", mockCloudWatch)
+    
+    handler := NewMetricsHandler()
+    err := handler.PublishMetrics(ctx)
+    
+    assert.NoError(t, err)
+    mockCloudWatch.AssertExpectations(t)
 }
 ```
 
@@ -505,7 +612,7 @@ func TestS3Handler(t *testing.T) {
 ```go
 // Create context with common setup
 func createAuthenticatedContext(userID string) *lift.Context {
-    ctx := testing.NewContext()
+    ctx := createTestContext("GET", "/", nil)
     ctx.SetUserID(userID)
     ctx.SetTenantID("tenant-123")
     ctx.Set("claims", jwt.MapClaims{
@@ -517,8 +624,8 @@ func createAuthenticatedContext(userID string) *lift.Context {
 
 // Create context for specific event types
 func createSQSContext(messages []string) *lift.Context {
-    ctx := testing.NewContext()
-    ctx.Request.TriggerType = lift.TriggerSQS
+    ctx := createTestContext("POST", "/", nil)
+    ctx.Request.TriggerType = adapters.TriggerSQS
     
     records := make([]interface{}, len(messages))
     for i, msg := range messages {
@@ -530,6 +637,16 @@ func createSQSContext(messages []string) *lift.Context {
     ctx.Request.Records = records
     
     return ctx
+}
+
+// Helper for creating JWT tokens
+func createValidJWT(userID, secret string) string {
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+        "sub": userID,
+        "exp": time.Now().Add(time.Hour).Unix(),
+    })
+    tokenString, _ := token.SignedString([]byte(secret))
+    return tokenString
 }
 ```
 
@@ -563,7 +680,41 @@ func AssertErrorResponse(t *testing.T, ctx *lift.Context, statusCode int, errorC
 
 ## Load Testing
 
-### Basic Load Test
+### Using Lift's Load Testing Framework
+
+```go
+func TestHandlerPerformance(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping performance test")
+    }
+    
+    // Create test app
+    testApp := lifttesting.NewTestApp()
+    app := testApp.App()
+    app.GET("/users/:id", handlers.GetUser)
+    
+    // Create load tester
+    loadTester := lifttesting.NewLoadTester(testApp, &lifttesting.LoadTestConfig{
+        ConcurrentUsers: 10,
+        Duration:        30 * time.Second,
+        ErrorThreshold:  0.01, // 1% error rate
+    })
+    
+    // Run load test
+    result, err := loadTester.RunLoadTest(context.Background(), func(app *lifttesting.TestApp) *lifttesting.TestResponse {
+        return app.GET("/users/123", nil)
+    })
+    
+    require.NoError(t, err)
+    assert.Less(t, result.ErrorRate, 0.01)
+    assert.Greater(t, result.RequestsPerSecond, 100.0)
+    
+    t.Logf("Load test results: %.2f req/s, %.2f%% error rate", 
+        result.RequestsPerSecond, result.ErrorRate*100)
+}
+```
+
+### Basic Performance Testing
 
 ```go
 func TestHandlerPerformance(t *testing.T) {
@@ -575,7 +726,7 @@ func TestHandlerPerformance(t *testing.T) {
     
     // Warm up
     for i := 0; i < 100; i++ {
-        ctx := testing.NewContext()
+        ctx := createTestContext("GET", "/test", nil)
         handler.Handle(ctx)
     }
     
@@ -584,7 +735,7 @@ func TestHandlerPerformance(t *testing.T) {
     iterations := 10000
     
     for i := 0; i < iterations; i++ {
-        ctx := testing.NewContext()
+        ctx := createTestContext("GET", "/test", nil)
         err := handler.Handle(ctx)
         assert.NoError(t, err)
     }
@@ -597,56 +748,6 @@ func TestHandlerPerformance(t *testing.T) {
         "Handler should complete in less than 100μs")
     
     t.Logf("Average duration: %v", avgDuration)
-}
-```
-
-### Concurrent Load Test
-
-```go
-func TestConcurrentRequests(t *testing.T) {
-    handler := createHandler()
-    
-    // Test concurrent requests
-    concurrency := 100
-    requestsPerWorker := 100
-    
-    var wg sync.WaitGroup
-    errors := make(chan error, concurrency*requestsPerWorker)
-    
-    start := time.Now()
-    
-    for i := 0; i < concurrency; i++ {
-        wg.Add(1)
-        go func(workerID int) {
-            defer wg.Done()
-            
-            for j := 0; j < requestsPerWorker; j++ {
-                ctx := testing.NewContext()
-                ctx.SetRequestID(fmt.Sprintf("req-%d-%d", workerID, j))
-                
-                if err := handler.Handle(ctx); err != nil {
-                    errors <- err
-                }
-            }
-        }(i)
-    }
-    
-    wg.Wait()
-    close(errors)
-    
-    duration := time.Since(start)
-    totalRequests := concurrency * requestsPerWorker
-    rps := float64(totalRequests) / duration.Seconds()
-    
-    // Check for errors
-    var errorCount int
-    for err := range errors {
-        errorCount++
-        t.Logf("Error: %v", err)
-    }
-    
-    assert.Equal(t, 0, errorCount, "No errors expected")
-    t.Logf("Processed %d requests in %v (%.2f req/s)", totalRequests, duration, rps)
 }
 ```
 
@@ -687,30 +788,30 @@ func TestLambdaFunction(t *testing.T) {
 }
 ```
 
-### API Gateway Testing
+### Testing with App.HandleTestRequest
 
 ```go
-func TestAPIGateway(t *testing.T) {
-    if os.Getenv("RUN_E2E") != "true" {
-        t.Skip("Skipping E2E test")
-    }
+func TestDirectHandlerCall(t *testing.T) {
+    app := lift.New()
+    app.GET("/test", func(ctx *lift.Context) error {
+        return ctx.JSON(map[string]string{"result": "ok"})
+    })
     
-    baseURL := os.Getenv("API_GATEWAY_URL")
-    client := &http.Client{Timeout: 10 * time.Second}
+    // Start app to configure routes
+    err := app.Start()
+    require.NoError(t, err)
     
-    // Test endpoint
-    req, _ := http.NewRequest("GET", baseURL+"/users", nil)
-    req.Header.Set("Authorization", "Bearer "+getTestToken())
+    // Create test context
+    ctx := createTestContext("GET", "/test", nil)
     
-    resp, err := client.Do(req)
+    // Call directly through app
+    err = app.HandleTestRequest(ctx)
     assert.NoError(t, err)
-    defer resp.Body.Close()
+    assert.Equal(t, 200, ctx.Response.StatusCode)
     
-    assert.Equal(t, 200, resp.StatusCode)
-    
-    var users []User
-    json.NewDecoder(resp.Body).Decode(&users)
-    assert.NotEmpty(t, users)
+    var response map[string]string
+    json.Unmarshal(ctx.Response.Body.([]byte), &response)
+    assert.Equal(t, "ok", response["result"])
 }
 ```
 
@@ -765,18 +866,18 @@ func BenchmarkUserHandler_Get(b *testing.B) {}
 // GOOD: Each test is independent
 func TestHandlerA(t *testing.T) {
     // Setup specific to this test
-    db := createTestDB()
-    defer db.Close()
+    ctx := createTestContext("GET", "/test", nil)
+    mockDB := lifttesting.NewMockDynamORM()
+    ctx.Set("db", mockDB)
     
-    handler := NewHandler(db)
-    // Test...
+    // Test handler...
 }
 
 // AVOID: Tests depend on shared state
 var sharedDB *DB // Don't do this
 
 func TestHandlerB(t *testing.T) {
-    // Uses shared state
+    // Uses shared state - bad!
 }
 ```
 
@@ -808,22 +909,29 @@ func TestCalculatePrice(t *testing.T) {
 ### 3. Mock External Dependencies
 
 ```go
-// GOOD: Mock external services
-type EmailService interface {
-    Send(to, subject, body string) error
-}
-
-type MockEmailService struct {
-    SendFunc func(to, subject, body string) error
-    Calls    []EmailCall
-}
-
-func (m *MockEmailService) Send(to, subject, body string) error {
-    m.Calls = append(m.Calls, EmailCall{To: to, Subject: subject})
-    if m.SendFunc != nil {
-        return m.SendFunc(to, subject, body)
-    }
-    return nil
+// GOOD: Mock external services using Lift's patterns
+func TestHandlerWithDependencies(t *testing.T) {
+    ctx := createTestContext("GET", "/test", nil)
+    
+    // Use Lift's built-in mocks
+    mockDB := lifttesting.NewMockDynamORM()
+    mockS3 := lifttesting.NewMockS3Client()
+    
+    // Inject via context
+    ctx.Set("db", mockDB)
+    ctx.Set("s3", mockS3)
+    
+    // Set expectations
+    mockDB.On("Get", mock.Anything, "123").Return(&User{}, nil)
+    mockS3.On("GetObject", mock.Anything).Return(&s3.GetObjectOutput{}, nil)
+    
+    // Test handler
+    handler := NewHandler()
+    err := handler.Handle(ctx)
+    
+    assert.NoError(t, err)
+    mockDB.AssertExpectations(t)
+    mockS3.AssertExpectations(t)
 }
 ```
 
@@ -855,23 +963,32 @@ func TestService(t *testing.T) {
 ```go
 // GOOD: Organized subtests
 func TestUserCRUD(t *testing.T) {
+    testApp := lifttesting.NewTestApp()
+    // Configure app...
+    testApp.Start()
+    defer testApp.Stop()
+    
     var userID string
     
     t.Run("create", func(t *testing.T) {
-        // Create user
-        userID = createdUser.ID
+        resp := testApp.POST("/users", createUserReq)
+        resp.AssertStatus(201)
+        userID = resp.GetJSONPath("$.id").(string)
     })
     
     t.Run("read", func(t *testing.T) {
-        // Read user using userID
+        resp := testApp.GET("/users/"+userID, nil)
+        resp.AssertStatus(200)
     })
     
     t.Run("update", func(t *testing.T) {
-        // Update user
+        resp := testApp.PUT("/users/"+userID, updateUserReq)
+        resp.AssertStatus(200)
     })
     
     t.Run("delete", func(t *testing.T) {
-        // Delete user
+        resp := testApp.DELETE("/users/"+userID, nil)
+        resp.AssertStatus(204)
     })
 }
 ```
@@ -899,7 +1016,7 @@ go test -cover ./...
 func (h *UserHandler) CreateUser(ctx *lift.Context) error {
     // Critical path - must be tested
     var req CreateUserRequest
-    if err := ctx.ParseAndValidate(&req); err != nil {
+    if err := ctx.ParseRequest(&req); err != nil {
         return err // Test this error case
     }
     
@@ -907,9 +1024,13 @@ func (h *UserHandler) CreateUser(ctx *lift.Context) error {
     user, err := h.service.Create(req)
     if err != nil {
         if errors.Is(err, ErrDuplicateEmail) {
-            return lift.Conflict("Email already exists") // Test this
+            return ctx.Status(409).JSON(map[string]string{
+                "error": "Email already exists",
+            }) // Test this
         }
-        return lift.InternalError("Failed to create user") // Test this
+        return ctx.Status(500).JSON(map[string]string{
+            "error": "Failed to create user",
+        }) // Test this
     }
     
     // Success path - test
@@ -917,15 +1038,24 @@ func (h *UserHandler) CreateUser(ctx *lift.Context) error {
 }
 ```
 
+## Key Takeaways
+
+1. **Use `createTestContext()` for unit tests** - this is the established pattern in the codebase
+2. **Use `lifttesting.NewTestApp()` for integration tests** - tests full HTTP flow with real server
+3. **Import lift testing as `lifttesting`** - avoids conflicts with Go's standard testing package
+4. **Inject dependencies with `ctx.Set()`** - standard dependency injection pattern
+5. **Use Lift's built-in mocks** - `NewMockDynamORM()`, `NewMockCloudWatchClient()`, etc.
+6. **Access response via `ctx.Response`** - status code, headers, body are all available
+7. **Use TestApp's rich assertions** - `AssertStatus()`, `AssertJSONPath()`, etc.
+
 ## Summary
 
 Effective testing in Lift includes:
 
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test component interactions
-- **E2E Tests**: Test complete user flows
-- **Mock Strategies**: Isolate external dependencies
-- **Test Utilities**: Helpers for common test scenarios
-- **Load Testing**: Ensure performance requirements
+- **Unit Tests**: Test individual handlers using `createTestContext()`
+- **Integration Tests**: Test complete flows using `TestApp`
+- **Mock Strategies**: Use Lift's built-in mocks and dependency injection via `ctx.Set()`
+- **Test Utilities**: Helpers for creating contexts and assertions
+- **Load Testing**: Performance testing with Lift's load testing framework
 
-Comprehensive testing gives confidence in your serverless application's reliability and performance. 
+The key difference from standard Go HTTP testing is that Lift uses context-based dependency injection and Lambda-style event processing, not direct HTTP serving. Use the patterns shown here for reliable testing of your Lift applications. 

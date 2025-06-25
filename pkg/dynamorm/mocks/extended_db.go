@@ -11,7 +11,7 @@ import (
 
 // MockExtendedDB is a complete mock implementation of core.ExtendedDB
 type MockExtendedDB struct {
-	mocks.MockDB // Embed MockDB to inherit base methods
+	mocks.MockDB // Embed MockDB to inherit base DB methods and mock.Mock
 }
 
 // Ensure MockExtendedDB implements ExtendedDB
