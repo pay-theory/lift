@@ -50,9 +50,10 @@ type AppOption func(*App)
 // App represents the main application container
 type App struct {
 	// Core components
-	router     *Router
-	middleware []Middleware
-	config     *Config
+	router      *Router      // HTTP router
+	eventRouter *EventRouter // Non-HTTP event router
+	middleware  []Middleware
+	config      *Config
 
 	// Event handling
 	adapterRegistry *adapters.AdapterRegistry
@@ -76,6 +77,7 @@ type App struct {
 func New(options ...AppOption) *App {
 	app := &App{
 		router:          NewRouter(),
+		eventRouter:     NewEventRouter(),
 		middleware:      make([]Middleware, 0),
 		config:          DefaultConfig(),
 		adapterRegistry: adapters.NewAdapterRegistry(),
@@ -124,7 +126,30 @@ func (a *App) PATCH(path string, handler interface{}) *App {
 
 // Handle registers a route with the specified method and path
 func (a *App) Handle(method, path string, handler interface{}) *App {
-	// Convert various handler types to the Handler interface
+	// Check if this is an event trigger type
+	triggerType := parseTriggerType(method)
+	if triggerType != TriggerUnknown && triggerType != TriggerAPIGateway {
+		// This is a non-HTTP event, use the event router
+		var eventHandler EventHandler
+		switch v := handler.(type) {
+		case EventHandler:
+			eventHandler = v
+		case func(*Context) error:
+			eventHandler = EventHandlerFunc(v)
+		default:
+			// Convert to event handler
+			h, err := convertHandlerUsingReflection(handler)
+			if err != nil {
+				panic(fmt.Sprintf("unsupported handler type: %v", err))
+			}
+			eventHandler = EventHandlerFunc(h.Handle)
+		}
+
+		a.eventRouter.AddEventRoute(triggerType, path, eventHandler)
+		return a
+	}
+
+	// This is an HTTP route
 	var h Handler
 	switch v := handler.(type) {
 	case Handler:
@@ -258,10 +283,19 @@ func (a *App) HandleRequest(ctx context.Context, event interface{}) (interface{}
 		liftCtx.DB = a.db
 	}
 
-	// Find and execute handler
-	if err := a.router.Handle(liftCtx); err != nil {
-		// Handle error response
-		return a.handleError(liftCtx, err)
+	// Route based on trigger type
+	if req.TriggerType != TriggerAPIGateway && req.TriggerType != TriggerAPIGatewayV2 && req.TriggerType != TriggerUnknown {
+		// Non-HTTP event, use event router
+		if err := a.eventRouter.HandleEvent(liftCtx); err != nil {
+			// Handle error response
+			return a.handleError(liftCtx, err)
+		}
+	} else {
+		// HTTP event, use regular router
+		if err := a.router.Handle(liftCtx); err != nil {
+			// Handle error response
+			return a.handleError(liftCtx, err)
+		}
 	}
 
 	// Return the response
@@ -496,4 +530,24 @@ func isErrorType(t reflect.Type) bool {
 func isInterfaceType(t reflect.Type) bool {
 	// Accept any type for response values (interface{})
 	return true
+}
+
+// parseTriggerType converts a string to a TriggerType
+func parseTriggerType(s string) TriggerType {
+	switch s {
+	case "SQS":
+		return TriggerSQS
+	case "S3":
+		return TriggerS3
+	case "EventBridge":
+		return TriggerEventBridge
+	case "CONNECT", "DISCONNECT", "MESSAGE":
+		return TriggerWebSocket
+	default:
+		// Check if it's an HTTP method
+		if s == "GET" || s == "POST" || s == "PUT" || s == "DELETE" || s == "PATCH" || s == "HEAD" || s == "OPTIONS" {
+			return TriggerAPIGateway
+		}
+		return TriggerUnknown
+	}
 }
