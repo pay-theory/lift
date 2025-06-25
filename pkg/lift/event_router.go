@@ -3,6 +3,7 @@ package lift
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // EventHandler represents a handler for non-HTTP events
@@ -27,6 +28,7 @@ type EventRoute struct {
 
 // EventRouter handles routing for non-HTTP Lambda events
 type EventRouter struct {
+	mu     sync.RWMutex
 	routes map[TriggerType][]*EventRoute
 }
 
@@ -45,6 +47,8 @@ func (er *EventRouter) AddEventRoute(triggerType TriggerType, pattern string, ha
 		Handler:     handler,
 	}
 
+	er.mu.Lock()
+	defer er.mu.Unlock()
 	er.routes[triggerType] = append(er.routes[triggerType], route)
 }
 
@@ -53,7 +57,10 @@ func (er *EventRouter) FindEventHandler(ctx *Context) (EventHandler, error) {
 	triggerType := ctx.Request.TriggerType
 
 	// Get routes for this trigger type
+	er.mu.RLock()
 	routes, exists := er.routes[triggerType]
+	er.mu.RUnlock()
+	
 	if !exists || len(routes) == 0 {
 		return nil, fmt.Errorf("no routes found for trigger type: %s", triggerType)
 	}
@@ -331,7 +338,15 @@ func (er *EventRouter) HandleEvent(ctx *Context) error {
 
 // GetRoutes returns all routes for debugging/inspection
 func (er *EventRouter) GetRoutes() map[TriggerType][]*EventRoute {
-	return er.routes
+	er.mu.RLock()
+	defer er.mu.RUnlock()
+	
+	// Create a copy to avoid external modifications
+	routesCopy := make(map[TriggerType][]*EventRoute)
+	for k, v := range er.routes {
+		routesCopy[k] = append([]*EventRoute(nil), v...)
+	}
+	return routesCopy
 }
 
 // SQSMessage represents a parsed SQS message for type-safe handling
