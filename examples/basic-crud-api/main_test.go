@@ -265,29 +265,29 @@ type MockDynamORMWrapper struct {
 	tenantID  string
 }
 
-func (m *MockDynamORMWrapper) Get(ctx context.Context, key interface{}, result interface{}) error {
+func (m *MockDynamORMWrapper) Get(ctx context.Context, key any, result any) error {
 	return m.mockDB.Model(result).Where("ID", "=", key).First(result)
 }
 
-func (m *MockDynamORMWrapper) Put(ctx context.Context, item interface{}) error {
+func (m *MockDynamORMWrapper) Put(ctx context.Context, item any) error {
 	return m.mockDB.Model(item).Create()
 }
 
-func (m *MockDynamORMWrapper) Delete(ctx context.Context, key interface{}) error {
+func (m *MockDynamORMWrapper) Delete(ctx context.Context, key any) error {
 	return m.mockDB.Model(&struct{}{}).Where("ID", "=", key).Delete()
 }
 
-func (m *MockDynamORMWrapper) Query(ctx context.Context, query interface{}) (interface{}, error) {
+func (m *MockDynamORMWrapper) Query(ctx context.Context, query any) (any, error) {
 	// Simple implementation for testing
-	return []interface{}{}, nil
+	return []any{}, nil
 }
 
-func (m *MockDynamORMWrapper) BeginTransaction() (interface{}, error) {
+func (m *MockDynamORMWrapper) BeginTransaction() (any, error) {
 	// Return a mock transaction
 	return &struct{}{}, nil
 }
 
-func (m *MockDynamORMWrapper) WithTenant(tenantID string) interface{} {
+func (m *MockDynamORMWrapper) WithTenant(tenantID string) any {
 	return &MockDynamORMWrapper{
 		mockDB:    m.mockDB,
 		mockQuery: m.mockQuery,
@@ -347,6 +347,6 @@ func BenchmarkCRUDOperations(b *testing.B) {
 // StructValidator implements the Lift Validator interface using the validation package
 type StructValidator struct{}
 
-func (v *StructValidator) Validate(i interface{}) error {
+func (v *StructValidator) Validate(i any) error {
 	return validation.Validate(i)
 }

@@ -39,7 +39,7 @@ type UpdateUserRequest struct {
 type APIError struct {
 	Type    string      `json:"type"`
 	Message string      `json:"message"`
-	Details interface{} `json:"details,omitempty"`
+	Details any `json:"details,omitempty"`
 }
 
 func (e APIError) Error() string {
@@ -89,7 +89,7 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*U
 			return nil, APIError{
 				Type:    "conflict",
 				Message: "email already exists",
-				Details: map[string]interface{}{"email": req.Email},
+				Details: map[string]any{"email": req.Email},
 			}
 		}
 	}
@@ -138,7 +138,7 @@ func (s *UserService) GetUser(ctx context.Context, id int) (*User, error) {
 		return nil, APIError{
 			Type:    "not_found",
 			Message: "user not found",
-			Details: map[string]interface{}{"user_id": id},
+			Details: map[string]any{"user_id": id},
 		}
 	}
 
@@ -163,7 +163,7 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, req UpdateUserRequ
 		return nil, APIError{
 			Type:    "not_found",
 			Message: "user not found",
-			Details: map[string]interface{}{"user_id": id},
+			Details: map[string]any{"user_id": id},
 		}
 	}
 
@@ -174,7 +174,7 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, req UpdateUserRequ
 				return nil, APIError{
 					Type:    "conflict",
 					Message: "email already exists",
-					Details: map[string]interface{}{"email": req.Email},
+					Details: map[string]any{"email": req.Email},
 				}
 			}
 		}
@@ -210,7 +210,7 @@ func (s *UserService) DeleteUser(ctx context.Context, id int) error {
 		return APIError{
 			Type:    "not_found",
 			Message: "user not found",
-			Details: map[string]interface{}{"user_id": id},
+			Details: map[string]any{"user_id": id},
 		}
 	}
 
@@ -354,7 +354,7 @@ func NewProductionAPI() *ProductionAPI {
 			Timestamp: time.Now(),
 			Duration:  time.Since(start),
 			Message:   message,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"active_connections": userCount,
 				"load_threshold":     15,
 			},
@@ -512,15 +512,15 @@ func (api *ProductionAPI) metricsHandler(w http.ResponseWriter, r *http.Request)
 	defer cancel()
 	overall := api.healthManager.OverallHealth(ctx)
 
-	metrics := map[string]interface{}{
+	metrics := map[string]any{
 		"timestamp": time.Now().Format(time.RFC3339),
-		"health": map[string]interface{}{
+		"health": map[string]any{
 			"status":   overall.Status,
 			"duration": overall.Duration.String(),
 			"message":  overall.Message,
 		},
-		"resources": map[string]interface{}{
-			"database_pool": map[string]interface{}{
+		"resources": map[string]any{
+			"database_pool": map[string]any{
 				"active":   poolStats.Active,
 				"idle":     poolStats.Idle,
 				"total":    poolStats.Total,
@@ -532,7 +532,7 @@ func (api *ProductionAPI) metricsHandler(w http.ResponseWriter, r *http.Request)
 				"errors":   poolStats.Errors,
 			},
 		},
-		"performance": map[string]interface{}{
+		"performance": map[string]any{
 			"user_count": len(api.userService.users),
 		},
 	}
@@ -541,7 +541,7 @@ func (api *ProductionAPI) metricsHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (api *ProductionAPI) statusHandler(w http.ResponseWriter, r *http.Request) {
-	status := map[string]interface{}{
+	status := map[string]any{
 		"service":   "production-api",
 		"version":   "1.0.0",
 		"timestamp": time.Now().Format(time.RFC3339),
@@ -558,7 +558,7 @@ func (api *ProductionAPI) statusHandler(w http.ResponseWriter, r *http.Request) 
 
 // Helper methods
 
-func (api *ProductionAPI) writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
+func (api *ProductionAPI) writeJSONResponse(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(data)

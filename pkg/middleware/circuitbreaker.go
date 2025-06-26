@@ -119,7 +119,7 @@ func CircuitBreakerMiddleware(config CircuitBreakerConfig) lift.Middleware {
 			if !breaker.allowRequest() {
 				// Circuit is open, execute fallback
 				if config.Logger != nil {
-					config.Logger.Warn("Circuit breaker open, executing fallback", map[string]interface{}{
+					config.Logger.Warn("Circuit breaker open, executing fallback", map[string]any{
 						"breaker_name": breaker.name,
 						"state":        breaker.getState(),
 						"tenant_id":    ctx.TenantID(),
@@ -156,7 +156,7 @@ func CircuitBreakerMiddleware(config CircuitBreakerConfig) lift.Middleware {
 				breaker.recordFailure()
 
 				if config.Logger != nil {
-					config.Logger.Error("Circuit breaker recorded failure", map[string]interface{}{
+					config.Logger.Error("Circuit breaker recorded failure", map[string]any{
 						"breaker_name": breaker.name,
 						"error":        "[REDACTED_ERROR_DETAIL]", // Sanitized for security
 						"duration":     duration.String(),
@@ -167,7 +167,7 @@ func CircuitBreakerMiddleware(config CircuitBreakerConfig) lift.Middleware {
 				breaker.recordSuccess()
 
 				if config.Logger != nil {
-					config.Logger.Debug("Circuit breaker recorded success", map[string]interface{}{
+					config.Logger.Debug("Circuit breaker recorded success", map[string]any{
 						"breaker_name": breaker.name,
 						"duration":     duration.String(),
 						"tenant_id":    ctx.TenantID(),
@@ -486,7 +486,7 @@ func defaultShouldTrip(err error) bool {
 
 // defaultFallbackHandler provides a default fallback response
 func defaultFallbackHandler(ctx *lift.Context) error {
-	return ctx.Status(503).JSON(map[string]interface{}{
+	return ctx.Status(503).JSON(map[string]any{
 		"error":   "Service temporarily unavailable",
 		"message": "Circuit breaker is open",
 		"code":    "CIRCUIT_BREAKER_OPEN",

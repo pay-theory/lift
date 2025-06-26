@@ -91,7 +91,7 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			tracer.addStandardMetadata(segment, ctx)
 			if config.Metadata != nil {
 				for key, value := range config.Metadata {
-					segment.AddMetadata("custom", map[string]interface{}{key: value})
+					segment.AddMetadata("custom", map[string]any{key: value})
 				}
 			}
 
@@ -116,7 +116,7 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			duration := time.Since(start)
 
 			// Record timing
-			segment.AddMetadata("timing", map[string]interface{}{
+			segment.AddMetadata("timing", map[string]any{
 				"duration_ms": duration.Milliseconds(),
 			})
 
@@ -127,7 +127,7 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 					fmt.Printf("Failed to add error to XRay segment: %v\n", addErr)
 				}
 				segment.AddAnnotation("error", "true")
-				segment.AddMetadata("error", map[string]interface{}{
+				segment.AddMetadata("error", map[string]any{
 					"message": err.Error(),
 				})
 			} else {
@@ -136,7 +136,7 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 
 			// Add response information
 			segment.AddAnnotation("http.status_code", ctx.Response.StatusCode)
-			segment.AddMetadata("response", map[string]interface{}{
+			segment.AddMetadata("response", map[string]any{
 				"status_code": ctx.Response.StatusCode,
 			})
 
@@ -183,7 +183,7 @@ func (t *XRayTracer) addStandardMetadata(segment *xray.Segment, ctx *lift.Contex
 	}
 
 	// HTTP metadata
-	httpMetadata := map[string]interface{}{
+	httpMetadata := map[string]any{
 		"method": ctx.Request.Method,
 		"path":   ctx.Request.Path,
 	}
@@ -201,7 +201,7 @@ func (t *XRayTracer) addStandardMetadata(segment *xray.Segment, ctx *lift.Contex
 	segment.AddMetadata("http", httpMetadata)
 
 	// Request metadata
-	requestMetadata := map[string]interface{}{
+	requestMetadata := map[string]any{
 		"request_id":   ctx.RequestID,
 		"tenant_id":    ctx.TenantID(),
 		"user_id":      ctx.UserID(),
@@ -210,7 +210,7 @@ func (t *XRayTracer) addStandardMetadata(segment *xray.Segment, ctx *lift.Contex
 	segment.AddMetadata("lift", requestMetadata)
 
 	// Service metadata
-	serviceMetadata := map[string]interface{}{
+	serviceMetadata := map[string]any{
 		"name":        t.config.ServiceName,
 		"version":     t.config.ServiceVersion,
 		"environment": t.config.Environment,
@@ -253,7 +253,7 @@ func TraceDynamoDBOperation(ctx context.Context, operation, tableName string) (c
 	subsegment.AddAnnotation("aws.service", "DynamoDB")
 
 	// Add metadata
-	subsegment.AddMetadata("aws", map[string]interface{}{
+	subsegment.AddMetadata("aws", map[string]any{
 		"operation":  operation,
 		"table_name": tableName,
 		"service":    "DynamoDB",
@@ -277,7 +277,7 @@ func TraceHTTPCall(ctx context.Context, method, url string) (context.Context, fu
 	subsegment.AddAnnotation("http.url", url)
 
 	// Add metadata
-	subsegment.AddMetadata("http", map[string]interface{}{
+	subsegment.AddMetadata("http", map[string]any{
 		"method": method,
 		"url":    url,
 	})
@@ -285,7 +285,7 @@ func TraceHTTPCall(ctx context.Context, method, url string) (context.Context, fu
 	return newCtx, func(statusCode int, err error) {
 		if statusCode > 0 {
 			subsegment.AddAnnotation("http.status_code", statusCode)
-			subsegment.AddMetadata("http", map[string]interface{}{
+			subsegment.AddMetadata("http", map[string]any{
 				"status_code": statusCode,
 			})
 		}
@@ -302,7 +302,7 @@ func TraceHTTPCall(ctx context.Context, method, url string) (context.Context, fu
 }
 
 // TraceCustomOperation creates a subsegment for custom operations
-func TraceCustomOperation(ctx context.Context, operationName string, metadata map[string]interface{}) (context.Context, func(error)) {
+func TraceCustomOperation(ctx context.Context, operationName string, metadata map[string]any) (context.Context, func(error)) {
 	newCtx, subsegment := xray.BeginSubsegment(ctx, operationName)
 	if subsegment == nil {
 		// X-Ray not available, return no-op
@@ -349,16 +349,16 @@ func GetSegmentID(ctx context.Context) string {
 }
 
 // AddAnnotation adds an annotation to the current segment
-func AddAnnotation(ctx context.Context, key string, value interface{}) {
+func AddAnnotation(ctx context.Context, key string, value any) {
 	if segment := xray.GetSegment(ctx); segment != nil {
 		segment.AddAnnotation(key, value)
 	}
 }
 
 // AddMetadata adds metadata to the current segment
-func AddMetadata(ctx context.Context, namespace, key string, value interface{}) {
+func AddMetadata(ctx context.Context, namespace, key string, value any) {
 	if segment := xray.GetSegment(ctx); segment != nil {
-		segment.AddMetadata(namespace, map[string]interface{}{key: value})
+		segment.AddMetadata(namespace, map[string]any{key: value})
 	}
 }
 

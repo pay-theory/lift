@@ -63,7 +63,7 @@ type App struct {
 	wsOptions *WebSocketOptions
 
 	// Optional integrations
-	db       interface{}
+	db       any
 	logger   Logger
 	metrics  MetricsCollector
 	features map[string]bool
@@ -100,32 +100,32 @@ func (a *App) Use(middleware Middleware) *App {
 }
 
 // GET registers a GET route
-func (a *App) GET(path string, handler interface{}) error {
+func (a *App) GET(path string, handler any) error {
 	return a.Handle("GET", path, handler)
 }
 
 // POST registers a POST route
-func (a *App) POST(path string, handler interface{}) error {
+func (a *App) POST(path string, handler any) error {
 	return a.Handle("POST", path, handler)
 }
 
 // PUT registers a PUT route
-func (a *App) PUT(path string, handler interface{}) error {
+func (a *App) PUT(path string, handler any) error {
 	return a.Handle("PUT", path, handler)
 }
 
 // DELETE registers a DELETE route
-func (a *App) DELETE(path string, handler interface{}) error {
+func (a *App) DELETE(path string, handler any) error {
 	return a.Handle("DELETE", path, handler)
 }
 
 // PATCH registers a PATCH route
-func (a *App) PATCH(path string, handler interface{}) error {
+func (a *App) PATCH(path string, handler any) error {
 	return a.Handle("PATCH", path, handler)
 }
 
 // Handle registers a route with the specified method and path
-func (a *App) Handle(method, path string, handler interface{}) error {
+func (a *App) Handle(method, path string, handler any) error {
 	// Check if this is an event trigger type
 	triggerType := parseTriggerType(method)
 	if triggerType != TriggerUnknown && triggerType != TriggerAPIGateway {
@@ -188,7 +188,7 @@ func (a *App) WithMetrics(metrics MetricsCollector) *App {
 }
 
 // WithDatabase sets the database connection
-func (a *App) WithDatabase(db interface{}) *App {
+func (a *App) WithDatabase(db any) *App {
 	a.db = db
 	return a
 }
@@ -208,27 +208,27 @@ type RouteGroup struct {
 }
 
 // GET registers a GET route in this group
-func (rg *RouteGroup) GET(path string, handler interface{}) error {
+func (rg *RouteGroup) GET(path string, handler any) error {
 	return rg.app.GET(rg.prefix+path, handler)
 }
 
 // POST registers a POST route in this group
-func (rg *RouteGroup) POST(path string, handler interface{}) error {
+func (rg *RouteGroup) POST(path string, handler any) error {
 	return rg.app.POST(rg.prefix+path, handler)
 }
 
 // PUT registers a PUT route in this group
-func (rg *RouteGroup) PUT(path string, handler interface{}) error {
+func (rg *RouteGroup) PUT(path string, handler any) error {
 	return rg.app.PUT(rg.prefix+path, handler)
 }
 
 // DELETE registers a DELETE route in this group
-func (rg *RouteGroup) DELETE(path string, handler interface{}) error {
+func (rg *RouteGroup) DELETE(path string, handler any) error {
 	return rg.app.DELETE(rg.prefix+path, handler)
 }
 
 // PATCH registers a PATCH route in this group
-func (rg *RouteGroup) PATCH(path string, handler interface{}) error {
+func (rg *RouteGroup) PATCH(path string, handler any) error {
 	return rg.app.PATCH(rg.prefix+path, handler)
 }
 
@@ -257,7 +257,7 @@ func (a *App) Start() error {
 }
 
 // HandleRequest processes an incoming Lambda request
-func (a *App) HandleRequest(ctx context.Context, event interface{}) (interface{}, error) {
+func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 	// Parse the event into a Request
 	req, err := a.parseEvent(event)
 	if err != nil {
@@ -298,7 +298,7 @@ func (a *App) HandleRequest(ctx context.Context, event interface{}) (interface{}
 }
 
 // parseEvent converts a Lambda event to our Request structure
-func (a *App) parseEvent(event interface{}) (*Request, error) {
+func (a *App) parseEvent(event any) (*Request, error) {
 	// Use the adapter registry to automatically detect and parse the event
 	adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
 	if err != nil {
@@ -310,7 +310,7 @@ func (a *App) parseEvent(event interface{}) (*Request, error) {
 }
 
 // handleError processes errors and returns appropriate responses
-func (a *App) handleError(ctx *Context, err error) (interface{}, error) {
+func (a *App) handleError(ctx *Context, err error) (any, error) {
 	// Set error response
 	ctx.Status(500).JSON(map[string]string{
 		"error": "Internal server error",
@@ -331,7 +331,7 @@ func (a *App) HandleTestRequest(ctx *Context) error {
 	if err := a.router.Handle(ctx); err != nil {
 		// Handle Lift errors properly by setting appropriate status codes
 		if liftErr, ok := err.(*LiftError); ok {
-			ctx.Status(liftErr.StatusCode).JSON(map[string]interface{}{
+			ctx.Status(liftErr.StatusCode).JSON(map[string]any{
 				"error":   liftErr.Code,
 				"message": liftErr.Message,
 			})
@@ -339,7 +339,7 @@ func (a *App) HandleTestRequest(ctx *Context) error {
 		}
 
 		// For non-Lift errors, set 500 status
-		ctx.Status(500).JSON(map[string]interface{}{
+		ctx.Status(500).JSON(map[string]any{
 			"error":   "Internal Server Error",
 			"message": err.Error(),
 		})
@@ -355,7 +355,7 @@ func (a *App) GetEventRouter() *EventRouter {
 }
 
 // SQS registers a handler for SQS events
-func (a *App) SQS(pattern string, handler interface{}) error {
+func (a *App) SQS(pattern string, handler any) error {
 	h, err := a.convertEventHandler(handler)
 	if err != nil {
 		return fmt.Errorf("invalid SQS handler: %w", err)
@@ -365,7 +365,7 @@ func (a *App) SQS(pattern string, handler interface{}) error {
 }
 
 // S3 registers a handler for S3 events
-func (a *App) S3(pattern string, handler interface{}) error {
+func (a *App) S3(pattern string, handler any) error {
 	h, err := a.convertEventHandler(handler)
 	if err != nil {
 		return fmt.Errorf("invalid S3 handler: %w", err)
@@ -375,7 +375,7 @@ func (a *App) S3(pattern string, handler interface{}) error {
 }
 
 // EventBridge registers a handler for EventBridge events
-func (a *App) EventBridge(pattern string, handler interface{}) error {
+func (a *App) EventBridge(pattern string, handler any) error {
 	h, err := a.convertEventHandler(handler)
 	if err != nil {
 		return fmt.Errorf("invalid EventBridge handler: %w", err)
@@ -385,7 +385,7 @@ func (a *App) EventBridge(pattern string, handler interface{}) error {
 }
 
 // convertEventHandler converts various handler types to EventHandler
-func (a *App) convertEventHandler(handler interface{}) (EventHandler, error) {
+func (a *App) convertEventHandler(handler any) (EventHandler, error) {
 	// Check if it's already an EventHandler
 	if eh, ok := handler.(EventHandler); ok {
 		return eh, nil
@@ -409,7 +409,7 @@ func (a *App) convertEventHandler(handler interface{}) (EventHandler, error) {
 }
 
 // convertHandlerUsingReflection converts various handler function types to the Handler interface using reflection
-func convertHandlerUsingReflection(handler interface{}) (Handler, error) {
+func convertHandlerUsingReflection(handler any) (Handler, error) {
 	v := reflect.ValueOf(handler)
 	t := reflect.TypeOf(handler)
 
@@ -440,7 +440,7 @@ func validateHandlerSignature(t reflect.Type) error {
 		}
 	}
 
-	// Pattern 2: func(*Context) (interface{}, error)
+	// Pattern 2: func(*Context) (any, error)
 	if numIn == 1 && numOut == 2 {
 		if isContextType(t.In(0)) && isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
 			return nil
@@ -454,21 +454,21 @@ func validateHandlerSignature(t reflect.Type) error {
 		}
 	}
 
-	// Pattern 4: func() (interface{}, error) (no context - simple handlers with return value)
+	// Pattern 4: func() (any, error) (no context - simple handlers with return value)
 	if numIn == 0 && numOut == 2 {
 		if isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
 			return nil
 		}
 	}
 
-	// Pattern 5: func(interface{}) error (request model binding)
+	// Pattern 5: func(any) error (request model binding)
 	if numIn == 1 && numOut == 1 {
 		if !isContextType(t.In(0)) && isErrorType(t.Out(0)) {
 			return nil
 		}
 	}
 
-	// Pattern 6: func(interface{}) (interface{}, error) (request/response model binding)
+	// Pattern 6: func(any) (any, error) (request/response model binding)
 	if numIn == 1 && numOut == 2 {
 		if !isContextType(t.In(0)) && isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
 			return nil
@@ -493,7 +493,7 @@ func createReflectedHandler(v reflect.Value, t reflect.Type) Handler {
 		case numIn == 1 && numOut == 1 && isContextType(t.In(0)):
 			callArgs = []reflect.Value{reflect.ValueOf(ctx)}
 
-		// Pattern 2: func(*Context) (interface{}, error)
+		// Pattern 2: func(*Context) (any, error)
 		case numIn == 1 && numOut == 2 && isContextType(t.In(0)):
 			callArgs = []reflect.Value{reflect.ValueOf(ctx)}
 
@@ -501,7 +501,7 @@ func createReflectedHandler(v reflect.Value, t reflect.Type) Handler {
 		case numIn == 0 && numOut == 1:
 			callArgs = []reflect.Value{}
 
-		// Pattern 4: func() (interface{}, error)
+		// Pattern 4: func() (any, error)
 		case numIn == 0 && numOut == 2:
 			callArgs = []reflect.Value{}
 
@@ -582,7 +582,7 @@ func isErrorType(t reflect.Type) bool {
 }
 
 func isInterfaceType(t reflect.Type) bool {
-	// Accept any type for response values (interface{})
+	// Accept any type for response values (any)
 	return true
 }
 

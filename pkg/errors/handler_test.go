@@ -89,7 +89,7 @@ func TestDefaultErrorHandler_HandleError(t *testing.T) {
 func TestDefaultErrorHandler_HandlePanic(t *testing.T) {
 	tests := []struct {
 		name        string
-		panicValue  interface{}
+		panicValue  any
 		expectedMsg string
 	}{
 		{
@@ -150,7 +150,7 @@ func TestErrorTransformers(t *testing.T) {
 			Code:       "SYSTEM_ERROR",
 			Message:    "Database connection failed: password=secret123",
 			StatusCode: 500,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"password": "secret123",
 			},
 		}

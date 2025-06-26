@@ -73,7 +73,7 @@ func listTenants(ctx *lift.Context) error {
 		return lift.InternalError("Failed to list tenants")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"tenants": tenants,
 		"count":   len(tenants),
 		"limit":   limit,
@@ -160,7 +160,7 @@ func listProducts(ctx *lift.Context) error {
 		return ctx.InternalError("Failed to list products", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"products": products,
 		"count":    len(products),
 		"filters":  filters,
@@ -188,7 +188,7 @@ func searchProducts(ctx *lift.Context) error {
 		return ctx.InternalError("Product search failed", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"query":       query,
 		"products":    products,
 		"count":       len(products),
@@ -223,7 +223,7 @@ func updateProductInventory(ctx *lift.Context) error {
 	log.Printf("ECOMMERCE AUDIT: Inventory updated - Tenant: %s, Product: %s, Quantity: %d",
 		tenantID, productID, req.Quantity)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"productId": productID,
 		"quantity":  req.Quantity,
 		"updated":   true,
@@ -302,7 +302,7 @@ func listCustomers(ctx *lift.Context) error {
 		return ctx.InternalError("Failed to list customers", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"customers": customers,
 		"count":     len(customers),
 		"limit":     limit,
@@ -336,7 +336,7 @@ func authenticateCustomer(ctx *lift.Context) error {
 	log.Printf("ECOMMERCE AUDIT: Customer authenticated - Tenant: %s, Customer: %s, Email: %s",
 		tenantID, customer.ID, customer.Email)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"customer":         customer,
 		"token":            token,
 		"authenticated_at": time.Now(),
@@ -421,7 +421,7 @@ func listOrders(ctx *lift.Context) error {
 		return ctx.InternalError("Failed to list orders", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"orders":  orders,
 		"count":   len(orders),
 		"filters": filters,
@@ -455,7 +455,7 @@ func updateOrderStatus(ctx *lift.Context) error {
 	log.Printf("ECOMMERCE AUDIT: Order status updated - Tenant: %s, Order: %s, Status: %s",
 		tenantID, orderID, req.Status)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"orderId":   orderID,
 		"status":    req.Status,
 		"updated":   true,
@@ -479,7 +479,7 @@ func getCustomerOrders(ctx *lift.Context) error {
 		return ctx.InternalError("Failed to get customer orders", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"customerId": customerID,
 		"orders":     orders,
 		"count":      len(orders),

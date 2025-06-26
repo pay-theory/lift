@@ -2,12 +2,12 @@ package lift
 
 // Logger represents a structured logger
 type Logger interface {
-	Debug(message string, fields ...map[string]interface{})
-	Info(message string, fields ...map[string]interface{})
-	Warn(message string, fields ...map[string]interface{})
-	Error(message string, fields ...map[string]interface{})
-	WithField(key string, value interface{}) Logger
-	WithFields(fields map[string]interface{}) Logger
+	Debug(message string, fields ...map[string]any)
+	Info(message string, fields ...map[string]any)
+	Warn(message string, fields ...map[string]any)
+	Error(message string, fields ...map[string]any)
+	WithField(key string, value any) Logger
+	WithFields(fields map[string]any) Logger
 }
 
 // MetricsCollector represents a metrics collection interface
@@ -40,12 +40,12 @@ type Gauge interface {
 // NoOpLogger is a logger that does nothing (for testing)
 type NoOpLogger struct{}
 
-func (l *NoOpLogger) Debug(message string, fields ...map[string]interface{}) {}
-func (l *NoOpLogger) Info(message string, fields ...map[string]interface{})  {}
-func (l *NoOpLogger) Warn(message string, fields ...map[string]interface{})  {}
-func (l *NoOpLogger) Error(message string, fields ...map[string]interface{}) {}
-func (l *NoOpLogger) WithField(key string, value interface{}) Logger         { return l }
-func (l *NoOpLogger) WithFields(fields map[string]interface{}) Logger        { return l }
+func (l *NoOpLogger) Debug(message string, fields ...map[string]any) {}
+func (l *NoOpLogger) Info(message string, fields ...map[string]any)  {}
+func (l *NoOpLogger) Warn(message string, fields ...map[string]any)  {}
+func (l *NoOpLogger) Error(message string, fields ...map[string]any) {}
+func (l *NoOpLogger) WithField(key string, value any) Logger         { return l }
+func (l *NoOpLogger) WithFields(fields map[string]any) Logger        { return l }
 
 // NoOpMetrics is a metrics collector that does nothing (for testing)
 type NoOpMetrics struct{}

@@ -207,7 +207,7 @@ func main() {
 			return lift.InternalError("Failed to list users").WithCause(err)
 		}
 
-		return ctx.JSON(map[string]interface{}{
+		return ctx.JSON(map[string]any{
 			"users": result.Items,
 			"count": result.Count,
 		})

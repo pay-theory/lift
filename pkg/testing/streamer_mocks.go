@@ -113,7 +113,7 @@ type StreamerMockConnection struct {
 	UserAgent    string
 	State        StreamerConnectionState
 	CreatedTime  time.Time
-	Metadata     map[string]interface{}
+	Metadata     map[string]any
 }
 
 // StreamerConnectionState represents the state of a connection
@@ -182,7 +182,7 @@ func (m *StreamerAPIGatewayClientMock) WithConnection(connectionID string, conn 
 			UserAgent:    m.config.DefaultUserAgent,
 			State:        StreamerConnectionStateActive,
 			CreatedTime:  now,
-			Metadata:     make(map[string]interface{}),
+			Metadata:     make(map[string]any),
 		}
 	}
 
@@ -388,7 +388,7 @@ func (m *StreamerAPIGatewayClientMock) GetConnectionState(connectionID string) *
 	// Return a copy to prevent external modification
 	connCopy := *conn
 	if conn.Metadata != nil {
-		connCopy.Metadata = make(map[string]interface{})
+		connCopy.Metadata = make(map[string]any)
 		for k, v := range conn.Metadata {
 			connCopy.Metadata[k] = v
 		}
@@ -408,7 +408,7 @@ func (m *StreamerAPIGatewayClientMock) GetActiveConnections() map[string]*Stream
 			// Return a copy
 			connCopy := *conn
 			if conn.Metadata != nil {
-				connCopy.Metadata = make(map[string]interface{})
+				connCopy.Metadata = make(map[string]any)
 				for k, v := range conn.Metadata {
 					connCopy.Metadata[k] = v
 				}

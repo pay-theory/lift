@@ -21,7 +21,7 @@ type ValidationRule struct {
 	Category    string                 `json:"category"`
 	Description string                 `json:"description"`
 	Severity    ValidationSeverity     `json:"severity"`
-	Parameters  map[string]interface{} `json:"parameters"`
+	Parameters  map[string]any `json:"parameters"`
 }
 
 // ValidationProcessor processes validation rules
@@ -34,7 +34,7 @@ type ValidationResult struct {
 	RuleID    string                 `json:"rule_id"`
 	Status    ValidationStatus       `json:"status"`
 	Message   string                 `json:"message"`
-	Details   map[string]interface{} `json:"details"`
+	Details   map[string]any `json:"details"`
 	Timestamp time.Time              `json:"timestamp"`
 }
 
@@ -86,7 +86,7 @@ type InfrastructureComplianceMonitor struct {
 // MonitorAction defines an action to take when a monitor triggers
 type MonitorAction struct {
 	Type       ActionType             `json:"type"`
-	Parameters map[string]interface{} `json:"parameters"`
+	Parameters map[string]any `json:"parameters"`
 }
 
 // ActionType defines the type of monitor action
@@ -203,7 +203,7 @@ type EvidenceFilter struct {
 	StartTime time.Time              `json:"start_time"`
 	EndTime   time.Time              `json:"end_time"`
 	Tags      []string               `json:"tags"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // EvidenceQuery defines a search query for evidence
@@ -235,13 +235,13 @@ type CustomRetentionPolicy struct {
 type RetentionCondition struct {
 	Field    string      `json:"field"`
 	Operator string      `json:"operator"`
-	Value    interface{} `json:"value"`
+	Value    any `json:"value"`
 }
 
 // RetentionAction defines an action for retention
 type RetentionAction struct {
 	Type       string                 `json:"type"`
-	Parameters map[string]interface{} `json:"parameters"`
+	Parameters map[string]any `json:"parameters"`
 }
 
 // EvidenceEncryption handles evidence encryption
@@ -276,7 +276,7 @@ func (e *EvidenceStore) StoreReport(ctx context.Context, report *ComplianceRepor
 		Timestamp:   report.StartTime,
 		Location:    fmt.Sprintf("/evidence/reports/%s_%d", report.Framework, report.StartTime.Unix()),
 		Hash:        fmt.Sprintf("report_%d", report.StartTime.Unix()),
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"framework":      report.Framework,
 			"audit_period":   report.AuditPeriod.String(),
 			"overall_status": report.OverallStatus,
@@ -298,7 +298,7 @@ type InfrastructureTest struct {
 	Name     string                 `json:"name"`
 	Type     string                 `json:"type"`
 	Target   string                 `json:"target"`
-	Config   map[string]interface{} `json:"config"`
+	Config   map[string]any `json:"config"`
 	Timeout  time.Duration          `json:"timeout"`
 	Retries  int                    `json:"retries"`
 	Severity ValidationSeverity     `json:"severity"`

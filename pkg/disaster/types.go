@@ -152,7 +152,7 @@ func NewNotificationManager(config NotificationConfig) *NotificationManager {
 }
 
 // SendNotification sends a notification
-func (nm *NotificationManager) SendNotification(ctx context.Context, eventType string, data map[string]interface{}) error {
+func (nm *NotificationManager) SendNotification(ctx context.Context, eventType string, data map[string]any) error {
 	if !nm.config.Enabled {
 		return nil
 	}

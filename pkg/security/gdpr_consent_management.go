@@ -134,7 +134,7 @@ type ConsentRecord struct {
 	Source       string                 `json:"source,omitempty"`
 	IPAddress    string                 `json:"ip_address,omitempty"`
 	UserAgent    string                 `json:"user_agent,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
@@ -170,7 +170,7 @@ type ConsentProof struct {
 	Method    string                 `json:"method"`
 	Verified  bool                   `json:"verified"`
 	Signature string                 `json:"signature,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // ConsentUpdates represents updates to consent
@@ -185,7 +185,7 @@ type ConsentUpdates struct {
 	ConsentGiven bool                   `json:"consent_given,omitempty"`
 	Timestamp    time.Time              `json:"timestamp,omitempty"`
 	Reason       string                 `json:"reason,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Metadata     map[string]any `json:"metadata,omitempty"`
 }
 
 // ConsentWithdrawal represents consent withdrawal
@@ -200,7 +200,7 @@ type ConsentWithdrawal struct {
 	// Additional fields needed by tests
 	Timestamp time.Time              `json:"timestamp,omitempty"`
 	Method    string                 `json:"method,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
 // DataAccessRequest represents a data subject access request
@@ -220,21 +220,21 @@ type DataAccessRequest struct {
 	UserID      string                 `json:"user_id,omitempty"`
 	Purpose     string                 `json:"purpose,omitempty"`
 	Region      string                 `json:"region,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // DataAccessResponse represents the response to a data access request
 type DataAccessResponse struct {
 	RequestID      string                 `json:"request_id"`
 	ResponseDate   time.Time              `json:"response_date"`
-	Data           map[string]interface{} `json:"data"`
+	Data           map[string]any `json:"data"`
 	DataSources    []string               `json:"data_sources"`
 	Format         string                 `json:"format"`
 	DeliveryMethod string                 `json:"delivery_method"`
 	Encrypted      bool                   `json:"encrypted"`
 	// Additional fields needed by tests
 	Status   string                 `json:"status,omitempty"`
-	Metadata map[string]interface{} `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // DataPortabilityRequest represents a data portability request
@@ -249,11 +249,11 @@ type DataPortabilityRequest struct {
 type DataPortabilityResponse struct {
 	RequestID      string                 `json:"request_id"`
 	ResponseDate   time.Time              `json:"response_date"`
-	Data           map[string]interface{} `json:"data"`
+	Data           map[string]any `json:"data"`
 	Format         string                 `json:"format"`
 	StructuredData bool                   `json:"structured_data"`
 	TransferMethod string                 `json:"transfer_method"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 // DataErasureRequest represents a data erasure request
@@ -276,23 +276,23 @@ type DataErasureResponse struct {
 	Status       string                 `json:"status,omitempty"`
 	DataDeleted  []string               `json:"data_deleted,omitempty"`
 	DeletedCount int                    `json:"deleted_count,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // DataRectificationRequest represents a data rectification request
 type DataRectificationRequest struct {
 	DataAccessRequest
-	IncorrectData map[string]interface{} `json:"incorrect_data"`
-	CorrectedData map[string]interface{} `json:"corrected_data"`
+	IncorrectData map[string]any `json:"incorrect_data"`
+	CorrectedData map[string]any `json:"corrected_data"`
 }
 
 // DataRectificationResponse represents the response to a data rectification request
 type DataRectificationResponse struct {
 	RequestID          string                 `json:"request_id"`
 	ResponseDate       time.Time              `json:"response_date"`
-	RectifiedData      map[string]interface{} `json:"rectified_data"`
+	RectifiedData      map[string]any `json:"rectified_data"`
 	ThirdPartyNotified bool                   `json:"third_party_notified"`
-	Metadata           map[string]interface{} `json:"metadata"`
+	Metadata           map[string]any `json:"metadata"`
 }
 
 // DataObjectionRequest represents a data processing objection request
@@ -310,7 +310,7 @@ type DataObjectionResponse struct {
 	ProcessingStopped   bool                   `json:"processing_stopped"`
 	ContinuedProcessing []string               `json:"continued_processing,omitempty"`
 	LegalJustification  string                 `json:"legal_justification,omitempty"`
-	Metadata            map[string]interface{} `json:"metadata"`
+	Metadata            map[string]any `json:"metadata"`
 }
 
 // IdentityVerification represents identity verification for data subject requests
@@ -320,7 +320,7 @@ type IdentityVerification struct {
 	VerifiedBy   string                 `json:"verified_by"`
 	VerifiedDate time.Time              `json:"verified_date"`
 	Evidence     []string               `json:"evidence"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // RequestStatus represents the status of a data subject request
@@ -350,7 +350,7 @@ type PIARequest struct {
 	DataTypes   []string               `json:"data_types,omitempty"`
 	Purpose     string                 `json:"purpose,omitempty"`
 	LegalBasis  string                 `json:"legal_basis,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // PIAResult represents the result of a privacy impact assessment
@@ -370,7 +370,7 @@ type PIAResult struct {
 	ID        string                 `json:"id,omitempty"`
 	Status    string                 `json:"status,omitempty"`
 	Timestamp time.Time              `json:"timestamp,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // PIAFinding represents a finding from a privacy impact assessment
@@ -418,7 +418,7 @@ type PIATemplate struct {
 	Questions        []PIAQuestion          `json:"questions"`
 	RiskFactors      []PIARiskFactor        `json:"risk_factors"`
 	RequiredEvidence []string               `json:"required_evidence"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 // PIAQuestion represents a question in a PIA template
@@ -467,7 +467,7 @@ type DataProcessingActivity struct {
 	PIACompleted      bool                   `json:"pia_completed"`
 	LastReview        time.Time              `json:"last_review"`
 	NextReview        time.Time              `json:"next_review"`
-	Metadata          map[string]interface{} `json:"metadata"`
+	Metadata          map[string]any `json:"metadata"`
 }
 
 // ProcessingValidation represents validation of data processing activity
@@ -478,7 +478,7 @@ type ProcessingValidation struct {
 	Recommendations []string               `json:"recommendations"`
 	ComplianceScore float64                `json:"compliance_score"`
 	RequiredActions []string               `json:"required_actions"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // ValidationIssue represents a validation issue
@@ -503,7 +503,7 @@ type RiskAssessment struct {
 	Approved       bool                   `json:"approved"`
 	ApprovedBy     string                 `json:"approved_by,omitempty"`
 	ReviewDate     time.Time              `json:"review_date"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 // AssessedRiskFactor represents an assessed risk factor
@@ -532,7 +532,7 @@ type CrossBorderTransfer struct {
 	TransferDate       time.Time              `json:"transfer_date"`
 	Volume             string                 `json:"volume"`
 	Frequency          string                 `json:"frequency"`
-	Metadata           map[string]interface{} `json:"metadata"`
+	Metadata           map[string]any `json:"metadata"`
 }
 
 // TransferValidation represents validation of cross-border transfer
@@ -543,7 +543,7 @@ type TransferValidation struct {
 	SafeguardsValid bool                   `json:"safeguards_valid"`
 	Issues          []ValidationIssue      `json:"issues"`
 	Recommendations []string               `json:"recommendations"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // CrossBorderRule represents a rule for cross-border transfers
@@ -574,7 +574,7 @@ type SCCValidation struct {
 	DataImporter   string                 `json:"data_importer"`
 	DataCategories []string               `json:"data_categories"`
 	Purposes       []string               `json:"purposes"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 // SCCResult represents the result of SCC validation
@@ -584,7 +584,7 @@ type SCCResult struct {
 	ClausesApplicable bool                   `json:"clauses_applicable"`
 	Issues            []ValidationIssue      `json:"issues"`
 	Recommendations   []string               `json:"recommendations"`
-	Metadata          map[string]interface{} `json:"metadata"`
+	Metadata          map[string]any `json:"metadata"`
 }
 
 // BCRValidation represents Binding Corporate Rules validation
@@ -594,7 +594,7 @@ type BCRValidation struct {
 	DataCategories []string               `json:"data_categories"`
 	Purposes       []string               `json:"purposes"`
 	Countries      []string               `json:"countries"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 // BCRResult represents the result of BCR validation
@@ -604,7 +604,7 @@ type BCRResult struct {
 	BCRApplicable   bool                   `json:"bcr_applicable"`
 	Issues          []ValidationIssue      `json:"issues"`
 	Recommendations []string               `json:"recommendations"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // ConsentEvent represents a consent-related event for audit logging
@@ -613,10 +613,10 @@ type ConsentEvent struct {
 	ConsentID     string                 `json:"consent_id"`
 	DataSubjectID string                 `json:"data_subject_id"`
 	Timestamp     time.Time              `json:"timestamp"`
-	Details       map[string]interface{} `json:"details"`
+	Details       map[string]any `json:"details"`
 	IPAddress     string                 `json:"ip_address"`
 	UserAgent     string                 `json:"user_agent"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // DataSubjectRequestLog represents a data subject request for audit logging
@@ -627,8 +627,8 @@ type DataSubjectRequestLog struct {
 	Timestamp     time.Time              `json:"timestamp"`
 	Status        string                 `json:"status"`
 	ProcessedBy   string                 `json:"processed_by"`
-	Details       map[string]interface{} `json:"details"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Details       map[string]any `json:"details"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // CrossBorderTransferLog represents a cross-border transfer for audit logging
@@ -641,7 +641,7 @@ type CrossBorderTransferLog struct {
 	Timestamp          time.Time              `json:"timestamp"`
 	LegalBasis         string                 `json:"legal_basis"`
 	Safeguards         []string               `json:"safeguards"`
-	Metadata           map[string]interface{} `json:"metadata"`
+	Metadata           map[string]any `json:"metadata"`
 }
 
 // PrivacyBreachLog represents a privacy breach for audit logging
@@ -657,7 +657,7 @@ type PrivacyBreachLog struct {
 	Mitigation        []string               `json:"mitigation"`
 	AuthorityNotified bool                   `json:"authority_notified"`
 	SubjectsNotified  bool                   `json:"subjects_notified"`
-	Metadata          map[string]interface{} `json:"metadata"`
+	Metadata          map[string]any `json:"metadata"`
 }
 
 // NewGDPRConsentManager creates a new GDPR consent manager
@@ -738,7 +738,7 @@ func (gcm *GDPRConsentManager) RecordConsent(ctx context.Context, consent *Conse
 			ConsentID:     consent.ID,
 			DataSubjectID: consent.DataSubjectID,
 			Timestamp:     time.Now(),
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"consent_method": consent.ConsentMethod,
 				"purposes":       consent.ProcessingPurposes,
 				"legal_basis":    consent.LegalBasis,
@@ -798,7 +798,7 @@ func (gcm *GDPRConsentManager) WithdrawConsent(ctx context.Context, consentID st
 			EventType: "consent_withdrawn",
 			ConsentID: consentID,
 			Timestamp: time.Now(),
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"withdrawal_method": withdrawal.WithdrawalMethod,
 				"reason":            withdrawal.Reason,
 				"partial":           withdrawal.PartialWithdrawal,
@@ -930,12 +930,12 @@ type ConsentHistoryEntry struct {
 	Action        string                 `json:"action"` // "created", "updated", "withdrawn", "renewed"
 	Timestamp     time.Time              `json:"timestamp"`
 	DataSubjectID string                 `json:"data_subject_id"`
-	Changes       map[string]interface{} `json:"changes"`
+	Changes       map[string]any `json:"changes"`
 	UpdatedBy     string                 `json:"updated_by"`
 	Reason        string                 `json:"reason"`
 	IPAddress     string                 `json:"ip_address"`
 	UserAgent     string                 `json:"user_agent"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // PIAUpdate represents updates to a Privacy Impact Assessment
@@ -951,7 +951,7 @@ type PIAUpdate struct {
 	ReviewDate         *time.Time             `json:"review_date,omitempty"`
 	UpdatedBy          string                 `json:"updated_by"`
 	UpdateReason       string                 `json:"update_reason"`
-	Metadata           map[string]interface{} `json:"metadata,omitempty"`
+	Metadata           map[string]any `json:"metadata,omitempty"`
 }
 
 // PIAFilters represents filters for PIA queries

@@ -33,7 +33,7 @@ type Transaction struct {
 	Description    string                 `json:"description"`
 	Reference      string                 `json:"reference"`
 	ProcessedAt    time.Time              `json:"processedAt"`
-	ComplianceData map[string]interface{} `json:"complianceData,omitempty"`
+	ComplianceData map[string]any `json:"complianceData,omitempty"`
 }
 
 type Payment struct {
@@ -102,7 +102,7 @@ type PaymentService interface {
 type ComplianceService interface {
 	ValidateTransaction(ctx context.Context, transaction *Transaction) error
 	AuditPayment(ctx context.Context, payment *Payment) error
-	GenerateReport(ctx context.Context, reportType string) (interface{}, error)
+	GenerateReport(ctx context.Context, reportType string) (any, error)
 }
 
 type FraudDetectionService interface {
@@ -165,7 +165,7 @@ func (m *mockTransactionService) CreateTransaction(ctx context.Context, req Crea
 		Description:   req.Description,
 		Reference:     req.Reference,
 		ProcessedAt:   time.Now(),
-		ComplianceData: map[string]interface{}{
+		ComplianceData: map[string]any{
 			"aml_checked":  true,
 			"kyc_verified": true,
 		},
@@ -270,11 +270,11 @@ func (m *mockComplianceService) AuditPayment(ctx context.Context, payment *Payme
 	return nil
 }
 
-func (m *mockComplianceService) GenerateReport(ctx context.Context, reportType string) (interface{}, error) {
-	return map[string]interface{}{
+func (m *mockComplianceService) GenerateReport(ctx context.Context, reportType string) (any, error) {
+	return map[string]any{
 		"reportType":  reportType,
 		"generatedAt": time.Now(),
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"totalTransactions":   1000,
 			"totalAmount":         50000.00,
 			"flaggedTransactions": 5,
@@ -362,7 +362,7 @@ func getBalance(ctx *lift.Context) error {
 		return ctx.InternalError("Failed to get balance", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"accountId": accountID,
 		"balance":   balance,
 		"currency":  "USD",
@@ -504,13 +504,13 @@ func getAuditTrail(ctx *lift.Context) error {
 	accountID := ctx.QueryParam("account_id")
 
 	// Mock audit trail data
-	auditTrail := map[string]interface{}{
+	auditTrail := map[string]any{
 		"filters": map[string]string{
 			"start_date": startDate,
 			"end_date":   endDate,
 			"account_id": accountID,
 		},
-		"events": []map[string]interface{}{
+		"events": []map[string]any{
 			{
 				"timestamp":  time.Now().Add(-2 * time.Hour),
 				"event_type": "account_created",
@@ -552,7 +552,7 @@ func generateComplianceReport(ctx *lift.Context) error {
 
 // Health check handler
 func healthCheck(ctx *lift.Context) error {
-	health := map[string]interface{}{
+	health := map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now(),
 		"version":   "1.0.0",
@@ -562,7 +562,7 @@ func healthCheck(ctx *lift.Context) error {
 			"fraud_detection": "healthy",
 			"compliance":      "healthy",
 		},
-		"metrics": map[string]interface{}{
+		"metrics": map[string]any{
 			"uptime_seconds":      3600,
 			"total_transactions":  1000,
 			"successful_payments": 995,
@@ -580,7 +580,7 @@ func Recovery() lift.Middleware {
 			defer func() {
 				if r := recover(); r != nil {
 					if ctx.Logger != nil {
-						ctx.Logger.Error("Handler panicked", map[string]interface{}{
+						ctx.Logger.Error("Handler panicked", map[string]any{
 							"panic": r,
 						})
 					}

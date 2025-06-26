@@ -80,7 +80,7 @@ func WebSocketJWTMiddleware(jwtSecret string) lift.Middleware {
 
 // validateJWTToken validates and parses a JWT token
 func validateJWTToken(tokenString, secret string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (any, error) {
 		// Validate the signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -150,7 +150,7 @@ func main() {
 	app.Use(func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			if ctx.Logger != nil {
-				ctx.Logger.Info("WebSocket request", map[string]interface{}{
+				ctx.Logger.Info("WebSocket request", map[string]any{
 					"method": ctx.Request.Method,
 					"path":   ctx.Request.Path,
 					"type":   ctx.Request.TriggerType,
@@ -197,7 +197,7 @@ func handleConnect(ctx *lift.Context) error {
 
 	// Log connection
 	if ctx.Logger != nil {
-		ctx.Logger.Info("WebSocket connection established", map[string]interface{}{
+		ctx.Logger.Info("WebSocket connection established", map[string]any{
 			"connectionId": wsCtx.ConnectionID(),
 			"userId":       claims.UserID,
 			"username":     claims.Username,
@@ -207,7 +207,7 @@ func handleConnect(ctx *lift.Context) error {
 	// Store connection info in DynamoDB for tracking active connections
 	err = storeConnection(ctx.Context, wsCtx.ConnectionID(), claims.UserID, claims.Username, claims.Role)
 	if err != nil {
-		ctx.Logger.Error("Failed to store connection", map[string]interface{}{
+		ctx.Logger.Error("Failed to store connection", map[string]any{
 			"error": err.Error(),
 		})
 		// Continue anyway - don't fail connection for storage issues
@@ -228,7 +228,7 @@ func handleDisconnect(ctx *lift.Context) error {
 
 	// Log disconnection
 	if ctx.Logger != nil {
-		ctx.Logger.Info("WebSocket connection closed", map[string]interface{}{
+		ctx.Logger.Info("WebSocket connection closed", map[string]any{
 			"connectionId": wsCtx.ConnectionID(),
 		})
 	}
@@ -236,7 +236,7 @@ func handleDisconnect(ctx *lift.Context) error {
 	// Remove connection from DynamoDB
 	err = removeConnection(ctx.Context, wsCtx.ConnectionID())
 	if err != nil {
-		ctx.Logger.Error("Failed to remove connection", map[string]interface{}{
+		ctx.Logger.Error("Failed to remove connection", map[string]any{
 			"error": err.Error(),
 		})
 		// Continue anyway - connection cleanup is best effort
@@ -256,7 +256,7 @@ func handleMessage(ctx *lift.Context) error {
 	}
 
 	// Parse incoming message
-	var message map[string]interface{}
+	var message map[string]any
 	if err := json.Unmarshal(ctx.Request.Body, &message); err != nil {
 		return wsCtx.SendJSONMessage(map[string]string{
 			"error": "Invalid message format",
@@ -264,7 +264,7 @@ func handleMessage(ctx *lift.Context) error {
 	}
 
 	// Echo the message back with additional info
-	response := map[string]interface{}{
+	response := map[string]any{
 		"type":         "echo",
 		"originalMsg":  message,
 		"connectionId": wsCtx.ConnectionID(),
@@ -316,7 +316,7 @@ func handleBroadcast(ctx *lift.Context) error {
 	}
 
 	// Create broadcast message
-	broadcastMsg := map[string]interface{}{
+	broadcastMsg := map[string]any{
 		"type":    "broadcast",
 		"from":    wsCtx.ConnectionID(),
 		"message": request.Message,
@@ -333,7 +333,7 @@ func handleBroadcast(ctx *lift.Context) error {
 	// Broadcast to all active connections
 	err = wsCtx.BroadcastMessage(connectionIDs, broadcastData)
 	if err != nil {
-		ctx.Logger.Error("Broadcast failed", map[string]interface{}{
+		ctx.Logger.Error("Broadcast failed", map[string]any{
 			"error": err.Error(),
 		})
 		return wsCtx.SendJSONMessage(map[string]string{
@@ -343,7 +343,7 @@ func handleBroadcast(ctx *lift.Context) error {
 	}
 
 	// Send confirmation back to sender
-	return wsCtx.SendJSONMessage(map[string]interface{}{
+	return wsCtx.SendJSONMessage(map[string]any{
 		"type":       "broadcast_sent",
 		"message":    fmt.Sprintf("Message broadcasted to %d connections", len(connectionIDs)),
 		"recipients": len(connectionIDs),
@@ -364,10 +364,10 @@ func handlePing(ctx *lift.Context) error {
 }
 
 // Example of how to adapt existing WebSocket handlers to Lift
-func adaptLegacyHandler(handler func(context.Context, map[string]interface{}) (map[string]interface{}, error)) lift.Handler {
+func adaptLegacyHandler(handler func(context.Context, map[string]any) (map[string]any, error)) lift.Handler {
 	return lift.HandlerFunc(func(ctx *lift.Context) error {
 		// Call the legacy handler with the raw event
-		response, err := handler(ctx.Context, ctx.Request.RawEvent.(map[string]interface{}))
+		response, err := handler(ctx.Context, ctx.Request.RawEvent.(map[string]any))
 		if err != nil {
 			return err
 		}

@@ -158,7 +158,7 @@ func (wc *WebSocketContext) SendMessage(data []byte) error {
 }
 
 // SendJSONMessage sends a JSON message to the current WebSocket connection
-func (wc *WebSocketContext) SendJSONMessage(data interface{}) error {
+func (wc *WebSocketContext) SendJSONMessage(data any) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)

@@ -54,7 +54,7 @@ func demoAPIGatewayMock() {
 		LastActiveAt: time.Now(),
 		SourceIP:     "192.168.1.100",
 		UserAgent:    "PayTheory-WebSocket-Client/1.0",
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"userId":   "user-123",
 			"tenantId": "tenant-abc",
 			"role":     "customer",

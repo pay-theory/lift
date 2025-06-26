@@ -66,7 +66,7 @@ type AlertAction struct {
 	Type       ActionType             `json:"type"`
 	Channel    string                 `json:"channel"`
 	Template   string                 `json:"template"`
-	Parameters map[string]interface{} `json:"parameters"`
+	Parameters map[string]any `json:"parameters"`
 	Enabled    bool                   `json:"enabled"`
 }
 
@@ -89,7 +89,7 @@ type Alert struct {
 	Annotations map[string]string      `json:"annotations"`
 	Events      []AlertEvent           `json:"events"`
 	Escalations []AlertEscalation      `json:"escalations"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // AlertEvent represents an event in an alert's lifecycle
@@ -99,7 +99,7 @@ type AlertEvent struct {
 	Timestamp time.Time              `json:"timestamp"`
 	Message   string                 `json:"message"`
 	User      string                 `json:"user,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // AlertEscalation represents an escalation step
@@ -116,7 +116,7 @@ type AlertChannel interface {
 	Send(ctx context.Context, alert *Alert) error
 	Validate() error
 	GetType() ChannelType
-	GetConfig() map[string]interface{}
+	GetConfig() map[string]any
 }
 
 // AlertProcessor processes alerts before delivery
@@ -370,7 +370,7 @@ func (am *AlertManager) TriggerAlert(ctx context.Context, ruleID string, value f
 		Annotations: rule.Annotations,
 		Events:      []AlertEvent{},
 		Escalations: []AlertEscalation{},
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 
 	// Set threshold from conditions

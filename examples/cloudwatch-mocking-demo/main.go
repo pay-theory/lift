@@ -308,11 +308,11 @@ func demonstrateAdvancedUsage() {
 // mockTesting implements testify's TestingT interface for demonstration
 type mockTesting struct{}
 
-func (m *mockTesting) Errorf(format string, args ...interface{}) {
+func (m *mockTesting) Errorf(format string, args ...any) {
 	fmt.Printf("MOCK ERROR: "+format+"\n", args...)
 }
 
-func (m *mockTesting) Logf(format string, args ...interface{}) {
+func (m *mockTesting) Logf(format string, args ...any) {
 	fmt.Printf("MOCK LOG: "+format+"\n", args...)
 }
 

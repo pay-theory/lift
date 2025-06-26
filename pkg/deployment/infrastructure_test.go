@@ -353,7 +353,7 @@ func TestLambdaResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected Environment property to exist")
 	} else {
-		envMap := env.(map[string]interface{})
+		envMap := env.(map[string]any)
 		variables := envMap["Variables"].(map[string]string)
 		if variables["ENV"] != "dev" {
 			t.Errorf("Expected ENV variable 'dev', got %v", variables["ENV"])
@@ -376,7 +376,7 @@ func TestLambdaResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected DeadLetterConfig property to exist")
 	} else {
-		dlqMap := dlqConfig.(map[string]interface{})
+		dlqMap := dlqConfig.(map[string]any)
 		if dlqMap["TargetArn"] == "" {
 			t.Error("Expected TargetArn to be set")
 		}
@@ -452,7 +452,7 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected KeySchema property to exist")
 	} else {
-		keySchemaList := keySchema.([]map[string]interface{})
+		keySchemaList := keySchema.([]map[string]any)
 		if len(keySchemaList) != 2 {
 			t.Errorf("Expected 2 key schema elements, got %d", len(keySchemaList))
 		}
@@ -463,7 +463,7 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected AttributeDefinitions property to exist")
 	} else {
-		attrDefsList := attrDefs.([]map[string]interface{})
+		attrDefsList := attrDefs.([]map[string]any)
 		if len(attrDefsList) != 3 {
 			t.Errorf("Expected 3 attribute definitions, got %d", len(attrDefsList))
 		}
@@ -474,7 +474,7 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected StreamSpecification property to exist")
 	} else {
-		streamSpecMap := streamSpec.(map[string]interface{})
+		streamSpecMap := streamSpec.(map[string]any)
 		if streamSpecMap["StreamViewType"] != "NEW_AND_OLD_IMAGES" {
 			t.Errorf("Expected stream view type 'NEW_AND_OLD_IMAGES', got %v", streamSpecMap["StreamViewType"])
 		}
@@ -485,7 +485,7 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected SSESpecification property to exist")
 	} else {
-		sseSpecMap := sseSpec.(map[string]interface{})
+		sseSpecMap := sseSpec.(map[string]any)
 		if sseSpecMap["SSEEnabled"] != true {
 			t.Error("Expected SSE to be enabled")
 		}
@@ -496,7 +496,7 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected PointInTimeRecoverySpecification property to exist")
 	} else {
-		pitrSpecMap := pitrSpec.(map[string]interface{})
+		pitrSpecMap := pitrSpec.(map[string]any)
 		if pitrSpecMap["PointInTimeRecoveryEnabled"] != true {
 			t.Error("Expected point-in-time recovery to be enabled")
 		}
@@ -507,7 +507,7 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected GlobalSecondaryIndexes property to exist")
 	} else {
-		gsisList := gsis.([]map[string]interface{})
+		gsisList := gsis.([]map[string]any)
 		if len(gsisList) != 1 {
 			t.Errorf("Expected 1 global secondary index, got %d", len(gsisList))
 		}

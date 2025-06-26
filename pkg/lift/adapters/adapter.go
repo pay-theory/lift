@@ -22,7 +22,7 @@ const (
 type Request struct {
 	// Event metadata
 	TriggerType TriggerType `json:"trigger_type"`
-	RawEvent    interface{} `json:"raw_event,omitempty"`
+	RawEvent    any `json:"raw_event,omitempty"`
 	EventID     string      `json:"event_id,omitempty"`
 	Timestamp   string      `json:"timestamp,omitempty"`
 
@@ -35,28 +35,28 @@ type Request struct {
 	Body        []byte            `json:"body,omitempty"`
 
 	// Event-specific data
-	Records    []interface{}          `json:"records,omitempty"`
-	Detail     map[string]interface{} `json:"detail,omitempty"`
+	Records    []any          `json:"records,omitempty"`
+	Detail     map[string]any `json:"detail,omitempty"`
 	Source     string                 `json:"source,omitempty"`
 	DetailType string                 `json:"detail_type,omitempty"`
 
 	// Additional metadata for specific event types (e.g., WebSocket)
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 // EventAdapter defines the interface for converting Lambda events to normalized requests
 type EventAdapter interface {
 	// Adapt converts a raw Lambda event to a normalized Request
-	Adapt(rawEvent interface{}) (*Request, error)
+	Adapt(rawEvent any) (*Request, error)
 
 	// GetTriggerType returns the trigger type this adapter handles
 	GetTriggerType() TriggerType
 
 	// Validate checks if the raw event matches this adapter's expected format
-	Validate(event interface{}) error
+	Validate(event any) error
 
 	// CanHandle returns true if this adapter can handle the given event
-	CanHandle(event interface{}) bool
+	CanHandle(event any) bool
 }
 
 // AdapterRegistry manages event adapters and provides automatic event type detection
@@ -93,7 +93,7 @@ func (r *AdapterRegistry) GetAdapter(triggerType TriggerType) (EventAdapter, boo
 }
 
 // DetectAndAdapt automatically detects the event type and adapts it
-func (r *AdapterRegistry) DetectAndAdapt(rawEvent interface{}) (*Request, error) {
+func (r *AdapterRegistry) DetectAndAdapt(rawEvent any) (*Request, error) {
 	// Try each adapter to see which one can handle the event
 	for _, adapter := range r.adapters {
 		if adapter.CanHandle(rawEvent) {
@@ -107,7 +107,7 @@ func (r *AdapterRegistry) DetectAndAdapt(rawEvent interface{}) (*Request, error)
 }
 
 // AdaptWithType adapts an event using a specific adapter type
-func (r *AdapterRegistry) AdaptWithType(rawEvent interface{}, triggerType TriggerType) (*Request, error) {
+func (r *AdapterRegistry) AdaptWithType(rawEvent any, triggerType TriggerType) (*Request, error) {
 	adapter, exists := r.adapters[triggerType]
 	if !exists {
 		return nil, fmt.Errorf("no adapter registered for trigger type: %s", triggerType)
@@ -136,7 +136,7 @@ func (b *BaseAdapter) GetTriggerType() TriggerType {
 }
 
 // extractStringField safely extracts a string field from a map
-func extractStringField(data map[string]interface{}, key string) string {
+func extractStringField(data map[string]any, key string) string {
 	if value, exists := data[key]; exists {
 		if str, ok := value.(string); ok {
 			return str
@@ -146,18 +146,18 @@ func extractStringField(data map[string]interface{}, key string) string {
 }
 
 // extractMapField safely extracts a map field from a map
-func extractMapField(data map[string]interface{}, key string) map[string]interface{} {
+func extractMapField(data map[string]any, key string) map[string]any {
 	if value, exists := data[key]; exists {
-		if mapValue, ok := value.(map[string]interface{}); ok {
+		if mapValue, ok := value.(map[string]any); ok {
 			return mapValue
 		}
 	}
-	return make(map[string]interface{})
+	return make(map[string]any)
 }
 
 // extractStringMapField safely extracts a string map field from a map
-// Handles both map[string]string and map[string]interface{} input types
-func extractStringMapField(data map[string]interface{}, key string) map[string]string {
+// Handles both map[string]string and map[string]any input types
+func extractStringMapField(data map[string]any, key string) map[string]string {
 	result := make(map[string]string)
 	if value, exists := data[key]; exists {
 		// Handle map[string]string directly
@@ -165,8 +165,8 @@ func extractStringMapField(data map[string]interface{}, key string) map[string]s
 			for k, v := range stringMap {
 				result[k] = v
 			}
-		} else if mapValue, ok := value.(map[string]interface{}); ok {
-			// Handle map[string]interface{} by converting values to strings
+		} else if mapValue, ok := value.(map[string]any); ok {
+			// Handle map[string]any by converting values to strings
 			for k, v := range mapValue {
 				if str, ok := v.(string); ok {
 					result[k] = str
@@ -178,11 +178,11 @@ func extractStringMapField(data map[string]interface{}, key string) map[string]s
 }
 
 // extractSliceField safely extracts a slice field from a map
-func extractSliceField(data map[string]interface{}, key string) []interface{} {
+func extractSliceField(data map[string]any, key string) []any {
 	if value, exists := data[key]; exists {
-		if slice, ok := value.([]interface{}); ok {
+		if slice, ok := value.([]any); ok {
 			return slice
 		}
 	}
-	return make([]interface{}, 0)
+	return make([]any, 0)
 }

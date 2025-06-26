@@ -129,14 +129,14 @@ func TestAppHandleRequest(t *testing.T) {
 	}
 
 	// Create a proper API Gateway V1 event
-	event := map[string]interface{}{
+	event := map[string]any{
 		"resource":   "/test",
 		"httpMethod": "GET",
 		"path":       "/test",
-		"requestContext": map[string]interface{}{
+		"requestContext": map[string]any{
 			"requestId": "test-request-id",
 		},
-		"headers": map[string]interface{}{
+		"headers": map[string]any{
 			"Content-Type": "application/json",
 		},
 	}

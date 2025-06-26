@@ -102,7 +102,7 @@ func TestContractInteraction(t *testing.T) {
 			Headers: map[string]string{
 				"Content-Type": "application/json",
 			},
-			Body: map[string]interface{}{
+			Body: map[string]any{
 				"id":    123,
 				"name":  "John Doe",
 				"email": "john@example.com",
@@ -180,7 +180,7 @@ func TestSchemaValidation(t *testing.T) {
 	}
 
 	// Valid object
-	validObject := map[string]interface{}{
+	validObject := map[string]any{
 		"name": "John Doe",
 		"age":  float64(30),
 	}
@@ -194,7 +194,7 @@ func TestSchemaValidation(t *testing.T) {
 	}
 
 	// Invalid object (missing required field)
-	invalidObject := map[string]interface{}{
+	invalidObject := map[string]any{
 		"age": float64(30),
 	}
 
@@ -237,9 +237,9 @@ func TestContractValidation(t *testing.T) {
 					Headers: map[string]string{
 						"Content-Type": "application/json",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"status": "success",
-						"data":   []interface{}{},
+						"data":   []any{},
 					},
 					Schema: &SchemaDefinition{
 						Type: "object",
@@ -419,7 +419,7 @@ func TestTypeValidation(t *testing.T) {
 	}
 
 	// Test array type
-	if !framework.validateType([]interface{}{1, 2, 3}, "array") {
+	if !framework.validateType([]any{1, 2, 3}, "array") {
 		t.Error("Slice should validate as array type")
 	}
 	if framework.validateType("array", "array") {
@@ -427,7 +427,7 @@ func TestTypeValidation(t *testing.T) {
 	}
 
 	// Test object type
-	if !framework.validateType(map[string]interface{}{"key": "value"}, "object") {
+	if !framework.validateType(map[string]any{"key": "value"}, "object") {
 		t.Error("Map should validate as object type")
 	}
 	if framework.validateType("object", "object") {
@@ -592,7 +592,7 @@ func TestContractPerformanceValidation(t *testing.T) {
 				Headers: map[string]string{
 					"Content-Type": "application/json",
 				},
-				Body: map[string]interface{}{
+				Body: map[string]any{
 					"id":   i,
 					"data": "test data",
 				},
@@ -650,7 +650,7 @@ func BenchmarkContractValidation(b *testing.B) {
 					Headers: map[string]string{
 						"Content-Type": "application/json",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"status": "success",
 						"data":   "benchmark data",
 					},
@@ -694,7 +694,7 @@ func BenchmarkSchemaValidation(b *testing.B) {
 		Required: []string{"name", "email"},
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"name":  "John Doe",
 		"age":   float64(30),
 		"email": "john@example.com",

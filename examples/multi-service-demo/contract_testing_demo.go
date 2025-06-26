@@ -107,7 +107,7 @@ func createUserServiceContract() *enterprise.ServiceContract {
 			Version:     "1.0.0",
 			BaseURL:     "https://api.paytheory.com/users",
 			Environment: "production",
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"team":        "platform",
 				"maintainer":  "platform-team@paytheory.com",
 				"description": "Core user management service",
@@ -118,7 +118,7 @@ func createUserServiceContract() *enterprise.ServiceContract {
 			Version:     "2.1.0",
 			BaseURL:     "https://app.paytheory.com",
 			Environment: "production",
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"team":        "frontend",
 				"maintainer":  "frontend-team@paytheory.com",
 				"description": "Main web application",
@@ -156,7 +156,7 @@ func createUserServiceContract() *enterprise.ServiceContract {
 						"Content-Type":  "application/json",
 						"Cache-Control": "max-age=300",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"id":         "user-123",
 						"email":      "user@example.com",
 						"first_name": "John",
@@ -202,14 +202,14 @@ func createUserServiceContract() *enterprise.ServiceContract {
 							"status": {
 								Type:        "string",
 								Description: "User account status",
-								Enum:        []interface{}{"active", "inactive", "suspended"},
+								Enum:        []any{"active", "inactive", "suspended"},
 							},
 						},
 						Required: []string{"id", "email", "first_name", "last_name", "created_at", "status"},
 					},
 				},
 				State: "user exists",
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"priority":    "high",
 					"category":    "core",
 					"test_data":   "user-123",
@@ -220,7 +220,7 @@ func createUserServiceContract() *enterprise.ServiceContract {
 		Status:    enterprise.ContractActive,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"service_type":     "microservice",
 			"data_sensitivity": "high",
 			"sla_tier":         "tier1",
@@ -258,7 +258,7 @@ func createPaymentServiceContract() *enterprise.ServiceContract {
 						"Authorization": "Bearer {token}",
 						"Content-Type":  "application/json",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"amount":      10000,
 						"currency":    "USD",
 						"customer_id": "user-123",
@@ -270,7 +270,7 @@ func createPaymentServiceContract() *enterprise.ServiceContract {
 					Headers: map[string]string{
 						"Content-Type": "application/json",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"id":          "payment-abc123",
 						"status":      "succeeded",
 						"amount":      10000,
@@ -318,10 +318,10 @@ func createOrderServiceContract() *enterprise.ServiceContract {
 						"Authorization": "Bearer {token}",
 						"Content-Type":  "application/json",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"customer_id": "user-123",
-						"items": []interface{}{
-							map[string]interface{}{
+						"items": []any{
+							map[string]any{
 								"product_id": "prod-456",
 								"quantity":   2,
 								"price":      2500,
@@ -335,7 +335,7 @@ func createOrderServiceContract() *enterprise.ServiceContract {
 						"Content-Type": "application/json",
 						"Location":     "/orders/{id}",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"id":          "order-789",
 						"customer_id": "user-123",
 						"status":      "pending",
@@ -382,10 +382,10 @@ func createIntegrationContract() *enterprise.ServiceContract {
 						"Authorization": "Bearer {token}",
 						"Content-Type":  "application/json",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"customer_id": "user-123",
-						"items": []interface{}{
-							map[string]interface{}{
+						"items": []any{
+							map[string]any{
 								"product_id": "prod-456",
 								"quantity":   1,
 								"price":      5000,
@@ -398,20 +398,20 @@ func createIntegrationContract() *enterprise.ServiceContract {
 					Headers: map[string]string{
 						"Content-Type": "application/json",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"workflow_id": "workflow-xyz789",
 						"status":      "completed",
-						"order": map[string]interface{}{
+						"order": map[string]any{
 							"id":     "order-789",
 							"status": "confirmed",
 							"total":  5000,
 						},
-						"payment": map[string]interface{}{
+						"payment": map[string]any{
 							"id":     "payment-abc123",
 							"status": "succeeded",
 							"amount": 5000,
 						},
-						"user": map[string]interface{}{
+						"user": map[string]any{
 							"id":    "user-123",
 							"email": "user@example.com",
 						},
@@ -523,7 +523,7 @@ func demonstratePerformanceTesting(framework *enterprise.ContractTestingFramewor
 				Headers: map[string]string{
 					"Content-Type": "application/json",
 				},
-				Body: map[string]interface{}{
+				Body: map[string]any{
 					"id":   i,
 					"data": fmt.Sprintf("test data %d", i),
 				},

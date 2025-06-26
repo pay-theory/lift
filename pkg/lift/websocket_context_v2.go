@@ -166,7 +166,7 @@ func (wc *WebSocketContextV2) SendMessage(ctx context.Context, data []byte) erro
 }
 
 // SendJSONMessage sends a JSON message to the current WebSocket connection
-func (wc *WebSocketContextV2) SendJSONMessage(ctx context.Context, data interface{}) error {
+func (wc *WebSocketContextV2) SendJSONMessage(ctx context.Context, data any) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
@@ -202,7 +202,7 @@ func (wc *WebSocketContextV2) BroadcastMessage(ctx context.Context, connectionID
 
 	// Log gone connections for cleanup
 	if len(goneConnections) > 0 && wc.Logger != nil {
-		wc.Logger.Info("Gone connections detected", map[string]interface{}{
+		wc.Logger.Info("Gone connections detected", map[string]any{
 			"connections": goneConnections,
 			"count":       len(goneConnections),
 		})
@@ -216,7 +216,7 @@ func (wc *WebSocketContextV2) BroadcastMessage(ctx context.Context, connectionID
 }
 
 // BroadcastJSONMessage sends a JSON message to multiple WebSocket connections
-func (wc *WebSocketContextV2) BroadcastJSONMessage(ctx context.Context, connectionIDs []string, data interface{}) error {
+func (wc *WebSocketContextV2) BroadcastJSONMessage(ctx context.Context, connectionIDs []string, data any) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)

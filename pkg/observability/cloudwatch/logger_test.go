@@ -27,12 +27,12 @@ func TestCloudWatchLogger_BasicLogging(t *testing.T) {
 	defer logger.Close()
 
 	// Test basic logging
-	logger.Info("test message", map[string]interface{}{
+	logger.Info("test message", map[string]any{
 		"key1": "value1",
 		"key2": 42,
 	})
 
-	logger.Error("error message", map[string]interface{}{
+	logger.Error("error message", map[string]any{
 		"error": "something went wrong",
 	})
 
@@ -109,7 +109,7 @@ func TestCloudWatchLogger_Batching(t *testing.T) {
 
 	// Send exactly batch size messages
 	for i := 0; i < 3; i++ {
-		logger.Info("batch message", map[string]interface{}{
+		logger.Info("batch message", map[string]any{
 			"index": i,
 		})
 	}
@@ -148,7 +148,7 @@ func TestCloudWatchLogger_BufferOverflow(t *testing.T) {
 
 	// Fill buffer beyond capacity
 	for i := 0; i < 5; i++ {
-		logger.Info("overflow message", map[string]interface{}{
+		logger.Info("overflow message", map[string]any{
 			"index": i,
 		})
 	}
@@ -209,7 +209,7 @@ func TestCloudWatchLogger_FlushMethod(t *testing.T) {
 
 	// Log some messages
 	for i := 0; i < 3; i++ {
-		logger.Info("flush test message", map[string]interface{}{
+		logger.Info("flush test message", map[string]any{
 			"index": i,
 		})
 	}
@@ -359,7 +359,7 @@ func TestCloudWatchLogger_ConcurrentAccess(t *testing.T) {
 			contextLogger := logger.WithField("goroutine_id", id)
 
 			for j := 0; j < 10; j++ {
-				contextLogger.Info("concurrent message", map[string]interface{}{
+				contextLogger.Info("concurrent message", map[string]any{
 					"message_id": j,
 				})
 			}

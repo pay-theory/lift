@@ -88,7 +88,7 @@ type RateLimitConfig struct {
 
 	// Storage backend for rate limiting
 	StorageType   string                 `json:"storage_type"` // "memory", "redis", "dynamodb"
-	StorageConfig map[string]interface{} `json:"storage_config"`
+	StorageConfig map[string]any `json:"storage_config"`
 }
 
 // CORSConfig defines Cross-Origin Resource Sharing settings

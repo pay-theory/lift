@@ -139,7 +139,7 @@ type LoadBalancer interface {
 
 // CircuitBreaker defines the interface for circuit breaking
 type CircuitBreaker interface {
-	Execute(fn func() (interface{}, error)) (interface{}, error)
+	Execute(fn func() (any, error)) (any, error)
 	GetState() CircuitBreakerState
 	GetStats() CircuitBreakerStats
 }

@@ -12,8 +12,8 @@ import (
 
 // LiftContext represents the minimal interface needed from lift.Context
 type LiftContext interface {
-	Set(key string, value interface{})
-	Get(key string) interface{}
+	Set(key string, value any)
+	Get(key string) any
 	UserID() string
 	TenantID() string
 	ClientIP() string
@@ -23,9 +23,9 @@ type LiftContext interface {
 
 // Logger represents the minimal logging interface needed
 type Logger interface {
-	Error(msg string, keysAndValues ...interface{})
-	Info(msg string, keysAndValues ...interface{})
-	Warn(msg string, keysAndValues ...interface{})
+	Error(msg string, keysAndValues ...any)
+	Info(msg string, keysAndValues ...any)
+	Warn(msg string, keysAndValues ...any)
 }
 
 // AuditStorage defines the interface for audit log storage
@@ -73,7 +73,7 @@ type AuditLogEntry struct {
 	Response      *AuditResponse         `json:"response,omitempty"`
 	DataAccess    *DataAccessLog         `json:"data_access,omitempty"`
 	SecurityEvent *SecurityEvent         `json:"security_event,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 	Checksum      string                 `json:"checksum"`
 }
 

@@ -19,8 +19,8 @@ func NewAPIGatewayV2Adapter() *APIGatewayV2Adapter {
 }
 
 // CanHandle checks if this adapter can handle the given event
-func (a *APIGatewayV2Adapter) CanHandle(event interface{}) bool {
-	eventMap, ok := event.(map[string]interface{})
+func (a *APIGatewayV2Adapter) CanHandle(event any) bool {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
 		return false
 	}
@@ -41,10 +41,10 @@ func (a *APIGatewayV2Adapter) CanHandle(event interface{}) bool {
 }
 
 // Validate checks if the event has the required API Gateway V2 structure
-func (a *APIGatewayV2Adapter) Validate(event interface{}) error {
-	eventMap, ok := event.(map[string]interface{})
+func (a *APIGatewayV2Adapter) Validate(event any) error {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
-		return fmt.Errorf("event must be a map[string]interface{}")
+		return fmt.Errorf("event must be a map[string]any")
 	}
 
 	// Check required fields
@@ -64,12 +64,12 @@ func (a *APIGatewayV2Adapter) Validate(event interface{}) error {
 }
 
 // Adapt converts an API Gateway V2 event to a normalized Request
-func (a *APIGatewayV2Adapter) Adapt(rawEvent interface{}) (*Request, error) {
+func (a *APIGatewayV2Adapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	eventMap := rawEvent.(map[string]interface{})
+	eventMap := rawEvent.(map[string]any)
 
 	// Extract request context
 	requestContext := extractMapField(eventMap, "requestContext")

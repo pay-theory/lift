@@ -115,7 +115,7 @@ func EnhancedObservabilityMiddleware(config EnhancedObservabilityConfig) lift.Mi
 				ctx.Logger = contextLogger
 
 				// Log request start
-				logFields := map[string]interface{}{
+				logFields := map[string]any{
 					"operation":    operation,
 					"method":       ctx.Request.Method,
 					"path":         ctx.Request.Path,
@@ -180,7 +180,7 @@ func EnhancedObservabilityMiddleware(config EnhancedObservabilityConfig) lift.Mi
 
 			// Enhanced logging based on result
 			if config.EnableLogging && contextLogger != nil {
-				logFields := map[string]interface{}{
+				logFields := map[string]any{
 					"operation": operation,
 					"duration":  duration.String(),
 					"status":    statusCode,

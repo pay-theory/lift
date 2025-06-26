@@ -40,7 +40,7 @@ func handleSignup(ctx *lift.Context) error {
 	}
 
 	// Process signup...
-	return ctx.Status(201).JSON(map[string]interface{}{
+	return ctx.Status(201).JSON(map[string]any{
 		"message": "Account created successfully",
 		"user_id": "new-user-id",
 	})
@@ -53,9 +53,9 @@ func handleLogin(ctx *lift.Context) error {
 	}
 
 	// Process login...
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"token": "jwt-token-here",
-		"user": map[string]interface{}{
+		"user": map[string]any{
 			"id":    "user-id",
 			"email": req.Email,
 		},
@@ -69,7 +69,7 @@ func handleForgotPassword(ctx *lift.Context) error {
 	}
 
 	// Process password reset...
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"message": "Password reset email sent",
 	})
 }
@@ -77,7 +77,7 @@ func handleForgotPassword(ctx *lift.Context) error {
 func handleExpensiveOperation(ctx *lift.Context) error {
 	// This operation is expensive, so it would be rate limited in production
 	if ctx.Logger != nil {
-		ctx.Logger.Info("Starting expensive operation", map[string]interface{}{
+		ctx.Logger.Info("Starting expensive operation", map[string]any{
 			"tenant_id": ctx.TenantID(),
 			"user_id":   ctx.UserID(),
 		})
@@ -86,7 +86,7 @@ func handleExpensiveOperation(ctx *lift.Context) error {
 	// Simulate expensive operation
 	time.Sleep(100 * time.Millisecond) // Reduced for demo
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"result": "Operation completed",
 		"cost":   "high",
 	})
@@ -98,7 +98,7 @@ func handleDataExport(ctx *lift.Context) error {
 		return lift.BadRequest("Export type is required")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"export_id": "export-123",
 		"type":      exportType,
 		"status":    "processing",
@@ -106,8 +106,8 @@ func handleDataExport(ctx *lift.Context) error {
 }
 
 func handleListUsers(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
-		"users": []map[string]interface{}{
+	return ctx.JSON(map[string]any{
+		"users": []map[string]any{
 			{"id": "1", "name": "User 1"},
 			{"id": "2", "name": "User 2"},
 		},
@@ -121,7 +121,7 @@ func handleCreateUser(ctx *lift.Context) error {
 		return lift.BadRequest("Invalid request body")
 	}
 
-	return ctx.Status(201).JSON(map[string]interface{}{
+	return ctx.Status(201).JSON(map[string]any{
 		"id":   "new-user-id",
 		"name": req.Name,
 	})
@@ -129,7 +129,7 @@ func handleCreateUser(ctx *lift.Context) error {
 
 func handleGetUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"id":   userID,
 		"name": "User Name",
 	})
@@ -142,7 +142,7 @@ func handleUpdateUser(ctx *lift.Context) error {
 		return lift.BadRequest("Invalid request body")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"id":   userID,
 		"name": req.Name,
 	})
@@ -150,13 +150,13 @@ func handleUpdateUser(ctx *lift.Context) error {
 
 func handleDeleteUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"message": fmt.Sprintf("User %s deleted", userID),
 	})
 }
 
 func handleHealth(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"status": "healthy",
 		"time":   time.Now().Unix(),
 	})

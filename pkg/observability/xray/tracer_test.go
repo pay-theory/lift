@@ -202,7 +202,7 @@ func TestTraceCustomOperation(t *testing.T) {
 	defer segment.Close(nil)
 
 	// Test custom operation tracing
-	metadata := map[string]interface{}{
+	metadata := map[string]any{
 		"user_id":   "123",
 		"operation": "payment_processing",
 		"amount":    100.50,

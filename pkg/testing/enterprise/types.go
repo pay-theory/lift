@@ -257,7 +257,7 @@ const (
 type ReportChart struct {
 	Type  string                 `json:"type"`
 	Title string                 `json:"title"`
-	Data  map[string]interface{} `json:"data"`
+	Data  map[string]any `json:"data"`
 }
 
 // ReportSection represents a section in a report
@@ -267,7 +267,7 @@ type ReportSection struct {
 	Description string                 `json:"description"`
 	Type        SectionType            `json:"type"`
 	Content     string                 `json:"content"`
-	Data        map[string]interface{} `json:"data"`
+	Data        map[string]any `json:"data"`
 	Charts      []ReportChart          `json:"charts"`
 }
 
@@ -280,7 +280,7 @@ type ReportTemplate struct {
 	Format      ReportFormat           `json:"format"`
 	Description string                 `json:"description"`
 	Sections    []ReportSection        `json:"sections"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ContractReportTemplate represents a template for contract reports
@@ -291,7 +291,7 @@ type ContractReportTemplate struct {
 	Format      ReportFormat           `json:"format"`
 	Description string                 `json:"description"`
 	Sections    []ReportSection        `json:"sections"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ============================================================================
@@ -310,8 +310,8 @@ type TestResult struct {
 	Error     error                  `json:"error,omitempty"`
 	Errors    []string               `json:"errors"`
 	Warnings  []string               `json:"warnings"`
-	Metrics   map[string]interface{} `json:"metrics"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metrics   map[string]any `json:"metrics"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // TestReport represents a comprehensive test report
@@ -330,7 +330,7 @@ type TestReport struct {
 	SkippedTests int                    `json:"skipped_tests"`
 	TestResults  []*TestResult          `json:"test_results"`
 	Summary      *TestSummary           `json:"summary"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 	GeneratedAt  time.Time              `json:"generated_at"`
 }
 
@@ -360,13 +360,13 @@ type ComplianceReport struct {
 	Controls      map[string]*ControlResult `json:"controls"`
 	OverallStatus ComplianceStatus          `json:"overall_status"`
 	Summary       *ComplianceSummary        `json:"summary"`
-	Metadata      map[string]interface{}    `json:"metadata"`
+	Metadata      map[string]any    `json:"metadata"`
 }
 
 // ControlResult represents the result of testing a control
 type ControlResult struct {
 	ControlID   string                           `json:"control_id"`
-	Category    interface{}                      `json:"category"` // Can be SOC2Category, GDPRCategory, or SecurityCategory
+	Category    any                      `json:"category"` // Can be SOC2Category, GDPRCategory, or SecurityCategory
 	StartTime   time.Time                        `json:"start_time"`
 	EndTime     time.Time                        `json:"end_time"`
 	Duration    time.Duration                    `json:"duration"`
@@ -383,8 +383,8 @@ type ComplianceTestResult struct {
 	EndTime   time.Time            `json:"end_time"`
 	Duration  time.Duration        `json:"duration"`
 	Status    ComplianceTestStatus `json:"status"`
-	Result    interface{}          `json:"result"`
-	Expected  interface{}          `json:"expected"`
+	Result    any          `json:"result"`
+	Expected  any          `json:"expected"`
 }
 
 // ComplianceSummary provides a summary of compliance results
@@ -404,7 +404,7 @@ type Evidence struct {
 	Timestamp   time.Time              `json:"timestamp"`
 	Location    string                 `json:"location"`
 	Hash        string                 `json:"hash"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ============================================================================
@@ -420,7 +420,7 @@ type ContractTest struct {
 	Contract  *ServiceContract       `json:"contract"`
 	Validator ContractValidator      `json:"validator"`
 	Config    *TestConfig            `json:"config"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // ServiceContract represents a service contract
@@ -434,7 +434,7 @@ type ServiceContract struct {
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
 	Interactions []ContractInteraction  `json:"interactions"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // ContractInteraction represents an interaction in a contract
@@ -444,7 +444,7 @@ type ContractInteraction struct {
 	Request     *InteractionRequest    `json:"request"`
 	Response    *InteractionResponse   `json:"response"`
 	State       string                 `json:"state,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // InteractionRequest represents a request in a contract interaction
@@ -452,8 +452,8 @@ type InteractionRequest struct {
 	Method  string                 `json:"method"`
 	Path    string                 `json:"path"`
 	Headers map[string]string      `json:"headers"`
-	Body    interface{}            `json:"body"`
-	Query   map[string]interface{} `json:"query"`
+	Body    any            `json:"body"`
+	Query   map[string]any `json:"query"`
 	Schema  *SchemaDefinition      `json:"schema,omitempty"`
 }
 
@@ -461,7 +461,7 @@ type InteractionRequest struct {
 type InteractionResponse struct {
 	Status  int               `json:"status"`
 	Headers map[string]string `json:"headers"`
-	Body    interface{}       `json:"body"`
+	Body    any       `json:"body"`
 	Schema  *SchemaDefinition `json:"schema,omitempty"`
 }
 
@@ -476,7 +476,7 @@ type ContractTestResult struct {
 	Status       TestStatus             `json:"status"`
 	Interactions []InteractionResult    `json:"interactions"`
 	Summary      *ContractTestSummary   `json:"summary"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // InteractionResult represents the result of testing an interaction
@@ -487,7 +487,7 @@ type InteractionResult struct {
 	Response      *InteractionResponse   `json:"response"`
 	Expected      *InteractionResponse   `json:"expected"`
 	Errors        []string               `json:"errors"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // ContractTestSummary provides a summary of contract test results
@@ -515,7 +515,7 @@ type ConsentRecord struct {
 	WithdrawnDate   *time.Time             `json:"withdrawn_date,omitempty"`
 	LegalBasis      string                 `json:"legal_basis"`
 	ProcessingScope string                 `json:"processing_scope"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // ============================================================================
@@ -533,7 +533,7 @@ type AlertingConfig struct {
 // AlertChannelConfig represents configuration for an alert channel
 type AlertChannelConfig struct {
 	Type    string                 `json:"type"`
-	Config  map[string]interface{} `json:"config"`
+	Config  map[string]any `json:"config"`
 	Enabled bool                   `json:"enabled"`
 }
 
@@ -543,14 +543,14 @@ type AlertRule struct {
 	Conditions []AlertCondition       `json:"conditions"`
 	Channels   []string               `json:"channels"`
 	Throttle   time.Duration          `json:"throttle"`
-	Metadata   map[string]interface{} `json:"metadata"`
+	Metadata   map[string]any `json:"metadata"`
 }
 
 // AlertCondition represents a condition for triggering an alert
 type AlertCondition struct {
 	Field    string      `json:"field"`
 	Operator string      `json:"operator"`
-	Value    interface{} `json:"value"`
+	Value    any `json:"value"`
 }
 
 // ComplianceAlert represents a compliance-related alert
@@ -561,7 +561,7 @@ type ComplianceAlert struct {
 	Title       string                 `json:"title"`
 	Description string                 `json:"description"`
 	Timestamp   time.Time              `json:"timestamp"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ============================================================================
@@ -574,7 +574,7 @@ type TestConfig struct {
 	Retries       int                    `json:"retries"`
 	Parallel      bool                   `json:"parallel"`
 	Environment   string                 `json:"environment"`
-	Parameters    map[string]interface{} `json:"parameters"`
+	Parameters    map[string]any `json:"parameters"`
 	Prerequisites []string               `json:"prerequisites"`
 	Cleanup       bool                   `json:"cleanup"`
 }
@@ -599,7 +599,7 @@ type ContractValidator interface {
 
 // ReportExporter defines the interface for exporting reports
 type ReportExporter interface {
-	Export(ctx context.Context, report interface{}, format ReportFormat) ([]byte, error)
+	Export(ctx context.Context, report any, format ReportFormat) ([]byte, error)
 }
 
 // AlertingSystem defines the interface for alerting systems
@@ -640,9 +640,9 @@ type ChaosExperimentResult struct {
 	Duration     time.Duration          `json:"duration"`
 	FaultType    FaultType              `json:"fault_type"`
 	Target       string                 `json:"target"`
-	Metrics      map[string]interface{} `json:"metrics"`
+	Metrics      map[string]any `json:"metrics"`
 	Errors       []string               `json:"errors"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // ExperimentStatus represents the status of a chaos experiment
@@ -689,12 +689,12 @@ type FaultDefinition struct {
 	Type        FaultType              `json:"type"`
 	Target      string                 `json:"target"`
 	Severity    Severity               `json:"severity"`
-	Parameters  map[string]interface{} `json:"parameters"`
+	Parameters  map[string]any `json:"parameters"`
 	Duration    time.Duration          `json:"duration"`
 	Probability float64                `json:"probability"`
 	Enabled     bool                   `json:"enabled"`
 	Recovery    *RecoveryConfig        `json:"recovery,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // ExperimentTarget represents a target for chaos experiments
@@ -706,7 +706,7 @@ type ExperimentTarget struct {
 	Namespace  string                 `json:"namespace,omitempty"`
 	Labels     map[string]string      `json:"labels,omitempty"`
 	Selector   string                 `json:"selector,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 }
 
 // TargetScope defines the scope of experiment targets
@@ -724,8 +724,8 @@ type FaultStatus struct {
 	Active    bool                   `json:"active"`
 	StartTime time.Time              `json:"start_time"`
 	Duration  time.Duration          `json:"duration"`
-	Impact    map[string]interface{} `json:"impact"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Impact    map[string]any `json:"impact"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // FaultState represents the state of a fault injection
@@ -745,16 +745,16 @@ type ValidationViolation struct {
 	Severity Severity               `json:"severity"`
 	Message  string                 `json:"message"`
 	Field    string                 `json:"field"`
-	Value    interface{}            `json:"value"`
-	Expected interface{}            `json:"expected"`
-	Metadata map[string]interface{} `json:"metadata"`
+	Value    any            `json:"value"`
+	Expected any            `json:"expected"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // ValidationWarning represents a validation warning
 type ValidationWarning struct {
 	Message  string                 `json:"message"`
 	Field    string                 `json:"field"`
-	Metadata map[string]interface{} `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // DataTransfer represents a data transfer record
@@ -768,7 +768,7 @@ type DataTransfer struct {
 	Safeguards  []string               `json:"safeguards"`
 	Timestamp   time.Time              `json:"timestamp"`
 	Status      string                 `json:"status"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ChaosExperiment represents a chaos engineering experiment
@@ -787,7 +787,7 @@ type ChaosExperiment struct {
 	Hypothesis  string                 `json:"hypothesis"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // LatencyFaultConfig represents a network latency fault configuration
@@ -819,7 +819,7 @@ type PendingExperiment struct {
 	Experiment  *ChaosExperiment       `json:"experiment"`
 	ScheduledAt time.Time              `json:"scheduled_at"`
 	Priority    int                    `json:"priority"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ============================================================================
@@ -832,7 +832,7 @@ type Interaction struct {
 	Description string                 `json:"description"`
 	Request     *InteractionRequest    `json:"request"`
 	Response    *InteractionResponse   `json:"response"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // Contract represents a service contract (for patterns.go)
@@ -843,7 +843,7 @@ type Contract struct {
 	Provider     string                 `json:"provider"`
 	Consumer     string                 `json:"consumer"`
 	Interactions []Interaction          `json:"interactions"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // ============================================================================
@@ -872,7 +872,7 @@ type ChaosEngineeringConfig struct {
 	RetentionPeriod          time.Duration          `json:"retention_period"`
 	Notifications            NotificationConfig     `json:"notifications"`
 	Security                 SecurityConfig         `json:"security"`
-	Metadata                 map[string]interface{} `json:"metadata"`
+	Metadata                 map[string]any `json:"metadata"`
 }
 
 // NotificationConfig configures notifications
@@ -886,7 +886,7 @@ type NotificationConfig struct {
 // NotificationChannel defines a notification channel
 type NotificationChannel struct {
 	Type    string                 `json:"type"`
-	Config  map[string]interface{} `json:"config"`
+	Config  map[string]any `json:"config"`
 	Enabled bool                   `json:"enabled"`
 }
 
@@ -951,7 +951,7 @@ type ContractReportExporterImpl struct {
 // ExportDestination represents an export destination
 type ExportDestination struct {
 	Type   string                 `json:"type"`
-	Config map[string]interface{} `json:"config"`
+	Config map[string]any `json:"config"`
 }
 
 // ============================================================================
@@ -991,17 +991,17 @@ const (
 type ConsentHistory struct {
 	ConsentID string                 `json:"consent_id"`
 	Changes   []ConsentChange        `json:"changes"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // ConsentChange represents a change in consent
 type ConsentChange struct {
 	Timestamp time.Time              `json:"timestamp"`
 	Action    string                 `json:"action"`
-	OldValue  interface{}            `json:"old_value"`
-	NewValue  interface{}            `json:"new_value"`
+	OldValue  any            `json:"old_value"`
+	NewValue  any            `json:"new_value"`
 	Reason    string                 `json:"reason"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // ============================================================================
@@ -1070,7 +1070,7 @@ type ServiceInfo struct {
 	Version     string                 `json:"version"`
 	BaseURL     string                 `json:"base_url"`
 	Environment string                 `json:"environment"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // ContractStatus represents the status of a contract
@@ -1095,7 +1095,7 @@ type SchemaDefinition struct {
 	Pattern     string                     `json:"pattern,omitempty"`
 	Format      string                     `json:"format,omitempty"`
 	Items       *SchemaDefinition          `json:"items,omitempty"`
-	Enum        []interface{}              `json:"enum,omitempty"`
+	Enum        []any              `json:"enum,omitempty"`
 	Description string                     `json:"description,omitempty"`
 }
 
@@ -1110,7 +1110,7 @@ type SchemaProperty struct {
 	Pattern     string          `json:"pattern,omitempty"`
 	Format      string          `json:"format,omitempty"`
 	Items       *SchemaProperty `json:"items,omitempty"`
-	Enum        []interface{}   `json:"enum,omitempty"`
+	Enum        []any   `json:"enum,omitempty"`
 	Description string          `json:"description,omitempty"`
 }
 
@@ -1132,11 +1132,11 @@ type ValidationCheck struct {
 	Description string                 `json:"description"`
 	Status      string                 `json:"status"`
 	Valid       bool                   `json:"valid"`
-	Expected    interface{}            `json:"expected"`
-	Actual      interface{}            `json:"actual"`
+	Expected    any            `json:"expected"`
+	Actual      any            `json:"actual"`
 	Errors      []string               `json:"errors"`
 	Warnings    []string               `json:"warnings"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ============================================================================
@@ -1202,9 +1202,9 @@ type Observation struct {
 	Severity  ObservationSeverity    `json:"severity"`
 	Timestamp time.Time              `json:"timestamp"`
 	Message   string                 `json:"message"`
-	Data      map[string]interface{} `json:"data"`
+	Data      map[string]any `json:"data"`
 	Source    string                 `json:"source"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // ExperimentResults represents the results of a chaos experiment
@@ -1218,10 +1218,10 @@ type ExperimentResults struct {
 	Observations    []Observation          `json:"observations"`
 	Failures        []ExperimentFailure    `json:"failures"`
 	Recovery        *RecoveryResults       `json:"recovery,omitempty"`
-	Metrics         map[string]interface{} `json:"metrics"`
+	Metrics         map[string]any `json:"metrics"`
 	Summary         string                 `json:"summary"`
 	Recommendations []string               `json:"recommendations"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // ExperimentFailure represents a failure during chaos experiments
@@ -1232,7 +1232,7 @@ type ExperimentFailure struct {
 	Timestamp time.Time              `json:"timestamp"`
 	Severity  Severity               `json:"severity"`
 	Component string                 `json:"component"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // RecoveryResults represents recovery results
@@ -1254,7 +1254,7 @@ type ExperimentReport struct {
 	Results      *ExperimentResults     `json:"results"`
 	Analysis     *ExperimentAnalysis    `json:"analysis"`
 	Timestamp    time.Time              `json:"timestamp"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // ExperimentAnalysis represents analysis of experiment results
@@ -1262,8 +1262,8 @@ type ExperimentAnalysis struct {
 	ResilienceScore float64                `json:"resilience_score"`
 	Insights        []string               `json:"insights"`
 	Recommendations []string               `json:"recommendations"`
-	Trends          map[string]interface{} `json:"trends"`
-	Comparisons     map[string]interface{} `json:"comparisons"`
+	Trends          map[string]any `json:"trends"`
+	Comparisons     map[string]any `json:"comparisons"`
 }
 
 // ============================================================================
@@ -1275,7 +1275,7 @@ type ChaosEngineeringFramework struct {
 	config      *ChaosEngineeringConfig
 	experiments map[string]*ChaosExperiment
 	injectors   map[string]FaultInjector
-	monitors    map[string]interface{}
+	monitors    map[string]any
 	scheduler   *ChaosScheduler
 	executor    *ExperimentExecutor
 	reporter    *ChaosReporter
@@ -1293,8 +1293,8 @@ type ChaosScheduler struct {
 type ExperimentExecutor struct {
 	config    *ChaosEngineeringConfig
 	injectors map[string]FaultInjector
-	workers   map[string]interface{}
-	queue     []interface{}
+	workers   map[string]any
+	queue     []any
 	results   map[string]*ExperimentResults
 }
 
@@ -1302,7 +1302,7 @@ type ExperimentExecutor struct {
 type ChaosReporter struct {
 	templates  map[string]*ReportTemplate
 	exporters  map[string]ReportExporter
-	generators map[string]interface{}
+	generators map[string]any
 }
 
 // FaultInjector interface for fault injection
@@ -1327,7 +1327,7 @@ type ContractValidationResult struct {
 	Summary     *ValidationSummary                `json:"summary"`
 	Timestamp   time.Time                         `json:"timestamp"`
 	Duration    time.Duration                     `json:"duration"`
-	Metadata    map[string]interface{}            `json:"metadata"`
+	Metadata    map[string]any            `json:"metadata"`
 }
 
 // ValidationSummary represents a summary of validation results
@@ -1351,7 +1351,7 @@ func NewChaosEngineeringFramework(config *ChaosEngineeringConfig) *ChaosEngineer
 		config:      config,
 		experiments: make(map[string]*ChaosExperiment),
 		injectors:   make(map[string]FaultInjector),
-		monitors:    make(map[string]interface{}),
+		monitors:    make(map[string]any),
 		scheduler:   NewChaosScheduler(config),
 		executor:    NewExperimentExecutor(config),
 		reporter:    NewChaosReporter(),
@@ -1373,8 +1373,8 @@ func NewExperimentExecutor(config *ChaosEngineeringConfig) *ExperimentExecutor {
 	return &ExperimentExecutor{
 		config:    config,
 		injectors: make(map[string]FaultInjector),
-		workers:   make(map[string]interface{}),
-		queue:     make([]interface{}, 0),
+		workers:   make(map[string]any),
+		queue:     make([]any, 0),
 		results:   make(map[string]*ExperimentResults),
 	}
 }
@@ -1384,7 +1384,7 @@ func NewChaosReporter() *ChaosReporter {
 	reporter := &ChaosReporter{
 		templates:  make(map[string]*ReportTemplate),
 		exporters:  make(map[string]ReportExporter),
-		generators: make(map[string]interface{}),
+		generators: make(map[string]any),
 	}
 
 	// Initialize default templates
@@ -1415,7 +1415,7 @@ func NewChaosReporter() *ChaosReporter {
 				Type:        RecommendationSection,
 			},
 		},
-		Metadata: make(map[string]interface{}),
+		Metadata: make(map[string]any),
 	}
 
 	return reporter
@@ -1447,7 +1447,7 @@ func (f *ChaosEngineeringFramework) RunExperiment(ctx context.Context, experimen
 			Attempted:  true,
 			Duration:   30 * time.Second,
 		},
-		Metrics:         make(map[string]interface{}),
+		Metrics:         make(map[string]any),
 		Recommendations: []string{"System shows good resilience"},
 	}, nil
 }
@@ -1487,8 +1487,8 @@ func (f *ChaosEngineeringFramework) validateHypothesis(experiment *ChaosExperime
 }
 
 // calculateImpact calculates the impact of experiment results
-func (f *ChaosEngineeringFramework) calculateImpact(results *ExperimentResults) map[string]interface{} {
-	impact := make(map[string]interface{})
+func (f *ChaosEngineeringFramework) calculateImpact(results *ExperimentResults) map[string]any {
+	impact := make(map[string]any)
 
 	// Calculate averages from observations
 	var totalResponseTime, totalErrorRate, totalThroughput float64
@@ -1653,7 +1653,7 @@ type ResilienceMetrics struct {
 	LastIncident    time.Time              `json:"last_incident"`
 	IncidentCount   int                    `json:"incident_count"`
 	ResilienceScore float64                `json:"resilience_score"`
-	Trends          map[string]interface{} `json:"trends"`
+	Trends          map[string]any `json:"trends"`
 	ExperimentCount int                    `json:"experiment_count"`
 	LastUpdated     time.Time              `json:"last_updated"`
 }
@@ -1662,7 +1662,7 @@ type ResilienceMetrics struct {
 type BlastRadius struct {
 	Scope    string                 `json:"scope"`
 	Severity string                 `json:"severity"`
-	Impact   map[string]interface{} `json:"impact"`
+	Impact   map[string]any `json:"impact"`
 }
 
 // CalculateResilienceScore calculates a resilience score based on experiment results
@@ -1702,7 +1702,7 @@ func GenerateBlastRadius(experiment *ChaosExperiment) *BlastRadius {
 		return &BlastRadius{
 			Scope:    "unknown",
 			Severity: "low",
-			Impact:   make(map[string]interface{}),
+			Impact:   make(map[string]any),
 		}
 	}
 
@@ -1731,7 +1731,7 @@ func GenerateBlastRadius(experiment *ChaosExperiment) *BlastRadius {
 	return &BlastRadius{
 		Scope:    scope,
 		Severity: severity,
-		Impact: map[string]interface{}{
+		Impact: map[string]any{
 			"target":    experiment.Target.Name,
 			"type":      string(experiment.Type),
 			"duration":  experiment.Duration.String(),

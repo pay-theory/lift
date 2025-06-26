@@ -19,14 +19,14 @@ func NewWebSocketAdapter() *WebSocketAdapter {
 }
 
 // CanHandle checks if this adapter can handle the given event
-func (a *WebSocketAdapter) CanHandle(event interface{}) bool {
-	eventMap, ok := event.(map[string]interface{})
+func (a *WebSocketAdapter) CanHandle(event any) bool {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
 		return false
 	}
 
 	// Check for WebSocket specific fields
-	requestContext, hasRequestContext := eventMap["requestContext"].(map[string]interface{})
+	requestContext, hasRequestContext := eventMap["requestContext"].(map[string]any)
 	if !hasRequestContext {
 		return false
 	}
@@ -41,14 +41,14 @@ func (a *WebSocketAdapter) CanHandle(event interface{}) bool {
 }
 
 // Validate checks if the event has the required WebSocket structure
-func (a *WebSocketAdapter) Validate(event interface{}) error {
-	eventMap, ok := event.(map[string]interface{})
+func (a *WebSocketAdapter) Validate(event any) error {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
-		return fmt.Errorf("event must be a map[string]interface{}")
+		return fmt.Errorf("event must be a map[string]any")
 	}
 
 	// Check required fields
-	requestContext, ok := eventMap["requestContext"].(map[string]interface{})
+	requestContext, ok := eventMap["requestContext"].(map[string]any)
 	if !ok {
 		return fmt.Errorf("missing or invalid requestContext field")
 	}
@@ -67,13 +67,13 @@ func (a *WebSocketAdapter) Validate(event interface{}) error {
 }
 
 // Adapt converts a WebSocket event to a normalized Request
-func (a *WebSocketAdapter) Adapt(rawEvent interface{}) (*Request, error) {
+func (a *WebSocketAdapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	eventMap := rawEvent.(map[string]interface{})
-	requestContext := eventMap["requestContext"].(map[string]interface{})
+	eventMap := rawEvent.(map[string]any)
+	requestContext := eventMap["requestContext"].(map[string]any)
 
 	// Extract WebSocket specific information
 	connectionID := extractStringField(requestContext, "connectionId")
@@ -140,7 +140,7 @@ func (a *WebSocketAdapter) Adapt(rawEvent interface{}) (*Request, error) {
 		Source:      "aws:apigateway:websocket",
 
 		// Store WebSocket specific data in metadata
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"connectionId":       connectionID,
 			"routeKey":           routeKey,
 			"eventType":          eventType,

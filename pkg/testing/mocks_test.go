@@ -114,7 +114,7 @@ func TestMockAPIGatewayManagementClientTTL(t *testing.T) {
 		LastActiveAt: pastTime,
 		SourceIP:     "127.0.0.1",
 		UserAgent:    "TestClient/1.0",
-		Metadata:     make(map[string]interface{}),
+		Metadata:     make(map[string]any),
 	}
 	mock.WithConnection("conn-expired", conn)
 

@@ -7,7 +7,7 @@ import (
 // Response represents a unified response structure for Lambda functions
 type Response struct {
 	StatusCode      int               `json:"statusCode"`
-	Body            interface{}       `json:"body"`
+	Body            any       `json:"body"`
 	Headers         map[string]string `json:"headers"`
 	IsBase64Encoded bool              `json:"isBase64Encoded"`
 
@@ -40,7 +40,7 @@ func (r *Response) Header(key, value string) *Response {
 }
 
 // JSON sets the response body as JSON and marks the response as written
-func (r *Response) JSON(data interface{}) error {
+func (r *Response) JSON(data any) error {
 	if r.written {
 		return NewLiftError("RESPONSE_WRITTEN", "Response has already been written", 500)
 	}

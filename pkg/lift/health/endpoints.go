@@ -62,7 +62,7 @@ type HealthResponse struct {
 	Timestamp string                 `json:"timestamp"`
 	Duration  string                 `json:"duration"`
 	Message   string                 `json:"message,omitempty"`
-	Details   map[string]interface{} `json:"details,omitempty"`
+	Details   map[string]any `json:"details,omitempty"`
 	Error     string                 `json:"error,omitempty"`
 }
 

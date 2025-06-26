@@ -84,7 +84,7 @@ func createNetworkLatencyExperiment() *enterprise.ChaosExperiment {
 				Severity:    enterprise.MediumSeverity,
 				Duration:    30 * time.Second,
 				Probability: 1.0,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"delay": 200 * time.Millisecond,
 				},
 				Recovery: &enterprise.RecoveryConfig{
@@ -122,7 +122,7 @@ func createServiceUnavailabilityExperiment() *enterprise.ChaosExperiment {
 				Severity:    enterprise.HighSeverity,
 				Duration:    20 * time.Second,
 				Probability: 1.0,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"status_code": 503,
 					"message":     "Service Temporarily Unavailable",
 				},
@@ -161,7 +161,7 @@ func createResourceExhaustionExperiment() *enterprise.ChaosExperiment {
 				Severity:    enterprise.HighSeverity,
 				Duration:    25 * time.Second,
 				Probability: 1.0,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"resource_type": "cpu",
 					"percentage":    85.0,
 				},
@@ -232,7 +232,7 @@ func runExperimentDemo(framework *enterprise.ChaosEngineeringFramework, experime
 	}
 
 	// Display key metrics
-	if impact, ok := results.Metrics["impact"].(map[string]interface{}); ok {
+	if impact, ok := results.Metrics["impact"].(map[string]any); ok {
 		fmt.Println("\n📈 Impact Metrics:")
 		for key, value := range impact {
 			fmt.Printf("   %s: %v\n", key, value)
@@ -252,7 +252,7 @@ func runResilienceMetricsDemo() {
 		LastIncident:    time.Now().Add(-72 * time.Hour),
 		IncidentCount:   2,
 		ResilienceScore: 0, // Will be calculated
-		Trends: map[string]interface{}{
+		Trends: map[string]any{
 			"mttr_trend":         "improving",
 			"availability_trend": "stable",
 			"incident_frequency": "decreasing",

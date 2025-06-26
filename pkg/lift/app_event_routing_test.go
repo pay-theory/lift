@@ -10,7 +10,7 @@ func TestNonHTTPEventRouting(t *testing.T) {
 		name        string
 		method      string
 		path        string
-		event       interface{}
+		event       any
 		wantStatus  int
 		wantCalled  bool
 	}{
@@ -18,13 +18,13 @@ func TestNonHTTPEventRouting(t *testing.T) {
 			name:   "EventBridge event routes correctly",
 			method: "EventBridge",
 			path:   "myapp.users",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"version":     "0",
 				"id":          "eb-123",
 				"detail-type": "User Created",
 				"source":      "myapp.users",
 				"time":        "2023-10-04T12:00:00Z",
-				"detail":      map[string]interface{}{"userId": "123"},
+				"detail":      map[string]any{"userId": "123"},
 			},
 			wantStatus: 200,
 			wantCalled: true,
@@ -33,16 +33,16 @@ func TestNonHTTPEventRouting(t *testing.T) {
 			name:   "S3 event routes correctly",
 			method: "S3",
 			path:   "my-bucket",
-			event: map[string]interface{}{
-				"Records": []interface{}{
-					map[string]interface{}{
+			event: map[string]any{
+				"Records": []any{
+					map[string]any{
 						"eventSource": "aws:s3",
 						"eventName":   "ObjectCreated:Put",
-						"s3": map[string]interface{}{
-							"bucket": map[string]interface{}{
+						"s3": map[string]any{
+							"bucket": map[string]any{
 								"name": "my-bucket",
 							},
-							"object": map[string]interface{}{
+							"object": map[string]any{
 								"key": "test.jpg",
 							},
 						},
@@ -56,9 +56,9 @@ func TestNonHTTPEventRouting(t *testing.T) {
 			name:   "SQS event routes correctly",
 			method: "SQS",
 			path:   "my-queue",
-			event: map[string]interface{}{
-				"Records": []interface{}{
-					map[string]interface{}{
+			event: map[string]any{
+				"Records": []any{
+					map[string]any{
 						"eventSource":    "aws:sqs",
 						"eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:my-queue",
 						"body":           "test message",
@@ -74,16 +74,16 @@ func TestNonHTTPEventRouting(t *testing.T) {
 			name:   "Scheduled event routes as EventBridge",
 			method: "EventBridge",
 			path:   "my-rule",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"version":     "0",
 				"id":          "scheduled-123",
 				"detail-type": "Scheduled Event",
 				"source":      "aws.events",
 				"time":        "2023-10-04T12:00:00Z",
-				"resources": []interface{}{
+				"resources": []any{
 					"arn:aws:events:us-east-1:123456789012:rule/my-rule",
 				},
-				"detail": map[string]interface{}{},
+				"detail": map[string]any{},
 			},
 			wantStatus: 200,
 			wantCalled: true,
@@ -92,20 +92,20 @@ func TestNonHTTPEventRouting(t *testing.T) {
 			name:   "S3 event through EventBridge routes to S3 handler",
 			method: "S3",
 			path:   "*",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"version":     "0",
 				"id":          "s3-eb-123",
 				"detail-type": "Object Created:Put",
 				"source":      "aws.s3",
 				"time":        "2023-10-04T12:00:00Z",
-				"resources": []interface{}{
+				"resources": []any{
 					"arn:aws:s3:::my-bucket",
 				},
-				"detail": map[string]interface{}{
-					"bucket": map[string]interface{}{
+				"detail": map[string]any{
+					"bucket": map[string]any{
 						"name": "my-bucket",
 					},
-					"object": map[string]interface{}{
+					"object": map[string]any{
 						"key": "test.jpg",
 						"size": 12345,
 					},
@@ -118,20 +118,20 @@ func TestNonHTTPEventRouting(t *testing.T) {
 			name:   "S3 object key pattern matching",
 			method: "S3",
 			path:   "/uploads/*",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"version":     "0",
 				"id":          "s3-eb-456",
 				"detail-type": "Object Created:Put",
 				"source":      "aws.s3",
 				"time":        "2023-10-04T12:00:00Z",
-				"resources": []interface{}{
+				"resources": []any{
 					"arn:aws:s3:::my-bucket",
 				},
-				"detail": map[string]interface{}{
-					"bucket": map[string]interface{}{
+				"detail": map[string]any{
+					"bucket": map[string]any{
 						"name": "my-bucket",
 					},
-					"object": map[string]interface{}{
+					"object": map[string]any{
 						"key":  "uploads/file.txt",
 						"size": 12345,
 					},
@@ -165,7 +165,7 @@ func TestNonHTTPEventRouting(t *testing.T) {
 			}
 
 			// Check response status
-			if respMap, ok := resp.(map[string]interface{}); ok {
+			if respMap, ok := resp.(map[string]any); ok {
 				if status, ok := respMap["statusCode"].(int); ok && status != tt.wantStatus {
 					t.Errorf("Response status = %v, want %v", status, tt.wantStatus)
 				}
@@ -202,13 +202,13 @@ func TestEventRouterIntegration(t *testing.T) {
 		}
 
 		// Test handling the event
-		event := map[string]interface{}{
+		event := map[string]any{
 			"version":     "0",
 			"id":          "test-123",
 			"detail-type": "Test Event",
 			"source":      "test.source",
 			"time":        "2023-10-04T12:00:00Z",
-			"detail":      map[string]interface{}{},
+			"detail":      map[string]any{},
 		}
 
 		_, err := app.HandleRequest(context.Background(), event)

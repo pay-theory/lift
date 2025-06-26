@@ -15,7 +15,7 @@ type DataFixtureManager struct {
 type DataFixture struct {
 	Name         string
 	Type         string
-	Data         interface{}
+	Data         any
 	Environment  string
 	Dependencies []string
 }

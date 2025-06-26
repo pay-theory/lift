@@ -9,7 +9,7 @@ import (
 type LiftError struct {
 	Code       string                 `json:"code"`
 	Message    string                 `json:"message"`
-	Details    map[string]interface{} `json:"details,omitempty"`
+	Details    map[string]any `json:"details,omitempty"`
 	StatusCode int                    `json:"-"`
 	Cause      error                  `json:"-"`
 
@@ -39,7 +39,7 @@ func NewLiftError(code, message string, statusCode int) *LiftError {
 }
 
 // WithDetails adds details to the error
-func (e *LiftError) WithDetails(details map[string]interface{}) *LiftError {
+func (e *LiftError) WithDetails(details map[string]any) *LiftError {
 	e.Details = details
 	return e
 }
@@ -86,7 +86,7 @@ func SystemError(message string) *LiftError {
 
 // ParameterError creates a parameter validation error with field details
 func ParameterError(field, message string) *LiftError {
-	return NewLiftError("PARAMETER_ERROR", message, 400).WithDetails(map[string]interface{}{
+	return NewLiftError("PARAMETER_ERROR", message, 400).WithDetails(map[string]any{
 		"field":   field,
 		"message": message,
 	})

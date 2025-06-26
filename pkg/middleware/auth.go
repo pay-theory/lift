@@ -65,7 +65,7 @@ func NewJWTValidator(config security.JWTConfig) (*JWTValidator, error) {
 
 // ValidateToken validates a JWT token and returns the claims
 func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (any, error) {
 		// Verify signing method
 		switch v.config.SigningMethod {
 		case "RS256":
