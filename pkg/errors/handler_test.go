@@ -25,22 +25,22 @@ func TestDefaultErrorHandler_HandleError(t *testing.T) {
 		},
 		{
 			name:           "LiftError",
-			err:            BadRequest("invalid input"),
-			expectedCode:   "BAD_REQUEST",
-			expectedStatus: 400,
+			err:            ValidationError("invalid input"),
+			expectedCode:   "VALIDATION_ERROR",
+			expectedStatus: 422,
 			shouldLog:      false,
 		},
 		{
 			name:           "generic error",
 			err:            errors.New("something went wrong"),
-			expectedCode:   "INTERNAL_ERROR",
+			expectedCode:   "SYSTEM_ERROR",
 			expectedStatus: 500,
 			shouldLog:      true,
 		},
 		{
 			name:           "internal server error",
-			err:            InternalError("database connection failed"),
-			expectedCode:   "INTERNAL_ERROR",
+			err:            SystemError("database connection failed"),
+			expectedCode:   "SYSTEM_ERROR",
 			expectedStatus: 500,
 			shouldLog:      true,
 		},
@@ -147,7 +147,7 @@ func TestErrorTransformers(t *testing.T) {
 	t.Run("SanitizeErrorTransformer", func(t *testing.T) {
 		// Test 5xx error sanitization
 		internalErr := &LiftError{
-			Code:       "INTERNAL_ERROR",
+			Code:       "SYSTEM_ERROR",
 			Message:    "Database connection failed: password=secret123",
 			StatusCode: 500,
 			Details: map[string]interface{}{
@@ -167,7 +167,7 @@ func TestErrorTransformers(t *testing.T) {
 		}
 
 		// Test 4xx error (should not be sanitized)
-		clientErr := BadRequest("invalid email format")
+		clientErr := ValidationError("invalid email format")
 		result := SanitizeErrorTransformer(clientErr)
 
 		if result.(*LiftError).Message != "invalid email format" {
@@ -203,18 +203,18 @@ func TestErrorHandlerWithRecoveryStrategies(t *testing.T) {
 		handler.RecoveryStrategies = []RecoveryStrategy{
 			&mockRecoveryStrategy{
 				canRecover: true,
-				recovered:  BadRequest("recovered error"),
+				recovered:  ValidationError("recovered error"),
 			},
 		}
 
-		originalErr := InternalError("original error")
+		originalErr := SystemError("original error")
 		ctx := context.Background()
 
 		result := handler.HandleError(ctx, originalErr)
 
 		liftErr := result.(*LiftError)
-		if liftErr.Code != "BAD_REQUEST" {
-			t.Errorf("expected recovered error code BAD_REQUEST, got %s", liftErr.Code)
+		if liftErr.Code != "VALIDATION_ERROR" {
+			t.Errorf("expected recovered error code VALIDATION_ERROR, got %s", liftErr.Code)
 		}
 
 		if liftErr.Message != "recovered error" {
@@ -236,7 +236,7 @@ func TestErrorHandlerWithTransformers(t *testing.T) {
 		},
 	}
 
-	originalErr := BadRequest("test error")
+	originalErr := ValidationError("test error")
 	ctx := context.Background()
 
 	result := handler.HandleError(ctx, originalErr)
@@ -251,14 +251,14 @@ func TestErrorHandlerLogging(t *testing.T) {
 	var loggedMessages []string
 
 	handler := NewDefaultErrorHandler()
-	handler.Logger = func(format string, args ...interface{}) {
+	handler.Logger = func(format string, args ...any) {
 		loggedMessages = append(loggedMessages, fmt.Sprintf(format, args...))
 	}
 
 	ctx := context.Background()
 
 	// Test 5xx error (should log)
-	internalErr := InternalError("database error")
+	internalErr := SystemError("database error")
 	handler.HandleError(ctx, internalErr)
 
 	if len(loggedMessages) != 1 {
@@ -267,7 +267,7 @@ func TestErrorHandlerLogging(t *testing.T) {
 
 	// Test 4xx error (should not log)
 	loggedMessages = nil
-	clientErr := BadRequest("invalid input")
+	clientErr := ValidationError("invalid input")
 	handler.HandleError(ctx, clientErr)
 
 	if len(loggedMessages) != 0 {
@@ -292,7 +292,7 @@ func (m *mockRecoveryStrategy) Recover(ctx context.Context, err error) error {
 func BenchmarkErrorHandler_HandleError(b *testing.B) {
 	handler := NewDefaultErrorHandler()
 	ctx := context.Background()
-	err := BadRequest("test error")
+	err := ValidationError("test error")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

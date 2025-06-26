@@ -504,7 +504,7 @@ func TestRetryMiddleware(t *testing.T) {
 
 				if shouldFail {
 					if tt.name == "non-retryable error" {
-						return lift.BadRequest("validation error")
+						return lift.ValidationError("validation error")
 					}
 					return errors.New("temporary error")
 				}
