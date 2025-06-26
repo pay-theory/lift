@@ -15,7 +15,7 @@ type ErrorHandler interface {
 	HandleError(ctx context.Context, err error) error
 
 	// HandlePanic recovers from panics and converts them to errors
-	HandlePanic(ctx context.Context, v interface{}) error
+	HandlePanic(ctx context.Context, v any) error
 
 	// ShouldLog determines if an error should be logged
 	ShouldLog(err error) bool
@@ -45,7 +45,7 @@ type DefaultErrorHandler struct {
 	ErrorTransformers []ErrorTransformer
 
 	// Logger for error logging
-	Logger func(format string, args ...interface{})
+	Logger func(format string, args ...any)
 }
 
 // ErrorTransformer modifies errors before sending to clients
@@ -103,7 +103,7 @@ func (h *DefaultErrorHandler) HandleError(ctx context.Context, err error) error 
 }
 
 // HandlePanic recovers from panics and converts them to errors
-func (h *DefaultErrorHandler) HandlePanic(ctx context.Context, v interface{}) error {
+func (h *DefaultErrorHandler) HandlePanic(ctx context.Context, v any) error {
 	var err error
 
 	switch x := v.(type) {
@@ -120,12 +120,13 @@ func (h *DefaultErrorHandler) HandlePanic(ctx context.Context, v interface{}) er
 		Code:       "PANIC",
 		Message:    "Internal server error",
 		StatusCode: 500,
-		Timestamp:  time.Now().Unix(),
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 		Cause:      err,
+		LogError:   true, // Panics should always be logged
 	}
 
 	if h.EnableStackTrace {
-		panicErr.Details = map[string]interface{}{
+		panicErr.Details = map[string]any{
 			"panic":      v,
 			"stacktrace": string(debug.Stack()),
 		}
@@ -140,8 +141,14 @@ func (h *DefaultErrorHandler) ShouldLog(err error) bool {
 		return false
 	}
 
-	// Always log 5xx errors
+	// Check if the error has explicit logging preference
 	if liftErr, ok := err.(*LiftError); ok {
+		if liftErr.LogError {
+			return true
+		}
+		
+		// If LogError is false but it's a 5xx error, still log it
+		// unless explicitly disabled
 		return liftErr.StatusCode >= 500
 	}
 
@@ -172,12 +179,13 @@ func (h *DefaultErrorHandler) toLiftError(err error) *LiftError {
 
 	// Create generic internal error
 	return &LiftError{
-		Code:       "INTERNAL_ERROR",
+		Code:       "SYSTEM_ERROR",
 		Message:    "An internal error occurred",
 		StatusCode: 500,
-		Timestamp:  time.Now().Unix(),
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 		Cause:      err,
-		Details:    make(map[string]interface{}),
+		Details:    make(map[string]any),
+		LogError:   true, // Generic internal errors should be logged
 	}
 }
 
@@ -212,6 +220,10 @@ func (h *DefaultErrorHandler) logError(ctx context.Context, err error) {
 
 	if h.EnableStackTrace && liftErr.Details != nil {
 		logData["details"] = liftErr.Details
+	}
+	
+	if h.EnableStackTrace && liftErr.StackTrace != "" {
+		logData["stack_trace"] = liftErr.StackTrace
 	}
 
 	jsonData, _ := json.Marshal(logData)
@@ -252,7 +264,7 @@ func RateLimitErrorTransformer(err error) error {
 
 	if liftErr.Code == "RATE_LIMITED" {
 		if liftErr.Details == nil {
-			liftErr.Details = make(map[string]interface{})
+			liftErr.Details = make(map[string]any)
 		}
 		liftErr.Details["retry_after"] = 60 // seconds
 	}

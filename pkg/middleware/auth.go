@@ -207,7 +207,7 @@ func JWT(config security.JWTConfig) lift.Middleware {
 
 			// Multi-tenant validation
 			if config.RequireTenantID && claims.TenantID == "" {
-				return errors.Forbidden("Tenant ID is required")
+				return errors.AuthorizationError("Tenant ID is required")
 			}
 
 			// Create principal from claims
@@ -287,7 +287,7 @@ func RequireRole(roles ...string) lift.Middleware {
 			}
 
 			if !principal.HasAnyRole(roles...) {
-				return errors.Forbidden(fmt.Sprintf("Required roles: %v", roles))
+				return errors.AuthorizationError(fmt.Sprintf("Required roles: %v", roles))
 			}
 
 			return next.Handle(ctx)
@@ -307,7 +307,7 @@ func RequireScope(scopes ...string) lift.Middleware {
 
 			for _, scope := range scopes {
 				if !principal.HasScope(scope) {
-					return errors.Forbidden(fmt.Sprintf("Required scope: %s", scope))
+					return errors.AuthorizationError(fmt.Sprintf("Required scope: %s", scope))
 				}
 			}
 
@@ -327,7 +327,7 @@ func RequireTenant(tenantID string) lift.Middleware {
 			}
 
 			if !principal.IsValidForTenant(tenantID) {
-				return errors.Forbidden("Access denied for this tenant")
+				return errors.AuthorizationError("Access denied for this tenant")
 			}
 
 			return next.Handle(ctx)

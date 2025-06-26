@@ -250,6 +250,7 @@ func (c *Context) Created(data interface{}) error {
 }
 
 // BadRequest sends a 400 Bad Request response
+// Deprecated: Use ValidationError instead
 func (c *Context) BadRequest(message string, err error) error {
 	c.Response.StatusCode = 400
 	response := map[string]interface{}{
@@ -276,6 +277,7 @@ func (c *Context) NotFound(message string, err error) error {
 }
 
 // Forbidden sends a 403 Forbidden response
+// Deprecated: Use AuthorizationError from the errors package instead
 func (c *Context) Forbidden(message string, err error) error {
 	c.Response.StatusCode = 403
 	response := map[string]interface{}{
@@ -288,8 +290,8 @@ func (c *Context) Forbidden(message string, err error) error {
 	return c.JSON(response)
 }
 
-// InternalError sends a 500 Internal Server Error response
-func (c *Context) InternalError(message string, err error) error {
+// SystemError sends a 500 Internal Server Error response
+func (c *Context) SystemError(message string, err error) error {
 	c.Response.StatusCode = 500
 	response := map[string]interface{}{
 		"error":   "Internal Server Error",

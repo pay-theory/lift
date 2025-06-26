@@ -77,7 +77,7 @@ func (r *RetryRecoveryStrategy) Recover(ctx context.Context, err error) error {
 		Code:       "RETRY_EXHAUSTED",
 		Message:    fmt.Sprintf("Failed after %d retries", r.MaxRetries),
 		StatusCode: 503,
-		Timestamp:  time.Now().Unix(),
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 		Cause:      err,
 	}
 }
@@ -125,8 +125,8 @@ func (c *CircuitBreakerRecoveryStrategy) Recover(ctx context.Context, err error)
 				Code:       "CIRCUIT_OPEN",
 				Message:    "Service temporarily unavailable",
 				StatusCode: 503,
-				Timestamp:  now.Unix(),
-				Details: map[string]interface{}{
+				Timestamp:  now.UTC().Format(time.RFC3339),
+				Details: map[string]any{
 					"retry_after": int(c.RecoveryTimeout.Seconds()),
 				},
 			}
@@ -140,8 +140,8 @@ func (c *CircuitBreakerRecoveryStrategy) Recover(ctx context.Context, err error)
 				Code:       "CIRCUIT_OPEN",
 				Message:    "Service temporarily unavailable",
 				StatusCode: 503,
-				Timestamp:  now.Unix(),
-				Details: map[string]interface{}{
+				Timestamp:  now.UTC().Format(time.RFC3339),
+				Details: map[string]any{
 					"retry_after": int(c.RecoveryTimeout.Seconds() - now.Sub(c.lastFailure).Seconds()),
 				},
 			}
@@ -203,9 +203,9 @@ func (d *DatabaseRecoveryStrategy) Recover(ctx context.Context, err error) error
 		Code:       "DATABASE_ERROR",
 		Message:    "Database operation failed",
 		StatusCode: 503,
-		Timestamp:  time.Now().Unix(),
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 		Cause:      err,
-		Details: map[string]interface{}{
+		Details: map[string]any{
 			"retry_after": int(d.RetryDelay.Seconds()),
 		},
 	}

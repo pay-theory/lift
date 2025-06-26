@@ -67,7 +67,7 @@ func WithDynamORM(config *DynamORMConfig, optionalFactory ...DBFactory) lift.Mid
 			// Initialize DynamORM connection using factory
 			db, err := initDynamORMWithFactory(config, factory)
 			if err != nil {
-				return lift.InternalError("Failed to initialize DynamORM").WithCause(err)
+				return lift.SystemError("Failed to initialize DynamORM").WithCause(err)
 			}
 
 			// Store DynamORM instance in context
@@ -100,7 +100,7 @@ func WithDynamORM(config *DynamORMConfig, optionalFactory ...DBFactory) lift.Mid
 func DB(ctx *lift.Context) (*DynamORMWrapper, error) {
 	db, exists := ctx.Get("dynamorm").(*DynamORMWrapper)
 	if !exists {
-		return nil, lift.InternalError("DynamORM not initialized")
+		return nil, lift.SystemError("DynamORM not initialized")
 	}
 	return db, nil
 }
@@ -120,7 +120,7 @@ func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Ha
 	// Begin transaction
 	tx, err := db.BeginTransaction()
 	if err != nil {
-		return lift.InternalError("Failed to begin transaction").WithCause(err)
+		return lift.SystemError("Failed to begin transaction").WithCause(err)
 	}
 
 	// Store transaction in context
@@ -144,7 +144,7 @@ func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Ha
 
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
-		return lift.InternalError("Failed to commit transaction").WithCause(err)
+		return lift.SystemError("Failed to commit transaction").WithCause(err)
 	}
 
 	return nil
@@ -334,7 +334,7 @@ type TransactionOperation struct {
 // Put adds a put operation to the transaction
 func (t *Transaction) Put(ctx context.Context, item interface{}) error {
 	if t.committed || t.rolledBack {
-		return lift.InternalError("Transaction already completed")
+		return lift.SystemError("Transaction already completed")
 	}
 
 	t.operations = append(t.operations, TransactionOperation{
@@ -347,7 +347,7 @@ func (t *Transaction) Put(ctx context.Context, item interface{}) error {
 // Delete adds a delete operation to the transaction
 func (t *Transaction) Delete(ctx context.Context, key interface{}) error {
 	if t.committed || t.rolledBack {
-		return lift.InternalError("Transaction already completed")
+		return lift.SystemError("Transaction already completed")
 	}
 
 	t.operations = append(t.operations, TransactionOperation{
@@ -360,7 +360,7 @@ func (t *Transaction) Delete(ctx context.Context, key interface{}) error {
 // Commit commits the transaction using DynamORM
 func (t *Transaction) Commit() error {
 	if t.committed || t.rolledBack {
-		return lift.InternalError("Transaction already completed")
+		return lift.SystemError("Transaction already completed")
 	}
 
 	// Execute all operations using DynamORM's TransactionFunc
@@ -392,7 +392,7 @@ func (t *Transaction) Commit() error {
 // Rollback rolls back the transaction using DynamORM
 func (t *Transaction) Rollback() error {
 	if t.committed || t.rolledBack {
-		return lift.InternalError("Transaction already completed")
+		return lift.SystemError("Transaction already completed")
 	}
 
 	// For DynamORM, rollback is automatic if the transaction function returns an error

@@ -186,7 +186,7 @@ func (sc *SecurityContext) RequireRole(role string) error {
 	}
 
 	if !sc.HasRole(role) {
-		return NewLiftError("FORBIDDEN", "Insufficient role permissions", 403)
+		return AuthorizationError("Insufficient role permissions")
 	}
 
 	return nil
@@ -199,7 +199,7 @@ func (sc *SecurityContext) RequirePermission(resource, action string) error {
 	}
 
 	if !sc.HasPermission(resource, action) {
-		return NewLiftError("FORBIDDEN", "Insufficient permissions", 403)
+		return AuthorizationError("Insufficient permissions")
 	}
 
 	return nil
@@ -212,7 +212,7 @@ func (sc *SecurityContext) RequireTenant(expectedTenantID string) error {
 	}
 
 	if !sc.ValidateTenant(expectedTenantID) {
-		return NewLiftError("FORBIDDEN", "Invalid tenant access", 403)
+		return AuthorizationError("Invalid tenant access")
 	}
 
 	return nil
