@@ -59,7 +59,7 @@ type IndustryTemplate struct {
 	Regulations []string               `json:"regulations"`
 	Controls    []ComplianceControl    `json:"controls"`
 	Audits      []AuditRequirement     `json:"audits"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ComplianceControl defines a specific control
@@ -75,7 +75,7 @@ type ComplianceControl struct {
 	Evidence    []EvidenceRequirement  `json:"evidence"`
 	Tests       []ComplianceTest       `json:"tests"`
 	Remediation string                 `json:"remediation"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // EvidenceRequirement defines required evidence
@@ -93,7 +93,7 @@ type ComplianceTest struct {
 	Type       string                 `json:"type"` // "technical", "administrative", "physical"
 	Automated  bool                   `json:"automated"`
 	Frequency  time.Duration          `json:"frequency"`
-	Parameters map[string]interface{} `json:"parameters"`
+	Parameters map[string]any `json:"parameters"`
 	Thresholds map[string]float64     `json:"thresholds"`
 }
 
@@ -128,16 +128,16 @@ type EnhancedAuditLogger interface {
 	LogGDPREvent(auditID string, event *GDPREvent) error
 	LogComplianceTest(auditID string, test *ComplianceTestResult) error
 	LogDataProcessing(auditID string, processing *DataProcessingLog) error
-	CompleteSOC2Audit(auditID string, result interface{}, err error) error
+	CompleteSOC2Audit(auditID string, result any, err error) error
 }
 
 // AdvancedComplianceValidator provides enhanced validation
 type AdvancedComplianceValidator interface {
 	ComplianceValidator // Embed base interface
 	ValidateSOC2Controls(ctx LiftContext, controls *SOC2Controls) (*ComplianceResult, error)
-	ValidateGDPRCompliance(ctx LiftContext, operation string, data interface{}) (*ComplianceResult, error)
+	ValidateGDPRCompliance(ctx LiftContext, operation string, data any) (*ComplianceResult, error)
 	ValidateDataProcessingBasis(ctx LiftContext, basis string) (*ComplianceResult, error)
-	ValidateDataMinimization(ctx LiftContext, data interface{}) (*ComplianceResult, error)
+	ValidateDataMinimization(ctx LiftContext, data any) (*ComplianceResult, error)
 	ValidateConsentRequirements(ctx LiftContext, consent *ConsentData) (*ComplianceResult, error)
 }
 
@@ -272,7 +272,7 @@ type GDPREvent struct {
 	ConsentWithdrawn bool                   `json:"consent_withdrawn"`
 	DataPortability  bool                   `json:"data_portability"`
 	RightToErasure   bool                   `json:"right_to_erasure"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 	Timestamp        time.Time              `json:"timestamp"`
 }
 
@@ -288,7 +288,7 @@ type DataProcessingLog struct {
 	RetentionPeriod   time.Duration          `json:"retention_period"`
 	SecurityMeasures  []string               `json:"security_measures"`
 	ConsentDetails    *ConsentData           `json:"consent_details"`
-	Metadata          map[string]interface{} `json:"metadata"`
+	Metadata          map[string]any `json:"metadata"`
 	Timestamp         time.Time              `json:"timestamp"`
 }
 
@@ -317,7 +317,7 @@ type Evidence struct {
 	Description string                 `json:"description"`
 	Source      string                 `json:"source"`
 	Timestamp   time.Time              `json:"timestamp"`
-	Data        map[string]interface{} `json:"data"`
+	Data        map[string]any `json:"data"`
 	Verified    bool                   `json:"verified"`
 }
 
@@ -336,7 +336,7 @@ type ComplianceTestResult struct {
 	Evidence        []Evidence             `json:"evidence"`
 	Findings        []ComplianceFinding    `json:"findings"`
 	Recommendations []string               `json:"recommendations"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // ComplianceFinding represents a compliance finding
@@ -432,7 +432,7 @@ func (ecf *EnhancedComplianceFramework) SOC2TypeII() LiftMiddleware {
 
 			// Complete audit trail
 			if ecf.auditor != nil && auditID != "" {
-				if auditErr := ecf.auditor.CompleteSOC2Audit(auditID, map[string]interface{}{
+				if auditErr := ecf.auditor.CompleteSOC2Audit(auditID, map[string]any{
 					"duration": duration,
 					"status":   ecf.getStatusFromError(err),
 				}, err); auditErr != nil {
@@ -557,7 +557,7 @@ func (ecf *EnhancedComplianceFramework) runComplianceTest(_ctx LiftContext, cont
 		Evidence:        []Evidence{},
 		Findings:        []ComplianceFinding{},
 		Recommendations: []string{},
-		Metadata:        make(map[string]interface{}),
+		Metadata:        make(map[string]any),
 	}
 }
 
@@ -654,7 +654,7 @@ func (ecf *EnhancedComplianceFramework) handleDataDeletion(ctx LiftContext) erro
 			},
 			Status:   "processing",
 			DueDate:  time.Now().Add(30 * 24 * time.Hour), // 30 days per GDPR
-			Metadata: make(map[string]interface{}),
+			Metadata: make(map[string]any),
 		},
 		ErasureScope:   ecf.extractErasureScopeFromContext(ctx),
 		RetainForLegal: ecf.shouldRetainForLegal(ctx),
@@ -677,7 +677,7 @@ func (ecf *EnhancedComplianceFramework) handleDataDeletion(ctx LiftContext) erro
 			DataController: ecf.getDataController(ctx),
 			RightToErasure: true,
 			Timestamp:      time.Now(),
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"request_id":       request.ID,
 				"erasure_scope":    request.ErasureScope,
 				"retain_for_legal": request.RetainForLegal,
@@ -738,7 +738,7 @@ func (ecf *EnhancedComplianceFramework) handleDataDeletion(ctx LiftContext) erro
 		ThirdPartyNotified: ecf.notifyThirdParties(ctx, request),
 		Status:             "completed",
 		DeletedCount:       ecf.calculateTotalDeletedRecords(deletionResults),
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"providers_processed":  len(deletionProviders),
 			"successful_deletions": len(deletionResults),
 			"failed_deletions":     len(deletionErrors),
@@ -756,7 +756,7 @@ func (ecf *EnhancedComplianceFramework) handleDataDeletion(ctx LiftContext) erro
 			DataController: ecf.getDataController(ctx),
 			RightToErasure: true,
 			Timestamp:      time.Now(),
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"request_id":       request.ID,
 				"response":         response,
 				"deletion_results": deletionResults,

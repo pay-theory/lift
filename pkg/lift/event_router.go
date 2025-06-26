@@ -102,7 +102,7 @@ func (er *EventRouter) matchSQSPattern(ctx *Context, pattern string) bool {
 		return false
 	}
 
-	if record, ok := ctx.Request.Records[0].(map[string]interface{}); ok {
+	if record, ok := ctx.Request.Records[0].(map[string]any); ok {
 		if eventSourceARN, ok := record["eventSourceARN"].(string); ok {
 			// Match against queue name or ARN
 			return strings.Contains(eventSourceARN, pattern) ||
@@ -120,20 +120,20 @@ func (er *EventRouter) matchS3Pattern(ctx *Context, pattern string) bool {
 	// Check if this is an S3 event through EventBridge
 	if ctx.Request.Source == "aws.s3" && ctx.Request.Detail != nil {
 		// For EventBridge S3 events, bucket and object info is in the detail field
-		if bucket, ok := ctx.Request.Detail["bucket"].(map[string]interface{}); ok {
+		if bucket, ok := ctx.Request.Detail["bucket"].(map[string]any); ok {
 			bucketName, _ = bucket["name"].(string)
 		}
-		if object, ok := ctx.Request.Detail["object"].(map[string]interface{}); ok {
+		if object, ok := ctx.Request.Detail["object"].(map[string]any); ok {
 			objectKey, _ = object["key"].(string)
 		}
 	} else if len(ctx.Request.Records) > 0 {
 		// For direct S3 events, extract from records
-		if record, ok := ctx.Request.Records[0].(map[string]interface{}); ok {
-			if s3Data, ok := record["s3"].(map[string]interface{}); ok {
-				if bucket, ok := s3Data["bucket"].(map[string]interface{}); ok {
+		if record, ok := ctx.Request.Records[0].(map[string]any); ok {
+			if s3Data, ok := record["s3"].(map[string]any); ok {
+				if bucket, ok := s3Data["bucket"].(map[string]any); ok {
 					bucketName, _ = bucket["name"].(string)
 				}
-				if object, ok := s3Data["object"].(map[string]interface{}); ok {
+				if object, ok := s3Data["object"].(map[string]any); ok {
 					objectKey, _ = object["key"].(string)
 				}
 			}
@@ -354,7 +354,7 @@ type SQSMessage struct {
 	MessageID     string                 `json:"messageId"`
 	Body          string                 `json:"body"`
 	ReceiptHandle string                 `json:"receiptHandle"`
-	Attributes    map[string]interface{} `json:"attributes"`
+	Attributes    map[string]any `json:"attributes"`
 	EventSource   string                 `json:"eventSource"`
 }
 
@@ -366,14 +366,14 @@ type S3Event struct {
 	Bucket      string                 `json:"bucket"`
 	ObjectKey   string                 `json:"objectKey"`
 	ObjectSize  int64                  `json:"objectSize"`
-	S3Data      map[string]interface{} `json:"s3"`
+	S3Data      map[string]any `json:"s3"`
 }
 
 // EventBridgeEvent represents a parsed EventBridge event for type-safe handling
 type EventBridgeEvent struct {
 	Source     string                 `json:"source"`
 	DetailType string                 `json:"detail-type"`
-	Detail     map[string]interface{} `json:"detail"`
+	Detail     map[string]any `json:"detail"`
 	Time       string                 `json:"time"`
 	ID         string                 `json:"id"`
 	Resources  []string               `json:"resources"`
@@ -388,7 +388,7 @@ func (ctx *Context) ParseSQSMessages() ([]SQSMessage, error) {
 
 	var messages []SQSMessage
 	for _, record := range ctx.Request.Records {
-		if recordMap, ok := record.(map[string]interface{}); ok {
+		if recordMap, ok := record.(map[string]any); ok {
 			message := SQSMessage{
 				MessageID:     getStringField(recordMap, "messageId"),
 				Body:          getStringField(recordMap, "body"),
@@ -414,7 +414,7 @@ func (ctx *Context) ParseS3Event() (*S3Event, error) {
 	}
 
 	// Use the first record
-	if recordMap, ok := ctx.Request.Records[0].(map[string]interface{}); ok {
+	if recordMap, ok := ctx.Request.Records[0].(map[string]any); ok {
 		s3Data := getMapField(recordMap, "s3")
 		bucket := getMapField(s3Data, "bucket")
 		object := getMapField(s3Data, "object")
@@ -493,7 +493,7 @@ func (ctx *Context) GetScheduledRuleName() string {
 
 
 // Helper functions for safe field extraction
-func getStringField(data map[string]interface{}, key string) string {
+func getStringField(data map[string]any, key string) string {
 	if value, exists := data[key]; exists {
 		if str, ok := value.(string); ok {
 			return str
@@ -502,11 +502,11 @@ func getStringField(data map[string]interface{}, key string) string {
 	return ""
 }
 
-func getMapField(data map[string]interface{}, key string) map[string]interface{} {
+func getMapField(data map[string]any, key string) map[string]any {
 	if value, exists := data[key]; exists {
-		if mapValue, ok := value.(map[string]interface{}); ok {
+		if mapValue, ok := value.(map[string]any); ok {
 			return mapValue
 		}
 	}
-	return make(map[string]interface{})
+	return make(map[string]any)
 }

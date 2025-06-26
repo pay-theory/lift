@@ -57,12 +57,12 @@ func demoZapLogger() {
 
 	// Basic logging with enhanced sanitization for security
 	logger.Debug("Debug message from Zap (sanitized)")
-	logger.Info("Info message from Zap", map[string]interface{}{
+	logger.Info("Info message from Zap", map[string]any{
 		"component": "demo",
 		"version":   "1.0.0",
 	})
 	logger.Warn("Warning message from Zap")
-	logger.Error("Error message from Zap", map[string]interface{}{
+	logger.Error("Error message from Zap", map[string]any{
 		"error_code": "DEMO_ERROR",
 		"details":    "[REDACTED_ERROR_DETAIL]",
 	})
@@ -104,7 +104,7 @@ func demoCloudWatchLoggerMock() {
 	defer logger.Close()
 
 	// Log some messages
-	logger.Info("CloudWatch demo started", map[string]interface{}{
+	logger.Info("CloudWatch demo started", map[string]any{
 		"demo_type": "mock",
 		"timestamp": time.Now().Unix(),
 	})
@@ -114,13 +114,13 @@ func demoCloudWatchLoggerMock() {
 		WithTenantID("tenant-123").
 		WithUserID("user-456")
 
-	tenantLogger.Info("Tenant-specific operation", map[string]interface{}{
+	tenantLogger.Info("Tenant-specific operation", map[string]any{
 		"operation": "create_payment",
 		"amount":    1000,
 		"currency":  "USD",
 	})
 
-	tenantLogger.Error("Payment processing failed", map[string]interface{}{
+	tenantLogger.Error("Payment processing failed", map[string]any{
 		"error":      "insufficient_funds",
 		"account_id": "acc-789",
 	})
@@ -178,7 +178,7 @@ func demoCloudWatchLoggerReal() {
 	defer logger.Close()
 
 	// Production logging example
-	logger.Info("Production system started", map[string]interface{}{
+	logger.Info("Production system started", map[string]any{
 		"version":     "1.0.0",
 		"environment": "production",
 		"region":      cfg.Region,
@@ -222,7 +222,7 @@ func demoMultiTenantLogging() {
 			WithUserID(tenant.userID).
 			WithTraceID(fmt.Sprintf("trace-%s-%d", tenant.tenantID, time.Now().UnixNano()))
 
-		tenantLogger.Info("Tenant operation", map[string]interface{}{
+		tenantLogger.Info("Tenant operation", map[string]any{
 			"action":    tenant.action,
 			"timestamp": time.Now().Unix(),
 			"source":    "api",
@@ -230,7 +230,7 @@ func demoMultiTenantLogging() {
 
 		// Simulate some tenant-specific error
 		if tenant.tenantID == "tenant-acme" {
-			tenantLogger.Error("Tenant-specific error", map[string]interface{}{
+			tenantLogger.Error("Tenant-specific error", map[string]any{
 				"error_type": "rate_limit_exceeded",
 				"limit":      1000,
 				"current":    1001,
@@ -271,7 +271,7 @@ func demoPerformanceAndStats() {
 	messageCount := 50
 
 	for i := 0; i < messageCount; i++ {
-		logger.Info("Performance test message", map[string]interface{}{
+		logger.Info("Performance test message", map[string]any{
 			"message_id": i,
 			"batch":      i / 10,
 			"timestamp":  time.Now().UnixNano(),

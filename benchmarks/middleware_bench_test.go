@@ -253,7 +253,7 @@ func createMetricsMiddleware() lift.Middleware {
 }
 
 func createCacheMiddleware() lift.Middleware {
-	cache := make(map[string]interface{})
+	cache := make(map[string]any)
 
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {

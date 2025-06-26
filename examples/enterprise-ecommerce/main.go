@@ -34,7 +34,7 @@ type TenantConfig struct {
 	Locale          string                 `json:"locale"`
 	Features        FeatureFlags           `json:"features"`
 	Limits          TenantLimits           `json:"limits"`
-	CustomSettings  map[string]interface{} `json:"customSettings"`
+	CustomSettings  map[string]any `json:"customSettings"`
 }
 
 // ThemeConfig defines the visual appearance
@@ -98,7 +98,7 @@ type Product struct {
 	Inventory    Inventory              `json:"inventory"`
 	Categories   []string               `json:"categories"`
 	Tags         []string               `json:"tags"`
-	Attributes   map[string]interface{} `json:"attributes"`
+	Attributes   map[string]any `json:"attributes"`
 	Images       []ProductImage         `json:"images"`
 	SEO          SEOData                `json:"seo"`
 	Status       ProductStatus          `json:"status"`
@@ -352,7 +352,7 @@ type CreateProductRequest struct {
 	Inventory   Inventory              `json:"inventory"`
 	Categories  []string               `json:"categories"`
 	Tags        []string               `json:"tags"`
-	Attributes  map[string]interface{} `json:"attributes"`
+	Attributes  map[string]any `json:"attributes"`
 	Images      []ProductImage         `json:"images"`
 	SEO         SEOData                `json:"seo"`
 }
@@ -657,7 +657,7 @@ func setupAPIRoutes(app *lift.App) {
 }
 
 func healthCheck(ctx *lift.Context) error {
-	health := map[string]interface{}{
+	health := map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now(),
 		"version":   "1.0.0",
@@ -669,14 +669,14 @@ func healthCheck(ctx *lift.Context) error {
 			"search_engine":     "healthy",
 			"cache":             "healthy",
 		},
-		"features": map[string]interface{}{
+		"features": map[string]any{
 			"multi_tenant":        true,
 			"real_time_inventory": true,
 			"advanced_search":     true,
 			"payment_processing":  true,
 			"order_management":    true,
 		},
-		"metrics": map[string]interface{}{
+		"metrics": map[string]any{
 			"uptime_seconds":  3600,
 			"total_tenants":   150,
 			"total_products":  50000,

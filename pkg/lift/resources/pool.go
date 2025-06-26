@@ -10,10 +10,10 @@ import (
 // ConnectionPool manages a pool of reusable resources
 type ConnectionPool interface {
 	// Get retrieves a resource from the pool
-	Get(ctx context.Context) (interface{}, error)
+	Get(ctx context.Context) (any, error)
 
 	// Put returns a resource to the pool
-	Put(resource interface{}) error
+	Put(resource any) error
 
 	// Close shuts down the pool and cleans up all resources
 	Close() error
@@ -153,7 +153,7 @@ func NewConnectionPool(config PoolConfig, factory ResourceFactory) *DefaultConne
 }
 
 // Get retrieves a resource from the pool
-func (p *DefaultConnectionPool) Get(ctx context.Context) (interface{}, error) {
+func (p *DefaultConnectionPool) Get(ctx context.Context) (any, error) {
 	p.mu.Lock()
 
 	if p.closed {
@@ -218,7 +218,7 @@ func (p *DefaultConnectionPool) Get(ctx context.Context) (interface{}, error) {
 }
 
 // Put returns a resource to the pool
-func (p *DefaultConnectionPool) Put(resource interface{}) error {
+func (p *DefaultConnectionPool) Put(resource any) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 

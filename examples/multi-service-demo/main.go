@@ -282,7 +282,7 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		// Get registry from client (simplified for demo)
-		services := []map[string]interface{}{
+		services := []map[string]any{
 			{
 				"name":      "user-service",
 				"version":   "1.0.0",
@@ -297,7 +297,7 @@ func setupDemoRoutes(app *lift.App) {
 			},
 		}
 
-		return ctx.JSON(map[string]interface{}{
+		return ctx.JSON(map[string]any{
 			"services": services,
 			"total":    len(services),
 		})
@@ -318,9 +318,9 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		// Simulate service discovery
-		discoveryResult := map[string]interface{}{
+		discoveryResult := map[string]any{
 			"service": serviceName,
-			"instances": []map[string]interface{}{
+			"instances": []map[string]any{
 				{
 					"id":     "user-service-1",
 					"host":   "user-service-1.internal",
@@ -355,7 +355,7 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		// Simulate load balancing results
-		results := []map[string]interface{}{}
+		results := []map[string]any{}
 
 		for i := 0; i < 10; i++ {
 			var selected string
@@ -376,13 +376,13 @@ func setupDemoRoutes(app *lift.App) {
 				}
 			}
 
-			results = append(results, map[string]interface{}{
+			results = append(results, map[string]any{
 				"request":  i + 1,
 				"selected": selected,
 			})
 		}
 
-		return ctx.JSON(map[string]interface{}{
+		return ctx.JSON(map[string]any{
 			"strategy": strategy,
 			"requests": 10,
 			"results":  results,
@@ -395,7 +395,7 @@ func setupDemoRoutes(app *lift.App) {
 			Service string      `json:"service"`
 			Method  string      `json:"method"`
 			Path    string      `json:"path"`
-			Data    interface{} `json:"data"`
+			Data    any `json:"data"`
 		}
 
 		if err := ctx.ParseRequest(&request); err != nil {
@@ -405,8 +405,8 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		// Simulate service call
-		serviceCall := map[string]interface{}{
-			"request": map[string]interface{}{
+		serviceCall := map[string]any{
+			"request": map[string]any{
 				"service":    request.Service,
 				"method":     request.Method,
 				"path":       request.Path,
@@ -414,22 +414,22 @@ func setupDemoRoutes(app *lift.App) {
 				"tenant_id":  ctx.TenantID(),
 				"request_id": fmt.Sprintf("req_%d", time.Now().UnixNano()),
 			},
-			"discovery": map[string]interface{}{
+			"discovery": map[string]any{
 				"instance_id": "user-service-2",
 				"endpoint":    "http://user-service-2.internal:8080/api/v1",
 				"strategy":    "round_robin",
 				"duration_ms": 2,
 			},
-			"response": map[string]interface{}{
+			"response": map[string]any{
 				"status_code": 200,
 				"duration_ms": 45,
-				"body": map[string]interface{}{
+				"body": map[string]any{
 					"id":    "user-123",
 					"email": "demo@example.com",
 					"name":  "Demo User",
 				},
 			},
-			"metrics": map[string]interface{}{
+			"metrics": map[string]any{
 				"cache_hit":       true,
 				"circuit_breaker": "closed",
 				"retries":         0,
@@ -442,20 +442,20 @@ func setupDemoRoutes(app *lift.App) {
 
 	// Performance statistics
 	app.GET("/demo/stats", func(ctx *lift.Context) error {
-		stats := map[string]interface{}{
-			"service_registry": map[string]interface{}{
+		stats := map[string]any{
+			"service_registry": map[string]any{
 				"registered_services": 2,
 				"total_instances":     3,
 				"healthy_instances":   3,
 				"cache_hit_rate":      0.85,
 			},
-			"load_balancer": map[string]interface{}{
+			"load_balancer": map[string]any{
 				"total_requests":        1250,
 				"successful_selections": 1248,
 				"failed_selections":     2,
 				"average_latency_ns":    850000,
 			},
-			"service_client": map[string]interface{}{
+			"service_client": map[string]any{
 				"total_calls":      456,
 				"successful_calls": 452,
 				"failed_calls":     4,
@@ -463,7 +463,7 @@ func setupDemoRoutes(app *lift.App) {
 				"circuit_breaker":  "closed",
 				"cache_hit_rate":   0.78,
 			},
-			"caching": map[string]interface{}{
+			"caching": map[string]any{
 				"hits":            1890,
 				"misses":          234,
 				"hit_rate":        0.89,

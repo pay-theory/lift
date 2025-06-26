@@ -67,7 +67,7 @@ type DynamoDBConnection struct {
 	TenantID  string                 `dynamodbav:"tenant_id"`
 	CreatedAt string                 `dynamodbav:"created_at"`
 	TTL       int64                  `dynamodbav:"ttl"`
-	Metadata  map[string]interface{} `dynamodbav:"metadata,omitempty"`
+	Metadata  map[string]any `dynamodbav:"metadata,omitempty"`
 }
 
 // Save stores a connection in DynamoDB

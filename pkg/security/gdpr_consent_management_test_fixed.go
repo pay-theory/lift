@@ -96,7 +96,7 @@ func createTestConsentRecordFixed() *ConsentRecord {
 			IPAddress: "192.168.1.1",
 			UserAgent: "Mozilla/5.0",
 			Verified:  true,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"form_id": "consent-form-v1",
 			},
 		},
@@ -105,7 +105,7 @@ func createTestConsentRecordFixed() *ConsentRecord {
 		Specific:    true,
 		Informed:    true,
 		Unambiguous: true,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"campaign_id": "summer-2024",
 		},
 		CreatedAt: now,

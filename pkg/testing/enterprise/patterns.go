@@ -61,7 +61,7 @@ type PatternTestResult struct {
 	Error     error
 	StartTime time.Time
 	EndTime   time.Time
-	Metadata  map[string]interface{}
+	Metadata  map[string]any
 }
 
 // PatternTestStatus is an alias for the common TestStatus type
@@ -129,7 +129,7 @@ func (e *EnterpriseTestPatterns) runSingleTest(ctx context.Context, test Test) T
 	result := TestResult{
 		Name:      test.Name,
 		StartTime: time.Now(),
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 	}
 
 	// Set timeout
@@ -194,7 +194,7 @@ func (e *EnterpriseTestPatterns) AddEnvironment(name string, config EnvironmentC
 	env := &TestEnvironment{
 		Name:      name,
 		Config:    config,
-		Resources: make(map[string]interface{}),
+		Resources: make(map[string]any),
 		State: EnvironmentState{
 			Status:      EnvironmentStatusReady,
 			LastUpdated: time.Now(),
@@ -231,7 +231,7 @@ func (e *EnterpriseTestPatterns) CreateAPIContractTest(apiName, version string, 
 		Provider:     apiName,
 		Consumer:     "test_consumer",
 		Interactions: interactions,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"created_at": time.Now(),
 			"test_type":  "api_contract",
 		},
@@ -249,7 +249,7 @@ func (e *EnterpriseTestPatterns) CreateAPIContractTest(apiName, version string, 
 }
 
 // CreateChaosScenario creates a chaos engineering scenario
-func (e *EnterpriseTestPatterns) CreateChaosScenario(scenarioType string, config map[string]interface{}) error {
+func (e *EnterpriseTestPatterns) CreateChaosScenario(scenarioType string, config map[string]any) error {
 	switch scenarioType {
 	case "network_latency":
 		latency := config["latency"].(time.Duration)
@@ -321,7 +321,7 @@ type PatternTestReport struct {
 	ChaosResults    *ChaosMetrics                  `json:"chaosResults,omitempty"`
 	PerformanceData map[string]PerformanceBaseline `json:"performanceData,omitempty"`
 	Environment     string                         `json:"environment"`
-	Metadata        map[string]interface{}         `json:"metadata"`
+	Metadata        map[string]any         `json:"metadata"`
 }
 
 // GenerateReport generates a comprehensive test report
@@ -336,7 +336,7 @@ func (e *EnterpriseTestPatterns) GenerateReport(suiteName string, results []Test
 		SuiteName:   suiteName,
 		StartTime:   time.Now(),
 		TestResults: testResults,
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 
 	// Calculate statistics

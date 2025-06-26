@@ -72,7 +72,7 @@ type AuditLog struct {
 	Timestamp time.Time
 	UserID    string
 	IPAddress string
-	Details   map[string]interface{}
+	Details   map[string]any
 }
 
 // AccessControl represents an access control
@@ -96,16 +96,16 @@ type DataProtectionControl struct {
 
 // SOC2ComplianceTester provides SOC2 compliance testing capabilities
 type SOC2ComplianceTester struct {
-	app        interface{}            // Enterprise app
-	dataStore  map[string]interface{} // Mock data store
+	app        any            // Enterprise app
+	dataStore  map[string]any // Mock data store
 	auditTrail []AuditLog
 }
 
 // NewSOC2ComplianceTester creates a new SOC2 compliance tester
-func NewSOC2ComplianceTester(app interface{}) *SOC2ComplianceTester {
+func NewSOC2ComplianceTester(app any) *SOC2ComplianceTester {
 	return &SOC2ComplianceTester{
 		app:        app,
-		dataStore:  make(map[string]interface{}),
+		dataStore:  make(map[string]any),
 		auditTrail: make([]AuditLog, 0),
 	}
 }
@@ -129,7 +129,7 @@ func (tester *SOC2ComplianceTester) TestSecurityControls(ctx context.Context) er
 
 	// Log security control test
 	tester.logAuditEvent("security_controls_test", "test-system", "192.168.1.1",
-		map[string]interface{}{"test_type": "security_controls", "result": "passed"})
+		map[string]any{"test_type": "security_controls", "result": "passed"})
 
 	return nil
 }
@@ -153,7 +153,7 @@ func (tester *SOC2ComplianceTester) TestAvailabilityControls(ctx context.Context
 
 	// Log availability control test
 	tester.logAuditEvent("availability_controls_test", "test-system", "192.168.1.1",
-		map[string]interface{}{"test_type": "availability_controls", "result": "passed"})
+		map[string]any{"test_type": "availability_controls", "result": "passed"})
 
 	return nil
 }
@@ -177,7 +177,7 @@ func (tester *SOC2ComplianceTester) TestProcessingIntegrity(ctx context.Context)
 
 	// Log processing integrity test
 	tester.logAuditEvent("processing_integrity_test", "test-system", "192.168.1.1",
-		map[string]interface{}{"test_type": "processing_integrity", "result": "passed"})
+		map[string]any{"test_type": "processing_integrity", "result": "passed"})
 
 	return nil
 }
@@ -201,7 +201,7 @@ func (tester *SOC2ComplianceTester) TestConfidentialityControls(ctx context.Cont
 
 	// Log confidentiality control test
 	tester.logAuditEvent("confidentiality_controls_test", "test-system", "192.168.1.1",
-		map[string]interface{}{"test_type": "confidentiality_controls", "result": "passed"})
+		map[string]any{"test_type": "confidentiality_controls", "result": "passed"})
 
 	return nil
 }
@@ -225,7 +225,7 @@ func (tester *SOC2ComplianceTester) TestPrivacyControls(ctx context.Context) err
 
 	// Log privacy control test
 	tester.logAuditEvent("privacy_controls_test", "test-system", "192.168.1.1",
-		map[string]interface{}{"test_type": "privacy_controls", "result": "passed"})
+		map[string]any{"test_type": "privacy_controls", "result": "passed"})
 
 	return nil
 }
@@ -354,7 +354,7 @@ func (tester *SOC2ComplianceTester) testConsentManagement() error {
 }
 
 // logAuditEvent logs a SOC2 audit event
-func (tester *SOC2ComplianceTester) logAuditEvent(event, userID, ipAddress string, details map[string]interface{}) {
+func (tester *SOC2ComplianceTester) logAuditEvent(event, userID, ipAddress string, details map[string]any) {
 	auditLog := AuditLog{
 		LogID:     fmt.Sprintf("audit_%d", time.Now().Unix()),
 		Event:     event,

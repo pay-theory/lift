@@ -20,7 +20,7 @@ type ZapLogger struct {
 	sugar         *zap.SugaredLogger
 	config        observability.LoggerConfig
 	stats         *loggerStats
-	contextFields map[string]interface{}
+	contextFields map[string]any
 }
 
 // loggerStats tracks logger performance metrics
@@ -50,7 +50,7 @@ func NewZapLogger(config observability.LoggerConfig) (*ZapLogger, error) {
 		sugar:         logger.Sugar(),
 		config:        config,
 		stats:         &loggerStats{},
-		contextFields: make(map[string]interface{}),
+		contextFields: make(map[string]any),
 	}, nil
 }
 
@@ -105,33 +105,33 @@ func buildZapConfig(config observability.LoggerConfig) zap.Config {
 }
 
 // Debug logs a debug message (with enhanced sanitization for security)
-func (z *ZapLogger) Debug(message string, fields ...map[string]interface{}) {
+func (z *ZapLogger) Debug(message string, fields ...map[string]any) {
 	z.log(zapcore.DebugLevel, message, fields...)
 }
 
 // Info logs an info message
-func (z *ZapLogger) Info(message string, fields ...map[string]interface{}) {
+func (z *ZapLogger) Info(message string, fields ...map[string]any) {
 	z.log(zapcore.InfoLevel, message, fields...)
 }
 
 // Warn logs a warning message
-func (z *ZapLogger) Warn(message string, fields ...map[string]interface{}) {
+func (z *ZapLogger) Warn(message string, fields ...map[string]any) {
 	z.log(zapcore.WarnLevel, message, fields...)
 }
 
 // Error logs an error message
-func (z *ZapLogger) Error(message string, fields ...map[string]interface{}) {
+func (z *ZapLogger) Error(message string, fields ...map[string]any) {
 	z.log(zapcore.ErrorLevel, message, fields...)
 }
 
 // WithField returns a new logger with an additional field
-func (z *ZapLogger) WithField(key string, value interface{}) lift.Logger {
-	return z.WithFields(map[string]interface{}{key: value})
+func (z *ZapLogger) WithField(key string, value any) lift.Logger {
+	return z.WithFields(map[string]any{key: value})
 }
 
 // WithFields returns a new logger with additional fields
-func (z *ZapLogger) WithFields(fields map[string]interface{}) lift.Logger {
-	newFields := make(map[string]interface{})
+func (z *ZapLogger) WithFields(fields map[string]any) lift.Logger {
+	newFields := make(map[string]any)
 	for k, v := range z.contextFields {
 		newFields[k] = v
 	}
@@ -174,7 +174,7 @@ func (z *ZapLogger) WithSpanID(spanID string) observability.StructuredLogger {
 }
 
 // log is the internal logging method
-func (z *ZapLogger) log(level zapcore.Level, message string, fieldMaps ...map[string]interface{}) {
+func (z *ZapLogger) log(level zapcore.Level, message string, fieldMaps ...map[string]any) {
 	// Increment counter
 	atomic.AddInt64(&z.stats.entriesLogged, 1)
 
@@ -209,7 +209,7 @@ func (z *ZapLogger) log(level zapcore.Level, message string, fieldMaps ...map[st
 }
 
 // sanitizeFieldValue sanitizes field values to prevent sensitive data exposure
-func (z *ZapLogger) sanitizeFieldValue(key string, value interface{}) interface{} {
+func (z *ZapLogger) sanitizeFieldValue(key string, value any) any {
 	keyLower := strings.ToLower(key)
 
 	// Always sanitize highly sensitive field names

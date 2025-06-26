@@ -154,7 +154,7 @@ func TestSOC2InquiryTests(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Validate result structure
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	require.True(t, ok, "Result should be a map")
 
 	assert.Contains(t, resultMap, "policy_exists")
@@ -178,7 +178,7 @@ func TestSOC2ObservationTests(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Validate result structure
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	require.True(t, ok, "Result should be a map")
 
 	assert.Contains(t, resultMap, "authentication_required")
@@ -202,7 +202,7 @@ func TestSOC2AnalyticalTests(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Validate result structure
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	require.True(t, ok, "Result should be a map")
 
 	assert.Contains(t, resultMap, "total_events")

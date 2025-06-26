@@ -42,8 +42,8 @@ func TestEventRouterThreadSafety(t *testing.T) {
 				Request: &Request{
 					Request: &adapters.Request{
 						TriggerType: TriggerSQS,
-						Records: []interface{}{
-							map[string]interface{}{
+						Records: []any{
+							map[string]any{
 								"eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:test-queue",
 							},
 						},
@@ -118,8 +118,8 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 				Request: &Request{
 					Request: &adapters.Request{
 						TriggerType: TriggerSQS,
-						Records: []interface{}{
-							map[string]interface{}{
+						Records: []any{
+							map[string]any{
 								"eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:test-queue",
 							},
 						},
@@ -147,13 +147,13 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 				Request: &Request{
 					Request: &adapters.Request{
 						TriggerType: TriggerS3,
-						Records: []interface{}{
-							map[string]interface{}{
-								"s3": map[string]interface{}{
-									"bucket": map[string]interface{}{
+						Records: []any{
+							map[string]any{
+								"s3": map[string]any{
+									"bucket": map[string]any{
 										"name": "my-bucket",
 									},
-									"object": map[string]interface{}{
+									"object": map[string]any{
 										"key": "uploads/file.txt",
 									},
 								},

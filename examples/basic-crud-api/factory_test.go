@@ -50,7 +50,7 @@ func TestFactoryPattern(t *testing.T) {
 		mockQuery.On("Create").Return(nil).Once()
 
 		// Test request
-		resp := testApp.POST("/users", map[string]interface{}{
+		resp := testApp.POST("/users", map[string]any{
 			"name":  "John Doe",
 			"email": "john@example.com",
 		})

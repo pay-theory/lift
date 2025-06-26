@@ -9,17 +9,17 @@ import (
 
 // Sample event payloads for benchmarking
 var (
-	apiGatewayV1Event = map[string]interface{}{
+	apiGatewayV1Event = map[string]any{
 		"resource":                        "/users/{id}",
 		"path":                            "/users/123",
 		"httpMethod":                      "GET",
-		"headers":                         map[string]interface{}{"Content-Type": "application/json"},
-		"multiValueHeaders":               map[string]interface{}{},
-		"queryStringParameters":           map[string]interface{}{"filter": "active"},
-		"multiValueQueryStringParameters": map[string]interface{}{},
-		"pathParameters":                  map[string]interface{}{"id": "123"},
-		"stageVariables":                  map[string]interface{}{},
-		"requestContext": map[string]interface{}{
+		"headers":                         map[string]any{"Content-Type": "application/json"},
+		"multiValueHeaders":               map[string]any{},
+		"queryStringParameters":           map[string]any{"filter": "active"},
+		"multiValueQueryStringParameters": map[string]any{},
+		"pathParameters":                  map[string]any{"id": "123"},
+		"stageVariables":                  map[string]any{},
+		"requestContext": map[string]any{
 			"requestId":  "test-request-id",
 			"stage":      "prod",
 			"httpMethod": "GET",
@@ -28,17 +28,17 @@ var (
 		"isBase64Encoded": false,
 	}
 
-	apiGatewayV2Event = map[string]interface{}{
+	apiGatewayV2Event = map[string]any{
 		"version":               "2.0",
 		"routeKey":              "GET /users/{id}",
 		"rawPath":               "/users/123",
 		"rawQueryString":        "filter=active",
-		"headers":               map[string]interface{}{"content-type": "application/json"},
-		"queryStringParameters": map[string]interface{}{"filter": "active"},
-		"pathParameters":        map[string]interface{}{"id": "123"},
-		"requestContext": map[string]interface{}{
+		"headers":               map[string]any{"content-type": "application/json"},
+		"queryStringParameters": map[string]any{"filter": "active"},
+		"pathParameters":        map[string]any{"id": "123"},
+		"requestContext": map[string]any{
 			"requestId": "test-request-id",
-			"http": map[string]interface{}{
+			"http": map[string]any{
 				"method": "GET",
 				"path":   "/users/123",
 			},
@@ -47,29 +47,29 @@ var (
 		"isBase64Encoded": false,
 	}
 
-	sqsEvent = map[string]interface{}{
-		"Records": []interface{}{
-			map[string]interface{}{
+	sqsEvent = map[string]any{
+		"Records": []any{
+			map[string]any{
 				"messageId":     "test-message-1",
 				"receiptHandle": "test-receipt-1",
 				"body":          `{"type": "user_created", "data": {"id": "123"}}`,
-				"attributes": map[string]interface{}{
+				"attributes": map[string]any{
 					"ApproximateReceiveCount": "1",
 				},
-				"messageAttributes": map[string]interface{}{},
+				"messageAttributes": map[string]any{},
 				"md5OfBody":         "test-md5",
 				"eventSource":       "aws:sqs",
 				"eventSourceARN":    "arn:aws:sqs:us-east-1:123456789012:test-queue",
 				"awsRegion":         "us-east-1",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"messageId":     "test-message-2",
 				"receiptHandle": "test-receipt-2",
 				"body":          `{"type": "user_updated", "data": {"id": "456"}}`,
-				"attributes": map[string]interface{}{
+				"attributes": map[string]any{
 					"ApproximateReceiveCount": "1",
 				},
-				"messageAttributes": map[string]interface{}{},
+				"messageAttributes": map[string]any{},
 				"md5OfBody":         "test-md5-2",
 				"eventSource":       "aws:sqs",
 				"eventSourceARN":    "arn:aws:sqs:us-east-1:123456789012:test-queue",
@@ -78,22 +78,22 @@ var (
 		},
 	}
 
-	s3Event = map[string]interface{}{
-		"Records": []interface{}{
-			map[string]interface{}{
+	s3Event = map[string]any{
+		"Records": []any{
+			map[string]any{
 				"eventVersion": "2.1",
 				"eventSource":  "aws:s3",
 				"awsRegion":    "us-east-1",
 				"eventTime":    "2023-01-01T00:00:00.000Z",
 				"eventName":    "ObjectCreated:Put",
-				"s3": map[string]interface{}{
+				"s3": map[string]any{
 					"s3SchemaVersion": "1.0",
 					"configurationId": "test-config",
-					"bucket": map[string]interface{}{
+					"bucket": map[string]any{
 						"name": "test-bucket",
 						"arn":  "arn:aws:s3:::test-bucket",
 					},
-					"object": map[string]interface{}{
+					"object": map[string]any{
 						"key":  "test-file.json",
 						"size": 1024,
 						"eTag": "test-etag",
@@ -103,7 +103,7 @@ var (
 		},
 	}
 
-	eventBridgeEvent = map[string]interface{}{
+	eventBridgeEvent = map[string]any{
 		"version":     "0",
 		"id":          "test-event-id",
 		"detail-type": "User Action",
@@ -111,21 +111,21 @@ var (
 		"account":     "123456789012",
 		"time":        "2023-01-01T00:00:00Z",
 		"region":      "us-east-1",
-		"detail": map[string]interface{}{
+		"detail": map[string]any{
 			"action": "created",
 			"userId": "123",
 		},
 	}
 
-	scheduledEvent = map[string]interface{}{
+	scheduledEvent = map[string]any{
 		"id":          "test-scheduled-event",
 		"detail-type": "Scheduled Event",
 		"source":      "aws.events",
 		"account":     "123456789012",
 		"time":        "2023-01-01T00:00:00Z",
 		"region":      "us-east-1",
-		"detail":      map[string]interface{}{},
-		"resources":   []interface{}{"arn:aws:events:us-east-1:123456789012:rule/test-rule"},
+		"detail":      map[string]any{},
+		"resources":   []any{"arn:aws:events:us-east-1:123456789012:rule/test-rule"},
 	}
 )
 
@@ -169,7 +169,7 @@ func BenchmarkScheduledAdapter(b *testing.B) {
 func BenchmarkEventDetection(b *testing.B) {
 	registry := adapters.NewAdapterRegistry()
 
-	events := []interface{}{
+	events := []any{
 		apiGatewayV1Event,
 		apiGatewayV2Event,
 		sqsEvent,
@@ -211,19 +211,19 @@ func BenchmarkEventDetectionWorstCase(b *testing.B) {
 // BenchmarkLargeEventParsing tests parsing performance with large events
 func BenchmarkLargeEventParsing(b *testing.B) {
 	// Create a large SQS event with many records
-	largeEvent := map[string]interface{}{
-		"Records": make([]interface{}, 100),
+	largeEvent := map[string]any{
+		"Records": make([]any, 100),
 	}
 
 	for i := 0; i < 100; i++ {
-		largeEvent["Records"].([]interface{})[i] = map[string]interface{}{
+		largeEvent["Records"].([]any)[i] = map[string]any{
 			"messageId":     "test-message-" + string(rune(i)),
 			"receiptHandle": "test-receipt-" + string(rune(i)),
 			"body":          `{"type": "large_event", "data": {"id": "` + string(rune(i)) + `", "payload": "` + string(make([]byte, 1024)) + `"}}`,
-			"attributes": map[string]interface{}{
+			"attributes": map[string]any{
 				"ApproximateReceiveCount": "1",
 			},
-			"messageAttributes": map[string]interface{}{},
+			"messageAttributes": map[string]any{},
 			"md5OfBody":         "test-md5-" + string(rune(i)),
 			"eventSource":       "aws:sqs",
 			"eventSourceARN":    "arn:aws:sqs:us-east-1:123456789012:test-queue",
@@ -261,7 +261,7 @@ func BenchmarkEventCanHandle(b *testing.B) {
 		adapters.NewScheduledAdapter(),
 	}
 
-	events := []interface{}{
+	events := []any{
 		apiGatewayV1Event,
 		apiGatewayV2Event,
 		sqsEvent,
@@ -293,7 +293,7 @@ func BenchmarkJSONMarshaling(b *testing.B) {
 			b.Fatalf("JSON marshaling failed: %v", err)
 		}
 
-		var unmarshaled map[string]interface{}
+		var unmarshaled map[string]any
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
 			b.Fatalf("JSON unmarshaling failed: %v", err)
@@ -305,7 +305,7 @@ func BenchmarkJSONMarshaling(b *testing.B) {
 func BenchmarkConcurrentEventParsing(b *testing.B) {
 	registry := adapters.NewAdapterRegistry()
 
-	events := []interface{}{
+	events := []any{
 		apiGatewayV1Event,
 		apiGatewayV2Event,
 		sqsEvent,
@@ -326,7 +326,7 @@ func BenchmarkConcurrentEventParsing(b *testing.B) {
 }
 
 // Helper function
-func benchmarkEventAdapter(b *testing.B, adapter adapters.EventAdapter, event interface{}) {
+func benchmarkEventAdapter(b *testing.B, adapter adapters.EventAdapter, event any) {
 	b.ResetTimer()
 	b.ReportAllocs()
 

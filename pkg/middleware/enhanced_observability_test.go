@@ -13,12 +13,12 @@ import (
 // Mock implementations for testing
 
 type mockLogger struct {
-	logs    []map[string]interface{}
+	logs    []map[string]any
 	healthy bool
 }
 
-func (m *mockLogger) Info(msg string, fields ...map[string]interface{}) {
-	entry := map[string]interface{}{"level": "info", "message": msg}
+func (m *mockLogger) Info(msg string, fields ...map[string]any) {
+	entry := map[string]any{"level": "info", "message": msg}
 	for _, fieldMap := range fields {
 		for k, v := range fieldMap {
 			entry[k] = v
@@ -27,8 +27,8 @@ func (m *mockLogger) Info(msg string, fields ...map[string]interface{}) {
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockLogger) Error(msg string, fields ...map[string]interface{}) {
-	entry := map[string]interface{}{"level": "error", "message": msg}
+func (m *mockLogger) Error(msg string, fields ...map[string]any) {
+	entry := map[string]any{"level": "error", "message": msg}
 	for _, fieldMap := range fields {
 		for k, v := range fieldMap {
 			entry[k] = v
@@ -37,8 +37,8 @@ func (m *mockLogger) Error(msg string, fields ...map[string]interface{}) {
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockLogger) Warn(msg string, fields ...map[string]interface{}) {
-	entry := map[string]interface{}{"level": "warn", "message": msg}
+func (m *mockLogger) Warn(msg string, fields ...map[string]any) {
+	entry := map[string]any{"level": "warn", "message": msg}
 	for _, fieldMap := range fields {
 		for k, v := range fieldMap {
 			entry[k] = v
@@ -47,8 +47,8 @@ func (m *mockLogger) Warn(msg string, fields ...map[string]interface{}) {
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockLogger) Debug(msg string, fields ...map[string]interface{}) {
-	entry := map[string]interface{}{"level": "debug", "message": msg}
+func (m *mockLogger) Debug(msg string, fields ...map[string]any) {
+	entry := map[string]any{"level": "debug", "message": msg}
 	for _, fieldMap := range fields {
 		for k, v := range fieldMap {
 			entry[k] = v
@@ -57,8 +57,8 @@ func (m *mockLogger) Debug(msg string, fields ...map[string]interface{}) {
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockLogger) WithField(key string, value interface{}) lift.Logger  { return m }
-func (m *mockLogger) WithFields(fields map[string]interface{}) lift.Logger { return m }
+func (m *mockLogger) WithField(key string, value any) lift.Logger  { return m }
+func (m *mockLogger) WithFields(fields map[string]any) lift.Logger { return m }
 
 func (m *mockLogger) WithRequestID(requestID string) observability.StructuredLogger { return m }
 func (m *mockLogger) WithTenantID(tenantID string) observability.StructuredLogger   { return m }
@@ -78,7 +78,7 @@ func (m *mockLogger) GetStats() observability.LoggerStats {
 }
 
 type mockMetrics struct {
-	metrics map[string]interface{}
+	metrics map[string]any
 	tags    map[string]string
 }
 
@@ -148,7 +148,7 @@ func (m *mockMetrics) GetMetricsCount() int {
 }
 
 type mockCounter struct {
-	metrics map[string]interface{}
+	metrics map[string]any
 	name    string
 }
 
@@ -169,7 +169,7 @@ func (c *mockCounter) Add(value float64) {
 }
 
 type mockHistogram struct {
-	metrics map[string]interface{}
+	metrics map[string]any
 	name    string
 }
 
@@ -178,7 +178,7 @@ func (h *mockHistogram) Observe(value float64) {
 }
 
 type mockGauge struct {
-	metrics map[string]interface{}
+	metrics map[string]any
 	name    string
 }
 
@@ -213,7 +213,7 @@ func (g *mockGauge) Add(value float64) {
 func TestEnhancedObservabilityMiddleware(t *testing.T) {
 	logger := &mockLogger{}
 	metrics := &mockMetrics{
-		metrics: make(map[string]interface{}),
+		metrics: make(map[string]any),
 		tags:    make(map[string]string),
 	}
 
@@ -267,7 +267,7 @@ func TestEnhancedObservabilityMiddleware(t *testing.T) {
 func TestObservabilityWithTenantContext(t *testing.T) {
 	logger := &mockLogger{}
 	metrics := &mockMetrics{
-		metrics: make(map[string]interface{}),
+		metrics: make(map[string]any),
 		tags:    make(map[string]string),
 	}
 
@@ -386,7 +386,7 @@ func TestEnhancedObservabilityDefaults(t *testing.T) {
 
 func TestGetObservabilityStats(t *testing.T) {
 	logger := &mockLogger{healthy: true}
-	metrics := &mockMetrics{metrics: make(map[string]interface{}), tags: make(map[string]string)}
+	metrics := &mockMetrics{metrics: make(map[string]any), tags: make(map[string]string)}
 
 	config := EnhancedObservabilityConfig{
 		Logger:  logger,
@@ -433,7 +433,7 @@ func TestHealthCheckObservability(t *testing.T) {
 		{
 			name: "healthy metrics",
 			config: EnhancedObservabilityConfig{
-				Metrics:       &mockMetrics{metrics: make(map[string]interface{}), tags: make(map[string]string)},
+				Metrics:       &mockMetrics{metrics: make(map[string]any), tags: make(map[string]string)},
 				EnableMetrics: true,
 			},
 			expectError: false,
@@ -499,7 +499,7 @@ func BenchmarkEnhancedObservabilityLoggingOnly(b *testing.B) {
 }
 
 func BenchmarkEnhancedObservabilityMetricsOnly(b *testing.B) {
-	metrics := &mockMetrics{metrics: make(map[string]interface{}), tags: make(map[string]string)}
+	metrics := &mockMetrics{metrics: make(map[string]any), tags: make(map[string]string)}
 
 	config := EnhancedObservabilityConfig{
 		Metrics:       metrics,

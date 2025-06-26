@@ -250,7 +250,7 @@ func TestLiftError_LogError(t *testing.T) {
 		// The field is correctly excluded from JSON with json:"-" tag
 		// We can see from the output that it doesn't contain LogError
 		// Just verify the JSON is valid and contains expected fields
-		var result map[string]interface{}
+		var result map[string]any
 		if err := json.Unmarshal(data, &result); err != nil {
 			t.Errorf("failed to unmarshal JSON: %v", err)
 		}

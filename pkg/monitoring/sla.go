@@ -117,7 +117,7 @@ const (
 // AlertAction defines alert actions
 type AlertAction struct {
 	Type   string                 `json:"type"`
-	Config map[string]interface{} `json:"config"`
+	Config map[string]any `json:"config"`
 }
 
 // ReportConfig defines reporting configuration
@@ -414,7 +414,7 @@ func (sm *SLAMonitor) checkViolations(slo SLO, metrics *SLAMetrics) {
 			Severity:  violation.Severity,
 			Message:   violation.Description,
 			Timestamp: violation.Timestamp,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"slo_name":     slo.Name,
 				"actual_value": metrics.CurrentValue,
 				"target_value": slo.Target,
@@ -514,17 +514,17 @@ func (sm *SLAMonitor) executeAlertActions(ctx context.Context, alert Alert, rule
 }
 
 // sendEmailAlert sends email alert
-func (sm *SLAMonitor) sendEmailAlert(ctx context.Context, alert Alert, config map[string]interface{}) {
+func (sm *SLAMonitor) sendEmailAlert(ctx context.Context, alert Alert, config map[string]any) {
 	// Implementation would send email
 }
 
 // sendSlackAlert sends Slack alert
-func (sm *SLAMonitor) sendSlackAlert(ctx context.Context, alert Alert, config map[string]interface{}) {
+func (sm *SLAMonitor) sendSlackAlert(ctx context.Context, alert Alert, config map[string]any) {
 	// Implementation would send Slack message
 }
 
 // sendWebhookAlert sends webhook alert
-func (sm *SLAMonitor) sendWebhookAlert(ctx context.Context, alert Alert, config map[string]interface{}) {
+func (sm *SLAMonitor) sendWebhookAlert(ctx context.Context, alert Alert, config map[string]any) {
 	// Implementation would send webhook
 }
 
@@ -593,7 +593,7 @@ type Alert struct {
 	Severity  Severity               `json:"severity"`
 	Message   string                 `json:"message"`
 	Timestamp time.Time              `json:"timestamp"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // AlertManager manages alerts
@@ -633,10 +633,10 @@ func NewReportGenerator() *ReportGenerator {
 
 // GenerateSLAReport generates an SLA report
 func (rg *ReportGenerator) GenerateSLAReport(metrics map[string]*SLAMetrics) []byte {
-	report := map[string]interface{}{
+	report := map[string]any{
 		"timestamp": time.Now(),
 		"metrics":   metrics,
-		"summary": map[string]interface{}{
+		"summary": map[string]any{
 			"total_slos":    len(metrics),
 			"healthy_slos":  rg.countByStatus(metrics, SLAStatusHealthy),
 			"warning_slos":  rg.countByStatus(metrics, SLAStatusWarning),

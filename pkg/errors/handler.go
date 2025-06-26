@@ -197,7 +197,7 @@ func (h *DefaultErrorHandler) logError(ctx context.Context, err error) {
 		return
 	}
 
-	logData := map[string]interface{}{
+	logData := map[string]any{
 		"code":       liftErr.Code,
 		"message":    liftErr.Message,
 		"status":     liftErr.StatusCode,

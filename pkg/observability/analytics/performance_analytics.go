@@ -46,7 +46,7 @@ type PerformanceMetric struct {
 	Source        string                 `json:"source"`
 	Tags          map[string]string      `json:"tags"`
 	Dimensions    map[string]string      `json:"dimensions"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 	AggregateType AggregateType          `json:"aggregate_type"`
 }
 
@@ -376,7 +376,7 @@ type AnomalyContext struct {
 	PrecedingTrend   string                 `json:"preceding_trend"`
 	ConcurrentEvents []ConcurrentEvent      `json:"concurrent_events"`
 	RelatedMetrics   []RelatedMetric        `json:"related_metrics"`
-	SystemState      map[string]interface{} `json:"system_state"`
+	SystemState      map[string]any `json:"system_state"`
 }
 
 type ConcurrentEvent struct {
@@ -428,7 +428,7 @@ type RecommendedAction struct {
 	Type        string                 `json:"type"`
 	Description string                 `json:"description"`
 	Command     string                 `json:"command,omitempty"`
-	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
 	Validation  string                 `json:"validation,omitempty"`
 	Rollback    string                 `json:"rollback,omitempty"`
 }
@@ -470,16 +470,16 @@ type ThresholdViolation struct {
 type AlertContext struct {
 	TriggerMetric   string                 `json:"trigger_metric"`
 	RelatedMetrics  []string               `json:"related_metrics"`
-	SystemContext   map[string]interface{} `json:"system_context"`
-	UserContext     map[string]interface{} `json:"user_context"`
-	BusinessContext map[string]interface{} `json:"business_context"`
+	SystemContext   map[string]any `json:"system_context"`
+	UserContext     map[string]any `json:"user_context"`
+	BusinessContext map[string]any `json:"business_context"`
 }
 
 type AlertAction struct {
 	Type        string                 `json:"type"`
 	Description string                 `json:"description"`
 	Target      string                 `json:"target"`
-	Parameters  map[string]interface{} `json:"parameters"`
+	Parameters  map[string]any `json:"parameters"`
 	Automated   bool                   `json:"automated"`
 }
 
@@ -830,7 +830,7 @@ func (pae *PerformanceAnalyticsEngine) generateRecommendations(analysis *Perform
 					{
 						Type:        "investigate",
 						Description: "Investigate root cause of anomaly",
-						Parameters: map[string]interface{}{
+						Parameters: map[string]any{
 							"metric":    anomaly.MetricName,
 							"timestamp": anomaly.Timestamp,
 							"value":     anomaly.Value,
@@ -858,7 +858,7 @@ func (pae *PerformanceAnalyticsEngine) generateRecommendations(analysis *Perform
 					{
 						Type:        "optimize",
 						Description: "Optimize system to reverse declining trend",
-						Parameters: map[string]interface{}{
+						Parameters: map[string]any{
 							"metric":      trend.MetricName,
 							"trend":       trend.Direction,
 							"change_rate": trend.ChangeRate,

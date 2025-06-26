@@ -183,7 +183,7 @@ func TestXRayTracerSubsegmentFunctions(t *testing.T) {
 	})
 
 	t.Run("TraceCustomOperation with nil segment", func(t *testing.T) {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"key": "value",
 		}
 

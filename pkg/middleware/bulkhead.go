@@ -119,7 +119,7 @@ func BulkheadMiddleware(config BulkheadConfig) lift.Middleware {
 			if err != nil {
 				// Resource acquisition failed
 				if config.Logger != nil {
-					config.Logger.Warn("Bulkhead resource acquisition failed", map[string]interface{}{
+					config.Logger.Warn("Bulkhead resource acquisition failed", map[string]any{
 						"bulkhead_name": config.Name,
 						"tenant_id":     tenantID,
 						"operation":     operation,
@@ -149,7 +149,7 @@ func BulkheadMiddleware(config BulkheadConfig) lift.Middleware {
 				}
 
 				if config.Logger != nil {
-					config.Logger.Debug("Bulkhead request completed", map[string]interface{}{
+					config.Logger.Debug("Bulkhead request completed", map[string]any{
 						"bulkhead_name": config.Name,
 						"tenant_id":     tenantID,
 						"operation":     operation,
@@ -553,7 +553,7 @@ func (s *semaphore) capacity() int {
 
 // defaultRejectionHandler provides a default rejection response
 func defaultRejectionHandler(ctx *lift.Context, reason string) error {
-	ctx.Status(503).JSON(map[string]interface{}{
+	ctx.Status(503).JSON(map[string]any{
 		"error":   "Service temporarily unavailable",
 		"message": "Resource limit exceeded",
 		"reason":  reason,

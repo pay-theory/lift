@@ -52,10 +52,10 @@ type DataProtectionManager struct {
 
 // DataContext represents data with its classification and metadata
 type DataContext struct {
-	Data           interface{}                   `json:"data"`
+	Data           any                   `json:"data"`
 	Classification DataClassification            `json:"classification"`
 	Fields         map[string]DataClassification `json:"fields"`
-	Metadata       map[string]interface{}        `json:"metadata"`
+	Metadata       map[string]any        `json:"metadata"`
 	Timestamp      time.Time                     `json:"timestamp"`
 	UserID         string                        `json:"user_id"`
 	TenantID       string                        `json:"tenant_id"`
@@ -72,19 +72,19 @@ type DataProtectionRequest struct {
 	Purpose        string                 `json:"purpose"`
 	Region         string                 `json:"region"`
 	Fields         []string               `json:"fields"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 // DataAccessResult represents the result of a data access request
 type DataAccessResult struct {
 	Allowed       bool                   `json:"allowed"`
-	Data          interface{}            `json:"data,omitempty"`
-	MaskedData    interface{}            `json:"masked_data,omitempty"`
+	Data          any            `json:"data,omitempty"`
+	MaskedData    any            `json:"masked_data,omitempty"`
 	Restrictions  []string               `json:"restrictions,omitempty"`
 	Violations    []string               `json:"violations,omitempty"`
 	AuditRequired bool                   `json:"audit_required"`
 	ExpiresAt     time.Time              `json:"expires_at,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 }
 
 // AESEncryptor handles AES encryption/decryption
@@ -118,7 +118,7 @@ func NewDataProtectionManager(config DataProtectionConfig) (*DataProtectionManag
 }
 
 // ClassifyData classifies data based on content and configuration
-func (dpm *DataProtectionManager) ClassifyData(data interface{}, context map[string]interface{}) *DataContext {
+func (dpm *DataProtectionManager) ClassifyData(data any, context map[string]any) *DataContext {
 	dpm.mu.RLock()
 	defer dpm.mu.RUnlock()
 
@@ -146,7 +146,7 @@ func (dpm *DataProtectionManager) ClassifyData(data interface{}, context map[str
 
 	// Classify based on data content
 	if jsonData, err := json.Marshal(data); err == nil {
-		var dataMap map[string]interface{}
+		var dataMap map[string]any
 		if json.Unmarshal(jsonData, &dataMap) == nil {
 			dataCtx.Classification = dpm.classifyDataMap(dataMap, dataCtx.Fields)
 		}
@@ -156,7 +156,7 @@ func (dpm *DataProtectionManager) ClassifyData(data interface{}, context map[str
 }
 
 // classifyDataMap classifies a data map and its fields
-func (dpm *DataProtectionManager) classifyDataMap(data map[string]interface{}, fieldClassifications map[string]DataClassification) DataClassification {
+func (dpm *DataProtectionManager) classifyDataMap(data map[string]any, fieldClassifications map[string]DataClassification) DataClassification {
 	highestClassification := DataPublic
 
 	for field, value := range data {
@@ -173,7 +173,7 @@ func (dpm *DataProtectionManager) classifyDataMap(data map[string]interface{}, f
 }
 
 // classifyField classifies a single field
-func (dpm *DataProtectionManager) classifyField(field string, value interface{}) DataClassification {
+func (dpm *DataProtectionManager) classifyField(field string, value any) DataClassification {
 	// Check explicit field classifications
 	if classification, exists := dpm.config.FieldClassifications[field]; exists {
 		return classification
@@ -286,7 +286,7 @@ func (dpm *DataProtectionManager) ValidateDataAccess(request DataProtectionReque
 	result := &DataAccessResult{
 		Allowed:       true,
 		AuditRequired: true,
-		Metadata:      make(map[string]interface{}),
+		Metadata:      make(map[string]any),
 	}
 
 	// Check region restrictions
@@ -332,7 +332,7 @@ func (dpm *DataProtectionManager) ValidateDataAccess(request DataProtectionReque
 }
 
 // ValidateDataAccessFromGDPR validates data access from a GDPR DataAccessRequest
-func (dpm *DataProtectionManager) ValidateDataAccessFromGDPR(request interface{}) *DataAccessResult {
+func (dpm *DataProtectionManager) ValidateDataAccessFromGDPR(request any) *DataAccessResult {
 	// Convert DataAccessRequest to DataProtectionRequest
 	var protectionRequest DataProtectionRequest
 
@@ -368,7 +368,7 @@ func (dpm *DataProtectionManager) ValidateDataAccessFromGDPR(request interface{}
 			return &DataAccessResult{
 				Allowed:    false,
 				Violations: []string{"Unsupported request type"},
-				Metadata:   make(map[string]interface{}),
+				Metadata:   make(map[string]any),
 			}
 		}
 	}
@@ -432,18 +432,18 @@ func (dpm *DataProtectionManager) ProtectData(dataCtx *DataContext, accessReques
 }
 
 // maskData applies masking rules to data
-func (dpm *DataProtectionManager) maskData(data interface{}, fieldClassifications map[string]DataClassification) (interface{}, error) {
+func (dpm *DataProtectionManager) maskData(data any, fieldClassifications map[string]DataClassification) (any, error) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
 
-	var dataMap map[string]interface{}
+	var dataMap map[string]any
 	if err := json.Unmarshal(jsonData, &dataMap); err != nil {
 		return nil, err
 	}
 
-	maskedMap := make(map[string]interface{})
+	maskedMap := make(map[string]any)
 
 	for field, value := range dataMap {
 		classification := fieldClassifications[field]
@@ -465,7 +465,7 @@ func (dpm *DataProtectionManager) maskData(data interface{}, fieldClassification
 }
 
 // applyMaskingRule applies a specific masking rule to a value
-func (dpm *DataProtectionManager) applyMaskingRule(value interface{}, rule MaskingRule) (interface{}, error) {
+func (dpm *DataProtectionManager) applyMaskingRule(value any, rule MaskingRule) (any, error) {
 	strValue, ok := value.(string)
 	if !ok {
 		return value, nil // Don't mask non-string values
@@ -499,7 +499,7 @@ func (dpm *DataProtectionManager) applyMaskingRule(value interface{}, rule Maski
 }
 
 // applyDefaultMasking applies default masking based on classification
-func (dpm *DataProtectionManager) applyDefaultMasking(value interface{}, classification DataClassification) interface{} {
+func (dpm *DataProtectionManager) applyDefaultMasking(value any, classification DataClassification) any {
 	strValue, ok := value.(string)
 	if !ok {
 		return value
@@ -533,7 +533,7 @@ func NewAESEncryptor(keyString string) (*AESEncryptor, error) {
 }
 
 // Encrypt encrypts data using AES
-func (e *AESEncryptor) Encrypt(data interface{}) (string, error) {
+func (e *AESEncryptor) Encrypt(data any) (string, error) {
 	// Convert data to JSON
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -566,7 +566,7 @@ func (e *AESEncryptor) Encrypt(data interface{}) (string, error) {
 }
 
 // Decrypt decrypts data using AES
-func (e *AESEncryptor) Decrypt(encryptedData string, result interface{}) error {
+func (e *AESEncryptor) Decrypt(encryptedData string, result any) error {
 	// Decode from base64
 	ciphertext, err := base64.StdEncoding.DecodeString(encryptedData)
 	if err != nil {

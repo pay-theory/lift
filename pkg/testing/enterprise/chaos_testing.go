@@ -12,19 +12,19 @@ import (
 
 // ChaosEngineeringTester provides chaos engineering testing capabilities
 type ChaosEngineeringTester struct {
-	app               interface{} // Enterprise app
+	app               any // Enterprise app
 	safetyChecks      bool
 	monitoringEnabled bool
-	metrics           map[string]interface{}
+	metrics           map[string]any
 }
 
 // NewChaosEngineeringTester creates a new chaos engineering tester
-func NewChaosEngineeringTester(app interface{}) *ChaosEngineeringTester {
+func NewChaosEngineeringTester(app any) *ChaosEngineeringTester {
 	return &ChaosEngineeringTester{
 		app:               app,
 		safetyChecks:      true,
 		monitoringEnabled: true,
-		metrics:           make(map[string]interface{}),
+		metrics:           make(map[string]any),
 	}
 }
 
@@ -56,7 +56,7 @@ func (tester *ChaosEngineeringTester) InjectDatabaseFailure(ctx context.Context,
 	}
 
 	startTime := time.Now()
-	tester.logChaosEvent("database_failure_injection", "started", map[string]interface{}{
+	tester.logChaosEvent("database_failure_injection", "started", map[string]any{
 		"failure_type": failureType,
 		"duration":     duration.String(),
 	})
@@ -82,7 +82,7 @@ func (tester *ChaosEngineeringTester) InjectDatabaseFailure(ctx context.Context,
 		return fmt.Errorf("unsupported database failure type: %s", failureType)
 	}
 
-	tester.logChaosEvent("database_failure_injection", "completed", map[string]interface{}{
+	tester.logChaosEvent("database_failure_injection", "completed", map[string]any{
 		"duration_actual": time.Since(startTime).String(),
 	})
 
@@ -96,7 +96,7 @@ func (tester *ChaosEngineeringTester) InjectCPUSpike(ctx context.Context, percen
 	}
 
 	startTime := time.Now()
-	tester.logChaosEvent("cpu_spike_injection", "started", map[string]interface{}{
+	tester.logChaosEvent("cpu_spike_injection", "started", map[string]any{
 		"percentage": percentage,
 		"duration":   duration.String(),
 	})
@@ -128,7 +128,7 @@ func (tester *ChaosEngineeringTester) InjectCPUSpike(ctx context.Context, percen
 		<-done
 	}
 
-	tester.logChaosEvent("cpu_spike_injection", "completed", map[string]interface{}{
+	tester.logChaosEvent("cpu_spike_injection", "completed", map[string]any{
 		"duration_actual": time.Since(startTime).String(),
 	})
 
@@ -142,7 +142,7 @@ func (tester *ChaosEngineeringTester) InjectMemoryPressure(ctx context.Context, 
 	}
 
 	startTime := time.Now()
-	tester.logChaosEvent("memory_pressure_injection", "started", map[string]interface{}{
+	tester.logChaosEvent("memory_pressure_injection", "started", map[string]any{
 		"percentage": percentage,
 		"duration":   duration.String(),
 	})
@@ -181,7 +181,7 @@ func (tester *ChaosEngineeringTester) InjectMemoryPressure(ctx context.Context, 
 	memoryToAllocate = nil
 	runtime.GC()
 
-	tester.logChaosEvent("memory_pressure_injection", "completed", map[string]interface{}{
+	tester.logChaosEvent("memory_pressure_injection", "completed", map[string]any{
 		"duration_actual": time.Since(startTime).String(),
 	})
 
@@ -195,7 +195,7 @@ func (tester *ChaosEngineeringTester) InjectAPILatency(ctx context.Context, late
 	}
 
 	startTime := time.Now()
-	tester.logChaosEvent("api_latency_injection", "started", map[string]interface{}{
+	tester.logChaosEvent("api_latency_injection", "started", map[string]any{
 		"latency_ms": latencyMs,
 		"percentage": percentage,
 		"duration":   duration.String(),
@@ -218,7 +218,7 @@ func (tester *ChaosEngineeringTester) InjectAPILatency(ctx context.Context, late
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	tester.logChaosEvent("api_latency_injection", "completed", map[string]interface{}{
+	tester.logChaosEvent("api_latency_injection", "completed", map[string]any{
 		"duration_actual":   time.Since(startTime).String(),
 		"requests_affected": requestCount * percentage / 100,
 	})
@@ -247,12 +247,12 @@ func (tester *ChaosEngineeringTester) simulateSlowQuery(duration time.Duration) 
 }
 
 // logChaosEvent logs a chaos engineering event
-func (tester *ChaosEngineeringTester) logChaosEvent(eventType, status string, metadata map[string]interface{}) {
+func (tester *ChaosEngineeringTester) logChaosEvent(eventType, status string, metadata map[string]any) {
 	if !tester.monitoringEnabled {
 		return
 	}
 
-	logEntry := map[string]interface{}{
+	logEntry := map[string]any{
 		"timestamp":  time.Now(),
 		"event_type": eventType,
 		"status":     status,

@@ -24,7 +24,7 @@ func Recovery() lift.Middleware {
 			defer func() {
 				if r := recover(); r != nil {
 					if ctx.Logger != nil {
-						ctx.Logger.Error("Handler panicked", map[string]interface{}{
+						ctx.Logger.Error("Handler panicked", map[string]any{
 							"panic": r,
 						})
 					}
@@ -335,8 +335,8 @@ type ProviderService interface {
 type ComplianceService interface {
 	LogAccess(ctx context.Context, entry AccessEntry) error
 	GetAuditTrail(ctx context.Context, patientID string, startDate, endDate time.Time) ([]AccessEntry, error)
-	GenerateComplianceReport(ctx context.Context, reportType string, params map[string]interface{}) (interface{}, error)
-	ValidateHIPAACompliance(ctx context.Context, operation string, data interface{}) error
+	GenerateComplianceReport(ctx context.Context, reportType string, params map[string]any) (any, error)
+	ValidateHIPAACompliance(ctx context.Context, operation string, data any) error
 	DetectBreach(ctx context.Context, accessPattern []AccessEntry) (bool, string, error)
 }
 
@@ -717,26 +717,26 @@ func (m *mockComplianceService) GetAuditTrail(ctx context.Context, patientID str
 	return auditTrail, nil
 }
 
-func (m *mockComplianceService) GenerateComplianceReport(ctx context.Context, reportType string, params map[string]interface{}) (interface{}, error) {
-	report := map[string]interface{}{
+func (m *mockComplianceService) GenerateComplianceReport(ctx context.Context, reportType string, params map[string]any) (any, error) {
+	report := map[string]any{
 		"reportType":  reportType,
 		"generatedAt": time.Now(),
 		"parameters":  params,
-		"compliance": map[string]interface{}{
+		"compliance": map[string]any{
 			"hipaa_compliant":    true,
 			"encryption_enabled": true,
 			"audit_trail_active": true,
 			"access_controls":    true,
 			"data_minimization":  true,
 		},
-		"metrics": map[string]interface{}{
+		"metrics": map[string]any{
 			"total_patient_records": 5000,
 			"total_access_events":   15000,
 			"unauthorized_attempts": 0,
 			"encryption_coverage":   100.0,
 			"audit_coverage":        100.0,
 		},
-		"violations": []interface{}{},
+		"violations": []any{},
 		"recommendations": []string{
 			"Continue regular access reviews",
 			"Update encryption keys quarterly",
@@ -747,7 +747,7 @@ func (m *mockComplianceService) GenerateComplianceReport(ctx context.Context, re
 	return report, nil
 }
 
-func (m *mockComplianceService) ValidateHIPAACompliance(ctx context.Context, operation string, data interface{}) error {
+func (m *mockComplianceService) ValidateHIPAACompliance(ctx context.Context, operation string, data any) error {
 	// Simulate HIPAA compliance validation
 	// In production, this would perform comprehensive compliance checks
 	return nil
@@ -886,7 +886,7 @@ func searchPatients(ctx *lift.Context) error {
 	}
 	complianceService.LogAccess(ctx.Request.Context(), accessEntry)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"query":       query,
 		"results":     patients,
 		"count":       len(patients),
@@ -924,7 +924,7 @@ func updatePatientConsent(ctx *lift.Context) error {
 	}
 	complianceService.LogAccess(ctx.Request.Context(), accessEntry)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"patientId": patientID,
 		"updated":   true,
 		"timestamp": time.Now(),
@@ -1006,7 +1006,7 @@ func getPatientRecords(ctx *lift.Context) error {
 		return ctx.InternalError("Failed to retrieve patient records", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"patientId":    patientID,
 		"records":      records,
 		"count":        len(records),
@@ -1079,7 +1079,7 @@ func getAuditTrail(ctx *lift.Context) error {
 		return ctx.InternalError("Failed to retrieve audit trail", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"patient_id":   patientID,
 		"start_date":   startDate,
 		"end_date":     endDate,
@@ -1096,7 +1096,7 @@ func generateComplianceReport(ctx *lift.Context) error {
 	}
 
 	// Parse query parameters as report parameters
-	params := make(map[string]interface{})
+	params := make(map[string]any)
 	// Use the QueryParam method instead of URL.Query()
 	if startDate := ctx.QueryParam("start_date"); startDate != "" {
 		params["start_date"] = startDate
@@ -1118,7 +1118,7 @@ func generateComplianceReport(ctx *lift.Context) error {
 }
 
 func healthCheck(ctx *lift.Context) error {
-	health := map[string]interface{}{
+	health := map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now(),
 		"version":   "1.0.0",
@@ -1128,13 +1128,13 @@ func healthCheck(ctx *lift.Context) error {
 			"audit_service":      "healthy",
 			"compliance_engine":  "healthy",
 		},
-		"compliance": map[string]interface{}{
+		"compliance": map[string]any{
 			"hipaa_compliant":   true,
 			"encryption_active": true,
 			"audit_logging":     true,
 			"access_controls":   true,
 		},
-		"metrics": map[string]interface{}{
+		"metrics": map[string]any{
 			"uptime_seconds":      3600,
 			"total_patients":      5000,
 			"total_records":       25000,

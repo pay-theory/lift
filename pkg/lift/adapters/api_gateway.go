@@ -19,8 +19,8 @@ func NewAPIGatewayAdapter() *APIGatewayAdapter {
 }
 
 // CanHandle checks if this adapter can handle the given event
-func (a *APIGatewayAdapter) CanHandle(event interface{}) bool {
-	eventMap, ok := event.(map[string]interface{})
+func (a *APIGatewayAdapter) CanHandle(event any) bool {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
 		return false
 	}
@@ -46,10 +46,10 @@ func (a *APIGatewayAdapter) CanHandle(event interface{}) bool {
 }
 
 // Validate checks if the event has the required API Gateway V1 structure
-func (a *APIGatewayAdapter) Validate(event interface{}) error {
-	eventMap, ok := event.(map[string]interface{})
+func (a *APIGatewayAdapter) Validate(event any) error {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
-		return fmt.Errorf("event must be a map[string]interface{}")
+		return fmt.Errorf("event must be a map[string]any")
 	}
 
 	// Check required fields
@@ -64,12 +64,12 @@ func (a *APIGatewayAdapter) Validate(event interface{}) error {
 }
 
 // Adapt converts an API Gateway V1 event to a normalized Request
-func (a *APIGatewayAdapter) Adapt(rawEvent interface{}) (*Request, error) {
+func (a *APIGatewayAdapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	eventMap := rawEvent.(map[string]interface{})
+	eventMap := rawEvent.(map[string]any)
 
 	// Extract request context
 	requestContext := extractMapField(eventMap, "requestContext")
@@ -95,7 +95,7 @@ func (a *APIGatewayAdapter) Adapt(rawEvent interface{}) (*Request, error) {
 	// Handle multi-value headers
 	if multiHeaders := extractMapField(eventMap, "multiValueHeaders"); len(multiHeaders) > 0 {
 		for k, v := range multiHeaders {
-			if slice, ok := v.([]interface{}); ok && len(slice) > 0 {
+			if slice, ok := v.([]any); ok && len(slice) > 0 {
 				// Take the first value for simplicity
 				if str, ok := slice[0].(string); ok {
 					headers[strings.ToLower(k)] = str
@@ -113,7 +113,7 @@ func (a *APIGatewayAdapter) Adapt(rawEvent interface{}) (*Request, error) {
 	// Handle multi-value query parameters
 	if multiQuery := extractMapField(eventMap, "multiValueQueryStringParameters"); len(multiQuery) > 0 {
 		for k, v := range multiQuery {
-			if slice, ok := v.([]interface{}); ok && len(slice) > 0 {
+			if slice, ok := v.([]any); ok && len(slice) > 0 {
 				// Take the first value for simplicity
 				if str, ok := slice[0].(string); ok {
 					queryParams[k] = str

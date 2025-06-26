@@ -36,7 +36,7 @@ func Logger() Middleware {
 
 			// Log request completion
 			if ctx.Logger != nil {
-				fields := map[string]interface{}{
+				fields := map[string]any{
 					"method":   ctx.Request.Method,
 					"path":     ctx.Request.Path,
 					"status":   ctx.Response.StatusCode,
@@ -63,19 +63,19 @@ func Recover() Middleware {
 			defer func() {
 				if r := recover(); r != nil {
 					if ctx.Logger != nil {
-						ctx.Logger.Error("Handler panicked", map[string]interface{}{
+						ctx.Logger.Error("Handler panicked", map[string]any{
 							"panic": "[REDACTED_PANIC_DETAIL]", // Sanitized for security
 						})
 					}
 
 					// Set error response
-					if err := ctx.Response.Status(500).JSON(map[string]interface{}{
+					if err := ctx.Response.Status(500).JSON(map[string]any{
 						"error": "Internal server error",
 						"code":  "PANIC_RECOVERED",
 					}); err != nil {
 						// Log that we couldn't send the error response
 						if ctx.Logger != nil {
-							ctx.Logger.Error("Failed to send panic recovery response", map[string]interface{}{
+							ctx.Logger.Error("Failed to send panic recovery response", map[string]any{
 								"response_error": "[SANITIZED_ERROR]", // Sanitized for security
 							})
 						}
@@ -126,7 +126,7 @@ func Timeout(duration time.Duration) Middleware {
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			// Use the context's WithTimeout utility
-			_, err := ctx.WithTimeout(duration, func() (interface{}, error) {
+			_, err := ctx.WithTimeout(duration, func() (any, error) {
 				return nil, next.Handle(ctx)
 			})
 
@@ -207,7 +207,7 @@ func ErrorHandler() Middleware {
 				if jsonErr := ctx.Response.Status(liftErr.StatusCode).JSON(liftErr); jsonErr != nil {
 					// Log that we couldn't send the error response
 					if ctx.Logger != nil {
-						ctx.Logger.Error("Failed to send LiftError response", map[string]interface{}{
+						ctx.Logger.Error("Failed to send LiftError response", map[string]any{
 							"original_error": liftErr.Error(),
 							"response_error": jsonErr.Error(),
 						})
@@ -217,13 +217,13 @@ func ErrorHandler() Middleware {
 			}
 
 			// Handle generic errors
-			if jsonErr := ctx.Response.Status(500).JSON(map[string]interface{}{
+			if jsonErr := ctx.Response.Status(500).JSON(map[string]any{
 				"error": "Internal server error",
 				"code":  "GENERIC_ERROR",
 			}); jsonErr != nil {
 				// Log that we couldn't send the error response
 				if ctx.Logger != nil {
-					ctx.Logger.Error("Failed to send generic error response", map[string]interface{}{
+					ctx.Logger.Error("Failed to send generic error response", map[string]any{
 						"original_error": err.Error(),
 						"response_error": jsonErr.Error(),
 					})

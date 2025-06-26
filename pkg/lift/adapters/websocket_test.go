@@ -10,13 +10,13 @@ func TestWebSocketAdapter_CanHandle(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		event    interface{}
+		event    any
 		expected bool
 	}{
 		{
 			name: "Valid WebSocket connect event",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "abc123",
 					"routeKey":     "$connect",
 					"eventType":    "CONNECT",
@@ -26,8 +26,8 @@ func TestWebSocketAdapter_CanHandle(t *testing.T) {
 		},
 		{
 			name: "Valid WebSocket disconnect event",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "abc123",
 					"routeKey":     "$disconnect",
 					"eventType":    "DISCONNECT",
@@ -37,8 +37,8 @@ func TestWebSocketAdapter_CanHandle(t *testing.T) {
 		},
 		{
 			name: "Valid WebSocket message event",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "abc123",
 					"routeKey":     "sendMessage",
 				},
@@ -47,8 +47,8 @@ func TestWebSocketAdapter_CanHandle(t *testing.T) {
 		},
 		{
 			name: "Missing connectionId",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"routeKey": "$connect",
 				},
 			},
@@ -56,7 +56,7 @@ func TestWebSocketAdapter_CanHandle(t *testing.T) {
 		},
 		{
 			name: "Not a WebSocket event",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"httpMethod": "GET",
 				"path":       "/test",
 			},
@@ -84,14 +84,14 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		event       interface{}
+		event       any
 		wantErr     bool
 		checkResult func(*testing.T, *Request)
 	}{
 		{
 			name: "Connect event with query parameters",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "abc123",
 					"routeKey":     "$connect",
 					"stage":        "prod",
@@ -99,10 +99,10 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 					"domainName":   "api.example.com",
 					"apiId":        "api123",
 				},
-				"queryStringParameters": map[string]interface{}{
+				"queryStringParameters": map[string]any{
 					"Authorization": "Bearer token123",
 				},
-				"headers": map[string]interface{}{
+				"headers": map[string]any{
 					"User-Agent": "WebSocket Client",
 				},
 			},
@@ -124,8 +124,8 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 		},
 		{
 			name: "Message event with body",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "xyz789",
 					"routeKey":     "sendMessage",
 					"stage":        "dev",
@@ -151,8 +151,8 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 		},
 		{
 			name: "Disconnect event",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "conn123",
 					"routeKey":     "$disconnect",
 					"stage":        "prod",
@@ -173,8 +173,8 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 		},
 		{
 			name: "Base64 encoded body",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "conn456",
 					"routeKey":     "message",
 					"stage":        "prod",
@@ -195,15 +195,15 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 		},
 		{
 			name: "Invalid event - missing requestContext",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"body": "test",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Invalid event - missing connectionId",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"routeKey": "$connect",
 				},
 			},
@@ -257,8 +257,8 @@ func TestWebSocketQueryParameterBugFix(t *testing.T) {
 	adapter := NewWebSocketAdapter()
 
 	// Test with map[string]string query parameters (the bug case)
-	event := map[string]interface{}{
-		"requestContext": map[string]interface{}{
+	event := map[string]any{
+		"requestContext": map[string]any{
 			"connectionId": "test-connection-123",
 			"routeKey":     "$connect",
 			"stage":        "test",
@@ -298,17 +298,17 @@ func TestWebSocketQueryParameterBugFix(t *testing.T) {
 }
 
 // TestExtractStringMapFieldBothTypes tests that extractStringMapField handles both
-// map[string]string and map[string]interface{} input types
+// map[string]string and map[string]any input types
 func TestExtractStringMapFieldBothTypes(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     map[string]interface{}
+		data     map[string]any
 		key      string
 		expected map[string]string
 	}{
 		{
 			name: "map[string]string input",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"params": map[string]string{
 					"Authorization": "Bearer token123",
 					"userId":        "12345",
@@ -321,9 +321,9 @@ func TestExtractStringMapFieldBothTypes(t *testing.T) {
 			},
 		},
 		{
-			name: "map[string]interface{} input",
-			data: map[string]interface{}{
-				"params": map[string]interface{}{
+			name: "map[string]any input",
+			data: map[string]any{
+				"params": map[string]any{
 					"Authorization": "Bearer token123",
 					"userId":        "12345",
 				},
@@ -335,9 +335,9 @@ func TestExtractStringMapFieldBothTypes(t *testing.T) {
 			},
 		},
 		{
-			name: "mixed types in map[string]interface{}",
-			data: map[string]interface{}{
-				"params": map[string]interface{}{
+			name: "mixed types in map[string]any",
+			data: map[string]any{
+				"params": map[string]any{
 					"Authorization": "Bearer token123",
 					"userId":        12345, // non-string value should be ignored
 					"active":        true,  // non-string value should be ignored
@@ -350,7 +350,7 @@ func TestExtractStringMapFieldBothTypes(t *testing.T) {
 		},
 		{
 			name: "empty map",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"params": map[string]string{},
 			},
 			key:      "params",
@@ -358,7 +358,7 @@ func TestExtractStringMapFieldBothTypes(t *testing.T) {
 		},
 		{
 			name:     "missing key",
-			data:     map[string]interface{}{},
+			data:     map[string]any{},
 			key:      "params",
 			expected: map[string]string{},
 		},
@@ -387,14 +387,14 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		event       interface{}
+		event       any
 		wantErr     bool
 		checkResult func(*testing.T, *Request)
 	}{
 		{
 			name: "extremely large message body",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "large-msg-conn",
 					"routeKey":     "message",
 					"stage":        "prod",
@@ -413,8 +413,8 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "malformed base64 body",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "malformed-b64",
 					"routeKey":     "message",
 					"stage":        "prod",
@@ -432,8 +432,8 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "nil values in requestContext",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "nil-test",
 					"routeKey":     "$connect",
 					"stage":        nil,
@@ -452,8 +452,8 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "empty connectionId",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "",
 					"routeKey":     "$connect",
 				},
@@ -462,8 +462,8 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "special characters in route key",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "special-chars",
 					"routeKey":     "route/with/slashes",
 					"stage":        "prod",
@@ -478,8 +478,8 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "unicode in body",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "unicode-test",
 					"routeKey":     "message",
 					"stage":        "prod",
@@ -496,13 +496,13 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "mixed type headers",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "mixed-headers",
 					"routeKey":     "$connect",
 					"stage":        "prod",
 				},
-				"headers": map[string]interface{}{
+				"headers": map[string]any{
 					"String-Header": "value",
 					"Number-Header": 12345,
 					"Bool-Header":   true,
@@ -522,14 +522,14 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "deeply nested query parameters",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": "nested-query",
 					"routeKey":     "$connect",
 					"stage":        "prod",
 				},
-				"queryStringParameters": map[string]interface{}{
-					"nested": map[string]interface{}{
+				"queryStringParameters": map[string]any{
+					"nested": map[string]any{
 						"should": "not work",
 					},
 				},
@@ -544,15 +544,15 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "requestContext is wrong type",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"requestContext": "not a map",
 			},
 			wantErr: true,
 		},
 		{
 			name: "connectionId is wrong type",
-			event: map[string]interface{}{
-				"requestContext": map[string]interface{}{
+			event: map[string]any{
+				"requestContext": map[string]any{
 					"connectionId": 12345, // number instead of string
 					"routeKey":     "$connect",
 				},
@@ -561,7 +561,7 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "empty event",
-			event: map[string]interface{}{},
+			event: map[string]any{},
 			wantErr: true,
 		},
 		{
@@ -590,21 +590,21 @@ func TestWebSocketAdapter_Concurrent(t *testing.T) {
 	adapter := NewWebSocketAdapter()
 	
 	// Create multiple events
-	events := []interface{}{
-		map[string]interface{}{
-			"requestContext": map[string]interface{}{
+	events := []any{
+		map[string]any{
+			"requestContext": map[string]any{
 				"connectionId": "conn1",
 				"routeKey":     "$connect",
 			},
 		},
-		map[string]interface{}{
-			"requestContext": map[string]interface{}{
+		map[string]any{
+			"requestContext": map[string]any{
 				"connectionId": "conn2",
 				"routeKey":     "$disconnect",
 			},
 		},
-		map[string]interface{}{
-			"requestContext": map[string]interface{}{
+		map[string]any{
+			"requestContext": map[string]any{
 				"connectionId": "conn3",
 				"routeKey":     "message",
 			},
@@ -616,7 +616,7 @@ func TestWebSocketAdapter_Concurrent(t *testing.T) {
 	done := make(chan bool, len(events)*10)
 	for i := 0; i < 10; i++ {
 		for _, event := range events {
-			go func(e interface{}) {
+			go func(e any) {
 				_, err := adapter.Adapt(e)
 				if err != nil {
 					t.Errorf("Concurrent Adapt() failed: %v", err)
@@ -637,8 +637,8 @@ func TestWebSocketAdapter_RealWorldEvent(t *testing.T) {
 	adapter := NewWebSocketAdapter()
 
 	// This is a more complete real-world WebSocket event from API Gateway
-	event := map[string]interface{}{
-		"requestContext": map[string]interface{}{
+	event := map[string]any{
+		"requestContext": map[string]any{
 			"routeKey":       "$connect",
 			"messageId":      nil,
 			"eventType":      "CONNECT",
@@ -648,7 +648,7 @@ func TestWebSocketAdapter_RealWorldEvent(t *testing.T) {
 			"stage":          "production",
 			"connectedAt":    1706014496000,
 			"requestTimeEpoch": 1706014496123,
-			"identity": map[string]interface{}{
+			"identity": map[string]any{
 				"cognitoIdentityPoolId": nil,
 				"cognitoIdentityId":     nil,
 				"principalOrgId":        nil,
@@ -671,11 +671,11 @@ func TestWebSocketAdapter_RealWorldEvent(t *testing.T) {
 			"Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
 			"version":       "1.0",
 		},
-		"multiValueQueryStringParameters": map[string]interface{}{
+		"multiValueQueryStringParameters": map[string]any{
 			"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."},
 			"version":       []string{"1.0"},
 		},
-		"headers": map[string]interface{}{
+		"headers": map[string]any{
 			"Host":                          "abcdefghij.execute-api.us-east-1.amazonaws.com",
 			"Sec-WebSocket-Extensions":      "permessage-deflate; client_max_window_bits",
 			"Sec-WebSocket-Key":             "wPwGEh8hbiMmL8+a+y5FRQ==",
@@ -692,7 +692,7 @@ func TestWebSocketAdapter_RealWorldEvent(t *testing.T) {
 			"sec-websocket-protocol":        "chat",
 			"user-agent":                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
 		},
-		"multiValueHeaders": map[string]interface{}{
+		"multiValueHeaders": map[string]any{
 			"Host":                          []string{"abcdefghij.execute-api.us-east-1.amazonaws.com"},
 			"Sec-WebSocket-Extensions":      []string{"permessage-deflate; client_max_window_bits"},
 			"Sec-WebSocket-Key":             []string{"wPwGEh8hbiMmL8+a+y5FRQ=="},

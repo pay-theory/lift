@@ -13,7 +13,7 @@ import (
 // MockDynamORM provides a mock implementation of DynamORM for testing
 type MockDynamORM struct {
 	mu           sync.RWMutex
-	data         map[string]map[string]interface{} // table -> key -> item
+	data         map[string]map[string]any // table -> key -> item
 	transactions map[string]*MockTransaction       // transaction ID -> transaction
 	config       *dynamorm.DynamORMConfig
 
@@ -25,7 +25,7 @@ type MockDynamORM struct {
 // NewMockDynamORM creates a new mock DynamORM instance
 func NewMockDynamORM() *MockDynamORM {
 	return &MockDynamORM{
-		data:            make(map[string]map[string]interface{}),
+		data:            make(map[string]map[string]any),
 		transactions:    make(map[string]*MockTransaction),
 		config:          dynamorm.DefaultConfig(),
 		FailOnOperation: make(map[string]error),
@@ -50,19 +50,19 @@ func (m *MockDynamORM) WithDelay(operation string, delay time.Duration) *MockDyn
 }
 
 // WithData pre-populates the mock with test data
-func (m *MockDynamORM) WithData(table, key string, item interface{}) *MockDynamORM {
+func (m *MockDynamORM) WithData(table, key string, item any) *MockDynamORM {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if m.data[table] == nil {
-		m.data[table] = make(map[string]interface{})
+		m.data[table] = make(map[string]any)
 	}
 	m.data[table][key] = item
 	return m
 }
 
 // Get retrieves an item by key
-func (m *MockDynamORM) Get(ctx context.Context, table, key string, result interface{}) error {
+func (m *MockDynamORM) Get(ctx context.Context, table, key string, result any) error {
 	if err := m.simulateOperation("get"); err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (m *MockDynamORM) Get(ctx context.Context, table, key string, result interf
 }
 
 // Put saves an item
-func (m *MockDynamORM) Put(ctx context.Context, table, key string, item interface{}) error {
+func (m *MockDynamORM) Put(ctx context.Context, table, key string, item any) error {
 	if err := m.simulateOperation("put"); err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (m *MockDynamORM) Put(ctx context.Context, table, key string, item interfac
 	defer m.mu.Unlock()
 
 	if m.data[table] == nil {
-		m.data[table] = make(map[string]interface{})
+		m.data[table] = make(map[string]any)
 	}
 
 	m.data[table][key] = item
@@ -134,13 +134,13 @@ func (m *MockDynamORM) Query(ctx context.Context, table string, query *dynamorm.
 	tableData, exists := m.data[table]
 	if !exists {
 		return &dynamorm.QueryResult{
-			Items: []interface{}{},
+			Items: []any{},
 			Count: 0,
 		}, nil
 	}
 
 	// Simple implementation - return all items (for now)
-	items := make([]interface{}, 0, len(tableData))
+	items := make([]any, 0, len(tableData))
 	for _, item := range tableData {
 		items = append(items, item)
 	}
@@ -188,14 +188,14 @@ func (m *MockDynamORM) simulateOperation(operation string) error {
 }
 
 // GetAllData returns all data for testing inspection
-func (m *MockDynamORM) GetAllData() map[string]map[string]interface{} {
+func (m *MockDynamORM) GetAllData() map[string]map[string]any {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	// Deep copy to prevent external modification
-	result := make(map[string]map[string]interface{})
+	result := make(map[string]map[string]any)
 	for table, tableData := range m.data {
-		result[table] = make(map[string]interface{})
+		result[table] = make(map[string]any)
 		for key, item := range tableData {
 			result[table][key] = item
 		}
@@ -209,7 +209,7 @@ func (m *MockDynamORM) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.data = make(map[string]map[string]interface{})
+	m.data = make(map[string]map[string]any)
 	m.transactions = make(map[string]*MockTransaction)
 	m.FailOnOperation = make(map[string]error)
 	m.Delays = make(map[string]time.Duration)
@@ -230,11 +230,11 @@ type TransactionOperation struct {
 	Type  string // "put", "delete", etc.
 	Table string
 	Key   string
-	Item  interface{}
+	Item  any
 }
 
 // Put adds a put operation to the transaction
-func (tx *MockTransaction) Put(ctx context.Context, table, key string, item interface{}) error {
+func (tx *MockTransaction) Put(ctx context.Context, table, key string, item any) error {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 
@@ -285,7 +285,7 @@ func (tx *MockTransaction) Commit() error {
 		case "put":
 			tx.mock.mu.Lock()
 			if tx.mock.data[op.Table] == nil {
-				tx.mock.data[op.Table] = make(map[string]interface{})
+				tx.mock.data[op.Table] = make(map[string]any)
 			}
 			tx.mock.data[op.Table][op.Key] = op.Item
 			tx.mock.mu.Unlock()
@@ -319,7 +319,7 @@ func (tx *MockTransaction) Rollback() error {
 // MockAWSService provides a generic mock for AWS services
 type MockAWSService struct {
 	mu        sync.RWMutex
-	responses map[string]interface{} // operation -> response
+	responses map[string]any // operation -> response
 	errors    map[string]error       // operation -> error
 	callCount map[string]int         // operation -> call count
 }
@@ -327,14 +327,14 @@ type MockAWSService struct {
 // NewMockAWSService creates a new mock AWS service
 func NewMockAWSService() *MockAWSService {
 	return &MockAWSService{
-		responses: make(map[string]interface{}),
+		responses: make(map[string]any),
 		errors:    make(map[string]error),
 		callCount: make(map[string]int),
 	}
 }
 
 // WithResponse configures a response for an operation
-func (m *MockAWSService) WithResponse(operation string, response interface{}) *MockAWSService {
+func (m *MockAWSService) WithResponse(operation string, response any) *MockAWSService {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.responses[operation] = response
@@ -350,7 +350,7 @@ func (m *MockAWSService) WithError(operation string, err error) *MockAWSService 
 }
 
 // Call simulates calling an AWS service operation
-func (m *MockAWSService) Call(operation string, input interface{}) (interface{}, error) {
+func (m *MockAWSService) Call(operation string, input any) (any, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -383,7 +383,7 @@ func (m *MockAWSService) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.responses = make(map[string]interface{})
+	m.responses = make(map[string]any)
 	m.errors = make(map[string]error)
 	m.callCount = make(map[string]int)
 }
@@ -477,40 +477,40 @@ func (w *MockDynamORMWrapper) WithTenant(tenantID string) *MockDynamORMWrapper {
 }
 
 // Get retrieves an item by key (matches DynamORMWrapper interface)
-func (w *MockDynamORMWrapper) Get(ctx context.Context, key interface{}, result interface{}) error {
+func (w *MockDynamORMWrapper) Get(ctx context.Context, key any, result any) error {
 	keyStr := fmt.Sprintf("%v", key)
 	return w.mock.Get(ctx, w.tableName, keyStr, result)
 }
 
 // Put saves an item (matches DynamORMWrapper interface)
-func (w *MockDynamORMWrapper) Put(ctx context.Context, item interface{}) error {
+func (w *MockDynamORMWrapper) Put(ctx context.Context, item any) error {
 	// Extract ID from item for the key
 	keyStr := w.extractID(item)
 	return w.mock.Put(ctx, w.tableName, keyStr, item)
 }
 
 // Delete removes an item (matches DynamORMWrapper interface)
-func (w *MockDynamORMWrapper) Delete(ctx context.Context, key interface{}) error {
+func (w *MockDynamORMWrapper) Delete(ctx context.Context, key any) error {
 	keyStr := fmt.Sprintf("%v", key)
 	return w.mock.Delete(ctx, w.tableName, keyStr)
 }
 
 // Query performs a query operation (matches DynamORMWrapper interface)
-func (w *MockDynamORMWrapper) Query(ctx context.Context, query interface{}) (interface{}, error) {
+func (w *MockDynamORMWrapper) Query(ctx context.Context, query any) (any, error) {
 	// Simple implementation for testing
 	return w.mock.Query(ctx, w.tableName, nil)
 }
 
 // BeginTransaction starts a mock transaction
-func (w *MockDynamORMWrapper) BeginTransaction() (interface{}, error) {
+func (w *MockDynamORMWrapper) BeginTransaction() (any, error) {
 	return w.mock.BeginTransaction()
 }
 
 // extractID extracts the ID field from an item using reflection or type assertion
-func (w *MockDynamORMWrapper) extractID(item interface{}) string {
+func (w *MockDynamORMWrapper) extractID(item any) string {
 	// Try to extract ID field using type assertion for common types
 	switch v := item.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		if id, ok := v["id"].(string); ok {
 			return id
 		}
@@ -529,7 +529,7 @@ func (w *MockDynamORMWrapper) extractID(item interface{}) string {
 }
 
 // WithData pre-populates the mock with test data
-func (w *MockDynamORMWrapper) WithData(key string, item interface{}) *MockDynamORMWrapper {
+func (w *MockDynamORMWrapper) WithData(key string, item any) *MockDynamORMWrapper {
 	w.mock.WithData(w.tableName, key, item)
 	return w
 }
@@ -541,7 +541,7 @@ func (w *MockDynamORMWrapper) WithFailure(operation string, err error) *MockDyna
 }
 
 // GetAllData returns all data for testing inspection
-func (w *MockDynamORMWrapper) GetAllData() map[string]map[string]interface{} {
+func (w *MockDynamORMWrapper) GetAllData() map[string]map[string]any {
 	return w.mock.GetAllData()
 }
 
@@ -566,7 +566,7 @@ type MockConnection struct {
 	LastActiveAt time.Time              `json:"last_active_at"`
 	SourceIP     string                 `json:"source_ip"`
 	UserAgent    string                 `json:"user_agent"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Metadata     map[string]any `json:"metadata,omitempty"`
 }
 
 // MockAPIGatewayConfig configures the behavior of the API Gateway mock
@@ -633,7 +633,7 @@ func (m *MockAPIGatewayManagementClient) WithConnection(connectionID string, con
 			LastActiveAt: time.Now(),
 			SourceIP:     "127.0.0.1",
 			UserAgent:    "MockClient/1.0",
-			Metadata:     make(map[string]interface{}),
+			Metadata:     make(map[string]any),
 		}
 	}
 
@@ -874,7 +874,7 @@ func (m *MockAPIGatewayManagementClient) GetConnectionState(connectionID string)
 	// Return a copy to prevent external modification
 	connCopy := *conn
 	if conn.Metadata != nil {
-		connCopy.Metadata = make(map[string]interface{})
+		connCopy.Metadata = make(map[string]any)
 		for k, v := range conn.Metadata {
 			connCopy.Metadata[k] = v
 		}
@@ -894,7 +894,7 @@ func (m *MockAPIGatewayManagementClient) GetActiveConnections() map[string]*Mock
 			// Return a copy
 			connCopy := *conn
 			if conn.Metadata != nil {
-				connCopy.Metadata = make(map[string]interface{})
+				connCopy.Metadata = make(map[string]any)
 				for k, v := range conn.Metadata {
 					connCopy.Metadata[k] = v
 				}
@@ -970,7 +970,7 @@ type MockMetricDatum struct {
 	Unit       MetricUnit             `json:"unit"`
 	Timestamp  time.Time              `json:"timestamp"`
 	Dimensions map[string]string      `json:"dimensions,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 }
 
 // AlarmState represents the state of a CloudWatch alarm
@@ -1135,7 +1135,7 @@ func (m *MockCloudWatchMetricsClient) PutMetricData(ctx context.Context, namespa
 			}
 		}
 		if datum.Metadata != nil {
-			datumCopy.Metadata = make(map[string]interface{})
+			datumCopy.Metadata = make(map[string]any)
 			for k, v := range datum.Metadata {
 				datumCopy.Metadata[k] = v
 			}
@@ -1527,7 +1527,7 @@ func (m *MockCloudWatchMetricsClient) GetMetrics(namespace string) []*MockMetric
 			}
 		}
 		if metric.Metadata != nil {
-			metricCopy.Metadata = make(map[string]interface{})
+			metricCopy.Metadata = make(map[string]any)
 			for k, v := range metric.Metadata {
 				metricCopy.Metadata[k] = v
 			}
@@ -1555,7 +1555,7 @@ func (m *MockCloudWatchMetricsClient) GetAllMetrics() map[string][]*MockMetricDa
 				}
 			}
 			if metric.Metadata != nil {
-				metricCopy.Metadata = make(map[string]interface{})
+				metricCopy.Metadata = make(map[string]any)
 				for k, v := range metric.Metadata {
 					metricCopy.Metadata[k] = v
 				}

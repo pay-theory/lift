@@ -16,11 +16,11 @@ type ValidationRule struct {
 	Field      string                  `json:"field"`
 	Type       string                  `json:"type"`
 	Required   bool                    `json:"required"`
-	Min        interface{}             `json:"min,omitempty"`
-	Max        interface{}             `json:"max,omitempty"`
+	Min        any             `json:"min,omitempty"`
+	Max        any             `json:"max,omitempty"`
 	Pattern    string                  `json:"pattern,omitempty"`
-	Enum       []interface{}           `json:"enum,omitempty"`
-	Custom     func(interface{}) error `json:"-"`
+	Enum       []any           `json:"enum,omitempty"`
+	Custom     func(any) error `json:"-"`
 	Message    string                  `json:"message,omitempty"`
 	Conditions []ValidationCondition   `json:"conditions,omitempty"`
 }
@@ -29,7 +29,7 @@ type ValidationRule struct {
 type ValidationCondition struct {
 	Field    string      `json:"field"`
 	Operator string      `json:"operator"` // "eq", "ne", "gt", "lt", "in", "not_in"
-	Value    interface{} `json:"value"`
+	Value    any `json:"value"`
 }
 
 // ValidationSchema defines a complete validation schema
@@ -38,14 +38,14 @@ type ValidationSchema struct {
 	Properties map[string]ValidationRule `json:"properties"`
 	Required   []string                  `json:"required"`
 	Rules      []ValidationRule          `json:"rules"`
-	Custom     func(interface{}) error   `json:"-"`
+	Custom     func(any) error   `json:"-"`
 }
 
 // ValidationError represents a validation error
 type ValidationError struct {
 	Field   string      `json:"field"`
 	Message string      `json:"message"`
-	Value   interface{} `json:"value,omitempty"`
+	Value   any `json:"value,omitempty"`
 	Code    string      `json:"code"`
 }
 
@@ -62,7 +62,7 @@ type ValidationConfig struct {
 	ValidateRequest  bool
 	ValidateResponse bool
 	StrictMode       bool
-	CustomValidators map[string]func(interface{}) error
+	CustomValidators map[string]func(any) error
 	ErrorHandler     func(*lift.Context, []ValidationError) error
 }
 
@@ -111,7 +111,7 @@ func (vm *ValidationMiddleware) Validate() lift.Middleware {
 
 func (vm *ValidationMiddleware) validateRequest(ctx *lift.Context) error {
 	// Parse request body
-	var requestData interface{}
+	var requestData any
 	if err := ctx.ParseRequest(&requestData); err != nil {
 		return vm.config.ErrorHandler(ctx, []ValidationError{
 			{
@@ -138,11 +138,11 @@ func (vm *ValidationMiddleware) validateResponse(ctx *lift.Context) error {
 	return nil
 }
 
-func (vm *ValidationMiddleware) validateData(data interface{}, schema *ValidationSchema) ValidationResult {
+func (vm *ValidationMiddleware) validateData(data any, schema *ValidationSchema) ValidationResult {
 	result := ValidationResult{Valid: true, Errors: []ValidationError{}}
 
 	// Convert data to map for easier processing
-	dataMap, ok := data.(map[string]interface{})
+	dataMap, ok := data.(map[string]any)
 	if !ok {
 		result.Valid = false
 		result.Errors = append(result.Errors, ValidationError{
@@ -221,7 +221,7 @@ func (vm *ValidationMiddleware) validateData(data interface{}, schema *Validatio
 	return result
 }
 
-func (vm *ValidationMiddleware) validateField(field string, value interface{}, rule ValidationRule) *ValidationError {
+func (vm *ValidationMiddleware) validateField(field string, value any, rule ValidationRule) *ValidationError {
 	// Check conditions first
 	if len(rule.Conditions) > 0 {
 		// For now, skip conditional validation
@@ -275,7 +275,7 @@ func (vm *ValidationMiddleware) validateField(field string, value interface{}, r
 	return nil
 }
 
-func (vm *ValidationMiddleware) validateType(field string, value interface{}, expectedType string) *ValidationError {
+func (vm *ValidationMiddleware) validateType(field string, value any, expectedType string) *ValidationError {
 	actualType := vm.getValueType(value)
 
 	if actualType != expectedType {
@@ -290,7 +290,7 @@ func (vm *ValidationMiddleware) validateType(field string, value interface{}, ex
 	return nil
 }
 
-func (vm *ValidationMiddleware) validateRange(field string, value interface{}, min, max interface{}) *ValidationError {
+func (vm *ValidationMiddleware) validateRange(field string, value any, min, max any) *ValidationError {
 	switch v := value.(type) {
 	case string:
 		length := len(v)
@@ -336,7 +336,7 @@ func (vm *ValidationMiddleware) validateRange(field string, value interface{}, m
 				}
 			}
 		}
-	case []interface{}:
+	case []any:
 		length := len(v)
 		if min != nil {
 			if minLen, ok := min.(int); ok && length < minLen {
@@ -363,7 +363,7 @@ func (vm *ValidationMiddleware) validateRange(field string, value interface{}, m
 	return nil
 }
 
-func (vm *ValidationMiddleware) validatePattern(field string, value interface{}, pattern string) *ValidationError {
+func (vm *ValidationMiddleware) validatePattern(field string, value any, pattern string) *ValidationError {
 	str, ok := value.(string)
 	if !ok {
 		return &ValidationError{
@@ -396,7 +396,7 @@ func (vm *ValidationMiddleware) validatePattern(field string, value interface{},
 	return nil
 }
 
-func (vm *ValidationMiddleware) validateEnum(field string, value interface{}, enum []interface{}) *ValidationError {
+func (vm *ValidationMiddleware) validateEnum(field string, value any, enum []any) *ValidationError {
 	for _, enumValue := range enum {
 		if vm.valuesEqual(value, enumValue) {
 			return nil
@@ -411,7 +411,7 @@ func (vm *ValidationMiddleware) validateEnum(field string, value interface{}, en
 	}
 }
 
-func (vm *ValidationMiddleware) getValueType(value interface{}) string {
+func (vm *ValidationMiddleware) getValueType(value any) string {
 	if value == nil {
 		return "null"
 	}
@@ -425,16 +425,16 @@ func (vm *ValidationMiddleware) getValueType(value interface{}) string {
 		return "number"
 	case string:
 		return "string"
-	case []interface{}:
+	case []any:
 		return "array"
-	case map[string]interface{}:
+	case map[string]any:
 		return "object"
 	default:
 		return "unknown"
 	}
 }
 
-func (vm *ValidationMiddleware) toFloat64(value interface{}) float64 {
+func (vm *ValidationMiddleware) toFloat64(value any) float64 {
 	switch v := value.(type) {
 	case int:
 		return float64(v)
@@ -454,7 +454,7 @@ func (vm *ValidationMiddleware) toFloat64(value interface{}) float64 {
 	return 0
 }
 
-func (vm *ValidationMiddleware) valuesEqual(a, b interface{}) bool {
+func (vm *ValidationMiddleware) valuesEqual(a, b any) bool {
 	return reflect.DeepEqual(a, b)
 }
 
@@ -495,7 +495,7 @@ func URLValidation() ValidationRule {
 func DateValidation() ValidationRule {
 	return ValidationRule{
 		Type: "string",
-		Custom: func(value interface{}) error {
+		Custom: func(value any) error {
 			str, ok := value.(string)
 			if !ok {
 				return fmt.Errorf("date must be a string")
@@ -525,7 +525,7 @@ func UUIDValidation() ValidationRule {
 func CreditCardValidation() ValidationRule {
 	return ValidationRule{
 		Type: "string",
-		Custom: func(value interface{}) error {
+		Custom: func(value any) error {
 			str, ok := value.(string)
 			if !ok {
 				return fmt.Errorf("credit card number must be a string")
@@ -655,7 +655,7 @@ func (s *ValidationSchema) AddRule(rule ValidationRule) *ValidationSchema {
 }
 
 // SetCustom sets a custom validation function
-func (s *ValidationSchema) SetCustom(fn func(interface{}) error) *ValidationSchema {
+func (s *ValidationSchema) SetCustom(fn func(any) error) *ValidationSchema {
 	s.Custom = fn
 	return s
 }

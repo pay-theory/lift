@@ -95,7 +95,7 @@ func (sc *SecurityContext) GetClientIP() string {
 	// Extract from API Gateway context
 	requestContext := sc.Request.RequestContext()
 	if len(requestContext) > 0 {
-		if identity, ok := requestContext["identity"].(map[string]interface{}); ok {
+		if identity, ok := requestContext["identity"].(map[string]any); ok {
 			if sourceIP, ok := identity["sourceIp"].(string); ok {
 				return sourceIP
 			}
@@ -147,8 +147,8 @@ func (sc *SecurityContext) ValidateTenant(expectedTenantID string) bool {
 }
 
 // ToAuditMap returns a map suitable for audit logging
-func (sc *SecurityContext) ToAuditMap() map[string]interface{} {
-	auditData := map[string]interface{}{
+func (sc *SecurityContext) ToAuditMap() map[string]any {
+	auditData := map[string]any{
 		"request_id":  sc.requestID,
 		"method":      sc.Request.Method,
 		"path":        sc.Request.Path,

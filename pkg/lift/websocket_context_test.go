@@ -22,13 +22,13 @@ func TestWebSocketContext_AsWebSocket(t *testing.T) {
 				req := &Request{
 					Request: &adapters.Request{
 						TriggerType: TriggerWebSocket,
-						Metadata: map[string]interface{}{
+						Metadata: map[string]any{
 							"connectionId": "test-conn-123",
 							"stage":        "prod",
 							"domainName":   "example.execute-api.us-east-1.amazonaws.com",
 						},
-						RawEvent: map[string]interface{}{
-							"requestContext": map[string]interface{}{
+						RawEvent: map[string]any{
+							"requestContext": map[string]any{
 								"connectionId": "test-conn-123",
 								"stage":        "prod",
 								"domainName":   "example.execute-api.us-east-1.amazonaws.com",
@@ -48,7 +48,7 @@ func TestWebSocketContext_AsWebSocket(t *testing.T) {
 				req := &Request{
 					Request: &adapters.Request{
 						TriggerType: TriggerAPIGateway,
-						RawEvent: map[string]interface{}{
+						RawEvent: map[string]any{
 							"httpMethod": "GET",
 						},
 					},
@@ -63,7 +63,7 @@ func TestWebSocketContext_AsWebSocket(t *testing.T) {
 				req := &Request{
 					Request: &adapters.Request{
 						TriggerType: TriggerWebSocket,
-						Metadata: map[string]interface{}{
+						Metadata: map[string]any{
 							"stage": "prod",
 						},
 					},
@@ -99,7 +99,7 @@ func TestWebSocketContext_WithRegion(t *testing.T) {
 	req := &Request{
 		Request: &adapters.Request{
 			TriggerType: TriggerWebSocket,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"connectionId": "test-conn",
 			},
 		},
@@ -125,7 +125,7 @@ func TestWebSocketContext_GetRegion(t *testing.T) {
 				req := &Request{
 					Request: &adapters.Request{
 						TriggerType: TriggerWebSocket,
-						Metadata: map[string]interface{}{
+						Metadata: map[string]any{
 							"connectionId": "test-conn",
 						},
 					},
@@ -143,7 +143,7 @@ func TestWebSocketContext_GetRegion(t *testing.T) {
 				req := &Request{
 					Request: &adapters.Request{
 						TriggerType: TriggerWebSocket,
-						Metadata: map[string]interface{}{
+						Metadata: map[string]any{
 							"connectionId": "test-conn",
 						},
 					},
@@ -208,7 +208,7 @@ func TestWebSocketContext_HelperMethods(t *testing.T) {
 			req := &Request{
 				Request: &adapters.Request{
 					TriggerType: TriggerWebSocket,
-					Metadata: map[string]interface{}{
+					Metadata: map[string]any{
 						"connectionId": "test-conn",
 						"routeKey":     tt.routeKey,
 					},
@@ -239,7 +239,7 @@ func TestWebSocketContext_GetAuthorizationFromQuery(t *testing.T) {
 						QueryParams: map[string]string{
 							"Authorization": "Bearer token123",
 						},
-						Metadata: map[string]interface{}{
+						Metadata: map[string]any{
 							"connectionId": "test-conn",
 						},
 					},
@@ -262,7 +262,7 @@ func TestWebSocketContext_GetAuthorizationFromQuery(t *testing.T) {
 						QueryParams: map[string]string{
 							"other": "value",
 						},
-						Metadata: map[string]interface{}{
+						Metadata: map[string]any{
 							"connectionId": "test-conn",
 						},
 					},
@@ -290,7 +290,7 @@ func TestWebSocketContext_GetAuthorizationFromQuery(t *testing.T) {
 func TestWebSocketContext_EndpointMethods(t *testing.T) {
 	tests := []struct {
 		name               string
-		metadata           map[string]interface{}
+		metadata           map[string]any
 		expectedConnID     string
 		expectedRouteKey   string
 		expectedEventType  string
@@ -300,7 +300,7 @@ func TestWebSocketContext_EndpointMethods(t *testing.T) {
 	}{
 		{
 			name: "all metadata present",
-			metadata: map[string]interface{}{
+			metadata: map[string]any{
 				"connectionId":        "conn-123",
 				"routeKey":            "$connect",
 				"eventType":           "CONNECT",
@@ -317,7 +317,7 @@ func TestWebSocketContext_EndpointMethods(t *testing.T) {
 		},
 		{
 			name:               "empty metadata",
-			metadata:           map[string]interface{}{},
+			metadata:           map[string]any{},
 			expectedConnID:     "",
 			expectedRouteKey:   "",
 			expectedEventType:  "",
@@ -372,7 +372,7 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 		req := &Request{
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"connectionId": 123, // wrong type
 					"routeKey":     true, // wrong type
 				},
@@ -389,7 +389,7 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 		req := &Request{
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"connectionId": "test-conn",
 				},
 			},
@@ -407,7 +407,7 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 		req := &Request{
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"managementEndpoint": "https://api.example.com/prod",
 				},
 			},
@@ -431,7 +431,7 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
 				Body:        largeMessage,
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"connectionId": "test-conn",
 				},
 			},
@@ -449,7 +449,7 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 		req := &Request{
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"connectionId":       "test-conn",
 					"managementEndpoint": "https://api.example.com/prod",
 				},
@@ -468,7 +468,7 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 		req := &Request{
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"connectionId":       "test-conn",
 					"managementEndpoint": "https://api.example.com/prod",
 				},
@@ -490,7 +490,7 @@ func TestWebSocketContext_APIErrorHandling(t *testing.T) {
 		req := &Request{
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"connectionId":       "test-conn",
 					"managementEndpoint": "https://api.example.com/prod",
 				},
@@ -508,7 +508,7 @@ func TestWebSocketContext_APIErrorHandling(t *testing.T) {
 		req := &Request{
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"connectionId":       "test-conn",
 					"managementEndpoint": "https://api.example.com/prod",
 				},
@@ -530,7 +530,7 @@ func TestWebSocketContext_ConcurrentSafety(t *testing.T) {
 	req := &Request{
 		Request: &adapters.Request{
 			TriggerType: TriggerWebSocket,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"connectionId":       "test-conn",
 				"routeKey":           "$default",
 				"managementEndpoint": "https://api.example.com/prod",
@@ -564,24 +564,24 @@ func TestWebSocketContext_ConcurrentSafety(t *testing.T) {
 func TestWebSocketContext_MalformedEvents(t *testing.T) {
 	tests := []struct {
 		name      string
-		event     interface{}
+		event     any
 		expectErr bool
 	}{
 		{
 			name: "completely empty event",
-			event: map[string]interface{}{},
+			event: map[string]any{},
 			expectErr: true,
 		},
 		{
 			name: "missing request context",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"body": "test",
 			},
 			expectErr: true,
 		},
 		{
 			name: "wrong trigger type",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"httpMethod": "GET",
 				"path":       "/test",
 			},

@@ -39,13 +39,13 @@ func NewMemoryCache(config MemoryCacheConfig) *MemoryCache {
 }
 
 // Get retrieves a value from the cache
-func (mc *MemoryCache) Get(ctx context.Context, key string) (interface{}, bool, error) {
+func (mc *MemoryCache) Get(ctx context.Context, key string) (any, bool, error) {
 	value, found := mc.cache.Get(key)
 	return value, found, nil
 }
 
 // Set stores a value in the cache
-func (mc *MemoryCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+func (mc *MemoryCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	if ttl == 0 {
 		// Use default TTL
 		mc.cache.Set(key, value, cache.DefaultExpiration)

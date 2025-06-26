@@ -111,7 +111,7 @@ type UpdateTaskRequest struct {
 
 // PaginatedResponse represents a paginated response
 type PaginatedResponse struct {
-	Data       interface{} `json:"data"`
+	Data       any `json:"data"`
 	Pagination Pagination  `json:"pagination"`
 }
 
@@ -127,26 +127,26 @@ type Pagination struct {
 
 // Mock database interface for demonstration
 type MockDB interface {
-	Put(ctx context.Context, item interface{}) error
-	Get(ctx context.Context, id string, item interface{}) error
+	Put(ctx context.Context, item any) error
+	Get(ctx context.Context, id string, item any) error
 }
 
 type mockDB struct {
-	data map[string]interface{}
+	data map[string]any
 }
 
 func newMockDB() MockDB {
 	return &mockDB{
-		data: make(map[string]interface{}),
+		data: make(map[string]any),
 	}
 }
 
-func (db *mockDB) Put(ctx context.Context, item interface{}) error {
+func (db *mockDB) Put(ctx context.Context, item any) error {
 	// Mock implementation
 	return nil
 }
 
-func (db *mockDB) Get(ctx context.Context, id string, item interface{}) error {
+func (db *mockDB) Get(ctx context.Context, id string, item any) error {
 	// Mock implementation
 	return nil
 }
@@ -798,7 +798,7 @@ func main() {
 	// Metrics and monitoring endpoints
 	app.GET("/metrics", func(ctx *lift.Context) error {
 		// Return application metrics
-		metrics := map[string]interface{}{
+		metrics := map[string]any{
 			"uptime":           time.Since(time.Now()).String(),
 			"memory_usage":     "N/A", // Would implement actual memory tracking
 			"active_tenants":   "N/A", // Would implement actual tenant counting
@@ -814,16 +814,16 @@ func main() {
 // Simple logger implementation for demo
 type simpleLogger struct{}
 
-func (l *simpleLogger) WithField(key string, value interface{}) lift.Logger {
+func (l *simpleLogger) WithField(key string, value any) lift.Logger {
 	return l
 }
 
-func (l *simpleLogger) WithFields(fields map[string]interface{}) lift.Logger {
+func (l *simpleLogger) WithFields(fields map[string]any) lift.Logger {
 	return l
 }
 
-func (l *simpleLogger) Debug(msg string, fields ...map[string]interface{}) {}
-func (l *simpleLogger) Info(msg string, fields ...map[string]interface{})  {}
-func (l *simpleLogger) Warn(msg string, fields ...map[string]interface{})  {}
-func (l *simpleLogger) Error(msg string, fields ...map[string]interface{}) {}
-func (l *simpleLogger) Fatal(msg string, fields ...map[string]interface{}) {}
+func (l *simpleLogger) Debug(msg string, fields ...map[string]any) {}
+func (l *simpleLogger) Info(msg string, fields ...map[string]any)  {}
+func (l *simpleLogger) Warn(msg string, fields ...map[string]any)  {}
+func (l *simpleLogger) Error(msg string, fields ...map[string]any) {}
+func (l *simpleLogger) Fatal(msg string, fields ...map[string]any) {}

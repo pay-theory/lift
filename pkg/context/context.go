@@ -64,22 +64,22 @@ func (c *Context) QueryParam(key string, defaultValue ...string) string {
 }
 
 // ParseJSON parses the request body as JSON
-func (c *Context) ParseJSON(target interface{}) error {
+func (c *Context) ParseJSON(target any) error {
 	return c.ParseRequest(target)
 }
 
 // noOpLogger is a fallback logger that does nothing
 type noOpLogger struct{}
 
-func (l *noOpLogger) Debug(msg string, fields ...map[string]interface{}) {}
-func (l *noOpLogger) Info(msg string, fields ...map[string]interface{})  {}
-func (l *noOpLogger) Warn(msg string, fields ...map[string]interface{})  {}
-func (l *noOpLogger) Error(msg string, fields ...map[string]interface{}) {}
-func (l *noOpLogger) Fatal(msg string, fields ...map[string]interface{}) {}
+func (l *noOpLogger) Debug(msg string, fields ...map[string]any) {}
+func (l *noOpLogger) Info(msg string, fields ...map[string]any)  {}
+func (l *noOpLogger) Warn(msg string, fields ...map[string]any)  {}
+func (l *noOpLogger) Error(msg string, fields ...map[string]any) {}
+func (l *noOpLogger) Fatal(msg string, fields ...map[string]any) {}
 
 // lift.Logger interface methods
-func (l *noOpLogger) WithField(key string, value interface{}) lift.Logger  { return l }
-func (l *noOpLogger) WithFields(fields map[string]interface{}) lift.Logger { return l }
+func (l *noOpLogger) WithField(key string, value any) lift.Logger  { return l }
+func (l *noOpLogger) WithFields(fields map[string]any) lift.Logger { return l }
 
 // StructuredLogger interface methods
 func (l *noOpLogger) WithRequestID(requestID string) observability.StructuredLogger { return l }

@@ -80,7 +80,7 @@ type SOC2Control struct {
 	ComplianceTarget float64                `json:"compliance_target"`
 	CriticalControl  bool                   `json:"critical_control"`
 	Dependencies     []string               `json:"dependencies"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 // TestProcedure defines how to test a control
@@ -92,7 +92,7 @@ type TestProcedure struct {
 	Description string                 `json:"description"`
 	Steps       []string               `json:"steps"`
 	Expected    string                 `json:"expected"`
-	Parameters  map[string]interface{} `json:"parameters"`
+	Parameters  map[string]any `json:"parameters"`
 }
 
 // ControlTestResult represents the result of a control test
@@ -112,7 +112,7 @@ type ControlTestResult struct {
 	TestDuration    time.Duration          `json:"test_duration"`
 	TesterID        string                 `json:"tester_id"`
 	ReviewerID      string                 `json:"reviewer_id"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // ControlStatus represents the current status of a control
@@ -126,7 +126,7 @@ type ControlStatus struct {
 	TrendDirection      string                 `json:"trend_direction"` // "improving", "stable", "declining"
 	RiskLevel           string                 `json:"risk_level"`
 	EffectivenessRating float64                `json:"effectiveness_rating"`
-	Metadata            map[string]interface{} `json:"metadata"`
+	Metadata            map[string]any `json:"metadata"`
 }
 
 // ControlEvidence represents evidence collected for a control
@@ -137,25 +137,25 @@ type ControlEvidence struct {
 	Description      string                 `json:"description"`
 	Source           string                 `json:"source"`
 	CollectionDate   time.Time              `json:"collection_date"`
-	Data             map[string]interface{} `json:"data"`
+	Data             map[string]any `json:"data"`
 	Verified         bool                   `json:"verified"`
 	VerificationDate *time.Time             `json:"verification_date,omitempty"`
 	VerifiedBy       string                 `json:"verified_by"`
 	Integrity        string                 `json:"integrity"` // checksum/hash
 	RetentionDate    time.Time              `json:"retention_date"`
 	Archived         bool                   `json:"archived"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 // SystemEvidence represents system-wide evidence
 type SystemEvidence struct {
 	CollectionDate    time.Time              `json:"collection_date"`
-	SystemMetrics     map[string]interface{} `json:"system_metrics"`
+	SystemMetrics     map[string]any `json:"system_metrics"`
 	SecurityLogs      []SecurityLogEntry     `json:"security_logs"`
 	AccessLogs        []AccessLogEntry       `json:"access_logs"`
-	ConfigurationData map[string]interface{} `json:"configuration_data"`
-	NetworkData       map[string]interface{} `json:"network_data"`
-	Metadata          map[string]interface{} `json:"metadata"`
+	ConfigurationData map[string]any `json:"configuration_data"`
+	NetworkData       map[string]any `json:"network_data"`
+	Metadata          map[string]any `json:"metadata"`
 }
 
 // SecurityLogEntry represents a security log entry
@@ -170,7 +170,7 @@ type SecurityLogEntry struct {
 	Result    string                 `json:"result"`
 	IPAddress string                 `json:"ip_address"`
 	UserAgent string                 `json:"user_agent"`
-	Details   map[string]interface{} `json:"details"`
+	Details   map[string]any `json:"details"`
 }
 
 // AccessLogEntry represents an access log entry
@@ -184,7 +184,7 @@ type AccessLogEntry struct {
 	SessionID    string                 `json:"session_id"`
 	Duration     time.Duration          `json:"duration"`
 	DataAccessed []string               `json:"data_accessed"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // ComplianceException represents a compliance exception
@@ -204,7 +204,7 @@ type ComplianceException struct {
 	RootCause          string                 `json:"root_cause"`
 	Remediation        string                 `json:"remediation"`
 	PreventiveMeasures []string               `json:"preventive_measures"`
-	Metadata           map[string]interface{} `json:"metadata"`
+	Metadata           map[string]any `json:"metadata"`
 }
 
 // ExceptionResolution represents the resolution of an exception
@@ -250,7 +250,7 @@ type ComplianceAlert struct {
 	AcknowledgedAt *time.Time             `json:"acknowledged_at,omitempty"`
 	Resolved       bool                   `json:"resolved"`
 	ResolvedAt     *time.Time             `json:"resolved_at,omitempty"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 // AlertRule defines alerting rules
@@ -264,7 +264,7 @@ type AlertRule struct {
 	Recipients  []string               `json:"recipients"`
 	Channels    []string               `json:"channels"`
 	Enabled     bool                   `json:"enabled"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // EvidenceValidation represents evidence validation results

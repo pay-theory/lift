@@ -71,7 +71,7 @@ func listTenantsHandler(ctx *lift.Context) error {
 		return lift.InternalError("Failed to list tenants")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"tenants": tenants,
 		"count":   len(tenants),
 	})
@@ -122,7 +122,7 @@ func listProductsHandler(ctx *lift.Context) error {
 		return lift.InternalError("Failed to list products")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"products": products,
 		"count":    len(products),
 	})
@@ -145,7 +145,7 @@ func searchProductsHandler(ctx *lift.Context) error {
 		return lift.InternalError("Product search failed")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"query":    query,
 		"products": products,
 		"count":    len(products),
@@ -195,7 +195,7 @@ func updateInventoryHandler(ctx *lift.Context) error {
 		return lift.InternalError("Failed to update inventory")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"productId": productID,
 		"quantity":  req.Quantity,
 		"updated":   true,
@@ -232,7 +232,7 @@ func listCustomersHandler(ctx *lift.Context) error {
 		return lift.InternalError("Failed to list customers")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"customers": customers,
 		"count":     len(customers),
 	})
@@ -277,7 +277,7 @@ func authenticateCustomerHandler(ctx *lift.Context) error {
 		return lift.Unauthorized("Invalid credentials")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"customer": customer,
 		"token":    "jwt_token_here",
 	})
@@ -314,7 +314,7 @@ func listOrdersHandler(ctx *lift.Context) error {
 		return lift.InternalError("Failed to list orders")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"orders": orders,
 		"count":  len(orders),
 	})
@@ -363,7 +363,7 @@ func updateOrderStatusHandler(ctx *lift.Context) error {
 		return lift.InternalError("Failed to update order status")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"orderId": orderID,
 		"status":  req.Status,
 		"updated": true,
@@ -386,7 +386,7 @@ func getCustomerOrdersHandler(ctx *lift.Context) error {
 		return lift.InternalError("Failed to get customer orders")
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"customerId": customerID,
 		"orders":     orders,
 		"count":      len(orders),

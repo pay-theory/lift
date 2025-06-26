@@ -110,7 +110,7 @@ func CreateUser(ctx *lift.Context) error {
 
 	// Log the creation
 	if ctx.Logger != nil {
-		ctx.Logger.Info("User created", map[string]interface{}{
+		ctx.Logger.Info("User created", map[string]any{
 			"user_id":   user.ID,
 			"tenant_id": user.TenantID,
 			"email":     user.Email,
@@ -234,7 +234,7 @@ func UpdateUser(ctx *lift.Context) error {
 
 	// Log the update
 	if ctx.Logger != nil {
-		ctx.Logger.Info("User updated", map[string]interface{}{
+		ctx.Logger.Info("User updated", map[string]any{
 			"user_id":   user.ID,
 			"tenant_id": user.TenantID,
 			"email":     user.Email,
@@ -278,7 +278,7 @@ func DeleteUser(ctx *lift.Context) error {
 
 	// Log the deletion
 	if ctx.Logger != nil {
-		ctx.Logger.Info("User deleted", map[string]interface{}{
+		ctx.Logger.Info("User deleted", map[string]any{
 			"user_id":   user.ID,
 			"tenant_id": user.TenantID,
 			"email":     user.Email,
@@ -292,7 +292,7 @@ func DeleteUser(ctx *lift.Context) error {
 
 // HealthCheck provides a health check endpoint
 func HealthCheck(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now().Unix(),
 		"service":   "lift-crud-api",
@@ -340,7 +340,7 @@ func LoggingMiddleware() lift.Middleware {
 
 			// Log completion
 			if ctx.Logger != nil {
-				fields := map[string]interface{}{
+				fields := map[string]any{
 					"method":    ctx.Request.Method,
 					"path":      ctx.Request.Path,
 					"status":    ctx.Response.StatusCode,

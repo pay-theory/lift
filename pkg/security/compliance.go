@@ -73,7 +73,7 @@ type ComplianceRule struct {
 	Framework   string                 `json:"framework"`
 	Severity    string                 `json:"severity"`
 	Description string                 `json:"description"`
-	Condition   map[string]interface{} `json:"condition"`
+	Condition   map[string]any `json:"condition"`
 	Action      string                 `json:"action"`
 }
 
@@ -142,7 +142,7 @@ type SecurityEvent struct {
 	EventType   string                 `json:"event_type"`
 	Severity    string                 `json:"severity"`
 	Description string                 `json:"description"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	Timestamp   time.Time              `json:"timestamp"`
 	Resolved    bool                   `json:"resolved"`
 }
@@ -153,7 +153,7 @@ type ComplianceResult struct {
 	Framework  string                 `json:"framework"`
 	Violations []ComplianceViolation  `json:"violations,omitempty"`
 	Warnings   []string               `json:"warnings,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 	Timestamp  time.Time              `json:"timestamp"`
 }
 
@@ -168,7 +168,7 @@ type ComplianceViolation struct {
 	TenantID    string                 `json:"tenant_id,omitempty"`
 	Resource    string                 `json:"resource,omitempty"`
 	Timestamp   time.Time              `json:"timestamp"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	Resolved    bool                   `json:"resolved"`
 }
 
@@ -207,7 +207,7 @@ type AuditEntry struct {
 	Resource  string                 `json:"resource"`
 	Timestamp time.Time              `json:"timestamp"`
 	Result    string                 `json:"result"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
 // NewComplianceFramework creates a new compliance framework
@@ -294,7 +294,7 @@ func (cf *ComplianceFramework) ComplianceAudit() LiftMiddleware {
 									EventType:   "compliance_violation",
 									Severity:    violation.Severity,
 									Description: violation.Description,
-									Metadata: map[string]interface{}{
+									Metadata: map[string]any{
 										"framework":    framework,
 										"rule_id":      violation.RuleID,
 										"violation_id": violation.ID,
@@ -488,7 +488,7 @@ func (cf *ComplianceFramework) MarshalJSON() ([]byte, error) {
 	cf.mu.RLock()
 	defer cf.mu.RUnlock()
 
-	return json.Marshal(map[string]interface{}{
+	return json.Marshal(map[string]any{
 		"framework": cf.framework,
 		"config":    cf.config,
 	})

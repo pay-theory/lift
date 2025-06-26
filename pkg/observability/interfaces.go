@@ -23,7 +23,7 @@ type LogEntry struct {
 	Timestamp time.Time              `json:"timestamp"`
 	Level     string                 `json:"level"`
 	Message   string                 `json:"message"`
-	Fields    map[string]interface{} `json:"fields,omitempty"`
+	Fields    map[string]any `json:"fields,omitempty"`
 	RequestID string                 `json:"request_id,omitempty"`
 	TenantID  string                 `json:"tenant_id,omitempty"`
 	UserID    string                 `json:"user_id,omitempty"`
@@ -50,12 +50,12 @@ type LogSink interface {
 // StructuredLogger extends the basic lift.Logger with additional context methods
 type StructuredLogger interface {
 	// Explicitly declare lift.Logger methods to avoid interface embedding issues
-	Debug(message string, fields ...map[string]interface{})
-	Info(message string, fields ...map[string]interface{})
-	Warn(message string, fields ...map[string]interface{})
-	Error(message string, fields ...map[string]interface{})
-	WithField(key string, value interface{}) lift.Logger
-	WithFields(fields map[string]interface{}) lift.Logger
+	Debug(message string, fields ...map[string]any)
+	Info(message string, fields ...map[string]any)
+	Warn(message string, fields ...map[string]any)
+	Error(message string, fields ...map[string]any)
+	WithField(key string, value any) lift.Logger
+	WithFields(fields map[string]any) lift.Logger
 
 	// Context methods for multi-tenant logging
 	WithRequestID(requestID string) StructuredLogger
@@ -124,7 +124,7 @@ type MetricEntry struct {
 	Unit      string                 `json:"unit"`
 	Timestamp time.Time              `json:"timestamp"`
 	Tags      map[string]string      `json:"tags,omitempty"`
-	Fields    map[string]interface{} `json:"fields,omitempty"`
+	Fields    map[string]any `json:"fields,omitempty"`
 }
 
 // MetricsCollector extends the basic lift.MetricsCollector with additional functionality

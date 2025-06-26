@@ -24,18 +24,18 @@ func TestDataProtectionManager_ClassifyData(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		data           map[string]interface{}
-		context        map[string]interface{}
+		data           map[string]any
+		context        map[string]any
 		expectedClass  DataClassification
 		expectedFields map[string]DataClassification
 	}{
 		{
 			name: "restricted data with SSN",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"name": "John Doe",
 				"ssn":  "123-45-6789",
 			},
-			context: map[string]interface{}{
+			context: map[string]any{
 				"user_id": "user123",
 			},
 			expectedClass: DataRestricted,
@@ -46,11 +46,11 @@ func TestDataProtectionManager_ClassifyData(t *testing.T) {
 		},
 		{
 			name: "confidential data with password",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"username": "johndoe",
 				"password": "secret123",
 			},
-			context: map[string]interface{}{
+			context: map[string]any{
 				"user_id": "user123",
 			},
 			expectedClass: DataConfidential,
@@ -61,11 +61,11 @@ func TestDataProtectionManager_ClassifyData(t *testing.T) {
 		},
 		{
 			name: "internal data with email",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"email":       "john@example.com",
 				"public_info": "This is public",
 			},
-			context: map[string]interface{}{
+			context: map[string]any{
 				"user_id": "user123",
 			},
 			expectedClass: DataInternal,
@@ -76,11 +76,11 @@ func TestDataProtectionManager_ClassifyData(t *testing.T) {
 		},
 		{
 			name: "credit card number detection",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"card_number": "4111-1111-1111-1111",
 				"name":        "John Doe",
 			},
-			context: map[string]interface{}{
+			context: map[string]any{
 				"user_id": "user123",
 			},
 			expectedClass: DataRestricted,
@@ -233,7 +233,7 @@ func TestDataProtectionManager_ProtectData(t *testing.T) {
 		{
 			name: "restricted data for display - should be masked",
 			dataCtx: &DataContext{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"name": "John Doe",
 					"ssn":  "123-45-6789",
 				},
@@ -254,7 +254,7 @@ func TestDataProtectionManager_ProtectData(t *testing.T) {
 		{
 			name: "restricted data for processing - should be encrypted",
 			dataCtx: &DataContext{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"name": "John Doe",
 					"ssn":  "123-45-6789",
 				},
@@ -275,7 +275,7 @@ func TestDataProtectionManager_ProtectData(t *testing.T) {
 		{
 			name: "confidential data - should be masked",
 			dataCtx: &DataContext{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"username": "johndoe",
 					"password": "secret123",
 				},
@@ -296,7 +296,7 @@ func TestDataProtectionManager_ProtectData(t *testing.T) {
 		{
 			name: "public data - should return as-is",
 			dataCtx: &DataContext{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"public_info": "This is public information",
 				},
 				Classification: DataPublic,
@@ -360,7 +360,7 @@ func TestDataProtectionManager_MaskingRules(t *testing.T) {
 	manager, err := NewDataProtectionManager(config)
 	require.NoError(t, err)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"ssn":      "123-45-6789",
 		"password": "secret123",
 		"email":    "john@example.com",
@@ -377,7 +377,7 @@ func TestDataProtectionManager_MaskingRules(t *testing.T) {
 	maskedData, err := manager.maskData(data, fieldClassifications)
 	require.NoError(t, err)
 
-	maskedMap, ok := maskedData.(map[string]interface{})
+	maskedMap, ok := maskedData.(map[string]any)
 	require.True(t, ok)
 
 	// Check partial masking for SSN
@@ -400,7 +400,7 @@ func TestAESEncryptor(t *testing.T) {
 	encryptor, err := NewAESEncryptor("test-encryption-key-32-bytes-long")
 	require.NoError(t, err)
 
-	originalData := map[string]interface{}{
+	originalData := map[string]any{
 		"name": "John Doe",
 		"ssn":  "123-45-6789",
 	}
@@ -412,7 +412,7 @@ func TestAESEncryptor(t *testing.T) {
 	assert.NotEqual(t, originalData, encrypted)
 
 	// Test decryption
-	var decryptedData map[string]interface{}
+	var decryptedData map[string]any
 	err = encryptor.Decrypt(encrypted, &decryptedData)
 	require.NoError(t, err)
 
