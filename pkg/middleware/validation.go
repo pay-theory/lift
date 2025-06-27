@@ -9,7 +9,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/pay-theory/lift/pkg/errors"
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
@@ -70,7 +69,7 @@ func InputValidation(config ValidationConfig) lift.Middleware {
 // validateRequest performs comprehensive request validation
 func validateRequest(ctx *lift.Context, config ValidationConfig) error {
 	if ctx.Request == nil {
-		return errors.ParameterError("request", "Request is nil")
+		return lift.ParameterError("request", "Request is nil")
 	}
 
 	// Validate request size
@@ -119,7 +118,7 @@ func validateRequestSize(ctx *lift.Context, config ValidationConfig) error {
 
 	bodySize := int64(len(ctx.Request.Body))
 	if bodySize > config.MaxBodySize {
-		return errors.ParameterError("body", fmt.Sprintf("Request body too large: %d bytes (max: %d)", bodySize, config.MaxBodySize))
+		return lift.ParameterError("body", fmt.Sprintf("Request body too large: %d bytes (max: %d)", bodySize, config.MaxBodySize))
 	}
 
 	return nil
@@ -146,7 +145,7 @@ func validateContentType(ctx *lift.Context, config ValidationConfig) error {
 		}
 	}
 
-	return errors.ParameterError("content-type", fmt.Sprintf("Content type not allowed: %s", mediaType))
+	return lift.ParameterError("content-type", fmt.Sprintf("Content type not allowed: %s", mediaType))
 }
 
 // validateHeaders validates all request headers
@@ -158,17 +157,17 @@ func validateHeaders(ctx *lift.Context, config ValidationConfig) error {
 	for key, value := range ctx.Request.Headers {
 		// Check header size
 		if len(value) > config.MaxHeaderSize {
-			return errors.ParameterError("header."+key, fmt.Sprintf("Header '%s' too large: %d bytes (max: %d)", key, len(value), config.MaxHeaderSize))
+			return lift.ParameterError("header."+key, fmt.Sprintf("Header '%s' too large: %d bytes (max: %d)", key, len(value), config.MaxHeaderSize))
 		}
 
 		// Check for malicious patterns
 		if err := validateStringContent(value, config); err != nil {
-			return errors.ParameterError("header."+key, fmt.Sprintf("Invalid header '%s': %v", key, err))
+			return lift.ParameterError("header."+key, fmt.Sprintf("Invalid header '%s': %v", key, err))
 		}
 
 		// Validate UTF-8 encoding
 		if !utf8.ValidString(value) {
-			return errors.ParameterError("header."+key, fmt.Sprintf("Header '%s' contains invalid UTF-8", key))
+			return lift.ParameterError("header."+key, fmt.Sprintf("Header '%s' contains invalid UTF-8", key))
 		}
 	}
 
@@ -184,7 +183,7 @@ func validateUserAgent(ctx *lift.Context, config ValidationConfig) error {
 
 	for _, blocked := range config.BlockedUserAgents {
 		if strings.Contains(userAgent, strings.ToLower(blocked)) {
-			return errors.AuthorizationError(fmt.Sprintf("User agent blocked: %s", blocked))
+			return lift.AuthorizationError(fmt.Sprintf("User agent blocked: %s", blocked))
 		}
 	}
 
@@ -200,29 +199,29 @@ func validateQueryParams(ctx *lift.Context, config ValidationConfig) error {
 	for key, value := range ctx.Request.QueryParams {
 		// Check parameter size
 		if len(value) > config.MaxQueryParamSize {
-			return errors.ParameterError("query."+key, fmt.Sprintf("Query parameter '%s' too large: %d bytes (max: %d)", key, len(value), config.MaxQueryParamSize))
+			return lift.ParameterError("query."+key, fmt.Sprintf("Query parameter '%s' too large: %d bytes (max: %d)", key, len(value), config.MaxQueryParamSize))
 		}
 
 		// URL decode and validate
 		decoded, err := url.QueryUnescape(value)
 		if err != nil {
-			return errors.ParameterError("query."+key, fmt.Sprintf("Invalid URL encoding in query parameter '%s': %v", key, err))
+			return lift.ParameterError("query."+key, fmt.Sprintf("Invalid URL encoding in query parameter '%s': %v", key, err))
 		}
 
 		// Check for malicious patterns
 		if err := validateStringContent(decoded, config); err != nil {
-			return errors.ParameterError("query."+key, fmt.Sprintf("Invalid query parameter '%s': %v", key, err))
+			return lift.ParameterError("query."+key, fmt.Sprintf("Invalid query parameter '%s': %v", key, err))
 		}
 
 		// Validate UTF-8 encoding
 		if !utf8.ValidString(decoded) {
-			return errors.ParameterError("query."+key, fmt.Sprintf("Query parameter '%s' contains invalid UTF-8", key))
+			return lift.ParameterError("query."+key, fmt.Sprintf("Query parameter '%s' contains invalid UTF-8", key))
 		}
 
 		// Apply custom validators
 		if validator, exists := config.CustomValidators[key]; exists {
 			if err := validator(decoded); err != nil {
-				return errors.ParameterError("query."+key, fmt.Sprintf("Validation failed for query parameter '%s': %v", key, err))
+				return lift.ParameterError("query."+key, fmt.Sprintf("Validation failed for query parameter '%s': %v", key, err))
 			}
 		}
 	}
@@ -239,23 +238,23 @@ func validatePathParams(ctx *lift.Context, config ValidationConfig) error {
 	for key, value := range ctx.Request.PathParams {
 		// Check parameter size
 		if len(value) > config.MaxPathParamSize {
-			return errors.ParameterError("path."+key, fmt.Sprintf("Path parameter '%s' too large: %d bytes (max: %d)", key, len(value), config.MaxPathParamSize))
+			return lift.ParameterError("path."+key, fmt.Sprintf("Path parameter '%s' too large: %d bytes (max: %d)", key, len(value), config.MaxPathParamSize))
 		}
 
 		// Check for malicious patterns
 		if err := validateStringContent(value, config); err != nil {
-			return errors.ParameterError("path."+key, fmt.Sprintf("Invalid path parameter '%s': %v", key, err))
+			return lift.ParameterError("path."+key, fmt.Sprintf("Invalid path parameter '%s': %v", key, err))
 		}
 
 		// Validate UTF-8 encoding
 		if !utf8.ValidString(value) {
-			return errors.ParameterError("path."+key, fmt.Sprintf("Path parameter '%s' contains invalid UTF-8", key))
+			return lift.ParameterError("path."+key, fmt.Sprintf("Path parameter '%s' contains invalid UTF-8", key))
 		}
 
 		// Apply custom validators
 		if validator, exists := config.CustomValidators[key]; exists {
 			if err := validator(value); err != nil {
-				return errors.ParameterError("path."+key, fmt.Sprintf("Validation failed for path parameter '%s': %v", key, err))
+				return lift.ParameterError("path."+key, fmt.Sprintf("Validation failed for path parameter '%s': %v", key, err))
 			}
 		}
 	}
@@ -265,7 +264,7 @@ func validatePathParams(ctx *lift.Context, config ValidationConfig) error {
 
 // validateRequestBody validates the request body content
 func validateRequestBody(ctx *lift.Context, config ValidationConfig) error {
-	if ctx.Request.Body == nil || len(ctx.Request.Body) == 0 {
+	if len(ctx.Request.Body) == 0 {
 		return nil
 	}
 
@@ -273,12 +272,12 @@ func validateRequestBody(ctx *lift.Context, config ValidationConfig) error {
 
 	// Validate UTF-8 encoding
 	if !utf8.ValidString(bodyStr) {
-		return errors.ParameterError("body", "Request body contains invalid UTF-8")
+		return lift.ParameterError("body", "Request body contains invalid UTF-8")
 	}
 
 	// Check for malicious patterns
 	if err := validateStringContent(bodyStr, config); err != nil {
-		return errors.ParameterError("body", fmt.Sprintf("Invalid request body: %v", err))
+		return lift.ParameterError("body", fmt.Sprintf("Invalid request body: %v", err))
 	}
 
 	// If it's JSON, validate JSON structure
@@ -286,7 +285,7 @@ func validateRequestBody(ctx *lift.Context, config ValidationConfig) error {
 	if strings.Contains(strings.ToLower(contentType), "application/json") {
 		var js json.RawMessage
 		if err := json.Unmarshal(ctx.Request.Body, &js); err != nil {
-			return errors.ParameterError("body", fmt.Sprintf("Invalid JSON in request body: %v", err))
+			return lift.ParameterError("body", fmt.Sprintf("Invalid JSON in request body: %v", err))
 		}
 	}
 

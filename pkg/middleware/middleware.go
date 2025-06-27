@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pay-theory/lift/pkg/errors"
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
@@ -203,7 +202,7 @@ func ErrorHandler() Middleware {
 			}
 
 			// Handle LiftError specifically
-			if liftErr, ok := err.(*errors.LiftError); ok {
+			if liftErr, ok := err.(*lift.LiftError); ok {
 				if jsonErr := ctx.Response.Status(liftErr.StatusCode).JSON(liftErr); jsonErr != nil {
 					// Log that we couldn't send the error response
 					if ctx.Logger != nil {
