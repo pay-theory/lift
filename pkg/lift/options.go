@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/pay-theory/lift/pkg/errors"
 )
 
 // JWTAuthConfig holds configuration for JWT authentication
@@ -217,7 +216,7 @@ func createSecurityMiddleware(config SecurityConfig) Middleware {
 			// Check IP whitelist if configured
 			if len(config.IPWhitelist) > 0 {
 				if !secCtx.ValidateIP(config.IPWhitelist) {
-					return errors.AuthorizationError("Access denied")
+					return AuthorizationError("Access denied")
 				}
 			}
 
@@ -239,7 +238,7 @@ func createSecurityMiddleware(config SecurityConfig) Middleware {
 					}
 				}
 				if !hasRequiredRole {
-					return errors.AuthorizationError("Insufficient permissions")
+					return AuthorizationError("Insufficient permissions")
 				}
 			}
 
