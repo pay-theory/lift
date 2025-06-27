@@ -228,6 +228,11 @@ func (l *CloudWatchLogger) sanitizeFieldValue(key string, value any) any {
 		"pin", "cvv", "security", "private", "confidential",
 	}
 
+	// Special case: card_bin is not sensitive data (PCI-DSS compliant)
+	if keyLower == "card_bin" {
+		return value
+	}
+
 	for _, sensitive := range highSensitiveFields {
 		if strings.Contains(keyLower, sensitive) {
 			return "[REDACTED]"
