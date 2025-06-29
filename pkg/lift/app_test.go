@@ -2,6 +2,7 @@ package lift
 
 import (
 	"context"
+	"os"
 	"testing"
 )
 
@@ -149,5 +150,100 @@ func TestAppHandleRequest(t *testing.T) {
 
 	if resp == nil {
 		t.Error("Response should not be nil")
+	}
+}
+
+func TestIsLambda(t *testing.T) {
+	app := New()
+
+	testCases := []struct {
+		name     string
+		envVars  map[string]string
+		expected bool
+	}{
+		{
+			name:     "No Lambda environment variables",
+			envVars:  map[string]string{},
+			expected: false,
+		},
+		{
+			name: "AWS_LAMBDA_FUNCTION_NAME set",
+			envVars: map[string]string{
+				"AWS_LAMBDA_FUNCTION_NAME": "my-function",
+			},
+			expected: true,
+		},
+		{
+			name: "LAMBDA_TASK_ROOT set",
+			envVars: map[string]string{
+				"LAMBDA_TASK_ROOT": "/var/task",
+			},
+			expected: true,
+		},
+		{
+			name: "AWS_EXECUTION_ENV set",
+			envVars: map[string]string{
+				"AWS_EXECUTION_ENV": "AWS_Lambda_go1.x",
+			},
+			expected: true,
+		},
+		{
+			name: "All Lambda environment variables set",
+			envVars: map[string]string{
+				"AWS_LAMBDA_FUNCTION_NAME": "my-function",
+				"LAMBDA_TASK_ROOT":         "/var/task",
+				"AWS_EXECUTION_ENV":        "AWS_Lambda_go1.x",
+			},
+			expected: true,
+		},
+		{
+			name: "Non-Lambda environment variables",
+			envVars: map[string]string{
+				"HOME":     "/home/user",
+				"PATH":     "/usr/bin:/bin",
+				"USER":     "testuser",
+			},
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Save current environment
+			savedEnv := make(map[string]string)
+			for key := range tc.envVars {
+				savedEnv[key] = os.Getenv(key)
+				os.Unsetenv(key)
+			}
+			
+			// Also ensure Lambda env vars are unset when testing non-Lambda scenarios
+			lambdaVars := []string{"AWS_LAMBDA_FUNCTION_NAME", "LAMBDA_TASK_ROOT", "AWS_EXECUTION_ENV"}
+			for _, key := range lambdaVars {
+				if _, exists := tc.envVars[key]; !exists {
+					savedEnv[key] = os.Getenv(key)
+					os.Unsetenv(key)
+				}
+			}
+
+			// Set test environment variables
+			for key, value := range tc.envVars {
+				os.Setenv(key, value)
+			}
+
+			// Test IsLambda
+			result := app.IsLambda()
+			if result != tc.expected {
+				t.Errorf("IsLambda() = %v, expected %v", result, tc.expected)
+			}
+
+			// Restore environment
+			for key, value := range savedEnv {
+				if value == "" {
+					os.Unsetenv(key)
+				} else {
+					os.Setenv(key, value)
+				}
+			}
+		})
 	}
 }
