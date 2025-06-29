@@ -1,6 +1,7 @@
 package benchmarks
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -135,7 +136,7 @@ func BenchmarkConcurrentMiddleware(b *testing.B) {
 					Path:   "/test",
 				},
 			}
-			ctx := lift.NewContext(nil, req)
+			ctx := lift.NewContext(context.TODO(), req)
 
 			// This would normally execute the middleware chain
 			_ = app
@@ -171,7 +172,7 @@ func benchmarkMiddlewareExecution(b *testing.B, app *lift.App) {
 				Path:   "/test",
 			},
 		}
-		ctx := lift.NewContext(nil, req)
+		ctx := lift.NewContext(context.TODO(), req)
 
 		// This would normally execute the middleware chain and handler
 		_ = app

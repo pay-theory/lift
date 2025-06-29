@@ -383,11 +383,11 @@ func NewTenantHandlers(service *TenantService) *TenantHandlers {
 func (h *TenantHandlers) CreateTenant(ctx *lift.Context) error {
 	var req CreateTenantRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	if err := validation.Validate(req); err != nil {
-		return lift.ValidationError("validation", err.Error())
+		return lift.ValidationError(err.Error()).WithDetail("field", "validation")
 	}
 
 	tenant, err := h.service.CreateTenant(ctx.Context, req)
@@ -395,7 +395,7 @@ func (h *TenantHandlers) CreateTenant(ctx *lift.Context) error {
 		if logger := ctx.Logger; logger != nil {
 			logger.WithField("error", err.Error()).Error("Failed to create tenant")
 		}
-		return lift.InternalError("Failed to create tenant")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create tenant", 500)
 	}
 
 	return ctx.Status(201).JSON(tenant)
@@ -404,7 +404,7 @@ func (h *TenantHandlers) CreateTenant(ctx *lift.Context) error {
 func (h *TenantHandlers) GetTenant(ctx *lift.Context) error {
 	tenantID := ctx.Param("id")
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	tenant, err := h.service.GetTenant(ctx.Context, tenantID)
@@ -430,16 +430,16 @@ func NewUserHandlers(service *UserService) *UserHandlers {
 func (h *UserHandlers) CreateUser(ctx *lift.Context) error {
 	tenantID := ctx.TenantID()
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	var req CreateUserRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	if err := validation.Validate(req); err != nil {
-		return lift.ValidationError("validation", err.Error())
+		return lift.ValidationError(err.Error()).WithDetail("field", "validation")
 	}
 
 	user, err := h.service.CreateUser(ctx.Context, tenantID, req)
@@ -447,7 +447,7 @@ func (h *UserHandlers) CreateUser(ctx *lift.Context) error {
 		if logger := ctx.Logger; logger != nil {
 			logger.WithField("error", err.Error()).Error("Failed to create user")
 		}
-		return lift.InternalError("Failed to create user")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create user", 500)
 	}
 
 	return ctx.Status(201).JSON(user)
@@ -456,7 +456,7 @@ func (h *UserHandlers) CreateUser(ctx *lift.Context) error {
 func (h *UserHandlers) ListUsers(ctx *lift.Context) error {
 	tenantID := ctx.TenantID()
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	page, _ := strconv.Atoi(ctx.Query("page"))
@@ -474,7 +474,7 @@ func (h *UserHandlers) ListUsers(ctx *lift.Context) error {
 		if logger := ctx.Logger; logger != nil {
 			logger.WithField("error", err.Error()).Error("Failed to list users")
 		}
-		return lift.InternalError("Failed to list users")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list users", 500)
 	}
 
 	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
@@ -518,19 +518,19 @@ func (h *ProjectHandlers) CreateProject(ctx *lift.Context) error {
 	userID := ctx.UserID()
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if userID == "" {
-		return lift.BadRequest("User ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
 	}
 
 	var req CreateProjectRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	if err := validation.Validate(req); err != nil {
-		return lift.ValidationError("validation", err.Error())
+		return lift.ValidationError(err.Error()).WithDetail("field", "validation")
 	}
 
 	project, err := h.service.CreateProject(ctx.Context, tenantID, userID, req)
@@ -538,7 +538,7 @@ func (h *ProjectHandlers) CreateProject(ctx *lift.Context) error {
 		if logger := ctx.Logger; logger != nil {
 			logger.WithField("error", err.Error()).Error("Failed to create project")
 		}
-		return lift.InternalError("Failed to create project")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create project", 500)
 	}
 
 	return ctx.Status(201).JSON(project)
@@ -547,7 +547,7 @@ func (h *ProjectHandlers) CreateProject(ctx *lift.Context) error {
 func (h *ProjectHandlers) ListProjects(ctx *lift.Context) error {
 	tenantID := ctx.TenantID()
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	page, _ := strconv.Atoi(ctx.Query("page"))
@@ -565,7 +565,7 @@ func (h *ProjectHandlers) ListProjects(ctx *lift.Context) error {
 		if logger := ctx.Logger; logger != nil {
 			logger.WithField("error", err.Error()).Error("Failed to list projects")
 		}
-		return lift.InternalError("Failed to list projects")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list projects", 500)
 	}
 
 	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
@@ -609,19 +609,19 @@ func (h *TaskHandlers) CreateTask(ctx *lift.Context) error {
 	userID := ctx.UserID()
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if userID == "" {
-		return lift.BadRequest("User ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
 	}
 
 	var req CreateTaskRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	if err := validation.Validate(req); err != nil {
-		return lift.ValidationError("validation", err.Error())
+		return lift.ValidationError(err.Error()).WithDetail("field", "validation")
 	}
 
 	task, err := h.service.CreateTask(ctx.Context, tenantID, userID, req)
@@ -629,7 +629,7 @@ func (h *TaskHandlers) CreateTask(ctx *lift.Context) error {
 		if logger := ctx.Logger; logger != nil {
 			logger.WithField("error", err.Error()).Error("Failed to create task")
 		}
-		return lift.InternalError("Failed to create task")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create task", 500)
 	}
 
 	return ctx.Status(201).JSON(task)
@@ -640,19 +640,19 @@ func (h *TaskHandlers) UpdateTask(ctx *lift.Context) error {
 	taskID := ctx.Param("id")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if taskID == "" {
-		return lift.BadRequest("Task ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Task ID is required", 400)
 	}
 
 	var req UpdateTaskRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	if err := validation.Validate(req); err != nil {
-		return lift.ValidationError("validation", err.Error())
+		return lift.ValidationError(err.Error()).WithDetail("field", "validation")
 	}
 
 	task, err := h.service.UpdateTask(ctx.Context, tenantID, taskID, req)
@@ -660,7 +660,7 @@ func (h *TaskHandlers) UpdateTask(ctx *lift.Context) error {
 		if logger := ctx.Logger; logger != nil {
 			logger.WithField("error", err.Error()).Error("Failed to update task")
 		}
-		return lift.InternalError("Failed to update task")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to update task", 500)
 	}
 
 	return ctx.JSON(task)
@@ -671,10 +671,10 @@ func (h *TaskHandlers) ListTasks(ctx *lift.Context) error {
 	projectID := ctx.Query("project_id")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if projectID == "" {
-		return lift.BadRequest("Project ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Project ID is required", 400)
 	}
 
 	page, _ := strconv.Atoi(ctx.Query("page"))
@@ -692,7 +692,7 @@ func (h *TaskHandlers) ListTasks(ctx *lift.Context) error {
 		if logger := ctx.Logger; logger != nil {
 			logger.WithField("error", err.Error()).Error("Failed to list tasks")
 		}
-		return lift.InternalError("Failed to list tasks")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list tasks", 500)
 	}
 
 	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
