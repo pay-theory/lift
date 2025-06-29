@@ -63,7 +63,7 @@ func TestChaosExperiment_Creation(t *testing.T) {
 				Severity:    MediumSeverity,
 				Duration:    5 * time.Minute,
 				Probability: 1.0,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"delay": 100 * time.Millisecond,
 				},
 				Recovery: &RecoveryConfig{
@@ -157,7 +157,7 @@ func TestChaosEngineeringFramework_RunExperiment(t *testing.T) {
 				Severity:    LowSeverity,
 				Duration:    2 * time.Second, // Short for testing
 				Probability: 1.0,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"error_rate":  0.1,
 					"status_code": 500,
 				},
@@ -336,7 +336,7 @@ func TestFaultInjectors(t *testing.T) {
 			ID:       "network-fault-1",
 			Type:     LatencyFault,
 			Duration: 1 * time.Minute,
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"delay": 100 * time.Millisecond,
 			},
 		}
@@ -400,7 +400,7 @@ func TestFaultInjectors(t *testing.T) {
 			ID:       "service-fault-1",
 			Type:     ServiceUnavailable,
 			Duration: 1 * time.Minute,
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"status_code": 503,
 			},
 		}
@@ -451,7 +451,7 @@ func TestFaultInjectors(t *testing.T) {
 			ID:       "resource-fault-1",
 			Type:     ResourceExhaustion,
 			Duration: 1 * time.Minute,
-			Parameters: map[string]interface{}{
+			Parameters: map[string]any{
 				"resource_type": "cpu",
 				"percentage":    75.0,
 			},
@@ -619,7 +619,7 @@ func TestResilienceMetrics(t *testing.T) {
 		LastIncident:    now.Add(-24 * time.Hour),
 		IncidentCount:   3,
 		ResilienceScore: 95.0,
-		Trends:          make(map[string]interface{}),
+		Trends:          make(map[string]any),
 		ExperimentCount: 10,
 		LastUpdated:     now,
 	}
@@ -762,7 +762,7 @@ func TestChaosPolicy(t *testing.T) {
 				Condition: "max_percentage <= 10",
 				Action:    DenyPolicyAction,
 				Severity:  ErrorPolicySeverity,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"max_percentage": 10.0,
 				},
 				Enabled: true,
@@ -774,7 +774,7 @@ func TestChaosPolicy(t *testing.T) {
 				Condition: "duration <= 30m",
 				Action:    RequireApprovalPolicy,
 				Severity:  WarningPolicySeverity,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"max_duration": 30 * time.Minute,
 				},
 				Enabled: true,
@@ -786,7 +786,7 @@ func TestChaosPolicy(t *testing.T) {
 				Condition: "severity == critical",
 				Action:    RequireApprovalPolicy,
 				Severity:  CriticalPolicySeverity,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"require_approval": true,
 				},
 				Enabled: true,
@@ -1020,7 +1020,7 @@ func TestExperimentResults_Analysis(t *testing.T) {
 			{
 				Type:     MetricObservation,
 				Severity: InfoObservationSeverity,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"response_time_p95": 150.0,
 					"error_rate":        0.02,
 					"throughput":        900.0,
@@ -1029,7 +1029,7 @@ func TestExperimentResults_Analysis(t *testing.T) {
 			{
 				Type:     MetricObservation,
 				Severity: InfoObservationSeverity,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"response_time_p95": 180.0,
 					"error_rate":        0.03,
 					"throughput":        850.0,
@@ -1198,7 +1198,7 @@ func BenchmarkFaultInjection(b *testing.B) {
 	fault := FaultDefinition{
 		ID:   "benchmark-fault",
 		Type: LatencyFault,
-		Parameters: map[string]interface{}{
+		Parameters: map[string]any{
 			"delay": 100 * time.Millisecond,
 		},
 	}
@@ -1235,7 +1235,7 @@ func BenchmarkResilienceScoreCalculation(b *testing.B) {
 			Successful: true,
 			Duration:   2 * time.Minute,
 		},
-		Metrics: map[string]interface{}{
+		Metrics: map[string]any{
 			"mttr":         15 * time.Minute,
 			"mtbf":         72 * time.Hour,
 			"availability": 99.9,

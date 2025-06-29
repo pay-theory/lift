@@ -17,8 +17,8 @@ func NewS3Adapter() *S3Adapter {
 }
 
 // CanHandle checks if this adapter can handle the given event
-func (a *S3Adapter) CanHandle(event interface{}) bool {
-	eventMap, ok := event.(map[string]interface{})
+func (a *S3Adapter) CanHandle(event any) bool {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
 		return false
 	}
@@ -30,13 +30,13 @@ func (a *S3Adapter) CanHandle(event interface{}) bool {
 	}
 
 	// Check if records is a slice
-	recordsSlice, ok := records.([]interface{})
+	recordsSlice, ok := records.([]any)
 	if !ok || len(recordsSlice) == 0 {
 		return false
 	}
 
 	// Check first record for S3 specific fields
-	firstRecord, ok := recordsSlice[0].(map[string]interface{})
+	firstRecord, ok := recordsSlice[0].(map[string]any)
 	if !ok {
 		return false
 	}
@@ -47,10 +47,10 @@ func (a *S3Adapter) CanHandle(event interface{}) bool {
 }
 
 // Validate checks if the event has the required S3 structure
-func (a *S3Adapter) Validate(event interface{}) error {
-	eventMap, ok := event.(map[string]interface{})
+func (a *S3Adapter) Validate(event any) error {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
-		return fmt.Errorf("event must be a map[string]interface{}")
+		return fmt.Errorf("event must be a map[string]any")
 	}
 
 	// Check for Records field
@@ -60,7 +60,7 @@ func (a *S3Adapter) Validate(event interface{}) error {
 	}
 
 	// Validate records structure
-	recordsSlice, ok := records.([]interface{})
+	recordsSlice, ok := records.([]any)
 	if !ok {
 		return fmt.Errorf("records must be a slice")
 	}
@@ -70,7 +70,7 @@ func (a *S3Adapter) Validate(event interface{}) error {
 	}
 
 	// Validate first record
-	firstRecord, ok := recordsSlice[0].(map[string]interface{})
+	firstRecord, ok := recordsSlice[0].(map[string]any)
 	if !ok {
 		return fmt.Errorf("records must contain map objects")
 	}
@@ -87,18 +87,18 @@ func (a *S3Adapter) Validate(event interface{}) error {
 }
 
 // Adapt converts an S3 event to a normalized Request
-func (a *S3Adapter) Adapt(rawEvent interface{}) (*Request, error) {
+func (a *S3Adapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	eventMap := rawEvent.(map[string]interface{})
+	eventMap := rawEvent.(map[string]any)
 	records := extractSliceField(eventMap, "Records")
 
 	// Extract metadata from first record for event-level info
 	var eventID, timestamp, eventName string
 	if len(records) > 0 {
-		if firstRecord, ok := records[0].(map[string]interface{}); ok {
+		if firstRecord, ok := records[0].(map[string]any); ok {
 			eventID = extractStringField(firstRecord, "responseElements.x-amz-request-id")
 			timestamp = extractStringField(firstRecord, "eventTime")
 			eventName = extractStringField(firstRecord, "eventName")

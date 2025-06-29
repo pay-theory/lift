@@ -27,12 +27,12 @@ func TestCloudWatchLogger_BasicLogging(t *testing.T) {
 	defer logger.Close()
 
 	// Test basic logging
-	logger.Info("test message", map[string]interface{}{
+	logger.Info("test message", map[string]any{
 		"key1": "value1",
 		"key2": 42,
 	})
 
-	logger.Error("error message", map[string]interface{}{
+	logger.Error("error message", map[string]any{
 		"error": "something went wrong",
 	})
 
@@ -109,7 +109,7 @@ func TestCloudWatchLogger_Batching(t *testing.T) {
 
 	// Send exactly batch size messages
 	for i := 0; i < 3; i++ {
-		logger.Info("batch message", map[string]interface{}{
+		logger.Info("batch message", map[string]any{
 			"index": i,
 		})
 	}
@@ -148,7 +148,7 @@ func TestCloudWatchLogger_BufferOverflow(t *testing.T) {
 
 	// Fill buffer beyond capacity
 	for i := 0; i < 5; i++ {
-		logger.Info("overflow message", map[string]interface{}{
+		logger.Info("overflow message", map[string]any{
 			"index": i,
 		})
 	}
@@ -209,7 +209,7 @@ func TestCloudWatchLogger_FlushMethod(t *testing.T) {
 
 	// Log some messages
 	for i := 0; i < 3; i++ {
-		logger.Info("flush test message", map[string]interface{}{
+		logger.Info("flush test message", map[string]any{
 			"index": i,
 		})
 	}
@@ -334,6 +334,46 @@ func TestCloudWatchLogger_Stats(t *testing.T) {
 	assert.True(t, stats.AverageFlushTime > 0)
 }
 
+func TestCloudWatchLogger_SanitizationCardBin(t *testing.T) {
+	// Setup
+	mockClient := NewMockCloudWatchLogsClient()
+	config := observability.LoggerConfig{
+		LogGroup:      "test-log-group",
+		LogStream:     "test-log-stream",
+		BatchSize:     5,
+		FlushInterval: 50 * time.Millisecond,
+		BufferSize:    10,
+	}
+
+	logger, err := NewCloudWatchLogger(config, mockClient)
+	require.NoError(t, err)
+	defer logger.Close()
+
+	// Test that card_bin is NOT redacted while other card fields ARE redacted
+	logger.Info("payment info", map[string]any{
+		"card_bin":    "424242",  // Should NOT be redacted (BIN is not sensitive)
+		"card_number": "4242424242424242",  // Should be redacted
+		"card_cvv":    "123",  // Should be redacted
+		"cardholder":  "John Doe",  // Should be redacted
+		"user_id":     "12345",  // Should not be redacted
+	})
+
+	// Wait for flush
+	time.Sleep(100 * time.Millisecond)
+
+	// Get the logged events
+	logEvents := mockClient.GetLogEvents()
+	require.Len(t, logEvents, 1)
+
+	// Parse the log message to verify sanitization
+	logMessage := *logEvents[0].Message
+	assert.Contains(t, logMessage, `"card_bin":"424242"`, "card_bin should NOT be redacted")
+	assert.Contains(t, logMessage, `"card_number":"[REDACTED]"`, "card_number should be redacted")
+	assert.Contains(t, logMessage, `"card_cvv":"[REDACTED]"`, "card_cvv should be redacted")
+	assert.Contains(t, logMessage, `"cardholder":"[REDACTED]"`, "cardholder should be redacted")
+	assert.Contains(t, logMessage, `"user_id":"12345"`, "user_id should not be redacted")
+}
+
 func TestCloudWatchLogger_ConcurrentAccess(t *testing.T) {
 	// Setup with larger buffer to handle concurrent load
 	mockClient := NewMockCloudWatchLogsClient()
@@ -359,7 +399,7 @@ func TestCloudWatchLogger_ConcurrentAccess(t *testing.T) {
 			contextLogger := logger.WithField("goroutine_id", id)
 
 			for j := 0; j < 10; j++ {
-				contextLogger.Info("concurrent message", map[string]interface{}{
+				contextLogger.Info("concurrent message", map[string]any{
 					"message_id": j,
 				})
 			}

@@ -27,7 +27,7 @@ func main() {
 		}),
 		lift.WithSecurityMiddleware(lift.SecurityConfig{
 			EnableSecurityHeaders: true,
-			AuditLogger: func(ctx *lift.Context, event string, data map[string]interface{}) {
+			AuditLogger: func(ctx *lift.Context, event string, data map[string]any) {
 				fmt.Printf("Audit: %s - %v\n", event, data)
 			},
 		}),
@@ -60,7 +60,7 @@ func main() {
 
 		tokenString, err := token.SignedString([]byte("my-secret-key"))
 		if err != nil {
-			return ctx.InternalError("Failed to create token", err)
+			return ctx.SystemError("Failed to create token", err)
 		}
 
 		return ctx.OK(map[string]string{
@@ -76,7 +76,7 @@ func main() {
 			return ctx.Unauthorized("No claims found", nil)
 		}
 
-		return ctx.OK(map[string]interface{}{
+		return ctx.OK(map[string]any{
 			"user_id":          ctx.UserID(),
 			"tenant_id":        ctx.TenantID(),
 			"username":         claims["username"],
@@ -92,7 +92,7 @@ func main() {
 			return ctx.Unauthorized("Authentication required", nil)
 		}
 
-		roles, ok := claims["roles"].([]interface{})
+		roles, ok := claims["roles"].([]any)
 		if !ok {
 			return ctx.Forbidden("No roles found", nil)
 		}
@@ -124,7 +124,7 @@ func main() {
 			return ctx.Forbidden("Cannot access other tenant's data", nil)
 		}
 
-		return ctx.OK(map[string]interface{}{
+		return ctx.OK(map[string]any{
 			"tenant_id": requestedTenant,
 			"data":      "Tenant specific data",
 			"user_id":   ctx.UserID(),

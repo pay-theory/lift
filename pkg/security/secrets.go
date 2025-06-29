@@ -227,7 +227,7 @@ func (asm *AWSSecretsManager) DeleteSecret(ctx context.Context, name string) err
 }
 
 // GetJSONSecret retrieves and unmarshals a JSON secret
-func (asm *AWSSecretsManager) GetJSONSecret(ctx context.Context, name string, target interface{}) error {
+func (asm *AWSSecretsManager) GetJSONSecret(ctx context.Context, name string, target any) error {
 	value, err := asm.GetSecret(ctx, name)
 	if err != nil {
 		return err
@@ -241,7 +241,7 @@ func (asm *AWSSecretsManager) GetJSONSecret(ctx context.Context, name string, ta
 }
 
 // PutJSONSecret marshals and stores a JSON secret
-func (asm *AWSSecretsManager) PutJSONSecret(ctx context.Context, name string, value interface{}) error {
+func (asm *AWSSecretsManager) PutJSONSecret(ctx context.Context, name string, value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON secret %s: %w", name, err)

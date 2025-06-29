@@ -31,7 +31,7 @@ func TestJWTAuthentication(t *testing.T) {
 
 	// Protected endpoint
 	app.GET("/protected", func(ctx *lift.Context) error {
-		return ctx.OK(map[string]interface{}{
+		return ctx.OK(map[string]any{
 			"user_id":       ctx.UserID(),
 			"tenant_id":     ctx.TenantID(),
 			"claims":        ctx.Claims(),
@@ -129,8 +129,8 @@ func TestJWTContextMethods(t *testing.T) {
 
 		ctx.SetClaims(claims)
 
-		// Verify claims are stored (convert to map[string]interface{} for comparison)
-		expectedClaims := map[string]interface{}(claims)
+		// Verify claims are stored (convert to map[string]any for comparison)
+		expectedClaims := map[string]any(claims)
 		assert.Equal(t, expectedClaims, ctx.Claims())
 
 		// Verify user and tenant IDs are extracted

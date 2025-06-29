@@ -146,7 +146,7 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"legal_basis_documented",
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		if !ok {
 			t.Fatal("Expected result to be a map")
 		}
@@ -181,7 +181,7 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"technical_erasure_complete",
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		if !ok {
 			t.Fatal("Expected result to be a map")
 		}
@@ -216,7 +216,7 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"free_of_charge",
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		if !ok {
 			t.Fatal("Expected result to be a map")
 		}
@@ -250,7 +250,7 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"proportionality_assessed",
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		if !ok {
 			t.Fatal("Expected result to be a map")
 		}
@@ -284,7 +284,7 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"follow_up_provided",
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		if !ok {
 			t.Fatal("Expected result to be a map")
 		}
@@ -320,7 +320,7 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"pia_updated",
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		if !ok {
 			t.Fatal("Expected result to be a map")
 		}

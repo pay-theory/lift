@@ -30,7 +30,7 @@ type InfrastructureTemplate struct {
 	Resources   map[string]Resource    `json:"resources"`
 	Outputs     map[string]Output      `json:"outputs"`
 	Parameters  map[string]Parameter   `json:"parameters"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 	Tags        map[string]string      `json:"tags"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
@@ -40,16 +40,16 @@ type InfrastructureTemplate struct {
 type Resource struct {
 	Type         string                 `json:"type"`
 	Name         string                 `json:"name"`
-	Properties   map[string]interface{} `json:"properties"`
+	Properties   map[string]any `json:"properties"`
 	Dependencies []string               `json:"dependencies,omitempty"`
 	Condition    string                 `json:"condition,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Metadata     map[string]any `json:"metadata,omitempty"`
 	Tags         map[string]string      `json:"tags,omitempty"`
 }
 
 // Output represents a template output
 type Output struct {
-	Value       interface{} `json:"value"`
+	Value       any `json:"value"`
 	Description string      `json:"description"`
 	Export      bool        `json:"export,omitempty"`
 }
@@ -58,8 +58,8 @@ type Output struct {
 type Parameter struct {
 	Type          string        `json:"type"`
 	Description   string        `json:"description"`
-	Default       interface{}   `json:"default,omitempty"`
-	AllowedValues []interface{} `json:"allowed_values,omitempty"`
+	Default       any   `json:"default,omitempty"`
+	AllowedValues []any `json:"allowed_values,omitempty"`
 	MinLength     *int          `json:"min_length,omitempty"`
 	MaxLength     *int          `json:"max_length,omitempty"`
 	Pattern       string        `json:"pattern,omitempty"`
@@ -94,7 +94,7 @@ type InfrastructureConfig struct {
 
 	// Tags and metadata
 	Tags     map[string]string      `json:"tags"`
-	Metadata map[string]interface{} `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // LambdaConfig holds Lambda function configuration
@@ -247,13 +247,13 @@ type DashboardConfig struct {
 type DashboardWidget struct {
 	Type       string                 `json:"type"`
 	Title      string                 `json:"title"`
-	Properties map[string]interface{} `json:"properties"`
+	Properties map[string]any `json:"properties"`
 }
 
 // Additional supporting types
 type IAMRoleConfig struct {
 	Name             string                 `json:"name"`
-	AssumeRolePolicy map[string]interface{} `json:"assume_role_policy"`
+	AssumeRolePolicy map[string]any `json:"assume_role_policy"`
 	Policies         []string               `json:"policies"`
 	InlinePolicies   []InlinePolicyConfig   `json:"inline_policies,omitempty"`
 }
@@ -261,7 +261,7 @@ type IAMRoleConfig struct {
 type KMSKeyConfig struct {
 	Alias       string                 `json:"alias"`
 	Description string                 `json:"description"`
-	Policy      map[string]interface{} `json:"policy,omitempty"`
+	Policy      map[string]any `json:"policy,omitempty"`
 }
 
 type SecretsConfig struct {
@@ -283,7 +283,7 @@ type WAFRule struct {
 	Name      string                 `json:"name"`
 	Priority  int                    `json:"priority"`
 	Action    string                 `json:"action"`
-	Statement map[string]interface{} `json:"statement"`
+	Statement map[string]any `json:"statement"`
 }
 
 type VPCEndpointConfig struct {
@@ -366,7 +366,7 @@ type MetricFilterConfig struct {
 
 type InlinePolicyConfig struct {
 	Name   string                 `json:"name"`
-	Policy map[string]interface{} `json:"policy"`
+	Policy map[string]any `json:"policy"`
 }
 
 // InfrastructureGenerator generates infrastructure templates
@@ -445,13 +445,13 @@ func (ig *InfrastructureGenerator) generateLambdaResources(template *Infrastruct
 	executionRole := Resource{
 		Type: "AWS::IAM::Role",
 		Name: fmt.Sprintf("%s-lambda-execution-role", ig.config.ApplicationName),
-		Properties: map[string]interface{}{
-			"AssumeRolePolicyDocument": map[string]interface{}{
+		Properties: map[string]any{
+			"AssumeRolePolicyDocument": map[string]any{
 				"Version": "2012-10-17",
-				"Statement": []map[string]interface{}{
+				"Statement": []map[string]any{
 					{
 						"Effect": "Allow",
-						"Principal": map[string]interface{}{
+						"Principal": map[string]any{
 							"Service": "lambda.amazonaws.com",
 						},
 						"Action": "sts:AssumeRole",
@@ -477,14 +477,14 @@ func (ig *InfrastructureGenerator) generateLambdaResources(template *Infrastruct
 	lambdaFunction := Resource{
 		Type: "AWS::Lambda::Function",
 		Name: fmt.Sprintf("%s-function", ig.config.ApplicationName),
-		Properties: map[string]interface{}{
+		Properties: map[string]any{
 			"FunctionName": fmt.Sprintf("%s-%s", ig.config.ApplicationName, ig.config.Environment),
 			"Runtime":      lambdaConfig.Runtime,
 			"Handler":      lambdaConfig.Handler,
 			"Timeout":      lambdaConfig.Timeout,
 			"MemorySize":   lambdaConfig.MemorySize,
 			"Role":         fmt.Sprintf("${%s.Arn}", "LambdaExecutionRole"),
-			"Code": map[string]interface{}{
+			"Code": map[string]any{
 				"ZipFile": "// Placeholder code - replace with actual deployment package",
 			},
 		},
@@ -493,7 +493,7 @@ func (ig *InfrastructureGenerator) generateLambdaResources(template *Infrastruct
 	}
 
 	if lambdaConfig.Environment != nil && len(lambdaConfig.Environment) > 0 {
-		lambdaFunction.Properties["Environment"] = map[string]interface{}{
+		lambdaFunction.Properties["Environment"] = map[string]any{
 			"Variables": lambdaConfig.Environment,
 		}
 	}
@@ -507,7 +507,7 @@ func (ig *InfrastructureGenerator) generateLambdaResources(template *Infrastruct
 	}
 
 	if lambdaConfig.VPCConfig != nil {
-		lambdaFunction.Properties["VpcConfig"] = map[string]interface{}{
+		lambdaFunction.Properties["VpcConfig"] = map[string]any{
 			"SecurityGroupIds": []string{"${SecurityGroup.GroupId}"},
 			"SubnetIds":        []string{"${PrivateSubnet1.SubnetId}", "${PrivateSubnet2.SubnetId}"},
 		}
@@ -521,7 +521,7 @@ func (ig *InfrastructureGenerator) generateLambdaResources(template *Infrastruct
 		dlq := Resource{
 			Type: "AWS::SQS::Queue",
 			Name: fmt.Sprintf("%s-dlq", ig.config.ApplicationName),
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"QueueName":                fmt.Sprintf("%s-%s-dlq", ig.config.ApplicationName, ig.config.Environment),
 				"MessageRetentionPeriod":   1209600, // 14 days
 				"VisibilityTimeoutSeconds": 60,
@@ -533,7 +533,7 @@ func (ig *InfrastructureGenerator) generateLambdaResources(template *Infrastruct
 
 		// Update Lambda function to use DLQ
 		lambdaProps := lambdaFunction.Properties
-		lambdaProps["DeadLetterConfig"] = map[string]interface{}{
+		lambdaProps["DeadLetterConfig"] = map[string]any{
 			"TargetArn": fmt.Sprintf("${%s.Arn}", "DeadLetterQueue"),
 		}
 		lambdaFunction.Dependencies = append(lambdaFunction.Dependencies, "DeadLetterQueue")
@@ -554,7 +554,7 @@ func (ig *InfrastructureGenerator) generateAPIGatewayResources(template *Infrast
 		apiResource = Resource{
 			Type: "AWS::ApiGatewayV2::Api",
 			Name: fmt.Sprintf("%s-api", ig.config.ApplicationName),
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"Name":         fmt.Sprintf("%s-%s-api", ig.config.ApplicationName, ig.config.Environment),
 				"ProtocolType": "HTTP",
 				"Description":  fmt.Sprintf("HTTP API for %s", ig.config.ApplicationName),
@@ -564,7 +564,7 @@ func (ig *InfrastructureGenerator) generateAPIGatewayResources(template *Infrast
 
 		// CORS configuration for HTTP API
 		if len(apiConfig.CORS.AllowOrigins) > 0 {
-			apiResource.Properties["CorsConfiguration"] = map[string]interface{}{
+			apiResource.Properties["CorsConfiguration"] = map[string]any{
 				"AllowOrigins":     apiConfig.CORS.AllowOrigins,
 				"AllowMethods":     apiConfig.CORS.AllowMethods,
 				"AllowHeaders":     apiConfig.CORS.AllowHeaders,
@@ -578,10 +578,10 @@ func (ig *InfrastructureGenerator) generateAPIGatewayResources(template *Infrast
 		apiResource = Resource{
 			Type: "AWS::ApiGateway::RestApi",
 			Name: fmt.Sprintf("%s-api", ig.config.ApplicationName),
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"Name":        fmt.Sprintf("%s-%s-api", ig.config.ApplicationName, ig.config.Environment),
 				"Description": fmt.Sprintf("REST API for %s", ig.config.ApplicationName),
-				"EndpointConfiguration": map[string]interface{}{
+				"EndpointConfiguration": map[string]any{
 					"Types": []string{"REGIONAL"},
 				},
 			},
@@ -595,7 +595,7 @@ func (ig *InfrastructureGenerator) generateAPIGatewayResources(template *Infrast
 	deployment := Resource{
 		Type: "AWS::ApiGateway::Deployment",
 		Name: fmt.Sprintf("%s-deployment", ig.config.ApplicationName),
-		Properties: map[string]interface{}{
+		Properties: map[string]any{
 			"RestApiId": fmt.Sprintf("${%s.RestApiId}", "APIGateway"),
 			"StageName": apiConfig.StageName,
 		},
@@ -609,7 +609,7 @@ func (ig *InfrastructureGenerator) generateAPIGatewayResources(template *Infrast
 	lambdaPermission := Resource{
 		Type: "AWS::Lambda::Permission",
 		Name: fmt.Sprintf("%s-lambda-permission", ig.config.ApplicationName),
-		Properties: map[string]interface{}{
+		Properties: map[string]any{
 			"FunctionName": fmt.Sprintf("${%s.FunctionName}", "LambdaFunction"),
 			"Action":       "lambda:InvokeFunction",
 			"Principal":    "apigateway.amazonaws.com",
@@ -634,7 +634,7 @@ func (ig *InfrastructureGenerator) generateDatabaseResources(template *Infrastru
 			table := Resource{
 				Type: "AWS::DynamoDB::Table",
 				Name: fmt.Sprintf("%s-%s", ig.config.ApplicationName, tableConfig.Name),
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"TableName":            fmt.Sprintf("%s-%s-%s", ig.config.ApplicationName, ig.config.Environment, tableConfig.Name),
 					"BillingMode":          tableConfig.BillingMode,
 					"AttributeDefinitions": ig.generateAttributeDefinitions(tableConfig.Attributes),
@@ -644,40 +644,40 @@ func (ig *InfrastructureGenerator) generateDatabaseResources(template *Infrastru
 			}
 
 			if tableConfig.StreamEnabled {
-				table.Properties["StreamSpecification"] = map[string]interface{}{
+				table.Properties["StreamSpecification"] = map[string]any{
 					"StreamViewType": "NEW_AND_OLD_IMAGES",
 				}
 			}
 
 			if dbConfig.Encryption.Enabled {
-				table.Properties["SSESpecification"] = map[string]interface{}{
+				table.Properties["SSESpecification"] = map[string]any{
 					"SSEEnabled": true,
 				}
 				if dbConfig.Encryption.KMSKeyId != "" {
-					table.Properties["SSESpecification"].(map[string]interface{})["KMSMasterKeyId"] = dbConfig.Encryption.KMSKeyId
+					table.Properties["SSESpecification"].(map[string]any)["KMSMasterKeyId"] = dbConfig.Encryption.KMSKeyId
 				}
 			}
 
 			if tableConfig.BackupEnabled {
-				table.Properties["PointInTimeRecoverySpecification"] = map[string]interface{}{
+				table.Properties["PointInTimeRecoverySpecification"] = map[string]any{
 					"PointInTimeRecoveryEnabled": true,
 				}
 			}
 
 			// Global Secondary Indexes
 			if len(tableConfig.GlobalIndexes) > 0 {
-				gsis := make([]map[string]interface{}, 0, len(tableConfig.GlobalIndexes))
+				gsis := make([]map[string]any, 0, len(tableConfig.GlobalIndexes))
 				for _, gsi := range tableConfig.GlobalIndexes {
-					gsiDef := map[string]interface{}{
+					gsiDef := map[string]any{
 						"IndexName": gsi.Name,
 						"KeySchema": ig.generateKeySchema(gsi.HashKey, gsi.RangeKey),
-						"Projection": map[string]interface{}{
+						"Projection": map[string]any{
 							"ProjectionType": gsi.Projection.Type,
 						},
 					}
 
 					if gsi.Projection.Type == "INCLUDE" && len(gsi.Projection.Attributes) > 0 {
-						gsiDef["Projection"].(map[string]interface{})["NonKeyAttributes"] = gsi.Projection.Attributes
+						gsiDef["Projection"].(map[string]any)["NonKeyAttributes"] = gsi.Projection.Attributes
 					}
 
 					gsis = append(gsis, gsiDef)
@@ -703,7 +703,7 @@ func (ig *InfrastructureGenerator) generateMonitoringResources(template *Infrast
 		logGroupResource := Resource{
 			Type: "AWS::Logs::LogGroup",
 			Name: logGroup.Name,
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"LogGroupName":    fmt.Sprintf("/aws/lambda/%s-%s", ig.config.ApplicationName, ig.config.Environment),
 				"RetentionInDays": logGroup.RetentionDays,
 			},
@@ -724,7 +724,7 @@ func (ig *InfrastructureGenerator) generateMonitoringResources(template *Infrast
 		alarmResource := Resource{
 			Type: "AWS::CloudWatch::Alarm",
 			Name: alarm.Name,
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"AlarmName":          fmt.Sprintf("%s-%s-%s", ig.config.ApplicationName, ig.config.Environment, alarm.Name),
 				"AlarmDescription":   fmt.Sprintf("Alarm for %s", alarm.MetricName),
 				"MetricName":         alarm.MetricName,
@@ -759,7 +759,7 @@ func (ig *InfrastructureGenerator) generateSecurityResources(template *Infrastru
 		roleResource := Resource{
 			Type: "AWS::IAM::Role",
 			Name: role.Name,
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"RoleName":                 fmt.Sprintf("%s-%s-%s", ig.config.ApplicationName, ig.config.Environment, role.Name),
 				"AssumeRolePolicyDocument": role.AssumeRolePolicy,
 				"ManagedPolicyArns":        role.Policies,
@@ -768,9 +768,9 @@ func (ig *InfrastructureGenerator) generateSecurityResources(template *Infrastru
 		}
 
 		if len(role.InlinePolicies) > 0 {
-			policies := make([]map[string]interface{}, 0, len(role.InlinePolicies))
+			policies := make([]map[string]any, 0, len(role.InlinePolicies))
 			for _, policy := range role.InlinePolicies {
-				policies = append(policies, map[string]interface{}{
+				policies = append(policies, map[string]any{
 					"PolicyName":     policy.Name,
 					"PolicyDocument": policy.Policy,
 				})
@@ -788,14 +788,14 @@ func (ig *InfrastructureGenerator) generateSecurityResources(template *Infrastru
 		keyResource := Resource{
 			Type: "AWS::KMS::Key",
 			Name: key.Alias,
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"Description": key.Description,
-				"KeyPolicy": map[string]interface{}{
+				"KeyPolicy": map[string]any{
 					"Version": "2012-10-17",
-					"Statement": []map[string]interface{}{
+					"Statement": []map[string]any{
 						{
 							"Effect": "Allow",
-							"Principal": map[string]interface{}{
+							"Principal": map[string]any{
 								"AWS": fmt.Sprintf("arn:aws:iam::${AWS::AccountId}:root"),
 							},
 							"Action":   "kms:*",
@@ -817,7 +817,7 @@ func (ig *InfrastructureGenerator) generateSecurityResources(template *Infrastru
 		aliasResource := Resource{
 			Type: "AWS::KMS::Alias",
 			Name: fmt.Sprintf("%s-alias", key.Alias),
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"AliasName":   fmt.Sprintf("alias/%s-%s-%s", ig.config.ApplicationName, ig.config.Environment, key.Alias),
 				"TargetKeyId": fmt.Sprintf("${%s.KeyId}", keyName),
 			},
@@ -839,7 +839,7 @@ func (ig *InfrastructureGenerator) generateNetworkingResources(template *Infrast
 		vpc := Resource{
 			Type: "AWS::EC2::VPC",
 			Name: fmt.Sprintf("%s-vpc", ig.config.ApplicationName),
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"CidrBlock":          netConfig.VPC.CIDR,
 				"EnableDnsSupport":   netConfig.VPC.EnableDNSSupport,
 				"EnableDnsHostnames": netConfig.VPC.EnableDNSHostnames,
@@ -853,7 +853,7 @@ func (ig *InfrastructureGenerator) generateNetworkingResources(template *Infrast
 		igw := Resource{
 			Type:       "AWS::EC2::InternetGateway",
 			Name:       fmt.Sprintf("%s-igw", ig.config.ApplicationName),
-			Properties: map[string]interface{}{},
+			Properties: map[string]any{},
 			Tags:       ig.config.Tags,
 		}
 
@@ -863,7 +863,7 @@ func (ig *InfrastructureGenerator) generateNetworkingResources(template *Infrast
 		vpcGwAttachment := Resource{
 			Type: "AWS::EC2::VPCGatewayAttachment",
 			Name: fmt.Sprintf("%s-vpc-gw-attachment", ig.config.ApplicationName),
-			Properties: map[string]interface{}{
+			Properties: map[string]any{
 				"VpcId":             fmt.Sprintf("${%s.VpcId}", "VPC"),
 				"InternetGatewayId": fmt.Sprintf("${%s.InternetGatewayId}", "InternetGateway"),
 			},
@@ -879,7 +879,7 @@ func (ig *InfrastructureGenerator) generateNetworkingResources(template *Infrast
 			subnetResource := Resource{
 				Type: "AWS::EC2::Subnet",
 				Name: subnet.Name,
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"VpcId":            fmt.Sprintf("${%s.VpcId}", "VPC"),
 					"CidrBlock":        subnet.CIDR,
 					"AvailabilityZone": subnet.AvailabilityZone,
@@ -902,7 +902,7 @@ func (ig *InfrastructureGenerator) generateNetworkingResources(template *Infrast
 			sgResource := Resource{
 				Type: "AWS::EC2::SecurityGroup",
 				Name: sg.Name,
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"GroupName":        fmt.Sprintf("%s-%s-%s", ig.config.ApplicationName, ig.config.Environment, sg.Name),
 					"GroupDescription": sg.Description,
 					"VpcId":            fmt.Sprintf("${%s.VpcId}", "VPC"),
@@ -912,9 +912,9 @@ func (ig *InfrastructureGenerator) generateNetworkingResources(template *Infrast
 			}
 
 			if len(sg.IngressRules) > 0 {
-				ingressRules := make([]map[string]interface{}, 0, len(sg.IngressRules))
+				ingressRules := make([]map[string]any, 0, len(sg.IngressRules))
 				for _, rule := range sg.IngressRules {
-					ingressRule := map[string]interface{}{
+					ingressRule := map[string]any{
 						"IpProtocol": rule.Protocol,
 						"FromPort":   rule.FromPort,
 						"ToPort":     rule.ToPort,
@@ -975,7 +975,7 @@ func (ig *InfrastructureGenerator) generateParameters(template *InfrastructureTe
 		Type:          "String",
 		Description:   "Environment name",
 		Default:       ig.config.Environment,
-		AllowedValues: []interface{}{"dev", "staging", "prod"},
+		AllowedValues: []any{"dev", "staging", "prod"},
 	}
 
 	template.Parameters["ApplicationName"] = Parameter{
@@ -988,10 +988,10 @@ func (ig *InfrastructureGenerator) generateParameters(template *InfrastructureTe
 }
 
 // Helper functions
-func (ig *InfrastructureGenerator) generateAttributeDefinitions(attributes []AttributeConfig) []map[string]interface{} {
-	definitions := make([]map[string]interface{}, 0, len(attributes))
+func (ig *InfrastructureGenerator) generateAttributeDefinitions(attributes []AttributeConfig) []map[string]any {
+	definitions := make([]map[string]any, 0, len(attributes))
 	for _, attr := range attributes {
-		definitions = append(definitions, map[string]interface{}{
+		definitions = append(definitions, map[string]any{
 			"AttributeName": attr.Name,
 			"AttributeType": attr.Type,
 		})
@@ -999,8 +999,8 @@ func (ig *InfrastructureGenerator) generateAttributeDefinitions(attributes []Att
 	return definitions
 }
 
-func (ig *InfrastructureGenerator) generateKeySchema(hashKey, rangeKey string) []map[string]interface{} {
-	schema := []map[string]interface{}{
+func (ig *InfrastructureGenerator) generateKeySchema(hashKey, rangeKey string) []map[string]any {
+	schema := []map[string]any{
 		{
 			"AttributeName": hashKey,
 			"KeyType":       "HASH",
@@ -1008,7 +1008,7 @@ func (ig *InfrastructureGenerator) generateKeySchema(hashKey, rangeKey string) [
 	}
 
 	if rangeKey != "" {
-		schema = append(schema, map[string]interface{}{
+		schema = append(schema, map[string]any{
 			"AttributeName": rangeKey,
 			"KeyType":       "RANGE",
 		})

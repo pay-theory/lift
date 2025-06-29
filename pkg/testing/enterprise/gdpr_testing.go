@@ -61,22 +61,22 @@ type AuditEvent struct {
 	Timestamp   time.Time
 	UserID      string
 	Description string
-	Metadata    map[string]interface{}
+	Metadata    map[string]any
 }
 
 // GDPRComplianceTester provides GDPR compliance testing capabilities
 type GDPRComplianceTester struct {
-	app          interface{} // Enterprise app
+	app          any // Enterprise app
 	auditEnabled bool
-	dataStore    map[string]interface{} // Mock data store for testing
+	dataStore    map[string]any // Mock data store for testing
 }
 
 // NewGDPRComplianceTester creates a new GDPR compliance tester
-func NewGDPRComplianceTester(app interface{}) *GDPRComplianceTester {
+func NewGDPRComplianceTester(app any) *GDPRComplianceTester {
 	return &GDPRComplianceTester{
 		app:          app,
 		auditEnabled: true,
-		dataStore:    make(map[string]interface{}),
+		dataStore:    make(map[string]any),
 	}
 }
 
@@ -88,7 +88,7 @@ func (tester *GDPRComplianceTester) TestRightToAccess(ctx context.Context, userI
 	}
 
 	// Mock implementation: verify user can access their data
-	userData := map[string]interface{}{
+	userData := map[string]any{
 		"user_id": userID,
 		"name":    "Test User",
 		"email":   "test@example.com",
@@ -118,7 +118,7 @@ func (tester *GDPRComplianceTester) TestRightToAccess(ctx context.Context, userI
 }
 
 // TestRightToRectification tests the right to rectify personal data
-func (tester *GDPRComplianceTester) TestRightToRectification(ctx context.Context, userID string, updates map[string]interface{}) error {
+func (tester *GDPRComplianceTester) TestRightToRectification(ctx context.Context, userID string, updates map[string]any) error {
 	if userID == "" {
 		return fmt.Errorf("user ID is required for right to rectification test")
 	}
@@ -131,13 +131,13 @@ func (tester *GDPRComplianceTester) TestRightToRectification(ctx context.Context
 	userData, exists := tester.dataStore[userID]
 	if !exists {
 		// Create initial data if it doesn't exist
-		userData = map[string]interface{}{
+		userData = map[string]any{
 			"user_id": userID,
 		}
 	}
 
 	// Apply updates
-	dataMap := userData.(map[string]interface{})
+	dataMap := userData.(map[string]any)
 	for key, value := range updates {
 		dataMap[key] = value
 	}
@@ -164,7 +164,7 @@ func (tester *GDPRComplianceTester) TestRightToErasure(ctx context.Context, user
 	_, exists := tester.dataStore[userID]
 	if !exists {
 		// Create test data first
-		tester.dataStore[userID] = map[string]interface{}{
+		tester.dataStore[userID] = map[string]any{
 			"user_id": userID,
 			"name":    "Test User",
 			"email":   "test@example.com",
@@ -197,11 +197,11 @@ func (tester *GDPRComplianceTester) TestRightToDataPortability(ctx context.Conte
 	// Ensure test data exists
 	userData, exists := tester.dataStore[userID]
 	if !exists {
-		userData = map[string]interface{}{
+		userData = map[string]any{
 			"user_id": userID,
 			"name":    "Test User",
 			"email":   "test@example.com",
-			"profile": map[string]interface{}{
+			"profile": map[string]any{
 				"preferences": []string{"marketing", "newsletter"},
 				"settings":    map[string]string{"language": "en", "timezone": "UTC"},
 			},
@@ -210,11 +210,11 @@ func (tester *GDPRComplianceTester) TestRightToDataPortability(ctx context.Conte
 	}
 
 	// Simulate data export in portable format
-	exportedData := map[string]interface{}{
+	exportedData := map[string]any{
 		"export_date": time.Now().Format(time.RFC3339),
 		"format":      "json",
 		"data":        userData,
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"version":     "1.0",
 			"user_id":     userID,
 			"export_type": "gdpr_portability",
@@ -245,7 +245,7 @@ func (tester *GDPRComplianceTester) TestRightToObject(ctx context.Context, userI
 	}
 
 	// Simulate objection to processing
-	objectionData := map[string]interface{}{
+	objectionData := map[string]any{
 		"user_id":         userID,
 		"processing_type": processingType,
 		"objection_date":  time.Now().Format(time.RFC3339),
@@ -284,7 +284,7 @@ func (tester *GDPRComplianceTester) GetAuditTrail(ctx context.Context, userID st
 			Timestamp:   time.Now().Add(-1 * time.Hour),
 			UserID:      userID,
 			Description: "User exercised right to access personal data",
-			Metadata:    map[string]interface{}{"ip_address": "192.168.1.1"},
+			Metadata:    map[string]any{"ip_address": "192.168.1.1"},
 		},
 		{
 			EventID:     fmt.Sprintf("audit_%d", time.Now().Unix()+1),
@@ -292,7 +292,7 @@ func (tester *GDPRComplianceTester) GetAuditTrail(ctx context.Context, userID st
 			Timestamp:   time.Now().Add(-30 * time.Minute),
 			UserID:      userID,
 			Description: "User exercised right to rectification",
-			Metadata:    map[string]interface{}{"fields_updated": []string{"name", "email"}},
+			Metadata:    map[string]any{"fields_updated": []string{"name", "email"}},
 		},
 	}
 
@@ -312,7 +312,7 @@ func (tester *GDPRComplianceTester) logAuditEvent(userID, eventType, description
 		Timestamp:   time.Now(),
 		UserID:      userID,
 		Description: description,
-		Metadata:    map[string]interface{}{},
+		Metadata:    map[string]any{},
 	}
 
 	tester.dataStore[auditKey] = event

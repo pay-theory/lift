@@ -15,7 +15,7 @@ import (
 // Message represents a WebSocket message
 type Message struct {
 	Type    string                 `json:"type"`
-	Payload map[string]interface{} `json:"payload"`
+	Payload map[string]any `json:"payload"`
 }
 
 // Connection represents a WebSocket connection in DynamoDB
@@ -24,7 +24,7 @@ type Connection struct {
 	UserID    string                 `json:"user_id"`
 	TenantID  string                 `json:"tenant_id"`
 	CreatedAt string                 `json:"created_at"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // DynamoDBConnectionStore implements the ConnectionStore interface
@@ -112,7 +112,7 @@ func handleConnect(ctx *lift.Context) error {
 
 	// Connection is automatically saved by the framework
 	// Just send a welcome message
-	welcome := map[string]interface{}{
+	welcome := map[string]any{
 		"type":    "welcome",
 		"message": "Connected successfully",
 		"user_id": ctx.UserID(),
@@ -156,7 +156,7 @@ func handleDefault(ctx *lift.Context) error {
 	}
 
 	// Echo back
-	response := map[string]interface{}{
+	response := map[string]any{
 		"type":    "echo",
 		"message": msg,
 	}
@@ -197,7 +197,7 @@ func handleBroadcast(ctx *lift.Context) error {
 	tenantID, _ := ctx.Get("tenant_id").(string)
 
 	// Prepare broadcast message
-	broadcast := map[string]interface{}{
+	broadcast := map[string]any{
 		"type":      "broadcast",
 		"from":      ctx.UserID(),
 		"tenant_id": tenantID,

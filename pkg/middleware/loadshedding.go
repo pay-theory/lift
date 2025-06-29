@@ -197,7 +197,7 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 
 				if config.Logger != nil {
 					priority := config.PriorityExtractor(ctx)
-					config.Logger.Warn("Request shed due to load", map[string]interface{}{
+					config.Logger.Warn("Request shed due to load", map[string]any{
 						"load_shedding_name": config.Name,
 						"strategy":           string(config.Strategy),
 						"priority":           priority,
@@ -608,7 +608,7 @@ func defaultLoadSheddingPriorityExtractor(ctx *lift.Context) int {
 // defaultSheddingHandler creates a default shedding response handler
 func defaultSheddingHandler(statusCode int, message string) func(*lift.Context) error {
 	return func(ctx *lift.Context) error {
-		return ctx.Status(statusCode).JSON(map[string]interface{}{
+		return ctx.Status(statusCode).JSON(map[string]any{
 			"error":       "Service Overloaded",
 			"message":     message,
 			"code":        "LOAD_SHED",

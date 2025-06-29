@@ -9,23 +9,23 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		event        interface{}
+		event        any
 		expectedType TriggerType
 		shouldError  bool
 	}{
 		{
 			name: "API Gateway V2 Event",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"version":  "2.0",
 				"routeKey": "GET /hello",
-				"requestContext": map[string]interface{}{
+				"requestContext": map[string]any{
 					"requestId": "test-request-id",
-					"http": map[string]interface{}{
+					"http": map[string]any{
 						"method": "GET",
 						"path":   "/hello",
 					},
 				},
-				"headers": map[string]interface{}{
+				"headers": map[string]any{
 					"content-type": "application/json",
 				},
 				"body": `{"message": "hello"}`,
@@ -35,14 +35,14 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 		},
 		{
 			name: "API Gateway V1 Event",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"resource":   "/hello",
 				"httpMethod": "GET",
 				"path":       "/hello",
-				"requestContext": map[string]interface{}{
+				"requestContext": map[string]any{
 					"requestId": "test-request-id",
 				},
-				"headers": map[string]interface{}{
+				"headers": map[string]any{
 					"Content-Type": "application/json",
 				},
 				"body": `{"message": "hello"}`,
@@ -52,9 +52,9 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 		},
 		{
 			name: "SQS Event",
-			event: map[string]interface{}{
-				"Records": []interface{}{
-					map[string]interface{}{
+			event: map[string]any{
+				"Records": []any{
+					map[string]any{
 						"eventSource":   "aws:sqs",
 						"body":          `{"message": "hello"}`,
 						"receiptHandle": "test-receipt-handle",
@@ -67,16 +67,16 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 		},
 		{
 			name: "S3 Event",
-			event: map[string]interface{}{
-				"Records": []interface{}{
-					map[string]interface{}{
+			event: map[string]any{
+				"Records": []any{
+					map[string]any{
 						"eventSource": "aws:s3",
 						"eventName":   "ObjectCreated:Put",
-						"s3": map[string]interface{}{
-							"bucket": map[string]interface{}{
+						"s3": map[string]any{
+							"bucket": map[string]any{
 								"name": "test-bucket",
 							},
-							"object": map[string]interface{}{
+							"object": map[string]any{
 								"key": "test-key",
 							},
 						},
@@ -88,10 +88,10 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 		},
 		{
 			name: "EventBridge Event",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"source":      "myapp.orders",
 				"detail-type": "Order Placed",
-				"detail": map[string]interface{}{
+				"detail": map[string]any{
 					"orderId": "12345",
 				},
 				"time": "2023-01-01T00:00:00Z",
@@ -101,20 +101,21 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 			shouldError:  false,
 		},
 		{
-			name: "Scheduled Event",
-			event: map[string]interface{}{
+			name: "Scheduled Event (via EventBridge)",
+			event: map[string]any{
 				"source":      "aws.events",
 				"detail-type": "Scheduled Event",
 				"time":        "2023-01-01T00:00:00Z",
 				"id":          "test-event-id",
-				"resources":   []interface{}{"arn:aws:events:us-east-1:123456789012:rule/my-rule"},
+				"resources":   []any{"arn:aws:events:us-east-1:123456789012:rule/my-rule"},
+				"detail":      map[string]any{},
 			},
-			expectedType: TriggerScheduled,
+			expectedType: TriggerEventBridge,
 			shouldError:  false,
 		},
 		{
 			name: "Unknown Event",
-			event: map[string]interface{}{
+			event: map[string]any{
 				"unknown": "event",
 			},
 			expectedType: TriggerUnknown,
@@ -152,26 +153,26 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 func TestAPIGatewayV2Adapter_Adapt(t *testing.T) {
 	adapter := NewAPIGatewayV2Adapter()
 
-	event := map[string]interface{}{
+	event := map[string]any{
 		"version":  "2.0",
 		"routeKey": "POST /users",
-		"requestContext": map[string]interface{}{
+		"requestContext": map[string]any{
 			"requestId": "test-request-id",
 			"timeEpoch": "1640995200",
-			"http": map[string]interface{}{
+			"http": map[string]any{
 				"method": "POST",
 				"path":   "/users",
 			},
 		},
-		"headers": map[string]interface{}{
+		"headers": map[string]any{
 			"Content-Type":  "application/json",
 			"Authorization": "Bearer token123",
 		},
-		"queryStringParameters": map[string]interface{}{
+		"queryStringParameters": map[string]any{
 			"page":  "1",
 			"limit": "10",
 		},
-		"pathParameters": map[string]interface{}{
+		"pathParameters": map[string]any{
 			"id": "123",
 		},
 		"body":            `{"name": "John Doe"}`,
@@ -230,18 +231,18 @@ func TestAPIGatewayV2Adapter_Adapt(t *testing.T) {
 func TestSQSAdapter_Adapt(t *testing.T) {
 	adapter := NewSQSAdapter()
 
-	event := map[string]interface{}{
-		"Records": []interface{}{
-			map[string]interface{}{
+	event := map[string]any{
+		"Records": []any{
+			map[string]any{
 				"eventSource":   "aws:sqs",
 				"body":          `{"orderId": "12345"}`,
 				"receiptHandle": "test-receipt-handle",
 				"messageId":     "test-message-id",
-				"attributes": map[string]interface{}{
+				"attributes": map[string]any{
 					"SentTimestamp": "1640995200000",
 				},
 			},
-			map[string]interface{}{
+			map[string]any{
 				"eventSource":   "aws:sqs",
 				"body":          `{"orderId": "67890"}`,
 				"receiptHandle": "test-receipt-handle-2",
@@ -278,10 +279,10 @@ func TestSQSAdapter_Adapt(t *testing.T) {
 func TestEventBridgeAdapter_Adapt(t *testing.T) {
 	adapter := NewEventBridgeAdapter()
 
-	event := map[string]interface{}{
+	event := map[string]any{
 		"source":      "myapp.orders",
 		"detail-type": "Order Placed",
-		"detail": map[string]interface{}{
+		"detail": map[string]any{
 			"orderId":    "12345",
 			"customerId": "67890",
 			"amount":     99.99,
@@ -334,7 +335,6 @@ func TestAdapterRegistry_ListSupportedTriggers(t *testing.T) {
 		TriggerSQS,
 		TriggerS3,
 		TriggerEventBridge,
-		TriggerScheduled,
 		TriggerWebSocket,
 	}
 

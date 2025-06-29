@@ -47,8 +47,8 @@ type ControlTest struct {
 	Procedure  string                 `json:"procedure"`
 	Frequency  TestFrequency          `json:"frequency"`
 	Automated  bool                   `json:"automated"`
-	Parameters map[string]interface{} `json:"parameters"`
-	Expected   interface{}            `json:"expected"`
+	Parameters map[string]any `json:"parameters"`
+	Expected   any            `json:"expected"`
 }
 
 // TestType is now defined in types.go
@@ -201,7 +201,7 @@ func (s *SOC2TypeIICompliance) executeTest(ctx context.Context, app *lift.App, c
 }
 
 // executeInquiryTest executes an inquiry-based test
-func (s *SOC2TypeIICompliance) executeInquiryTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
+func (s *SOC2TypeIICompliance) executeInquiryTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (any, error) {
 	// Inquiry tests typically involve reviewing documentation or interviewing personnel
 	// For automated testing, we can check configuration and policy documentation
 	_ = control // Use control parameter to avoid unused warning
@@ -222,7 +222,7 @@ func (s *SOC2TypeIICompliance) executeInquiryTest(ctx context.Context, app *lift
 }
 
 // executeObservationTest executes an observation-based test
-func (s *SOC2TypeIICompliance) executeObservationTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
+func (s *SOC2TypeIICompliance) executeObservationTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (any, error) {
 	// Observation tests involve watching processes in action
 	_ = control // Use control parameter to avoid unused warning
 
@@ -239,7 +239,7 @@ func (s *SOC2TypeIICompliance) executeObservationTest(ctx context.Context, app *
 }
 
 // executeInspectionTest executes an inspection-based test
-func (s *SOC2TypeIICompliance) executeInspectionTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
+func (s *SOC2TypeIICompliance) executeInspectionTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (any, error) {
 	// Inspection tests involve examining documents, configurations, or evidence
 	_ = control // Use control parameter to avoid unused warning
 
@@ -256,7 +256,7 @@ func (s *SOC2TypeIICompliance) executeInspectionTest(ctx context.Context, app *l
 }
 
 // executeReperformanceTest executes a reperformance-based test
-func (s *SOC2TypeIICompliance) executeReperformanceTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
+func (s *SOC2TypeIICompliance) executeReperformanceTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (any, error) {
 	// Reperformance tests involve re-executing a control to verify it works
 	_ = control // Use control parameter to avoid unused warning
 
@@ -273,7 +273,7 @@ func (s *SOC2TypeIICompliance) executeReperformanceTest(ctx context.Context, app
 }
 
 // executeAnalyticalTest executes an analytical-based test
-func (s *SOC2TypeIICompliance) executeAnalyticalTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (interface{}, error) {
+func (s *SOC2TypeIICompliance) executeAnalyticalTest(ctx context.Context, app *lift.App, control SOC2Control, test ControlTest) (any, error) {
 	// Analytical tests involve analyzing data to identify anomalies or trends
 	_ = control // Use control parameter to avoid unused warning
 
@@ -340,11 +340,11 @@ func getSOC2Controls() []SOC2Control {
 }
 
 // Helper methods for specific test implementations
-func (s *SOC2TypeIICompliance) validateSecurityPolicy(ctx context.Context, app *lift.App) (interface{}, error) {
+func (s *SOC2TypeIICompliance) validateSecurityPolicy(ctx context.Context, app *lift.App) (any, error) {
 	// Implementation for security policy validation
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"policy_exists":    true,
 		"last_updated":     time.Now().AddDate(0, -2, 0),
 		"approval_status":  "approved",
@@ -352,11 +352,11 @@ func (s *SOC2TypeIICompliance) validateSecurityPolicy(ctx context.Context, app *
 	}, nil
 }
 
-func (s *SOC2TypeIICompliance) observeAccessControls(ctx context.Context, app *lift.App) (interface{}, error) {
+func (s *SOC2TypeIICompliance) observeAccessControls(ctx context.Context, app *lift.App) (any, error) {
 	// Implementation for access control observation
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"authentication_required": true,
 		"authorization_enforced":  true,
 		"session_management":      true,
@@ -364,12 +364,12 @@ func (s *SOC2TypeIICompliance) observeAccessControls(ctx context.Context, app *l
 	}, nil
 }
 
-func (s *SOC2TypeIICompliance) analyzeSecurityLogs(ctx context.Context, app *lift.App, period time.Duration) (interface{}, error) {
+func (s *SOC2TypeIICompliance) analyzeSecurityLogs(ctx context.Context, app *lift.App, period time.Duration) (any, error) {
 	// Implementation for security log analysis
 	_ = ctx    // Use context parameter to avoid unused warning
 	_ = app    // Use app parameter to avoid unused warning
 	_ = period // Use period parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"total_events":       10000,
 		"security_events":    150,
 		"anomalies_detected": 2,
@@ -379,10 +379,10 @@ func (s *SOC2TypeIICompliance) analyzeSecurityLogs(ctx context.Context, app *lif
 }
 
 // validateAvailabilityPolicy validates availability policies
-func (s *SOC2TypeIICompliance) validateAvailabilityPolicy(ctx context.Context, app *lift.App) (interface{}, error) {
+func (s *SOC2TypeIICompliance) validateAvailabilityPolicy(ctx context.Context, app *lift.App) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"policy_exists":      true,
 		"sla_defined":        true,
 		"uptime_target":      99.9,
@@ -392,10 +392,10 @@ func (s *SOC2TypeIICompliance) validateAvailabilityPolicy(ctx context.Context, a
 }
 
 // observeDataProcessing observes data processing integrity
-func (s *SOC2TypeIICompliance) observeDataProcessing(ctx context.Context, app *lift.App) (interface{}, error) {
+func (s *SOC2TypeIICompliance) observeDataProcessing(ctx context.Context, app *lift.App) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"input_validation":    true,
 		"data_transformation": true,
 		"output_verification": true,
@@ -405,10 +405,10 @@ func (s *SOC2TypeIICompliance) observeDataProcessing(ctx context.Context, app *l
 }
 
 // inspectSecurityConfig inspects security configurations
-func (s *SOC2TypeIICompliance) inspectSecurityConfig(ctx context.Context, app *lift.App) (interface{}, error) {
+func (s *SOC2TypeIICompliance) inspectSecurityConfig(ctx context.Context, app *lift.App) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"encryption_enabled":     true,
 		"access_controls":        true,
 		"network_security":       true,
@@ -418,10 +418,10 @@ func (s *SOC2TypeIICompliance) inspectSecurityConfig(ctx context.Context, app *l
 }
 
 // inspectAvailabilityMonitoring inspects availability monitoring
-func (s *SOC2TypeIICompliance) inspectAvailabilityMonitoring(ctx context.Context, app *lift.App) (interface{}, error) {
+func (s *SOC2TypeIICompliance) inspectAvailabilityMonitoring(ctx context.Context, app *lift.App) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"health_checks":       true,
 		"performance_metrics": true,
 		"alerting_configured": true,
@@ -431,10 +431,10 @@ func (s *SOC2TypeIICompliance) inspectAvailabilityMonitoring(ctx context.Context
 }
 
 // reperformAccessControl reperforms access control tests
-func (s *SOC2TypeIICompliance) reperformAccessControl(ctx context.Context, app *lift.App) (interface{}, error) {
+func (s *SOC2TypeIICompliance) reperformAccessControl(ctx context.Context, app *lift.App) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"authentication_test": "passed",
 		"authorization_test":  "passed",
 		"session_test":        "passed",
@@ -444,10 +444,10 @@ func (s *SOC2TypeIICompliance) reperformAccessControl(ctx context.Context, app *
 }
 
 // reperformDataValidation reperforms data validation tests
-func (s *SOC2TypeIICompliance) reperformDataValidation(ctx context.Context, app *lift.App) (interface{}, error) {
+func (s *SOC2TypeIICompliance) reperformDataValidation(ctx context.Context, app *lift.App) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"input_validation_test":  "passed",
 		"data_integrity_test":    "passed",
 		"transformation_test":    "passed",
@@ -457,11 +457,11 @@ func (s *SOC2TypeIICompliance) reperformDataValidation(ctx context.Context, app 
 }
 
 // analyzeAvailabilityMetrics analyzes availability metrics
-func (s *SOC2TypeIICompliance) analyzeAvailabilityMetrics(ctx context.Context, app *lift.App, period time.Duration) (interface{}, error) {
+func (s *SOC2TypeIICompliance) analyzeAvailabilityMetrics(ctx context.Context, app *lift.App, period time.Duration) (any, error) {
 	_ = ctx    // Use context parameter to avoid unused warning
 	_ = app    // Use app parameter to avoid unused warning
 	_ = period // Use period parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"uptime_percentage":     99.95,
 		"average_response_time": "45ms",
 		"incidents_count":       2,
@@ -506,7 +506,7 @@ func (s *SOC2TypeIICompliance) calculateControlStatus(testResults map[string]*Co
 	}
 }
 
-func (s *SOC2TypeIICompliance) evaluateTestResult(actual, expected interface{}) ComplianceTestStatus {
+func (s *SOC2TypeIICompliance) evaluateTestResult(actual, expected any) ComplianceTestStatus {
 	// Simple comparison - in practice, this would be more sophisticated
 	if fmt.Sprintf("%v", actual) == fmt.Sprintf("%v", expected) {
 		return ComplianceTestPassed
@@ -526,7 +526,7 @@ func (s *SOC2TypeIICompliance) collectEvidence(ctx context.Context, control SOC2
 			Timestamp:   time.Now(),
 			Location:    req.Location,
 			Hash:        fmt.Sprintf("hash_%d", time.Now().Unix()),
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"control_id": control.ID,
 				"automated":  req.Automated,
 			},

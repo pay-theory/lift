@@ -36,11 +36,11 @@ func main() {
 func handleSignup(ctx *lift.Context) error {
 	var req SignupRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	// Process signup...
-	return ctx.Status(201).JSON(map[string]interface{}{
+	return ctx.Status(201).JSON(map[string]any{
 		"message": "Account created successfully",
 		"user_id": "new-user-id",
 	})
@@ -49,13 +49,13 @@ func handleSignup(ctx *lift.Context) error {
 func handleLogin(ctx *lift.Context) error {
 	var req LoginRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	// Process login...
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"token": "jwt-token-here",
-		"user": map[string]interface{}{
+		"user": map[string]any{
 			"id":    "user-id",
 			"email": req.Email,
 		},
@@ -65,11 +65,11 @@ func handleLogin(ctx *lift.Context) error {
 func handleForgotPassword(ctx *lift.Context) error {
 	var req ForgotPasswordRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	// Process password reset...
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"message": "Password reset email sent",
 	})
 }
@@ -77,7 +77,7 @@ func handleForgotPassword(ctx *lift.Context) error {
 func handleExpensiveOperation(ctx *lift.Context) error {
 	// This operation is expensive, so it would be rate limited in production
 	if ctx.Logger != nil {
-		ctx.Logger.Info("Starting expensive operation", map[string]interface{}{
+		ctx.Logger.Info("Starting expensive operation", map[string]any{
 			"tenant_id": ctx.TenantID(),
 			"user_id":   ctx.UserID(),
 		})
@@ -86,7 +86,7 @@ func handleExpensiveOperation(ctx *lift.Context) error {
 	// Simulate expensive operation
 	time.Sleep(100 * time.Millisecond) // Reduced for demo
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"result": "Operation completed",
 		"cost":   "high",
 	})
@@ -95,10 +95,10 @@ func handleExpensiveOperation(ctx *lift.Context) error {
 func handleDataExport(ctx *lift.Context) error {
 	exportType := ctx.Query("type")
 	if exportType == "" {
-		return lift.BadRequest("Export type is required")
+		return lift.NewLiftError("BAD_REQUEST", "Export type is required", 400)
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"export_id": "export-123",
 		"type":      exportType,
 		"status":    "processing",
@@ -106,8 +106,8 @@ func handleDataExport(ctx *lift.Context) error {
 }
 
 func handleListUsers(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
-		"users": []map[string]interface{}{
+	return ctx.JSON(map[string]any{
+		"users": []map[string]any{
 			{"id": "1", "name": "User 1"},
 			{"id": "2", "name": "User 2"},
 		},
@@ -118,10 +118,10 @@ func handleListUsers(ctx *lift.Context) error {
 func handleCreateUser(ctx *lift.Context) error {
 	var req CreateUserRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
-	return ctx.Status(201).JSON(map[string]interface{}{
+	return ctx.Status(201).JSON(map[string]any{
 		"id":   "new-user-id",
 		"name": req.Name,
 	})
@@ -129,7 +129,7 @@ func handleCreateUser(ctx *lift.Context) error {
 
 func handleGetUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"id":   userID,
 		"name": "User Name",
 	})
@@ -139,10 +139,10 @@ func handleUpdateUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
 	var req UpdateUserRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"id":   userID,
 		"name": req.Name,
 	})
@@ -150,13 +150,13 @@ func handleUpdateUser(ctx *lift.Context) error {
 
 func handleDeleteUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"message": fmt.Sprintf("User %s deleted", userID),
 	})
 }
 
 func handleHealth(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"status": "healthy",
 		"time":   time.Now().Unix(),
 	})

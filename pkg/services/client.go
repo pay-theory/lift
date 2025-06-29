@@ -15,8 +15,8 @@ import (
 
 // Tracer interface for distributed tracing (placeholder)
 type Tracer interface {
-	StartSpan(operationName string) interface{}
-	FinishSpan(span interface{})
+	StartSpan(operationName string) any
+	FinishSpan(span any)
 }
 
 // MetricsCollector interface for metrics collection (placeholder)
@@ -72,13 +72,13 @@ type ServiceRequest struct {
 	Method              string                 `json:"method"`
 	Path                string                 `json:"path"`
 	Headers             map[string]string      `json:"headers"`
-	Body                interface{}            `json:"body"`
+	Body                any                    `json:"body"`
 	TenantID            string                 `json:"tenant_id,omitempty"`
 	UserID              string                 `json:"user_id,omitempty"`
 	RequestID           string                 `json:"request_id,omitempty"`
 	LoadBalanceStrategy LoadBalanceStrategy    `json:"load_balance_strategy"`
 	Timeout             time.Duration          `json:"timeout"`
-	Metadata            map[string]interface{} `json:"metadata"`
+	Metadata            map[string]any         `json:"metadata"`
 }
 
 // ServiceResponse represents a service call response
@@ -86,7 +86,7 @@ type ServiceResponse struct {
 	StatusCode int                    `json:"status_code"`
 	Headers    map[string]string      `json:"headers"`
 	Body       []byte                 `json:"body"`
-	Metadata   map[string]interface{} `json:"metadata"`
+	Metadata   map[string]any         `json:"metadata"`
 	Duration   time.Duration          `json:"duration"`
 	Instance   *ServiceInstance       `json:"instance"`
 }
@@ -171,7 +171,7 @@ func (c *ServiceClient) Call(ctx context.Context, request *ServiceRequest) (*Ser
 
 	// Execute with circuit breaker if enabled
 	if c.config.EnableCircuitBreaker && c.circuitBreaker != nil {
-		result, err := c.circuitBreaker.Execute(func() (interface{}, error) {
+		result, err := c.circuitBreaker.Execute(func() (any, error) {
 			return c.executeRequest(ctx, instance, request)
 		})
 
@@ -249,7 +249,7 @@ func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceIns
 			Body:       bodyBytes,
 			Duration:   time.Since(start),
 			Instance:   instance,
-			Metadata:   make(map[string]interface{}),
+			Metadata:   make(map[string]any),
 		}
 
 		// Copy response headers

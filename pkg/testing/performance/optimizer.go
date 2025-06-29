@@ -214,7 +214,7 @@ type BenchmarkResult struct {
 	ErrorStats     ErrorStats
 	ResourceUsage  ResourceUsageStats
 	Percentiles    PercentileStats
-	CustomMetrics  map[string]interface{}
+	CustomMetrics  map[string]any
 }
 
 type ResponseTimeStats struct {
@@ -866,7 +866,7 @@ type OptimizationResult struct {
 type AppliedOptimization struct {
 	Type         OptimizationType
 	Description  string
-	Parameters   map[string]interface{}
+	Parameters   map[string]any
 	Impact       ImpactMetrics
 	Reversible   bool
 	RollbackInfo string
@@ -993,7 +993,7 @@ const (
 type AlertAction struct {
 	Type       ActionType
 	Target     string
-	Parameters map[string]interface{}
+	Parameters map[string]any
 }
 
 type ActionType string
@@ -1017,7 +1017,7 @@ type Alert struct {
 	Severity    AlertSeverity
 	Status      AlertStatus
 	Description string
-	Context     map[string]interface{}
+	Context     map[string]any
 }
 
 type AlertStatus string

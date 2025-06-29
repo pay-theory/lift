@@ -142,7 +142,7 @@ func TimeoutMiddleware(config TimeoutConfig) lift.Middleware {
 				manager.recordSuccess(ctx, timeout, duration)
 
 				if config.Logger != nil {
-					config.Logger.Debug("Request completed within timeout", map[string]interface{}{
+					config.Logger.Debug("Request completed within timeout", map[string]any{
 						"timeout_name": config.Name,
 						"timeout":      timeout.String(),
 						"duration":     duration.String(),
@@ -164,7 +164,7 @@ func TimeoutMiddleware(config TimeoutConfig) lift.Middleware {
 				manager.recordTimeout(ctx, timeout, duration)
 
 				if config.Logger != nil {
-					config.Logger.Warn("Request timed out", map[string]interface{}{
+					config.Logger.Warn("Request timed out", map[string]any{
 						"timeout_name": config.Name,
 						"timeout":      timeout.String(),
 						"duration":     duration.String(),
@@ -333,7 +333,7 @@ func (tm *timeoutManager) GetStats() TimeoutStats {
 // defaultTimeoutHandler creates a default timeout response handler
 func defaultTimeoutHandler(statusCode int, message string) func(*lift.Context) error {
 	return func(ctx *lift.Context) error {
-		return ctx.Status(statusCode).JSON(map[string]interface{}{
+		return ctx.Status(statusCode).JSON(map[string]any{
 			"error":   "Request Timeout",
 			"message": message,
 			"code":    "TIMEOUT",

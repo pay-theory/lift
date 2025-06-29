@@ -391,10 +391,40 @@ if connectionID, ok := ctx.Request.Metadata["connectionId"].(string); ok {
 
 Check out complete examples in the `examples/` directory:
 
-- `hello-world` - Minimal example
-- `basic-crud-api` - CRUD operations with DynamoDB
-- `jwt-auth` - JWT authentication
-- `multi-service-demo` - Microservices architecture
-- `websocket-demo` - WebSocket support
+### Getting Started
+- `hello-world` - Minimal Lambda function example
+- `basic-crud-api` - CRUD operations with testing patterns
+- `error-handling` - Structured error handling patterns
+
+### Authentication & Security
+- `jwt-auth` - JWT authentication with middleware
+- `jwt-auth-demo` - JWT authentication demonstration
+- `rate-limiting` - Rate limiting middleware
+
+### Real-time & Events
+- `websocket-demo` - WebSocket connection management
+- `websocket-enhanced` - Advanced WebSocket features
+- `event-adapters` - SQS, S3, EventBridge handlers
+- `multi-event-handler` - Multiple event type handling
+- `eventbridge-wakeup` - Scheduled EventBridge tasks
+- `multiple-scheduled-events` - Multiple scheduled triggers
+
+### Enterprise Applications
+- `multi-tenant-saas` - Multi-tenant SaaS patterns
+- `enterprise-banking` - Banking with compliance features
+- `enterprise-healthcare` - Healthcare with HIPAA compliance
+- `enterprise-ecommerce` - E-commerce platform example
+
+### Production Patterns
+- `production-api` - Production-ready configuration
+- `multi-service-demo` - Microservices with chaos engineering
+- `observability-demo` - Logging, metrics, and tracing
+- `health-monitoring` - Health check patterns
+
+### Testing & Development
+- `mocking-demo` - Testing with mocks
+- `cloudwatch-mocking-demo` - CloudWatch metrics mocking
+- `dynamorm-integration` - DynamORM database patterns
+- `streamer-quickstart` - Streaming quickstart
 
 Happy coding with Lift! 🚀 

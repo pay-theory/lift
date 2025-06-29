@@ -133,7 +133,7 @@ type RegulationCompliance struct {
 	Findings            []ComplianceFinding    `json:"findings"`
 	LastAssessment      time.Time              `json:"last_assessment"`
 	NextAssessment      time.Time              `json:"next_assessment"`
-	Metadata            map[string]interface{} `json:"metadata"`
+	Metadata            map[string]any `json:"metadata"`
 }
 
 // ComplianceRecommendation represents a compliance recommendation
@@ -242,7 +242,7 @@ type RiskAssessmentTemplate struct {
 	ImpactCategories []string               `json:"impact_categories"`
 	Methodology      string                 `json:"methodology"`
 	Frequency        time.Duration          `json:"frequency"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 // NewIndustryComplianceTemplateManager creates a new template manager
@@ -381,7 +381,7 @@ func (bct *BankingComplianceTemplate) GetControls() []ComplianceControl {
 					Type:      "technical",
 					Automated: true,
 					Frequency: 24 * time.Hour,
-					Parameters: map[string]interface{}{
+					Parameters: map[string]any{
 						"encryption_algorithm": "AES-256",
 						"key_management":       "HSM",
 					},

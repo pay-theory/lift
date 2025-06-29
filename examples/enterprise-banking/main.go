@@ -33,7 +33,7 @@ type Transaction struct {
 	Description    string                 `json:"description"`
 	Reference      string                 `json:"reference"`
 	ProcessedAt    time.Time              `json:"processedAt"`
-	ComplianceData map[string]interface{} `json:"complianceData,omitempty"`
+	ComplianceData map[string]any `json:"complianceData,omitempty"`
 }
 
 type Payment struct {
@@ -102,7 +102,7 @@ type PaymentService interface {
 type ComplianceService interface {
 	ValidateTransaction(ctx context.Context, transaction *Transaction) error
 	AuditPayment(ctx context.Context, payment *Payment) error
-	GenerateReport(ctx context.Context, reportType string) (interface{}, error)
+	GenerateReport(ctx context.Context, reportType string) (any, error)
 }
 
 type FraudDetectionService interface {
@@ -165,7 +165,7 @@ func (m *mockTransactionService) CreateTransaction(ctx context.Context, req Crea
 		Description:   req.Description,
 		Reference:     req.Reference,
 		ProcessedAt:   time.Now(),
-		ComplianceData: map[string]interface{}{
+		ComplianceData: map[string]any{
 			"aml_checked":  true,
 			"kyc_verified": true,
 		},
@@ -270,11 +270,11 @@ func (m *mockComplianceService) AuditPayment(ctx context.Context, payment *Payme
 	return nil
 }
 
-func (m *mockComplianceService) GenerateReport(ctx context.Context, reportType string) (interface{}, error) {
-	return map[string]interface{}{
+func (m *mockComplianceService) GenerateReport(ctx context.Context, reportType string) (any, error) {
+	return map[string]any{
 		"reportType":  reportType,
 		"generatedAt": time.Now(),
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"totalTransactions":   1000,
 			"totalAmount":         50000.00,
 			"flaggedTransactions": 5,
@@ -314,7 +314,7 @@ func generateAccountNumber() string {
 func createAccount(ctx *lift.Context) error {
 	var req CreateAccountRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	// Get services from context (would be injected via DI)
@@ -323,7 +323,7 @@ func createAccount(ctx *lift.Context) error {
 	// Create account
 	account, err := accountService.CreateAccount(ctx.Request.Context(), req)
 	if err != nil {
-		return ctx.InternalError("Failed to create account", err)
+		return ctx.SystemError("Failed to create account", err)
 	}
 
 	// Compliance logging
@@ -336,7 +336,7 @@ func createAccount(ctx *lift.Context) error {
 func getAccount(ctx *lift.Context) error {
 	accountID := ctx.PathParam("id")
 	if accountID == "" {
-		return ctx.BadRequest("Account ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Account ID is required", 400)
 	}
 
 	accountService := &mockAccountService{}
@@ -352,17 +352,17 @@ func getAccount(ctx *lift.Context) error {
 func getBalance(ctx *lift.Context) error {
 	accountID := ctx.PathParam("id")
 	if accountID == "" {
-		return ctx.BadRequest("Account ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Account ID is required", 400)
 	}
 
 	accountService := &mockAccountService{}
 
 	balance, err := accountService.GetBalance(ctx.Request.Context(), accountID)
 	if err != nil {
-		return ctx.InternalError("Failed to get balance", err)
+		return ctx.SystemError("Failed to get balance", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"accountId": accountID,
 		"balance":   balance,
 		"currency":  "USD",
@@ -373,17 +373,17 @@ func getBalance(ctx *lift.Context) error {
 func createTransaction(ctx *lift.Context) error {
 	accountID := ctx.PathParam("id")
 	if accountID == "" {
-		return ctx.BadRequest("Account ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Account ID is required", 400)
 	}
 
 	var req CreateTransactionRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	// Validate account ID matches request
 	if req.FromAccountID != accountID {
-		return ctx.BadRequest("Account ID mismatch", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Account ID mismatch", 400)
 	}
 
 	transactionService := &mockTransactionService{}
@@ -392,7 +392,7 @@ func createTransaction(ctx *lift.Context) error {
 	// Create transaction
 	transaction, err := transactionService.CreateTransaction(ctx.Request.Context(), req)
 	if err != nil {
-		return ctx.InternalError("Failed to create transaction", err)
+		return ctx.SystemError("Failed to create transaction", err)
 	}
 
 	// Compliance validation
@@ -411,7 +411,7 @@ func createTransaction(ctx *lift.Context) error {
 func processPayment(ctx *lift.Context) error {
 	var req ProcessPaymentRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	paymentService := &mockPaymentService{}
@@ -421,7 +421,7 @@ func processPayment(ctx *lift.Context) error {
 	// Fraud detection
 	isHighRisk, err := fraudService.CheckRisk(ctx.Request.Context(), req.PayerAccountID, req.Amount)
 	if err != nil {
-		return ctx.InternalError("Fraud check failed", err)
+		return ctx.SystemError("Fraud check failed", err)
 	}
 
 	if isHighRisk {
@@ -431,7 +431,7 @@ func processPayment(ctx *lift.Context) error {
 	// Process payment
 	payment, err := paymentService.ProcessPayment(ctx.Request.Context(), req)
 	if err != nil {
-		return ctx.InternalError("Payment processing failed", err)
+		return ctx.SystemError("Payment processing failed", err)
 	}
 
 	// Analyze fraud score
@@ -453,7 +453,7 @@ func processPayment(ctx *lift.Context) error {
 func getPayment(ctx *lift.Context) error {
 	paymentID := ctx.PathParam("id")
 	if paymentID == "" {
-		return ctx.BadRequest("Payment ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Payment ID is required", 400)
 	}
 
 	paymentService := &mockPaymentService{}
@@ -469,17 +469,17 @@ func getPayment(ctx *lift.Context) error {
 func refundPayment(ctx *lift.Context) error {
 	paymentID := ctx.PathParam("id")
 	if paymentID == "" {
-		return ctx.BadRequest("Payment ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Payment ID is required", 400)
 	}
 
 	var req RefundPaymentRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	// Validate payment ID matches request
 	if req.PaymentID != paymentID {
-		return ctx.BadRequest("Payment ID mismatch", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Payment ID mismatch", 400)
 	}
 
 	paymentService := &mockPaymentService{}
@@ -487,7 +487,7 @@ func refundPayment(ctx *lift.Context) error {
 	// Process refund
 	refund, err := paymentService.RefundPayment(ctx.Request.Context(), req)
 	if err != nil {
-		return ctx.InternalError("Refund processing failed", err)
+		return ctx.SystemError("Refund processing failed", err)
 	}
 
 	// Compliance audit
@@ -504,13 +504,13 @@ func getAuditTrail(ctx *lift.Context) error {
 	accountID := ctx.QueryParam("account_id")
 
 	// Mock audit trail data
-	auditTrail := map[string]interface{}{
+	auditTrail := map[string]any{
 		"filters": map[string]string{
 			"start_date": startDate,
 			"end_date":   endDate,
 			"account_id": accountID,
 		},
-		"events": []map[string]interface{}{
+		"events": []map[string]any{
 			{
 				"timestamp":  time.Now().Add(-2 * time.Hour),
 				"event_type": "account_created",
@@ -537,14 +537,14 @@ func getAuditTrail(ctx *lift.Context) error {
 func generateComplianceReport(ctx *lift.Context) error {
 	reportType := ctx.PathParam("type")
 	if reportType == "" {
-		return ctx.BadRequest("Report type is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Report type is required", 400)
 	}
 
 	complianceService := &mockComplianceService{}
 
 	report, err := complianceService.GenerateReport(ctx.Request.Context(), reportType)
 	if err != nil {
-		return ctx.InternalError("Failed to generate report", err)
+		return ctx.SystemError("Failed to generate report", err)
 	}
 
 	return ctx.OK(report)
@@ -552,7 +552,7 @@ func generateComplianceReport(ctx *lift.Context) error {
 
 // Health check handler
 func healthCheck(ctx *lift.Context) error {
-	health := map[string]interface{}{
+	health := map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now(),
 		"version":   "1.0.0",
@@ -562,7 +562,7 @@ func healthCheck(ctx *lift.Context) error {
 			"fraud_detection": "healthy",
 			"compliance":      "healthy",
 		},
-		"metrics": map[string]interface{}{
+		"metrics": map[string]any{
 			"uptime_seconds":      3600,
 			"total_transactions":  1000,
 			"successful_payments": 995,
@@ -580,11 +580,11 @@ func Recovery() lift.Middleware {
 			defer func() {
 				if r := recover(); r != nil {
 					if ctx.Logger != nil {
-						ctx.Logger.Error("Handler panicked", map[string]interface{}{
+						ctx.Logger.Error("Handler panicked", map[string]any{
 							"panic": r,
 						})
 					}
-					ctx.InternalError("Internal server error", fmt.Errorf("panic: %v", r))
+					ctx.SystemError("Internal server error", fmt.Errorf("panic: %v", r))
 				}
 			}()
 			return next.Handle(ctx)

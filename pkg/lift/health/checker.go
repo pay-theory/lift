@@ -39,7 +39,7 @@ type HealthStatus struct {
 	Message string `json:"message,omitempty"`
 
 	// Details additional details about the health status
-	Details map[string]interface{} `json:"details,omitempty"`
+	Details map[string]any `json:"details,omitempty"`
 
 	// Error if the health check failed
 	Error string `json:"error,omitempty"`
@@ -212,7 +212,7 @@ func (hm *DefaultHealthManager) OverallHealth(ctx context.Context) HealthStatus 
 		Status:    StatusHealthy,
 		Timestamp: time.Now(),
 		Duration:  duration,
-		Details:   make(map[string]interface{}),
+		Details:   make(map[string]any),
 	}
 
 	// Aggregate results

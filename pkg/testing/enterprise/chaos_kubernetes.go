@@ -90,7 +90,7 @@ type ChaosExperimentSpec struct {
 	ControllerType ChaosControllerType    `json:"controller_type"`
 	FaultType      FaultType              `json:"fault_type"`
 	TargetSelector *TargetSelector        `json:"target_selector"`
-	FaultConfig    map[string]interface{} `json:"fault_config"`
+	FaultConfig    map[string]any `json:"fault_config"`
 	Duration       time.Duration          `json:"duration"`
 	Schedule       *ChaosSchedule         `json:"schedule,omitempty"`
 	Conditions     []ChaosCondition       `json:"conditions,omitempty"`
@@ -223,7 +223,7 @@ type ChaosOperator struct {
 	Controllers   []ChaosController           `json:"controllers"`
 	Webhooks      []*AdmissionWebhook         `json:"webhooks"`
 	RBAC          *RBACConfig                 `json:"rbac"`
-	Configuration map[string]interface{}      `json:"configuration"`
+	Configuration map[string]any      `json:"configuration"`
 	Status        OperatorStatus              `json:"status"`
 }
 
@@ -231,7 +231,7 @@ type ChaosOperator struct {
 type CustomResourceDefinition struct {
 	APIVersion string                 `json:"api_version"`
 	Kind       string                 `json:"kind"`
-	Metadata   map[string]interface{} `json:"metadata"`
+	Metadata   map[string]any `json:"metadata"`
 	Spec       *CRDSpec               `json:"spec"`
 	Status     *CRDStatus             `json:"status"`
 }
@@ -249,7 +249,7 @@ type CRDVersion struct {
 	Name    string                 `json:"name"`
 	Served  bool                   `json:"served"`
 	Storage bool                   `json:"storage"`
-	Schema  map[string]interface{} `json:"schema"`
+	Schema  map[string]any `json:"schema"`
 }
 
 // CRDNames defines CRD naming
@@ -462,7 +462,7 @@ type ChaosEvent struct {
 	Source    string                 `json:"source"`
 	Target    string                 `json:"target"`
 	Timestamp time.Time              `json:"timestamp"`
-	Data      map[string]interface{} `json:"data"`
+	Data      map[string]any `json:"data"`
 	Severity  EventSeverity          `json:"severity"`
 	Tags      []string               `json:"tags"`
 	Metadata  map[string]string      `json:"metadata"`
@@ -595,7 +595,7 @@ func (c *ChaosMeshIntegration) CreateExperiment(ctx context.Context, spec *Chaos
 		Source:    string(spec.ControllerType),
 		Target:    spec.Name,
 		Timestamp: time.Now(),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"spec":   spec,
 			"result": result,
 		},
@@ -735,7 +735,7 @@ func (p *PodChaosController) CreateChaosExperiment(ctx context.Context, spec *Ch
 		ExperimentID: fmt.Sprintf("pod-chaos-%d", time.Now().Unix()),
 		Status:       ExperimentStatusRunning,
 		StartTime:    time.Now(),
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"controller": p.name,
 			"type":       PodChaosControllerType,
 		},
@@ -834,17 +834,17 @@ func NewTimeChaosController(config *KubernetesConfig) *TimeChaosController {
 }
 
 // Placeholder implementations for supporting types
-type KubernetesClient interface{}
-type EventRecorder interface{}
-type MetricsCollector interface{}
-type NetworkManager interface{}
-type TrafficController interface{}
-type ResourceManager interface{}
-type StressInjector interface{}
-type IOManager interface{}
-type IOFaultInjector interface{}
-type TimeManager interface{}
-type ClockSkewer interface{}
+type KubernetesClient any
+type EventRecorder any
+type MetricsCollector any
+type NetworkManager any
+type TrafficController any
+type ResourceManager any
+type StressInjector any
+type IOManager any
+type IOFaultInjector any
+type TimeManager any
+type ClockSkewer any
 type WatchManager struct{}
 type ChaosReconciler struct{}
 type LeaderElection struct{}
@@ -1072,5 +1072,5 @@ type ExperimentStatusInfo struct {
 	Status       ExperimentStatus       `json:"status"`
 	Progress     float64                `json:"progress"`
 	LastUpdated  time.Time              `json:"last_updated"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }

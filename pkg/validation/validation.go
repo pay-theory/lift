@@ -13,7 +13,7 @@ type ValidationError struct {
 	Field   string      `json:"field"`
 	Message string      `json:"message"`
 	Tag     string      `json:"tag"`
-	Value   interface{} `json:"value"`
+	Value   any `json:"value"`
 }
 
 func (e ValidationError) Error() string {
@@ -36,11 +36,11 @@ func (e ValidationErrors) Error() string {
 }
 
 // Validate validates a struct based on struct tags
-func Validate(v interface{}) error {
+func Validate(v any) error {
 	return validateStruct(v, "")
 }
 
-func validateStruct(v interface{}, prefix string) error {
+func validateStruct(v any, prefix string) error {
 	val := reflect.ValueOf(v)
 	typ := reflect.TypeOf(v)
 

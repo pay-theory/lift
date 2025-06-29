@@ -50,7 +50,7 @@ type DashboardTemplate struct {
 	Category    string                 `json:"category"`
 	Version     string                 `json:"version"`
 	Widgets     []WidgetTemplate       `json:"widgets"`
-	Variables   map[string]interface{} `json:"variables"`
+	Variables   map[string]any `json:"variables"`
 	Layout      DashboardLayout        `json:"layout"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
@@ -62,7 +62,7 @@ type WidgetTemplate struct {
 	Title      string                 `json:"title"`
 	Position   WidgetPosition         `json:"position"`
 	Size       WidgetSize             `json:"size"`
-	Properties map[string]interface{} `json:"properties"`
+	Properties map[string]any `json:"properties"`
 	Metrics    []MetricDefinition     `json:"metrics"`
 }
 
@@ -105,7 +105,7 @@ type DeployedDashboard struct {
 	Name        string                 `json:"name"`
 	TemplateID  string                 `json:"template_id"`
 	Version     string                 `json:"version"`
-	Variables   map[string]interface{} `json:"variables"`
+	Variables   map[string]any `json:"variables"`
 	DeployedAt  time.Time              `json:"deployed_at"`
 	LastUpdated time.Time              `json:"last_updated"`
 	Status      DashboardStatus        `json:"status"`
@@ -151,7 +151,7 @@ func (dm *DashboardManager) RegisterTemplate(template *DashboardTemplate) error 
 }
 
 // CreateDashboard creates a dashboard from a template
-func (dm *DashboardManager) CreateDashboard(ctx context.Context, templateID, dashboardName string, variables map[string]interface{}) error {
+func (dm *DashboardManager) CreateDashboard(ctx context.Context, templateID, dashboardName string, variables map[string]any) error {
 	dm.mu.RLock()
 	template, exists := dm.templates[templateID]
 	dm.mu.RUnlock()
@@ -196,7 +196,7 @@ func (dm *DashboardManager) CreateDashboard(ctx context.Context, templateID, das
 }
 
 // UpdateDashboard updates an existing dashboard
-func (dm *DashboardManager) UpdateDashboard(ctx context.Context, dashboardName string, variables map[string]interface{}) error {
+func (dm *DashboardManager) UpdateDashboard(ctx context.Context, dashboardName string, variables map[string]any) error {
 	dm.mu.RLock()
 	deployed, exists := dm.deployedDashboards[dashboardName]
 	if !exists {
@@ -212,7 +212,7 @@ func (dm *DashboardManager) UpdateDashboard(ctx context.Context, dashboardName s
 	}
 
 	// Merge variables
-	mergedVariables := make(map[string]interface{})
+	mergedVariables := make(map[string]any)
 	for k, v := range deployed.Variables {
 		mergedVariables[k] = v
 	}
@@ -307,14 +307,14 @@ func (dm *DashboardManager) GetDashboard(ctx context.Context, dashboardName stri
 }
 
 // buildDashboardBody builds the dashboard JSON body from template and variables
-func (dm *DashboardManager) buildDashboardBody(template *DashboardTemplate, variables map[string]interface{}) (string, error) {
+func (dm *DashboardManager) buildDashboardBody(template *DashboardTemplate, variables map[string]any) (string, error) {
 	// Create dashboard structure
-	dashboard := map[string]interface{}{
-		"widgets": []map[string]interface{}{},
+	dashboard := map[string]any{
+		"widgets": []map[string]any{},
 	}
 
 	// Add default variables
-	allVariables := make(map[string]interface{})
+	allVariables := make(map[string]any)
 
 	// Start with default config values
 	allVariables["namespace"] = dm.config.Namespace
@@ -333,7 +333,7 @@ func (dm *DashboardManager) buildDashboardBody(template *DashboardTemplate, vari
 
 	// Build widgets
 	for _, widgetTemplate := range template.Widgets {
-		widget := map[string]interface{}{
+		widget := map[string]any{
 			"type":       widgetTemplate.Type,
 			"x":          widgetTemplate.Position.X,
 			"y":          widgetTemplate.Position.Y,
@@ -342,7 +342,7 @@ func (dm *DashboardManager) buildDashboardBody(template *DashboardTemplate, vari
 			"properties": dm.buildWidgetProperties(widgetTemplate, allVariables),
 		}
 
-		dashboard["widgets"] = append(dashboard["widgets"].([]map[string]interface{}), widget)
+		dashboard["widgets"] = append(dashboard["widgets"].([]map[string]any), widget)
 	}
 
 	// Convert to JSON
@@ -355,8 +355,8 @@ func (dm *DashboardManager) buildDashboardBody(template *DashboardTemplate, vari
 }
 
 // buildWidgetProperties builds widget properties with variable substitution
-func (dm *DashboardManager) buildWidgetProperties(widgetTemplate WidgetTemplate, variables map[string]interface{}) map[string]interface{} {
-	properties := make(map[string]interface{})
+func (dm *DashboardManager) buildWidgetProperties(widgetTemplate WidgetTemplate, variables map[string]any) map[string]any {
+	properties := make(map[string]any)
 
 	// Copy base properties
 	for k, v := range widgetTemplate.Properties {
@@ -368,9 +368,9 @@ func (dm *DashboardManager) buildWidgetProperties(widgetTemplate WidgetTemplate,
 
 	// Build metrics if present
 	if len(widgetTemplate.Metrics) > 0 {
-		metrics := [][]interface{}{}
+		metrics := [][]any{}
 		for _, metric := range widgetTemplate.Metrics {
-			metricArray := []interface{}{
+			metricArray := []any{
 				dm.substituteVariables(metric.Namespace, variables),
 				dm.substituteVariables(metric.MetricName, variables),
 			}
@@ -385,7 +385,7 @@ func (dm *DashboardManager) buildWidgetProperties(widgetTemplate WidgetTemplate,
 
 			// Add options if needed
 			if metric.Statistic != "" || metric.Period != 0 || metric.Label != "" {
-				options := make(map[string]interface{})
+				options := make(map[string]any)
 				if metric.Statistic != "" {
 					options["stat"] = metric.Statistic
 				}
@@ -410,7 +410,7 @@ func (dm *DashboardManager) buildWidgetProperties(widgetTemplate WidgetTemplate,
 }
 
 // substituteVariables performs variable substitution in strings
-func (dm *DashboardManager) substituteVariables(value interface{}, variables map[string]interface{}) interface{} {
+func (dm *DashboardManager) substituteVariables(value any, variables map[string]any) any {
 	if str, ok := value.(string); ok {
 		// Simple variable substitution - replace ${var} with variable value
 		for varName, varValue := range variables {

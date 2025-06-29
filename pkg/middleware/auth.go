@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/pay-theory/lift/pkg/errors"
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/security"
 )
@@ -65,7 +64,7 @@ func NewJWTValidator(config security.JWTConfig) (*JWTValidator, error) {
 
 // ValidateToken validates a JWT token and returns the claims
 func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (any, error) {
 		// Verify signing method
 		switch v.config.SigningMethod {
 		case "RS256":
@@ -196,18 +195,18 @@ func JWT(config security.JWTConfig) lift.Middleware {
 			// Extract token from Authorization header
 			token := extractBearerToken(ctx)
 			if token == "" {
-				return errors.Unauthorized("Missing or invalid authorization token")
+				return lift.Unauthorized("Missing or invalid authorization token")
 			}
 
 			// Validate token
 			claims, err := validator.ValidateToken(token)
 			if err != nil {
-				return errors.Unauthorized(fmt.Sprintf("Invalid token: %v", err))
+				return lift.Unauthorized(fmt.Sprintf("Invalid token: %v", err))
 			}
 
 			// Multi-tenant validation
 			if config.RequireTenantID && claims.TenantID == "" {
-				return errors.Forbidden("Tenant ID is required")
+				return lift.AuthorizationError("Tenant ID is required")
 			}
 
 			// Create principal from claims
@@ -283,11 +282,11 @@ func RequireRole(roles ...string) lift.Middleware {
 			secCtx := lift.WithSecurity(ctx)
 			principal := secCtx.GetPrincipal()
 			if principal == nil {
-				return errors.Unauthorized("Authentication required")
+				return lift.Unauthorized("Authentication required")
 			}
 
 			if !principal.HasAnyRole(roles...) {
-				return errors.Forbidden(fmt.Sprintf("Required roles: %v", roles))
+				return lift.AuthorizationError(fmt.Sprintf("Required roles: %v", roles))
 			}
 
 			return next.Handle(ctx)
@@ -302,12 +301,12 @@ func RequireScope(scopes ...string) lift.Middleware {
 			secCtx := lift.WithSecurity(ctx)
 			principal := secCtx.GetPrincipal()
 			if principal == nil {
-				return errors.Unauthorized("Authentication required")
+				return lift.Unauthorized("Authentication required")
 			}
 
 			for _, scope := range scopes {
 				if !principal.HasScope(scope) {
-					return errors.Forbidden(fmt.Sprintf("Required scope: %s", scope))
+					return lift.AuthorizationError(fmt.Sprintf("Required scope: %s", scope))
 				}
 			}
 
@@ -323,11 +322,11 @@ func RequireTenant(tenantID string) lift.Middleware {
 			secCtx := lift.WithSecurity(ctx)
 			principal := secCtx.GetPrincipal()
 			if principal == nil {
-				return errors.Unauthorized("Authentication required")
+				return lift.Unauthorized("Authentication required")
 			}
 
 			if !principal.IsValidForTenant(tenantID) {
-				return errors.Forbidden("Access denied for this tenant")
+				return lift.AuthorizationError("Access denied for this tenant")
 			}
 
 			return next.Handle(ctx)

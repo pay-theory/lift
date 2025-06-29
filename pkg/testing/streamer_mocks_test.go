@@ -259,7 +259,7 @@ func TestStreamerMockTTL(t *testing.T) {
 		UserAgent:    "TestClient/1.0",
 		State:        StreamerConnectionStateActive,
 		CreatedTime:  pastTime,
-		Metadata:     make(map[string]interface{}),
+		Metadata:     make(map[string]any),
 	}
 	mock.WithConnection("conn-expired", conn)
 

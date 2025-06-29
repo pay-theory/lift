@@ -2,6 +2,49 @@
 
 This guide provides comprehensive examples of using Lift in various scenarios, from simple APIs to complex enterprise applications.
 
+## Example Directory
+
+The `examples/` directory contains the following complete working examples:
+
+### Core Examples
+- [`hello-world/`](../examples/hello-world/) - Minimal Lambda function with type safety
+- [`basic-crud-api/`](../examples/basic-crud-api/) - Complete CRUD API with middleware and testing
+- [`error-handling/`](../examples/error-handling/) - Structured error handling patterns
+
+### Authentication & Security
+- [`jwt-auth/`](../examples/jwt-auth/) - JWT authentication with middleware
+- [`jwt-auth-demo/`](../examples/jwt-auth-demo/) - JWT authentication demonstration
+- [`rate-limiting/`](../examples/rate-limiting/) - Rate limiting middleware implementation
+
+### Real-time & Event-Driven
+- [`websocket-demo/`](../examples/websocket-demo/) - WebSocket support with connection management
+- [`websocket-enhanced/`](../examples/websocket-enhanced/) - Advanced WebSocket implementation
+- [`event-adapters/`](../examples/event-adapters/) - Multiple AWS event source handlers
+- [`multi-event-handler/`](../examples/multi-event-handler/) - Handling multiple event types
+- [`eventbridge-wakeup/`](../examples/eventbridge-wakeup/) - EventBridge scheduled events
+- [`multiple-scheduled-events/`](../examples/multiple-scheduled-events/) - Multiple scheduled Lambda triggers
+
+### Enterprise Applications
+- [`multi-tenant-saas/`](../examples/multi-tenant-saas/) - Multi-tenant SaaS patterns
+- [`enterprise-banking/`](../examples/enterprise-banking/) - Banking with SOC2 compliance
+- [`enterprise-healthcare/`](../examples/enterprise-healthcare/) - Healthcare with HIPAA compliance
+- [`enterprise-ecommerce/`](../examples/enterprise-ecommerce/) - E-commerce platform example
+
+### Production Patterns
+- [`production-api/`](../examples/production-api/) - Production-ready API configuration
+- [`multi-service-demo/`](../examples/multi-service-demo/) - Microservices with chaos engineering
+- [`observability-demo/`](../examples/observability-demo/) - Comprehensive logging and monitoring
+- [`health-monitoring/`](../examples/health-monitoring/) - Health check implementation
+
+### Testing & Development
+- [`mocking-demo/`](../examples/mocking-demo/) - Testing with mocks
+- [`cloudwatch-mocking-demo/`](../examples/cloudwatch-mocking-demo/) - CloudWatch metrics mocking
+- [`dynamorm-integration/`](../examples/dynamorm-integration/) - DynamORM database integration
+- [`streamer-quickstart/`](../examples/streamer-quickstart/) - Quick start with streaming
+- [`sprint6-deployment/`](../examples/sprint6-deployment/) - Deployment patterns
+- [`test-event-routing-bug/`](../examples/test-event-routing-bug/) - Event routing test cases
+- [`test-scheduled-fix/`](../examples/test-scheduled-fix/) - Scheduled event fixes
+
 ## Basic Examples
 
 ### Hello World

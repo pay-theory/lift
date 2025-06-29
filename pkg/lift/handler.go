@@ -30,7 +30,7 @@ func (f TypedHandlerFunc[Req, Resp]) Handle(ctx *Context, req Req) (Resp, error)
 }
 
 // wrapHandler converts various handler types into our Handler interface
-func wrapHandler(handler interface{}) Handler {
+func wrapHandler(handler any) Handler {
 	switch h := handler.(type) {
 	case Handler:
 		return h

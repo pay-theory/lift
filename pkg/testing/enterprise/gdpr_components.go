@@ -28,7 +28,7 @@ type DataMapping struct {
 	Safeguards  []string               `json:"safeguards"`
 	Documented  bool                   `json:"documented"`
 	LastUpdated time.Time              `json:"last_updated"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // DataProcessor represents a data processor
@@ -41,7 +41,7 @@ type DataProcessor struct {
 	Agreements  []string               `json:"agreements"`
 	Certified   bool                   `json:"certified"`
 	LastAudited *time.Time             `json:"last_audited,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ProcessorType defines types of data processors
@@ -64,7 +64,7 @@ type ProcessingPurpose struct {
 	Retention   time.Duration          `json:"retention"`
 	Automated   bool                   `json:"automated"`
 	Profiling   bool                   `json:"profiling"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // NewDataMapper creates a new data mapper
@@ -100,14 +100,14 @@ type LocalConsentRecord struct {
 	Withdrawn   bool                   `json:"withdrawn"`
 	WithdrawnAt *time.Time             `json:"withdrawn_at,omitempty"`
 	Granular    bool                   `json:"granular"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // LocalConsentHistory represents consent history (local version to avoid conflicts)
 type LocalConsentHistory struct {
 	Timestamp time.Time              `json:"timestamp"`
 	Action    string                 `json:"action"`
-	Details   map[string]interface{} `json:"details"`
+	Details   map[string]any `json:"details"`
 }
 
 // ConsentManager manages GDPR consent
@@ -123,7 +123,7 @@ type ConsentPreferences struct {
 	UserID      string                 `json:"user_id"`
 	Preferences map[string]bool        `json:"preferences"`
 	LastUpdated time.Time              `json:"last_updated"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ConsentPolicy represents a consent policy
@@ -135,7 +135,7 @@ type ConsentPolicy struct {
 	Required bool                   `json:"required"`
 	Granular bool                   `json:"granular"`
 	Expiry   *time.Duration         `json:"expiry,omitempty"`
-	Metadata map[string]interface{} `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // NewConsentManager creates a new consent manager
@@ -225,7 +225,7 @@ type TransferMechanismConfig struct {
 	Requirements []string               `json:"requirements"`
 	Validity     time.Duration          `json:"validity"`
 	Automated    bool                   `json:"automated"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // CountryInfo provides information about countries for transfers
@@ -236,7 +236,7 @@ type CountryInfo struct {
 	DecisionDate     *time.Time             `json:"decision_date,omitempty"`
 	Restrictions     []string               `json:"restrictions"`
 	Safeguards       []string               `json:"safeguards"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 // SafeguardConfig configures transfer safeguards
@@ -246,7 +246,7 @@ type SafeguardConfig struct {
 	Type          string                 `json:"type"`
 	Requirements  []string               `json:"requirements"`
 	Effectiveness string                 `json:"effectiveness"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // NewTransferValidator creates a new transfer validator

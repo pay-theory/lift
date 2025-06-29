@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	liftErrors "github.com/pay-theory/lift/pkg/errors"
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +31,7 @@ func TestErrorHandlingImprovements(t *testing.T) {
 		middleware := ErrorHandler()
 
 		errorHandler := lift.HandlerFunc(func(ctx *lift.Context) error {
-			return &liftErrors.LiftError{
+			return &lift.LiftError{
 				Code:       "TEST_ERROR",
 				Message:    "Test error message",
 				StatusCode: 400,

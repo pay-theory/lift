@@ -16,7 +16,7 @@ type ServiceMock struct {
 	Name        string
 	Type        string
 	Endpoint    string
-	Responses   map[string]interface{}
+	Responses   map[string]any
 	Environment string
 	Active      bool
 }

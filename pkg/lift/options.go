@@ -13,7 +13,7 @@ type JWTAuthConfig struct {
 	Secret string
 
 	// Public key for RSA/ECDSA algorithms
-	PublicKey interface{}
+	PublicKey any
 
 	// Algorithm to use (HS256, RS256, etc)
 	Algorithm string
@@ -82,7 +82,7 @@ type SecurityConfig struct {
 	RequiredRoles []string
 
 	// Audit logger
-	AuditLogger func(ctx *Context, event string, data map[string]interface{})
+	AuditLogger func(ctx *Context, event string, data map[string]any)
 }
 
 // WithSecurityMiddleware adds security middleware to the application
@@ -186,7 +186,7 @@ func parseJWTToken(tokenString string, config JWTAuthConfig) (*jwt.Token, error)
 	// Parse with appropriate method based on algorithm
 	switch config.Algorithm {
 	case "HS256", "HS384", "HS512":
-		return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			// Validate algorithm
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -194,7 +194,7 @@ func parseJWTToken(tokenString string, config JWTAuthConfig) (*jwt.Token, error)
 			return []byte(config.Secret), nil
 		})
 	case "RS256", "RS384", "RS512":
-		return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			// Validate algorithm
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -216,7 +216,7 @@ func createSecurityMiddleware(config SecurityConfig) Middleware {
 			// Check IP whitelist if configured
 			if len(config.IPWhitelist) > 0 {
 				if !secCtx.ValidateIP(config.IPWhitelist) {
-					return ctx.Forbidden("Access denied", nil)
+					return AuthorizationError("Access denied")
 				}
 			}
 
@@ -238,7 +238,7 @@ func createSecurityMiddleware(config SecurityConfig) Middleware {
 					}
 				}
 				if !hasRequiredRole {
-					return ctx.Forbidden("Insufficient permissions", nil)
+					return AuthorizationError("Insufficient permissions")
 				}
 			}
 

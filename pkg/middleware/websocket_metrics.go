@@ -69,7 +69,7 @@ func WebSocketMetrics(metrics lift.MetricsCollector) lift.Middleware {
 
 			// Log the request
 			if ctx.Logger != nil {
-				logFields := map[string]interface{}{
+				logFields := map[string]any{
 					"route_key":     routeKey,
 					"event_type":    eventType,
 					"connection_id": connectionID,

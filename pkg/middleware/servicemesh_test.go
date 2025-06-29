@@ -24,14 +24,14 @@ func newMockServiceMeshMetrics() *mockServiceMeshMetrics {
 // Mock implementations for testing service mesh patterns
 
 type mockServiceMeshLogger struct {
-	logs []map[string]interface{}
+	logs []map[string]any
 	mu   sync.RWMutex
 }
 
-func (m *mockServiceMeshLogger) Info(msg string, fields ...map[string]interface{}) {
+func (m *mockServiceMeshLogger) Info(msg string, fields ...map[string]any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	entry := map[string]interface{}{"level": "info", "message": msg}
+	entry := map[string]any{"level": "info", "message": msg}
 	for _, fieldMap := range fields {
 		for k, v := range fieldMap {
 			entry[k] = v
@@ -40,10 +40,10 @@ func (m *mockServiceMeshLogger) Info(msg string, fields ...map[string]interface{
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockServiceMeshLogger) Error(msg string, fields ...map[string]interface{}) {
+func (m *mockServiceMeshLogger) Error(msg string, fields ...map[string]any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	entry := map[string]interface{}{"level": "error", "message": msg}
+	entry := map[string]any{"level": "error", "message": msg}
 	for _, fieldMap := range fields {
 		for k, v := range fieldMap {
 			entry[k] = v
@@ -52,10 +52,10 @@ func (m *mockServiceMeshLogger) Error(msg string, fields ...map[string]interface
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockServiceMeshLogger) Warn(msg string, fields ...map[string]interface{}) {
+func (m *mockServiceMeshLogger) Warn(msg string, fields ...map[string]any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	entry := map[string]interface{}{"level": "warn", "message": msg}
+	entry := map[string]any{"level": "warn", "message": msg}
 	for _, fieldMap := range fields {
 		for k, v := range fieldMap {
 			entry[k] = v
@@ -64,10 +64,10 @@ func (m *mockServiceMeshLogger) Warn(msg string, fields ...map[string]interface{
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockServiceMeshLogger) Debug(msg string, fields ...map[string]interface{}) {
+func (m *mockServiceMeshLogger) Debug(msg string, fields ...map[string]any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	entry := map[string]interface{}{"level": "debug", "message": msg}
+	entry := map[string]any{"level": "debug", "message": msg}
 	for _, fieldMap := range fields {
 		for k, v := range fieldMap {
 			entry[k] = v
@@ -77,10 +77,10 @@ func (m *mockServiceMeshLogger) Debug(msg string, fields ...map[string]interface
 }
 
 // lift.Logger interface methods
-func (m *mockServiceMeshLogger) WithField(key string, value interface{}) lift.Logger {
+func (m *mockServiceMeshLogger) WithField(key string, value any) lift.Logger {
 	return m
 }
-func (m *mockServiceMeshLogger) WithFields(fields map[string]interface{}) lift.Logger {
+func (m *mockServiceMeshLogger) WithFields(fields map[string]any) lift.Logger {
 	return m
 }
 
@@ -182,7 +182,7 @@ func (m *mockServiceMeshMetrics) RecordSuccess(operation string) {
 // Helper method to get metrics count for testing
 func (m *mockServiceMeshMetrics) GetMetricsCount() int {
 	count := 0
-	m.metrics.Range(func(key, value interface{}) bool {
+	m.metrics.Range(func(key, value any) bool {
 		count++
 		return true
 	})
@@ -504,7 +504,7 @@ func TestRetryMiddleware(t *testing.T) {
 
 				if shouldFail {
 					if tt.name == "non-retryable error" {
-						return lift.BadRequest("validation error")
+						return lift.ValidationError("validation error")
 					}
 					return errors.New("temporary error")
 				}

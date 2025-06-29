@@ -105,12 +105,12 @@ func CreateUser(ctx *lift.Context) error {
 
 	// Save to database
 	if err := db.Put(ctx, user); err != nil {
-		return lift.InternalError("Failed to create user").WithCause(err)
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create user", 500).WithCause(err)
 	}
 
 	// Log the creation
 	if ctx.Logger != nil {
-		ctx.Logger.Info("User created", map[string]interface{}{
+		ctx.Logger.Info("User created", map[string]any{
 			"user_id":   user.ID,
 			"tenant_id": user.TenantID,
 			"email":     user.Email,
@@ -128,7 +128,7 @@ func CreateUser(ctx *lift.Context) error {
 func GetUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
 	if userID == "" {
-		return lift.BadRequest("User ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
 	}
 
 	// Get tenant-scoped database
@@ -168,7 +168,7 @@ func ListUsers(ctx *lift.Context) error {
 	// Execute query
 	result, err := db.Query(ctx, query)
 	if err != nil {
-		return lift.InternalError("Failed to list users").WithCause(err)
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list users", 500).WithCause(err)
 	}
 
 	// Convert results to users
@@ -189,7 +189,7 @@ func ListUsers(ctx *lift.Context) error {
 func UpdateUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
 	if userID == "" {
-		return lift.BadRequest("User ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
 	}
 
 	// Parse request
@@ -229,12 +229,12 @@ func UpdateUser(ctx *lift.Context) error {
 
 	// Save updated user
 	if err := db.Put(ctx, user); err != nil {
-		return lift.InternalError("Failed to update user").WithCause(err)
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to update user", 500).WithCause(err)
 	}
 
 	// Log the update
 	if ctx.Logger != nil {
-		ctx.Logger.Info("User updated", map[string]interface{}{
+		ctx.Logger.Info("User updated", map[string]any{
 			"user_id":   user.ID,
 			"tenant_id": user.TenantID,
 			"email":     user.Email,
@@ -251,7 +251,7 @@ func UpdateUser(ctx *lift.Context) error {
 func DeleteUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
 	if userID == "" {
-		return lift.BadRequest("User ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
 	}
 
 	// Get tenant-scoped database
@@ -273,12 +273,12 @@ func DeleteUser(ctx *lift.Context) error {
 
 	// Delete user
 	if err := db.Delete(ctx, userID); err != nil {
-		return lift.InternalError("Failed to delete user").WithCause(err)
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to delete user", 500).WithCause(err)
 	}
 
 	// Log the deletion
 	if ctx.Logger != nil {
-		ctx.Logger.Info("User deleted", map[string]interface{}{
+		ctx.Logger.Info("User deleted", map[string]any{
 			"user_id":   user.ID,
 			"tenant_id": user.TenantID,
 			"email":     user.Email,
@@ -292,7 +292,7 @@ func DeleteUser(ctx *lift.Context) error {
 
 // HealthCheck provides a health check endpoint
 func HealthCheck(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now().Unix(),
 		"service":   "lift-crud-api",
@@ -340,7 +340,7 @@ func LoggingMiddleware() lift.Middleware {
 
 			// Log completion
 			if ctx.Logger != nil {
-				fields := map[string]interface{}{
+				fields := map[string]any{
 					"method":    ctx.Request.Method,
 					"path":      ctx.Request.Path,
 					"status":    ctx.Response.StatusCode,

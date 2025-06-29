@@ -22,7 +22,7 @@ type ContractTestingConfig struct {
 	MaxRetries        int                    `json:"max_retries"`
 	ParallelExecution bool                   `json:"parallel_execution"`
 	ReportFormat      string                 `json:"report_format"`
-	Environment       map[string]interface{} `json:"environment"`
+	Environment       map[string]any `json:"environment"`
 }
 
 // BasicContractValidator implements ContractValidator interface
@@ -75,7 +75,7 @@ func NewContractTestingFramework(config *ContractTestConfig) *ContractTestingFra
 			MaxRetries:        config.RetryAttempts,
 			ParallelExecution: config.Parallel,
 			ReportFormat:      "json",
-			Environment:       make(map[string]interface{}),
+			Environment:       make(map[string]any),
 		},
 	}
 }
@@ -319,7 +319,7 @@ func (f *ContractTestingFramework) ValidateContract(ctx context.Context, contrac
 		Warnings:    []string{},
 		Validations: make(map[string]*InteractionValidation),
 		Timestamp:   startTime,
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 
 	// Validate each interaction
@@ -389,7 +389,7 @@ func (f *ContractTestingFramework) validateInteraction(interaction *ContractInte
 }
 
 // validateSchema validates data against a JSON schema
-func (f *ContractTestingFramework) validateSchema(data interface{}, schema *SchemaDefinition) (*ValidationCheck, error) {
+func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefinition) (*ValidationCheck, error) {
 	check := &ValidationCheck{
 		ID:          fmt.Sprintf("schema-%d", time.Now().Unix()),
 		Name:        "Schema Validation",
@@ -400,7 +400,7 @@ func (f *ContractTestingFramework) validateSchema(data interface{}, schema *Sche
 		Actual:      data,
 		Errors:      []string{},
 		Warnings:    []string{},
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 
 	if schema == nil {
@@ -433,7 +433,7 @@ func (f *ContractTestingFramework) validateSchema(data interface{}, schema *Sche
 
 	// Object validation
 	if schema.Type == "object" {
-		if obj, ok := data.(map[string]interface{}); ok {
+		if obj, ok := data.(map[string]any); ok {
 			// Check required fields
 			for _, required := range schema.Required {
 				if _, exists := obj[required]; !exists {
@@ -460,7 +460,7 @@ func (f *ContractTestingFramework) validateHTTPMethod(method string) *Validation
 		Actual:      method,
 		Errors:      []string{},
 		Warnings:    []string{},
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 
 	validMethods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
@@ -488,7 +488,7 @@ func (f *ContractTestingFramework) validateHTTPPath(path string) *ValidationChec
 		Actual:      path,
 		Errors:      []string{},
 		Warnings:    []string{},
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 
 	if path == "" {
@@ -520,7 +520,7 @@ func (f *ContractTestingFramework) validateHeaders(headers map[string]string) *V
 		Actual:      headers,
 		Errors:      []string{},
 		Warnings:    []string{},
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 
 	for name, value := range headers {
@@ -540,7 +540,7 @@ func (f *ContractTestingFramework) validateHeaders(headers map[string]string) *V
 }
 
 // validateType validates data type
-func (f *ContractTestingFramework) validateType(data interface{}, expectedType string) bool {
+func (f *ContractTestingFramework) validateType(data any, expectedType string) bool {
 	switch expectedType {
 	case "string":
 		_, ok := data.(string)
@@ -557,10 +557,10 @@ func (f *ContractTestingFramework) validateType(data interface{}, expectedType s
 		_, ok := data.(bool)
 		return ok
 	case "array":
-		_, ok := data.([]interface{})
+		_, ok := data.([]any)
 		return ok
 	case "object":
-		_, ok := data.(map[string]interface{})
+		_, ok := data.(map[string]any)
 		return ok
 	case "null":
 		return data == nil

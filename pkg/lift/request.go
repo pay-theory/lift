@@ -48,25 +48,24 @@ const (
 	TriggerSQS          = adapters.TriggerSQS
 	TriggerS3           = adapters.TriggerS3
 	TriggerEventBridge  = adapters.TriggerEventBridge
-	TriggerScheduled    = adapters.TriggerScheduled
 	TriggerWebSocket    = adapters.TriggerWebSocket
 	TriggerUnknown      = adapters.TriggerUnknown
 )
 
 // RequestContext provides backward compatibility for accessing request context
-func (r *Request) RequestContext() map[string]interface{} {
+func (r *Request) RequestContext() map[string]any {
 	if r.RawEvent == nil {
-		return make(map[string]interface{})
+		return make(map[string]any)
 	}
 
 	// Try to extract request context from raw event
-	if eventMap, ok := r.RawEvent.(map[string]interface{}); ok {
-		if requestContext, ok := eventMap["requestContext"].(map[string]interface{}); ok {
+	if eventMap, ok := r.RawEvent.(map[string]any); ok {
+		if requestContext, ok := eventMap["requestContext"].(map[string]any); ok {
 			return requestContext
 		}
 	}
 
-	return make(map[string]interface{})
+	return make(map[string]any)
 }
 
 // GetHeader retrieves a header value (case-insensitive)

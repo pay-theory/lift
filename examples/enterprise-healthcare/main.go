@@ -24,11 +24,11 @@ func Recovery() lift.Middleware {
 			defer func() {
 				if r := recover(); r != nil {
 					if ctx.Logger != nil {
-						ctx.Logger.Error("Handler panicked", map[string]interface{}{
+						ctx.Logger.Error("Handler panicked", map[string]any{
 							"panic": r,
 						})
 					}
-					ctx.InternalError("Internal server error", fmt.Errorf("panic: %v", r))
+					ctx.SystemError("Internal server error", fmt.Errorf("panic: %v", r))
 				}
 			}()
 			return next.Handle(ctx)
@@ -335,8 +335,8 @@ type ProviderService interface {
 type ComplianceService interface {
 	LogAccess(ctx context.Context, entry AccessEntry) error
 	GetAuditTrail(ctx context.Context, patientID string, startDate, endDate time.Time) ([]AccessEntry, error)
-	GenerateComplianceReport(ctx context.Context, reportType string, params map[string]interface{}) (interface{}, error)
-	ValidateHIPAACompliance(ctx context.Context, operation string, data interface{}) error
+	GenerateComplianceReport(ctx context.Context, reportType string, params map[string]any) (any, error)
+	ValidateHIPAACompliance(ctx context.Context, operation string, data any) error
 	DetectBreach(ctx context.Context, accessPattern []AccessEntry) (bool, string, error)
 }
 
@@ -717,26 +717,26 @@ func (m *mockComplianceService) GetAuditTrail(ctx context.Context, patientID str
 	return auditTrail, nil
 }
 
-func (m *mockComplianceService) GenerateComplianceReport(ctx context.Context, reportType string, params map[string]interface{}) (interface{}, error) {
-	report := map[string]interface{}{
+func (m *mockComplianceService) GenerateComplianceReport(ctx context.Context, reportType string, params map[string]any) (any, error) {
+	report := map[string]any{
 		"reportType":  reportType,
 		"generatedAt": time.Now(),
 		"parameters":  params,
-		"compliance": map[string]interface{}{
+		"compliance": map[string]any{
 			"hipaa_compliant":    true,
 			"encryption_enabled": true,
 			"audit_trail_active": true,
 			"access_controls":    true,
 			"data_minimization":  true,
 		},
-		"metrics": map[string]interface{}{
+		"metrics": map[string]any{
 			"total_patient_records": 5000,
 			"total_access_events":   15000,
 			"unauthorized_attempts": 0,
 			"encryption_coverage":   100.0,
 			"audit_coverage":        100.0,
 		},
-		"violations": []interface{}{},
+		"violations": []any{},
 		"recommendations": []string{
 			"Continue regular access reviews",
 			"Update encryption keys quarterly",
@@ -747,7 +747,7 @@ func (m *mockComplianceService) GenerateComplianceReport(ctx context.Context, re
 	return report, nil
 }
 
-func (m *mockComplianceService) ValidateHIPAACompliance(ctx context.Context, operation string, data interface{}) error {
+func (m *mockComplianceService) ValidateHIPAACompliance(ctx context.Context, operation string, data any) error {
 	// Simulate HIPAA compliance validation
 	// In production, this would perform comprehensive compliance checks
 	return nil
@@ -777,7 +777,7 @@ func generateMRN() string {
 func createPatient(ctx *lift.Context) error {
 	var req CreatePatientRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	// HIPAA compliance validation
@@ -789,7 +789,7 @@ func createPatient(ctx *lift.Context) error {
 	patientService := &mockPatientService{}
 	patient, err := patientService.CreatePatient(ctx.Request.Context(), req)
 	if err != nil {
-		return ctx.InternalError("Failed to create patient", err)
+		return ctx.SystemError("Failed to create patient", err)
 	}
 
 	// Log access for HIPAA audit
@@ -814,7 +814,7 @@ func createPatient(ctx *lift.Context) error {
 func getPatient(ctx *lift.Context) error {
 	patientID := ctx.PathParam("id")
 	if patientID == "" {
-		return ctx.BadRequest("Patient ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Patient ID is required", 400)
 	}
 
 	providerID := ctx.Request.Header()["X-Provider-ID"]
@@ -826,7 +826,7 @@ func getPatient(ctx *lift.Context) error {
 	providerService := &mockProviderService{}
 	hasAccess, err := providerService.ValidateAccess(ctx.Request.Context(), providerID, patientID, "patient_data")
 	if err != nil {
-		return ctx.InternalError("Access validation failed", err)
+		return ctx.SystemError("Access validation failed", err)
 	}
 	if !hasAccess {
 		return ctx.Forbidden("Insufficient permissions", nil)
@@ -858,7 +858,7 @@ func getPatient(ctx *lift.Context) error {
 func searchPatients(ctx *lift.Context) error {
 	query := ctx.QueryParam("q")
 	if query == "" {
-		return ctx.BadRequest("Search query is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Search query is required", 400)
 	}
 
 	providerID := ctx.Request.Header()["X-Provider-ID"]
@@ -869,7 +869,7 @@ func searchPatients(ctx *lift.Context) error {
 	patientService := &mockPatientService{}
 	patients, err := patientService.SearchPatients(ctx.Request.Context(), query, providerID)
 	if err != nil {
-		return ctx.InternalError("Patient search failed", err)
+		return ctx.SystemError("Patient search failed", err)
 	}
 
 	// Log search for HIPAA audit
@@ -886,7 +886,7 @@ func searchPatients(ctx *lift.Context) error {
 	}
 	complianceService.LogAccess(ctx.Request.Context(), accessEntry)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"query":       query,
 		"results":     patients,
 		"count":       len(patients),
@@ -897,17 +897,17 @@ func searchPatients(ctx *lift.Context) error {
 func updatePatientConsent(ctx *lift.Context) error {
 	patientID := ctx.PathParam("id")
 	if patientID == "" {
-		return ctx.BadRequest("Patient ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Patient ID is required", 400)
 	}
 
 	var req UpdateConsentRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	patientService := &mockPatientService{}
 	if err := patientService.UpdateConsent(ctx.Request.Context(), patientID, req); err != nil {
-		return ctx.InternalError("Failed to update consent", err)
+		return ctx.SystemError("Failed to update consent", err)
 	}
 
 	// Log consent update for HIPAA audit
@@ -924,7 +924,7 @@ func updatePatientConsent(ctx *lift.Context) error {
 	}
 	complianceService.LogAccess(ctx.Request.Context(), accessEntry)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"patientId": patientID,
 		"updated":   true,
 		"timestamp": time.Now(),
@@ -934,7 +934,7 @@ func updatePatientConsent(ctx *lift.Context) error {
 func createMedicalRecord(ctx *lift.Context) error {
 	var req CreateMedicalRecordRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	providerID := ctx.Request.Header()["X-Provider-ID"]
@@ -946,7 +946,7 @@ func createMedicalRecord(ctx *lift.Context) error {
 	providerService := &mockProviderService{}
 	hasAccess, err := providerService.ValidateAccess(ctx.Request.Context(), providerID, req.PatientID, req.RecordType)
 	if err != nil {
-		return ctx.InternalError("Access validation failed", err)
+		return ctx.SystemError("Access validation failed", err)
 	}
 	if !hasAccess {
 		return ctx.Forbidden("Insufficient permissions", nil)
@@ -955,7 +955,7 @@ func createMedicalRecord(ctx *lift.Context) error {
 	recordService := &mockMedicalRecordService{}
 	record, err := recordService.CreateRecord(ctx.Request.Context(), req, providerID)
 	if err != nil {
-		return ctx.InternalError("Failed to create medical record", err)
+		return ctx.SystemError("Failed to create medical record", err)
 	}
 
 	log.Printf("HIPAA AUDIT: Medical record created - ID: %s, Patient: %s, Provider: %s, Type: %s",
@@ -967,7 +967,7 @@ func createMedicalRecord(ctx *lift.Context) error {
 func getMedicalRecord(ctx *lift.Context) error {
 	recordID := ctx.PathParam("id")
 	if recordID == "" {
-		return ctx.BadRequest("Record ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Record ID is required", 400)
 	}
 
 	providerID := ctx.Request.Header()["X-Provider-ID"]
@@ -977,7 +977,7 @@ func getMedicalRecord(ctx *lift.Context) error {
 
 	purpose := ctx.QueryParam("purpose")
 	if purpose == "" {
-		return ctx.BadRequest("Access purpose is required for HIPAA compliance", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Access purpose is required for HIPAA compliance", 400)
 	}
 
 	recordService := &mockMedicalRecordService{}
@@ -992,7 +992,7 @@ func getMedicalRecord(ctx *lift.Context) error {
 func getPatientRecords(ctx *lift.Context) error {
 	patientID := ctx.PathParam("id")
 	if patientID == "" {
-		return ctx.BadRequest("Patient ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Patient ID is required", 400)
 	}
 
 	providerID := ctx.Request.Header()["X-Provider-ID"]
@@ -1003,10 +1003,10 @@ func getPatientRecords(ctx *lift.Context) error {
 	recordService := &mockMedicalRecordService{}
 	records, err := recordService.GetPatientRecords(ctx.Request.Context(), patientID, providerID)
 	if err != nil {
-		return ctx.InternalError("Failed to retrieve patient records", err)
+		return ctx.SystemError("Failed to retrieve patient records", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"patientId":    patientID,
 		"records":      records,
 		"count":        len(records),
@@ -1017,13 +1017,13 @@ func getPatientRecords(ctx *lift.Context) error {
 func createProvider(ctx *lift.Context) error {
 	var req CreateProviderRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	providerService := &mockProviderService{}
 	provider, err := providerService.CreateProvider(ctx.Request.Context(), req)
 	if err != nil {
-		return ctx.InternalError("Failed to create provider", err)
+		return ctx.SystemError("Failed to create provider", err)
 	}
 
 	log.Printf("HIPAA AUDIT: Provider created - ID: %s, NPI: %s, Name: %s %s",
@@ -1035,7 +1035,7 @@ func createProvider(ctx *lift.Context) error {
 func getProvider(ctx *lift.Context) error {
 	providerID := ctx.PathParam("id")
 	if providerID == "" {
-		return ctx.BadRequest("Provider ID is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Provider ID is required", 400)
 	}
 
 	providerService := &mockProviderService{}
@@ -1058,7 +1058,7 @@ func getAuditTrail(ctx *lift.Context) error {
 	if startDateStr != "" {
 		startDate, err = time.Parse("2006-01-02", startDateStr)
 		if err != nil {
-			return ctx.BadRequest("Invalid start_date format (use YYYY-MM-DD)", err)
+			return lift.NewLiftError("BAD_REQUEST", "Invalid start_date format (use YYYY-MM-DD)", 400)
 		}
 	} else {
 		startDate = time.Now().Add(-30 * 24 * time.Hour) // Default to 30 days ago
@@ -1067,7 +1067,7 @@ func getAuditTrail(ctx *lift.Context) error {
 	if endDateStr != "" {
 		endDate, err = time.Parse("2006-01-02", endDateStr)
 		if err != nil {
-			return ctx.BadRequest("Invalid end_date format (use YYYY-MM-DD)", err)
+			return lift.NewLiftError("BAD_REQUEST", "Invalid end_date format (use YYYY-MM-DD)", 400)
 		}
 	} else {
 		endDate = time.Now()
@@ -1076,10 +1076,10 @@ func getAuditTrail(ctx *lift.Context) error {
 	complianceService := &mockComplianceService{}
 	auditTrail, err := complianceService.GetAuditTrail(ctx.Request.Context(), patientID, startDate, endDate)
 	if err != nil {
-		return ctx.InternalError("Failed to retrieve audit trail", err)
+		return ctx.SystemError("Failed to retrieve audit trail", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"patient_id":   patientID,
 		"start_date":   startDate,
 		"end_date":     endDate,
@@ -1092,11 +1092,11 @@ func getAuditTrail(ctx *lift.Context) error {
 func generateComplianceReport(ctx *lift.Context) error {
 	reportType := ctx.PathParam("type")
 	if reportType == "" {
-		return ctx.BadRequest("Report type is required", nil)
+		return lift.NewLiftError("BAD_REQUEST", "Report type is required", 400)
 	}
 
 	// Parse query parameters as report parameters
-	params := make(map[string]interface{})
+	params := make(map[string]any)
 	// Use the QueryParam method instead of URL.Query()
 	if startDate := ctx.QueryParam("start_date"); startDate != "" {
 		params["start_date"] = startDate
@@ -1111,14 +1111,14 @@ func generateComplianceReport(ctx *lift.Context) error {
 	complianceService := &mockComplianceService{}
 	report, err := complianceService.GenerateComplianceReport(ctx.Request.Context(), reportType, params)
 	if err != nil {
-		return ctx.InternalError("Failed to generate compliance report", err)
+		return ctx.SystemError("Failed to generate compliance report", err)
 	}
 
 	return ctx.OK(report)
 }
 
 func healthCheck(ctx *lift.Context) error {
-	health := map[string]interface{}{
+	health := map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now(),
 		"version":   "1.0.0",
@@ -1128,13 +1128,13 @@ func healthCheck(ctx *lift.Context) error {
 			"audit_service":      "healthy",
 			"compliance_engine":  "healthy",
 		},
-		"compliance": map[string]interface{}{
+		"compliance": map[string]any{
 			"hipaa_compliant":   true,
 			"encryption_active": true,
 			"audit_logging":     true,
 			"access_controls":   true,
 		},
-		"metrics": map[string]interface{}{
+		"metrics": map[string]any{
 			"uptime_seconds":      3600,
 			"total_patients":      5000,
 			"total_records":       25000,

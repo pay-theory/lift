@@ -15,8 +15,8 @@ import (
 
 // CacheStore defines the interface for cache backends
 type CacheStore interface {
-	Get(ctx context.Context, key string) (interface{}, bool, error)
-	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	Get(ctx context.Context, key string) (any, bool, error)
+	Set(ctx context.Context, key string, value any, ttl time.Duration) error
 	Delete(ctx context.Context, key string) error
 	Clear(ctx context.Context) error
 	Stats() CacheStats
@@ -64,7 +64,7 @@ type CacheConfig struct {
 	Serialization     SerializationType
 	InvalidateOn      []string // HTTP methods that invalidate cache
 	KeyFunc           func(*lift.Context) string
-	ShouldCache       func(*lift.Context, interface{}) bool
+	ShouldCache       func(*lift.Context, any) bool
 	ShouldInvalidate  func(*lift.Context) bool
 	InvalidatePattern string
 	Encryption        bool
@@ -85,8 +85,8 @@ const (
 
 // CacheSerializer interface for cache serialization
 type CacheSerializer interface {
-	Serialize(value interface{}) ([]byte, error)
-	Deserialize(data []byte, target interface{}) error
+	Serialize(value any) ([]byte, error)
+	Deserialize(data []byte, target any) error
 }
 
 // CacheMiddleware provides intelligent caching capabilities
@@ -294,7 +294,7 @@ func (c *CacheMiddleware) hashString(s string) [32]byte {
 }
 
 // executeAndCapture executes the handler and captures the response
-func (c *CacheMiddleware) executeAndCapture(ctx *lift.Context, next lift.Handler) (interface{}, error) {
+func (c *CacheMiddleware) executeAndCapture(ctx *lift.Context, next lift.Handler) (any, error) {
 	// Execute handler normally
 	err := next.Handle(ctx)
 	if err != nil {
@@ -308,7 +308,7 @@ func (c *CacheMiddleware) executeAndCapture(ctx *lift.Context, next lift.Handler
 }
 
 // serveCached serves cached content
-func (c *CacheMiddleware) serveCached(ctx *lift.Context, cached interface{}) error {
+func (c *CacheMiddleware) serveCached(ctx *lift.Context, cached any) error {
 	// Add cache headers
 	ctx.Response.Header("X-Cache", "HIT")
 	ctx.Response.Header("X-Cache-Key", c.generateKey(ctx))
@@ -317,7 +317,7 @@ func (c *CacheMiddleware) serveCached(ctx *lift.Context, cached interface{}) err
 }
 
 // serveResult serves the result and adds cache headers
-func (c *CacheMiddleware) serveResult(ctx *lift.Context, result interface{}) error {
+func (c *CacheMiddleware) serveResult(ctx *lift.Context, result any) error {
 	// Add cache headers
 	ctx.Response.Header("X-Cache", "MISS")
 	ctx.Response.Header("X-Cache-Key", c.generateKey(ctx))
@@ -412,16 +412,16 @@ func (c *CacheMiddleware) GetStats() CacheStats {
 // ResponseCapturer captures response data for caching
 type ResponseCapturer struct {
 	*lift.Response
-	data interface{}
+	data any
 }
 
 // GetCapturedData returns the captured response data
-func (r *ResponseCapturer) GetCapturedData() interface{} {
+func (r *ResponseCapturer) GetCapturedData() any {
 	return r.data
 }
 
 // JSON captures JSON response
-func (r *ResponseCapturer) JSON(data interface{}) error {
+func (r *ResponseCapturer) JSON(data any) error {
 	r.data = data
 	return r.Response.JSON(data)
 }
@@ -464,11 +464,11 @@ func (r *ResponseCapturer) MarshalJSON() ([]byte, error) {
 // JSONCacheSerializer implements JSON serialization
 type JSONCacheSerializer struct{}
 
-func (j *JSONCacheSerializer) Serialize(value interface{}) ([]byte, error) {
+func (j *JSONCacheSerializer) Serialize(value any) ([]byte, error) {
 	return json.Marshal(value)
 }
 
-func (j *JSONCacheSerializer) Deserialize(data []byte, target interface{}) error {
+func (j *JSONCacheSerializer) Deserialize(data []byte, target any) error {
 	return json.Unmarshal(data, target)
 }
 
@@ -485,7 +485,7 @@ func defaultKeyFunc(ctx *lift.Context) string {
 	return fmt.Sprintf("%s:%s:%s", ctx.Request.Method, ctx.Request.Path, queryString)
 }
 
-func defaultShouldCache(ctx *lift.Context, result interface{}) bool {
+func defaultShouldCache(ctx *lift.Context, result any) bool {
 	// Cache GET requests by default
 	return ctx.Request.Method == "GET" && ctx.Response.StatusCode == 200
 }
@@ -557,7 +557,7 @@ func NewMultiBackendCacheStore(primary, secondary CacheStore, strategy string) *
 	}
 }
 
-func (m *MultiBendCacheStore) Get(ctx context.Context, key string) (interface{}, bool, error) {
+func (m *MultiBendCacheStore) Get(ctx context.Context, key string) (any, bool, error) {
 	// Try primary first
 	if value, found, err := m.primary.Get(ctx, key); err == nil && found {
 		return value, true, nil
@@ -575,7 +575,7 @@ func (m *MultiBendCacheStore) Get(ctx context.Context, key string) (interface{},
 	return nil, false, nil
 }
 
-func (m *MultiBendCacheStore) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+func (m *MultiBendCacheStore) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	// Always write to primary
 	if err := m.primary.Set(ctx, key, value, ttl); err != nil {
 		return err

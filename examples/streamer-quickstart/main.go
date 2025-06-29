@@ -83,7 +83,7 @@ func main() {
 
 			// In a real app, you'd get other connection IDs from a store
 			// For now, just send back to the same connection
-			response := map[string]interface{}{
+			response := map[string]any{
 				"action": "broadcast",
 				"from":   connectionID,
 				"data":   json.RawMessage(msg.Data),

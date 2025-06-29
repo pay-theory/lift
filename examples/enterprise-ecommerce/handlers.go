@@ -21,12 +21,12 @@ var (
 func createTenant(ctx *lift.Context) error {
 	var req CreateTenantRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	tenant, err := tenantService.CreateTenant(ctx.Context, req)
 	if err != nil {
-		return lift.InternalError("Failed to create tenant")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create tenant", 500)
 	}
 
 	log.Printf("ECOMMERCE AUDIT: Tenant created - ID: %s, Name: %s, Domain: %s",
@@ -38,7 +38,7 @@ func createTenant(ctx *lift.Context) error {
 func getTenant(ctx *lift.Context) error {
 	tenantID := ctx.Param("id")
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	tenant, err := tenantService.GetTenant(ctx.Context, tenantID)
@@ -70,10 +70,10 @@ func listTenants(ctx *lift.Context) error {
 
 	tenants, err := tenantService.ListTenants(ctx.Context, limit, offset)
 	if err != nil {
-		return lift.InternalError("Failed to list tenants")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list tenants", 500)
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"tenants": tenants,
 		"count":   len(tenants),
 		"limit":   limit,
@@ -95,7 +95,7 @@ func createProduct(ctx *lift.Context) error {
 
 	product, err := productService.CreateProduct(ctx.Request.Context(), tenantID, req)
 	if err != nil {
-		return ctx.InternalError("Failed to create product", err)
+		return ctx.SystemError("Failed to create product", err)
 	}
 
 	log.Printf("ECOMMERCE AUDIT: Product created - Tenant: %s, ID: %s, SKU: %s, Name: %s",
@@ -157,10 +157,10 @@ func listProducts(ctx *lift.Context) error {
 
 	products, err := productService.ListProducts(ctx.Request.Context(), tenantID, filters)
 	if err != nil {
-		return ctx.InternalError("Failed to list products", err)
+		return ctx.SystemError("Failed to list products", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"products": products,
 		"count":    len(products),
 		"filters":  filters,
@@ -185,10 +185,10 @@ func searchProducts(ctx *lift.Context) error {
 
 	products, err := productService.SearchProducts(ctx.Request.Context(), tenantID, query, filters)
 	if err != nil {
-		return ctx.InternalError("Product search failed", err)
+		return ctx.SystemError("Product search failed", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"query":       query,
 		"products":    products,
 		"count":       len(products),
@@ -217,13 +217,13 @@ func updateProductInventory(ctx *lift.Context) error {
 
 	err := productService.UpdateInventory(ctx.Request.Context(), tenantID, productID, req.Quantity)
 	if err != nil {
-		return ctx.InternalError("Failed to update inventory", err)
+		return ctx.SystemError("Failed to update inventory", err)
 	}
 
 	log.Printf("ECOMMERCE AUDIT: Inventory updated - Tenant: %s, Product: %s, Quantity: %d",
 		tenantID, productID, req.Quantity)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"productId": productID,
 		"quantity":  req.Quantity,
 		"updated":   true,
@@ -245,7 +245,7 @@ func createCustomer(ctx *lift.Context) error {
 
 	customer, err := customerService.CreateCustomer(ctx.Request.Context(), tenantID, req)
 	if err != nil {
-		return ctx.InternalError("Failed to create customer", err)
+		return ctx.SystemError("Failed to create customer", err)
 	}
 
 	log.Printf("ECOMMERCE AUDIT: Customer created - Tenant: %s, ID: %s, Email: %s",
@@ -299,10 +299,10 @@ func listCustomers(ctx *lift.Context) error {
 
 	customers, err := customerService.ListCustomers(ctx.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		return ctx.InternalError("Failed to list customers", err)
+		return ctx.SystemError("Failed to list customers", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"customers": customers,
 		"count":     len(customers),
 		"limit":     limit,
@@ -336,7 +336,7 @@ func authenticateCustomer(ctx *lift.Context) error {
 	log.Printf("ECOMMERCE AUDIT: Customer authenticated - Tenant: %s, Customer: %s, Email: %s",
 		tenantID, customer.ID, customer.Email)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"customer":         customer,
 		"token":            token,
 		"authenticated_at": time.Now(),
@@ -357,7 +357,7 @@ func createOrder(ctx *lift.Context) error {
 
 	order, err := orderService.CreateOrder(ctx.Request.Context(), tenantID, req)
 	if err != nil {
-		return ctx.InternalError("Failed to create order", err)
+		return ctx.SystemError("Failed to create order", err)
 	}
 
 	log.Printf("ECOMMERCE AUDIT: Order created - Tenant: %s, ID: %s, Number: %s, Customer: %s, Total: %.2f",
@@ -418,10 +418,10 @@ func listOrders(ctx *lift.Context) error {
 
 	orders, err := orderService.ListOrders(ctx.Request.Context(), tenantID, filters)
 	if err != nil {
-		return ctx.InternalError("Failed to list orders", err)
+		return ctx.SystemError("Failed to list orders", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"orders":  orders,
 		"count":   len(orders),
 		"filters": filters,
@@ -449,13 +449,13 @@ func updateOrderStatus(ctx *lift.Context) error {
 
 	err := orderService.UpdateOrderStatus(ctx.Request.Context(), tenantID, orderID, req.Status)
 	if err != nil {
-		return ctx.InternalError("Failed to update order status", err)
+		return ctx.SystemError("Failed to update order status", err)
 	}
 
 	log.Printf("ECOMMERCE AUDIT: Order status updated - Tenant: %s, Order: %s, Status: %s",
 		tenantID, orderID, req.Status)
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"orderId":   orderID,
 		"status":    req.Status,
 		"updated":   true,
@@ -476,10 +476,10 @@ func getCustomerOrders(ctx *lift.Context) error {
 
 	orders, err := orderService.GetCustomerOrders(ctx.Request.Context(), tenantID, customerID)
 	if err != nil {
-		return ctx.InternalError("Failed to get customer orders", err)
+		return ctx.SystemError("Failed to get customer orders", err)
 	}
 
-	return ctx.OK(map[string]interface{}{
+	return ctx.OK(map[string]any{
 		"customerId": customerID,
 		"orders":     orders,
 		"count":      len(orders),
@@ -500,7 +500,7 @@ func getCart(ctx *lift.Context) error {
 
 	cart, err := cartService.GetCart(ctx.Request.Context(), tenantID, customerID)
 	if err != nil {
-		return ctx.InternalError("Failed to get cart", err)
+		return ctx.SystemError("Failed to get cart", err)
 	}
 
 	return ctx.OK(cart)
@@ -524,7 +524,7 @@ func addToCart(ctx *lift.Context) error {
 
 	cart, err := cartService.AddToCart(ctx.Request.Context(), tenantID, customerID, req)
 	if err != nil {
-		return ctx.InternalError("Failed to add to cart", err)
+		return ctx.SystemError("Failed to add to cart", err)
 	}
 
 	log.Printf("ECOMMERCE AUDIT: Item added to cart - Tenant: %s, Customer: %s, Product: %s, Quantity: %d",
@@ -555,7 +555,7 @@ func updateCartItem(ctx *lift.Context) error {
 
 	cart, err := cartService.UpdateCartItem(ctx.Request.Context(), tenantID, cartID, itemID, req)
 	if err != nil {
-		return ctx.InternalError("Failed to update cart item", err)
+		return ctx.SystemError("Failed to update cart item", err)
 	}
 
 	return ctx.OK(cart)
@@ -578,7 +578,7 @@ func removeFromCart(ctx *lift.Context) error {
 
 	cart, err := cartService.RemoveFromCart(ctx.Request.Context(), tenantID, cartID, itemID)
 	if err != nil {
-		return ctx.InternalError("Failed to remove from cart", err)
+		return ctx.SystemError("Failed to remove from cart", err)
 	}
 
 	return ctx.OK(cart)
@@ -602,7 +602,7 @@ func checkout(ctx *lift.Context) error {
 
 	order, err := cartService.ConvertCartToOrder(ctx.Request.Context(), tenantID, cartID, req)
 	if err != nil {
-		return ctx.InternalError("Failed to checkout", err)
+		return ctx.SystemError("Failed to checkout", err)
 	}
 
 	log.Printf("ECOMMERCE AUDIT: Checkout completed - Tenant: %s, Cart: %s, Order: %s, Total: %.2f",

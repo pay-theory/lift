@@ -93,7 +93,7 @@ func (d *DevDashboard) handleAPIStats(w http.ResponseWriter, r *http.Request) {
 
 // handleAPIHealth returns server health as JSON
 func (d *DevDashboard) handleAPIHealth(w http.ResponseWriter, r *http.Request) {
-	health := map[string]interface{}{
+	health := map[string]any{
 		"status":     "healthy",
 		"timestamp":  time.Now(),
 		"uptime":     time.Since(d.server.startTime),
@@ -124,7 +124,7 @@ func (d *DevDashboard) handleAPIRestart(w http.ResponseWriter, r *http.Request) 
 // handleAPILogs returns recent logs (placeholder)
 func (d *DevDashboard) handleAPILogs(w http.ResponseWriter, r *http.Request) {
 	// This would return actual logs in a real implementation
-	logs := []map[string]interface{}{
+	logs := []map[string]any{
 		{
 			"timestamp": time.Now().Add(-5 * time.Minute),
 			"level":     "INFO",

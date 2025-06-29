@@ -230,7 +230,7 @@ func createApp() *lift.App {
 // Route handlers
 
 func handleHome(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"message":     "Welcome to Lift Sprint 6 Deployment Example",
 		"version":     "0.1.0",
 		"environment": os.Getenv("LIFT_ENVIRONMENT"),
@@ -251,18 +251,18 @@ func handleHome(ctx *lift.Context) error {
 }
 
 func handleHealth(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"status":      "healthy",
 		"timestamp":   "2025-06-12T21:02:17Z",
 		"environment": os.Getenv("LIFT_ENVIRONMENT"),
 		"uptime":      "1h 23m 45s",
-		"checks": map[string]interface{}{
+		"checks": map[string]any{
 			"app":       "healthy",
 			"database":  "healthy",
 			"memory":    "healthy",
 			"resources": "healthy",
 		},
-		"performance": map[string]interface{}{
+		"performance": map[string]any{
 			"cold_start":     "2.1µs",
 			"avg_latency":    "1.2ms",
 			"memory_usage":   "28MB",
@@ -274,7 +274,7 @@ func handleHealth(ctx *lift.Context) error {
 
 func handleGetUsers(ctx *lift.Context) error {
 	// Simulate user data
-	users := []map[string]interface{}{
+	users := []map[string]any{
 		{
 			"id":    1,
 			"name":  "John Doe",
@@ -295,7 +295,7 @@ func handleGetUsers(ctx *lift.Context) error {
 		},
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"users": users,
 		"total": len(users),
 		"page":  1,
@@ -305,7 +305,7 @@ func handleGetUsers(ctx *lift.Context) error {
 
 func handleCreateUser(ctx *lift.Context) error {
 	// Simulate user creation
-	user := map[string]interface{}{
+	user := map[string]any{
 		"id":      4,
 		"name":    "New User",
 		"email":   "new@example.com",
@@ -313,7 +313,7 @@ func handleCreateUser(ctx *lift.Context) error {
 		"created": "2025-06-12T21:02:17Z",
 	}
 
-	return ctx.Status(201).JSON(map[string]interface{}{
+	return ctx.Status(201).JSON(map[string]any{
 		"message": "User created successfully",
 		"user":    user,
 	})
@@ -323,7 +323,7 @@ func handleGetUser(ctx *lift.Context) error {
 	id := ctx.Param("id")
 
 	// Simulate user lookup
-	user := map[string]interface{}{
+	user := map[string]any{
 		"id":      id,
 		"name":    "John Doe",
 		"email":   "john@example.com",
@@ -339,7 +339,7 @@ func handleUpdateUser(ctx *lift.Context) error {
 	id := ctx.Param("id")
 
 	// Simulate user update
-	user := map[string]interface{}{
+	user := map[string]any{
 		"id":      id,
 		"name":    "John Doe Updated",
 		"email":   "john.updated@example.com",
@@ -347,7 +347,7 @@ func handleUpdateUser(ctx *lift.Context) error {
 		"updated": "2025-06-12T21:02:17Z",
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"message": "User updated successfully",
 		"user":    user,
 	})
@@ -356,14 +356,14 @@ func handleUpdateUser(ctx *lift.Context) error {
 func handleDeleteUser(ctx *lift.Context) error {
 	id := ctx.Param("id")
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"message": fmt.Sprintf("User %s deleted successfully", id),
 		"id":      id,
 	})
 }
 
 func handleDevInfo(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"sprint": "Sprint 6",
 		"focus":  "Production Deployment & Advanced Features",
 		"objectives": []string{
@@ -372,7 +372,7 @@ func handleDevInfo(ctx *lift.Context) error {
 			"Advanced Framework Features",
 			"Multi-Service Architecture",
 		},
-		"achievements": map[string]interface{}{
+		"achievements": map[string]any{
 			"lambda_deployment": "✅ Complete",
 			"cli_tooling":       "✅ Complete",
 			"dev_server":        "✅ Complete",
@@ -380,7 +380,7 @@ func handleDevInfo(ctx *lift.Context) error {
 			"hot_reload":        "✅ Complete",
 			"profiling":         "✅ Complete",
 		},
-		"performance": map[string]interface{}{
+		"performance": map[string]any{
 			"cold_start_target":  "15ms",
 			"cold_start_actual":  "2.1µs",
 			"improvement":        "7,142x better",
@@ -398,51 +398,51 @@ func handleDevInfo(ctx *lift.Context) error {
 }
 
 func handlePerformance(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
-		"benchmark_results": map[string]interface{}{
-			"cold_start": map[string]interface{}{
+	return ctx.JSON(map[string]any{
+		"benchmark_results": map[string]any{
+			"cold_start": map[string]any{
 				"duration":    "2.1µs",
 				"target":      "15ms",
 				"improvement": "7,142x better",
 				"status":      "excellent",
 			},
-			"routing": map[string]interface{}{
+			"routing": map[string]any{
 				"duration":   "387ns",
 				"complexity": "O(1)",
 				"status":     "excellent",
 			},
-			"middleware": map[string]interface{}{
+			"middleware": map[string]any{
 				"duration":    "1.2µs",
 				"target":      "100µs",
 				"improvement": "83x better",
 				"status":      "excellent",
 			},
-			"memory": map[string]interface{}{
+			"memory": map[string]any{
 				"usage":       "28KB",
 				"target":      "5MB",
 				"improvement": "179x better",
 				"status":      "excellent",
 			},
-			"throughput": map[string]interface{}{
+			"throughput": map[string]any{
 				"requests_per_second": "2.5M",
 				"target":              "50k",
 				"improvement":         "50x better",
 				"status":              "excellent",
 			},
 		},
-		"service_mesh": map[string]interface{}{
+		"service_mesh": map[string]any{
 			"circuit_breaker": "1.526µs (85% better than target)",
 			"bulkhead":        "1.307µs (87% better than target)",
 			"retry":           "1.671µs (67% better than target)",
 			"load_shedding":   "4µs (20% better than target)",
 			"timeout":         "2µs (60% better than target)",
 		},
-		"observability": map[string]interface{}{
+		"observability": map[string]any{
 			"logging": "12µs overhead (99% better than target)",
 			"metrics": "777ns per metric (99.9% better than target)",
 			"tracing": "12.482µs overhead (99% better than target)",
 		},
-		"deployment": map[string]interface{}{
+		"deployment": map[string]any{
 			"build_time":   "<30s",
 			"package_size": "<50MB",
 			"startup_time": "<100ms",

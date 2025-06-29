@@ -29,7 +29,7 @@ type ActiveFault struct {
 	Type      FaultType              `json:"type"`
 	StartTime time.Time              `json:"start_time"`
 	Duration  time.Duration          `json:"duration"`
-	Config    map[string]interface{} `json:"config"`
+	Config    map[string]any `json:"config"`
 	Impact    *FaultImpact           `json:"impact"`
 }
 
@@ -38,7 +38,7 @@ type FaultImpact struct {
 	AffectedRequests int64                  `json:"affected_requests"`
 	ErrorsIntroduced int64                  `json:"errors_introduced"`
 	LatencyAdded     time.Duration          `json:"latency_added"`
-	Metrics          map[string]interface{} `json:"metrics"`
+	Metrics          map[string]any `json:"metrics"`
 	LastUpdated      time.Time              `json:"last_updated"`
 }
 
@@ -56,7 +56,7 @@ type ServiceFaultConfig struct {
 	BaseURL         string                 `json:"base_url"`
 	DefaultTimeout  time.Duration          `json:"default_timeout"`
 	ErrorRates      map[string]float64     `json:"error_rates"`
-	LatencyProfiles map[string]interface{} `json:"latency_profiles"`
+	LatencyProfiles map[string]any `json:"latency_profiles"`
 }
 
 // ResourceFaultInjector injects resource-related faults
@@ -86,7 +86,7 @@ type ChaosGameDay struct {
 	Success      []SuccessCriteria      `json:"success_criteria"`
 	Status       GameDayStatus          `json:"status"`
 	Results      *GameDayResults        `json:"results"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 	CreatedAt    time.Time              `json:"created_at"`
 	UpdatedAt    time.Time              `json:"updated_at"`
 }
@@ -101,7 +101,7 @@ type GameDayScenario struct {
 	Duration     time.Duration          `json:"duration"`
 	Sequence     int                    `json:"sequence"`
 	Dependencies []string               `json:"dependencies"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // ScenarioType defines types of game day scenarios
@@ -123,7 +123,7 @@ type Participant struct {
 	Team     string                 `json:"team"`
 	Contact  ContactInfo            `json:"contact"`
 	Skills   []string               `json:"skills"`
-	Metadata map[string]interface{} `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // ParticipantRole defines participant roles
@@ -186,11 +186,11 @@ type SuccessCriteria struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	Type        CriteriaType           `json:"type"`
-	Target      interface{}            `json:"target"`
-	Actual      interface{}            `json:"actual"`
+	Target      any            `json:"target"`
+	Actual      any            `json:"actual"`
 	Met         bool                   `json:"met"`
 	Weight      float64                `json:"weight"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // CriteriaType defines types of success criteria
@@ -225,7 +225,7 @@ type GameDayResults struct {
 	Lessons        []Lesson               `json:"lessons"`
 	ActionItems    []ActionItem           `json:"action_items"`
 	Feedback       []ParticipantFeedback  `json:"feedback"`
-	Metrics        map[string]interface{} `json:"metrics"`
+	Metrics        map[string]any `json:"metrics"`
 	Summary        string                 `json:"summary"`
 }
 
@@ -238,7 +238,7 @@ type Lesson struct {
 	Impact      LessonImpact           `json:"impact"`
 	Source      string                 `json:"source"`
 	Timestamp   time.Time              `json:"timestamp"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // LessonCategory defines lesson categories
@@ -270,7 +270,7 @@ type ActionItem struct {
 	DueDate     time.Time              `json:"due_date"`
 	Status      ActionStatus           `json:"status"`
 	Category    ActionCategory         `json:"category"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ActionPriority defines action item priority
@@ -311,7 +311,7 @@ type ParticipantFeedback struct {
 	Suggestions   []string               `json:"suggestions"`
 	Timestamp     time.Time              `json:"timestamp"`
 	Anonymous     bool                   `json:"anonymous"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // ChaosEngineeringMetrics tracks chaos engineering metrics
@@ -325,7 +325,7 @@ type ChaosEngineeringMetrics struct {
 	SystemsAffected           int                    `json:"systems_affected"`
 	ImprovementsFound         int                    `json:"improvements_found"`
 	LastExperiment            time.Time              `json:"last_experiment"`
-	Trends                    map[string]interface{} `json:"trends"`
+	Trends                    map[string]any `json:"trends"`
 	LastUpdated               time.Time              `json:"last_updated"`
 }
 
@@ -358,7 +358,7 @@ type ChaosPolicy struct {
 	Enforcement PolicyEnforcement      `json:"enforcement"`
 	Scope       PolicyScope            `json:"scope"`
 	Exceptions  []PolicyException      `json:"exceptions"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
 	Version     string                 `json:"version"`
@@ -372,7 +372,7 @@ type PolicyRule struct {
 	Condition  string                 `json:"condition"`
 	Action     ChaosPolicyAction      `json:"action"`
 	Severity   PolicySeverity         `json:"severity"`
-	Parameters map[string]interface{} `json:"parameters"`
+	Parameters map[string]any `json:"parameters"`
 	Enabled    bool                   `json:"enabled"`
 }
 
@@ -421,8 +421,8 @@ const (
 type PolicyScope struct {
 	Type     ChaosScopeType         `json:"type"`
 	Targets  []string               `json:"targets"`
-	Filters  map[string]interface{} `json:"filters"`
-	Metadata map[string]interface{} `json:"metadata"`
+	Filters  map[string]any `json:"filters"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // ChaosScopeType defines types of policy scope
@@ -443,7 +443,7 @@ type PolicyException struct {
 	Approver   string                 `json:"approver"`
 	ExpiresAt  time.Time              `json:"expires_at"`
 	Conditions []string               `json:"conditions"`
-	Metadata   map[string]interface{} `json:"metadata"`
+	Metadata   map[string]any `json:"metadata"`
 }
 
 // Implementation methods for fault injectors
@@ -467,7 +467,7 @@ func (nfi *NetworkFaultInjector) Inject(ctx context.Context, fault FaultDefiniti
 		Config:    fault.Parameters,
 		Impact: &FaultImpact{
 			LastUpdated: time.Now(),
-			Metrics:     make(map[string]interface{}),
+			Metrics:     make(map[string]any),
 		},
 	}
 
@@ -517,7 +517,7 @@ func (nfi *NetworkFaultInjector) Status(ctx context.Context, fault FaultDefiniti
 		Active:    true,
 		StartTime: activeFault.StartTime,
 		Duration:  time.Since(activeFault.StartTime),
-		Impact:    map[string]interface{}{"requests_affected": activeFault.Impact.AffectedRequests},
+		Impact:    map[string]any{"requests_affected": activeFault.Impact.AffectedRequests},
 		Metadata:  activeFault.Config,
 	}, nil
 }
@@ -542,7 +542,7 @@ func (sfi *ServiceFaultInjector) Inject(ctx context.Context, fault FaultDefiniti
 		Config:    fault.Parameters,
 		Impact: &FaultImpact{
 			LastUpdated: time.Now(),
-			Metrics:     make(map[string]interface{}),
+			Metrics:     make(map[string]any),
 		},
 	}
 
@@ -592,7 +592,7 @@ func (sfi *ServiceFaultInjector) Status(ctx context.Context, fault FaultDefiniti
 		Active:    true,
 		StartTime: activeFault.StartTime,
 		Duration:  time.Since(activeFault.StartTime),
-		Impact:    map[string]interface{}{"errors_introduced": activeFault.Impact.ErrorsIntroduced},
+		Impact:    map[string]any{"errors_introduced": activeFault.Impact.ErrorsIntroduced},
 		Metadata:  activeFault.Config,
 	}, nil
 }
@@ -616,7 +616,7 @@ func (rfi *ResourceFaultInjector) Inject(ctx context.Context, fault FaultDefinit
 		Config:    fault.Parameters,
 		Impact: &FaultImpact{
 			LastUpdated: time.Now(),
-			Metrics:     make(map[string]interface{}),
+			Metrics:     make(map[string]any),
 		},
 	}
 
@@ -665,7 +665,7 @@ func (rfi *ResourceFaultInjector) Status(ctx context.Context, fault FaultDefinit
 		Active:    true,
 		StartTime: activeFault.StartTime,
 		Duration:  time.Since(activeFault.StartTime),
-		Impact:    map[string]interface{}{"resource_impact": activeFault.Config},
+		Impact:    map[string]any{"resource_impact": activeFault.Config},
 		Metadata:  activeFault.Config,
 	}, nil
 }

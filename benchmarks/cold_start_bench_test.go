@@ -208,7 +208,7 @@ func BenchmarkGarbageCollectionImpact(b *testing.B) {
 		for j := 0; j < 100; j++ {
 			path := fmt.Sprintf("/api/v1/resource%d/:id", j)
 			app.GET(path, func(ctx *lift.Context) error {
-				return ctx.JSON(map[string]interface{}{
+				return ctx.JSON(map[string]any{
 					"id":   ctx.Param("id"),
 					"data": make([]byte, 1024), // Allocate some memory
 				})

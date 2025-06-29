@@ -12,7 +12,7 @@ import (
 type TestEnvironment struct {
 	Name       string
 	Config     EnvironmentConfig
-	Resources  map[string]interface{}
+	Resources  map[string]any
 	State      EnvironmentState
 	Validators []EnvironmentValidator
 	mutex      sync.RWMutex
@@ -43,7 +43,7 @@ type EnvironmentConfig struct {
 	TLSEnabled  bool
 
 	// Custom configuration
-	Custom map[string]interface{}
+	Custom map[string]any
 }
 
 // EnvironmentState tracks the current state of an environment
@@ -70,7 +70,7 @@ type ResourceState struct {
 	Type        string
 	Status      string
 	LastChecked time.Time
-	Metadata    map[string]interface{}
+	Metadata    map[string]any
 }
 
 // EnvironmentMetrics tracks environment performance metrics
@@ -132,7 +132,7 @@ func (e *EnterpriseTestSuite) AddEnvironment(name string, config EnvironmentConf
 	env := &TestEnvironment{
 		Name:      name,
 		Config:    config,
-		Resources: make(map[string]interface{}),
+		Resources: make(map[string]any),
 		State: EnvironmentState{
 			Status:      EnvironmentStatusReady,
 			LastUpdated: time.Now(),
@@ -316,7 +316,7 @@ func (e *EnterpriseTestSuite) ResetEnvironment(envName string) error {
 	}
 
 	// Reset resources
-	env.Resources = make(map[string]interface{})
+	env.Resources = make(map[string]any)
 
 	return nil
 }

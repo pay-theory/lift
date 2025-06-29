@@ -186,7 +186,7 @@ func NewGDPREvidenceStore() *GDPREvidenceStore {
 }
 
 // ValidateCompliance validates GDPR compliance
-func (g *GDPRCompliance) ValidateCompliance(ctx context.Context, data interface{}) (*ValidationResult, error) {
+func (g *GDPRCompliance) ValidateCompliance(ctx context.Context, data any) (*ValidationResult, error) {
 	result := &ValidationResult{
 		Status:    ValidationStatusPassed,
 		Timestamp: time.Now(),
@@ -209,7 +209,7 @@ func (g *GDPRCompliance) ValidateCompliance(ctx context.Context, data interface{
 }
 
 // validateRule validates a single GDPR rule
-func (g *GDPRCompliance) validateRule(ctx context.Context, rule ValidationRule, data interface{}) (*ValidationViolation, error) {
+func (g *GDPRCompliance) validateRule(ctx context.Context, rule ValidationRule, data any) (*ValidationViolation, error) {
 	// Implementation would validate the rule against data
 	// For now, return nil (no violation)
 	_ = ctx  // Use context parameter to avoid unused warning
@@ -298,7 +298,7 @@ func (g *GDPRCompliance) GenerateComplianceReport(ctx context.Context) (*TestRep
 		GeneratedAt: time.Now(),
 		StartTime:   time.Now(),
 		EndTime:     time.Now(),
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}, nil
 }
 
@@ -317,7 +317,7 @@ type GDPRArticle struct {
 	Description string                 `json:"description"`
 	Tests       []GDPRTest             `json:"tests"`
 	Evidence    []EvidenceRequirement  `json:"evidence"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // GDPRTest represents a test for a GDPR article
@@ -325,8 +325,8 @@ type GDPRTest struct {
 	ID        string                 `json:"id"`
 	Type      PrivacyTestType        `json:"type"`
 	Procedure string                 `json:"procedure"`
-	Expected  interface{}            `json:"expected"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Expected  any            `json:"expected"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // GovernanceCategory represents governance categories
@@ -366,7 +366,7 @@ type GDPRReport struct {
 	OverallStatus  ComplianceStatus          `json:"overall_status"`
 	Articles       map[string]*ArticleResult `json:"articles"`
 	RiskAssessment *RiskAssessment           `json:"risk_assessment"`
-	Metadata       map[string]interface{}    `json:"metadata"`
+	Metadata       map[string]any    `json:"metadata"`
 }
 
 // ArticleResult represents the result of testing a GDPR article
@@ -379,7 +379,7 @@ type ArticleResult struct {
 	StartTime     time.Time                        `json:"start_time"`
 	EndTime       time.Time                        `json:"end_time"`
 	Duration      time.Duration                    `json:"duration"`
-	Metadata      map[string]interface{}           `json:"metadata"`
+	Metadata      map[string]any           `json:"metadata"`
 }
 
 // RiskAssessment represents a privacy risk assessment
@@ -388,7 +388,7 @@ type RiskAssessment struct {
 	RiskFactors []RiskFactor           `json:"risk_factors"`
 	Mitigations []string               `json:"mitigations"`
 	LastUpdated time.Time              `json:"last_updated"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // RiskFactor represents a privacy risk factor
@@ -398,7 +398,7 @@ type RiskFactor struct {
 	Description string                 `json:"description"`
 	Impact      string                 `json:"impact"`
 	Likelihood  string                 `json:"likelihood"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // NewGDPRPrivacyFramework creates a new GDPR privacy framework
@@ -463,7 +463,7 @@ func getGDPRArticles() []GDPRArticle {
 }
 
 // ValidateGDPRCompliance validates GDPR compliance for an application
-func (f *GDPRPrivacyFramework) ValidateGDPRCompliance(ctx context.Context, app interface{}) (*GDPRReport, error) {
+func (f *GDPRPrivacyFramework) ValidateGDPRCompliance(ctx context.Context, app any) (*GDPRReport, error) {
 	startTime := time.Now()
 
 	report := &GDPRReport{
@@ -475,9 +475,9 @@ func (f *GDPRPrivacyFramework) ValidateGDPRCompliance(ctx context.Context, app i
 			RiskFactors: []RiskFactor{},
 			Mitigations: []string{},
 			LastUpdated: startTime,
-			Metadata:    make(map[string]interface{}),
+			Metadata:    make(map[string]any),
 		},
-		Metadata: make(map[string]interface{}),
+		Metadata: make(map[string]any),
 	}
 
 	// Test each article
@@ -497,7 +497,7 @@ func (f *GDPRPrivacyFramework) ValidateGDPRCompliance(ctx context.Context, app i
 }
 
 // testArticle tests a specific GDPR article
-func (f *GDPRPrivacyFramework) testArticle(ctx context.Context, app interface{}, article GDPRArticle) (*ArticleResult, error) {
+func (f *GDPRPrivacyFramework) testArticle(ctx context.Context, app any, article GDPRArticle) (*ArticleResult, error) {
 	_ = ctx // TODO: Use ctx for timeout/cancellation in article testing
 	_ = app // TODO: Use app for actual compliance testing implementation
 	startTime := time.Now()
@@ -508,7 +508,7 @@ func (f *GDPRPrivacyFramework) testArticle(ctx context.Context, app interface{},
 		TestResults:   make(map[string]*ComplianceTestResult),
 		Evidence:      []Evidence{},
 		StartTime:     startTime,
-		Metadata:      make(map[string]interface{}),
+		Metadata:      make(map[string]any),
 	}
 
 	// Run tests for this article
@@ -544,8 +544,8 @@ func (f *GDPRPrivacyFramework) calculateOverallStatus(articles map[string]*Artic
 }
 
 // validateConsentLawfulness validates consent lawfulness
-func (f *GDPRPrivacyFramework) validateConsentLawfulness(_ context.Context, _ interface{}) (interface{}, error) {
-	return map[string]interface{}{
+func (f *GDPRPrivacyFramework) validateConsentLawfulness(_ context.Context, _ any) (any, error) {
+	return map[string]any{
 		"consent_mechanism_exists": true,
 		"consent_freely_given":     true,
 		"consent_specific":         true,
@@ -559,10 +559,10 @@ func (f *GDPRPrivacyFramework) validateConsentLawfulness(_ context.Context, _ in
 }
 
 // validateRightToErasure validates right to erasure implementation
-func (f *GDPRPrivacyFramework) validateRightToErasure(ctx context.Context, app interface{}) (interface{}, error) {
+func (f *GDPRPrivacyFramework) validateRightToErasure(ctx context.Context, app any) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"erasure_request_mechanism":  true,
 		"erasure_grounds_checked":    true,
 		"erasure_executed":           true,
@@ -575,10 +575,10 @@ func (f *GDPRPrivacyFramework) validateRightToErasure(ctx context.Context, app i
 }
 
 // validateDataPortability validates data portability implementation
-func (f *GDPRPrivacyFramework) validateDataPortability(ctx context.Context, app interface{}) (interface{}, error) {
+func (f *GDPRPrivacyFramework) validateDataPortability(ctx context.Context, app any) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"portability_mechanism":   true,
 		"structured_format":       true,
 		"commonly_used_format":    true,
@@ -591,10 +591,10 @@ func (f *GDPRPrivacyFramework) validateDataPortability(ctx context.Context, app 
 }
 
 // validateTransferPrinciples validates transfer principles implementation
-func (f *GDPRPrivacyFramework) validateTransferPrinciples(ctx context.Context, app interface{}) (interface{}, error) {
+func (f *GDPRPrivacyFramework) validateTransferPrinciples(ctx context.Context, app any) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"transfer_lawfulness":      true,
 		"adequate_protection":      true,
 		"transfer_documented":      true,
@@ -606,10 +606,10 @@ func (f *GDPRPrivacyFramework) validateTransferPrinciples(ctx context.Context, a
 }
 
 // validateBreachNotification validates breach notification implementation
-func (f *GDPRPrivacyFramework) validateBreachNotification(ctx context.Context, app interface{}) (interface{}, error) {
+func (f *GDPRPrivacyFramework) validateBreachNotification(ctx context.Context, app any) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"breach_detection_capability":    true,
 		"72_hour_notification":           true,
 		"supervisory_authority_notified": true,
@@ -621,10 +621,10 @@ func (f *GDPRPrivacyFramework) validateBreachNotification(ctx context.Context, a
 }
 
 // validatePrivacyImpactAssessment validates PIA implementation
-func (f *GDPRPrivacyFramework) validatePrivacyImpactAssessment(ctx context.Context, app interface{}) (interface{}, error) {
+func (f *GDPRPrivacyFramework) validatePrivacyImpactAssessment(ctx context.Context, app any) (any, error) {
 	_ = ctx // Use context parameter to avoid unused warning
 	_ = app // Use app parameter to avoid unused warning
-	return map[string]interface{}{
+	return map[string]any{
 		"pia_conducted":             true,
 		"high_risk_processing":      true,
 		"systematic_assessment":     true,
