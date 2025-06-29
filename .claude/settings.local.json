@@ -9,7 +9,10 @@
       "Bash(ls:*)",
       "Bash(go build:*)",
       "Bash(rg:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(go build:*)"
     ],
     "deny": []
   }
