@@ -47,7 +47,7 @@ type PulumiStackConfig struct {
 type DeploymentResult struct {
 	Success   bool                   `json:"success"`
 	StackName string                 `json:"stack_name"`
-	Outputs   map[string]interface{} `json:"outputs"`
+	Outputs   map[string]any `json:"outputs"`
 	Resources []ResourceSummary      `json:"resources"`
 	Duration  time.Duration          `json:"duration"`
 	Error     string                 `json:"error,omitempty"`
@@ -70,7 +70,7 @@ type PulumiOperationResult struct {
 	Stack     string                 `json:"stack"`
 	Project   string                 `json:"project"`
 	Result    string                 `json:"result"`
-	Outputs   map[string]interface{} `json:"outputs"`
+	Outputs   map[string]any `json:"outputs"`
 	Resources []PulumiResource       `json:"resources"`
 }
 
@@ -187,7 +187,7 @@ func (pd *PulumiDeployer) Deploy(ctx context.Context) (*DeploymentResult, error)
 	outputs, err := pd.GetStackOutputs(ctx)
 	if err != nil {
 		pd.logEntry("WARN", "Failed to retrieve outputs", pd.stackName, "outputs", "failed", err.Error())
-		outputs = make(map[string]interface{}) // Continue with empty outputs
+		outputs = make(map[string]any) // Continue with empty outputs
 	}
 
 	// Convert resources
@@ -248,13 +248,13 @@ func (pd *PulumiDeployer) Destroy(ctx context.Context) (*DeploymentResult, error
 }
 
 // GetStackOutputs retrieves the current stack outputs using Pulumi CLI
-func (pd *PulumiDeployer) GetStackOutputs(ctx context.Context) (map[string]interface{}, error) {
+func (pd *PulumiDeployer) GetStackOutputs(ctx context.Context) (map[string]any, error) {
 	output, err := pd.runPulumiCommandWithOutput(ctx, "stack", "output", "--json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stack outputs: %w", err)
 	}
 
-	var outputs map[string]interface{}
+	var outputs map[string]any
 	if err := json.Unmarshal([]byte(output), &outputs); err != nil {
 		return nil, fmt.Errorf("failed to parse stack outputs: %w", err)
 	}
@@ -322,7 +322,7 @@ func (pd *PulumiDeployer) parsePulumiOutput(output string) (*PulumiOperationResu
 			continue
 		}
 
-		var event map[string]interface{}
+		var event map[string]any
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			continue // Skip non-JSON lines
 		}

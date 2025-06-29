@@ -134,11 +134,42 @@ PASS
 ## Examples
 
 Check the `examples/` directory for working examples:
+
+### Core Examples
 - `examples/hello-world/` - Basic Lambda handler with type safety
-- `examples/basic-crud-api/` - Complete CRUD API with middleware
-- `examples/jwt-auth/` - JWT authentication example
-- `examples/websocket-enhanced/` - WebSocket implementation
-- `examples/observability-demo/` - Comprehensive observability setup
+- `examples/basic-crud-api/` - Complete CRUD API with middleware and testing
+- `examples/error-handling/` - Error handling patterns
+
+### Authentication & Security
+- `examples/jwt-auth/` - JWT authentication with middleware
+- `examples/jwt-auth-demo/` - JWT authentication demonstration
+- `examples/rate-limiting/` - Rate limiting middleware implementation
+
+### Real-time & Event-Driven
+- `examples/websocket-demo/` - WebSocket support with connection management
+- `examples/websocket-enhanced/` - Advanced WebSocket implementation
+- `examples/event-adapters/` - Multiple AWS event source handlers
+- `examples/multi-event-handler/` - Handling multiple event types
+- `examples/eventbridge-wakeup/` - EventBridge scheduled events
+- `examples/multiple-scheduled-events/` - Multiple scheduled Lambda triggers
+
+### Enterprise Examples
+- `examples/multi-tenant-saas/` - Multi-tenant SaaS application
+- `examples/enterprise-banking/` - Banking application with SOC2 compliance
+- `examples/enterprise-healthcare/` - Healthcare with HIPAA compliance
+- `examples/enterprise-ecommerce/` - E-commerce platform example
+
+### Production Patterns
+- `examples/production-api/` - Production-ready API configuration
+- `examples/observability-demo/` - Comprehensive logging and monitoring
+- `examples/health-monitoring/` - Health check implementation
+- `examples/multi-service-demo/` - Microservices with chaos engineering
+
+### Testing & Development
+- `examples/mocking-demo/` - Testing with mocks
+- `examples/cloudwatch-mocking-demo/` - CloudWatch metrics mocking
+- `examples/dynamorm-integration/` - DynamORM database integration
+- `examples/streamer-quickstart/` - Quick start with streaming
 
 ## Documentation
 

@@ -46,10 +46,10 @@ type Scenario struct {
 	Name        string
 	Description string
 	Weight      int // Relative frequency (higher = more frequent)
-	Setup       func() (interface{}, error)
-	Execute     func(context.Context, *lift.App, interface{}) (*ScenarioResult, error)
+	Setup       func() (any, error)
+	Execute     func(context.Context, *lift.App, any) (*ScenarioResult, error)
 	Validate    func(*ScenarioResult) error
-	Cleanup     func(interface{}) error
+	Cleanup     func(any) error
 }
 
 // ScenarioResult contains the result of executing a scenario
@@ -61,7 +61,7 @@ type ScenarioResult struct {
 	Error        error
 	Headers      map[string]string
 	Body         []byte
-	Metadata     map[string]interface{}
+	Metadata     map[string]any
 }
 
 // Results contains the aggregated results of a load test
@@ -307,7 +307,7 @@ func (lt *LoadTest) executeScenario(ctx context.Context, scenario Scenario) {
 	atomic.AddInt64(&lt.results.TotalRequests, 1)
 
 	// Setup
-	var setupData interface{}
+	var setupData any
 	var err error
 	if scenario.Setup != nil {
 		setupData, err = scenario.Setup()
@@ -553,7 +553,7 @@ func HTTPGetScenario(name, path string) Scenario {
 	return Scenario{
 		Name:   name,
 		Weight: 1,
-		Execute: func(ctx context.Context, app *lift.App, data interface{}) (*ScenarioResult, error) {
+		Execute: func(ctx context.Context, app *lift.App, data any) (*ScenarioResult, error) {
 			start := time.Now()
 
 			// This would need to be implemented to actually call the app
@@ -570,14 +570,14 @@ func HTTPGetScenario(name, path string) Scenario {
 }
 
 // HTTPPostScenario creates a simple HTTP POST scenario
-func HTTPPostScenario(name, path string, payload interface{}) Scenario {
+func HTTPPostScenario(name, path string, payload any) Scenario {
 	return Scenario{
 		Name:   name,
 		Weight: 1,
-		Setup: func() (interface{}, error) {
+		Setup: func() (any, error) {
 			return payload, nil
 		},
-		Execute: func(ctx context.Context, app *lift.App, data interface{}) (*ScenarioResult, error) {
+		Execute: func(ctx context.Context, app *lift.App, data any) (*ScenarioResult, error) {
 			start := time.Now()
 
 			// This would need to be implemented to actually call the app
@@ -599,7 +599,7 @@ func RateLimitTestScenario(name, path string, expectedLimit int) Scenario {
 	return Scenario{
 		Name:   name,
 		Weight: 1,
-		Execute: func(ctx context.Context, app *lift.App, data interface{}) (*ScenarioResult, error) {
+		Execute: func(ctx context.Context, app *lift.App, data any) (*ScenarioResult, error) {
 			start := time.Now()
 
 			// This would make rapid requests to test rate limiting

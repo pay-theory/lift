@@ -73,12 +73,12 @@ func (r *TestResponse) AssertHeaderContains(key, substring string) *TestResponse
 }
 
 // AssertJSONPath verifies a JSON path matches expected value
-func (r *TestResponse) AssertJSONPath(path string, expected interface{}) *TestResponse {
+func (r *TestResponse) AssertJSONPath(path string, expected any) *TestResponse {
 	if r.t == nil {
 		panic("TestResponse not properly initialized")
 	}
 
-	var jsonData interface{}
+	var jsonData any
 	if err := json.Unmarshal([]byte(r.Body), &jsonData); err != nil {
 		r.t.Fatalf("Failed to parse JSON response: %v\nBody: %s", err, r.Body)
 	}
@@ -97,7 +97,7 @@ func (r *TestResponse) AssertJSONPath(path string, expected interface{}) *TestRe
 }
 
 // AssertJSONPaths verifies multiple JSON paths at once
-func (r *TestResponse) AssertJSONPaths(assertions map[string]interface{}) *TestResponse {
+func (r *TestResponse) AssertJSONPaths(assertions map[string]any) *TestResponse {
 	for path, expected := range assertions {
 		r.AssertJSONPath(path, expected)
 	}
@@ -110,7 +110,7 @@ func (r *TestResponse) AssertJSONPathExists(path string) *TestResponse {
 		panic("TestResponse not properly initialized")
 	}
 
-	var jsonData interface{}
+	var jsonData any
 	if err := json.Unmarshal([]byte(r.Body), &jsonData); err != nil {
 		r.t.Fatalf("Failed to parse JSON response: %v", err)
 	}
@@ -127,7 +127,7 @@ func (r *TestResponse) AssertJSONPathNotExists(path string) *TestResponse {
 		panic("TestResponse not properly initialized")
 	}
 
-	var jsonData interface{}
+	var jsonData any
 	if err := json.Unmarshal([]byte(r.Body), &jsonData); err != nil {
 		r.t.Fatalf("Failed to parse JSON response: %v", err)
 	}
@@ -144,7 +144,7 @@ func (r *TestResponse) AssertJSONPathCount(path string, expectedCount int) *Test
 		panic("TestResponse not properly initialized")
 	}
 
-	var jsonData interface{}
+	var jsonData any
 	if err := json.Unmarshal([]byte(r.Body), &jsonData); err != nil {
 		r.t.Fatalf("Failed to parse JSON response: %v", err)
 	}
@@ -157,9 +157,9 @@ func (r *TestResponse) AssertJSONPathCount(path string, expectedCount int) *Test
 	// Handle different types that can be counted
 	var count int
 	switch v := actual.(type) {
-	case []interface{}:
+	case []any:
 		count = len(v)
-	case map[string]interface{}:
+	case map[string]any:
 		count = len(v)
 	case string:
 		count = len(v)
@@ -173,18 +173,18 @@ func (r *TestResponse) AssertJSONPathCount(path string, expectedCount int) *Test
 }
 
 // AssertJSONSchema verifies the response matches a JSON schema (basic validation)
-func (r *TestResponse) AssertJSONSchema(schema map[string]interface{}) *TestResponse {
+func (r *TestResponse) AssertJSONSchema(schema map[string]any) *TestResponse {
 	if r.t == nil {
 		panic("TestResponse not properly initialized")
 	}
 
-	var jsonData interface{}
+	var jsonData any
 	if err := json.Unmarshal([]byte(r.Body), &jsonData); err != nil {
 		r.t.Fatalf("Failed to parse JSON response: %v", err)
 	}
 
 	// Basic schema validation - check required fields and types
-	if dataMap, ok := jsonData.(map[string]interface{}); ok {
+	if dataMap, ok := jsonData.(map[string]any); ok {
 		for field, expectedType := range schema {
 			value, exists := dataMap[field]
 			assert.True(r.t, exists, "Required field %s missing", field)
@@ -236,8 +236,8 @@ func (r *TestResponse) AssertError() *TestResponse {
 }
 
 // GetJSONPath extracts a value from the JSON response
-func (r *TestResponse) GetJSONPath(path string) interface{} {
-	var jsonData interface{}
+func (r *TestResponse) GetJSONPath(path string) any {
+	var jsonData any
 	if err := json.Unmarshal([]byte(r.Body), &jsonData); err != nil {
 		r.t.Fatalf("Failed to parse JSON response: %v", err)
 	}
@@ -271,7 +271,7 @@ func (r *TestResponse) IsSuccess() bool {
 }
 
 // JSON parses the response body as JSON into the provided interface
-func (r *TestResponse) JSON(target interface{}) error {
+func (r *TestResponse) JSON(target any) error {
 	return json.Unmarshal([]byte(r.Body), target)
 }
 
@@ -312,9 +312,9 @@ func (r *TestResponse) AssertRateLimitLimit(expected int) *TestResponse {
 func (r *TestResponse) AssertTenantIsolation(tenantID string) *TestResponse {
 	// Verify all returned data belongs to the specified tenant
 	items := r.GetJSONPath("$.data")
-	if itemsArray, ok := items.([]interface{}); ok {
+	if itemsArray, ok := items.([]any); ok {
 		for i, item := range itemsArray {
-			if itemMap, ok := item.(map[string]interface{}); ok {
+			if itemMap, ok := item.(map[string]any); ok {
 				if tenant, exists := itemMap["tenant_id"]; exists {
 					assert.Equal(r.t, tenantID, tenant, "Item %d should belong to tenant %s", i, tenantID)
 				}
@@ -404,7 +404,7 @@ func (r *TestResponse) AssertResponseTime(maxDuration string) *TestResponse {
 // Utility Functions
 
 // ParseJSON parses the response body as JSON
-func (r *TestResponse) ParseJSON(target interface{}) error {
+func (r *TestResponse) ParseJSON(target any) error {
 	return json.Unmarshal([]byte(r.Body), target)
 }
 

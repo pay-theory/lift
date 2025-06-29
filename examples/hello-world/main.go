@@ -60,7 +60,7 @@ func main() {
 	app.GET("/users/:id", func(ctx *lift.Context) error {
 		userID := ctx.Param("id")
 
-		return ctx.JSON(map[string]interface{}{
+		return ctx.JSON(map[string]any{
 			"user_id": userID,
 			"name":    fmt.Sprintf("User %s", userID),
 			"tenant":  ctx.TenantID(),

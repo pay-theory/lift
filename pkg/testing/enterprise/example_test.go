@@ -58,7 +58,7 @@ func TestContractTesting(t *testing.T) {
 					Headers: map[string]string{
 						"Content-Type": "application/json",
 					},
-					Body: map[string]interface{}{
+					Body: map[string]any{
 						"id":   "123",
 						"name": "Test User",
 					},
@@ -176,7 +176,7 @@ func createEvolvedContract(original *ServiceContract) *ServiceContract {
 	// Add a new optional field to response (backward compatible)
 	if len(evolved.Interactions) > 0 {
 		interaction := evolved.Interactions[0]
-		if body, ok := interaction.Response.Body.(map[string]interface{}); ok {
+		if body, ok := interaction.Response.Body.(map[string]any); ok {
 			body["email"] = "test@example.com" // Add optional field
 		}
 	}
@@ -211,7 +211,7 @@ func TestGDPRCompliance(t *testing.T) {
 			Type:        GDPRRightToRectification,
 			Description: "Data subject can correct their personal data",
 			TestFunc: func(ctx context.Context, tester *GDPRComplianceTester) error {
-				return tester.TestRightToRectification(ctx, "test-user-123", map[string]interface{}{
+				return tester.TestRightToRectification(ctx, "test-user-123", map[string]any{
 					"name": "Updated Name",
 				})
 			},
@@ -428,7 +428,7 @@ func TestChaosEngineering(t *testing.T) {
 				Target:   "database",
 				Severity: HighSeverity,
 				Duration: 30 * time.Second,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"failure_type": "connection_timeout",
 				},
 				Enabled: true,
@@ -456,7 +456,7 @@ func TestChaosEngineering(t *testing.T) {
 				Target:   "application",
 				Severity: MediumSeverity,
 				Duration: 15 * time.Second,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"cpu_percentage": 80,
 				},
 				Enabled: true,
@@ -484,7 +484,7 @@ func TestChaosEngineering(t *testing.T) {
 				Target:   "application",
 				Severity: MediumSeverity,
 				Duration: 20 * time.Second,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"memory_percentage": 70,
 				},
 				Enabled: true,
@@ -512,7 +512,7 @@ func TestChaosEngineering(t *testing.T) {
 				Target:   "api",
 				Severity: LowSeverity,
 				Duration: 30 * time.Second,
-				Parameters: map[string]interface{}{
+				Parameters: map[string]any{
 					"latency_ms": 2000,
 					"percentage": 50,
 				},
@@ -576,12 +576,12 @@ func TestChaosEngineering(t *testing.T) {
 				Duration:     duration,
 				FaultType:    experiment.Type,
 				Target:       experiment.Target.Name,
-				Metrics: map[string]interface{}{
+				Metrics: map[string]any{
 					"system_recovered": recovered,
 					"test_successful":  testErr == nil,
 				},
 				Errors: []string{},
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"hypothesis": experiment.Hypothesis,
 				},
 			}

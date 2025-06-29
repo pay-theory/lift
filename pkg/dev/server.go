@@ -264,7 +264,7 @@ func (s *DevServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Create Lift context and handle request
 	// This is a simplified implementation - in reality, we'd integrate with the full Lift routing
-	response := map[string]interface{}{
+	response := map[string]any{
 		"message":   "Development server response",
 		"path":      r.URL.Path,
 		"method":    r.Method,
@@ -313,12 +313,12 @@ func (s *DevServer) handleRestart(w http.ResponseWriter, r *http.Request) {
 
 // handleHealth returns server health status
 func (s *DevServer) handleHealth(w http.ResponseWriter, r *http.Request) {
-	health := map[string]interface{}{
+	health := map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now(),
 		"uptime":    time.Since(s.startTime),
 		"version":   "dev",
-		"config": map[string]interface{}{
+		"config": map[string]any{
 			"hot_reload": s.config.HotReload,
 			"debug_mode": s.config.DebugMode,
 			"port":       s.config.Port,

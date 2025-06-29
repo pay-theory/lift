@@ -133,7 +133,7 @@ func WebSocketAuth(config WebSocketAuthConfig) lift.Middleware {
 
 			// Log successful authentication
 			if ctx.Logger != nil {
-				ctx.Logger.Info("WebSocket authenticated", map[string]interface{}{
+				ctx.Logger.Info("WebSocket authenticated", map[string]any{
 					"user_id":       claims.Subject,
 					"connection_id": wsCtx.ConnectionID(),
 					"route_key":     routeKey,

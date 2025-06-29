@@ -8,7 +8,7 @@ import (
 
 // Validator interface for request validation
 type Validator interface {
-	Validate(interface{}) error
+	Validate(any) error
 }
 
 // Context represents the enhanced context for Lambda handlers
@@ -26,10 +26,10 @@ type Context struct {
 	// Utilities
 	validator Validator
 	params    map[string]string
-	values    map[string]interface{}
+	values    map[string]any
 
 	// Optional database connection
-	DB interface{}
+	DB any
 
 	// Lambda-specific
 	RequestID string
@@ -38,7 +38,7 @@ type Context struct {
 	startTime time.Time
 
 	// Authentication
-	claims          map[string]interface{}
+	claims          map[string]any
 	isAuthenticated bool
 }
 
@@ -49,7 +49,7 @@ func NewContext(baseCtx context.Context, req *Request) *Context {
 		Request:         req,
 		Response:        NewResponse(),
 		params:          make(map[string]string),
-		values:          make(map[string]interface{}),
+		values:          make(map[string]any),
 		claims:          nil, // Initialize as nil, will be set when claims are provided
 		startTime:       time.Now(),
 		isAuthenticated: false,
@@ -78,15 +78,15 @@ func (c *Context) Header(key string) string {
 }
 
 // Set stores a value in the context
-func (c *Context) Set(key string, value interface{}) {
+func (c *Context) Set(key string, value any) {
 	if c.values == nil {
-		c.values = make(map[string]interface{})
+		c.values = make(map[string]any)
 	}
 	c.values[key] = value
 }
 
 // Get retrieves a value from the context
-func (c *Context) Get(key string) interface{} {
+func (c *Context) Get(key string) any {
 	if c.values == nil {
 		return nil
 	}
@@ -123,7 +123,7 @@ func (c *Context) SetParam(key, value string) {
 }
 
 // JSON sets the response body as JSON
-func (c *Context) JSON(data interface{}) error {
+func (c *Context) JSON(data any) error {
 	return c.Response.JSON(data)
 }
 
@@ -144,7 +144,7 @@ func (c *Context) Status(code int) *Context {
 }
 
 // ParseRequest parses the request body into the provided interface
-func (c *Context) ParseRequest(v interface{}) error {
+func (c *Context) ParseRequest(v any) error {
 	if c.Request == nil || len(c.Request.Body) == 0 {
 		return NewLiftError("EMPTY_BODY", "Request body is empty", 400)
 	}
@@ -165,12 +165,12 @@ func (c *Context) ParseRequest(v interface{}) error {
 }
 
 // WithTimeout executes a function with a timeout
-func (c *Context) WithTimeout(duration time.Duration, fn func() (interface{}, error)) (interface{}, error) {
+func (c *Context) WithTimeout(duration time.Duration, fn func() (any, error)) (any, error) {
 	ctx, cancel := context.WithTimeout(c.Context, duration)
 	defer cancel()
 
 	type result struct {
-		value interface{}
+		value any
 		err   error
 	}
 
@@ -238,21 +238,22 @@ func (c *Context) GetUserID() string {
 // HTTP Response convenience methods
 
 // OK sends a 200 OK response with JSON data
-func (c *Context) OK(data interface{}) error {
+func (c *Context) OK(data any) error {
 	c.Response.StatusCode = 200
 	return c.JSON(data)
 }
 
 // Created sends a 201 Created response with JSON data
-func (c *Context) Created(data interface{}) error {
+func (c *Context) Created(data any) error {
 	c.Response.StatusCode = 201
 	return c.JSON(data)
 }
 
 // BadRequest sends a 400 Bad Request response
+// Deprecated: Use ValidationError instead
 func (c *Context) BadRequest(message string, err error) error {
 	c.Response.StatusCode = 400
-	response := map[string]interface{}{
+	response := map[string]any{
 		"error":   "Bad Request",
 		"message": message,
 	}
@@ -265,7 +266,7 @@ func (c *Context) BadRequest(message string, err error) error {
 // NotFound sends a 404 Not Found response
 func (c *Context) NotFound(message string, err error) error {
 	c.Response.StatusCode = 404
-	response := map[string]interface{}{
+	response := map[string]any{
 		"error":   "Not Found",
 		"message": message,
 	}
@@ -276,9 +277,10 @@ func (c *Context) NotFound(message string, err error) error {
 }
 
 // Forbidden sends a 403 Forbidden response
+// Deprecated: Use AuthorizationError from the errors package instead
 func (c *Context) Forbidden(message string, err error) error {
 	c.Response.StatusCode = 403
-	response := map[string]interface{}{
+	response := map[string]any{
 		"error":   "Forbidden",
 		"message": message,
 	}
@@ -288,10 +290,10 @@ func (c *Context) Forbidden(message string, err error) error {
 	return c.JSON(response)
 }
 
-// InternalError sends a 500 Internal Server Error response
-func (c *Context) InternalError(message string, err error) error {
+// SystemError sends a 500 Internal Server Error response
+func (c *Context) SystemError(message string, err error) error {
 	c.Response.StatusCode = 500
-	response := map[string]interface{}{
+	response := map[string]any{
 		"error":   "Internal Server Error",
 		"message": message,
 	}
@@ -304,7 +306,7 @@ func (c *Context) InternalError(message string, err error) error {
 // Unauthorized sends a 401 Unauthorized response
 func (c *Context) Unauthorized(message string, err error) error {
 	c.Response.StatusCode = 401
-	response := map[string]interface{}{
+	response := map[string]any{
 		"error":   "Unauthorized",
 		"message": message,
 	}
@@ -327,10 +329,10 @@ func (c *Context) QueryParam(key string) string {
 // Authentication methods
 
 // SetClaims sets JWT claims in the context and extracts user/tenant information
-func (c *Context) SetClaims(claims map[string]interface{}) {
+func (c *Context) SetClaims(claims map[string]any) {
 	// Initialize claims map if nil
 	if c.claims == nil {
-		c.claims = make(map[string]interface{})
+		c.claims = make(map[string]any)
 	}
 
 	// Copy claims to avoid external modifications
@@ -359,12 +361,12 @@ func (c *Context) SetClaims(claims map[string]interface{}) {
 }
 
 // Claims returns the JWT claims from the context
-func (c *Context) Claims() map[string]interface{} {
+func (c *Context) Claims() map[string]any {
 	return c.claims
 }
 
 // GetClaim retrieves a specific claim from the JWT
-func (c *Context) GetClaim(key string) interface{} {
+func (c *Context) GetClaim(key string) any {
 	if c.claims == nil {
 		return nil
 	}

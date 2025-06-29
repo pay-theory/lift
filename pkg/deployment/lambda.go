@@ -121,7 +121,7 @@ func (d *LambdaDeployment) Handler() lambda.Handler {
 }
 
 // handleLambdaEvent processes Lambda events through the Lift framework
-func (d *LambdaDeployment) handleLambdaEvent(ctx context.Context, event json.RawMessage) (interface{}, error) {
+func (d *LambdaDeployment) handleLambdaEvent(ctx context.Context, event json.RawMessage) (any, error) {
 	startTime := time.Now()
 
 	// Check if this is a cold start
@@ -145,7 +145,7 @@ func (d *LambdaDeployment) handleLambdaEvent(ctx context.Context, event json.Raw
 
 	// Process event through Lift framework
 	// For now, we'll create a simple response - this needs to be integrated with the actual app routing
-	response := map[string]interface{}{
+	response := map[string]any{
 		"statusCode": 200,
 		"body":       `{"message": "Lambda deployment successful"}`,
 		"headers": map[string]string{
@@ -576,7 +576,7 @@ func (c *MemoryHealthChecker) Check(ctx context.Context) health.HealthStatus {
 		Timestamp: time.Now(),
 		Duration:  time.Since(start),
 		Message:   message,
-		Details: map[string]interface{}{
+		Details: map[string]any{
 			"allocated_mb":  allocMB,
 			"system_mb":     sysMB,
 			"heap_inuse_mb": heapInUseMB,

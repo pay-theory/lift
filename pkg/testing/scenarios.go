@@ -421,7 +421,7 @@ func (ta *TestApp) Start() error {
 		} else if bodyStr, ok := ctx.Response.Body.(string); ok {
 			w.Write([]byte(bodyStr))
 		} else if ctx.Response.Body != nil {
-			// Handle interface{} types (from ctx.JSON calls) by marshaling to JSON
+			// Handle any types (from ctx.JSON calls) by marshaling to JSON
 			jsonBytes, err := json.Marshal(ctx.Response.Body)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Failed to marshal response: %v", err), 500)
@@ -493,17 +493,17 @@ func (ta *TestApp) GET(path string, query ...map[string]string) *TestResponse {
 }
 
 // POST performs a POST request
-func (ta *TestApp) POST(path string, body interface{}) *TestResponse {
+func (ta *TestApp) POST(path string, body any) *TestResponse {
 	return ta.request("POST", path, body, nil)
 }
 
 // PUT performs a PUT request
-func (ta *TestApp) PUT(path string, body interface{}) *TestResponse {
+func (ta *TestApp) PUT(path string, body any) *TestResponse {
 	return ta.request("PUT", path, body, nil)
 }
 
 // PATCH performs a PATCH request
-func (ta *TestApp) PATCH(path string, body interface{}) *TestResponse {
+func (ta *TestApp) PATCH(path string, body any) *TestResponse {
 	return ta.request("PATCH", path, body, nil)
 }
 
@@ -513,7 +513,7 @@ func (ta *TestApp) DELETE(path string) *TestResponse {
 }
 
 // request is the internal method for making requests
-func (ta *TestApp) request(method, path string, body interface{}, query map[string]string) *TestResponse {
+func (ta *TestApp) request(method, path string, body any, query map[string]string) *TestResponse {
 	startTime := time.Now()
 
 	// If server not started, start it
@@ -765,7 +765,7 @@ func MultiTenantScenarios(endpoint string) []TestScenario {
 				app.WithAuth(&AuthConfig{
 					TenantID: "tenant-1",
 					Token:    "valid-token",
-				}).POST(endpoint, map[string]interface{}{
+				}).POST(endpoint, map[string]any{
 					"name": "tenant-1-data",
 				})
 				return nil
@@ -844,7 +844,7 @@ func AuthenticationScenarios(endpoint string) []TestScenario {
 // CRUD Test Scenarios
 
 // CRUDScenarios returns common CRUD operation test scenarios
-func CRUDScenarios(basePath string, createData, updateData map[string]interface{}) []TestScenario {
+func CRUDScenarios(basePath string, createData, updateData map[string]any) []TestScenario {
 	var createdID string
 
 	return []TestScenario{
@@ -926,7 +926,7 @@ func CRUDScenarios(basePath string, createData, updateData map[string]interface{
 // Validation Test Scenarios
 
 // ValidationScenarios returns common validation test scenarios
-func ValidationScenarios(endpoint string, invalidData map[string]interface{}, expectedErrors []string) []TestScenario {
+func ValidationScenarios(endpoint string, invalidData map[string]any, expectedErrors []string) []TestScenario {
 	return []TestScenario{
 		{
 			Name:        "validation_errors_returned",
@@ -1056,7 +1056,7 @@ func ErrorHandlingScenarios() []TestScenario {
 			Name:        "method_not_allowed",
 			Description: "Unsupported HTTP method should return 405",
 			Request: func(app *TestApp) *TestResponse {
-				return app.PATCH("/api/readonly-endpoint", map[string]interface{}{})
+				return app.PATCH("/api/readonly-endpoint", map[string]any{})
 			},
 			Assertions: func(t *testing.T, resp *TestResponse) {
 				resp.AssertStatus(405)
@@ -1069,7 +1069,7 @@ func ErrorHandlingScenarios() []TestScenario {
 // Utility Functions
 
 // CreateTestData creates test data for scenarios
-func CreateTestData(app *TestApp, endpoint string, data map[string]interface{}) (string, error) {
+func CreateTestData(app *TestApp, endpoint string, data map[string]any) (string, error) {
 	resp := app.POST(endpoint, data)
 	if resp.GetStatusCode() != 201 {
 		return "", fmt.Errorf("failed to create test data: status %d", resp.GetStatusCode())

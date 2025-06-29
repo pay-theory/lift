@@ -14,7 +14,7 @@ type JWTConfig struct {
 	Secret string
 
 	// Public key for RSA/ECDSA algorithms
-	PublicKey interface{}
+	PublicKey any
 
 	// Algorithm to use (HS256, RS256, etc)
 	Algorithm string
@@ -165,7 +165,7 @@ func parseToken(tokenString string, config JWTConfig) (*jwt.Token, error) {
 	// Parse with appropriate method based on algorithm
 	switch config.Algorithm {
 	case "HS256", "HS384", "HS512":
-		return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			// Validate algorithm
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -173,7 +173,7 @@ func parseToken(tokenString string, config JWTConfig) (*jwt.Token, error) {
 			return []byte(config.Secret), nil
 		})
 	case "RS256", "RS384", "RS512":
-		return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			// Validate algorithm
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

@@ -122,7 +122,7 @@ func main() {
 			Timestamp: time.Now(),
 			Duration:  time.Since(start),
 			Message:   message,
-			Details: map[string]interface{}{
+			Details: map[string]any{
 				"business_hours": isBusinessHours,
 				"current_hour":   hour,
 			},

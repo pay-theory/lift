@@ -84,7 +84,7 @@ func WithWebSocketSupport(options ...WebSocketOptions) AppOption {
 }
 
 // WebSocketHandler returns a Lambda handler for WebSocket events
-func (a *App) WebSocketHandler() interface{} {
+func (a *App) WebSocketHandler() any {
 	return func(ctx context.Context, event events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 		// Convert to generic event format for adapter
 		genericEvent := convertWebSocketEventToGeneric(event)
@@ -202,9 +202,9 @@ func (a *App) WebSocketHandler() interface{} {
 }
 
 // convertWebSocketEventToGeneric converts the strongly-typed WebSocket event to generic map format
-func convertWebSocketEventToGeneric(event events.APIGatewayWebsocketProxyRequest) map[string]interface{} {
-	return map[string]interface{}{
-		"requestContext": map[string]interface{}{
+func convertWebSocketEventToGeneric(event events.APIGatewayWebsocketProxyRequest) map[string]any {
+	return map[string]any{
+		"requestContext": map[string]any{
 			"routeKey":          event.RequestContext.RouteKey,
 			"messageId":         event.RequestContext.MessageID,
 			"eventType":         event.RequestContext.EventType,
@@ -296,5 +296,5 @@ type Connection struct {
 	UserID    string
 	TenantID  string
 	CreatedAt string
-	Metadata  map[string]interface{}
+	Metadata  map[string]any
 }

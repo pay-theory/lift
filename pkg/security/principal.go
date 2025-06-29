@@ -33,7 +33,7 @@ type Principal struct {
 type Permission struct {
 	Resource   string                 `json:"resource"`   // "users", "payments", "accounts"
 	Action     string                 `json:"action"`     // "read", "write", "delete"
-	Conditions map[string]interface{} `json:"conditions"` // Dynamic conditions
+	Conditions map[string]any `json:"conditions"` // Dynamic conditions
 }
 
 // Role represents a collection of permissions
@@ -137,8 +137,8 @@ func (p *Principal) CanAccessResource(resource, action string) bool {
 }
 
 // ToAuditMap converts the principal to a map for audit logging
-func (p *Principal) ToAuditMap() map[string]interface{} {
-	return map[string]interface{}{
+func (p *Principal) ToAuditMap() map[string]any {
+	return map[string]any{
 		"user_id":     p.UserID,
 		"tenant_id":   p.TenantID,
 		"account_id":  p.AccountID,

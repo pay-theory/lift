@@ -80,7 +80,7 @@ func createComplianceTestApp() *lift.App {
 // Sample handlers for banking operations with compliance features
 func complianceCreateAccount(ctx *lift.Context) error {
 	// Simulate account creation with compliance logging
-	account := map[string]interface{}{
+	account := map[string]any{
 		"id":           "acc_" + fmt.Sprintf("%d", time.Now().Unix()),
 		"customer_id":  "cust_123",
 		"account_type": "checking",
@@ -88,7 +88,7 @@ func complianceCreateAccount(ctx *lift.Context) error {
 		"currency":     "USD",
 		"status":       "active",
 		"created_at":   time.Now(),
-		"compliance": map[string]interface{}{
+		"compliance": map[string]any{
 			"kyc_verified":    true,
 			"aml_checked":     true,
 			"risk_assessment": "low",
@@ -103,14 +103,14 @@ func complianceGetAccount(ctx *lift.Context) error {
 	accountID := ctx.Param("id")
 
 	// Simulate account retrieval with access logging
-	account := map[string]interface{}{
+	account := map[string]any{
 		"id":           accountID,
 		"customer_id":  "cust_123",
 		"account_type": "checking",
 		"balance":      1500.00,
 		"currency":     "USD",
 		"status":       "active",
-		"access_log": map[string]interface{}{
+		"access_log": map[string]any{
 			"accessed_at": time.Now(),
 			"accessed_by": "user_456",
 			"ip_address":  "192.168.1.100",
@@ -125,12 +125,12 @@ func complianceGetBalance(ctx *lift.Context) error {
 	accountID := ctx.Param("id")
 
 	// Simulate balance inquiry with audit trail
-	balance := map[string]interface{}{
+	balance := map[string]any{
 		"account_id": accountID,
 		"balance":    1500.00,
 		"currency":   "USD",
 		"as_of":      time.Now(),
-		"audit_trail": map[string]interface{}{
+		"audit_trail": map[string]any{
 			"operation":  "balance_inquiry",
 			"timestamp":  time.Now(),
 			"user_id":    "user_456",
@@ -144,7 +144,7 @@ func complianceGetBalance(ctx *lift.Context) error {
 
 func complianceProcessPayment(ctx *lift.Context) error {
 	// Simulate payment processing with comprehensive compliance
-	payment := map[string]interface{}{
+	payment := map[string]any{
 		"id":               "pay_" + fmt.Sprintf("%d", time.Now().Unix()),
 		"payer_account_id": "acc_123",
 		"payee_account_id": "acc_456",
@@ -152,7 +152,7 @@ func complianceProcessPayment(ctx *lift.Context) error {
 		"currency":         "USD",
 		"status":           "completed",
 		"processed_at":     time.Now(),
-		"compliance": map[string]interface{}{
+		"compliance": map[string]any{
 			"fraud_score":       0.1,
 			"aml_checked":       true,
 			"sanctions_checked": true,
@@ -169,7 +169,7 @@ func complianceProcessPayment(ctx *lift.Context) error {
 func complianceGetPayment(ctx *lift.Context) error {
 	paymentID := ctx.Param("id")
 
-	payment := map[string]interface{}{
+	payment := map[string]any{
 		"id":               paymentID,
 		"payer_account_id": "acc_123",
 		"payee_account_id": "acc_456",
@@ -184,7 +184,7 @@ func complianceGetPayment(ctx *lift.Context) error {
 
 func complianceGetAuditTrail(ctx *lift.Context) error {
 	// Simulate audit trail retrieval
-	auditTrail := []map[string]interface{}{
+	auditTrail := []map[string]any{
 		{
 			"id":          "audit_001",
 			"timestamp":   time.Now().Add(-2 * time.Hour),
@@ -203,7 +203,7 @@ func complianceGetAuditTrail(ctx *lift.Context) error {
 		},
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"audit_trail": auditTrail,
 		"total_count": len(auditTrail),
 		"compliance":  "SOC2_compliant",
@@ -213,7 +213,7 @@ func complianceGetAuditTrail(ctx *lift.Context) error {
 func complianceGenerateReport(ctx *lift.Context) error {
 	reportType := ctx.Param("type")
 
-	report := map[string]interface{}{
+	report := map[string]any{
 		"report_type":       reportType,
 		"generated_at":      time.Now(),
 		"period":            "last_30_days",
@@ -319,7 +319,7 @@ func demonstrateSOC2ContinuousMonitoring(compliance *enterprise.SOC2TypeIICompli
 	fmt.Printf("   Evidence Collection: Automated\n\n")
 
 	// Simulate monitoring metrics
-	metrics := map[string]interface{}{
+	metrics := map[string]any{
 		"active_monitors":    5,
 		"compliance_score":   99.2,
 		"last_assessment":    time.Now().Add(-1 * time.Hour),
@@ -337,7 +337,7 @@ func demonstrateSOC2ContinuousMonitoring(compliance *enterprise.SOC2TypeIICompli
 
 	// Demonstrate alert configuration
 	fmt.Printf("🚨 Alert Configuration:\n")
-	alerts := []map[string]interface{}{
+	alerts := []map[string]any{
 		{
 			"type":      "compliance_violation",
 			"threshold": "any_failure",
@@ -369,7 +369,7 @@ func demonstrateSOC2ContinuousMonitoring(compliance *enterprise.SOC2TypeIICompli
 
 	// Demonstrate compliance metrics over time
 	fmt.Printf("📈 Compliance Trends (Last 30 Days):\n")
-	trends := []map[string]interface{}{
+	trends := []map[string]any{
 		{"date": "2025-06-01", "score": 98.5, "controls_passed": 14, "controls_failed": 1},
 		{"date": "2025-06-08", "score": 99.1, "controls_passed": 15, "controls_failed": 0},
 		{"date": "2025-06-15", "score": 99.3, "controls_passed": 15, "controls_failed": 0},
@@ -384,7 +384,7 @@ func demonstrateSOC2ContinuousMonitoring(compliance *enterprise.SOC2TypeIICompli
 
 	// Demonstrate evidence retention status
 	fmt.Printf("📁 Evidence Retention Status:\n")
-	retentionStatus := map[string]interface{}{
+	retentionStatus := map[string]any{
 		"total_evidence_items":   1250,
 		"items_expiring_30_days": 15,
 		"items_expiring_90_days": 45,

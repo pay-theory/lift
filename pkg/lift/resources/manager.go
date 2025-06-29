@@ -265,7 +265,7 @@ func (pw *DefaultPreWarmer) PreWarm(ctx context.Context, pool ConnectionPool) er
 	defer cancel()
 
 	// Create and return connections to warm the pool
-	var resources []interface{}
+	var resources []any
 
 	for i := 0; i < pw.minConns; i++ {
 		resource, err := pool.Get(ctx)

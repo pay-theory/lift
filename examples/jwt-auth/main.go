@@ -93,7 +93,7 @@ func optionalAuthHandler(jwtConfig security.JWTConfig, handler func(*lift.Contex
 
 // healthHandler provides a health check endpoint
 func healthHandler(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now().Unix(),
 		"service":   "jwt-auth-example",
@@ -102,7 +102,7 @@ func healthHandler(ctx *lift.Context) error {
 
 // publicHandler demonstrates a public endpoint
 func publicHandler(ctx *lift.Context) error {
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"message": "This is a public endpoint",
 		"access":  "no authentication required",
 	})
@@ -117,7 +117,7 @@ func profileHandler(ctx *lift.Context) error {
 		return lift.NewLiftError("UNAUTHORIZED", "Authentication required", 401)
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"user_id":     principal.UserID,
 		"tenant_id":   principal.TenantID,
 		"account_id":  principal.AccountID,
@@ -134,7 +134,7 @@ func usersHandler(ctx *lift.Context) error {
 	principal := secCtx.GetPrincipal()
 
 	// This handler requires admin or manager role (enforced by middleware)
-	users := []map[string]interface{}{
+	users := []map[string]any{
 		{
 			"id":     "user1",
 			"name":   "John Doe",
@@ -149,7 +149,7 @@ func usersHandler(ctx *lift.Context) error {
 		},
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"users":       users,
 		"accessed_by": principal.UserID,
 		"tenant":      principal.TenantID,
@@ -162,7 +162,7 @@ func paymentsHandler(ctx *lift.Context) error {
 	principal := secCtx.GetPrincipal()
 
 	// This handler requires payments:read scope (enforced by middleware)
-	payments := []map[string]interface{}{
+	payments := []map[string]any{
 		{
 			"id":     "pay1",
 			"amount": 100.00,
@@ -177,7 +177,7 @@ func paymentsHandler(ctx *lift.Context) error {
 		},
 	}
 
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"payments":    payments,
 		"accessed_by": principal.UserID,
 		"tenant":      principal.TenantID,
@@ -196,7 +196,7 @@ func tenantDataHandler(ctx *lift.Context) error {
 	}
 
 	// Return tenant-specific data
-	return ctx.JSON(map[string]interface{}{
+	return ctx.JSON(map[string]any{
 		"tenant_id":   requestedTenantID,
 		"data":        "sensitive tenant data",
 		"accessed_by": principal.UserID,
@@ -209,7 +209,7 @@ func mixedContentHandler(ctx *lift.Context) error {
 	secCtx := lift.WithSecurity(ctx)
 	principal := secCtx.GetPrincipal()
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"message": "This endpoint works with or without authentication",
 	}
 

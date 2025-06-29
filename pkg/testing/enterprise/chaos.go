@@ -52,7 +52,7 @@ type OperationResult struct {
 	Duration  time.Duration
 	Error     error
 	Timestamp time.Time
-	Metadata  map[string]interface{}
+	Metadata  map[string]any
 }
 
 // ChaosMetrics tracks metrics during chaos testing
@@ -67,7 +67,7 @@ type ChaosMetrics struct {
 	ErrorRate       float64
 	Throughput      float64
 	ResourceUsage   map[string]float64
-	CustomMetrics   map[string]interface{}
+	CustomMetrics   map[string]any
 	mutex           sync.RWMutex
 }
 
@@ -102,7 +102,7 @@ func NewChaosTest(config ChaosConfig) *ChaosTest {
 func NewChaosMetrics() *ChaosMetrics {
 	return &ChaosMetrics{
 		ResourceUsage: make(map[string]float64),
-		CustomMetrics: make(map[string]interface{}),
+		CustomMetrics: make(map[string]any),
 	}
 }
 

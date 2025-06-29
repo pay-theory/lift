@@ -705,7 +705,7 @@ type SystemComponent struct {
 	Name    string
 	Version string
 	Type    string
-	Config  map[string]interface{}
+	Config  map[string]any
 }
 
 type ThreatModel struct {

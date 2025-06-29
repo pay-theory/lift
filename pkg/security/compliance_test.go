@@ -12,21 +12,21 @@ import (
 // MockLiftContext implements LiftContext for testing
 type MockLiftContext struct {
 	mock.Mock
-	values map[string]interface{}
+	values map[string]any
 }
 
 func NewMockLiftContext() *MockLiftContext {
 	return &MockLiftContext{
-		values: make(map[string]interface{}),
+		values: make(map[string]any),
 	}
 }
 
-func (m *MockLiftContext) Set(key string, value interface{}) {
+func (m *MockLiftContext) Set(key string, value any) {
 	m.values[key] = value
 	m.Called(key, value)
 }
 
-func (m *MockLiftContext) Get(key string) interface{} {
+func (m *MockLiftContext) Get(key string) any {
 	m.Called(key)
 	return m.values[key]
 }
@@ -61,15 +61,15 @@ type MockLogger struct {
 	mock.Mock
 }
 
-func (m *MockLogger) Error(msg string, keysAndValues ...interface{}) {
+func (m *MockLogger) Error(msg string, keysAndValues ...any) {
 	m.Called(msg, keysAndValues)
 }
 
-func (m *MockLogger) Info(msg string, keysAndValues ...interface{}) {
+func (m *MockLogger) Info(msg string, keysAndValues ...any) {
 	m.Called(msg, keysAndValues)
 }
 
-func (m *MockLogger) Warn(msg string, keysAndValues ...interface{}) {
+func (m *MockLogger) Warn(msg string, keysAndValues ...any) {
 	m.Called(msg, keysAndValues)
 }
 

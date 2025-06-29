@@ -195,7 +195,7 @@ func (m *mockProductService) GetProduct(ctx context.Context, tenantID, id string
 		},
 		Categories: []string{"Electronics", "Audio", "Headphones"},
 		Tags:       []string{"wireless", "premium", "noise-cancelling"},
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"brand":        "AudioTech",
 			"color":        "Black",
 			"connectivity": "Bluetooth 5.0",

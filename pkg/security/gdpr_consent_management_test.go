@@ -173,7 +173,7 @@ func createTestConsentRecord() *ConsentRecord {
 			IPAddress: "192.168.1.1",
 			UserAgent: "Mozilla/5.0",
 			Verified:  true,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"form_id": "consent-form-v1",
 			},
 		},
@@ -182,7 +182,7 @@ func createTestConsentRecord() *ConsentRecord {
 		Specific:    true,
 		Informed:    true,
 		Unambiguous: true,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"campaign_id": "summer-2024",
 		},
 		CreatedAt: now,
@@ -416,7 +416,7 @@ func TestGDPRConsentManager_HandleAccessRequest(t *testing.T) {
 				response := &DataAccessResponse{
 					RequestID: "req-123",
 					Status:    "completed",
-					Data:      map[string]interface{}{"name": "John Doe"},
+					Data:      map[string]any{"name": "John Doe"},
 				}
 				m.On("HandleAccessRequest", mock.Anything, mock.Anything).Return(response, nil)
 			},
@@ -586,7 +586,7 @@ func TestGDPRConsentManager_Integration_DataSubjectRights(t *testing.T) {
 	accessResponse := &DataAccessResponse{
 		RequestID: "access-123",
 		Status:    "completed",
-		Data:      map[string]interface{}{"name": "John Doe"},
+		Data:      map[string]any{"name": "John Doe"},
 	}
 	mockHandler.On("HandleAccessRequest", ctx, accessRequest).Return(accessResponse, nil)
 
@@ -663,7 +663,7 @@ func BenchmarkGDPRConsentManager_HandleAccessRequest(b *testing.B) {
 	response := &DataAccessResponse{
 		RequestID: "req-123",
 		Status:    "completed",
-		Data:      map[string]interface{}{"name": "John Doe"},
+		Data:      map[string]any{"name": "John Doe"},
 	}
 	mockHandler.On("HandleAccessRequest", mock.Anything, mock.Anything).Return(response, nil)
 

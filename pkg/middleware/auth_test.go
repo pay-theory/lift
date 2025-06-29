@@ -25,7 +25,7 @@ func TestJWTValidator(t *testing.T) {
 	}
 
 	t.Run("Valid Token", func(t *testing.T) {
-		token := createTestToken(t, config, map[string]interface{}{
+		token := createTestToken(t, config, map[string]any{
 			"sub": "user123",
 		})
 
@@ -43,7 +43,7 @@ func TestJWTValidator(t *testing.T) {
 		// Create token with different secret
 		wrongConfig := config
 		wrongConfig.SecretKey = "wrong-secret"
-		token := createTestToken(t, wrongConfig, map[string]interface{}{
+		token := createTestToken(t, wrongConfig, map[string]any{
 			"sub": "user123",
 		})
 
@@ -61,7 +61,7 @@ func TestJWTValidator(t *testing.T) {
 	})
 
 	t.Run("Expired Token", func(t *testing.T) {
-		token := createTestToken(t, config, map[string]interface{}{
+		token := createTestToken(t, config, map[string]any{
 			"sub": "user123",
 			"exp": time.Now().Add(-time.Hour).Unix(), // Expired
 		})
@@ -73,7 +73,7 @@ func TestJWTValidator(t *testing.T) {
 	})
 
 	t.Run("Wrong Issuer", func(t *testing.T) {
-		token := createTestToken(t, config, map[string]interface{}{
+		token := createTestToken(t, config, map[string]any{
 			"sub": "user123",
 			"iss": "wrong-issuer",
 		})
@@ -85,7 +85,7 @@ func TestJWTValidator(t *testing.T) {
 	})
 
 	t.Run("Wrong Audience", func(t *testing.T) {
-		token := createTestToken(t, config, map[string]interface{}{
+		token := createTestToken(t, config, map[string]any{
 			"sub": "user123",
 			"aud": []string{"wrong-audience"},
 		})
@@ -150,7 +150,7 @@ func TestExtractBearerToken(t *testing.T) {
 }
 
 // Helper function to create test JWT tokens
-func createTestToken(t *testing.T, config security.JWTConfig, claims map[string]interface{}) string {
+func createTestToken(t *testing.T, config security.JWTConfig, claims map[string]any) string {
 	// Set default claims
 	now := time.Now()
 	tokenClaims := jwt.MapClaims{

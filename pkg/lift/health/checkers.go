@@ -51,7 +51,7 @@ func (p *PoolHealthChecker) Check(ctx context.Context) HealthStatus {
 		Status:    StatusHealthy,
 		Timestamp: time.Now(),
 		Duration:  time.Since(start),
-		Details: map[string]interface{}{
+		Details: map[string]any{
 			"active":   stats.Active,
 			"idle":     stats.Idle,
 			"total":    stats.Total,
@@ -137,7 +137,7 @@ func (d *DatabaseHealthChecker) Check(ctx context.Context) HealthStatus {
 	status := HealthStatus{
 		Status:    StatusHealthy,
 		Timestamp: time.Now(),
-		Details:   make(map[string]interface{}),
+		Details:   make(map[string]any),
 	}
 
 	// Ping the database
@@ -261,7 +261,7 @@ func (h *HTTPHealthChecker) Check(ctx context.Context) HealthStatus {
 		Status:    StatusHealthy,
 		Timestamp: time.Now(),
 		Duration:  time.Since(start),
-		Details: map[string]interface{}{
+		Details: map[string]any{
 			"url":         h.url,
 			"status_code": resp.StatusCode,
 			"headers":     resp.Header,
@@ -313,7 +313,7 @@ func (m *MemoryHealthChecker) Check(ctx context.Context) HealthStatus {
 		Status:    StatusHealthy,
 		Timestamp: time.Now(),
 		Duration:  time.Since(start),
-		Details: map[string]interface{}{
+		Details: map[string]any{
 			"alloc":           memStats.Alloc,
 			"total_alloc":     memStats.TotalAlloc,
 			"sys":             memStats.Sys,

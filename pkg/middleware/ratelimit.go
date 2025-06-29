@@ -125,7 +125,7 @@ func RateLimitMiddleware(config RateLimitConfig) lift.Middleware {
 			if err != nil {
 				// Log error but don't fail the request
 				if ctx.Logger != nil {
-					ctx.Logger.Error("Rate limit check failed", map[string]interface{}{
+					ctx.Logger.Error("Rate limit check failed", map[string]any{
 						"error": err.Error(),
 						"key":   key,
 					})
@@ -141,7 +141,7 @@ func RateLimitMiddleware(config RateLimitConfig) lift.Middleware {
 			if !result.Allowed {
 				// Log rate limit exceeded
 				if ctx.Logger != nil {
-					ctx.Logger.Warn("Rate limit exceeded", map[string]interface{}{
+					ctx.Logger.Warn("Rate limit exceeded", map[string]any{
 						"key":       "[SANITIZED_RATE_LIMIT_KEY]", // Sanitized for security
 						"limit":     result.Limit,
 						"remaining": result.Remaining,
@@ -151,7 +151,7 @@ func RateLimitMiddleware(config RateLimitConfig) lift.Middleware {
 
 				// Return 429 Too Many Requests
 				ctx.Response.Status(429)
-				return ctx.Response.JSON(map[string]interface{}{
+				return ctx.Response.JSON(map[string]any{
 					"error":       "Rate limit exceeded",
 					"limit":       result.Limit,
 					"remaining":   result.Remaining,
@@ -670,7 +670,7 @@ func defaultErrorHandler(ctx *lift.Context, result *RateLimitResult) error {
 	ctx.Response.Status(429)
 	ctx.Response.Header("Retry-After", strconv.Itoa(int(result.RetryAfter.Seconds())))
 
-	return ctx.Response.JSON(map[string]interface{}{
+	return ctx.Response.JSON(map[string]any{
 		"error":       "Rate limit exceeded",
 		"limit":       result.Limit,
 		"remaining":   result.Remaining,

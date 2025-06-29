@@ -112,7 +112,7 @@ type AuditEvent struct {
 	DataAccessed []string               `json:"data_accessed"`
 	Compliance   ComplianceContext      `json:"compliance"`
 	Security     SecurityContext        `json:"security"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 // ComplianceContext provides compliance-specific context
@@ -143,7 +143,7 @@ type RiskScore struct {
 	Factors         []RiskFactor           `json:"factors"`
 	Recommendations []string               `json:"recommendations"`
 	Timestamp       time.Time              `json:"timestamp"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // RiskFactor represents a factor contributing to risk
@@ -168,7 +168,7 @@ type AggregateRiskScore struct {
 	TopRiskFactors   []RiskFactor           `json:"top_risk_factors"`
 	TrendDirection   string                 `json:"trend_direction"`
 	Recommendations  []string               `json:"recommendations"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 // TimeRange represents a time range
@@ -203,7 +203,7 @@ type Anomaly struct {
 	Impact          string                 `json:"impact"`
 	Recommendations []string               `json:"recommendations"`
 	Status          string                 `json:"status"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // AnomalyPattern represents a pattern used for anomaly detection
@@ -215,7 +215,7 @@ type AnomalyPattern struct {
 	Indicators  []string               `json:"indicators"`
 	Thresholds  map[string]float64     `json:"thresholds"`
 	Enabled     bool                   `json:"enabled"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // CompliancePrediction represents a compliance risk prediction
@@ -227,7 +227,7 @@ type CompliancePrediction struct {
 	Scenarios       []RiskScenario         `json:"scenarios"`
 	Recommendations []string               `json:"recommendations"`
 	GeneratedAt     time.Time              `json:"generated_at"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // PredictiveRiskFactor represents a risk factor in predictions
@@ -262,7 +262,7 @@ type TrendPrediction struct {
 	DataPoints  []TrendDataPoint       `json:"data_points"`
 	Seasonality bool                   `json:"seasonality"`
 	Anomalies   []TrendAnomaly         `json:"anomalies"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // TrendDataPoint represents a data point in trend analysis
@@ -292,7 +292,7 @@ type IncidentForecast struct {
 	Indicators    []string               `json:"indicators"`
 	Prevention    []string               `json:"prevention"`
 	Impact        IncidentImpact         `json:"impact"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // IncidentImpact represents the impact of an incident
@@ -317,7 +317,7 @@ type ComplianceIssue struct {
 	RiskScore   float64                `json:"risk_score"`
 	DetectedAt  time.Time              `json:"detected_at"`
 	Deadline    time.Time              `json:"deadline"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // RemediationPlan represents a plan for remediation
@@ -336,7 +336,7 @@ type RemediationPlan struct {
 	SuccessMetrics []string               `json:"success_metrics"`
 	Rollback       *RollbackPlan          `json:"rollback,omitempty"`
 	CreatedAt      time.Time              `json:"created_at"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	Metadata       map[string]any `json:"metadata"`
 }
 
 // RemediationStep represents a step in remediation
@@ -349,7 +349,7 @@ type RemediationStep struct {
 	Duration    time.Duration          `json:"duration"`
 	Automated   bool                   `json:"automated"`
 	Command     string                 `json:"command,omitempty"`
-	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
 	Validation  string                 `json:"validation"`
 	Rollback    string                 `json:"rollback"`
 }
@@ -374,7 +374,7 @@ type RemediationResult struct {
 	RiskReduction float64                `json:"risk_reduction"`
 	Issues        []string               `json:"issues"`
 	Metrics       map[string]float64     `json:"metrics"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // StepResult represents the result of a remediation step
@@ -398,7 +398,7 @@ type RemediationTemplate struct {
 	Frameworks  []string               `json:"frameworks"`
 	IssueTypes  []string               `json:"issue_types"`
 	Steps       []RemediationStep      `json:"steps"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // ValidationResult represents validation result
@@ -418,7 +418,7 @@ type AnalyticsDataPoint struct {
 	Source    string                 `json:"source"`
 	Metrics   map[string]float64     `json:"metrics"`
 	Labels    map[string]string      `json:"labels"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // AnalyticsQuery represents a query for analytics data
@@ -446,7 +446,7 @@ type AggregatedMetrics struct {
 	Results     []MetricResult         `json:"results"`
 	Summary     MetricSummary          `json:"summary"`
 	GeneratedAt time.Time              `json:"generated_at"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 // MetricResult represents a metric result
@@ -454,7 +454,7 @@ type MetricResult struct {
 	Timestamp time.Time              `json:"timestamp"`
 	Values    map[string]float64     `json:"values"`
 	Labels    map[string]string      `json:"labels"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Metadata  map[string]any `json:"metadata"`
 }
 
 // MetricSummary represents a summary of metrics
@@ -553,7 +553,7 @@ func (aae *AuditAnalyticsEngine) AnalyzeEvent(ctx context.Context, event *AuditE
 	analysis := &EventAnalysis{
 		EventID:   event.ID,
 		Timestamp: time.Now(),
-		Analyses:  make(map[string]interface{}),
+		Analyses:  make(map[string]any),
 	}
 
 	// Risk scoring
@@ -606,7 +606,7 @@ type EventAnalysis struct {
 	Timestamp time.Time              `json:"timestamp"`
 	RiskScore *RiskScore             `json:"risk_score,omitempty"`
 	Anomalies []*Anomaly             `json:"anomalies,omitempty"`
-	Analyses  map[string]interface{} `json:"analyses"`
+	Analyses  map[string]any `json:"analyses"`
 }
 
 // AnalyzeBatch analyzes a batch of audit events

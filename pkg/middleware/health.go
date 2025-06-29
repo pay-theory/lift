@@ -64,7 +64,7 @@ type HealthCheckResult struct {
 	Message   string                 `json:"message,omitempty"`
 	Duration  time.Duration          `json:"duration"`
 	Timestamp time.Time              `json:"timestamp"`
-	Details   map[string]interface{} `json:"details,omitempty"`
+	Details   map[string]any `json:"details,omitempty"`
 	Required  bool                   `json:"required"`
 }
 
@@ -194,7 +194,7 @@ func (h *healthMonitor) handleBasicHealth(ctx *lift.Context) error {
 		statusCode = 503
 	}
 
-	return ctx.Status(statusCode).JSON(map[string]interface{}{
+	return ctx.Status(statusCode).JSON(map[string]any{
 		"status":    result.Status,
 		"timestamp": result.Timestamp,
 		"duration":  result.Duration.String(),
@@ -242,7 +242,7 @@ func (h *healthMonitor) handleReadiness(ctx *lift.Context) error {
 
 	// Check if we're still in grace period
 	if time.Since(h.startTime) < h.config.GracePeriod {
-		return ctx.Status(503).JSON(map[string]interface{}{
+		return ctx.Status(503).JSON(map[string]any{
 			"status":                 "not_ready",
 			"message":                "Service is still starting up",
 			"grace_period_remaining": h.config.GracePeriod - time.Since(h.startTime),
@@ -260,7 +260,7 @@ func (h *healthMonitor) handleReadiness(ctx *lift.Context) error {
 		statusCode = 503
 	}
 
-	return ctx.Status(statusCode).JSON(map[string]interface{}{
+	return ctx.Status(statusCode).JSON(map[string]any{
 		"status":    map[bool]string{true: "ready", false: "not_ready"}[ready],
 		"timestamp": time.Now(),
 		"checks":    len(h.config.Dependencies),
@@ -273,7 +273,7 @@ func (h *healthMonitor) handleLiveness(ctx *lift.Context) error {
 	// This is typically a simple check that doesn't depend on external services
 
 	// Simple liveness check - if we can respond, we're alive
-	return ctx.Status(200).JSON(map[string]interface{}{
+	return ctx.Status(200).JSON(map[string]any{
 		"status":    "alive",
 		"timestamp": time.Now(),
 		"uptime":    time.Since(h.startTime).String(),
@@ -370,7 +370,7 @@ func (h *healthMonitor) runSingleCheck(ctx context.Context, checker HealthChecke
 
 		// Log the failure
 		if h.config.Logger != nil {
-			h.config.Logger.Error("Health check failed", map[string]interface{}{
+			h.config.Logger.Error("Health check failed", map[string]any{
 				"checker":  checker.Name(),
 				"error":    err.Error(),
 				"duration": duration.String(),

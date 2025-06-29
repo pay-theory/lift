@@ -28,23 +28,33 @@ func TestAppRoutes(t *testing.T) {
 	app := New()
 
 	// Test route registration
-	app.GET("/test", func(ctx *Context) error {
+	err := app.GET("/test", func(ctx *Context) error {
 		return ctx.JSON(map[string]string{"message": "test"})
 	})
+	if err != nil {
+		t.Fatalf("GET route registration failed: %v", err)
+	}
 
-	app.POST("/users", func(ctx *Context) error {
+	err = app.POST("/users", func(ctx *Context) error {
 		return ctx.JSON(map[string]string{"created": "user"})
 	})
+	if err != nil {
+		t.Fatalf("POST route registration failed: %v", err)
+	}
 
-	// Test method chaining
-	result := app.PUT("/update", func(ctx *Context) error {
-		return nil
-	}).DELETE("/delete", func(ctx *Context) error {
+	// Test individual route registrations (method chaining not supported with error returns)
+	err = app.PUT("/update", func(ctx *Context) error {
 		return nil
 	})
+	if err != nil {
+		t.Fatalf("PUT route registration failed: %v", err)
+	}
 
-	if result != app {
-		t.Error("Method chaining should return the same app instance")
+	err = app.DELETE("/delete", func(ctx *Context) error {
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("DELETE route registration failed: %v", err)
 	}
 }
 
@@ -119,14 +129,14 @@ func TestAppHandleRequest(t *testing.T) {
 	}
 
 	// Create a proper API Gateway V1 event
-	event := map[string]interface{}{
+	event := map[string]any{
 		"resource":   "/test",
 		"httpMethod": "GET",
 		"path":       "/test",
-		"requestContext": map[string]interface{}{
+		"requestContext": map[string]any{
 			"requestId": "test-request-id",
 		},
-		"headers": map[string]interface{}{
+		"headers": map[string]any{
 			"Content-Type": "application/json",
 		},
 	}

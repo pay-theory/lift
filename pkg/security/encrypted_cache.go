@@ -181,11 +181,11 @@ func (c *EncryptedSecretCache) cleanupExpired() {
 }
 
 // GetCacheInfo returns cache statistics (for monitoring)
-func (c *EncryptedSecretCache) GetCacheInfo() map[string]interface{} {
+func (c *EncryptedSecretCache) GetCacheInfo() map[string]any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return map[string]interface{}{
+	return map[string]any{
 		"size":      len(c.secrets),
 		"ttl_sec":   c.ttl.Seconds(),
 		"encrypted": true,

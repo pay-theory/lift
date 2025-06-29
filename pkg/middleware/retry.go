@@ -191,7 +191,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 			rm.recordSuccess(attempt, totalDuration, totalDelay)
 
 			if rm.config.Logger != nil {
-				rm.config.Logger.Info("Request succeeded", map[string]interface{}{
+				rm.config.Logger.Info("Request succeeded", map[string]any{
 					"retry_name":     rm.config.Name,
 					"attempt":        attempt,
 					"total_duration": totalDuration.String(),
@@ -211,7 +211,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 			rm.recordFailure(attempt, totalDuration, totalDelay, err)
 
 			if rm.config.Logger != nil {
-				rm.config.Logger.Error("Request failed (not retryable)", map[string]interface{}{
+				rm.config.Logger.Error("Request failed (not retryable)", map[string]any{
 					"retry_name":     rm.config.Name,
 					"attempt":        attempt,
 					"error":          "[SANITIZED_ERROR]", // Sanitized for security
@@ -233,7 +233,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 			rm.recordFailure(attempt, totalDuration, totalDelay, err)
 
 			if rm.config.Logger != nil {
-				rm.config.Logger.Error("Request failed after max attempts", map[string]interface{}{
+				rm.config.Logger.Error("Request failed after max attempts", map[string]any{
 					"retry_name":     rm.config.Name,
 					"max_attempts":   rm.config.MaxAttempts,
 					"error":          "[SANITIZED_ERROR]", // Sanitized for security
@@ -259,7 +259,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 			rm.recordFailure(attempt, totalDuration, totalDelay-delay, err)
 
 			if rm.config.Logger != nil {
-				rm.config.Logger.Error("Request failed due to total timeout", map[string]interface{}{
+				rm.config.Logger.Error("Request failed due to total timeout", map[string]any{
 					"retry_name":     rm.config.Name,
 					"attempt":        attempt,
 					"total_timeout":  rm.config.TotalTimeout.String(),
@@ -276,7 +276,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 
 		// Log retry attempt
 		if rm.config.Logger != nil {
-			rm.config.Logger.Warn("Request failed, retrying", map[string]interface{}{
+			rm.config.Logger.Warn("Request failed, retrying", map[string]any{
 				"retry_name":   rm.config.Name,
 				"attempt":      attempt,
 				"next_attempt": attempt + 1,

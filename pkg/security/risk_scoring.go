@@ -56,7 +56,7 @@ type TrainingExample struct {
 	Features []float64              `json:"features"`
 	Label    float64                `json:"label"`
 	Weight   float64                `json:"weight"`
-	Metadata map[string]interface{} `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // ModelMetrics represents metrics for the risk model
@@ -80,14 +80,14 @@ type RiskBaseline struct {
 	TemporalPatterns map[string]float64     `json:"temporal_patterns"`
 	UpdatedAt        time.Time              `json:"updated_at"`
 	SampleSize       int                    `json:"sample_size"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 // ContextualRiskFactor represents a contextual risk factor
 type ContextualRiskFactor struct {
 	RiskFactor
 	Context    string                 `json:"context"`
-	Conditions map[string]interface{} `json:"conditions"`
+	Conditions map[string]any `json:"conditions"`
 	Multiplier float64                `json:"multiplier"`
 	Temporal   bool                   `json:"temporal"`
 	Behavioral bool                   `json:"behavioral"`
@@ -107,7 +107,7 @@ type FeatureExtractionConfig struct {
 	ContextualDepth     int                    `json:"contextual_depth"`
 	FeatureWeights      map[string]float64     `json:"feature_weights"`
 	NormalizationMethod string                 `json:"normalization_method"`
-	Metadata            map[string]interface{} `json:"metadata"`
+	Metadata            map[string]any `json:"metadata"`
 }
 
 // FeatureExtractor interface for extracting specific features
@@ -128,7 +128,7 @@ type RiskContext struct {
 	UserProfile   *UserRiskProfile       `json:"user_profile"`
 	TenantProfile *TenantRiskProfile     `json:"tenant_profile"`
 	ThreatIntel   *ThreatIntelligence    `json:"threat_intel"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	Metadata      map[string]any `json:"metadata"`
 }
 
 // UserRiskProfile represents a user's risk profile
@@ -140,7 +140,7 @@ type UserRiskProfile struct {
 	AccessPatterns   map[string]float64     `json:"access_patterns"`
 	AnomalyHistory   []AnomalyRecord        `json:"anomaly_history"`
 	LastUpdated      time.Time              `json:"last_updated"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	Metadata         map[string]any `json:"metadata"`
 }
 
 // TenantRiskProfile represents a tenant's risk profile
@@ -152,7 +152,7 @@ type TenantRiskProfile struct {
 	SecurityPosture map[string]float64     `json:"security_posture"`
 	IncidentHistory []IncidentRecord       `json:"incident_history"`
 	LastUpdated     time.Time              `json:"last_updated"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // AnomalyRecord represents an anomaly record
@@ -183,7 +183,7 @@ type ThreatIntelligence struct {
 	GeographicRisks map[string]float64     `json:"geographic_risks"`
 	IndustryThreats []string               `json:"industry_threats"`
 	LastUpdated     time.Time              `json:"last_updated"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 }
 
 // ThreatIndicator represents a threat indicator
@@ -278,7 +278,7 @@ func (mrs *MLRiskScorer) CalculateRiskScore(ctx context.Context, event *AuditEve
 		Factors:         riskFactors,
 		Recommendations: recommendations,
 		Timestamp:       time.Now(),
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"base_score":       baseScore,
 			"contextual_score": contextualScore,
 			"temporal_score":   temporalScore,
@@ -341,7 +341,7 @@ func (mrs *MLRiskScorer) CalculateAggregateRisk(ctx context.Context, events []*A
 		TopRiskFactors:   topRiskFactors,
 		TrendDirection:   trendDirection,
 		Recommendations:  uniqueRecommendations,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"total_score":   totalScore,
 			"scored_events": len(events),
 			"analysis_time": time.Now(),

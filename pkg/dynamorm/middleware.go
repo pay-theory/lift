@@ -67,7 +67,7 @@ func WithDynamORM(config *DynamORMConfig, optionalFactory ...DBFactory) lift.Mid
 			// Initialize DynamORM connection using factory
 			db, err := initDynamORMWithFactory(config, factory)
 			if err != nil {
-				return lift.InternalError("Failed to initialize DynamORM").WithCause(err)
+				return lift.SystemError("Failed to initialize DynamORM").WithCause(err)
 			}
 
 			// Store DynamORM instance in context
@@ -100,7 +100,7 @@ func WithDynamORM(config *DynamORMConfig, optionalFactory ...DBFactory) lift.Mid
 func DB(ctx *lift.Context) (*DynamORMWrapper, error) {
 	db, exists := ctx.Get("dynamorm").(*DynamORMWrapper)
 	if !exists {
-		return nil, lift.InternalError("DynamORM not initialized")
+		return nil, lift.SystemError("DynamORM not initialized")
 	}
 	return db, nil
 }
@@ -120,7 +120,7 @@ func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Ha
 	// Begin transaction
 	tx, err := db.BeginTransaction()
 	if err != nil {
-		return lift.InternalError("Failed to begin transaction").WithCause(err)
+		return lift.SystemError("Failed to begin transaction").WithCause(err)
 	}
 
 	// Store transaction in context
@@ -144,7 +144,7 @@ func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Ha
 
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
-		return lift.InternalError("Failed to commit transaction").WithCause(err)
+		return lift.SystemError("Failed to commit transaction").WithCause(err)
 	}
 
 	return nil
@@ -249,7 +249,7 @@ func (d *DynamORMWrapper) BeginTransaction() (*Transaction, error) {
 }
 
 // Get retrieves an item by primary key using DynamORM
-func (d *DynamORMWrapper) Get(ctx context.Context, key interface{}, result interface{}) error {
+func (d *DynamORMWrapper) Get(ctx context.Context, key any, result any) error {
 	// Use DynamORM's Model().Where().First() pattern
 	return d.db.WithContext(ctx).Model(result).
 		Where("ID", "=", key).
@@ -257,14 +257,14 @@ func (d *DynamORMWrapper) Get(ctx context.Context, key interface{}, result inter
 }
 
 // Put saves an item using DynamORM
-func (d *DynamORMWrapper) Put(ctx context.Context, item interface{}) error {
+func (d *DynamORMWrapper) Put(ctx context.Context, item any) error {
 	// Use DynamORM's Model().Create() pattern
 	return d.db.WithContext(ctx).Model(item).Create()
 }
 
 // Query performs a query operation using DynamORM
 func (d *DynamORMWrapper) Query(ctx context.Context, query *Query) (*QueryResult, error) {
-	var results []interface{}
+	var results []any
 
 	// Build DynamORM query
 	q := d.db.WithContext(ctx).Model(&results)
@@ -303,7 +303,7 @@ func (d *DynamORMWrapper) Query(ctx context.Context, query *Query) (*QueryResult
 }
 
 // Delete removes an item using DynamORM
-func (d *DynamORMWrapper) Delete(ctx context.Context, key interface{}) error {
+func (d *DynamORMWrapper) Delete(ctx context.Context, key any) error {
 	// Use DynamORM's Model().Where().Delete() pattern
 	return d.db.WithContext(ctx).Model(&struct{}{}).
 		Where("ID", "=", key).
@@ -327,14 +327,14 @@ type Transaction struct {
 // TransactionOperation represents an operation to be executed in a transaction
 type TransactionOperation struct {
 	Type string // "put", "delete", etc.
-	Item interface{}
-	Key  interface{}
+	Item any
+	Key  any
 }
 
 // Put adds a put operation to the transaction
-func (t *Transaction) Put(ctx context.Context, item interface{}) error {
+func (t *Transaction) Put(ctx context.Context, item any) error {
 	if t.committed || t.rolledBack {
-		return lift.InternalError("Transaction already completed")
+		return lift.SystemError("Transaction already completed")
 	}
 
 	t.operations = append(t.operations, TransactionOperation{
@@ -345,9 +345,9 @@ func (t *Transaction) Put(ctx context.Context, item interface{}) error {
 }
 
 // Delete adds a delete operation to the transaction
-func (t *Transaction) Delete(ctx context.Context, key interface{}) error {
+func (t *Transaction) Delete(ctx context.Context, key any) error {
 	if t.committed || t.rolledBack {
-		return lift.InternalError("Transaction already completed")
+		return lift.SystemError("Transaction already completed")
 	}
 
 	t.operations = append(t.operations, TransactionOperation{
@@ -360,7 +360,7 @@ func (t *Transaction) Delete(ctx context.Context, key interface{}) error {
 // Commit commits the transaction using DynamORM
 func (t *Transaction) Commit() error {
 	if t.committed || t.rolledBack {
-		return lift.InternalError("Transaction already completed")
+		return lift.SystemError("Transaction already completed")
 	}
 
 	// Execute all operations using DynamORM's TransactionFunc
@@ -392,7 +392,7 @@ func (t *Transaction) Commit() error {
 // Rollback rolls back the transaction using DynamORM
 func (t *Transaction) Rollback() error {
 	if t.committed || t.rolledBack {
-		return lift.InternalError("Transaction already completed")
+		return lift.SystemError("Transaction already completed")
 	}
 
 	// For DynamORM, rollback is automatic if the transaction function returns an error
@@ -403,18 +403,18 @@ func (t *Transaction) Rollback() error {
 
 // Query represents a DynamORM query
 type Query struct {
-	PartitionKey interface{}
-	SortKey      interface{}
+	PartitionKey any
+	SortKey      any
 	IndexName    string
-	Filters      map[string]interface{}
+	Filters      map[string]any
 	Limit        int
 	Ascending    bool
 }
 
 // QueryResult represents the result of a query operation
 type QueryResult struct {
-	Items        []interface{}
-	LastKey      interface{}
+	Items        []any
+	LastKey      any
 	Count        int
 	ScannedCount int
 }

@@ -48,7 +48,7 @@ type RegionConfig struct {
 	Bandwidth         int64                  `json:"bandwidth"`
 	Priority          int                    `json:"priority"`
 	Status            RegionStatus           `json:"status"`
-	Metadata          map[string]interface{} `json:"metadata"`
+	Metadata          map[string]any `json:"metadata"`
 }
 
 // RegionCredentials holds region-specific credentials
@@ -258,7 +258,7 @@ type DistributedHealthCheck struct {
 	Interval  time.Duration   `json:"interval"`
 	Timeout   time.Duration   `json:"timeout"`
 	Retries   int             `json:"retries"`
-	Expected  interface{}     `json:"expected"`
+	Expected  any     `json:"expected"`
 	Threshold float64         `json:"threshold"`
 }
 
@@ -362,7 +362,7 @@ type DistributedExperiment struct {
 	StartTime    time.Time                     `json:"start_time"`
 	EndTime      *time.Time                    `json:"end_time,omitempty"`
 	Results      *DistributedExperimentResults `json:"results,omitempty"`
-	Metadata     map[string]interface{}        `json:"metadata"`
+	Metadata     map[string]any        `json:"metadata"`
 }
 
 // DistributedExperimentType defines experiment types
@@ -389,7 +389,7 @@ type ExperimentPhase struct {
 	Parallel   bool                   `json:"parallel"`
 	Timeout    time.Duration          `json:"timeout"`
 	Rollback   *RollbackConfig        `json:"rollback,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata"`
+	Metadata   map[string]any `json:"metadata"`
 }
 
 // PhaseType defines phase types
@@ -409,7 +409,7 @@ type PhaseAction struct {
 	Name       string                 `json:"name"`
 	Type       DistributedActionType  `json:"type"`
 	Target     string                 `json:"target"`
-	Parameters map[string]interface{} `json:"parameters"`
+	Parameters map[string]any `json:"parameters"`
 	Timeout    time.Duration          `json:"timeout"`
 	Retry      *RetryConfig           `json:"retry,omitempty"`
 	Condition  string                 `json:"condition,omitempty"`
@@ -433,7 +433,7 @@ const (
 type PhaseCondition struct {
 	Type     DistributedConditionType `json:"type"`
 	Operator string                   `json:"operator"`
-	Value    interface{}              `json:"value"`
+	Value    any              `json:"value"`
 	Timeout  time.Duration            `json:"timeout"`
 	Retry    *RetryConfig             `json:"retry,omitempty"`
 }
@@ -491,7 +491,7 @@ const (
 type ExperimentConstraint struct {
 	Name        string                    `json:"name"`
 	Type        DistributedConstraintType `json:"type"`
-	Value       interface{}               `json:"value"`
+	Value       any               `json:"value"`
 	Operator    string                    `json:"operator"`
 	Scope       string                    `json:"scope"`
 	Enforcement string                    `json:"enforcement"`
@@ -568,7 +568,7 @@ type DashboardConfig struct {
 	Panels    []*PanelConfig         `json:"panels"`
 	Refresh   time.Duration          `json:"refresh"`
 	TimeRange *TimeRangeConfig       `json:"time_range"`
-	Variables map[string]interface{} `json:"variables"`
+	Variables map[string]any `json:"variables"`
 }
 
 // DashboardType defines dashboard types
@@ -587,7 +587,7 @@ type PanelConfig struct {
 	Type          PanelType              `json:"type"`
 	Query         string                 `json:"query"`
 	Visualization string                 `json:"visualization"`
-	Options       map[string]interface{} `json:"options"`
+	Options       map[string]any `json:"options"`
 }
 
 // PanelType defines panel types
@@ -663,7 +663,7 @@ type SamplingRule struct {
 // DistributedExperimentResults defines experiment results
 type DistributedExperimentResults struct {
 	Summary         *ResultSummary                `json:"summary"`
-	Metrics         map[string]interface{}        `json:"metrics"`
+	Metrics         map[string]any        `json:"metrics"`
 	Observations    []*DistributedObservation     `json:"observations"`
 	Failures        []*DistributedFailure         `json:"failures"`
 	Performance     *PerformanceResults           `json:"performance"`
@@ -689,7 +689,7 @@ type DistributedObservation struct {
 	Type      DistributedObservationType     `json:"type"`
 	Source    string                         `json:"source"`
 	Message   string                         `json:"message"`
-	Data      map[string]interface{}         `json:"data"`
+	Data      map[string]any         `json:"data"`
 	Severity  DistributedObservationSeverity `json:"severity"`
 }
 
@@ -722,7 +722,7 @@ type DistributedFailure struct {
 	Cause      string                 `json:"cause"`
 	Impact     FailureImpact          `json:"impact"`
 	Resolution string                 `json:"resolution"`
-	Data       map[string]interface{} `json:"data"`
+	Data       map[string]any `json:"data"`
 }
 
 // DistributedFailureType defines failure types
@@ -832,7 +832,7 @@ type DistributedComplianceViolation struct {
 	Rule        string                 `json:"rule"`
 	Severity    ViolationSeverity      `json:"severity"`
 	Description string                 `json:"description"`
-	Evidence    map[string]interface{} `json:"evidence"`
+	Evidence    map[string]any `json:"evidence"`
 	Remediation string                 `json:"remediation"`
 }
 
@@ -1006,7 +1006,7 @@ type DistributedExperimentSpec struct {
 	Dependencies []*ExperimentDependency   `json:"dependencies"`
 	Constraints  []*ExperimentConstraint   `json:"constraints"`
 	Monitoring   *ExperimentMonitoring     `json:"monitoring"`
-	Metadata     map[string]interface{}    `json:"metadata"`
+	Metadata     map[string]any    `json:"metadata"`
 }
 
 // NewRegionManager creates a new region manager

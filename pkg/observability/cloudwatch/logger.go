@@ -31,7 +31,7 @@ type CloudWatchLogger struct {
 	mu            sync.RWMutex
 	sequenceToken *string
 	stats         *loggerStats
-	contextFields map[string]interface{}
+	contextFields map[string]any
 }
 
 // loggerStats tracks performance metrics
@@ -67,7 +67,7 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 		flushSignal:   make(chan struct{}),
 		done:          make(chan struct{}),
 		stats:         &loggerStats{},
-		contextFields: make(map[string]interface{}),
+		contextFields: make(map[string]any),
 	}
 
 	// Ensure log group and stream exist
@@ -87,33 +87,33 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 }
 
 // Debug logs a debug message (with enhanced sanitization for security)
-func (l *CloudWatchLogger) Debug(message string, fields ...map[string]interface{}) {
+func (l *CloudWatchLogger) Debug(message string, fields ...map[string]any) {
 	l.log("DEBUG", message, fields...)
 }
 
 // Info logs an info message
-func (l *CloudWatchLogger) Info(message string, fields ...map[string]interface{}) {
+func (l *CloudWatchLogger) Info(message string, fields ...map[string]any) {
 	l.log("INFO", message, fields...)
 }
 
 // Warn logs a warning message
-func (l *CloudWatchLogger) Warn(message string, fields ...map[string]interface{}) {
+func (l *CloudWatchLogger) Warn(message string, fields ...map[string]any) {
 	l.log("WARN", message, fields...)
 }
 
 // Error logs an error message
-func (l *CloudWatchLogger) Error(message string, fields ...map[string]interface{}) {
+func (l *CloudWatchLogger) Error(message string, fields ...map[string]any) {
 	l.log("ERROR", message, fields...)
 }
 
 // WithField returns a new logger with an additional field
-func (l *CloudWatchLogger) WithField(key string, value interface{}) lift.Logger {
-	return l.WithFields(map[string]interface{}{key: value})
+func (l *CloudWatchLogger) WithField(key string, value any) lift.Logger {
+	return l.WithFields(map[string]any{key: value})
 }
 
 // WithFields returns a new logger with additional fields
-func (l *CloudWatchLogger) WithFields(fields map[string]interface{}) lift.Logger {
-	newFields := make(map[string]interface{})
+func (l *CloudWatchLogger) WithFields(fields map[string]any) lift.Logger {
+	newFields := make(map[string]any)
 	for k, v := range l.contextFields {
 		newFields[k] = v
 	}
@@ -164,12 +164,12 @@ func (l *CloudWatchLogger) WithSpanID(spanID string) observability.StructuredLog
 }
 
 // log is the internal logging method
-func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]interface{}) {
+func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]any) {
 	entry := &observability.LogEntry{
 		Timestamp: time.Now().UTC(),
 		Level:     level,
 		Message:   message,
-		Fields:    make(map[string]interface{}),
+		Fields:    make(map[string]any),
 	}
 
 	// Add context fields
@@ -218,7 +218,7 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]in
 }
 
 // sanitizeFieldValue sanitizes field values to prevent sensitive data exposure
-func (l *CloudWatchLogger) sanitizeFieldValue(key string, value interface{}) interface{} {
+func (l *CloudWatchLogger) sanitizeFieldValue(key string, value any) any {
 	keyLower := strings.ToLower(key)
 
 	// Always sanitize highly sensitive field names
@@ -226,6 +226,11 @@ func (l *CloudWatchLogger) sanitizeFieldValue(key string, value interface{}) int
 		"password", "token", "secret", "key", "auth", "credential",
 		"email", "phone", "ssn", "card", "account", "routing",
 		"pin", "cvv", "security", "private", "confidential",
+	}
+
+	// Special case: card_bin is not sensitive data (PCI-DSS compliant)
+	if keyLower == "card_bin" {
+		return value
 	}
 
 	for _, sensitive := range highSensitiveFields {

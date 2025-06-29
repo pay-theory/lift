@@ -17,8 +17,8 @@ func NewEventBridgeAdapter() *EventBridgeAdapter {
 }
 
 // CanHandle checks if this adapter can handle the given event
-func (a *EventBridgeAdapter) CanHandle(event interface{}) bool {
-	eventMap, ok := event.(map[string]interface{})
+func (a *EventBridgeAdapter) CanHandle(event any) bool {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
 		return false
 	}
@@ -34,10 +34,10 @@ func (a *EventBridgeAdapter) CanHandle(event interface{}) bool {
 }
 
 // Validate checks if the event has the required EventBridge structure
-func (a *EventBridgeAdapter) Validate(event interface{}) error {
-	eventMap, ok := event.(map[string]interface{})
+func (a *EventBridgeAdapter) Validate(event any) error {
+	eventMap, ok := event.(map[string]any)
 	if !ok {
-		return fmt.Errorf("event must be a map[string]interface{}")
+		return fmt.Errorf("event must be a map[string]any")
 	}
 
 	// Check required fields
@@ -52,12 +52,12 @@ func (a *EventBridgeAdapter) Validate(event interface{}) error {
 }
 
 // Adapt converts an EventBridge event to a normalized Request
-func (a *EventBridgeAdapter) Adapt(rawEvent interface{}) (*Request, error) {
+func (a *EventBridgeAdapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	eventMap := rawEvent.(map[string]interface{})
+	eventMap := rawEvent.(map[string]any)
 
 	// Extract EventBridge specific fields
 	source := extractStringField(eventMap, "source")
@@ -65,14 +65,28 @@ func (a *EventBridgeAdapter) Adapt(rawEvent interface{}) (*Request, error) {
 	detail := extractMapField(eventMap, "detail")
 	timestamp := extractStringField(eventMap, "time")
 	eventID := extractStringField(eventMap, "id")
+	
+	// Extract resources (for scheduled events)
+	resources := extractSliceField(eventMap, "resources")
+
+	// Determine the actual trigger type based on source
+	triggerType := TriggerEventBridge
+	switch source {
+	case "aws.s3":
+		triggerType = TriggerS3
+	case "aws.sqs":
+		triggerType = TriggerSQS
+	// aws.events remains as EventBridge for scheduled events
+	}
 
 	return &Request{
-		TriggerType: TriggerEventBridge,
+		TriggerType: triggerType,
 		RawEvent:    rawEvent,
 		EventID:     eventID,
 		Timestamp:   timestamp,
 		Source:      source,
 		DetailType:  detailType,
 		Detail:      detail,
+		Records:     resources,
 	}, nil
 }

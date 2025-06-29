@@ -1,7 +1,9 @@
 package lift
 
 import (
+	"crypto/rand"
 	"fmt"
+	"runtime/debug"
 	"time"
 )
 
@@ -9,13 +11,22 @@ import (
 type LiftError struct {
 	Code       string                 `json:"code"`
 	Message    string                 `json:"message"`
-	Details    map[string]interface{} `json:"details,omitempty"`
+	Details    map[string]any         `json:"details,omitempty"`
 	StatusCode int                    `json:"-"`
 	Cause      error                  `json:"-"`
 
 	// Observability
-	RequestID string `json:"request_id,omitempty"`
-	Timestamp int64  `json:"timestamp"`
+	RequestID  string `json:"request_id,omitempty"`
+	TraceID    string `json:"trace_id,omitempty"`
+	Timestamp  string `json:"timestamp"`
+	StackTrace string `json:"stack_trace,omitempty"`
+
+	// AppSync
+	ErrorData map[string]any `json:"errorData,omitempty"`
+	ErrorInfo map[string]any `json:"errorInfo,omitempty"`
+
+	// Logging
+	LogError bool `json:"-"`
 }
 
 // Error implements the error interface
@@ -34,13 +45,22 @@ func NewLiftError(code, message string, statusCode int) *LiftError {
 		Code:       code,
 		Message:    message,
 		StatusCode: statusCode,
-		Timestamp:  time.Now().Unix(),
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 	}
 }
 
 // WithDetails adds details to the error
-func (e *LiftError) WithDetails(details map[string]interface{}) *LiftError {
+func (e *LiftError) WithDetails(details map[string]any) *LiftError {
 	e.Details = details
+	return e
+}
+
+// WithDetail adds a single detail to the error
+func (e *LiftError) WithDetail(key string, value any) *LiftError {
+	if e.Details == nil {
+		e.Details = make(map[string]any)
+	}
+	e.Details[key] = value
 	return e
 }
 
@@ -50,35 +70,114 @@ func (e *LiftError) WithCause(cause error) *LiftError {
 	return e
 }
 
+// WithRequestID adds a request ID to the error
+func (e *LiftError) WithRequestID(requestID string) *LiftError {
+	e.RequestID = requestID
+	return e
+}
+
+// WithTraceID adds a trace ID to the error
+func (e *LiftError) WithTraceID(traceID string) *LiftError {
+	if traceID == "" {
+		// Generate a simple UUID v4
+		uuid := make([]byte, 16)
+		rand.Read(uuid)
+		uuid[6] = (uuid[6] & 0x0f) | 0x40 // Version 4
+		uuid[8] = (uuid[8] & 0x3f) | 0x80 // Variant RFC 4122
+		e.TraceID = fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:16])
+	} else {
+		e.TraceID = traceID
+	}
+	return e
+}
+
+// WithStackTrace adds a stack trace to the error
+func (e *LiftError) WithStackTrace() *LiftError {
+	e.StackTrace = string(debug.Stack())
+	return e
+}
+
+// WithErrorData adds AppSync error data
+func (e *LiftError) WithErrorData(data map[string]any) *LiftError {
+	e.ErrorData = data
+	return e
+}
+
+// WithErrorInfo adds AppSync error info
+func (e *LiftError) WithErrorInfo(info map[string]any) *LiftError {
+	e.ErrorInfo = info
+	return e
+}
+
+// WithLogging marks the error for logging
+func (e *LiftError) WithLogging() *LiftError {
+	e.LogError = true
+	return e
+}
+
 // HTTP error constructors
-func BadRequest(message string) *LiftError {
-	return NewLiftError("BAD_REQUEST", message, 400)
+
+// ParameterError creates a parameter validation error with field details
+func ParameterError(field, message string) *LiftError {
+	return NewLiftError("PARAMETER_ERROR", message, 400).WithDetails(map[string]any{
+		"field":   field,
+		"message": message,
+	})
 }
 
 func Unauthorized(message string) *LiftError {
 	return NewLiftError("UNAUTHORIZED", message, 401)
 }
 
-func Forbidden(message string) *LiftError {
-	return NewLiftError("FORBIDDEN", message, 403)
+// AuthorizationError creates a 403 Forbidden error
+func AuthorizationError(message string) *LiftError {
+	return NewLiftError("AUTHORIZATION_ERROR", message, 403)
 }
 
 func NotFound(message string) *LiftError {
 	return NewLiftError("NOT_FOUND", message, 404)
 }
 
-func Conflict(message string) *LiftError {
-	return NewLiftError("CONFLICT", message, 409)
+// ValidationError creates a 422 Unprocessable Entity error for validation failures
+func ValidationError(message string) *LiftError {
+	return NewLiftError("VALIDATION_ERROR", message, 422)
 }
 
-func InternalError(message string) *LiftError {
-	return NewLiftError("INTERNAL_ERROR", message, 500)
+func SystemError(message string) *LiftError {
+	return NewLiftError("SYSTEM_ERROR", message, 500).WithStackTrace().WithTraceID("")
 }
 
-// ValidationError creates a validation error with field details
-func ValidationError(field, message string) *LiftError {
-	return NewLiftError("VALIDATION_ERROR", "Validation failed", 400).WithDetails(map[string]interface{}{
-		"field":   field,
-		"message": message,
-	})
+// NetworkError creates a network-related error
+func NetworkError(message string) *LiftError {
+	return NewLiftError("NETWORK_ERROR", message, 500)
+}
+
+// ProcessingError creates a processing error
+func ProcessingError(message string) *LiftError {
+	return NewLiftError("PROCESSING_ERROR", message, 500)
+}
+
+// TokenizationFailure creates a tokenization error
+func TokenizationFailure(message string) *LiftError {
+	return NewLiftError("TOKENIZATION_FAILURE", message, 500)
+}
+
+// ErrorResponse formats an error for JSON response
+func ErrorResponse(e *LiftError) map[string]any {
+	response := map[string]any{
+		"error": map[string]any{
+			"code":    e.Code,
+			"message": e.Message,
+		},
+	}
+
+	if e.RequestID != "" {
+		response["request_id"] = e.RequestID
+	}
+
+	if len(e.Details) > 0 {
+		response["error"].(map[string]any)["details"] = e.Details
+	}
+
+	return response
 }
