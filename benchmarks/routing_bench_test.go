@@ -1,6 +1,7 @@
 package benchmarks
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -137,7 +138,7 @@ func BenchmarkRoutingWorstCase(b *testing.B) {
 				Path:   testPath,
 			},
 		}
-		ctx := lift.NewContext(nil, req)
+		ctx := lift.NewContext(context.TODO(), req)
 
 		// This would normally be done by the router
 		_ = app
@@ -198,7 +199,7 @@ func BenchmarkConcurrentRouting(b *testing.B) {
 					Path:   "/api/v1/resource50", // Middle route
 				},
 			}
-			ctx := lift.NewContext(nil, req)
+			ctx := lift.NewContext(context.TODO(), req)
 
 			// This would normally be done by the router
 			_ = app
@@ -234,7 +235,7 @@ func benchmarkRouting(b *testing.B, app *lift.App) {
 				Path:   "/api/v1/resource50",
 			},
 		}
-		ctx := lift.NewContext(nil, req)
+		ctx := lift.NewContext(context.TODO(), req)
 
 		// This would normally be done by the router
 		// For now, we're just measuring the setup overhead

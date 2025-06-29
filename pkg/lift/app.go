@@ -258,6 +258,11 @@ func (a *App) Start() error {
 
 // HandleRequest processes an incoming Lambda request
 func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
+	// Ensure the app is started (transfers middleware to router)
+	if err := a.Start(); err != nil {
+		return nil, err
+	}
+
 	// Parse the event into a Request
 	req, err := a.parseEvent(event)
 	if err != nil {

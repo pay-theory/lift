@@ -60,7 +60,7 @@ func main() {
 
 		tokenString, err := token.SignedString([]byte("my-secret-key"))
 		if err != nil {
-			return ctx.InternalError("Failed to create token", err)
+			return ctx.SystemError("Failed to create token", err)
 		}
 
 		return ctx.OK(map[string]string{

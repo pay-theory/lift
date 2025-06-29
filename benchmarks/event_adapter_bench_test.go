@@ -160,8 +160,9 @@ func BenchmarkEventBridgeAdapter(b *testing.B) {
 }
 
 // BenchmarkScheduledAdapter tests Scheduled event parsing performance
+// Note: Scheduled events are handled by EventBridge in AWS
 func BenchmarkScheduledAdapter(b *testing.B) {
-	adapter := adapters.NewScheduledAdapter()
+	adapter := adapters.NewEventBridgeAdapter()
 	benchmarkEventAdapter(b, adapter, scheduledEvent)
 }
 
@@ -258,7 +259,7 @@ func BenchmarkEventCanHandle(b *testing.B) {
 		adapters.NewSQSAdapter(),
 		adapters.NewS3Adapter(),
 		adapters.NewEventBridgeAdapter(),
-		adapters.NewScheduledAdapter(),
+		// Scheduled events use EventBridge adapter
 	}
 
 	events := []any{

@@ -57,7 +57,7 @@ func main() {
 	app.POST("/users", func(ctx *lift.Context) error {
 		var req CreateUserRequest
 		if err := ctx.ParseRequest(&req); err != nil {
-			return lift.BadRequest("Invalid request body").WithCause(err)
+			return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400).WithCause(err)
 		}
 
 		// Get DynamORM instance from context
@@ -79,7 +79,7 @@ func main() {
 
 		// Save user to DynamoDB
 		if err := db.Put(ctx.Context, user); err != nil {
-			return lift.InternalError("Failed to create user").WithCause(err)
+			return lift.NewLiftError("INTERNAL_ERROR", "Failed to create user", 500).WithCause(err)
 		}
 
 		return ctx.JSON(UserResponse{
@@ -121,7 +121,7 @@ func main() {
 
 		var req CreateUserRequest
 		if err := ctx.ParseRequest(&req); err != nil {
-			return lift.BadRequest("Invalid request body").WithCause(err)
+			return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400).WithCause(err)
 		}
 
 		// Get DynamORM instance from context
@@ -148,7 +148,7 @@ func main() {
 
 		// Save updated user
 		if err := db.Put(ctx.Context, &user); err != nil {
-			return lift.InternalError("Failed to update user").WithCause(err)
+			return lift.NewLiftError("INTERNAL_ERROR", "Failed to update user", 500).WithCause(err)
 		}
 
 		return ctx.JSON(UserResponse{
@@ -179,7 +179,7 @@ func main() {
 
 		// Delete user
 		if err := db.Delete(ctx.Context, userID); err != nil {
-			return lift.InternalError("Failed to delete user").WithCause(err)
+			return lift.NewLiftError("INTERNAL_ERROR", "Failed to delete user", 500).WithCause(err)
 		}
 
 		return ctx.JSON(map[string]string{
@@ -204,7 +204,7 @@ func main() {
 
 		result, err := db.Query(ctx.Context, query)
 		if err != nil {
-			return lift.InternalError("Failed to list users").WithCause(err)
+			return lift.NewLiftError("INTERNAL_ERROR", "Failed to list users", 500).WithCause(err)
 		}
 
 		return ctx.JSON(map[string]any{
