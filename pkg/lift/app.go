@@ -270,6 +270,11 @@ func (a *App) IsLambda() bool {
 
 // HandleRequest processes an incoming Lambda request
 func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
+	// Ensure the app is started (transfers middleware to router)
+	if err := a.Start(); err != nil {
+		return nil, err
+	}
+
 	// Parse the event into a Request
 	req, err := a.parseEvent(event)
 	if err != nil {
@@ -323,7 +328,23 @@ func (a *App) parseEvent(event any) (*Request, error) {
 
 // handleError processes errors and returns appropriate responses
 func (a *App) handleError(ctx *Context, err error) (any, error) {
-	// Set error response
+	// Handle Lift errors properly by setting appropriate status codes
+	if liftErr, ok := err.(*LiftError); ok {
+		resp := map[string]any{
+			"code":    liftErr.Code,
+			"message": liftErr.Message,
+		}
+		
+		// Include details if present
+		if len(liftErr.Details) > 0 {
+			resp["details"] = liftErr.Details
+		}
+		
+		ctx.Status(liftErr.StatusCode).JSON(resp)
+		return ctx.Response, nil
+	}
+
+	// For non-Lift errors, set 500 status
 	ctx.Status(500).JSON(map[string]string{
 		"error": "Internal server error",
 	})

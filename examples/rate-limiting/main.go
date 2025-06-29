@@ -36,7 +36,7 @@ func main() {
 func handleSignup(ctx *lift.Context) error {
 	var req SignupRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	// Process signup...
@@ -49,7 +49,7 @@ func handleSignup(ctx *lift.Context) error {
 func handleLogin(ctx *lift.Context) error {
 	var req LoginRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	// Process login...
@@ -65,7 +65,7 @@ func handleLogin(ctx *lift.Context) error {
 func handleForgotPassword(ctx *lift.Context) error {
 	var req ForgotPasswordRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	// Process password reset...
@@ -95,7 +95,7 @@ func handleExpensiveOperation(ctx *lift.Context) error {
 func handleDataExport(ctx *lift.Context) error {
 	exportType := ctx.Query("type")
 	if exportType == "" {
-		return lift.BadRequest("Export type is required")
+		return lift.NewLiftError("BAD_REQUEST", "Export type is required", 400)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -118,7 +118,7 @@ func handleListUsers(ctx *lift.Context) error {
 func handleCreateUser(ctx *lift.Context) error {
 	var req CreateUserRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	return ctx.Status(201).JSON(map[string]any{
@@ -139,7 +139,7 @@ func handleUpdateUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
 	var req UpdateUserRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request body")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
 	}
 
 	return ctx.JSON(map[string]any{

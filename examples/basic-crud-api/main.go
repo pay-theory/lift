@@ -105,7 +105,7 @@ func CreateUser(ctx *lift.Context) error {
 
 	// Save to database
 	if err := db.Put(ctx, user); err != nil {
-		return lift.InternalError("Failed to create user").WithCause(err)
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create user", 500).WithCause(err)
 	}
 
 	// Log the creation
@@ -128,7 +128,7 @@ func CreateUser(ctx *lift.Context) error {
 func GetUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
 	if userID == "" {
-		return lift.BadRequest("User ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
 	}
 
 	// Get tenant-scoped database
@@ -168,7 +168,7 @@ func ListUsers(ctx *lift.Context) error {
 	// Execute query
 	result, err := db.Query(ctx, query)
 	if err != nil {
-		return lift.InternalError("Failed to list users").WithCause(err)
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list users", 500).WithCause(err)
 	}
 
 	// Convert results to users
@@ -189,7 +189,7 @@ func ListUsers(ctx *lift.Context) error {
 func UpdateUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
 	if userID == "" {
-		return lift.BadRequest("User ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
 	}
 
 	// Parse request
@@ -229,7 +229,7 @@ func UpdateUser(ctx *lift.Context) error {
 
 	// Save updated user
 	if err := db.Put(ctx, user); err != nil {
-		return lift.InternalError("Failed to update user").WithCause(err)
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to update user", 500).WithCause(err)
 	}
 
 	// Log the update
@@ -251,7 +251,7 @@ func UpdateUser(ctx *lift.Context) error {
 func DeleteUser(ctx *lift.Context) error {
 	userID := ctx.Param("id")
 	if userID == "" {
-		return lift.BadRequest("User ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
 	}
 
 	// Get tenant-scoped database
@@ -273,7 +273,7 @@ func DeleteUser(ctx *lift.Context) error {
 
 	// Delete user
 	if err := db.Delete(ctx, userID); err != nil {
-		return lift.InternalError("Failed to delete user").WithCause(err)
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to delete user", 500).WithCause(err)
 	}
 
 	// Log the deletion

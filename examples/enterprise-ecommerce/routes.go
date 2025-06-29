@@ -54,12 +54,12 @@ func setupRoutes(app *lift.App) {
 func createTenantHandler(ctx *lift.Context) error {
 	var req CreateTenantRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	tenant, err := tenantService.CreateTenant(ctx.Context, req)
 	if err != nil {
-		return lift.InternalError("Failed to create tenant")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create tenant", 500)
 	}
 
 	return ctx.Status(201).JSON(tenant)
@@ -68,7 +68,7 @@ func createTenantHandler(ctx *lift.Context) error {
 func listTenantsHandler(ctx *lift.Context) error {
 	tenants, err := tenantService.ListTenants(ctx.Context, 20, 0)
 	if err != nil {
-		return lift.InternalError("Failed to list tenants")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list tenants", 500)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -80,7 +80,7 @@ func listTenantsHandler(ctx *lift.Context) error {
 func getTenantHandler(ctx *lift.Context) error {
 	tenantID := ctx.Param("id")
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	tenant, err := tenantService.GetTenant(ctx.Context, tenantID)
@@ -94,17 +94,17 @@ func getTenantHandler(ctx *lift.Context) error {
 func createProductHandler(ctx *lift.Context) error {
 	tenantID := getTenantID(ctx)
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	var req CreateProductRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	product, err := productService.CreateProduct(ctx.Context, tenantID, req)
 	if err != nil {
-		return lift.InternalError("Failed to create product")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create product", 500)
 	}
 
 	return ctx.Status(201).JSON(product)
@@ -113,13 +113,13 @@ func createProductHandler(ctx *lift.Context) error {
 func listProductsHandler(ctx *lift.Context) error {
 	tenantID := getTenantID(ctx)
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	filters := ProductFilters{Limit: 20, Offset: 0}
 	products, err := productService.ListProducts(ctx.Context, tenantID, filters)
 	if err != nil {
-		return lift.InternalError("Failed to list products")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list products", 500)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -133,16 +133,16 @@ func searchProductsHandler(ctx *lift.Context) error {
 	query := ctx.Query("q")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if query == "" {
-		return lift.BadRequest("Search query is required")
+		return lift.NewLiftError("BAD_REQUEST", "Search query is required", 400)
 	}
 
 	filters := ProductFilters{Limit: 20, Offset: 0}
 	products, err := productService.SearchProducts(ctx.Context, tenantID, query, filters)
 	if err != nil {
-		return lift.InternalError("Product search failed")
+		return lift.NewLiftError("INTERNAL_ERROR", "Product search failed", 500)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -157,10 +157,10 @@ func getProductHandler(ctx *lift.Context) error {
 	productID := ctx.Param("id")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if productID == "" {
-		return lift.BadRequest("Product ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Product ID is required", 400)
 	}
 
 	product, err := productService.GetProduct(ctx.Context, tenantID, productID)
@@ -176,10 +176,10 @@ func updateInventoryHandler(ctx *lift.Context) error {
 	productID := ctx.Param("id")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if productID == "" {
-		return lift.BadRequest("Product ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Product ID is required", 400)
 	}
 
 	var req struct {
@@ -187,12 +187,12 @@ func updateInventoryHandler(ctx *lift.Context) error {
 	}
 
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	err := productService.UpdateInventory(ctx.Context, tenantID, productID, req.Quantity)
 	if err != nil {
-		return lift.InternalError("Failed to update inventory")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to update inventory", 500)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -205,17 +205,17 @@ func updateInventoryHandler(ctx *lift.Context) error {
 func createCustomerHandler(ctx *lift.Context) error {
 	tenantID := getTenantID(ctx)
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	var req CreateCustomerRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	customer, err := customerService.CreateCustomer(ctx.Context, tenantID, req)
 	if err != nil {
-		return lift.InternalError("Failed to create customer")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create customer", 500)
 	}
 
 	return ctx.Status(201).JSON(customer)
@@ -224,12 +224,12 @@ func createCustomerHandler(ctx *lift.Context) error {
 func listCustomersHandler(ctx *lift.Context) error {
 	tenantID := getTenantID(ctx)
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	customers, err := customerService.ListCustomers(ctx.Context, tenantID, 20, 0)
 	if err != nil {
-		return lift.InternalError("Failed to list customers")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list customers", 500)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -243,10 +243,10 @@ func getCustomerHandler(ctx *lift.Context) error {
 	customerID := ctx.Param("id")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if customerID == "" {
-		return lift.BadRequest("Customer ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Customer ID is required", 400)
 	}
 
 	customer, err := customerService.GetCustomer(ctx.Context, tenantID, customerID)
@@ -260,7 +260,7 @@ func getCustomerHandler(ctx *lift.Context) error {
 func authenticateCustomerHandler(ctx *lift.Context) error {
 	tenantID := getTenantID(ctx)
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	var req struct {
@@ -269,7 +269,7 @@ func authenticateCustomerHandler(ctx *lift.Context) error {
 	}
 
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	customer, err := customerService.AuthenticateCustomer(ctx.Context, tenantID, req.Email, req.Password)
@@ -286,17 +286,17 @@ func authenticateCustomerHandler(ctx *lift.Context) error {
 func createOrderHandler(ctx *lift.Context) error {
 	tenantID := getTenantID(ctx)
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	var req CreateOrderRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	order, err := orderService.CreateOrder(ctx.Context, tenantID, req)
 	if err != nil {
-		return lift.InternalError("Failed to create order")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create order", 500)
 	}
 
 	return ctx.Status(201).JSON(order)
@@ -305,13 +305,13 @@ func createOrderHandler(ctx *lift.Context) error {
 func listOrdersHandler(ctx *lift.Context) error {
 	tenantID := getTenantID(ctx)
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
 	filters := OrderFilters{Limit: 20, Offset: 0}
 	orders, err := orderService.ListOrders(ctx.Context, tenantID, filters)
 	if err != nil {
-		return lift.InternalError("Failed to list orders")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list orders", 500)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -325,10 +325,10 @@ func getOrderHandler(ctx *lift.Context) error {
 	orderID := ctx.Param("id")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if orderID == "" {
-		return lift.BadRequest("Order ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Order ID is required", 400)
 	}
 
 	order, err := orderService.GetOrder(ctx.Context, tenantID, orderID)
@@ -344,10 +344,10 @@ func updateOrderStatusHandler(ctx *lift.Context) error {
 	orderID := ctx.Param("id")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if orderID == "" {
-		return lift.BadRequest("Order ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Order ID is required", 400)
 	}
 
 	var req struct {
@@ -355,12 +355,12 @@ func updateOrderStatusHandler(ctx *lift.Context) error {
 	}
 
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	err := orderService.UpdateOrderStatus(ctx.Context, tenantID, orderID, req.Status)
 	if err != nil {
-		return lift.InternalError("Failed to update order status")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to update order status", 500)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -375,15 +375,15 @@ func getCustomerOrdersHandler(ctx *lift.Context) error {
 	customerID := ctx.Param("id")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if customerID == "" {
-		return lift.BadRequest("Customer ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Customer ID is required", 400)
 	}
 
 	orders, err := orderService.GetCustomerOrders(ctx.Context, tenantID, customerID)
 	if err != nil {
-		return lift.InternalError("Failed to get customer orders")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to get customer orders", 500)
 	}
 
 	return ctx.JSON(map[string]any{
@@ -398,15 +398,15 @@ func getCartHandler(ctx *lift.Context) error {
 	customerID := ctx.Header("X-Customer-ID")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if customerID == "" {
-		return lift.BadRequest("Customer ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Customer ID is required", 400)
 	}
 
 	cart, err := cartService.GetCart(ctx.Context, tenantID, customerID)
 	if err != nil {
-		return lift.InternalError("Failed to get cart")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to get cart", 500)
 	}
 
 	return ctx.JSON(cart)
@@ -417,20 +417,20 @@ func addToCartHandler(ctx *lift.Context) error {
 	customerID := ctx.Header("X-Customer-ID")
 
 	if tenantID == "" {
-		return lift.BadRequest("Tenant ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 	if customerID == "" {
-		return lift.BadRequest("Customer ID is required")
+		return lift.NewLiftError("BAD_REQUEST", "Customer ID is required", 400)
 	}
 
 	var req AddToCartRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	cart, err := cartService.AddToCart(ctx.Context, tenantID, customerID, req)
 	if err != nil {
-		return lift.InternalError("Failed to add to cart")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to add to cart", 500)
 	}
 
 	return ctx.JSON(cart)
@@ -443,12 +443,12 @@ func updateCartItemHandler(ctx *lift.Context) error {
 
 	var req UpdateCartItemRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	cart, err := cartService.UpdateCartItem(ctx.Context, tenantID, cartID, itemID, req)
 	if err != nil {
-		return lift.InternalError("Failed to update cart item")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to update cart item", 500)
 	}
 
 	return ctx.JSON(cart)
@@ -461,7 +461,7 @@ func removeFromCartHandler(ctx *lift.Context) error {
 
 	cart, err := cartService.RemoveFromCart(ctx.Context, tenantID, cartID, itemID)
 	if err != nil {
-		return lift.InternalError("Failed to remove from cart")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to remove from cart", 500)
 	}
 
 	return ctx.JSON(cart)
@@ -473,12 +473,12 @@ func checkoutHandler(ctx *lift.Context) error {
 
 	var req CreateOrderRequest
 	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.BadRequest("Invalid request")
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request", 400)
 	}
 
 	order, err := cartService.ConvertCartToOrder(ctx.Context, tenantID, cartID, req)
 	if err != nil {
-		return lift.InternalError("Failed to checkout")
+		return lift.NewLiftError("INTERNAL_ERROR", "Failed to checkout", 500)
 	}
 
 	return ctx.Status(201).JSON(order)
