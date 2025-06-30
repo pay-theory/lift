@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
 )
@@ -32,6 +33,7 @@ type CloudWatchLogger struct {
 	sequenceToken *string
 	stats         *loggerStats
 	contextFields map[string]any
+	snsNotifier   *SNSNotifier
 }
 
 // loggerStats tracks performance metrics
@@ -45,8 +47,13 @@ type loggerStats struct {
 	averageFlushTime int64 // Nanoseconds
 }
 
+// CloudWatchLoggerOptions contains optional parameters for NewCloudWatchLogger
+type CloudWatchLoggerOptions struct {
+	SNSClient *sns.Client
+}
+
 // NewCloudWatchLogger creates a new CloudWatch logger instance
-func NewCloudWatchLogger(config observability.LoggerConfig, client observability.CloudWatchLogsClient) (*CloudWatchLogger, error) {
+func NewCloudWatchLogger(config observability.LoggerConfig, client observability.CloudWatchLogsClient, opts ...CloudWatchLoggerOptions) (*CloudWatchLogger, error) {
 	if config.BatchSize <= 0 {
 		config.BatchSize = 25 // CloudWatch Logs max batch size
 	}
@@ -68,6 +75,17 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 		done:          make(chan struct{}),
 		stats:         &loggerStats{},
 		contextFields: make(map[string]any),
+	}
+	
+	// Configure SNS notifications if enabled
+	if config.EnableSNSNotifications && config.SNSTopicARN != "" {
+		var snsClient *sns.Client
+		if len(opts) > 0 && opts[0].SNSClient != nil {
+			snsClient = opts[0].SNSClient
+		}
+		if snsClient != nil {
+			logger.snsNotifier = NewSNSNotifier(snsClient, config.SNSTopicARN)
+		}
 	}
 
 	// Ensure log group and stream exist
@@ -211,6 +229,21 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]an
 	select {
 	case l.buffer <- entry:
 		atomic.AddInt64(&l.stats.entriesLogged, 1)
+		
+		// Send SNS notification for errors if configured
+		if level == "ERROR" && l.snsNotifier != nil {
+			// Async SNS notification to avoid blocking the logger
+			go func(e *observability.LogEntry) {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				
+				if err := l.snsNotifier.NotifyError(ctx, e); err != nil {
+					// Log SNS error to stats but don't block
+					atomic.AddInt64(&l.stats.errorCount, 1)
+					l.stats.lastError = fmt.Sprintf("SNS notification failed: %v", err)
+				}
+			}(entry)
+		}
 	default:
 		// Buffer full, drop log entry
 		atomic.AddInt64(&l.stats.entriesDropped, 1)
