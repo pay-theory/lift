@@ -71,6 +71,9 @@ type App struct {
 	// Runtime state
 	started bool
 	mu      sync.RWMutex
+
+	// Response buffering
+	hasInterceptingMiddleware bool
 }
 
 // New creates a new Lift application
@@ -96,6 +99,12 @@ func New(options ...AppOption) *App {
 // Use adds middleware to the application
 func (a *App) Use(middleware Middleware) *App {
 	a.middleware = append(a.middleware, middleware)
+	
+	// Note: Since Middleware is a function type, not an interface,
+	// we'll need to handle response interception detection differently
+	// For now, we'll assume middleware that needs interception will
+	// be wrapped with InterceptingMiddleware
+	
 	return a
 }
 
@@ -272,6 +281,11 @@ func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 	// Create enhanced context
 	liftCtx := NewContext(ctx, req)
 
+	// Enable response buffering if any middleware needs it
+	if a.hasInterceptingMiddleware {
+		liftCtx.EnableResponseBuffering()
+	}
+
 	// Set dependencies if available
 	if a.logger != nil {
 		liftCtx.Logger = a.logger
@@ -284,18 +298,27 @@ func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 	}
 
 	// Route based on trigger type
+	var routeErr error
 	if req.TriggerType != TriggerAPIGateway && req.TriggerType != TriggerAPIGatewayV2 && req.TriggerType != TriggerUnknown {
 		// Non-HTTP event, use event router
 		if err := a.eventRouter.HandleEvent(liftCtx); err != nil {
-			// Handle error response
-			return a.handleError(liftCtx, err)
+			routeErr = err
 		}
 	} else {
 		// HTTP event, use regular router
 		if err := a.router.Handle(liftCtx); err != nil {
-			// Handle error response
-			return a.handleError(liftCtx, err)
+			routeErr = err
 		}
+	}
+
+	// Handle any routing errors
+	if routeErr != nil {
+		return a.handleError(liftCtx, routeErr)
+	}
+
+	// Flush response buffer if enabled
+	if err := liftCtx.FlushResponse(); err != nil {
+		return nil, err
 	}
 
 	// Return the response
