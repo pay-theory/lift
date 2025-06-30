@@ -40,6 +40,10 @@ type Context struct {
 	// Authentication
 	claims          map[string]any
 	isAuthenticated bool
+
+	// Response buffering
+	responseBuffer   *ResponseBuffer
+	bufferingEnabled bool
 }
 
 // NewContext creates a new enhanced context
@@ -122,19 +126,65 @@ func (c *Context) SetParam(key, value string) {
 	c.params[key] = value
 }
 
+// EnableResponseBuffering enables response buffering for this context
+// This allows middleware to intercept and access response data after handler execution
+func (c *Context) EnableResponseBuffering() {
+	if !c.bufferingEnabled {
+		c.responseBuffer = NewResponseBuffer()
+		c.bufferingEnabled = true
+	}
+}
+
+// GetResponseBuffer returns the response buffer if buffering is enabled
+func (c *Context) GetResponseBuffer() *ResponseBuffer {
+	if c.bufferingEnabled {
+		return c.responseBuffer
+	}
+	return nil
+}
+
+// FlushResponse is a no-op since buffering just captures data
+func (c *Context) FlushResponse() error {
+	// No explicit flush needed as we're just capturing data
+	return nil
+}
+
+// captureResponseData captures response data in the buffer if enabled
+func (c *Context) captureResponseData() {
+	if c.bufferingEnabled && c.responseBuffer != nil {
+		c.responseBuffer.SetBody(c.Response.Body, c.Response.Body)
+		c.responseBuffer.SetStatusCode(c.Response.StatusCode)
+		for k, v := range c.Response.Headers {
+			c.responseBuffer.SetHeader(k, v)
+		}
+	}
+}
+
 // JSON sets the response body as JSON
 func (c *Context) JSON(data any) error {
-	return c.Response.JSON(data)
+	err := c.Response.JSON(data)
+	if err == nil {
+		c.captureResponseData()
+	}
+	return err
 }
 
 // Text sends a text response
 func (c *Context) Text(text string) error {
-	return c.Response.Text(text)
+	err := c.Response.Text(text)
+	if err == nil {
+		c.captureResponseData()
+	}
+	return err
 }
 
 // HTML sends an HTML response
 func (c *Context) HTML(html string) error {
-	return c.Response.HTML(html)
+	err := c.Response.HTML(html)
+	if err == nil {
+		c.captureResponseData()
+	}
+	return err
 }
 
 // Status sets the response status code
@@ -240,13 +290,21 @@ func (c *Context) GetUserID() string {
 // OK sends a 200 OK response with JSON data
 func (c *Context) OK(data any) error {
 	c.Response.StatusCode = 200
-	return c.JSON(data)
+	err := c.Response.JSON(data)
+	if err == nil {
+		c.captureResponseData()
+	}
+	return err
 }
 
 // Created sends a 201 Created response with JSON data
 func (c *Context) Created(data any) error {
 	c.Response.StatusCode = 201
-	return c.JSON(data)
+	err := c.Response.JSON(data)
+	if err == nil {
+		c.captureResponseData()
+	}
+	return err
 }
 
 // BadRequest sends a 400 Bad Request response
@@ -260,7 +318,11 @@ func (c *Context) BadRequest(message string, err error) error {
 	if err != nil {
 		response["details"] = err.Error()
 	}
-	return c.JSON(response)
+	respErr := c.Response.JSON(response)
+	if respErr == nil {
+		c.captureResponseData()
+	}
+	return respErr
 }
 
 // NotFound sends a 404 Not Found response
@@ -273,7 +335,11 @@ func (c *Context) NotFound(message string, err error) error {
 	if err != nil {
 		response["details"] = err.Error()
 	}
-	return c.JSON(response)
+	respErr := c.Response.JSON(response)
+	if respErr == nil {
+		c.captureResponseData()
+	}
+	return respErr
 }
 
 // Forbidden sends a 403 Forbidden response
@@ -287,7 +353,11 @@ func (c *Context) Forbidden(message string, err error) error {
 	if err != nil {
 		response["details"] = err.Error()
 	}
-	return c.JSON(response)
+	respErr := c.Response.JSON(response)
+	if respErr == nil {
+		c.captureResponseData()
+	}
+	return respErr
 }
 
 // SystemError sends a 500 Internal Server Error response
@@ -300,7 +370,11 @@ func (c *Context) SystemError(message string, err error) error {
 	if err != nil {
 		response["details"] = err.Error()
 	}
-	return c.JSON(response)
+	respErr := c.Response.JSON(response)
+	if respErr == nil {
+		c.captureResponseData()
+	}
+	return respErr
 }
 
 // Unauthorized sends a 401 Unauthorized response
@@ -313,7 +387,11 @@ func (c *Context) Unauthorized(message string, err error) error {
 	if err != nil {
 		response["details"] = err.Error()
 	}
-	return c.JSON(response)
+	respErr := c.Response.JSON(response)
+	if respErr == nil {
+		c.captureResponseData()
+	}
+	return respErr
 }
 
 // PathParam retrieves a path parameter (alias for Param)
