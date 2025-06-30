@@ -13,6 +13,12 @@ import (
 	"github.com/pay-theory/lift/pkg/observability"
 )
 
+// SNSConfig contains configuration for SNS notifications
+type SNSConfig struct {
+	Client   *sns.Client
+	TopicARN string
+}
+
 // SNSNotifier handles sending error notifications to AWS SNS
 type SNSNotifier struct {
 	snsClient *sns.Client
@@ -42,12 +48,17 @@ type AlertConfig struct {
 }
 
 
-// NewSNSNotifier creates a new SNS notifier
-func NewSNSNotifier(snsClient *sns.Client, targetARN string) *SNSNotifier {
+// NewSNSNotifier creates a new SNS notifier from configuration
+func NewSNSNotifier(config SNSConfig) *SNSNotifier {
 	return &SNSNotifier{
-		snsClient: snsClient,
-		targetARN: targetARN,
+		snsClient: config.Client,
+		targetARN: config.TopicARN,
 	}
+}
+
+// GetTopicARN returns the configured SNS topic ARN
+func (n *SNSNotifier) GetTopicARN() string {
+	return n.targetARN
 }
 
 // NotifyError sends an error notification to SNS when an error is logged to CloudWatch
