@@ -2,7 +2,6 @@ package cloudwatch
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
-	"github.com/pay-theory/lift/pkg/observability"
 )
 
 const (
@@ -10,17 +9,23 @@ const (
 	DefaultSNSTargetARN = "arn:aws:sns:us-east-1:805600764437:global-logs-publisher-topic-paytheory"
 )
 
-// WithErrorNotifications configures the CloudWatch logger to send error notifications to SNS
-func WithErrorNotifications(snsClient *sns.Client) CloudWatchLoggerOptions {
+// WithErrorNotifications creates CloudWatch logger options with SNS error notifications
+func WithErrorNotifications(snsClient *sns.Client, topicARN string) CloudWatchLoggerOptions {
+	if topicARN == "" {
+		topicARN = DefaultSNSTargetARN
+	}
+	
+	notifier := NewSNSNotifier(SNSConfig{
+		Client:   snsClient,
+		TopicARN: topicARN,
+	})
+	
 	return CloudWatchLoggerOptions{
-		SNSClient: snsClient,
+		Notifier: notifier,
 	}
 }
 
-// EnableErrorNotifications is a helper to enable SNS error notifications with default settings
-func EnableErrorNotifications(config *observability.LoggerConfig) {
-	config.EnableSNSNotifications = true
-	if config.SNSTopicARN == "" {
-		config.SNSTopicARN = DefaultSNSTargetARN
-	}
+// WithDefaultErrorNotifications creates CloudWatch logger options with default SNS error notifications
+func WithDefaultErrorNotifications(snsClient *sns.Client) CloudWatchLoggerOptions {
+	return WithErrorNotifications(snsClient, DefaultSNSTargetARN)
 }

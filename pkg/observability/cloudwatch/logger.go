@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
-	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
 )
@@ -59,7 +58,7 @@ type loggerStats struct {
 
 // CloudWatchLoggerOptions contains optional parameters for NewCloudWatchLogger
 type CloudWatchLoggerOptions struct {
-	SNSClient *sns.Client
+	Notifier *SNSNotifier
 }
 
 // NewCloudWatchLogger creates a new CloudWatch logger instance
@@ -95,15 +94,9 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 		},
 	}
 	
-	// Configure SNS notifications if enabled
-	if config.EnableSNSNotifications && config.SNSTopicARN != "" {
-		var snsClient *sns.Client
-		if len(opts) > 0 && opts[0].SNSClient != nil {
-			snsClient = opts[0].SNSClient
-		}
-		if snsClient != nil {
-			logger.snsNotifier = NewSNSNotifier(snsClient, config.SNSTopicARN)
-		}
+	// Configure SNS notifier if provided
+	if len(opts) > 0 && opts[0].Notifier != nil {
+		logger.snsNotifier = opts[0].Notifier
 	}
 
 	// Ensure log group and stream exist
@@ -252,7 +245,7 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]an
 		if level == "ERROR" && l.snsNotifier != nil {
 			// Async SNS notification to avoid blocking the logger
 			go func(e *observability.LogEntry) {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 				
 				if err := l.snsNotifier.NotifyError(ctx, e); err != nil {
