@@ -98,6 +98,10 @@ type LoggerConfig struct {
 	BatchSize     int           `json:"batch_size"`
 	FlushInterval time.Duration `json:"flush_interval"`
 	BufferSize    int           `json:"buffer_size"`
+	
+	// SNS notification settings
+	EnableSNSNotifications bool   `json:"enable_sns_notifications"`
+	SNSTopicARN           string `json:"sns_topic_arn"`
 
 	// Performance tuning
 	AsyncLogging bool          `json:"async_logging"`
