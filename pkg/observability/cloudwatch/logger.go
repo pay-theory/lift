@@ -17,6 +17,20 @@ import (
 	"github.com/pay-theory/lift/pkg/observability"
 )
 
+
+// sharedLoggerState contains state shared between logger instances created via WithFields
+type sharedLoggerState struct {
+	buffer        chan *observability.LogEntry
+	flushSignal   chan struct{}
+	done          chan struct{}
+	wg            *sync.WaitGroup
+	mu            *sync.RWMutex
+	sequenceToken *string
+	stats         *loggerStats
+	closeOnce     *sync.Once
+	closed        *int32
+}
+
 // CloudWatchLogger implements the StructuredLogger interface with CloudWatch Logs backend
 type CloudWatchLogger struct {
 	client        observability.CloudWatchLogsClient
@@ -24,14 +38,11 @@ type CloudWatchLogger struct {
 	logStream     string
 	batchSize     int
 	flushInterval time.Duration
-	buffer        chan *observability.LogEntry
-	flushSignal   chan struct{} // Signal to force immediate flush
-	done          chan struct{}
-	wg            sync.WaitGroup
-	mu            sync.RWMutex
-	sequenceToken *string
-	stats         *loggerStats
 	contextFields map[string]any
+	snsNotifier   *SNSNotifier
+	
+	// Shared state between logger instances
+	shared *sharedLoggerState
 }
 
 // loggerStats tracks performance metrics
@@ -45,8 +56,13 @@ type loggerStats struct {
 	averageFlushTime int64 // Nanoseconds
 }
 
+// CloudWatchLoggerOptions contains optional parameters for NewCloudWatchLogger
+type CloudWatchLoggerOptions struct {
+	Notifier *SNSNotifier
+}
+
 // NewCloudWatchLogger creates a new CloudWatch logger instance
-func NewCloudWatchLogger(config observability.LoggerConfig, client observability.CloudWatchLogsClient) (*CloudWatchLogger, error) {
+func NewCloudWatchLogger(config observability.LoggerConfig, client observability.CloudWatchLogsClient, opts ...CloudWatchLoggerOptions) (*CloudWatchLogger, error) {
 	if config.BatchSize <= 0 {
 		config.BatchSize = 25 // CloudWatch Logs max batch size
 	}
@@ -57,17 +73,30 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 		config.BufferSize = config.BatchSize * 2
 	}
 
+	var closed int32
 	logger := &CloudWatchLogger{
 		client:        client,
 		logGroup:      config.LogGroup,
 		logStream:     config.LogStream,
 		batchSize:     config.BatchSize,
 		flushInterval: config.FlushInterval,
-		buffer:        make(chan *observability.LogEntry, config.BufferSize),
-		flushSignal:   make(chan struct{}),
-		done:          make(chan struct{}),
-		stats:         &loggerStats{},
 		contextFields: make(map[string]any),
+		shared: &sharedLoggerState{
+			buffer:        make(chan *observability.LogEntry, config.BufferSize),
+			flushSignal:   make(chan struct{}),
+			done:          make(chan struct{}),
+			wg:            &sync.WaitGroup{},
+			mu:            &sync.RWMutex{},
+			sequenceToken: nil,
+			stats:         &loggerStats{},
+			closeOnce:     &sync.Once{},
+			closed:        &closed,
+		},
+	}
+	
+	// Configure SNS notifier if provided
+	if len(opts) > 0 && opts[0].Notifier != nil {
+		logger.snsNotifier = opts[0].Notifier
 	}
 
 	// Ensure log group and stream exist
@@ -80,7 +109,7 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 	}
 
 	// Start background flusher
-	logger.wg.Add(1)
+	logger.shared.wg.Add(1)
 	go logger.flushLoop()
 
 	return logger, nil
@@ -127,14 +156,9 @@ func (l *CloudWatchLogger) WithFields(fields map[string]any) lift.Logger {
 		logStream:     l.logStream,
 		batchSize:     l.batchSize,
 		flushInterval: l.flushInterval,
-		buffer:        l.buffer,        // Share the same buffer
-		flushSignal:   l.flushSignal,   // Share the same flush signal
-		done:          l.done,          // Share the same done channel
-		stats:         l.stats,         // Share the same stats
 		contextFields: newFields,       // Only context fields are different
-		sequenceToken: l.sequenceToken, // Share sequence token
-		mu:            l.mu,            // Share mutex
-		wg:            l.wg,            // Share wait group
+		snsNotifier:   l.snsNotifier,   // Share SNS notifier
+		shared:        l.shared,        // Share all state
 	}
 }
 
@@ -165,6 +189,11 @@ func (l *CloudWatchLogger) WithSpanID(spanID string) observability.StructuredLog
 
 // log is the internal logging method
 func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]any) {
+	// Check if logger is closed
+	if atomic.LoadInt32(l.shared.closed) == 1 {
+		return
+	}
+	
 	entry := &observability.LogEntry{
 		Timestamp: time.Now().UTC(),
 		Level:     level,
@@ -209,11 +238,26 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]an
 
 	// Non-blocking send to buffer
 	select {
-	case l.buffer <- entry:
-		atomic.AddInt64(&l.stats.entriesLogged, 1)
+	case l.shared.buffer <- entry:
+		atomic.AddInt64(&l.shared.stats.entriesLogged, 1)
+		
+		// Send SNS notification for errors if configured
+		if level == "ERROR" && l.snsNotifier != nil {
+			// Async SNS notification to avoid blocking the logger
+			go func(e *observability.LogEntry) {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				
+				if err := l.snsNotifier.NotifyError(ctx, e); err != nil {
+					// Log SNS error to stats but don't block
+					atomic.AddInt64(&l.shared.stats.errorCount, 1)
+					l.shared.stats.lastError = fmt.Sprintf("SNS notification failed: %v", err)
+				}
+			}(entry)
+		}
 	default:
 		// Buffer full, drop log entry
-		atomic.AddInt64(&l.stats.entriesDropped, 1)
+		atomic.AddInt64(&l.shared.stats.entriesDropped, 1)
 	}
 }
 
@@ -277,7 +321,7 @@ func (l *CloudWatchLogger) sanitizeFieldValue(key string, value any) any {
 
 // flushLoop runs in background to batch and send logs
 func (l *CloudWatchLogger) flushLoop() {
-	defer l.wg.Done()
+	defer l.shared.wg.Done()
 
 	ticker := time.NewTicker(l.flushInterval)
 	defer ticker.Stop()
@@ -286,14 +330,14 @@ func (l *CloudWatchLogger) flushLoop() {
 
 	for {
 		select {
-		case entry := <-l.buffer:
+		case entry := <-l.shared.buffer:
 			batch = append(batch, entry)
 			if len(batch) >= l.batchSize {
 				l.flushBatch(batch)
 				batch = batch[:0] // Reset slice
 			}
 
-		case <-l.flushSignal:
+		case <-l.shared.flushSignal:
 			// Force immediate flush of current batch
 			if len(batch) > 0 {
 				l.flushBatch(batch)
@@ -306,15 +350,16 @@ func (l *CloudWatchLogger) flushLoop() {
 				batch = batch[:0]
 			}
 
-		case <-l.done:
+		case <-l.shared.done:
 			// Flush remaining entries
 			if len(batch) > 0 {
 				l.flushBatch(batch)
+				batch = batch[:0] // Reset batch after flushing
 			}
 			// Drain buffer
 			for {
 				select {
-				case entry := <-l.buffer:
+				case entry := <-l.shared.buffer:
 					batch = append(batch, entry)
 					if len(batch) >= l.batchSize {
 						l.flushBatch(batch)
@@ -338,16 +383,17 @@ func (l *CloudWatchLogger) flushBatch(batch []*observability.LogEntry) {
 	}
 
 	start := time.Now()
+	
 	defer func() {
 		duration := time.Since(start)
-		atomic.AddInt64(&l.stats.flushCount, 1)
-		atomic.StoreInt64(&l.stats.lastFlush, time.Now().Unix())
+		atomic.AddInt64(&l.shared.stats.flushCount, 1)
+		atomic.StoreInt64(&l.shared.stats.lastFlush, time.Now().Unix())
 
 		// Update average flush time
-		currentAvg := atomic.LoadInt64(&l.stats.averageFlushTime)
-		flushCount := atomic.LoadInt64(&l.stats.flushCount)
+		currentAvg := atomic.LoadInt64(&l.shared.stats.averageFlushTime)
+		flushCount := atomic.LoadInt64(&l.shared.stats.flushCount)
 		newAvg := (currentAvg*(flushCount-1) + duration.Nanoseconds()) / flushCount
-		atomic.StoreInt64(&l.stats.averageFlushTime, newAvg)
+		atomic.StoreInt64(&l.shared.stats.averageFlushTime, newAvg)
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -364,26 +410,26 @@ func (l *CloudWatchLogger) flushBatch(batch []*observability.LogEntry) {
 	}
 
 	// Send to CloudWatch
-	l.mu.Lock()
+	l.shared.mu.Lock()
 	input := &cloudwatchlogs.PutLogEventsInput{
 		LogGroupName:  aws.String(l.logGroup),
 		LogStreamName: aws.String(l.logStream),
 		LogEvents:     events,
-		SequenceToken: l.sequenceToken,
+		SequenceToken: l.shared.sequenceToken,
 	}
-	l.mu.Unlock()
+	l.shared.mu.Unlock()
 
 	output, err := l.client.PutLogEvents(ctx, input)
 	if err != nil {
-		atomic.AddInt64(&l.stats.errorCount, 1)
-		l.stats.lastError = err.Error()
+		atomic.AddInt64(&l.shared.stats.errorCount, 1)
+		l.shared.stats.lastError = err.Error()
 		return
 	}
 
 	// Update sequence token
-	l.mu.Lock()
-	l.sequenceToken = output.NextSequenceToken
-	l.mu.Unlock()
+	l.shared.mu.Lock()
+	l.shared.sequenceToken = output.NextSequenceToken
+	l.shared.mu.Unlock()
 }
 
 // ensureLogGroupExists creates the log group if it doesn't exist
@@ -428,7 +474,7 @@ func (l *CloudWatchLogger) Flush(ctx context.Context) error {
 
 	// Send flush signal to background loop
 	select {
-	case l.flushSignal <- struct{}{}:
+	case l.shared.flushSignal <- struct{}{}:
 		// Signal sent successfully
 	case <-ctx.Done():
 		return ctx.Err()
@@ -444,15 +490,27 @@ func (l *CloudWatchLogger) Flush(ctx context.Context) error {
 
 // Close gracefully shuts down the logger
 func (l *CloudWatchLogger) Close() error {
-	close(l.done)
-	l.wg.Wait()
-	return nil
+	var err error
+	l.shared.closeOnce.Do(func() {
+		// Mark as closed to prevent new logs
+		atomic.StoreInt32(l.shared.closed, 1)
+		
+		// Signal shutdown
+		close(l.shared.done)
+		
+		// Wait for the flush loop to finish
+		l.shared.wg.Wait()
+		
+		// Close the buffer channel after the flush loop has exited
+		close(l.shared.buffer)
+	})
+	return err
 }
 
 // IsHealthy returns true if the logger is functioning properly
 func (l *CloudWatchLogger) IsHealthy() bool {
-	errorCount := atomic.LoadInt64(&l.stats.errorCount)
-	entriesLogged := atomic.LoadInt64(&l.stats.entriesLogged)
+	errorCount := atomic.LoadInt64(&l.shared.stats.errorCount)
+	entriesLogged := atomic.LoadInt64(&l.shared.stats.entriesLogged)
 
 	// Consider healthy if:
 	// 1. No errors at all, OR
@@ -472,14 +530,15 @@ func (l *CloudWatchLogger) IsHealthy() bool {
 // GetStats returns logger performance statistics
 func (l *CloudWatchLogger) GetStats() observability.LoggerStats {
 	return observability.LoggerStats{
-		EntriesLogged:    atomic.LoadInt64(&l.stats.entriesLogged),
-		EntriesDropped:   atomic.LoadInt64(&l.stats.entriesDropped),
-		FlushCount:       atomic.LoadInt64(&l.stats.flushCount),
-		LastFlush:        time.Unix(atomic.LoadInt64(&l.stats.lastFlush), 0),
-		BufferSize:       len(l.buffer),
-		BufferCapacity:   cap(l.buffer),
-		AverageFlushTime: time.Duration(atomic.LoadInt64(&l.stats.averageFlushTime)),
-		ErrorCount:       atomic.LoadInt64(&l.stats.errorCount),
-		LastError:        l.stats.lastError,
+		EntriesLogged:    atomic.LoadInt64(&l.shared.stats.entriesLogged),
+		EntriesDropped:   atomic.LoadInt64(&l.shared.stats.entriesDropped),
+		FlushCount:       atomic.LoadInt64(&l.shared.stats.flushCount),
+		LastFlush:        time.Unix(atomic.LoadInt64(&l.shared.stats.lastFlush), 0),
+		BufferSize:       len(l.shared.buffer),
+		BufferCapacity:   cap(l.shared.buffer),
+		AverageFlushTime: time.Duration(atomic.LoadInt64(&l.shared.stats.averageFlushTime)),
+		ErrorCount:       atomic.LoadInt64(&l.shared.stats.errorCount),
+		LastError:        l.shared.stats.lastError,
 	}
 }
+
