@@ -78,6 +78,23 @@ func (a *APIGatewayV2Adapter) Adapt(rawEvent any) (*Request, error) {
 	// Extract basic HTTP information
 	method := extractStringField(httpContext, "method")
 	path := extractStringField(httpContext, "path")
+	
+	// Handle stage prefix in path (occurs with custom domains)
+	// When using custom domains with base path mapping, API Gateway includes
+	// the stage in the path. We need to strip it for proper routing.
+	stage := extractStringField(requestContext, "stage")
+	if stage != "" && stage != "$default" {
+		// Check if path starts with stage prefix
+		stagePrefix := "/" + stage
+		if strings.HasPrefix(path, stagePrefix) {
+			// Strip stage prefix from path
+			path = strings.TrimPrefix(path, stagePrefix)
+			// Handle case where path becomes empty after stripping
+			if path == "" {
+				path = "/"
+			}
+		}
+	}
 
 	// Extract headers (case-insensitive)
 	headers := make(map[string]string)
