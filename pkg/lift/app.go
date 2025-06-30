@@ -3,6 +3,7 @@ package lift
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"sync"
 
@@ -263,6 +264,17 @@ func (a *App) Start() error {
 
 	a.started = true
 	return nil
+}
+
+// IsLambda returns true if the code is running in an AWS Lambda environment
+func (a *App) IsLambda() bool {
+	// Check for AWS Lambda-specific environment variables
+	// AWS_LAMBDA_FUNCTION_NAME is set in all Lambda runtime environments
+	// LAMBDA_TASK_ROOT is the path to the Lambda function code
+	// AWS_EXECUTION_ENV contains the runtime identifier (e.g., AWS_Lambda_go1.x)
+	return os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" ||
+		os.Getenv("LAMBDA_TASK_ROOT") != "" ||
+		os.Getenv("AWS_EXECUTION_ENV") != ""
 }
 
 // HandleRequest processes an incoming Lambda request
