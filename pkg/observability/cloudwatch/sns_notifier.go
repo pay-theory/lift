@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -73,8 +74,8 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *observability.L
 			AlertTargetType: "SLACK",
 		},
 		LogTime:     logEntry.Timestamp.UTC().Format(time.RFC3339),
-		Partner:     getEnvOrDefault("PARTNER", "unknown"),
-		Stage:       getEnvOrDefault("STAGE", "unknown"),
+		Partner:     strings.ToLower(getEnvOrDefault("PARTNER", "unknown")),
+		Stage:       strings.ToLower(getEnvOrDefault("STAGE", "unknown")),
 		AWSRegion:   getEnvOrDefault("AWS_REGION", "unknown"),
 		AWSAccount:  getEnvOrDefault("AWS_ACCOUNT_ID", "unknown"),
 		Severity:    "ERROR",
