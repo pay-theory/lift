@@ -89,7 +89,10 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 					}
 					ctx.Response.StatusCode = existing.StatusCode
 					ctx.Response.Header("X-Idempotent-Replay", "true")
-					return ctx.JSON(existing.Response)
+					// Directly set the body and mark as written using proper API
+					ctx.Response.Body = existing.Response
+					ctx.Response.Header("Content-Type", "application/json")
+					return nil
 					
 				case "error":
 					// Return cached error
