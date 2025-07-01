@@ -368,7 +368,7 @@ func TestCloudWatchLogger_SanitizationCardBin(t *testing.T) {
 	// Parse the log message to verify sanitization
 	logMessage := *logEvents[0].Message
 	assert.Contains(t, logMessage, `"card_bin":"424242"`, "card_bin should NOT be redacted")
-	assert.Contains(t, logMessage, `"card_number":"[REDACTED]"`, "card_number should be redacted")
+	assert.Contains(t, logMessage, `"card_number":"************4242"`, "card_number should show last 4 digits only")
 	assert.Contains(t, logMessage, `"card_cvv":"[REDACTED]"`, "card_cvv should be redacted")
 	assert.Contains(t, logMessage, `"cardholder":"[REDACTED]"`, "cardholder should be redacted")
 	assert.Contains(t, logMessage, `"user_id":"12345"`, "user_id should not be redacted")

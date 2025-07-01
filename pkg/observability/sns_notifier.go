@@ -1,4 +1,4 @@
-package cloudwatch
+package observability
 
 import (
 	"context"
@@ -10,18 +10,17 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
-	"github.com/pay-theory/lift/pkg/observability"
 )
 
 // SNSConfig contains configuration for SNS notifications
 type SNSConfig struct {
-	Client   *sns.Client
+	Client   SNSClient
 	TopicARN string
 }
 
 // SNSNotifier handles sending error notifications to AWS SNS
 type SNSNotifier struct {
-	snsClient *sns.Client
+	snsClient SNSClient
 	targetARN string
 }
 
@@ -47,7 +46,6 @@ type AlertConfig struct {
 	AlertTargetType string `json:"alert_target_type"`
 }
 
-
 // NewSNSNotifier creates a new SNS notifier from configuration
 func NewSNSNotifier(config SNSConfig) *SNSNotifier {
 	return &SNSNotifier{
@@ -61,8 +59,8 @@ func (n *SNSNotifier) GetTopicARN() string {
 	return n.targetARN
 }
 
-// NotifyError sends an error notification to SNS when an error is logged to CloudWatch
-func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *observability.LogEntry) error {
+// NotifyError sends an error notification to SNS when an error is logged
+func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error {
 	// Only notify for ERROR level logs
 	if logEntry.Level != "ERROR" {
 		return nil
@@ -127,7 +125,6 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *observability.L
 		notification.AWSAccount = account
 	}
 
-
 	// Marshal the notification to JSON
 	messageJSON, err := json.Marshal(notification)
 	if err != nil {
@@ -147,27 +144,6 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *observability.L
 	return nil
 }
 
-// sanitizeErrorFields removes sensitive information from error fields
-func sanitizeErrorFields(fields map[string]any) map[string]any {
-	sanitized := make(map[string]any)
-	
-	// List of fields safe to include in notifications
-	safeFields := []string{
-		"method", "path", "status", "duration", "error_type",
-		"operation", "resource", "region", "availability_zone",
-		"instance_id", "function_name", "handler", "memory_size",
-		"timeout", "runtime", "version", "stage", "api_id",
-	}
-
-	for _, field := range safeFields {
-		if value, exists := fields[field]; exists {
-			sanitized[field] = value
-		}
-	}
-
-	return sanitized
-}
-
 // getEnvOrDefault returns the environment variable value or a default if not set
 func getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
@@ -175,4 +151,3 @@ func getEnvOrDefault(key, defaultValue string) string {
 	}
 	return defaultValue
 }
-
