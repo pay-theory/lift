@@ -182,10 +182,70 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 	// Check field name patterns for common sensitive data
 	fieldLower := strings.ToLower(field)
 
-	// Restricted data patterns
+	// Sensitive number fields
+	sensitiveNumberFields := map[string]bool{
+		"account_number":                true,
+		"business_tin_ssn_number":       true,
+		"card_num":                      true,
+		"card_number":                   true,
+		"cardnumber":                    true,
+		"dda_number":                    true,
+		"ein":                           true,
+		"employer_identification_number": true,
+		"merchant_tax_id":               true,
+		"number":                        true,
+		"owner_tin_ssn_number":          true,
+		"social_security":               true,
+		"social_security_number":        true,
+		"ssn":                           true,
+		"tax_id":                        true,
+		"tax_identification_number":     true,
+		"taxid":                         true,
+		"tin":                           true,
+	}
+	
+	if sensitiveNumberFields[fieldLower] {
+		return DataRestricted
+	}
+
+	// High sensitivity fields from sanitization logic
+	highSensitiveFields := []string{
+		"password", "token", "secret", "key", "auth", "credential",
+		"email", "phone", "ssn", "card", "account", "routing",
+		"pin", "cvv", "security", "private", "confidential",
+	}
+
+	for _, sensitive := range highSensitiveFields {
+		if strings.Contains(fieldLower, sensitive) {
+			// Determine classification based on the type of sensitive field
+			switch sensitive {
+			case "ssn", "card", "account", "routing", "cvv", "pin":
+				return DataRestricted
+			case "password", "token", "secret", "key", "auth", "credential", "private":
+				return DataConfidential
+			case "email", "phone":
+				return DataInternal
+			default:
+				return DataConfidential
+			}
+		}
+	}
+
+	// User content fields from sanitization logic - these are INTERNAL
+	userContentFields := []string{
+		"body", "request_body", "response_body", "user_input",
+		"query", "search", "message", "comment", "description",
+	}
+
+	for _, userField := range userContentFields {
+		if strings.Contains(fieldLower, userField) {
+			return DataInternal
+		}
+	}
+
+	// Additional restricted data patterns
 	restrictedPatterns := []string{
-		"ssn", "social_security", "tax_id", "passport", "driver_license",
-		"credit_card", "card_number", "cvv", "bank_account", "routing_number",
+		"tax_id", "passport", "driver_license", "bank_account",
 		"medical_record", "health_record", "diagnosis", "prescription",
 	}
 
@@ -195,11 +255,9 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		}
 	}
 
-	// Confidential data patterns
+	// Additional confidential data patterns
 	confidentialPatterns := []string{
-		"password", "secret", "token", "key", "private",
 		"salary", "income", "financial", "revenue", "profit",
-		"personal", "private", "confidential",
 	}
 
 	for _, pattern := range confidentialPatterns {
@@ -208,10 +266,9 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		}
 	}
 
-	// Internal data patterns
+	// Additional internal data patterns
 	internalPatterns := []string{
-		"email", "phone", "address", "name", "birth",
-		"employee", "internal", "organization",
+		"address", "name", "birth", "employee", "organization",
 	}
 
 	for _, pattern := range internalPatterns {
@@ -350,13 +407,14 @@ func (dpm *DataProtectionManager) ValidateDataAccessFromGDPR(request any) *DataA
 		}
 
 		// Try to infer classification from purpose or other fields
-		if dar.Purpose == "restricted" || dar.Purpose == "processing" {
+		switch dar.Purpose {
+		case "restricted", "processing":
 			protectionRequest.Classification = DataRestricted
-		} else if dar.Purpose == "confidential" {
+		case "confidential":
 			protectionRequest.Classification = DataConfidential
-		} else if dar.Purpose == "internal" {
+		case "internal":
 			protectionRequest.Classification = DataInternal
-		} else {
+		default:
 			protectionRequest.Classification = DataPublic
 		}
 	} else {
@@ -518,6 +576,7 @@ func (dpm *DataProtectionManager) applyDefaultMasking(value any, classification 
 		return strValue[:2] + strings.Repeat("*", len(strValue)-4) + strValue[len(strValue)-2:]
 
 	default:
+		// Internal and Public data are not masked by default
 		return value
 	}
 }

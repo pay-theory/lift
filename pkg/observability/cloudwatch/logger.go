@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
+	"github.com/pay-theory/lift/pkg/utils/sanitization"
 )
 
 
@@ -39,7 +39,7 @@ type CloudWatchLogger struct {
 	batchSize     int
 	flushInterval time.Duration
 	contextFields map[string]any
-	snsNotifier   *SNSNotifier
+	snsNotifier   *observability.SNSNotifier
 	
 	// Shared state between logger instances
 	shared *sharedLoggerState
@@ -58,7 +58,7 @@ type loggerStats struct {
 
 // CloudWatchLoggerOptions contains optional parameters for NewCloudWatchLogger
 type CloudWatchLoggerOptions struct {
-	Notifier *SNSNotifier
+	Notifier *observability.SNSNotifier
 }
 
 // NewCloudWatchLogger creates a new CloudWatch logger instance
@@ -263,60 +263,7 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]an
 
 // sanitizeFieldValue sanitizes field values to prevent sensitive data exposure
 func (l *CloudWatchLogger) sanitizeFieldValue(key string, value any) any {
-	keyLower := strings.ToLower(key)
-
-	// Always sanitize highly sensitive field names
-	highSensitiveFields := []string{
-		"password", "token", "secret", "key", "auth", "credential",
-		"email", "phone", "ssn", "card", "account", "routing",
-		"pin", "cvv", "security", "private", "confidential",
-	}
-
-	// Special case: card_bin is not sensitive data (PCI-DSS compliant)
-	if keyLower == "card_bin" {
-		return value
-	}
-
-	for _, sensitive := range highSensitiveFields {
-		if strings.Contains(keyLower, sensitive) {
-			return "[REDACTED]"
-		}
-	}
-
-	// Sanitize user-generated content fields
-	userContentFields := []string{
-		"body", "request_body", "response_body", "user_input",
-		"query", "search", "message", "comment", "description",
-	}
-
-	for _, userField := range userContentFields {
-		if strings.Contains(keyLower, userField) {
-			if str, ok := value.(string); ok && len(str) > 0 {
-				// For user content, only show length and type
-				return fmt.Sprintf("[USER_CONTENT_%d_CHARS]", len(str))
-			}
-			return "[USER_CONTENT]"
-		}
-	}
-
-	// Sanitize error messages that might contain user data
-	if keyLower == "error" || strings.Contains(keyLower, "error") {
-		if str, ok := value.(string); ok {
-			// Only show system error types, not detailed messages
-			if len(str) > 50 ||
-				strings.Contains(strings.ToLower(str), "input") ||
-				strings.Contains(strings.ToLower(str), "invalid") {
-				return "[SANITIZED_ERROR]"
-			}
-		}
-	}
-
-	// Check for very long strings that likely contain user data
-	if str, ok := value.(string); ok && len(str) > 200 {
-		return fmt.Sprintf("[LARGE_STRING_%d_CHARS]", len(str))
-	}
-
-	return value
+	return sanitization.SanitizeFieldValue(key, value)
 }
 
 // flushLoop runs in background to batch and send logs

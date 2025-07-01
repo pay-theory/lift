@@ -341,46 +341,50 @@ func (cf *ComplianceFramework) ComplianceAudit() LiftMiddleware {
 
 // sanitizeHeaders removes sensitive headers from audit logs
 func (cf *ComplianceFramework) sanitizeHeaders(headers map[string][]string) map[string]string {
-	sanitized := make(map[string]string)
 	sensitiveHeaders := map[string]bool{
 		"authorization": true,
 		"cookie":        true,
 		"x-api-key":     true,
 		"x-auth-token":  true,
+		"x-csrf-token":  true,
+		"x-session-id":  true,
 	}
-
+	
+	result := make(map[string]string)
 	for key, values := range headers {
 		lowerKey := strings.ToLower(key)
 		if sensitiveHeaders[lowerKey] {
-			sanitized[key] = "[REDACTED]"
+			result[key] = "[REDACTED]"
 		} else if len(values) > 0 {
-			sanitized[key] = values[0]
+			result[key] = values[0]
 		}
 	}
-
-	return sanitized
+	return result
 }
 
 // sanitizeQueryParams removes sensitive query parameters from audit logs
 func (cf *ComplianceFramework) sanitizeQueryParams(params map[string][]string) map[string]string {
-	sanitized := make(map[string]string)
 	sensitiveParams := map[string]bool{
 		"token":    true,
 		"api_key":  true,
+		"apikey":   true,
 		"password": true,
 		"secret":   true,
+		"auth":     true,
+		"session":  true,
+		"key":      true,
 	}
-
+	
+	result := make(map[string]string)
 	for key, values := range params {
 		lowerKey := strings.ToLower(key)
 		if sensitiveParams[lowerKey] {
-			sanitized[key] = "[REDACTED]"
+			result[key] = "[SANITIZED_QUERY_PARAMS]"
 		} else if len(values) > 0 {
-			sanitized[key] = values[0]
+			result[key] = values[0]
 		}
 	}
-
-	return sanitized
+	return result
 }
 
 // hasCriticalViolations checks if there are any critical compliance violations
