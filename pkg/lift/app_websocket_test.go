@@ -355,3 +355,154 @@ func (m *mockConnectionStore) ListByTenant(ctx context.Context, tenantID string)
 func (m *mockConnectionStore) CountActive(ctx context.Context) (int64, error) {
 	return int64(len(m.connections)), nil
 }
+
+// TestWebSocketHandleRequest tests that WebSocket events are properly routed through the main HandleRequest method
+func TestWebSocketHandleRequest(t *testing.T) {
+	// Create app with WebSocket support
+	app := New(WithWebSocketSupport())
+
+	// Track if handlers were called
+	connectCalled := false
+	disconnectCalled := false
+	defaultCalled := false
+
+	// Register WebSocket handlers
+	app.WebSocket("$connect", func(ctx *Context) error {
+		connectCalled = true
+		return ctx.JSON(map[string]string{"status": "connected"})
+	})
+
+	app.WebSocket("$disconnect", func(ctx *Context) error {
+		disconnectCalled = true
+		return ctx.JSON(map[string]string{"status": "disconnected"})
+	})
+
+	app.WebSocket("$default", func(ctx *Context) error {
+		defaultCalled = true
+		return ctx.JSON(map[string]string{"status": "message received"})
+	})
+
+	tests := []struct {
+		name      string
+		event     map[string]any
+		wantError bool
+		checkFunc func()
+	}{
+		{
+			name: "$connect event through HandleRequest",
+			event: map[string]any{
+				"requestContext": map[string]any{
+					"routeKey":     "$connect",
+					"connectionId": "test-connection-1",
+					"eventType":    "CONNECT",
+					"stage":        "test",
+					"requestId":    "req-1",
+					"domainName":   "test.execute-api.us-east-1.amazonaws.com",
+					"apiId":        "test-api",
+				},
+				"headers": map[string]any{
+					"Host": "test.execute-api.us-east-1.amazonaws.com",
+				},
+			},
+			wantError: false,
+			checkFunc: func() {
+				assert.True(t, connectCalled, "$connect handler should have been called")
+			},
+		},
+		{
+			name: "$disconnect event through HandleRequest",
+			event: map[string]any{
+				"requestContext": map[string]any{
+					"routeKey":     "$disconnect",
+					"connectionId": "test-connection-2",
+					"eventType":    "DISCONNECT",
+					"stage":        "test",
+					"requestId":    "req-2",
+					"domainName":   "test.execute-api.us-east-1.amazonaws.com",
+					"apiId":        "test-api",
+				},
+				"headers": map[string]any{
+					"Host": "test.execute-api.us-east-1.amazonaws.com",
+				},
+			},
+			wantError: false,
+			checkFunc: func() {
+				assert.True(t, disconnectCalled, "$disconnect handler should have been called")
+			},
+		},
+		{
+			name: "$default event through HandleRequest",
+			event: map[string]any{
+				"requestContext": map[string]any{
+					"routeKey":     "$default",
+					"connectionId": "test-connection-3",
+					"eventType":    "MESSAGE",
+					"stage":        "test",
+					"requestId":    "req-3",
+					"domainName":   "test.execute-api.us-east-1.amazonaws.com",
+					"apiId":        "test-api",
+				},
+				"body": `{"message": "hello"}`,
+				"headers": map[string]any{
+					"Host": "test.execute-api.us-east-1.amazonaws.com",
+				},
+			},
+			wantError: false,
+			checkFunc: func() {
+				assert.True(t, defaultCalled, "$default handler should have been called")
+			},
+		},
+		{
+			name: "unhandled route through HandleRequest",
+			event: map[string]any{
+				"requestContext": map[string]any{
+					"routeKey":     "unknownRoute",
+					"connectionId": "test-connection-4",
+					"eventType":    "MESSAGE",
+					"stage":        "test",
+					"requestId":    "req-4",
+					"domainName":   "test.execute-api.us-east-1.amazonaws.com",
+					"apiId":        "test-api",
+				},
+				"headers": map[string]any{
+					"Host": "test.execute-api.us-east-1.amazonaws.com",
+				},
+			},
+			wantError: true,
+			checkFunc: func() {
+				// Should fallback to $default handler
+				assert.True(t, defaultCalled, "Should fallback to $default handler for unknown routes")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset flags
+			connectCalled = false
+			disconnectCalled = false
+			defaultCalled = false
+
+			// Call HandleRequest (the main entry point used by lambda.Start(app.HandleRequest))
+			resp, err := app.HandleRequest(context.Background(), tt.event)
+
+			if tt.wantError {
+				// For unhandled routes, we expect it to fallback to $default which should succeed
+				if tt.name == "unhandled route through HandleRequest" {
+					assert.NoError(t, err, "Should fallback to $default handler")
+					assert.NotNil(t, resp, "Response should not be nil")
+				} else {
+					assert.Error(t, err, "Expected error for test case")
+				}
+			} else {
+				assert.NoError(t, err, "HandleRequest should not return error: %v", err)
+				assert.NotNil(t, resp, "Response should not be nil")
+			}
+
+			// Run the test-specific check
+			if tt.checkFunc != nil {
+				tt.checkFunc()
+			}
+		})
+	}
+}
