@@ -3,7 +3,6 @@ package zap
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
+	"github.com/pay-theory/lift/pkg/utils/sanitization"
 )
 
 // ZapLogger implements the StructuredLogger interface using Zap
@@ -21,6 +21,7 @@ type ZapLogger struct {
 	config        observability.LoggerConfig
 	stats         *loggerStats
 	contextFields map[string]any
+	snsNotifier   *observability.SNSNotifier
 }
 
 // loggerStats tracks logger performance metrics
@@ -33,8 +34,13 @@ type loggerStats struct {
 	lastError      string
 }
 
+// ZapLoggerOptions contains optional parameters for NewZapLogger
+type ZapLoggerOptions struct {
+	Notifier *observability.SNSNotifier
+}
+
 // NewZapLogger creates a new Zap-based logger
-func NewZapLogger(config observability.LoggerConfig) (*ZapLogger, error) {
+func NewZapLogger(config observability.LoggerConfig, opts ...ZapLoggerOptions) (*ZapLogger, error) {
 	zapConfig := buildZapConfig(config)
 
 	logger, err := zapConfig.Build(
@@ -45,13 +51,20 @@ func NewZapLogger(config observability.LoggerConfig) (*ZapLogger, error) {
 		return nil, err
 	}
 
-	return &ZapLogger{
+	zapLogger := &ZapLogger{
 		logger:        logger,
 		sugar:         logger.Sugar(),
 		config:        config,
 		stats:         &loggerStats{},
 		contextFields: make(map[string]any),
-	}, nil
+	}
+
+	// Configure SNS notifier if provided
+	if len(opts) > 0 && opts[0].Notifier != nil {
+		zapLogger.snsNotifier = opts[0].Notifier
+	}
+
+	return zapLogger, nil
 }
 
 // buildZapConfig creates a Zap configuration from our LoggerConfig
@@ -122,6 +135,29 @@ func (z *ZapLogger) Warn(message string, fields ...map[string]any) {
 // Error logs an error message
 func (z *ZapLogger) Error(message string, fields ...map[string]any) {
 	z.log(zapcore.ErrorLevel, message, fields...)
+
+	// Send SNS notification asynchronously if configured
+	if z.snsNotifier != nil {
+		// Create a LogEntry for the SNS notifier
+		entry := &observability.LogEntry{
+			Timestamp: time.Now().UTC(),
+			Level:     "ERROR",
+			Message:   message,
+			Fields:    z.mergeFields(fields...),
+		}
+
+		// Async SNS notification to avoid blocking the logger
+		go func(e *observability.LogEntry) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			if err := z.snsNotifier.NotifyError(ctx, e); err != nil {
+				// Log SNS error but don't block
+				atomic.AddInt64(&z.stats.errorCount, 1)
+				z.stats.lastError = fmt.Sprintf("SNS notification failed: %v", err)
+			}
+		}(entry)
+	}
 }
 
 // WithField returns a new logger with an additional field
@@ -145,6 +181,7 @@ func (z *ZapLogger) WithFields(fields map[string]any) lift.Logger {
 		config:        z.config,
 		stats:         z.stats,
 		contextFields: newFields,
+		snsNotifier:   z.snsNotifier, // Share SNS notifier
 	}
 }
 
@@ -210,55 +247,7 @@ func (z *ZapLogger) log(level zapcore.Level, message string, fieldMaps ...map[st
 
 // sanitizeFieldValue sanitizes field values to prevent sensitive data exposure
 func (z *ZapLogger) sanitizeFieldValue(key string, value any) any {
-	keyLower := strings.ToLower(key)
-
-	// Always sanitize highly sensitive field names
-	highSensitiveFields := []string{
-		"password", "token", "secret", "key", "auth", "credential",
-		"email", "phone", "ssn", "card", "account", "routing",
-		"pin", "cvv", "security", "private", "confidential",
-	}
-
-	for _, sensitive := range highSensitiveFields {
-		if strings.Contains(keyLower, sensitive) {
-			return "[REDACTED]"
-		}
-	}
-
-	// Sanitize user-generated content fields
-	userContentFields := []string{
-		"body", "request_body", "response_body", "user_input",
-		"query", "search", "message", "comment", "description",
-	}
-
-	for _, userField := range userContentFields {
-		if strings.Contains(keyLower, userField) {
-			if str, ok := value.(string); ok && len(str) > 0 {
-				// For user content, only show length and type
-				return fmt.Sprintf("[USER_CONTENT_%d_CHARS]", len(str))
-			}
-			return "[USER_CONTENT]"
-		}
-	}
-
-	// Sanitize error messages that might contain user data
-	if keyLower == "error" || strings.Contains(keyLower, "error") {
-		if str, ok := value.(string); ok {
-			// Only show system error types, not detailed messages
-			if len(str) > 50 ||
-				strings.Contains(strings.ToLower(str), "input") ||
-				strings.Contains(strings.ToLower(str), "invalid") {
-				return "[SANITIZED_ERROR]"
-			}
-		}
-	}
-
-	// Check for very long strings that likely contain user data
-	if str, ok := value.(string); ok && len(str) > 200 {
-		return fmt.Sprintf("[LARGE_STRING_%d_CHARS]", len(str))
-	}
-
-	return value
+	return sanitization.SanitizeFieldValue(key, value)
 }
 
 // Flush syncs the logger (Zap handles this automatically)
@@ -293,6 +282,25 @@ func (z *ZapLogger) GetStats() observability.LoggerStats {
 	}
 }
 
+// mergeFields merges context fields with additional field maps
+func (z *ZapLogger) mergeFields(fieldMaps ...map[string]any) map[string]any {
+	merged := make(map[string]any)
+	
+	// Start with context fields
+	for k, v := range z.contextFields {
+		merged[k] = v
+	}
+	
+	// Merge additional fields
+	for _, fields := range fieldMaps {
+		for k, v := range fields {
+			merged[k] = v
+		}
+	}
+	
+	return merged
+}
+
 // ZapLoggerFactory implements the LoggerFactory interface
 type ZapLoggerFactory struct{}
 
@@ -304,14 +312,14 @@ func NewZapLoggerFactory() *ZapLoggerFactory {
 // CreateConsoleLogger creates a console-based logger
 func (f *ZapLoggerFactory) CreateConsoleLogger(config observability.LoggerConfig) (observability.StructuredLogger, error) {
 	config.Format = "console"
-	return NewZapLogger(config)
+	return NewZapLogger(config) // No options for console logger
 }
 
 // CreateCloudWatchLogger creates a CloudWatch-integrated logger
 func (f *ZapLoggerFactory) CreateCloudWatchLogger(config observability.LoggerConfig, client observability.CloudWatchLogsClient) (observability.StructuredLogger, error) {
 	// For now, return a console logger - CloudWatch integration will be in the CloudWatch package
 	config.Format = "json"
-	return NewZapLogger(config)
+	return NewZapLogger(config) // No SNS options in factory method
 }
 
 // CreateTestLogger creates a logger suitable for testing
@@ -320,7 +328,7 @@ func (f *ZapLoggerFactory) CreateTestLogger() observability.StructuredLogger {
 		Level:  "debug", // Debug level available for testing with enhanced sanitization
 		Format: "json",
 	}
-	logger, _ := NewZapLogger(config)
+	logger, _ := NewZapLogger(config) // No options for test logger
 	return logger
 }
 

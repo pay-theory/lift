@@ -54,11 +54,16 @@ func main() {
 	defer logger2.Close()
 
 	// Example 3: Creating SNS notifier separately for more control
-	snsConfig := cloudwatch.SNSConfig{
+	defaultTopicARN := fmt.Sprintf("arn:aws:sns:%s:%s:cns-%s-%s", 
+		os.Getenv("AWS_REGION"), 
+		os.Getenv("AWS_ACCOUNT_ID"),
+		os.Getenv("PARTNER"),
+		os.Getenv("STAGE"))
+	snsConfig := observability.SNSConfig{
 		Client:   snsClient,
-		TopicARN: cloudwatch.DefaultSNSTargetARN,
+		TopicARN: defaultTopicARN,
 	}
-	notifier := cloudwatch.NewSNSNotifier(snsConfig)
+	notifier := observability.NewSNSNotifier(snsConfig)
 	
 	logger3, err := cloudwatch.NewCloudWatchLogger(loggerConfig, cwClient,
 		cloudwatch.CloudWatchLoggerOptions{
