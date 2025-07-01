@@ -31,7 +31,17 @@ type LiftError struct {
 
 // Error implements the error interface
 func (e *LiftError) Error() string {
-	return fmt.Sprintf("[%s] %s", e.Code, e.Message)
+	errStr := fmt.Sprintf("[%s] %s", e.Code, e.Message)
+	
+	if e.Cause != nil {
+		errStr += fmt.Sprintf("\ncaused by: %v", e.Cause)
+	}
+
+	if len(e.Details) > 0 {
+		errStr += fmt.Sprintf("\ndetails: %v", e.Details)
+	}	
+
+	return errStr
 }
 
 // Unwrap implements the unwrap interface for error chaining
