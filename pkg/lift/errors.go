@@ -33,14 +33,14 @@ type LiftError struct {
 func (e *LiftError) Error() string {
 	errStr := fmt.Sprintf("[%s] %s", e.Code, e.Message)
 	
-	if len(e.Details) > 0 {
-		errStr += fmt.Sprintf("\ndetails: %v", e.Details)
-	}
-	
 	if e.Cause != nil {
 		errStr += fmt.Sprintf("\ncaused by: %v", e.Cause)
 	}
-	
+
+	if len(e.Details) > 0 {
+		errStr += fmt.Sprintf("\ndetails: %v", e.Details)
+	}	
+
 	return errStr
 }
 
