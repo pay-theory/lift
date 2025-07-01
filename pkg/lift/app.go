@@ -311,7 +311,33 @@ func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 
 	// Route based on trigger type
 	var routeErr error
-	if req.TriggerType != TriggerAPIGateway && req.TriggerType != TriggerAPIGatewayV2 && req.TriggerType != TriggerUnknown {
+	if req.TriggerType == adapters.TriggerWebSocket {
+		// WebSocket event, use WebSocket routing
+		routeKey := ""
+		if metadata, ok := req.Metadata["routeKey"].(string); ok {
+			routeKey = metadata
+		}
+
+		handler := a.RouteWebSocket(routeKey)
+		if handler == nil {
+			routeErr = NewLiftError("WEBSOCKET_ROUTE_NOT_FOUND", fmt.Sprintf("No handler for WebSocket route: %s", routeKey), 404)
+		} else {
+			// Apply middleware and execute handler
+			finalHandler := handler
+			for i := len(a.middleware) - 1; i >= 0; i-- {
+				finalHandler = a.middleware[i](finalHandler)
+			}
+
+			// Execute with automatic connection management if enabled
+			if a.wsOptions != nil && a.wsOptions.EnableAutoConnectionManagement {
+				finalHandler = wrapWithConnectionManagement(finalHandler, a.wsOptions.ConnectionStore)
+			}
+
+			if err := finalHandler.Handle(liftCtx); err != nil {
+				routeErr = err
+			}
+		}
+	} else if req.TriggerType != adapters.TriggerAPIGateway && req.TriggerType != adapters.TriggerAPIGatewayV2 && req.TriggerType != adapters.TriggerUnknown {
 		// Non-HTTP event, use event router
 		if err := a.eventRouter.HandleEvent(liftCtx); err != nil {
 			routeErr = err
