@@ -272,9 +272,49 @@ func (l *CloudWatchLogger) sanitizeFieldValue(key string, value any) any {
 		"pin", "cvv", "security", "private", "confidential",
 	}
 
-	// Special case: card_bin is not sensitive data (PCI-DSS compliant)
-	if keyLower == "card_bin" {
+	// Special cases: card_bin, card_brand, and card_type are not sensitive data (PCI-DSS compliant)
+	allowedFields := map[string]bool{
+		"card_bin":   true,
+		"card_brand": true,
+		"card_type":  true,
+	}
+	if allowedFields[keyLower] {
 		return value
+	}
+
+	// Special handling for sensitive numbers - show last 4 digits only
+	sensitiveNumberFields := map[string]bool{
+		"account_number":                true,
+		"business_tin_ssn_number":       true,
+		"card_num":                      true,
+		"card_number":                   true,
+		"cardnumber":                    true,
+		"dda_number":                    true,
+		"ein":                           true,
+		"employer_identification_number": true,
+		"merchant_tax_id":               true,
+		"number":                        true,
+		"owner_tin_ssn_number":          true,
+		"social_security":               true,
+		"social_security_number":        true,
+		"ssn":                           true,
+		"tax_id":                        true,
+		"tax_identification_number":     true,
+		"taxid":                         true,
+		"tin":                           true,
+	}
+	
+	if sensitiveNumberFields[keyLower] {
+		if str, ok := value.(string); ok {
+			// Remove any spaces or dashes
+			cleaned := strings.ReplaceAll(strings.ReplaceAll(str, " ", ""), "-", "")
+			if len(cleaned) >= 4 {
+				// Show last 4 digits, mask the rest
+				masked := strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
+				return masked
+			}
+		}
+		return "[REDACTED]"
 	}
 
 	for _, sensitive := range highSensitiveFields {
