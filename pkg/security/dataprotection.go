@@ -210,7 +210,7 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 
 	// High sensitivity fields from sanitization logic
 	highSensitiveFields := []string{
-		"password", "token", "secret", "key", "auth", "credential",
+		"password", "token", "secret", "auth", "credential",
 		"email", "phone", "ssn", "card", "account", "routing",
 		"pin", "cvv", "security", "private", "confidential",
 	}
@@ -221,7 +221,7 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 			switch sensitive {
 			case "ssn", "card", "account", "routing", "cvv", "pin":
 				return DataRestricted
-			case "password", "token", "secret", "key", "auth", "credential", "private":
+			case "password", "token", "secret", "auth", "credential", "private":
 				return DataConfidential
 			case "email", "phone":
 				return DataInternal
