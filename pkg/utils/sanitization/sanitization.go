@@ -182,7 +182,6 @@ func (s *Sanitizer) SanitizeQueryParams(params map[string][]string) map[string]s
 		"secret":   true,
 		"auth":     true,
 		"session":  true,
-		"key":      true,
 	}
 
 	result := make(map[string]string)
