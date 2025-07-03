@@ -2,10 +2,12 @@ package lift
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 )
@@ -686,4 +688,48 @@ func parseTriggerType(s string) TriggerType {
 		}
 		return TriggerUnknown
 	}
+}
+
+// RunLocalTest runs local testing logic when not in Lambda environment
+func (a *App) RunLocalTest() {
+	if a.IsLambda() {
+		return
+	}
+
+	// Load test event from file
+	testFile := os.Getenv("TEST_FILE")
+	if testFile == "" {
+		if a.logger != nil {
+			a.logger.Info("No test file defined", nil)
+		}
+		return
+	}
+	
+	eventData, err := os.ReadFile(testFile)
+	if err != nil {
+		if a.logger != nil {
+			a.logger.Error("Error reading test event file", map[string]any{
+				"error": err,
+			})
+		}
+		return
+	}
+
+	// First unmarshal into a generic map to determine the event type
+	var rawEvent map[string]any
+	if err := json.Unmarshal(eventData, &rawEvent); err != nil {
+		if a.logger != nil {
+			a.logger.Error("Error unmarshaling test event", map[string]any{
+				"error": err,
+			})
+		}
+		return
+	}
+
+	// Create context with timeout for local testing
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+
+	// Run the test event locally
+	a.HandleRequest(ctx, rawEvent)
 }
