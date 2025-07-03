@@ -46,6 +46,43 @@ go test ./pkg/lift -v
 go test ./pkg/lift -v -run TestAppRoutes
 ```
 
+### Rate Limiting
+Lift provides two rate limiting approaches:
+
+1. **Built-in middleware** (requires DynamORMWrapper setup - complex)
+2. **Limited library integration** (recommended - simple and functional)
+
+#### Using the Limited Library (Recommended)
+```go
+// Simple IP-based rate limiting
+rateLimiter, err := middleware.LimitedRateLimit(middleware.LimitedConfig{
+    Region:    "us-east-1",
+    TableName: "rate-limits",
+    Window:    time.Hour,
+    Limit:     1000,
+})
+if err != nil {
+    panic(err)
+}
+
+app.Use(rateLimiter)
+```
+
+#### Pre-built Rate Limiters
+```go
+// IP-based (1000 req/hour)
+ipLimiter, _ := middleware.IPRateLimitWithLimited(1000, time.Hour)
+app.Use(ipLimiter)
+
+// User-based (100 req/15min)
+userLimiter, _ := middleware.UserRateLimitWithLimited(100, 15*time.Minute)
+api.Use(userLimiter)
+
+// Tenant-based (500 req/hour)
+tenantLimiter, _ := middleware.TenantRateLimitWithLimited(500, time.Hour)
+api.Use(tenantLimiter)
+```
+
 ### Building
 ```bash
 # Build for Lambda
