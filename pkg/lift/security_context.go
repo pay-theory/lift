@@ -2,7 +2,6 @@ package lift
 
 import (
 	"net"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,33 +75,21 @@ func (sc *SecurityContext) IsAuthenticated() bool {
 
 // GetClientIP extracts the client IP address from the request
 func (sc *SecurityContext) GetClientIP() string {
-	// Check X-Forwarded-For header (load balancer)
-	xForwardedFor := sc.Header("X-Forwarded-For")
-	if xForwardedFor != "" {
-		// Take the first IP if multiple are present
-		ips := strings.Split(xForwardedFor, ",")
-		if len(ips) > 0 {
-			return strings.TrimSpace(ips[0])
-		}
-	}
+	// Use headers directly from the request
+	headers := sc.Request.Headers
 
-	// Check X-Real-IP header
-	xRealIP := sc.Header("X-Real-IP")
-	if xRealIP != "" {
-		return xRealIP
-	}
-
-	// Extract from API Gateway context
+	// Get request context
 	requestContext := sc.Request.RequestContext()
-	if len(requestContext) > 0 {
-		if identity, ok := requestContext["identity"].(map[string]any); ok {
-			if sourceIP, ok := identity["sourceIp"].(string); ok {
-				return sourceIP
-			}
-		}
+
+	// Use the security package's IP extraction utility
+	ip, err := security.ExtractClientIP(headers, requestContext)
+	if err != nil {
+		// Log the error for debugging purposes (if logging is available)
+		// For now, return "unknown" to maintain backward compatibility
+		return "unknown"
 	}
 
-	return "unknown"
+	return ip
 }
 
 // GetUserAgent returns the User-Agent header
