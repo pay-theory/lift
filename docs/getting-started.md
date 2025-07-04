@@ -1,16 +1,16 @@
 # Getting Started with Lift
 
-This guide will help you get up and running with the Lift framework in just a few minutes.
+<!-- AI Training: This is the primary onboarding guide for new Lift users -->
+**This guide teaches developers how to create their first Lift application. It follows a progressive disclosure pattern - starting simple and adding complexity as needed.**
 
 ## Prerequisites
 
-- Go 1.21 or higher (for generics support)
+Before you begin, ensure you have:
+- Go 1.21 or later installed
 - AWS account with Lambda access
-- Basic familiarity with AWS Lambda and Go
+- Basic understanding of serverless concepts
 
 ## Installation
-
-Install Lift using Go modules:
 
 ```bash
 go get github.com/pay-theory/lift
@@ -18,74 +18,11 @@ go get github.com/pay-theory/lift
 
 ## Your First Lift Application
 
-### 1. Create a New Project
+Let's create a simple REST API that manages a todo list.
 
-```bash
-mkdir my-lift-app
-cd my-lift-app
-go mod init my-lift-app
-```
+### Step 1: Basic Setup
 
-### 2. Install Dependencies
-
-```bash
-go get github.com/pay-theory/lift
-go get github.com/aws/aws-lambda-go
-```
-
-### 3. Create Your Handler
-
-Create a file named `main.go`:
-
-```go
-package main
-
-import (
-    "github.com/aws/aws-lambda-go/lambda"
-    "github.com/pay-theory/lift/pkg/lift"
-)
-
-func main() {
-    // Create a new Lift application
-    app := lift.New()
-    
-    // Add a simple route
-    app.GET("/hello", handleHello)
-    
-    // Start the Lambda handler
-    lambda.Start(app.HandleRequest)
-}
-
-func handleHello(ctx *lift.Context) error {
-    return ctx.JSON(map[string]string{
-        "message": "Hello from Lift!",
-    })
-}
-```
-
-### 4. Build for Lambda
-
-```bash
-GOOS=linux GOARCH=amd64 go build -o bootstrap main.go
-zip function.zip bootstrap
-```
-
-### 5. Deploy to AWS Lambda
-
-Using AWS CLI:
-
-```bash
-aws lambda create-function \
-    --function-name my-lift-function \
-    --runtime provided.al2 \
-    --role arn:aws:iam::YOUR_ACCOUNT:role/lambda-role \
-    --handler bootstrap \
-    --zip-file fileb://function.zip
-```
-
-## Adding Middleware
-
-Lift comes with a rich set of middleware. Here's how to use them:
+Create `main.go`:
 
 ```go
 package main
@@ -97,31 +34,449 @@ import (
 )
 
 func main() {
+    // Create a new Lift application
     app := lift.New()
     
-    // Add middleware (order matters!)
-    app.Use(middleware.Logger())          // Request logging
-    app.Use(middleware.Recover())         // Panic recovery
-    app.Use(middleware.RequestID())       // Request ID generation
-    app.Use(middleware.CORS(corsConfig))  // CORS handling
+    // Add essential middleware
+    app.Use(
+        middleware.RequestID(),  // Always first
+        middleware.Logger(),     // Structured logging
+        middleware.Recover(),    // Panic recovery
+    )
     
-    // Add routes
-    app.GET("/users", getUsers)
-    app.POST("/users", createUser)
+    // Define a simple route
+    app.GET("/hello", func(ctx *lift.Context) error {
+        return ctx.JSON(map[string]string{
+            "message": "Hello from Lift!",
+        })
+    })
+    
+    // Start the Lambda handler
+    lambda.Start(app.HandleRequest)
+}
+```
+
+### Step 2: Understanding the Context
+
+The `lift.Context` is your gateway to all request and response operations:
+
+```go
+func handler(ctx *lift.Context) error {
+    // Access request data
+    name := ctx.Query("name")           // Query parameters
+    userID := ctx.Param("id")          // Path parameters
+    auth := ctx.Header("Authorization") // Headers
+    
+    // Parse JSON body
+    var data map[string]interface{}
+    if err := ctx.ParseRequest(&data); err != nil {
+        return lift.ValidationError("Invalid JSON")
+    }
+    
+    // Send response
+    return ctx.JSON(map[string]interface{}{
+        "greeting": "Hello, " + name,
+        "data": data,
+    })
+}
+```
+
+### Step 3: Building a Complete API
+
+Let's expand our example to a full todo API:
+
+```go
+package main
+
+import (
+    "time"
+    
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/pay-theory/lift/pkg/lift"
+    "github.com/pay-theory/lift/pkg/middleware"
+)
+
+// Domain types
+type Todo struct {
+    ID        string    `json:"id"`
+    Title     string    `json:"title" validate:"required,min=3"`
+    Completed bool      `json:"completed"`
+    CreatedAt time.Time `json:"created_at"`
+}
+
+type CreateTodoRequest struct {
+    Title string `json:"title" validate:"required,min=3,max=100"`
+}
+
+// In-memory storage (replace with DynamoDB in production)
+var todos = make(map[string]*Todo)
+
+func main() {
+    app := lift.New()
+    
+    // Configure the app
+    config := &lift.Config{
+        MaxRequestSize: 1 * 1024 * 1024, // 1MB
+        Timeout:        25,               // 25 seconds
+        LogLevel:       "INFO",
+        MetricsEnabled: true,
+    }
+    app.WithConfig(config)
+    
+    // Global middleware
+    app.Use(
+        middleware.RequestID(),
+        middleware.Logger(),
+        middleware.Recover(),
+    )
+    
+    // Public routes
+    app.GET("/health", HealthCheck)
+    
+    // API routes
+    api := app.Group("/api/v1")
+    
+    // Todo routes
+    api.GET("/todos", ListTodos)
+    api.GET("/todos/:id", GetTodo)
+    api.POST("/todos", CreateTodo)
+    api.PUT("/todos/:id", UpdateTodo)
+    api.DELETE("/todos/:id", DeleteTodo)
+    
+    lambda.Start(app.HandleRequest)
+}
+
+// Handlers
+func HealthCheck(ctx *lift.Context) error {
+    return ctx.JSON(map[string]string{
+        "status": "healthy",
+        "time":   time.Now().Format(time.RFC3339),
+    })
+}
+
+func ListTodos(ctx *lift.Context) error {
+    // Convert map to slice
+    result := make([]*Todo, 0, len(todos))
+    for _, todo := range todos {
+        result = append(result, todo)
+    }
+    
+    return ctx.JSON(result)
+}
+
+func GetTodo(ctx *lift.Context) error {
+    id := ctx.Param("id")
+    
+    todo, exists := todos[id]
+    if !exists {
+        return lift.NotFound("todo not found")
+    }
+    
+    return ctx.JSON(todo)
+}
+
+func CreateTodo(ctx *lift.Context) error {
+    var req CreateTodoRequest
+    if err := ctx.ParseRequest(&req); err != nil {
+        return lift.ValidationError(err.Error())
+    }
+    
+    todo := &Todo{
+        ID:        generateID(),
+        Title:     req.Title,
+        Completed: false,
+        CreatedAt: time.Now(),
+    }
+    
+    todos[todo.ID] = todo
+    
+    ctx.Status(201)
+    return ctx.JSON(todo)
+}
+
+func UpdateTodo(ctx *lift.Context) error {
+    id := ctx.Param("id")
+    
+    todo, exists := todos[id]
+    if !exists {
+        return lift.NotFound("todo not found")
+    }
+    
+    var updates struct {
+        Title     *string `json:"title"`
+        Completed *bool   `json:"completed"`
+    }
+    
+    if err := ctx.ParseRequest(&updates); err != nil {
+        return lift.ValidationError(err.Error())
+    }
+    
+    if updates.Title != nil {
+        todo.Title = *updates.Title
+    }
+    if updates.Completed != nil {
+        todo.Completed = *updates.Completed
+    }
+    
+    return ctx.JSON(todo)
+}
+
+func DeleteTodo(ctx *lift.Context) error {
+    id := ctx.Param("id")
+    
+    if _, exists := todos[id]; !exists {
+        return lift.NotFound("todo not found")
+    }
+    
+    delete(todos, id)
+    
+    ctx.Status(204)
+    return nil
+}
+
+func generateID() string {
+    return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+```
+
+### Step 4: Adding Authentication
+
+Protect your API with JWT authentication:
+
+```go
+import (
+    "github.com/pay-theory/lift/pkg/middleware"
+)
+
+func main() {
+    app := lift.New()
+    
+    // ... existing setup ...
+    
+    // Public routes
+    app.POST("/auth/login", Login)
+    app.POST("/auth/register", Register)
+    
+    // Protected API routes
+    api := app.Group("/api/v1")
+    
+    // Add JWT middleware
+    jwtMiddleware, err := middleware.JWTAuth(middleware.JWTConfig{
+        Secret: os.Getenv("JWT_SECRET"),
+    })
+    if err != nil {
+        panic(err)
+    }
+    api.Use(jwtMiddleware)
+    
+    // These routes now require authentication
+    api.GET("/todos", ListTodos)
+    api.POST("/todos", CreateTodo)
+    
+    lambda.Start(app.HandleRequest)
+}
+
+// Access user info in handlers
+func ListTodos(ctx *lift.Context) error {
+    userID := ctx.UserID() // From JWT claims
+    
+    // Filter todos by user
+    userTodos := filterTodosByUser(userID)
+    
+    return ctx.JSON(userTodos)
+}
+```
+
+### Step 5: Adding Rate Limiting
+
+Protect your API from abuse:
+
+```go
+import (
+    "time"
+    "github.com/pay-theory/lift/pkg/middleware"
+)
+
+func main() {
+    app := lift.New()
+    
+    // ... existing setup ...
+    
+    // Global rate limit by IP
+    ipLimiter, err := middleware.IPRateLimitWithLimited(
+        1000,      // 1000 requests
+        time.Hour, // per hour
+    )
+    if err != nil {
+        panic(err)
+    }
+    app.Use(ipLimiter)
+    
+    // User-specific rate limit for authenticated routes
+    api := app.Group("/api/v1")
+    api.Use(jwtMiddleware)
+    
+    userLimiter, err := middleware.UserRateLimitWithLimited(
+        100,              // 100 requests
+        15*time.Minute,   // per 15 minutes
+    )
+    if err != nil {
+        panic(err)
+    }
+    api.Use(userLimiter)
     
     lambda.Start(app.HandleRequest)
 }
 ```
 
-## Type-Safe Handlers
+### Step 6: Error Handling
 
-One of Lift's key features is type-safe request handling:
+Lift provides structured error handling:
+
+```go
+func CreateTodo(ctx *lift.Context) error {
+    var req CreateTodoRequest
+    if err := ctx.ParseRequest(&req); err != nil {
+        // Automatic 422 with validation details
+        return lift.ValidationError(err.Error())
+    }
+    
+    // Check authorization
+    if !canCreateTodo(ctx.UserID()) {
+        // Returns 403
+        return lift.AuthorizationError("insufficient permissions")
+    }
+    
+    // Create todo
+    todo, err := createTodoInDB(req)
+    if err != nil {
+        ctx.Logger.Error("Failed to create todo", "error", err)
+        // Returns 500 with safe message
+        return lift.NewLiftError("DATABASE_ERROR", "Failed to create todo", 500)
+    }
+    
+    ctx.Status(201)
+    return ctx.JSON(todo)
+}
+```
+
+### Step 7: Testing Your Application
+
+Write tests using Lift's testing utilities:
+
+```go
+package main
+
+import (
+    "testing"
+    
+    lifttesting "github.com/pay-theory/lift/pkg/testing"
+    "github.com/stretchr/testify/assert"
+)
+
+func TestCreateTodo(t *testing.T) {
+    // Create test context
+    ctx := lifttesting.NewTestContext(
+        lifttesting.WithMethod("POST"),
+        lifttesting.WithPath("/api/v1/todos"),
+        lifttesting.WithBody(`{"title": "Test Todo"}`),
+        lifttesting.WithHeaders(map[string]string{
+            "Authorization": "Bearer test-token",
+        }),
+    )
+    
+    // Call handler
+    err := CreateTodo(ctx)
+    
+    // Assert results
+    assert.NoError(t, err)
+    assert.Equal(t, 201, ctx.Response.StatusCode)
+    
+    // Check response body
+    var todo Todo
+    assert.NoError(t, json.Unmarshal(ctx.Response.Body, &todo))
+    assert.Equal(t, "Test Todo", todo.Title)
+}
+```
+
+## Deployment
+
+### Using SAM (AWS Serverless Application Model)
+
+Create `template.yaml`:
+
+```yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: provided.al2
+    Architectures:
+      - arm64
+
+Resources:
+  TodoAPI:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: bootstrap
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JWTSecret
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+  JWTSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: JWT signing secret
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: 'secret'
+        PasswordLength: 32
+
+Outputs:
+  ApiUrl:
+    Description: API endpoint URL
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/'
+```
+
+Build and deploy:
+
+```bash
+# Build for Lambda
+GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o bootstrap main.go
+
+# Deploy
+sam deploy --guided
+```
+
+## Next Steps
+
+Now that you have a working Lift application:
+
+1. **Add a Database**: Integrate with DynamoDB using [DynamORM](./DYNAMORM_GUIDE.md)
+2. **Add Monitoring**: Set up CloudWatch dashboards and alerts
+3. **Add WebSockets**: Build real-time features
+4. **Add Event Processing**: Handle SQS, S3, and EventBridge events
+
+## Common Patterns
+
+### Type-Safe Handlers
+
+Use `SimpleHandler` for automatic request parsing:
 
 ```go
 type CreateUserRequest struct {
-    Name  string `json:"name" validate:"required,min=3"`
+    Name  string `json:"name" validate:"required"`
     Email string `json:"email" validate:"required,email"`
-    Age   int    `json:"age" validate:"min=18"`
 }
 
 type UserResponse struct {
@@ -130,301 +485,125 @@ type UserResponse struct {
     Email string `json:"email"`
 }
 
-func createUser(ctx *lift.Context) error {
-    var req CreateUserRequest
-    
-    // Parse and validate in one step
-    if err := ctx.ParseAndValidate(&req); err != nil {
-        return err // Automatic 400 Bad Request with validation errors
-    }
-    
-    // Create user...
-    user := UserResponse{
-        ID:    generateID(),
-        Name:  req.Name,
-        Email: req.Email,
-    }
-    
-    // Return JSON response
-    return ctx.Status(201).JSON(user)
-}
+// Register with SimpleHandler
+app.POST("/users", lift.SimpleHandler(createUser))
 
-// Or use TypedHandler for even cleaner code
-func createUserTyped(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
-    // Automatic parsing and validation!
+// Handler with automatic parsing
+func createUser(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
+    // req is already parsed and validated
     user := UserResponse{
         ID:    generateID(),
         Name:  req.Name,
         Email: req.Email,
+    }
+    
+    if err := saveUser(user); err != nil {
+        return UserResponse{}, lift.NewLiftError("SAVE_ERROR", "Failed to save user", 500)
     }
     
     return user, nil
 }
-
-// Register typed handler
-app.POST("/users", lift.TypedHandler(createUserTyped))
 ```
 
-## Working with Different Event Sources
+### Multi-Tenant Support
 
-Lift automatically detects and handles different Lambda event sources:
-
-### API Gateway HTTP/REST
+Build SaaS applications with tenant isolation:
 
 ```go
-app.GET("/hello", handleHello)
-app.POST("/users", createUser)
-app.PUT("/users/:id", updateUser)
-app.DELETE("/users/:id", deleteUser)
-
-func updateUser(ctx *lift.Context) error {
-    userID := ctx.Param("id")
-    // Update user...
-    return ctx.JSON(updatedUser)
-}
-```
-
-### SQS Queue Processing
-
-```go
-app.Handle("SQS", "/my-queue", handleSQSMessages)
-
-func handleSQSMessages(ctx *lift.Context) error {
-    // Access SQS records
-    records := ctx.Request.Records
+func main() {
+    app := lift.New()
     
-    for _, record := range records {
-        // Process each message
-        messageBody := record["body"].(string)
-        // Process message...
+    config := &lift.Config{
+        RequireTenantID: true, // Enforce tenant context
     }
+    app.WithConfig(config)
     
-    return nil
+    // Middleware extracts tenant from JWT
+    api := app.Group("/api")
+    api.Use(jwtMiddleware)
+    
+    api.GET("/data", GetTenantData)
+    
+    lambda.Start(app.HandleRequest)
+}
+
+func GetTenantData(ctx *lift.Context) error {
+    tenantID := ctx.TenantID() // Automatically extracted
+    
+    // Query scoped to tenant
+    data := db.Query(
+        "SELECT * FROM data WHERE tenant_id = ?",
+        tenantID,
+    )
+    
+    return ctx.JSON(data)
 }
 ```
 
-### S3 Events
+### Event Processing
+
+Handle various AWS events:
 
 ```go
-app.Handle("S3", "/my-bucket", handleS3Event)
-
-func handleS3Event(ctx *lift.Context) error {
-    // Process S3 event
-    for _, record := range ctx.Request.Records {
-        bucket := record["s3"].(map[string]interface{})["bucket"].(map[string]interface{})["name"].(string)
-        key := record["s3"].(map[string]interface{})["object"].(map[string]interface{})["key"].(string)
-        
-        // Process file...
-    }
+func main() {
+    app := lift.New()
     
-    return nil
+    // HTTP routes
+    app.GET("/health", HealthCheck)
+    
+    // SQS message processing
+    app.SQS("process-orders", ProcessOrder)
+    
+    // S3 event handling
+    app.S3("uploads", ProcessUpload)
+    
+    // EventBridge scheduled tasks
+    app.EventBridge("daily-report", GenerateReport)
+    
+    lambda.Start(app.HandleRequest)
 }
-```
 
-### WebSocket Support
-
-```go
-// WebSocket routes use special methods
-app.Handle("CONNECT", "/connect", handleConnect)
-app.Handle("DISCONNECT", "/disconnect", handleDisconnect)
-app.Handle("MESSAGE", "/message", handleMessage)
-
-func handleConnect(ctx *lift.Context) error {
-    wsCtx, _ := ctx.AsWebSocket()
-    connectionID := wsCtx.ConnectionID()
-    
-    // Store connection...
-    
-    return ctx.JSON(map[string]string{
-        "message": "Connected!",
-    })
-}
-```
-
-## Multi-Tenant Support
-
-Lift has built-in multi-tenant support:
-
-```go
-func handleTenantRequest(ctx *lift.Context) error {
-    // Access tenant information
-    tenantID := ctx.TenantID()
-    userID := ctx.UserID()
-    
-    // Use tenant-scoped database
-    db := dynamorm.FromContext(ctx).ForTenant(tenantID)
-    
-    // Query only returns data for this tenant
-    var users []User
-    err := db.Query(&users).Execute()
-    
-    return ctx.JSON(users)
-}
-```
-
-## Error Handling
-
-Lift provides structured error handling:
-
-```go
-func handleRequest(ctx *lift.Context) error {
-    // Return Lift errors for automatic status codes
-    if !authorized {
-        return lift.Unauthorized("Invalid credentials")
-    }
-    
-    user, err := getUser(id)
-    if err != nil {
-        if err == ErrNotFound {
-            return lift.NotFound("User not found")
-        }
-        // Generic errors become 500 Internal Server Error
+func ProcessOrder(ctx *lift.Context) error {
+    // SQS message is in ctx.Request.Body
+    var order Order
+    if err := ctx.ParseRequest(&order); err != nil {
         return err
     }
     
-    return ctx.JSON(user)
-}
-```
-
-## Configuration
-
-Configure your Lift application:
-
-```go
-config := lift.Config{
-    AppName:        "my-service",
-    Environment:    "production",
-    LogLevel:       "info",
-    EnableMetrics:  true,
-    EnableTracing:  true,
-    DefaultTimeout: 29 * time.Second, // Lambda timeout
-}
-
-app := lift.NewWithConfig(config)
-```
-
-## Environment Variables
-
-Lift uses these environment variables:
-
-- `LIFT_ENV` - Environment (development, staging, production)
-- `LIFT_LOG_LEVEL` - Log level (debug, info, warn, error)
-- `LIFT_METRICS_ENABLED` - Enable CloudWatch metrics
-- `LIFT_TRACING_ENABLED` - Enable X-Ray tracing
-
-## Next Steps
-
-Now that you have a basic Lift application running:
-
-1. Learn about [Core Concepts](./core-concepts.md)
-2. Explore [Middleware](./middleware.md) options
-3. Understand [Error Handling](./error-handling.md)
-4. Set up [Testing](./testing.md)
-5. Review [Production Guide](./production-guide.md)
-
-## Common Patterns
-
-### Health Checks
-
-```go
-app.GET("/health", func(ctx *lift.Context) error {
-    return ctx.JSON(map[string]string{
-        "status": "healthy",
-        "version": version,
-    })
-})
-```
-
-### Authentication
-
-```go
-// Add JWT middleware
-app.Use(middleware.JWT(middleware.JWTConfig{
-    SecretKey: os.Getenv("JWT_SECRET"),
-    // or PublicKey for RS256
-}))
-
-// Access authenticated user
-func protectedHandler(ctx *lift.Context) error {
-    userID := ctx.UserID()
-    claims := ctx.Get("claims").(jwt.MapClaims)
+    ctx.Logger.Info("Processing order", "order_id", order.ID)
     
-    // Handle request...
+    // Process the order
+    return processOrder(order)
 }
-```
-
-### Rate Limiting
-
-```go
-app.Use(middleware.RateLimit(middleware.RateLimitConfig{
-    WindowSize:  time.Minute,
-    MaxRequests: 100,
-    KeyFunc: func(ctx *lift.Context) string {
-        return ctx.TenantID() // Rate limit per tenant
-    },
-}))
 ```
 
 ## Troubleshooting
 
-### Handler Not Found
+### Common Issues
 
-Make sure your routes match the incoming request path and method.
+1. **Handler not found**: Ensure routes start with `/`
+2. **Validation errors**: Check struct tags are correct
+3. **Authentication failures**: Verify JWT secret matches
+4. **Rate limit errors**: Check DynamoDB table exists
 
-### Type Assertion Errors
+### Debug Mode
 
-When working with event metadata, use safe type assertions:
+Enable detailed logging:
 
 ```go
-if connectionID, ok := ctx.Request.Metadata["connectionId"].(string); ok {
-    // Use connectionID
+config := &lift.Config{
+    LogLevel: "DEBUG",
 }
+app.WithConfig(config)
 ```
 
-### Performance Issues
+## Resources
 
-- Enable connection pooling for databases
-- Use middleware selectively
-- Profile with X-Ray tracing
+- [API Reference](./api-reference.md) - Complete API documentation
+- [Testing Guide](./testing-guide.md) - Writing tests for Lift apps
+- [Migration Guide](./migration-guide.md) - Migrating from raw Lambda
+- [Examples](../examples/) - Sample applications
 
-## Example Projects
+---
 
-Check out complete examples in the `examples/` directory:
-
-### Getting Started
-- `hello-world` - Minimal Lambda function example
-- `basic-crud-api` - CRUD operations with testing patterns
-- `error-handling` - Structured error handling patterns
-
-### Authentication & Security
-- `jwt-auth` - JWT authentication with middleware
-- `jwt-auth-demo` - JWT authentication demonstration
-- `rate-limiting` - Rate limiting middleware
-
-### Real-time & Events
-- `websocket-demo` - WebSocket connection management
-- `websocket-enhanced` - Advanced WebSocket features
-- `event-adapters` - SQS, S3, EventBridge handlers
-- `multi-event-handler` - Multiple event type handling
-- `eventbridge-wakeup` - Scheduled EventBridge tasks
-- `multiple-scheduled-events` - Multiple scheduled triggers
-
-### Enterprise Applications
-- `multi-tenant-saas` - Multi-tenant SaaS patterns
-- `enterprise-banking` - Banking with compliance features
-- `enterprise-healthcare` - Healthcare with HIPAA compliance
-- `enterprise-ecommerce` - E-commerce platform example
-
-### Production Patterns
-- `production-api` - Production-ready configuration
-- `multi-service-demo` - Microservices with chaos engineering
-- `observability-demo` - Logging, metrics, and tracing
-- `health-monitoring` - Health check patterns
-
-### Testing & Development
-- `mocking-demo` - Testing with mocks
-- `cloudwatch-mocking-demo` - CloudWatch metrics mocking
-- `dynamorm-integration` - DynamORM database patterns
-- `streamer-quickstart` - Streaming quickstart
-
-Happy coding with Lift! 🚀 
+This guide provides the foundation for building serverless applications with Lift. As you grow more comfortable, explore advanced features like custom middleware, WebSocket support, and multi-region deployment.

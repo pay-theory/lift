@@ -1,6 +1,25 @@
-# Rate Limiting Example
+# Rate Limiting: Production-Ready API Protection with Lift
 
-This example demonstrates how to implement comprehensive rate limiting in a Lift application using the Pay Theory Limited library with DynamoDB backend.
+**This is the RECOMMENDED approach for implementing rate limiting in production Lift applications.**
+
+## What is This Example?
+
+This example demonstrates the **STANDARD patterns** for implementing comprehensive rate limiting with Lift. It shows the **preferred approaches** for protecting APIs from abuse while maintaining performance and scalability.
+
+## Why Use These Rate Limiting Patterns?
+
+✅ **USE these patterns when:**
+- Building production APIs that need abuse protection
+- Implementing multi-tenant applications with different rate limits
+- Need flexible rate limiting (IP, user, tenant, custom keys)
+- Want automatic rate limit headers and error responses
+- Require scalable rate limiting with DynamoDB
+
+❌ **DON'T USE when:**
+- Building internal APIs without abuse concerns
+- Simple applications with minimal traffic
+- Development/testing environments
+- Need real-time streaming without limits
 
 ## Features
 
@@ -46,67 +65,81 @@ export AWS_REGION=us-east-1
 export RATE_LIMIT_TABLE=rate_limits
 ```
 
-## Usage Examples
+## Core Rate Limiting Patterns
 
-### Basic Rate Limiting
+### 1. Basic Global Rate Limiting (STANDARD Pattern)
+
+**Purpose:** Protect entire API from abuse with global limits
+**When to use:** All production APIs as baseline protection
 
 ```go
-package main
-
-import (
-    "time"
-    "github.com/pay-theory/lift/pkg/lift"
-    "github.com/pay-theory/lift/pkg/middleware"
-    "github.com/pay-theory/lift/pkg/dynamorm"
-)
-
+// CORRECT: Basic production rate limiting setup
 func main() {
     app := lift.New()
 
-    // Set up DynamORM (required for rate limiting)
+    // REQUIRED: DynamORM for persistent rate limiting
     app.Use(dynamorm.WithDynamORM(&dynamorm.DynamORMConfig{
-        TableName: "rate_limits",
-        Region:    "us-east-1",
+        TableName: "rate_limits",        // REQUIRED: DynamoDB table
+        Region:    "us-east-1",         // REQUIRED: AWS region
     }))
 
-    // Global rate limit: 1000 requests per hour
+    // RECOMMENDED: Global rate limit for baseline protection
     app.Use(middleware.EndpointRateLimit(1000, time.Hour))
 
-    // API routes
     app.GET("/api/users", handleListUsers)
     app.POST("/api/users", handleCreateUser)
-
     app.Start()
 }
+
+// INCORRECT: No rate limiting
+// func main() {
+//     app := lift.New()
+//     app.GET("/api/users", handleListUsers)  // Vulnerable to abuse
+//     app.Start()
+// }
 ```
 
-### Tenant-Based Rate Limiting
+### 2. Multi-Tenant Rate Limiting (PREFERRED Pattern)
+
+**Purpose:** Different rate limits for different tenant tiers
+**When to use:** SaaS applications with multiple pricing tiers
 
 ```go
-// Different limits for different tenant tiers
+// CORRECT: Tenant-based rate limiting with tier support
 app.Use(middleware.RateLimit(middleware.RateLimitConfig{
-    Strategy:     "sliding_window",
-    Window:       time.Hour,
-    DefaultLimit: 100,  // Free tier
+    Strategy:     "sliding_window",    // PREFERRED: More accurate than fixed window
+    Window:       time.Hour,           // STANDARD: Hourly limits for quota management
+    DefaultLimit: 100,                 // REQUIRED: Free tier baseline
     TenantLimits: map[string]int{
-        "basic":      500,   // Basic tier
-        "premium":    2000,  // Premium tier
-        "enterprise": 10000, // Enterprise tier
+        "basic":      500,              // Paid tier gets 5x more
+        "premium":    2000,             // Premium gets 20x more
+        "enterprise": 10000,            // Enterprise gets 100x more
     },
 }))
+
+// INCORRECT: Same limits for all tenants
+// app.Use(middleware.EndpointRateLimit(100, time.Hour))
+// This doesn't differentiate between paying and free users
 ```
 
-### IP-Based Rate Limiting for Public Endpoints
+### 3. IP-Based Rate Limiting (CRITICAL Pattern)
+
+**Purpose:** Protect public endpoints from brute force and abuse
+**When to use:** All public authentication and registration endpoints
 
 ```go
-// Protect public endpoints from abuse
+// CORRECT: IP-based protection for vulnerable endpoints
 publicAPI := app.Group("/public")
-publicAPI.Use(middleware.IPRateLimit(10, time.Minute))
+publicAPI.Use(middleware.IPRateLimit(10, time.Minute))  // CRITICAL: Prevent brute force
 
-// These endpoints are rate limited by IP
+// ALWAYS protect these endpoints with IP limiting
 publicAPI.POST("/signup", handleSignup)
-publicAPI.POST("/login", handleLogin)
-publicAPI.POST("/forgot-password", handleForgotPassword)
+publicAPI.POST("/login", handleLogin)              // CRITICAL: Prevent credential stuffing
+publicAPI.POST("/forgot-password", handleForgotPassword)  // CRITICAL: Prevent abuse
+
+// INCORRECT: No rate limiting on auth endpoints
+// app.POST("/login", handleLogin)  // Vulnerable to brute force attacks
+// app.POST("/signup", handleSignup)  // Vulnerable to spam/abuse
 ```
 
 ### Custom Rate Limiting
@@ -216,23 +249,39 @@ Monitor rate limiting effectiveness using CloudWatch metrics:
 - DynamoDB read/write capacity
 - Lambda duration with rate limiting overhead
 
-## Best Practices
+## What This Example Teaches
 
-1. **Choose Appropriate Windows**: Use shorter windows (minutes) for abuse prevention and longer windows (hours/days) for quota management.
+### ✅ Best Practices Demonstrated
 
-2. **Set Reasonable Limits**: Start with conservative limits and adjust based on actual usage patterns.
+1. **ALWAYS use DynamORM middleware** before rate limiting - Required for persistent storage
+2. **ALWAYS protect auth endpoints** with IP-based rate limiting - Prevents brute force attacks
+3. **PREFER sliding window** over fixed window - More accurate rate limiting
+4. **ALWAYS implement tenant-based limits** in SaaS apps - Different tiers need different limits
+5. **ALWAYS provide clear error messages** - Help users understand rate limits
 
-3. **Use Multiple Strategies**: Combine different rate limiting strategies for comprehensive protection:
-   - IP-based for public endpoints
-   - User-based for authenticated endpoints
-   - Tenant-based for multi-tenant applications
+### 🚫 Critical Anti-Patterns Avoided
 
-4. **Provide Clear Error Messages**: Help users understand why they're rate limited and when they can retry.
+1. **No rate limiting on auth endpoints** - Brute force vulnerability
+2. **Same limits for all users** - Poor user experience for paying customers
+3. **Fixed window strategy only** - Allows burst attacks at window boundaries
+4. **Missing DynamORM setup** - Rate limiting won't persist across Lambda instances
+5. **Generic error responses** - Users don't understand when they can retry
 
-5. **Consider Business Logic**: Different operations may need different limits:
-   - Read operations: Higher limits
-   - Write operations: Moderate limits
-   - Expensive operations: Lower limits
+### 🔒 Security Requirements (MANDATORY)
+
+1. **IP Rate Limiting**: ALWAYS protect login, signup, password reset endpoints
+2. **Graduated Limits**: Different limits for different user tiers
+3. **Fail Open Strategy**: Allow requests if rate limiting service fails
+4. **Audit Logging**: Track rate limit violations for security monitoring
+5. **Proper Windows**: Use appropriate time windows for different attack types
+
+### 📊 Recommended Limits by Endpoint Type
+
+- **Authentication**: 5-10 requests/minute per IP (brute force protection)
+- **Registration**: 2-5 requests/minute per IP (spam prevention)
+- **API Reads**: 100-1000 requests/hour per user (normal usage)
+- **API Writes**: 50-500 requests/hour per user (data protection)
+- **Expensive Operations**: 5-10 requests/hour per user (resource protection)
 
 ## Troubleshooting
 
