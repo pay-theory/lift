@@ -38,7 +38,8 @@
       "Bash(mkdir:*)",
       "Bash(cp:*)",
       "Bash(mv:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(go get:*)"
     ],
     "deny": []
   }
