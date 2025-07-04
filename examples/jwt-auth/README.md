@@ -1,6 +1,25 @@
-# JWT Authentication Example
+# JWT Authentication: Production-Ready Auth with Lift
 
-This example demonstrates how to use JWT authentication with the Lift framework, including multi-tenant support, role-based access control, and scope-based permissions.
+**This is the RECOMMENDED pattern for implementing JWT authentication in Lift applications.**
+
+## What is This Example?
+
+This example demonstrates the **STANDARD approach** for implementing production-ready JWT authentication. It shows the **preferred patterns** for multi-tenant auth, role-based access control, and secure token validation with Lift.
+
+## Why Use This Authentication Pattern?
+
+✅ **USE this pattern when:**
+- Building production APIs requiring authentication
+- Need multi-tenant authentication and authorization
+- Require role-based access control (RBAC)
+- Want consistent security across all endpoints
+- Building microservices with shared authentication
+
+❌ **DON'T USE when:**
+- Building internal tools without authentication needs
+- Using API keys or other authentication methods
+- Single-tenant applications with simple auth needs
+- Development/testing environments only
 
 ## Features Demonstrated
 
@@ -29,29 +48,121 @@ This example demonstrates how to use JWT authentication with the Lift framework,
 
 - `GET /mixed/content` - Content that adapts based on authentication status
 
-## JWT Configuration
+## Core Authentication Patterns
 
-The example uses the following JWT configuration:
+### 1. JWT Configuration (STANDARD Pattern)
+
+**Purpose:** Configure secure JWT validation with multi-tenant support
+**When to use:** All production APIs requiring authentication
 
 ```go
+// CORRECT: Production-ready JWT configuration
 jwtConfig := security.JWTConfig{
-    SigningMethod:   "HS256",                    // or "RS256" for RSA
-    SecretKey:       "your-secret-key-here",     // For HS256
-    Issuer:          "pay-theory",
-    Audience:        []string{"lift-api"},
-    MaxAge:          time.Hour,
-    RequireTenantID: true,
+    SigningMethod:   "HS256",                    // PREFERRED: or "RS256" for production
+    SecretKey:       "your-secret-key-here",     // REQUIRED: Load from AWS Secrets Manager
+    Issuer:          "pay-theory",               // REQUIRED: Validate token issuer
+    Audience:        []string{"lift-api"},       // REQUIRED: Validate intended audience
+    MaxAge:          time.Hour,                  // REQUIRED: Short expiration for security
+    RequireTenantID: true,                       // REQUIRED: Multi-tenant security
     ValidateTenant: func(tenantID string) error {
-        // Custom tenant validation logic
-        validTenants := []string{"tenant1", "tenant2", "premium-tenant"}
-        for _, valid := range validTenants {
-            if tenantID == valid {
-                return nil
-            }
-        }
-        return security.NewSecurityError("INVALID_TENANT", "Tenant not found")
+        // REQUIRED: Custom tenant validation
+        return validateTenantAccess(tenantID)
     },
 }
+
+// INCORRECT: Insecure configuration
+// jwtConfig := security.JWTConfig{
+//     SecretKey: "weak-key",      // Weak secret - security risk
+//     MaxAge:    24 * time.Hour,  // Too long - security risk
+//     // Missing RequireTenantID - multi-tenant vulnerability
+//     // Missing Issuer/Audience validation - token forgery risk
+// }
+```
+
+### 2. Route Protection (PREFERRED Pattern)
+
+**Purpose:** Apply consistent authentication across route groups
+**When to use:** Protecting API endpoints with JWT
+
+```go
+// CORRECT: Group-based authentication
+app := lift.New()
+
+// Public routes (no authentication)
+app.GET("/health", healthHandler)
+app.GET("/public", publicHandler)
+
+// Protected API routes
+api := app.Group("/api")
+api.Use(security.JWTAuth(jwtConfig))  // REQUIRED: Apply to all routes
+
+// All routes under /api are now protected
+api.GET("/profile", profileHandler)
+api.GET("/users", usersHandler)
+api.GET("/payments", paymentsHandler)
+
+// INCORRECT: Route-by-route authentication
+// app.GET("/api/profile", security.JWTAuth(jwtConfig), profileHandler)
+// app.GET("/api/users", security.JWTAuth(jwtConfig), usersHandler)
+// This is inconsistent and error-prone
+```
+
+### 3. Role-Based Access Control (STANDARD Pattern)
+
+**Purpose:** Restrict access based on user roles
+**When to use:** Endpoints requiring specific permissions
+
+```go
+// CORRECT: Role-based middleware
+api.GET("/users", 
+    security.RequireRoles("admin", "manager"),  // REQUIRED roles
+    func(ctx *lift.Context) error {
+        // Only admin or manager users can access
+        return ctx.JSON(getAllUsers())
+    })
+
+api.GET("/payments", 
+    security.RequireScopes("payments:read"),    // REQUIRED scope
+    func(ctx *lift.Context) error {
+        // Only users with payments:read scope can access
+        return ctx.JSON(getPayments())
+    })
+
+// INCORRECT: Manual role checking in handlers
+// api.GET("/users", func(ctx *lift.Context) error {
+//     user := ctx.User()
+//     if !hasRole(user, "admin") {  // Manual checking - error-prone
+//         return ctx.JSON(403, "Forbidden")
+//     }
+//     return ctx.JSON(getAllUsers())
+// })
+```
+
+### 4. Tenant Isolation (CRITICAL Pattern)
+
+**Purpose:** Ensure users only access their tenant's data
+**When to use:** All multi-tenant applications
+
+```go
+// CORRECT: Automatic tenant validation
+api.GET("/tenant/:id/data", func(ctx *lift.Context) error {
+    requestedTenant := ctx.Param("id")
+    userTenant := ctx.TenantID()  // From JWT token
+    
+    // Lift automatically validates tenant access
+    if requestedTenant != userTenant {
+        return security.NewSecurityError("FORBIDDEN", "Cross-tenant access denied")
+    }
+    
+    return ctx.JSON(getTenantData(userTenant))
+})
+
+// INCORRECT: Missing tenant validation
+// api.GET("/tenant/:id/data", func(ctx *lift.Context) error {
+//     tenantID := ctx.Param("id")
+//     // No validation - users can access any tenant's data!
+//     return ctx.JSON(getTenantData(tenantID))
+// })
 ```
 
 ## JWT Token Format
@@ -221,16 +332,32 @@ All authentication events are automatically logged with structured data includin
 - Request details
 - Success/failure status
 
-## Security Best Practices
+## What This Example Teaches
 
-1. **Use Strong Secrets**: Generate cryptographically secure secret keys
-2. **Short Token Lifetimes**: Use short expiration times (1 hour or less)
-3. **Validate All Claims**: Always validate issuer, audience, and expiration
-4. **Tenant Isolation**: Implement strict tenant validation
-5. **Role-based Access**: Use the principle of least privilege
-6. **Audit Logging**: Log all authentication and authorization events
-7. **HTTPS Only**: Always use HTTPS in production
-8. **Token Rotation**: Implement regular key rotation
+### ✅ Best Practices Demonstrated
+
+1. **ALWAYS use route groups** for consistent authentication - Apply JWT middleware to groups, not individual routes
+2. **ALWAYS validate tenant access** - Use `RequireTenantID: true` and custom validation
+3. **ALWAYS use short token lifetimes** - 1 hour or less for security
+4. **PREFER role-based middleware** over manual role checking - Use `RequireRoles()` and `RequireScopes()`
+5. **ALWAYS load secrets from AWS Secrets Manager** - Never hardcode JWT secrets
+
+### 🚫 Critical Anti-Patterns Avoided
+
+1. **Manual authentication checking** - Inconsistent and error-prone
+2. **Long token lifetimes** - Security vulnerability
+3. **Missing tenant validation** - Cross-tenant data access
+4. **Weak secret keys** - Token forgery risk
+5. **Route-by-route auth** - Inconsistent protection
+
+### 🔒 Security Requirements (MANDATORY)
+
+1. **Strong Secrets**: Use cryptographically secure secret keys (256+ bits)
+2. **HTTPS Only**: Never use HTTP in production environments
+3. **Token Validation**: Always validate issuer, audience, and expiration
+4. **Tenant Isolation**: Strict validation prevents cross-tenant access
+5. **Audit Logging**: All auth events automatically logged by Lift
+6. **Key Rotation**: Regular rotation of JWT signing keys
 
 ## Integration with Pay Theory Architecture
 
