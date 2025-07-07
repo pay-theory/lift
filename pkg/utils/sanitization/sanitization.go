@@ -37,8 +37,9 @@ func Default() *Sanitizer {
 
 	dpm, err := security.NewDataProtectionManager(config)
 	if err != nil {
-		// This should not happen with basic config
-		panic(fmt.Sprintf("Failed to create default data protection manager: %v", err))
+		// If we can't create data protection manager, return a minimal sanitizer
+		// that will redact everything for safety
+		return &Sanitizer{dataProtectionManager: nil}
 	}
 
 	return &Sanitizer{dataProtectionManager: dpm}
@@ -51,6 +52,11 @@ func (s *Sanitizer) SanitizeFieldValue(key string, value any) any {
 	// Check if field is explicitly allowed
 	if AllowedFields[keyLower] {
 		return value
+	}
+
+	// If no data protection manager, redact everything for safety
+	if s.dataProtectionManager == nil {
+		return "[REDACTED]"
 	}
 
 	// Use the data protection manager to classify the field

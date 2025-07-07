@@ -359,7 +359,8 @@ func (cb *circuitBreaker) recordFailure() {
 	cb.addToHistory(false)
 
 	// Check for state transitions
-	if cb.state == CircuitBreakerClosed {
+	switch cb.state {
+	case CircuitBreakerClosed:
 		// Check failure threshold
 		if cb.consecutiveFailures >= cb.config.FailureThreshold {
 			cb.transitionToOpen()
@@ -371,7 +372,7 @@ func (cb *circuitBreaker) recordFailure() {
 				cb.transitionToOpen()
 			}
 		}
-	} else if cb.state == CircuitBreakerHalfOpen {
+	case CircuitBreakerHalfOpen:
 		// Any failure in half-open state transitions back to open
 		cb.transitionToOpen()
 	}

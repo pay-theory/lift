@@ -248,6 +248,48 @@ go build -o crud-api main.go
 
 3. Deploy to AWS Lambda (requires AWS setup)
 
+### Deploying with CDK
+
+This example includes AWS CDK deployment configuration for easy infrastructure as code deployment.
+
+#### First Time Setup
+```bash
+# Install AWS CDK CLI (if not already installed)
+npm install -g aws-cdk
+
+# Bootstrap your AWS account for CDK (first time only)
+cd cdk && cdk bootstrap
+```
+
+#### Deploy the Application
+```bash
+# Build and deploy in one command
+make deploy
+
+# Or step by step:
+make build    # Build the Lambda function
+make synth    # Preview CloudFormation template
+make diff     # See what will change
+make deploy   # Deploy to AWS
+```
+
+#### CDK Stack Includes
+- Lambda function with ARM64 architecture
+- API Gateway HTTP API with CORS enabled
+- DynamoDB table with auto-scaling
+- Rate limiting table
+- CloudWatch logs and X-Ray tracing
+- All necessary IAM permissions
+
+#### Clean Up
+```bash
+# Destroy all AWS resources
+make destroy
+
+# Clean local build artifacts
+make clean
+```
+
 ### Running Tests
 
 ```bash

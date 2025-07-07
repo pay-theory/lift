@@ -132,7 +132,7 @@ func (v *JWTValidator) validateStandardClaims(claims *JWTClaims) error {
 
 	// Check issuer
 	if v.config.Issuer != "" && claims.Issuer != v.config.Issuer {
-		return fmt.Errorf("invalid issuer: expected %s, got %s", v.config.Issuer, claims.Issuer)
+		return fmt.Errorf("token validation failed: issuer mismatch")
 	}
 
 	// Check audience
@@ -150,7 +150,7 @@ func (v *JWTValidator) validateStandardClaims(claims *JWTClaims) error {
 			}
 		}
 		if !validAudience {
-			return fmt.Errorf("invalid audience")
+			return fmt.Errorf("token validation failed: audience mismatch")
 		}
 	}
 
@@ -183,8 +183,15 @@ func (v *JWTValidator) validateCustomClaims(claims *JWTClaims) error {
 func JWT(config security.JWTConfig) lift.Middleware {
 	validator, err := NewJWTValidator(config)
 	if err != nil {
-		// This is a configuration error, panic is appropriate
-		panic(fmt.Sprintf("Failed to create JWT validator: %v", err))
+		// Return a middleware that always returns an error
+		return func(next lift.Handler) lift.Handler {
+			return lift.HandlerFunc(func(ctx *lift.Context) error {
+				return lift.SystemError("JWT middleware configuration error").
+					WithDetail("error", "Failed to initialize JWT validator").
+					WithDetail("cause", err.Error()).
+					WithStackTrace()
+			})
+		}
 	}
 
 	return func(next lift.Handler) lift.Handler {
@@ -201,7 +208,14 @@ func JWT(config security.JWTConfig) lift.Middleware {
 			// Validate token
 			claims, err := validator.ValidateToken(token)
 			if err != nil {
-				return lift.Unauthorized(fmt.Sprintf("Invalid token: %v", err))
+				// Log detailed error internally but return generic message
+				if ctx.Logger != nil {
+					ctx.Logger.Error("Token validation failed", map[string]any{
+						"error": err.Error(),
+						"error_type": fmt.Sprintf("%T", err),
+					})
+				}
+				return lift.Unauthorized("Invalid or expired token")
 			}
 
 			// Multi-tenant validation
@@ -232,7 +246,15 @@ func JWT(config security.JWTConfig) lift.Middleware {
 func JWTOptional(config security.JWTConfig) lift.Middleware {
 	validator, err := NewJWTValidator(config)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to create JWT validator: %v", err))
+		// Return a middleware that always returns an error
+		return func(next lift.Handler) lift.Handler {
+			return lift.HandlerFunc(func(ctx *lift.Context) error {
+				return lift.SystemError("JWT optional middleware configuration error").
+					WithDetail("error", "Failed to initialize JWT validator").
+					WithDetail("cause", err.Error()).
+					WithStackTrace()
+			})
+		}
 	}
 
 	return func(next lift.Handler) lift.Handler {
@@ -286,7 +308,15 @@ func RequireRole(roles ...string) lift.Middleware {
 			}
 
 			if !principal.HasAnyRole(roles...) {
-				return lift.AuthorizationError(fmt.Sprintf("Required roles: %v", roles))
+				// Log required roles internally but return generic message
+				if ctx.Logger != nil {
+					ctx.Logger.Warn("Authorization failed: missing required roles", map[string]any{
+						"required_roles": roles,
+						"user_roles": principal.Roles,
+						"user_id": principal.UserID,
+					})
+				}
+				return lift.AuthorizationError("Insufficient permissions")
 			}
 
 			return next.Handle(ctx)
@@ -306,7 +336,15 @@ func RequireScope(scopes ...string) lift.Middleware {
 
 			for _, scope := range scopes {
 				if !principal.HasScope(scope) {
-					return lift.AuthorizationError(fmt.Sprintf("Required scope: %s", scope))
+					// Log required scope internally but return generic message
+					if ctx.Logger != nil {
+						ctx.Logger.Warn("Authorization failed: missing required scope", map[string]any{
+							"required_scope": scope,
+							"user_scopes": principal.Scopes,
+							"user_id": principal.UserID,
+						})
+					}
+					return lift.AuthorizationError("Insufficient permissions")
 				}
 			}
 

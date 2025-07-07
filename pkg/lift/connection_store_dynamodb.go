@@ -181,9 +181,9 @@ func (s *DynamoDBConnectionStore) Delete(ctx context.Context, connectionID strin
 
 	// Atomically decrement the connection counter
 	if err := s.decrementConnectionCounter(ctx); err != nil {
-		// Log the error but don't fail the connection deletion
 		// The counter is for monitoring, not critical functionality
-		fmt.Printf("Warning: failed to decrement connection counter: %v\n", err)
+		// Silently ignore counter errors
+		_ = err
 	}
 
 	return nil
@@ -419,8 +419,8 @@ func (s *DynamoDBConnectionStore) CreateTable(ctx context.Context) error {
 		},
 	})
 	if err != nil {
-		// TTL update might fail if already enabled, ignore the error
-		fmt.Printf("Warning: failed to enable TTL: %v\n", err)
+		// TTL update might fail if already enabled, silently ignore
+		_ = err
 	}
 
 	return nil

@@ -41,6 +41,19 @@ func NewCLI(version string) *CLI {
 	cli.RegisterCommand(&HealthCommand{})
 	cli.RegisterCommand(&VersionCommand{version: version})
 	cli.RegisterCommand(&HelpCommand{cli: cli})
+	
+	// Register CDK commands
+	cli.RegisterCommand(&BuildCommand{})
+	cli.RegisterCommand(&CDKInitCommand{})
+	cli.RegisterCommand(&CDKDeployCommand{})
+	cli.RegisterCommand(&CDKSynthCommand{})
+	cli.RegisterCommand(&CDKDiffCommand{})
+	cli.RegisterCommand(&CDKDestroyCommand{})
+	
+	// Register DynamORM commands
+	cli.RegisterCommand(&DynamORMScaffoldCommand{})
+	cli.RegisterCommand(&DynamORMMigrateCommand{})
+	cli.RegisterCommand(&DynamORMBenchmarkCommand{})
 
 	return cli
 }
