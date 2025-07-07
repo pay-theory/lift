@@ -78,8 +78,22 @@ func (a *APIGatewayAdapter) Adapt(rawEvent any) (*Request, error) {
 	method := extractStringField(eventMap, "httpMethod")
 	path := extractStringField(eventMap, "path")
 	if path == "" {
-		// Fallback to resource if path is not available
-		path = extractStringField(eventMap, "resource")
+		// API Gateway v1 should always have a path field when properly configured
+		// The resource field contains the route template (e.g., /users/{id}) not the actual path
+		return nil, fmt.Errorf("API Gateway v1 event missing 'path' field - check your API Gateway integration configuration")
+	}
+	
+	// Handle stage prefix in path (occurs with custom domains)
+	// This matches the behavior of the v2 adapter
+	stage := extractStringField(requestContext, "stage")
+	if stage != "" && stage != "$default" {
+		stagePrefix := "/" + stage
+		if strings.HasPrefix(path, stagePrefix) {
+			path = strings.TrimPrefix(path, stagePrefix)
+			if path == "" {
+				path = "/"
+			}
+		}
 	}
 
 	// Extract headers (case-insensitive)
