@@ -84,15 +84,14 @@ func (a *APIGatewayV2Adapter) Adapt(rawEvent any) (*Request, error) {
 	// the stage in the path. We need to strip it for proper routing.
 	stage := extractStringField(requestContext, "stage")
 	if stage != "" && stage != "$default" {
-		// Check if path starts with stage prefix
+		// Check if path starts with stage prefix followed by "/" or is exactly the stage
 		stagePrefix := "/" + stage
-		if strings.HasPrefix(path, stagePrefix) {
-			// Strip stage prefix from path
+		if path == stagePrefix {
+			// Path is exactly the stage, return root
+			path = "/"
+		} else if strings.HasPrefix(path, stagePrefix+"/") {
+			// Strip stage prefix from path only if followed by "/"
 			path = strings.TrimPrefix(path, stagePrefix)
-			// Handle case where path becomes empty after stripping
-			if path == "" {
-				path = "/"
-			}
 		}
 	}
 
