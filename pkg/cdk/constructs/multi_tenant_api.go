@@ -38,6 +38,12 @@ type MultiTenantAPIProps struct {
 	// Lambda function timeout
 	Timeout awscdk.Duration
 
+	// Existing DynamoDB table (optional - will create one if not provided)
+	Table awsdynamodb.ITable
+
+	// Table name for new table (used if Table is not provided)
+	TableName *string
+
 	// Cognito user pool for authentication
 	UserPool awscognito.IUserPool
 
@@ -115,8 +121,8 @@ type MultiTenantAPI struct {
 	constructs.Construct
 	API            awsapigatewayv2.HttpApi
 	Function       *LiftFunction
-	TenantTable    awsdynamodb.Table
-	RateLimitTable awsdynamodb.Table
+	Table          awsdynamodb.ITable
+	RateLimitTable awsdynamodb.ITable
 	WebACL         awswafv2.CfnWebACL
 }
 
@@ -135,33 +141,34 @@ func NewMultiTenantAPI(scope constructs.Construct, id string, props *MultiTenant
 		props.TenantIDHeader = jsii.String("X-Tenant-ID")
 	}
 
-	// Create tenant tracking table
-	tenantTable := awsdynamodb.NewTable(this, jsii.String("TenantTable"), &awsdynamodb.TableProps{
-		TableName:       jsii.String(fmt.Sprintf("%s-tenants", *props.APIName)),
-		PartitionKey:    &awsdynamodb.Attribute{Name: jsii.String("tenantId"), Type: awsdynamodb.AttributeType_STRING},
-		BillingMode:     awsdynamodb.BillingMode_PAY_PER_REQUEST,
-		PointInTimeRecovery: jsii.Bool(true),
-		Encryption:      awsdynamodb.TableEncryption_AWS_MANAGED,
-		RemovalPolicy:   awscdk.RemovalPolicy_RETAIN,
-	})
-
-	// Add GSI for tenant status
-	tenantTable.AddGlobalSecondaryIndex(&awsdynamodb.GlobalSecondaryIndexProps{
-		IndexName:    jsii.String("status-index"),
-		PartitionKey: &awsdynamodb.Attribute{Name: jsii.String("status"), Type: awsdynamodb.AttributeType_STRING},
-		SortKey:      &awsdynamodb.Attribute{Name: jsii.String("updatedAt"), Type: awsdynamodb.AttributeType_STRING},
-	})
+	// Use existing table or create a DynamORM-compatible one
+	var table awsdynamodb.ITable
+	if props.Table != nil {
+		table = props.Table
+	} else {
+		// Create a DynamORM-compatible multi-tenant table
+		tableName := props.TableName
+		if tableName == nil {
+			tableName = jsii.String(fmt.Sprintf("%s-table", *props.APIName))
+		}
+		
+		liftTable := NewLiftTable(this, jsii.String("Table"), &LiftTableProps{
+			TableName:         tableName,
+			EnableMultiTenant: jsii.Bool(true),
+			EnableStreams:     jsii.Bool(true),
+			EnablePointInTimeRecovery: jsii.Bool(true),
+		})
+		table = liftTable.Table
+	}
 
 	// Create rate limit table if enabled
-	var rateLimitTable awsdynamodb.Table
+	var rateLimitTable awsdynamodb.ITable
 	if props.EnableTenantRateLimiting != nil && *props.EnableTenantRateLimiting {
-		rateLimitTable = awsdynamodb.NewTable(this, jsii.String("RateLimitTable"), &awsdynamodb.TableProps{
-			TableName:    jsii.String(fmt.Sprintf("%s-rate-limits", *props.APIName)),
-			PartitionKey: &awsdynamodb.Attribute{Name: jsii.String("tenantId"), Type: awsdynamodb.AttributeType_STRING},
-			SortKey:      &awsdynamodb.Attribute{Name: jsii.String("window"), Type: awsdynamodb.AttributeType_STRING},
-			BillingMode:  awsdynamodb.BillingMode_PAY_PER_REQUEST,
+		rateLimitTableConstruct := NewLiftTable(this, jsii.String("RateLimitTable"), &LiftTableProps{
+			TableName:           jsii.String(fmt.Sprintf("%s-rate-limits", *props.APIName)),
 			TimeToLiveAttribute: jsii.String("ttl"),
 		})
+		rateLimitTable = rateLimitTableConstruct.Table
 	}
 
 	// Create the Lambda function with multi-tenant configuration
@@ -173,8 +180,9 @@ func NewMultiTenantAPI(scope constructs.Construct, id string, props *MultiTenant
 	}
 	
 	// Add tenant-specific environment variables
-	functionEnv["TENANT_TABLE_NAME"] = tenantTable.TableName()
+	functionEnv["DYNAMODB_TABLE_NAME"] = table.TableName()
 	functionEnv["TENANT_ISOLATION_MODE"] = jsii.String(getTenantIsolationMode(props))
+	functionEnv["LIFT_MULTI_TENANT"] = jsii.String("true")
 	if props.EnableJWTTenantIsolation != nil && *props.EnableJWTTenantIsolation {
 		functionEnv["TENANT_ID_CLAIM"] = props.TenantIDClaim
 	}
@@ -203,7 +211,7 @@ func NewMultiTenantAPI(scope constructs.Construct, id string, props *MultiTenant
 	})
 
 	// Grant permissions
-	tenantTable.GrantReadWriteData(liftFunction.Function)
+	table.GrantReadWriteData(liftFunction.Function)
 	if rateLimitTable != nil {
 		rateLimitTable.GrantReadWriteData(liftFunction.Function)
 	}
@@ -385,7 +393,7 @@ func NewMultiTenantAPI(scope constructs.Construct, id string, props *MultiTenant
 		Construct:      this,
 		API:            api,
 		Function:       liftFunction,
-		TenantTable:    tenantTable,
+		Table:          table,
 		RateLimitTable: rateLimitTable,
 		WebACL:         webACL,
 	}
