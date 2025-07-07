@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pay-theory/lift/pkg/features"
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
@@ -53,6 +54,7 @@ type DevServer struct {
 	profiler  *ProfilerServer
 	dashboard *DevDashboard
 	watcher   *FileWatcher
+	features  *features.FeatureFlags
 
 	// Server state
 	server    *http.Server

@@ -148,11 +148,12 @@ func (s *SSMIPAuthorizer) IsAuthorizedIP(ctx context.Context, sourceIP string, s
 		Name: aws.String(ssmParameterName),
 	})
 	if err != nil {
-		return false, fmt.Errorf("failed to get IP list from SSM parameter %s: %w", ssmParameterName, err)
+		// Don't expose parameter names in errors
+		return false, fmt.Errorf("failed to retrieve IP authorization configuration: %w", err)
 	}
 
 	if result.Parameter == nil || result.Parameter.Value == nil {
-		return false, fmt.Errorf("SSM parameter %s has no value", ssmParameterName)
+		return false, fmt.Errorf("IP authorization configuration is invalid")
 	}
 
 	// Parse the comma-separated list of IPs

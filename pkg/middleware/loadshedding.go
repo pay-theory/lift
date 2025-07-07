@@ -249,9 +249,7 @@ type loadSheddingManager struct {
 
 // loadRequestRecord tracks individual request metrics for load shedding
 type loadRequestRecord struct {
-	timestamp time.Time
-	duration  time.Duration
-	success   bool
+	// Reserved for future implementation of request tracking
 }
 
 // shouldShedRequest determines if a request should be shed

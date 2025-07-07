@@ -13,41 +13,23 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
-// Tracer interface for distributed tracing (placeholder)
-type Tracer interface {
-	StartSpan(operationName string) any
-	FinishSpan(span any)
-}
-
-// MetricsCollector interface for metrics collection (placeholder)
-type MetricsCollector interface {
-	Counter(name string, tags map[string]string) Counter
-	Histogram(name string, tags map[string]string) Histogram
-	Gauge(name string, tags map[string]string) Gauge
-	Flush() error
-}
-
-// Counter interface for counter metrics
-type Counter interface {
-	Inc()
-}
-
-// Histogram interface for histogram metrics
-type Histogram interface {
-	Observe(value float64)
-}
-
-// Gauge interface for gauge metrics
-type Gauge interface {
-	Set(value float64)
-}
+// Import these from lift package for consistency
+type (
+	// Counter is re-exported from lift package
+	Counter = lift.Counter
+	// Histogram is re-exported from lift package
+	Histogram = lift.Histogram
+	// Gauge is re-exported from lift package
+	Gauge = lift.Gauge
+	// MetricsCollector is re-exported from lift package
+	MetricsCollector = lift.MetricsCollector
+)
 
 // ServiceClient provides type-safe inter-service communication
 type ServiceClient struct {
 	registry       *ServiceRegistry
 	circuitBreaker CircuitBreaker
 	retryPolicy    *RetryPolicy
-	tracer         Tracer
 	metrics        MetricsCollector
 	httpClient     HTTPClient
 	config         ServiceClientConfig
@@ -306,16 +288,29 @@ func (c *ServiceClient) setRequestHeaders(req *http.Request, request *ServiceReq
 	}
 
 	// Add tracing headers if enabled
-	if c.config.EnableTracing && c.tracer != nil {
+	if c.config.EnableTracing {
 		c.addTracingHeaders(req, request)
 	}
 }
 
 // addTracingHeaders adds distributed tracing headers
 func (c *ServiceClient) addTracingHeaders(req *http.Request, request *ServiceRequest) {
-	// This would integrate with the existing tracing system
-	// For now, this is a placeholder
-	req.Header.Set("X-Trace-ID", c.generateTraceID())
+	// Add trace context headers
+	// These would typically be propagated from the incoming request context
+	if request.Metadata != nil {
+		if traceID, ok := request.Metadata["trace_id"].(string); ok && traceID != "" {
+			req.Header.Set("X-Trace-ID", traceID)
+		} else {
+			req.Header.Set("X-Trace-ID", c.generateTraceID())
+		}
+		
+		if spanID, ok := request.Metadata["span_id"].(string); ok && spanID != "" {
+			req.Header.Set("X-Parent-Span-ID", spanID)
+		}
+	} else {
+		req.Header.Set("X-Trace-ID", c.generateTraceID())
+	}
+	
 	req.Header.Set("X-Span-ID", c.generateSpanID())
 }
 
@@ -610,9 +605,10 @@ func (u *UserServiceClient) ListUsers(ctx context.Context, filters *UserFilters)
 
 	// Add query parameters for filters
 	if filters != nil {
-		// In a real implementation, we'd build query parameters
-		// For now, we'll pass filters in the request body
-		request.Body = filters
+		// Pass filters as query parameters via request metadata
+		request.Metadata = map[string]any{
+			"filters": filters,
+		}
 	}
 
 	response, err := u.client.Call(ctx, request)

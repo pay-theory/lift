@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
 	"time"
+	
+	"github.com/pay-theory/lift/pkg/features"
 )
 
 // DevDashboard provides an interactive web interface for development
@@ -14,13 +17,25 @@ type DevDashboard struct {
 	server     *DevServer
 	port       int
 	httpServer *http.Server
+	logService *LogService
+	features   *features.FeatureFlags
 }
 
 // NewDevDashboard creates a new development dashboard
 func NewDevDashboard(server *DevServer, port int) *DevDashboard {
+	// Initialize feature flags if not already done
+	ff := server.features
+	if ff == nil {
+		ff, _ = features.NewFeatureFlags(features.FeatureFlagConfig{
+			LocalOnly: true,
+		})
+	}
+	
 	return &DevDashboard{
-		server: server,
-		port:   port,
+		server:     server,
+		port:       port,
+		logService: LogServiceFactory("", ff),
+		features:   ff,
 	}
 }
 
@@ -55,6 +70,11 @@ func (d *DevDashboard) Start() error {
 
 // Stop stops the dashboard server
 func (d *DevDashboard) Stop() error {
+	// Stop log service
+	if d.logService != nil {
+		d.logService.Stop()
+	}
+	
 	if d.httpServer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -121,40 +141,35 @@ func (d *DevDashboard) handleAPIRestart(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// handleAPILogs returns recent logs (placeholder)
+// handleAPILogs returns recent logs from the log service
 func (d *DevDashboard) handleAPILogs(w http.ResponseWriter, r *http.Request) {
-	// This would return actual logs in a real implementation
-	logs := []map[string]any{
-		{
-			"timestamp": time.Now().Add(-5 * time.Minute),
-			"level":     "INFO",
-			"message":   "Development server started",
-		},
-		{
-			"timestamp": time.Now().Add(-3 * time.Minute),
-			"level":     "DEBUG",
-			"message":   "File watcher initialized",
-		},
-		{
-			"timestamp": time.Now().Add(-1 * time.Minute),
-			"level":     "INFO",
-			"message":   "Hot reload triggered",
-		},
-		{
-			"timestamp": time.Now(),
-			"level":     "INFO",
-			"message":   "Server restarted successfully",
-		},
+	// Parse query parameters
+	query := r.URL.Query()
+	limit := 100
+	if l := query.Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
 	}
-
+	
+	// Get search query if provided
+	searchQuery := query.Get("search")
+	
+	var logs []LogEntry
+	if searchQuery != "" {
+		logs = d.logService.SearchLogs(searchQuery)
+	} else {
+		logs = d.logService.GetRecentLogs(limit)
+	}
+	
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(logs)
 }
 
 // handleStatic serves static assets
 func (d *DevDashboard) handleStatic(w http.ResponseWriter, r *http.Request) {
-	// In a real implementation, this would serve actual static files
-	// For now, we'll serve embedded CSS and JS
+	// For the development dashboard, we embed CSS and JS directly
+	// This keeps the dashboard self-contained with no external dependencies
 	path := r.URL.Path[8:] // Remove "/static/"
 
 	switch path {

@@ -39,7 +39,19 @@
       "Bash(cp:*)",
       "Bash(mv:*)",
       "Bash(echo:*)",
-      "Bash(go get:*)"
+      "Bash(go get:*)",
+      "Bash(sed:*)",
+      "Bash(chmod:*)",
+      "Bash(go list:*)",
+      "Bash(for f in event_routing_table.go idempotency_table.go ratelimit_table.go request_tracking_table.go idempotent.go)",
+      "Bash(do)",
+      "Bash(if [ -f \"/Users/aronprice/lift/pkg/cdk/constructs/$f\" ])",
+      "Bash(then)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(if [ -f \"/Users/aronprice/lift/pkg/cdk/constructs/$f.bak\" ])",
+      "Bash(./verify_build.sh:*)",
+      "Bash(./check_warnings.sh:*)"
     ],
     "deny": []
   }

@@ -115,21 +115,20 @@ func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (strin
 
 	result, err := asm.client.GetSecretValue(ctx, input)
 	if err != nil {
-		return "", fmt.Errorf("failed to get secret %s: %w", fullName, err)
+		// Don't expose secret names in errors
+		return "", fmt.Errorf("failed to retrieve secret: %w", err)
 	}
 
 	if result.SecretString == nil {
-		return "", fmt.Errorf("secret %s has no string value", fullName)
+		return "", fmt.Errorf("secret value is not in expected format")
 	}
 
 	value := *result.SecretString
 
 	// Cache the secret (encrypted or plain text)
 	if asm.useEncryption && asm.encryptedCache != nil {
-		if err := asm.encryptedCache.Set(name, value); err != nil {
-			// Log error but don't fail the request
-			fmt.Printf("Warning: failed to cache secret in encrypted cache: %v\n", err)
-		}
+		// Best effort cache update - ignore errors
+		asm.encryptedCache.Set(name, value)
 	} else if asm.cache != nil {
 		asm.cache.Set(name, value)
 	}
@@ -160,18 +159,17 @@ func (asm *AWSSecretsManager) PutSecret(ctx context.Context, name string, value 
 
 			_, createErr := asm.client.CreateSecret(ctx, createInput)
 			if createErr != nil {
-				return fmt.Errorf("failed to create secret %s: %w", fullName, createErr)
+				return fmt.Errorf("failed to create secret: %w", createErr)
 			}
 		} else {
-			return fmt.Errorf("failed to update secret %s: %w", fullName, err)
+			return fmt.Errorf("failed to update secret: %w", err)
 		}
 	}
 
 	// Update cache (encrypted or plain text)
 	if asm.useEncryption && asm.encryptedCache != nil {
-		if err := asm.encryptedCache.Set(name, value); err != nil {
-			fmt.Printf("Warning: failed to update secret in encrypted cache: %v\n", err)
-		}
+		// Best effort cache update - ignore errors
+		asm.encryptedCache.Set(name, value)
 	} else if asm.cache != nil {
 		asm.cache.Set(name, value)
 	}
@@ -189,7 +187,7 @@ func (asm *AWSSecretsManager) RotateSecret(ctx context.Context, name string) err
 
 	_, err := asm.client.RotateSecret(ctx, input)
 	if err != nil {
-		return fmt.Errorf("failed to rotate secret %s: %w", fullName, err)
+		return fmt.Errorf("failed to rotate secret: %w", err)
 	}
 
 	// Invalidate cache (encrypted or plain text)
@@ -213,7 +211,7 @@ func (asm *AWSSecretsManager) DeleteSecret(ctx context.Context, name string) err
 
 	_, err := asm.client.DeleteSecret(ctx, input)
 	if err != nil {
-		return fmt.Errorf("failed to delete secret %s: %w", fullName, err)
+		return fmt.Errorf("failed to delete secret: %w", err)
 	}
 
 	// Remove from cache (encrypted or plain text)
@@ -412,7 +410,7 @@ func (fsp *FileSecretsProvider) RotateSecret(ctx context.Context, name string) e
 			Error:      "secret not found",
 		}
 		fsp.addRotationRecord(name, record)
-		return fmt.Errorf("secret %s not found", name)
+		return fmt.Errorf("requested secret not available")
 	}
 
 	// Simulate rotation by generating a new value
@@ -582,7 +580,7 @@ func (msp *MockSecretsProvider) GetSecret(ctx context.Context, name string) (str
 
 	value, exists := msp.secrets[name]
 	if !exists {
-		return "", fmt.Errorf("secret %s not found", name)
+		return "", fmt.Errorf("requested secret not available")
 	}
 	return value, nil
 }
@@ -602,7 +600,7 @@ func (msp *MockSecretsProvider) RotateSecret(ctx context.Context, name string) e
 	defer msp.mu.Unlock()
 
 	if _, exists := msp.secrets[name]; !exists {
-		return fmt.Errorf("secret %s not found", name)
+		return fmt.Errorf("requested secret not available")
 	}
 
 	// Simulate rotation by appending "-rotated"

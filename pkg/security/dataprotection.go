@@ -647,7 +647,7 @@ func (e *AESEncryptor) Decrypt(encryptedData string, result any) error {
 	// Extract nonce
 	nonceSize := gcm.NonceSize()
 	if len(ciphertext) < nonceSize {
-		return fmt.Errorf("ciphertext too short")
+		return fmt.Errorf("invalid encrypted data format")
 	}
 
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
@@ -702,7 +702,7 @@ func (dt *DataTokenizer) Detokenize(token string) (string, error) {
 
 	data, exists := dt.data[token]
 	if !exists {
-		return "", fmt.Errorf("token not found")
+		return "", fmt.Errorf("invalid or expired token")
 	}
 
 	return data, nil
@@ -712,7 +712,13 @@ func (dt *DataTokenizer) Detokenize(token string) (string, error) {
 func DataProtection(config DataProtectionConfig) LiftMiddleware {
 	manager, err := NewDataProtectionManager(config)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to initialize data protection: %v", err))
+		// Return a middleware that always returns an error
+		return func(next LiftHandler) LiftHandler {
+			return LiftHandlerFunc(func(ctx LiftContext) error {
+				// Don't expose internal implementation details
+				return fmt.Errorf("data protection service unavailable: configuration error")
+			})
+		}
 	}
 
 	return func(next LiftHandler) LiftHandler {

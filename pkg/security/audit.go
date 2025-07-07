@@ -271,8 +271,10 @@ func (bal *BufferedAuditLogger) startFlusher() {
 				bal.bufferMu.Lock()
 				if len(bal.buffer) > 0 {
 					if err := bal.flushBuffer(); err != nil {
-						// Log error but continue
-						fmt.Printf("Error flushing audit buffer: %v\n", err)
+						// Error is tracked in metrics, continue processing
+						bal.metricsMu.Lock()
+						bal.metrics.ErrorCount++
+						bal.metricsMu.Unlock()
 					}
 				}
 				bal.bufferMu.Unlock()
