@@ -88,11 +88,12 @@ func (a *APIGatewayAdapter) Adapt(rawEvent any) (*Request, error) {
 	stage := extractStringField(requestContext, "stage")
 	if stage != "" && stage != "$default" {
 		stagePrefix := "/" + stage
-		if strings.HasPrefix(path, stagePrefix) {
+		if path == stagePrefix {
+			// Path is exactly the stage, return root
+			path = "/"
+		} else if strings.HasPrefix(path, stagePrefix+"/") {
+			// Strip stage prefix from path only if followed by "/"
 			path = strings.TrimPrefix(path, stagePrefix)
-			if path == "" {
-				path = "/"
-			}
 		}
 	}
 
