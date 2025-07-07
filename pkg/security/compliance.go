@@ -379,7 +379,7 @@ func (cf *ComplianceFramework) sanitizeQueryParams(params map[string][]string) m
 	for key, values := range params {
 		lowerKey := strings.ToLower(key)
 		if sensitiveParams[lowerKey] {
-			result[key] = "[SANITIZED_QUERY_PARAMS]"
+			result[key] = "[REDACTED]"
 		} else if len(values) > 0 {
 			result[key] = values[0]
 		}
