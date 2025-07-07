@@ -84,11 +84,11 @@ func TestLiftApp(t *testing.T) {
 					},
 				})
 				
-				// Check tenant-aware table configuration
+				// Check tenant-aware table configuration (uses standard pk/sk naming)
 				tester.AssertHasResourceWithProperties("AWS::DynamoDB::Table", map[string]interface{}{
 					"KeySchema": []map[string]interface{}{
 						{
-							"AttributeName": "tenantId#pk",
+							"AttributeName": "pk",
 							"KeyType":       "HASH",
 						},
 						{
