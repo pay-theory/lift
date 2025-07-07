@@ -14,6 +14,7 @@ Lift is a type-safe, Lambda-native serverless framework for Go that eliminates b
 - **Router**: Path-based routing with middleware chains (`pkg/lift/router.go`)
 - **Handlers**: Type-safe generic handlers (`pkg/lift/handlers.go`)
 - **Adapters**: Event source adapters for various AWS services (`pkg/adapters/`)
+- **CDK**: Infrastructure as code constructs for deploying Lift apps (`pkg/cdk/`)
 
 ### Design Principles
 - Type safety first with Go generics (requires Go 1.21+)
@@ -89,8 +90,27 @@ api.Use(tenantLimiter)
 GOOS=linux GOARCH=amd64 go build -o bootstrap main.go
 zip function.zip bootstrap
 
+# Build for Lambda ARM64 (recommended)
+GOOS=linux GOARCH=arm64 go build -o bootstrap main.go
+zip function.zip bootstrap
+
 # Local development
 go run main.go
+```
+
+### CDK Deployment
+```bash
+# Synthesize CDK stack
+make cdk-synth
+
+# Deploy with CDK
+make cdk-deploy
+
+# Show deployment changes
+make cdk-diff
+
+# Destroy CDK stack
+make cdk-destroy
 ```
 
 ### Linting and Type Checking
@@ -251,4 +271,57 @@ api.GET("/users", listUsers)
 userID := ctx.UserID()
 tenantID := ctx.TenantID()
 accountID := ctx.AccountID()
+```
+
+## CDK Patterns
+
+Lift provides AWS CDK constructs for deploying applications with infrastructure as code.
+
+### Basic CDK App
+```go
+import "github.com/pay-theory/lift/pkg/cdk/patterns"
+
+app := awscdk.NewApp(nil)
+
+patterns.NewLiftApp(app, jsii.String("MyApp"), &patterns.LiftAppProps{
+    AppName:           jsii.String("my-app"),
+    CodeAssetPath:     jsii.String("./dist"),
+    EnableMultiTenant: jsii.Bool(true),
+    EnableDatabase:    jsii.Bool(true),
+})
+
+app.Synth(nil)
+```
+
+### CDK Constructs
+- **LiftFunction**: Optimized Lambda with ARM64, tracing, multi-tenant support
+- **LiftAPI**: API Gateway with CORS, custom domains, rate limiting
+- **LiftTable**: DynamoDB with single-table design, GSI, auto-scaling
+- **LiftApp**: Complete application pattern with all components
+
+### Pre-built Stacks
+```go
+import "github.com/pay-theory/lift/pkg/cdk/stacks"
+
+// Microservice stack
+stacks.NewMicroserviceStack(app, "Service", &stacks.MicroserviceStackProps{
+    ServiceName:    "user-service",
+    CodePath:       "./dist/bootstrap",
+    EnableDatabase: true,
+})
+
+// Multi-tenant SaaS stack
+stacks.NewMultiTenantSaaSStack(app, "SaaS", &stacks.MultiTenantSaaSStackProps{
+    AppName:           "my-saas",
+    CodePath:          "./dist/bootstrap",
+    EnableAuth:        true,
+    EnableFileStorage: true,
+})
+
+// Event-driven stack
+stacks.NewEventDrivenStack(app, "Events", &stacks.EventDrivenStackProps{
+    AppName:                "order-system",
+    ApiCodePath:            "./dist/api/bootstrap",
+    EventProcessorCodePath: "./dist/processor/bootstrap",
+})
 ```

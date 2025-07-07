@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/pay-theory/lift/pkg/dynamorm"
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/middleware"
 )
@@ -33,6 +31,23 @@ type PaymentIntentResponse struct {
 func main() {
 	// Create Lift app
 	app := lift.New()
+
+	// Add DynamORM middleware for production
+	if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" {
+		config := &dynamorm.DynamORMConfig{
+			TableName:       os.Getenv("IDEMPOTENCY_TABLE_NAME"),
+			Region:          os.Getenv("AWS_REGION"),
+			TenantIsolation: true,
+			AutoTransaction: true,
+		}
+		if config.TableName == "" {
+			config.TableName = "idempotency-keys"
+		}
+		if config.Region == "" {
+			config.Region = "us-east-1"
+		}
+		app.Use(dynamorm.WithDynamORM(config))
+	}
 
 	// Setup idempotency store
 	idempotencyStore, err := setupIdempotencyStore()
@@ -119,20 +134,9 @@ func setupIdempotencyStore() (middleware.IdempotencyStore, error) {
 		return middleware.NewMemoryIdempotencyStore(), nil
 	}
 
-	// Production - use DynamoDB
-	cfg, err := config.LoadDefaultConfig(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	client := dynamodb.NewFromConfig(cfg)
-	tableName := os.Getenv("IDEMPOTENCY_TABLE_NAME")
-	if tableName == "" {
-		tableName = "idempotency-keys"
-	}
-
-	log.Printf("Using DynamoDB idempotency store with table: %s", tableName)
-	return middleware.NewDynamoDBIdempotencyStore(client, tableName), nil
+	// Production - use DynamORM-based store
+	log.Println("Using DynamORM idempotency store")
+	return middleware.NewDynamORMIdempotencyStore(), nil
 }
 
 func generateID() string {

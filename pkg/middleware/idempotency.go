@@ -31,6 +31,9 @@ type IdempotencyRecord struct {
 	CreatedAt      time.Time `json:"created_at"`
 	ExpiresAt      time.Time `json:"expires_at"`
 	RequestHash    string    `json:"request_hash,omitempty"`
+	FunctionName   string    `json:"function_name,omitempty"`
+	TenantID       string    `json:"tenant_id,omitempty"`
+	UserID         string    `json:"user_id,omitempty"`
 }
 
 // IdempotencyOptions configures the idempotency middleware
@@ -121,14 +124,9 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 			}
 
 			// Mark as processing to prevent concurrent duplicates
-			processingRecord := &IdempotencyRecord{
-				Key:       idempotencyKey,
-				Status:    "processing",
-				CreatedAt: time.Now(),
-				ExpiresAt: time.Now().Add(opts.ProcessingTimeout),
-			}
+			expiresAt := time.Now().Add(opts.ProcessingTimeout)
 			
-			if err := opts.Store.SetProcessing(ctx.Request.Context(), idempotencyKey, processingRecord.ExpiresAt); err != nil {
+			if err := opts.Store.SetProcessing(ctx.Request.Context(), idempotencyKey, expiresAt); err != nil {
 				// Log but continue - idempotency is best-effort
 				if ctx.Logger != nil {
 					ctx.Logger.Warn("Failed to set idempotency processing lock", map[string]any{
