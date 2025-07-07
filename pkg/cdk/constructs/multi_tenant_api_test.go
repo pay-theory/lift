@@ -41,7 +41,7 @@ func TestMultiTenantAPI(t *testing.T) {
 
 		assert.NotNil(t, api)
 		assert.NotNil(t, api.API)
-		assert.NotNil(t, api.TenantTable)
+		assert.NotNil(t, api.Table)
 
 		// Verify template
 		template := assertions.Template_FromStack(stack, nil)
@@ -52,12 +52,19 @@ func TestMultiTenantAPI(t *testing.T) {
 			"ProtocolType": "HTTP",
 		})
 
-		// Check tenant table exists
+		// Check table exists with standard pk/sk naming
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), map[string]interface{}{
-			"TableName": "test-api-tenants",
+			"TableName": "test-api-table",
 			"BillingMode": "PAY_PER_REQUEST",
-			"PointInTimeRecoverySpecification": map[string]interface{}{
-				"PointInTimeRecoveryEnabled": true,
+			"KeySchema": []map[string]interface{}{
+				{
+					"AttributeName": "pk",
+					"KeyType":       "HASH",
+				},
+				{
+					"AttributeName": "sk",
+					"KeyType":       "RANGE",
+				},
 			},
 		})
 	})
@@ -120,7 +127,9 @@ func TestMultiTenantAPI(t *testing.T) {
 				props := resourceMap["Properties"].(map[string]interface{})
 				if env, ok := props["Environment"].(map[string]interface{}); ok {
 					if vars, ok := env["Variables"].(map[string]interface{}); ok {
-						if vars["TENANT_ISOLATION_MODE"] == "jwt" && vars["TENANT_ID_CLAIM"] == "custom:org_id" {
+						if vars["TENANT_ISOLATION_MODE"] == "jwt" && 
+						   vars["TENANT_ID_CLAIM"] == "custom:org_id" &&
+						   vars["LIFT_MULTI_TENANT"] == "true" {
 							foundEnvVars = true
 							break
 						}
@@ -160,7 +169,9 @@ func TestMultiTenantAPI(t *testing.T) {
 				props := resourceMap["Properties"].(map[string]interface{})
 				if env, ok := props["Environment"].(map[string]interface{}); ok {
 					if vars, ok := env["Variables"].(map[string]interface{}); ok {
-						if vars["TENANT_ISOLATION_MODE"] == "header" && vars["TENANT_ID_HEADER"] == "X-Org-ID" {
+						if vars["TENANT_ISOLATION_MODE"] == "header" && 
+						   vars["TENANT_ID_HEADER"] == "X-Org-ID" &&
+						   vars["LIFT_MULTI_TENANT"] == "true" {
 							foundEnvVars = true
 							break
 						}
