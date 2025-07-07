@@ -94,16 +94,29 @@ func (r *AdapterRegistry) GetAdapter(triggerType TriggerType) (EventAdapter, boo
 
 // DetectAndAdapt automatically detects the event type and adapts it
 func (r *AdapterRegistry) DetectAndAdapt(rawEvent any) (*Request, error) {
+	// Track which adapters were tried and why they failed
+	var attemptedAdapters []string
+	var detectedFields []string
+	
+	// Extract fields from the event for debugging
+	if eventMap, ok := rawEvent.(map[string]any); ok {
+		for key := range eventMap {
+			detectedFields = append(detectedFields, key)
+		}
+	}
+	
 	// Try each adapter to see which one can handle the event
-	for _, adapter := range r.adapters {
+	for triggerType, adapter := range r.adapters {
+		attemptedAdapters = append(attemptedAdapters, string(triggerType))
 		if adapter.CanHandle(rawEvent) {
 			return adapter.Adapt(rawEvent)
 		}
 	}
 
-	// If no adapter can handle it, return an error with event details
+	// If no adapter can handle it, return a detailed error
 	eventType := reflect.TypeOf(rawEvent)
-	return nil, fmt.Errorf("no adapter found for event type: %v", eventType)
+	return nil, fmt.Errorf("no adapter found for event type: %v\nDetected fields: %v\nTried adapters: %v\nHint: Check if your API Gateway integration is configured correctly", 
+		eventType, detectedFields, attemptedAdapters)
 }
 
 // AdaptWithType adapts an event using a specific adapter type
