@@ -24,7 +24,10 @@ type DevDashboard struct {
 // NewDevDashboard creates a new development dashboard
 func NewDevDashboard(server *DevServer, port int) *DevDashboard {
 	// Initialize feature flags if not already done
-	ff := server.features
+	var ff *features.FeatureFlags
+	if server != nil {
+		ff = server.features
+	}
 	if ff == nil {
 		ff, _ = features.NewFeatureFlags(features.FeatureFlagConfig{
 			LocalOnly: true,
