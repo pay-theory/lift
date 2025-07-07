@@ -293,6 +293,34 @@ patterns.NewLiftApp(app, jsii.String("MyApp"), &patterns.LiftAppProps{
 app.Synth(nil)
 ```
 
+### DynamORM Multi-Tenant Pattern
+When `EnableMultiTenant: true`, tables are created with standard `pk`/`sk` naming for DynamORM compatibility. Multi-tenant isolation is achieved through key values:
+
+```go
+type User struct {
+    PK         string `dynamodbav:"pk"`           // tenant#{tenant_id}
+    SK         string `dynamodbav:"sk"`           // user#{user_id}
+    TenantID   string `dynamodbav:"tenant_id"`    // For GSI queries
+    EntityType string `dynamodbav:"entity_type"`  // "user"
+    
+    // Business fields
+    UserID    string `dynamodbav:"user_id"`
+    Email     string `dynamodbav:"email"`
+    Name      string `dynamodbav:"name"`
+}
+
+// Usage
+user := User{
+    PK:         fmt.Sprintf("tenant#%s", tenantID),
+    SK:         fmt.Sprintf("user#%s", userID),
+    TenantID:   tenantID,
+    EntityType: "user",
+    UserID:     userID,
+    Email:      "user@example.com",
+    Name:       "John Doe",
+}
+```
+
 ### CDK Constructs
 - **LiftFunction**: Optimized Lambda with ARM64, tracing, multi-tenant support
 - **LiftAPI**: API Gateway with CORS, custom domains, rate limiting

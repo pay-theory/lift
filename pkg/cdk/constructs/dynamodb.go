@@ -60,10 +60,8 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 		Type: awsdynamodb.AttributeType_STRING,
 	}
 
-	// If multi-tenant, adjust keys
-	if props.EnableMultiTenant != nil && *props.EnableMultiTenant {
-		partitionKey.Name = jsii.String("tenantId#pk")
-	}
+	// Multi-tenant tables use standard 'pk' naming for DynamORM compatibility
+	// Tenant isolation is achieved through key values, not attribute names
 
 	// Create table properties
 	tableProps := &awsdynamodb.TableProps{
