@@ -23,6 +23,7 @@ type Config struct {
 	LogLevel       string `json:"log_level"`
 	MetricsEnabled bool   `json:"metrics_enabled"`
 	TracingEnabled bool   `json:"tracing_enabled"`
+	Debug          bool   `json:"debug"`
 
 	// Security
 	CORSEnabled    bool     `json:"cors_enabled"`
@@ -41,6 +42,7 @@ func DefaultConfig() *Config {
 		LogLevel:        "INFO",
 		MetricsEnabled:  true,
 		TracingEnabled:  false,
+		Debug:           false,
 		CORSEnabled:     true,
 		AllowedOrigins:  []string{"*"},
 		RequireTenantID: false,
@@ -367,10 +369,39 @@ func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 
 // parseEvent converts a Lambda event to our Request structure
 func (a *App) parseEvent(event any) (*Request, error) {
+	// Debug logging if enabled
+	if a.config.Debug {
+		if a.logger != nil {
+			// Log the raw event for debugging
+			a.logger.WithField("event_type", fmt.Sprintf("%T", event)).Debug("Parsing Lambda event")
+			
+			// Log event fields if it's a map
+			if eventMap, ok := event.(map[string]any); ok {
+				fields := make([]string, 0, len(eventMap))
+				for key := range eventMap {
+					fields = append(fields, key)
+				}
+				a.logger.WithField("fields", fields).Debug("Event fields detected")
+			}
+		}
+	}
+	
 	// Use the adapter registry to automatically detect and parse the event
 	adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
 	if err != nil {
+		if a.config.Debug && a.logger != nil {
+			a.logger.WithError(err).Error("Failed to parse Lambda event")
+		}
 		return nil, err
+	}
+
+	// Log successful parsing
+	if a.config.Debug && a.logger != nil {
+		a.logger.WithFields(map[string]interface{}{
+			"trigger_type": adapterRequest.TriggerType,
+			"method":       adapterRequest.Method,
+			"path":         adapterRequest.Path,
+		}).Debug("Successfully parsed Lambda event")
 	}
 
 	// Properly wrap the adapter request using NewRequest to copy all fields
@@ -732,4 +763,22 @@ func (a *App) RunLocalTest() {
 
 	// Run the test event locally
 	a.HandleRequest(ctx, rawEvent)
+}
+
+// WithDebug enables debug mode for the application
+func WithDebug() AppOption {
+	return func(app *App) {
+		app.config.Debug = true
+		// Also set log level to DEBUG if using the default logger
+		if app.config.LogLevel == "INFO" {
+			app.config.LogLevel = "DEBUG"
+		}
+	}
+}
+
+// WithConfig sets a custom configuration for the application
+func WithConfig(config *Config) AppOption {
+	return func(app *App) {
+		app.config = config
+	}
 }
