@@ -3,6 +3,8 @@ package xray
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/aws/aws-xray-sdk-go/xray"
@@ -18,6 +20,7 @@ type XRayConfig struct {
 	Annotations       map[string]string `json:"annotations"`        // Default annotations
 	Metadata          map[string]string `json:"metadata"`           // Default metadata
 	EnableSubsegments bool              `json:"enable_subsegments"` // Enable automatic subsegments
+	RecoverPanics     bool              `json:"recover_panics"`     // Convert panics to errors in production
 }
 
 // XRayTracer provides X-Ray distributed tracing capabilities
@@ -59,14 +62,34 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			// Add panic recovery to prevent crashes
 			defer func() {
 				if r := recover(); r != nil {
+					panicErr := fmt.Errorf("panic in request handler: %v", r)
+					
+					// Log to X-Ray if possible
 					if segment != nil {
-						if err := segment.AddError(fmt.Errorf("panic in xray middleware: %v", r)); err != nil {
-							// Log error but don't fail the request
-							fmt.Printf("Failed to add panic error to XRay segment: %v\n", err)
+						if err := segment.AddError(panicErr); err != nil {
+							// Silently ignore XRay errors to avoid circular dependencies
+							_ = err
 						}
-						segment.Close(fmt.Errorf("panic: %v", r))
+						segment.Close(panicErr)
 					}
-					panic(r) // Re-panic after logging
+					
+					// In production, convert panic to error response
+					if config.RecoverPanics {
+						ctx.Response.StatusCode = http.StatusInternalServerError
+						ctx.Response.Body = []byte(`{"error":"internal server error"}`)
+						ctx.Response.Headers["Content-Type"] = "application/json"
+						
+						// Log the panic details for debugging
+						if ctx.Logger != nil {
+							ctx.Logger.Error("Recovered from panic", map[string]any{
+								"panic": r,
+								"stack": string(debug.Stack()),
+							})
+						}
+					} else {
+						// Re-panic in development or when explicitly disabled
+						panic(r)
+					}
 				}
 			}()
 
@@ -123,8 +146,8 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			// Handle errors
 			if err != nil {
 				if addErr := segment.AddError(err); addErr != nil {
-					// Log error but don't fail the request
-					fmt.Printf("Failed to add error to XRay segment: %v\n", addErr)
+					// Silently ignore XRay errors
+					_ = addErr
 				}
 				segment.AddAnnotation("error", "true")
 				segment.AddMetadata("error", map[string]any{
@@ -292,8 +315,8 @@ func TraceHTTPCall(ctx context.Context, method, url string) (context.Context, fu
 
 		if err != nil {
 			if addErr := subsegment.AddError(err); addErr != nil {
-				// Log error but don't fail the operation
-				fmt.Printf("Failed to add HTTP error to XRay subsegment: %v\n", addErr)
+				// Silently ignore XRay errors
+				_ = addErr
 			}
 		}
 
@@ -320,8 +343,8 @@ func TraceCustomOperation(ctx context.Context, operationName string, metadata ma
 	return newCtx, func(err error) {
 		if err != nil {
 			if addErr := subsegment.AddError(err); addErr != nil {
-				// Log error but don't fail the operation
-				fmt.Printf("Failed to add custom operation error to XRay subsegment: %v\n", addErr)
+				// Silently ignore XRay errors
+				_ = addErr
 			}
 			subsegment.AddAnnotation("error", "true")
 		} else {
@@ -366,8 +389,8 @@ func AddMetadata(ctx context.Context, namespace, key string, value any) {
 func SetError(ctx context.Context, err error) {
 	if segment := xray.GetSegment(ctx); segment != nil {
 		if addErr := segment.AddError(err); addErr != nil {
-			// Log error but don't fail the operation
-			fmt.Printf("Failed to add error to XRay segment: %v\n", addErr)
+			// Silently ignore XRay errors
+			_ = addErr
 		}
 	}
 }

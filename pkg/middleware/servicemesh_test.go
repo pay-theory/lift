@@ -189,11 +189,7 @@ func (m *mockServiceMeshMetrics) GetMetricsCount() int {
 	return count
 }
 
-type mockMetricEntry struct {
-	Name  string
-	Value float64
-	Tags  map[string]string
-}
+// mockMetricEntry removed - was unused
 
 type mockServiceMeshCounter struct {
 	metrics *sync.Map

@@ -1,5 +1,9 @@
 package lift
 
+import (
+	"net/http"
+)
+
 // Handler represents a request handler
 type Handler interface {
 	Handle(ctx *Context) error
@@ -37,9 +41,10 @@ func wrapHandler(handler any) Handler {
 	case func(*Context) error:
 		return HandlerFunc(h)
 	default:
-		// For now, panic on unsupported types
-		// Later we'll add support for typed handlers with reflection
-		panic("unsupported handler type")
+		// Return a handler that always returns an error
+		return HandlerFunc(func(ctx *Context) error {
+			return NewLiftError("INVALID_HANDLER", "Unsupported handler type", http.StatusInternalServerError)
+		})
 	}
 }
 

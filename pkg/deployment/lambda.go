@@ -603,8 +603,10 @@ func getEnvBool(key string, defaultValue bool) bool {
 }
 
 func (d *LambdaDeployment) logWarning(message string, err error) {
-	// Placeholder for logging - integrate with observability package
-	fmt.Printf("WARNING: %s: %v\n", message, err)
+	// TODO: Integrate with observability package
+	// For now, warnings are silently ignored to avoid exposing internal details
+	_ = message
+	_ = err
 }
 
 func (d *LambdaDeployment) calculateErrorRate() float64 {

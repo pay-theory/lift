@@ -152,7 +152,10 @@ func createJWTMiddleware(config JWTAuthConfig) Middleware {
 func createTokenExtractor(lookup string) func(*Context) (string, error) {
 	parts := strings.Split(lookup, ":")
 	if len(parts) != 2 {
-		panic("invalid token lookup format")
+		// Return an extractor that always returns an error
+		return func(ctx *Context) (string, error) {
+			return "", fmt.Errorf("invalid token lookup format: expected 'type:field', got '%s'", lookup)
+		}
 	}
 
 	switch parts[0] {
@@ -177,7 +180,10 @@ func createTokenExtractor(lookup string) func(*Context) (string, error) {
 			return token, nil
 		}
 	default:
-		panic(fmt.Sprintf("unsupported token lookup: %s", parts[0]))
+		// Return an extractor that always returns an error
+		return func(ctx *Context) (string, error) {
+			return "", fmt.Errorf("unsupported token lookup type: %s (supported: header, query)", parts[0])
+		}
 	}
 }
 

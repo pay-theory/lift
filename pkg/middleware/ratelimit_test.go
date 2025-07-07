@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -104,7 +105,7 @@ func TestRateLimitKeyFunctions(t *testing.T) {
 		},
 	}
 	req := lift.NewRequest(adapterReq)
-	ctx := lift.NewContext(nil, req)
+	ctx := lift.NewContext(context.TODO(), req)
 	ctx.Set("tenant_id", "test-tenant")
 	ctx.Set("user_id", "test-user")
 
