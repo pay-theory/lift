@@ -51,7 +51,8 @@
       "Bash(done)",
       "Bash(if [ -f \"/Users/aronprice/lift/pkg/cdk/constructs/$f.bak\" ])",
       "Bash(./verify_build.sh:*)",
-      "Bash(./check_warnings.sh:*)"
+      "Bash(./check_warnings.sh:*)",
+      "WebFetch(domain:docs.aws.amazon.com)"
     ],
     "deny": []
   }

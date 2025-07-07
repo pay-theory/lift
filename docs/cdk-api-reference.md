@@ -1,78 +1,109 @@
 # Lift CDK API Reference
 
+This document provides a comprehensive API reference for all Lift CDK constructs, patterns, and stacks with specific code locations and usage examples.
+
 ## Table of Contents
 
 - [Core Constructs](#core-constructs)
-  - [LiftFunction](#liftfunction)
-  - [LiftAPI](#liftapi)
-  - [LiftTable](#lifttable)
-- [Middleware Constructs](#middleware-constructs)
-  - [RateLimitedFunction](#ratelimitedfunction)
-  - [IdempotentFunction](#idempotentfunction)
-  - [SecureFunction](#securefunction)
-  - [MonitoredFunction](#monitoredfunction)
-- [Patterns](#patterns)
-  - [BasicAPI](#basicapi)
-  - [SecureAPI](#secureapi)
-  - [LiftApp](#liftapp)
-- [Stacks](#stacks)
-  - [MicroserviceStack](#microservicestack)
-  - [MultiTenantSaaSStack](#multitenantssaasstack)
-  - [EventDrivenStack](#eventdrivenstack)
+  - [LiftFunction](#liftfunction) - `pkg/cdk/constructs/lambda.go`
+  - [LiftAPI](#liftapi) - `pkg/cdk/constructs/api.go`
+  - [DynamORMTable](#dynamormtable) - `pkg/cdk/constructs/dynamorm_table.go`
+- [Enhanced Constructs](#enhanced-constructs)
+  - [EnhancedMonitoring](#enhancedmonitoring) - `pkg/cdk/constructs/monitoring_enhanced.go`
+  - [EnhancedSecurity](#enhancedsecurity) - `pkg/cdk/constructs/security_enhanced.go`
+- [Pattern Constructs](#pattern-constructs)
+  - [LiftApp](#liftapp) - `pkg/cdk/patterns/lift_app.go`
+  - [MicroserviceComplete](#microservicecomplete) - `pkg/cdk/patterns/microservice_complete.go`
+- [Stack Templates](#stack-templates)
+  - [MicroserviceStack](#microservicestack) - `pkg/cdk/stacks/microservice.go`
+  - [MultiTenantSaaSStack](#multitenantssaasstack) - `pkg/cdk/stacks/multi_tenant_saas.go`
+  - [EventDrivenStack](#eventdrivenstack) - `pkg/cdk/stacks/event_driven.go`
 
 ## Core Constructs
 
 ### LiftFunction
 
-Base Lambda function construct optimized for Lift applications.
+**File**: `pkg/cdk/constructs/lambda.go`  
+**Type**: Lambda Function Construct  
+**Lines**: 44-277
+
+Base Lambda function construct optimized for Lift applications with ARM64 support, Dead Letter Queues, and DynamORM integration.
+
+#### Constructor
 
 ```go
-import "github.com/pay-theory/lift/pkg/cdk/constructs"
-
-func := constructs.NewLiftFunction(stack, id, props)
+func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunctionProps) *LiftFunction
 ```
 
-#### Properties
+**Location**: `lambda.go:57-170`
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `CodeAssetPath` | `*string` | Required | Path to compiled bootstrap binary |
-| `Handler` | `*string` | `"bootstrap"` | Handler name |
-| `Runtime` | `awslambda.Runtime` | `PROVIDED_AL2023` | Lambda runtime |
-| `Architecture` | `awslambda.Architecture` | `ARM_64` | CPU architecture |
-| `MemorySize` | `*float64` | `512` | Memory in MB (128-10240) |
-| `Timeout` | `*float64` | `30` | Timeout in seconds (1-900) |
-| `Environment` | `*map[string]*string` | `nil` | Environment variables |
-| `TracingEnabled` | `*bool` | `true` | Enable X-Ray tracing |
-| `DeadLetterQueue` | `*bool` | `false` | Add DLQ for failed invocations |
-| `LogRetentionDays` | `*float64` | `7` | CloudWatch log retention |
-| `ReservedConcurrentExecutions` | `*float64` | `nil` | Reserved concurrent executions |
-| `MaxEventAge` | `*float64` | `nil` | Maximum event age in seconds |
-| `RetryAttempts` | `*float64` | `2` | Maximum retry attempts |
+#### Properties (LiftFunctionProps)
+
+**Struct Definition**: `lambda.go:17-41`
+
+| Property | Type | Default | Description | Code Reference |
+|----------|------|---------|-------------|----------------|
+| `Runtime` | `awslambda.Runtime` | `PROVIDED_AL2023` | Lambda runtime | `lambda.go:61-63` |
+| `Architecture` | `awslambda.Architecture` | `ARM_64` | CPU architecture | `lambda.go:64-66` |
+| `MemorySize` | `*float64` | `512` | Memory in MB | `lambda.go:67-69` |
+| `Timeout` | `awscdk.Duration` | `30s` | Function timeout | `lambda.go:70-72` |
+| `EnableTracing` | `*bool` | `false` | X-Ray tracing | `lambda.go:73-75` |
+| `EnableDeadLetterQueue` | `*bool` | `true` | DLQ creation | `lambda.go:79-81` |
+| `EnableDynamORM` | `*bool` | `false` | DynamORM integration | `lambda.go:132-149` |
+| `LogRetentionDays` | `*float64` | `30` | CloudWatch log retention | `lambda.go:76-78` |
 
 #### Methods
 
-| Method | Description |
-|--------|-------------|
-| `Function() awslambda.Function` | Get underlying Lambda function |
-| `Role() awsiam.Role` | Get function's IAM role |
-| `LogGroup() awslogs.LogGroup` | Get CloudWatch log group |
-| `DeadLetterQueue() awssqs.Queue` | Get DLQ (if enabled) |
+| Method | Return Type | Description | Code Reference |
+|--------|-------------|-------------|----------------|
+| `GetFunction()` | `awslambda.Function` | Returns underlying Lambda | `lambda.go:173-175` |
+| `GetLogGroup()` | `awslogs.LogGroup` | Returns log group | `lambda.go:177-179` |
+| `AddEnvironment(key, value)` | `void` | Adds environment variable | `lambda.go:188-190` |
+| `GrantInvoke(grantee)` | `awsiam.Grant` | Grants invoke permission | `lambda.go:193-195` |
+| `ConfigureDynamORM(table, debug)` | `void` | Configures DynamORM | `lambda.go:213-224` |
+
+#### Dead Letter Queue Configuration
+
+**Location**: `lambda.go:86-111`
+
+```go
+// DLQ is automatically created if EnableDeadLetterQueue is true
+dlq := awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), &awssqs.QueueProps{
+    QueueName:           jsii.String(dlqName),
+    RetentionPeriod:     awscdk.Duration_Days(jsii.Number(14)),
+    VisibilityTimeout:   awscdk.Duration_Seconds(jsii.Number(300)),
+})
+```
+
+#### DynamORM Environment Variables
+
+**Location**: `lambda.go:132-149`
+
+```go
+// Automatic DynamORM configuration
+env["DYNAMORM_REGION"] = awscdk.Stack_Of(this).Region()
+env["DYNAMODB_TABLE_NAME"] = props.DynamORMTableName
+env["DYNAMORM_DEBUG"] = jsii.String(debugMode)
+env["DYNAMORM_RETRY_MAX_ATTEMPTS"] = jsii.String("3")
+env["DYNAMORM_RETRY_BASE_DELAY"] = jsii.String("100")
+```
 
 #### Example
 
 ```go
-liftFunc := constructs.NewLiftFunction(stack, jsii.String("MyFunction"), &constructs.LiftFunctionProps{
-    CodeAssetPath: jsii.String("./dist/bootstrap"),
-    MemorySize: jsii.Number(1024),
-    Timeout: jsii.Number(60),
-    Environment: &map[string]*string{
-        "LOG_LEVEL": jsii.String("debug"),
-        "STAGE": jsii.String("prod"),
+fn := liftconstructs.NewLiftFunction(this, jsii.String("MyFunction"), &liftconstructs.LiftFunctionProps{
+    FunctionProps: awslambda.FunctionProps{
+        Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        Handler: jsii.String("bootstrap"),
     },
-    DeadLetterQueue: jsii.Bool(true),
+    EnableTracing:  jsii.Bool(true),
+    EnableDynamORM: jsii.Bool(true),
+    MemorySize:     jsii.Number(1024),
     LogRetentionDays: jsii.Number(30),
 })
+
+// Configure DynamORM after creation
+fn.ConfigureDynamORM(jsii.String("my-table"), jsii.Bool(true))
 ```
 
 ### LiftAPI
