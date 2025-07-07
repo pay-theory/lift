@@ -1,0 +1,457 @@
+# Lift CDK Deployment Configuration
+# This YAML file provides standardized configuration templates for deploying Lift applications with CDK
+
+# Basic Lift Application Configuration
+lift_app:
+  # Application metadata
+  app_name: "my-lift-app"
+  description: "Lift serverless application deployed with CDK"
+  environment: "development" # development, staging, production
+  
+  # Build configuration
+  build:
+    code_asset_path: "./dist"
+    binary_name: "bootstrap"
+    architecture: "arm64" # arm64 or x86_64
+    runtime: "provided.al2023"
+  
+  # Lambda function configuration - Based on pkg/cdk/constructs/lambda.go:17-41
+  function:
+    memory_size: 512 # MB (128-10240)
+    timeout: 30 # seconds (1-900)
+    enable_tracing: true # X-Ray tracing
+    enable_dead_letter_queue: true
+    log_retention_days: 30
+    reserved_concurrent_executions: null # Set to limit concurrency
+    
+    # DynamORM integration - Based on lambda.go:132-149
+    enable_dynamorm: false
+    dynamorm_debug: false
+    
+    # Environment variables
+    environment:
+      LOG_LEVEL: "info"
+      NODE_ENV: "production"
+      # Additional vars will be added based on enabled features
+  
+  # API Gateway configuration - Based on pkg/cdk/constructs/api.go:16-44
+  api:
+    enable_cors: true
+    enable_access_logging: true
+    enable_detailed_metrics: false
+    
+    # CORS configuration - Based on api.go:94-119
+    cors:
+      allow_origins: ["*"]
+      allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      allow_headers:
+        - "Content-Type"
+        - "Authorization"
+        - "X-Tenant-ID"
+        - "X-Request-ID"
+        - "X-Api-Key"
+      expose_headers:
+        - "X-Request-ID"
+        - "X-Rate-Limit-Limit"
+        - "X-Rate-Limit-Remaining"
+        - "X-Rate-Limit-Reset"
+      max_age: 86400 # 24 hours
+    
+    # Throttling - Based on api.go:153-162
+    throttling:
+      rate_limit: 1000 # requests per second
+      burst_limit: 2000 # burst capacity
+    
+    # Custom domain (optional)
+    custom_domain:
+      enabled: false
+      domain_name: "api.example.com"
+      certificate_arn: "arn:aws:acm:us-east-1:123456789012:certificate/..."
+  
+  # Database configuration - Based on pkg/cdk/constructs/dynamorm_table.go:17-44
+  database:
+    enabled: false
+    table_name: null # Auto-generated if null
+    billing_mode: "PAY_PER_REQUEST" # PAY_PER_REQUEST or PROVISIONED
+    point_in_time_recovery: true
+    deletion_protection: true
+    time_to_live_attribute: "ttl"
+    
+    # Multi-tenant configuration - Based on dynamorm_table.go:211-256
+    multi_tenant:
+      enabled: false
+      tenant_attribute: "TenantID"
+      enable_tenant_isolation: true
+    
+    # Auto-scaling (for PROVISIONED mode) - Based on dynamorm_table.go:801-827
+    auto_scaling:
+      enabled: false
+      min_capacity: 1
+      max_capacity: 10
+      target_utilization: 70
+  
+  # Enhanced features
+  enhanced:
+    # Monitoring - Based on pkg/cdk/constructs/monitoring_enhanced.go:51-68
+    monitoring:
+      enabled: false
+      namespace: "Lift/Application"
+      detailed_metrics: true
+      enable_business_metrics: true
+      enable_real_time_streaming: false
+      
+      # Alarm thresholds - Based on monitoring_enhanced.go:131-138
+      alarm_thresholds:
+        error_rate: 5.0 # percentage
+        latency_p99: 3000 # milliseconds
+        throttle_count: 5
+        concurrent_executions: 100
+    
+    # Security - Based on pkg/cdk/constructs/security_enhanced.go:63-87
+    security:
+      enabled: false
+      enable_waf: true
+      enable_vpc_flow_logs: true
+      
+      # WAF configuration - Based on security_enhanced.go:155-163
+      waf:
+        enable_rate_limit: true
+        rate_limit: 2000
+        enable_sqli_protection: true
+        enable_xss_protection: true
+        enable_known_bad_inputs: true
+        ip_whitelist: []
+        ip_blacklist: []
+        geo_blocking: [] # Country codes to block
+      
+      # VPC configuration
+      vpc:
+        create_new: false
+        vpc_id: null # Use existing VPC
+        private_subnets_only: false
+        enable_vpc_endpoints: true
+  
+  # Rate limiting
+  rate_limiting:
+    enabled: false
+    table_name: null # Auto-generated if null
+    
+  # Additional features
+  features:
+    enable_idempotency: false
+    enable_cache: false
+    enable_queue: false
+    enable_notifications: false
+
+# Microservice Stack Configuration - Based on pkg/cdk/stacks/microservice.go:11-25
+microservice_stack:
+  service_name: "user-service"
+  code_path: "./dist/bootstrap"
+  enable_database: true
+  enable_cache: false
+  memory_size: 1024
+  environment:
+    SERVICE_NAME: "user-service"
+    LOG_LEVEL: "info"
+    DATABASE_URL: "{{resolve:secretsmanager:db-secret:SecretString:url}}"
+
+# Multi-Tenant SaaS Configuration - Based on pkg/cdk/stacks/multi_tenant_saas.go
+multi_tenant_saas:
+  app_name: "saas-platform"
+  code_path: "./dist/bootstrap"
+  enable_auth: true
+  enable_file_storage: true
+  custom_domain_name: "api.saas-platform.com"
+  certificate_arn: "arn:aws:acm:us-east-1:123456789012:certificate/..."
+  enable_analytics: true
+  
+  # Tenant isolation - Based on dynamorm_table.go multi-tenant features
+  tenant_isolation:
+    strict_mode: true
+    tenant_attribute: "TenantID"
+    enable_cross_tenant_queries: false
+    enable_tenant_metrics: true
+
+# Event-Driven Architecture - Based on pkg/cdk/stacks/event_driven.go
+event_driven:
+  app_name: "order-processing"
+  api_code_path: "./dist/api/bootstrap"
+  event_processor_code_path: "./dist/processor/bootstrap"
+  enable_dlq: true
+  event_bus_name: "order-events"
+  
+  # Event routing rules
+  event_rules:
+    - name: "OrderCreated"
+      event_pattern:
+        source: ["order.service"]
+        detail_type: ["Order Created"]
+      targets: ["order-processor"]
+    
+    - name: "PaymentProcessed"
+      event_pattern:
+        source: ["payment.service"]
+        detail_type: ["Payment Processed"]
+      targets: ["fulfillment-processor"]
+
+# Production Environment Overrides
+production:
+  lift_app:
+    environment: "production"
+    function:
+      memory_size: 1024
+      timeout: 60
+      log_retention_days: 90
+      reserved_concurrent_executions: 100
+    
+    api:
+      throttling:
+        rate_limit: 5000
+        burst_limit: 10000
+    
+    database:
+      deletion_protection: true
+      point_in_time_recovery: true
+      auto_scaling:
+        enabled: true
+        min_capacity: 5
+        max_capacity: 100
+    
+    enhanced:
+      monitoring:
+        enabled: true
+        detailed_metrics: true
+        enable_business_metrics: true
+      
+      security:
+        enabled: true
+        enable_waf: true
+        waf:
+          rate_limit: 5000
+          enable_sqli_protection: true
+          enable_xss_protection: true
+
+# Staging Environment
+staging:
+  lift_app:
+    environment: "staging"
+    function:
+      memory_size: 512
+      timeout: 30
+      log_retention_days: 14
+    
+    api:
+      throttling:
+        rate_limit: 1000
+        burst_limit: 2000
+    
+    database:
+      deletion_protection: false
+      point_in_time_recovery: true
+    
+    enhanced:
+      monitoring:
+        enabled: true
+        detailed_metrics: false
+      
+      security:
+        enabled: false
+
+# Development Environment
+development:
+  lift_app:
+    environment: "development"
+    function:
+      memory_size: 512
+      timeout: 30
+      log_retention_days: 7
+      enable_dynamorm: true
+      dynamorm_debug: true
+    
+    api:
+      enable_cors: true
+      cors:
+        allow_origins: ["http://localhost:3000", "http://localhost:8080"]
+    
+    database:
+      deletion_protection: false
+      point_in_time_recovery: false
+    
+    enhanced:
+      monitoring:
+        enabled: false
+      security:
+        enabled: false
+
+# CDK App Configuration
+cdk:
+  # Stack configuration
+  stack:
+    # AWS account and region
+    account: "123456789012"
+    region: "us-east-1"
+    
+    # Stack naming
+    stack_name_prefix: "LiftApp"
+    
+    # Tags applied to all resources
+    tags:
+      Project: "Lift"
+      ManagedBy: "CDK"
+      Framework: "Lift"
+      Environment: "development"
+  
+  # CDK context values
+  context:
+    "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true
+    "@aws-cdk/core:enableStackNameDuplicates": true
+    "@aws-cdk/core:stackRelativeExports": true
+  
+  # Feature flags
+  feature_flags:
+    "@aws-cdk/aws-lambda:recognizeLayerVersion": true
+    "@aws-cdk/aws-lambda:recognizeVersionProps": true
+    "@aws-cdk/core:enablePartitionLiterals": true
+
+# Monitoring and Observability
+monitoring:
+  # CloudWatch Dashboard - Based on monitoring_enhanced.go:483-577
+  dashboard:
+    enabled: true
+    name: "LiftAppDashboard"
+    widgets:
+      - type: "metric"
+        title: "Request Volume"
+        metrics: ["Requests", "Errors"]
+      - type: "metric"
+        title: "Latency"
+        metrics: ["LatencyP50", "LatencyP95", "LatencyP99"]
+      - type: "metric"
+        title: "Cold Starts"
+        metrics: ["ColdStarts", "ColdStartDuration"]
+  
+  # Alarms - Based on monitoring_enhanced.go:413-481
+  alarms:
+    error_rate:
+      enabled: true
+      threshold: 5.0
+      evaluation_periods: 2
+      datapoints_to_alarm: 2
+    
+    high_latency:
+      enabled: true
+      threshold: 3000
+      evaluation_periods: 3
+      datapoints_to_alarm: 2
+    
+    throttling:
+      enabled: true
+      threshold: 5
+      evaluation_periods: 1
+  
+  # X-Ray tracing - Based on dynamorm_table.go:1286-1369
+  xray:
+    enabled: true
+    service_name: "LiftApplication"
+    debug_mode: false
+    enable_subsegments: true
+
+# Security Configuration
+security:
+  # IAM policies and roles
+  iam:
+    # Principle of least privilege
+    least_privilege: true
+    
+    # Cross-account access
+    cross_account_roles: []
+    
+    # Service-linked roles
+    service_roles:
+      lambda_execution: true
+      api_gateway_logging: true
+  
+  # Secrets management
+  secrets:
+    # AWS Secrets Manager integration
+    use_secrets_manager: true
+    
+    # KMS encryption
+    kms_encryption: true
+    custom_kms_key: null
+  
+  # Network security
+  network:
+    # VPC configuration
+    vpc_enabled: false
+    vpc_cidr: "10.0.0.0/16"
+    
+    # Security groups
+    security_groups:
+      default_egress: false
+      custom_rules: []
+
+# Cost Optimization
+cost_optimization:
+  # Reserved capacity
+  reserved_capacity:
+    enabled: false
+    term: "1_YEAR" # 1_YEAR or 3_YEAR
+    payment_option: "PARTIAL_UPFRONT"
+  
+  # Auto-scaling policies
+  auto_scaling:
+    scale_down_cooldown: 300 # seconds
+    scale_up_cooldown: 60 # seconds
+    target_tracking_policies:
+      - metric: "cpu_utilization"
+        target: 70
+      - metric: "memory_utilization"
+        target: 80
+  
+  # Resource cleanup
+  cleanup:
+    # TTL for temporary resources
+    temp_resource_ttl: 86400 # 24 hours
+    
+    # Log retention policies
+    log_retention:
+      lambda_logs: 30 # days
+      api_gateway_logs: 7 # days
+      cloudtrail_logs: 90 # days
+
+# Deployment Configuration
+deployment:
+  # Build settings
+  build:
+    # Go build settings for Lambda
+    go_os: "linux"
+    go_arch: "arm64" # arm64 or amd64
+    cgo_enabled: false
+    build_flags: ["-ldflags", "-s -w"] # Strip debug info
+  
+  # CDK deployment settings
+  cdk_deploy:
+    # Deployment options
+    require_approval: "never" # never, any-change, broadening
+    rollback: true
+    progress: "events" # events or bar
+    
+    # Stack dependencies
+    stack_dependencies: []
+    
+    # Outputs
+    outputs_file: "./cdk-outputs.json"
+  
+  # CI/CD integration
+  ci_cd:
+    # GitHub Actions
+    github_actions:
+      enabled: false
+      workflow_file: ".github/workflows/deploy.yml"
+    
+    # AWS CodePipeline
+    codepipeline:
+      enabled: false
+      source_bucket: null
+      artifact_bucket: null
