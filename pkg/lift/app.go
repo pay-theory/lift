@@ -390,7 +390,7 @@ func (a *App) parseEvent(event any) (*Request, error) {
 	adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
 	if err != nil {
 		if a.config.Debug && a.logger != nil {
-			a.logger.WithError(err).Error("Failed to parse Lambda event")
+			a.logger.WithField("error", err.Error()).Error("Failed to parse Lambda event")
 		}
 		return nil, err
 	}
