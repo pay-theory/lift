@@ -12,6 +12,10 @@ import (
 type LiftTableProps struct {
 	// Table name
 	TableName *string
+	// Partition key attribute name (defaults to field name from DynamORM model)
+	PartitionKeyName *string
+	// Sort key attribute name (optional, defaults to field name from DynamORM model)
+	SortKeyName *string
 	// Enable point-in-time recovery
 	EnablePointInTimeRecovery *bool
 	// Enable DynamoDB Streams
@@ -46,28 +50,39 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 		billingMode = awsdynamodb.BillingMode_PROVISIONED
 	}
 
-	// Define partition key
+	// Define partition key - DynamORM expects field names as attribute names
+	partitionKeyName := props.PartitionKeyName
+	if partitionKeyName == nil {
+		// This is incorrect - we should require the key name or detect it from the model
+		// For now, we'll require it to be specified
+		panic("PartitionKeyName is required in LiftTableProps to match DynamORM model field name")
+	}
+	
 	partitionKey := &awsdynamodb.Attribute{
-		Name: jsii.String("pk"),
+		Name: partitionKeyName,
 		Type: awsdynamodb.AttributeType_STRING,
 	}
 
-	// Define sort key
-	sortKey := &awsdynamodb.Attribute{
-		Name: jsii.String("sk"),
-		Type: awsdynamodb.AttributeType_STRING,
+	// Define sort key if provided
+	var sortKey *awsdynamodb.Attribute
+	if props.SortKeyName != nil {
+		sortKey = &awsdynamodb.Attribute{
+			Name: props.SortKeyName,
+			Type: awsdynamodb.AttributeType_STRING,
+		}
 	}
 
-	// Tables use standard 'pk'/'sk' naming for DynamORM compatibility
-	// All table structure (GSIs, etc.) is defined in DynamORM models via struct tags
-
-	// Create table properties
+	// Create table properties matching DynamORM model field names
 	tableProps := &awsdynamodb.TableProps{
 		TableName:    props.TableName,
 		PartitionKey: partitionKey,
-		SortKey:      sortKey,
 		BillingMode:  billingMode,
 		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
+	}
+	
+	// Only add sort key if provided
+	if sortKey != nil {
+		tableProps.SortKey = sortKey
 	}
 
 	// Configure capacity for provisioned mode

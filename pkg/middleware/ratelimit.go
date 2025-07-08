@@ -61,11 +61,11 @@ type RateLimitKey struct {
 
 // RateLimitEntry represents a rate limit record in DynamoDB
 type RateLimitEntry struct {
-	Key         string    `dynamodbav:"pk" json:"key"`
-	Count       int       `dynamodbav:"count" json:"count"`
-	WindowStart time.Time `dynamodbav:"window_start" json:"window_start"`
-	LastRequest time.Time `dynamodbav:"last_request" json:"last_request"`
-	TTL         int64     `dynamodbav:"ttl" json:"ttl"`
+	Key         string    `json:"key"`
+	Count       int       `json:"count"`
+	WindowStart time.Time `json:"window_start"`
+	LastRequest time.Time `json:"last_request"`
+	TTL         int64     `json:"ttl"`
 }
 
 // RateLimitResult contains the result of a rate limit check
@@ -398,13 +398,13 @@ func GetRateLimitStats(config RateLimitConfig) (*RateLimitStats, error) {
 	sampleKey := fmt.Sprintf("%s:stats:aggregate", config.KeyPrefix)
 
 	var statsEntry struct {
-		Key             string `dynamodbav:"pk"`
-		TotalRequests   int64  `dynamodbav:"total_requests"`
-		AllowedRequests int64  `dynamodbav:"allowed_requests"`
-		BlockedRequests int64  `dynamodbav:"blocked_requests"`
-		ErrorCount      int64  `dynamodbav:"error_count"`
-		LastUpdated     int64  `dynamodbav:"last_updated"`
-		TTL             int64  `dynamodbav:"ttl"`
+		Key             string ``
+		TotalRequests   int64  ``
+		AllowedRequests int64  ``
+		BlockedRequests int64  ``
+		ErrorCount      int64  ``
+		LastUpdated     int64  ``
+		TTL             int64  ``
 	}
 
 	err := config.DynamORM.Get(ctx, sampleKey, &statsEntry)
@@ -438,13 +438,13 @@ func UpdateRateLimitStats(ctx context.Context, config RateLimitConfig, allowed b
 
 	// Atomic update of statistics
 	var statsEntry struct {
-		Key             string `dynamodbav:"pk"`
-		TotalRequests   int64  `dynamodbav:"total_requests"`
-		AllowedRequests int64  `dynamodbav:"allowed_requests"`
-		BlockedRequests int64  `dynamodbav:"blocked_requests"`
-		ErrorCount      int64  `dynamodbav:"error_count"`
-		LastUpdated     int64  `dynamodbav:"last_updated"`
-		TTL             int64  `dynamodbav:"ttl"`
+		Key             string ``
+		TotalRequests   int64  ``
+		AllowedRequests int64  ``
+		BlockedRequests int64  ``
+		ErrorCount      int64  ``
+		LastUpdated     int64  ``
+		TTL             int64  ``
 	}
 
 	// Try to get existing stats

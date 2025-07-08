@@ -47,9 +47,11 @@ func NewStreamingTable(scope constructs.Construct, id *string, props *StreamingT
 		props.TableName = jsii.String("streaming-table")
 	}
 
-	// Create the table with streams enabled
+	// Create the table with field names from StreamRecord struct
 	liftTable := NewLiftTable(scope, id, &LiftTableProps{
 		TableName:                 props.TableName,
+		PartitionKeyName:          jsii.String("PK"),
+		SortKeyName:               jsii.String("SK"),
 		EnableStreams:             jsii.Bool(true),
 		StreamViewType:            props.StreamViewType,
 		TimeToLiveAttribute:       props.TimeToLiveAttribute,
