@@ -189,13 +189,14 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 			connectionTableProps.TableName = jsii.String(fmt.Sprintf("%s-connections", apiName))
 		}
 		
-		// Enable indexes based on multi-tenant setting
-		if connectionTableProps.EnableUserIndex == nil {
-			connectionTableProps.EnableUserIndex = jsii.Bool(true)
-		}
-		if connectionTableProps.EnableTenantIndex == nil && props.EnableMultiTenant != nil {
-			connectionTableProps.EnableTenantIndex = props.EnableMultiTenant
-		}
+		// GSIs for user and tenant indexes are now defined in DynamORM models
+		// Example model:
+		// type Connection struct {
+		//     PK     string `dynamorm:"pk"`                    // connection#{id}
+		//     SK     string `dynamorm:"sk"`                    // metadata
+		//     UserID string `dynamorm:"index:user-index,pk"`   // For user queries
+		//     TenantID string `dynamorm:"index:tenant-index,pk"` // For tenant queries (if multi-tenant)
+		// }
 		
 		// Create the DynamORM-based connection table
 		this.ConnectionTable = NewConnectionTable(this, jsii.String("ConnectionTable"), connectionTableProps)
@@ -385,9 +386,9 @@ func (w *WebSocketAPI) GrantConnectionManagement(grantee awsiam.IGrantable) awsi
 	
 	grantee.GrantPrincipal().AddToPrincipalPolicy(apiPolicy)
 	
-	// Grant connection table permissions using DynamORM methods
+	// Grant connection table permissions
 	if w.ConnectionTable != nil {
-		w.ConnectionTable.AddDynamORMPermissions(grantee)
+		w.ConnectionTable.GrantConnectionManagement(grantee)
 	}
 	
 	// Return a simple grant
@@ -461,13 +462,9 @@ func (w *WebSocketAPI) setupEnvironmentVariables() {
 		w.AddEnvironmentVariable("CONNECTION_TABLE_NAME", *w.ConnectionTable.Table.TableName())
 		w.AddEnvironmentVariable("CONNECTION_TABLE_ARN", *w.ConnectionTable.Table.TableArn())
 		
-		// Add DynamORM-specific environment variables
-		if w.ConnectionTable.GetUserIndexName() != nil {
-			w.AddEnvironmentVariable("CONNECTION_USER_INDEX", *w.ConnectionTable.GetUserIndexName())
-		}
-		if w.ConnectionTable.GetTenantIndexName() != nil {
-			w.AddEnvironmentVariable("CONNECTION_TENANT_INDEX", *w.ConnectionTable.GetTenantIndexName())
-		}
+		// GSI names are now determined by DynamORM model struct tags
+		// Example: UserID string `dynamorm:"index:user-index,pk"`
+		// The index name in the model would be "user-index"
 	}
 	
 	// Access log group

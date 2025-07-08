@@ -3,7 +3,6 @@ package constructs
 import (
 	"fmt"
 
-	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
@@ -45,7 +44,7 @@ type IdempotentFunctionProps struct {
 type IdempotentFunction struct {
 	constructs.Construct
 	Function        *LiftFunction
-	IdempotencyTable *DynamORMTable
+	IdempotencyTable *LiftTable
 }
 
 // NewIdempotentFunction creates a Lambda function with idempotency capabilities
@@ -75,7 +74,7 @@ func NewIdempotentFunction(scope constructs.Construct, id *string, props *Idempo
 	}
 
 	// Create or reference the idempotency table
-	var idempotencyTable *DynamORMTable
+	var idempotencyTable *LiftTable
 	tableName := props.TableName
 	if tableName == nil {
 		tableName = jsii.String(fmt.Sprintf("%s-idempotency", *id))
@@ -83,12 +82,7 @@ func NewIdempotentFunction(scope constructs.Construct, id *string, props *Idempo
 
 	// Create DynamORM-compatible idempotency table
 	idempotencyTable = NewIdempotencyTable(this, jsii.String("IdempotencyTable"), &IdempotencyTableProps{
-		DynamORMTableProps: DynamORMTableProps{
-			TableName:           tableName,
-			PointInTimeRecovery: jsii.Bool(true), // Important for idempotency
-			RemovalPolicy:       awscdk.RemovalPolicy_RETAIN, // Keep idempotency data
-			Stream:              "", // No streams needed for idempotency
-		},
+		TableName:           tableName,
 	})
 
 	// Add idempotency environment variables
@@ -98,7 +92,7 @@ func NewIdempotentFunction(scope constructs.Construct, id *string, props *Idempo
 	env := *props.LiftFunctionProps.Environment
 	
 	// DynamORM table configuration
-	env["IDEMPOTENCY_TABLE_NAME"] = idempotencyTable.GetTableName()
+	env["IDEMPOTENCY_TABLE_NAME"] = idempotencyTable.Table.TableName()
 	// AWS_REGION is automatically set by Lambda runtime
 	
 	// Idempotency configuration
@@ -126,8 +120,8 @@ func NewIdempotentFunction(scope constructs.Construct, id *string, props *Idempo
 	// Create the base Lift function
 	liftFn := NewLiftFunction(this, jsii.String("Function"), &props.LiftFunctionProps)
 
-	// Grant DynamORM permissions
-	idempotencyTable.AddDynamORMPermissions(liftFn.Function)
+	// Grant table permissions
+	idempotencyTable.GrantReadWrite(liftFn.Function)
 
 	// Add CloudWatch metrics permissions
 	liftFn.Function.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
@@ -154,8 +148,8 @@ func (f *IdempotentFunction) GetFunction() awslambda.Function {
 	return f.Function.Function
 }
 
-// GetTable returns the idempotency tracking DynamORM table
-func (f *IdempotentFunction) GetTable() *DynamORMTable {
+// GetTable returns the idempotency tracking table
+func (f *IdempotentFunction) GetTable() *LiftTable {
 	return f.IdempotencyTable
 }
 

@@ -1,88 +1,58 @@
 package constructs
 
 import (
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
 
-// IdempotencyTableProps defines properties for creating a DynamORM-compatible idempotency table
+// IdempotencyTableProps defines properties for creating an idempotency table
 type IdempotencyTableProps struct {
-	DynamORMTableProps
-	// Additional idempotency specific properties can be added here
+	// Table name
+	TableName *string
+	// TTL attribute name for automatic cleanup
+	TimeToLiveAttribute *string
 }
 
-// NewIdempotencyTable creates a DynamoDB table optimized for idempotency with DynamORM
-func NewIdempotencyTable(scope constructs.Construct, id *string, props *IdempotencyTableProps) *DynamORMTable {
-	// Set default values for idempotency table
+// NewIdempotencyTable creates a DynamoDB table for idempotency tracking
+// The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
+func NewIdempotencyTable(scope constructs.Construct, id *string, props *IdempotencyTableProps) *LiftTable {
+	// Set defaults
+	if props == nil {
+		props = &IdempotencyTableProps{}
+	}
+	
+	// Set default table name
+	if props.TableName == nil {
+		props.TableName = jsii.String("idempotency")
+	}
+	
+	// Set default TTL attribute for automatic cleanup
 	if props.TimeToLiveAttribute == nil {
-		props.TimeToLiveAttribute = jsii.String("ExpiresAt")
+		props.TimeToLiveAttribute = jsii.String("expires_at")
 	}
 	
-	// Set idempotency-specific partition and sort keys
-	props.PartitionKey = &awsdynamodb.Attribute{
-		Name: jsii.String("IdempotencyKey"),
-		Type: awsdynamodb.AttributeType_STRING,
-	}
-	props.SortKey = &awsdynamodb.Attribute{
-		Name: jsii.String("SK"),
-		Type: awsdynamodb.AttributeType_STRING,
-	}
-	
-	// Create base DynamORM table with the configured props
-	table := NewDynamORMTable(scope, id, &props.DynamORMTableProps)
-
-	// Add GSIs for different query patterns
-
-	// GSI for Function-based queries
-	table.AddGSI(&GSIProps{
-		IndexName: jsii.String("gsi-function"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("FunctionName"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		ProjectionType: awsdynamodb.ProjectionType_ALL,
+	// Create table with standard pk/sk attributes
+	return NewLiftTable(scope, id, &LiftTableProps{
+		TableName:                 props.TableName,
+		TimeToLiveAttribute:       props.TimeToLiveAttribute,
+		EnablePointInTimeRecovery: jsii.Bool(true),
 	})
-
-	// GSI for Status-based queries
-	table.AddGSI(&GSIProps{
-		IndexName: jsii.String("gsi-status"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("Status"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		SortKey: &awsdynamodb.Attribute{
-			Name: jsii.String("Timestamp"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		ProjectionType: awsdynamodb.ProjectionType_ALL,
-	})
-
-	// GSI for Tenant-based queries (if multi-tenant)
-	if props.EnableMultiTenant != nil && *props.EnableMultiTenant {
-		table.AddGSI(&GSIProps{
-			IndexName: jsii.String("gsi-tenant"),
-			PartitionKey: &awsdynamodb.Attribute{
-				Name: jsii.String("TenantID"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			SortKey: &awsdynamodb.Attribute{
-				Name: jsii.String("Timestamp"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			ProjectionType: awsdynamodb.ProjectionType_ALL,
-		})
-	}
-
-	// GSI for Timestamp-based queries
-	table.AddGSI(&GSIProps{
-		IndexName: jsii.String("gsi-timestamp"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("Timestamp"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		ProjectionType: awsdynamodb.ProjectionType_ALL,
-	})
-
-	return table
 }
+
+// Example DynamORM model for idempotency:
+//
+// type IdempotencyRecord struct {
+//     PK         string    `dynamorm:"pk"`                          // idempotency#{key}
+//     SK         string    `dynamorm:"sk"`                          // idempotency#{key}
+//     
+//     // Indexes for queries
+//     FunctionName string  `dynamorm:"index:function-index,pk"`     // function_name
+//     Status       string  `dynamorm:"index:status-index,pk"`       // status
+//     Timestamp    string  `dynamorm:"index:status-index,sk"`       // ISO timestamp
+//     TenantID     string  `dynamorm:"index:tenant-index,pk"`       // tenant_id (if multi-tenant)
+//     
+//     // Record data
+//     IdempotencyKey string `json:"idempotency_key"`
+//     Response       string `json:"response"`
+//     ExpiresAt      int64  `json:"expires_at"`                     // TTL
+// }

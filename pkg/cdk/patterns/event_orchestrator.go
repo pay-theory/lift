@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatchactions"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsevents"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
 	"github.com/aws/constructs-go/constructs/v10"
@@ -125,13 +126,16 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 	// Create event routing table using DynamORM if enabled
 	if enableEventRouting {
 		eventRoutingProps := &liftconstructs.EventRoutingTableProps{
-			DynamORMTableProps: liftconstructs.DynamORMTableProps{
-				TableName: jsii.String(appName + "-routing"),
-				EnableMultiTenant: props.EnableMultiTenant,
-			},
-			EnableSourceIndex: jsii.Bool(true),
-			EnableStatusIndex: jsii.Bool(true),
-			EnableDateIndex: jsii.Bool(true),
+			TableName: jsii.String(appName + "-routing"),
+			// GSIs for source, status, and date indexes are now defined in DynamORM models
+			// Example model:
+			// type EventRoute struct {
+			//     PK         string `dynamorm:"pk"`                    // event#{event_id}
+			//     SK         string `dynamorm:"sk"`                    // route#{route_id}
+			//     Source     string `dynamorm:"index:source-index,pk"` // For source queries
+			//     Status     string `dynamorm:"index:status-index,pk"` // For status queries
+			//     Date       string `dynamorm:"index:date-index,pk"`   // For date queries
+			// }
 		}
 		
 		// Override with user-provided props
@@ -158,16 +162,8 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 		orchestratorEnv["EVENT_ROUTING_TABLE"] = this.EventRoutingTable.GetTableName()
 		orchestratorEnv["EVENT_ROUTING_TABLE_ARN"] = this.EventRoutingTable.GetTableArn()
 		
-		// Add index names
-		if this.EventRoutingTable.GetSourceIndexName() != nil {
-			orchestratorEnv["SOURCE_INDEX"] = this.EventRoutingTable.GetSourceIndexName()
-		}
-		if this.EventRoutingTable.GetStatusIndexName() != nil {
-			orchestratorEnv["STATUS_INDEX"] = this.EventRoutingTable.GetStatusIndexName()
-		}
-		if this.EventRoutingTable.GetDateIndexName() != nil {
-			orchestratorEnv["DATE_INDEX"] = this.EventRoutingTable.GetDateIndexName()
-		}
+		// GSI names are now determined by DynamORM model struct tags
+		// The index names in the model would be like "source-index", "status-index", "date-index", etc.
 	}
 	
 	// Create orchestrator function
@@ -190,7 +186,7 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 	
 	// Grant permissions to orchestrator
 	if this.EventRoutingTable != nil {
-		this.EventRoutingTable.AddDynamORMPermissions(this.OrchestratorFunction.Function)
+		this.EventRoutingTable.GrantEventManagement(this.OrchestratorFunction.Function)
 	}
 	
 	// Create correlation function if enabled
@@ -213,7 +209,7 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 		
 		// Grant permissions to correlator
 		if this.EventRoutingTable != nil {
-			this.EventRoutingTable.AddDynamORMPermissions(this.CorrelationFunction.Function)
+			this.EventRoutingTable.GrantEventManagement(this.CorrelationFunction.Function)
 		}
 	}
 	
@@ -279,7 +275,7 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 		
 		// Grant permissions
 		if this.EventRoutingTable != nil {
-			this.EventRoutingTable.AddDynamORMPermissions(handler.Function.Function)
+			this.EventRoutingTable.GrantEventManagement(handler.Function.Function)
 		}
 		
 		this.EventHandlers[sourceName] = handler
@@ -312,7 +308,7 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 		
 		// Grant permissions
 		if this.EventRoutingTable != nil {
-			this.EventRoutingTable.AddDynamORMPermissions(this.DLQHandler.Function)
+			this.EventRoutingTable.GrantEventManagement(this.DLQHandler.Function)
 		}
 	}
 	
@@ -502,7 +498,7 @@ func (e *EventOrchestrator) GetEventRoutingTableName() *string {
 // GrantEventRoutingAccess grants read/write access to the event routing table
 func (e *EventOrchestrator) GrantEventRoutingAccess(grantee awslambda.IFunction) {
 	if e.EventRoutingTable != nil {
-		e.EventRoutingTable.AddDynamORMPermissions(grantee)
+		e.EventRoutingTable.GrantEventManagement(awsiam.IGrantable(grantee))
 	}
 }
 

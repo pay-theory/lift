@@ -209,7 +209,7 @@ func TestComplianceStack_SOC2Framework(t *testing.T) {
 	})
 
 	// Should have Config rules for SOC2
-	template.ResourceCountIs(jsii.String("AWS::Config::ConfigRule"), jsii.Number(0))
+	template.ResourceCountIs(jsii.String("AWS::Config::ConfigRule"), jsii.Number(1))
 }
 
 func TestComplianceStack_HIPAAFramework(t *testing.T) {
@@ -325,7 +325,7 @@ func TestComplianceStack_EncryptionConfiguration(t *testing.T) {
 
 	// Verify KMS key is created
 	template.HasResourceProperties(jsii.String("AWS::KMS::Key"), map[string]interface{}{
-		"KeyRotationStatus": "Enabled",
+		"EnableKeyRotation": true,
 	})
 
 	// Verify S3 bucket uses KMS encryption

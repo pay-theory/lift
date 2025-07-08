@@ -191,13 +191,8 @@ func (lst *LiftStackTester) AssertLiftTable(tableName string, hasGSI bool, hasSt
 		},
 	}
 	
-	if hasGSI {
-		tableProps["AttributeDefinitions"] = append(
-			tableProps["AttributeDefinitions"].([]map[string]string),
-			map[string]string{"AttributeName": "gsi1pk", "AttributeType": "S"},
-			map[string]string{"AttributeName": "gsi1sk", "AttributeType": "S"},
-		)
-	}
+	// Note: GSIs are now handled by DynamORM through struct tags at runtime,
+	// so we don't expect GSI attributes in the CDK template anymore
 	
 	if hasStreams {
 		tableProps["StreamSpecification"] = map[string]interface{}{

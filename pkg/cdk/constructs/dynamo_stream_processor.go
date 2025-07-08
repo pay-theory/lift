@@ -5,6 +5,7 @@ import (
 	
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
@@ -262,9 +263,9 @@ func NewDynamoStreamProcessor(scope constructs.Construct, id *string, props *Dyn
 	this.EventSource = awslambdaeventsources.NewDynamoEventSource(this.StreamingTable.Table, eventSourceProps)
 	this.Function.Function.AddEventSource(this.EventSource)
 
-	// Grant permissions using DynamORM methods
+	// Grant permissions
 	this.StreamingTable.GrantStreamRead(this.Function.Function)
-	this.StreamingTable.AddDynamORMPermissions(this.Function.Function)
+	this.StreamingTable.GrantReadWrite(this.Function.Function)
 	if this.DeadLetterQueue != nil {
 		this.DeadLetterQueue.GrantSendMessages(this.Function.Function)
 	}
@@ -512,9 +513,9 @@ func (d *DynamoStreamProcessor) enableMonitoring() {
 	}
 }
 
-// GrantReadWriteData grants permission to read and write data to the table using DynamORM
+// GrantReadWriteData grants permission to read and write data to the table
 func (d *DynamoStreamProcessor) GrantReadWriteData(grantee awslambda.IFunction) {
-	d.StreamingTable.AddDynamORMPermissions(grantee)
+	d.StreamingTable.GrantReadWrite(grantee)
 }
 
 // GrantStreamRead grants permission to read from the DynamoDB stream
@@ -524,12 +525,12 @@ func (d *DynamoStreamProcessor) GrantStreamRead(grantee awslambda.IFunction) {
 
 // GrantReadData grants permission to read data from the table
 func (d *DynamoStreamProcessor) GrantReadData(grantee awslambda.IFunction) {
-	d.StreamingTable.GrantRead(grantee)
+	d.StreamingTable.Table.GrantReadData(awsiam.IGrantable(grantee))
 }
 
 // GrantWriteData grants permission to write data to the table
 func (d *DynamoStreamProcessor) GrantWriteData(grantee awslambda.IFunction) {
-	d.StreamingTable.GrantWrite(grantee)
+	d.StreamingTable.Table.GrantWriteData(awsiam.IGrantable(grantee))
 }
 
 // AddEnvironmentVariable adds an environment variable to the Lambda function

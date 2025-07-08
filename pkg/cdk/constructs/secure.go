@@ -232,14 +232,29 @@ func (f *SecureFunction) GetKmsKey() awskms.IKey {
 
 // AddVPCEndpoint adds a VPC endpoint for an AWS service
 func (f *SecureFunction) AddVPCEndpoint(service awsec2.InterfaceVpcEndpointAwsService) awsec2.InterfaceVpcEndpoint {
-	// Check if endpoint already exists
+	// Get a simple service identifier for the endpoint ID
+	var endpointId string
 	serviceName := *service.Name()
+	
+	// Use simple identifiers for common services to avoid token issues
+	if service == awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER() {
+		endpointId = "SecretsManagerEndpoint"
+	} else if service == awsec2.InterfaceVpcEndpointAwsService_SSM() {
+		endpointId = "SSMEndpoint"
+	} else if service == awsec2.InterfaceVpcEndpointAwsService_KMS() {
+		endpointId = "KMSEndpoint"
+	} else {
+		// For other services, use a generic ID
+		endpointId = fmt.Sprintf("VPCEndpoint%d", len(f.VpcEndpoints))
+	}
+	
+	// Check if endpoint already exists
 	if endpoint, exists := f.VpcEndpoints[serviceName]; exists {
 		return endpoint
 	}
 	
 	// Create the VPC endpoint
-	endpoint := awsec2.NewInterfaceVpcEndpoint(f, jsii.String(fmt.Sprintf("%sEndpoint", serviceName)), &awsec2.InterfaceVpcEndpointProps{
+	endpoint := awsec2.NewInterfaceVpcEndpoint(f.Construct, jsii.String(endpointId), &awsec2.InterfaceVpcEndpointProps{
 		Vpc:     f.Vpc,
 		Service: service,
 		Subnets: &awsec2.SubnetSelection{
