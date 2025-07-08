@@ -82,68 +82,68 @@ type GDPRCompleteConfig struct {
 
 // DataExportRecord represents a data export for GDPR compliance
 type DataExportRecord struct {
-	ExportID       string                 `json:"export_id" dynamodbav:"PK"`
-	DataSubjectID  string                 `json:"data_subject_id" dynamodbav:"data_subject_id"`
-	RequestID      string                 `json:"request_id" dynamodbav:"request_id"`
-	RequestDate    time.Time              `json:"request_date" dynamodbav:"request_date"`
-	Status         string                 `json:"status" dynamodbav:"status"`
-	ExportPath     string                 `json:"export_path" dynamodbav:"export_path"`
-	ExpiresAt      time.Time              `json:"expires_at" dynamodbav:"expires_at"`
-	EncryptionKey  string                 `json:"encryption_key,omitempty" dynamodbav:"encryption_key"`
-	FileSizeBytes  int64                  `json:"file_size_bytes" dynamodbav:"file_size_bytes"`
-	DataSources    []string               `json:"data_sources" dynamodbav:"data_sources"`
-	Format         string                 `json:"format" dynamodbav:"format"`
-	CreatedAt      time.Time              `json:"created_at" dynamodbav:"created_at"`
-	CompletedAt    *time.Time             `json:"completed_at,omitempty" dynamodbav:"completed_at"`
-	DownloadedAt   *time.Time             `json:"downloaded_at,omitempty" dynamodbav:"downloaded_at"`
-	Metadata       map[string]interface{} `json:"metadata" dynamodbav:"metadata"`
+	ExportID       string                 `json:"export_id" `
+	DataSubjectID  string                 `json:"data_subject_id" `
+	RequestID      string                 `json:"request_id" `
+	RequestDate    time.Time              `json:"request_date" `
+	Status         string                 `json:"status" `
+	ExportPath     string                 `json:"export_path" `
+	ExpiresAt      time.Time              `json:"expires_at" `
+	EncryptionKey  string                 `json:"encryption_key,omitempty" `
+	FileSizeBytes  int64                  `json:"file_size_bytes" `
+	DataSources    []string               `json:"data_sources" `
+	Format         string                 `json:"format" `
+	CreatedAt      time.Time              `json:"created_at" `
+	CompletedAt    *time.Time             `json:"completed_at,omitempty" `
+	DownloadedAt   *time.Time             `json:"downloaded_at,omitempty" `
+	Metadata       map[string]interface{} `json:"metadata" `
 }
 
 // DataDeletionRecord represents a data deletion for GDPR compliance
 type DataDeletionRecord struct {
-	DeletionID     string                 `json:"deletion_id" dynamodbav:"PK"`
-	DataSubjectID  string                 `json:"data_subject_id" dynamodbav:"data_subject_id"`
-	RequestID      string                 `json:"request_id" dynamodbav:"request_id"`
-	RequestDate    time.Time              `json:"request_date" dynamodbav:"request_date"`
-	Status         string                 `json:"status" dynamodbav:"status"`
-	TablesCleared  []string               `json:"tables_cleared" dynamodbav:"tables_cleared"`
-	RetainedData   []string               `json:"retained_data" dynamodbav:"retained_data"`
-	RetentionReason string                `json:"retention_reason" dynamodbav:"retention_reason"`
-	DeletedBy      string                 `json:"deleted_by" dynamodbav:"deleted_by"`
-	DeletedAt      time.Time              `json:"deleted_at" dynamodbav:"deleted_at"`
-	VerificationHash string               `json:"verification_hash" dynamodbav:"verification_hash"`
-	Metadata       map[string]interface{} `json:"metadata" dynamodbav:"metadata"`
+	DeletionID     string                 `json:"deletion_id" `
+	DataSubjectID  string                 `json:"data_subject_id" `
+	RequestID      string                 `json:"request_id" `
+	RequestDate    time.Time              `json:"request_date" `
+	Status         string                 `json:"status" `
+	TablesCleared  []string               `json:"tables_cleared" `
+	RetainedData   []string               `json:"retained_data" `
+	RetentionReason string                `json:"retention_reason" `
+	DeletedBy      string                 `json:"deleted_by" `
+	DeletedAt      time.Time              `json:"deleted_at" `
+	VerificationHash string               `json:"verification_hash" `
+	Metadata       map[string]interface{} `json:"metadata" `
 }
 
 // ConsentRecordComplete extends security.ConsentRecord with DynamoDB integration
 type ConsentRecordComplete struct {
 	security.ConsentRecord
-	PK              string    `json:"pk" dynamodbav:"PK"`
-	SK              string    `json:"sk" dynamodbav:"SK"`
-	GSI1PK          string    `json:"gsi1pk" dynamodbav:"GSI1PK"`
-	GSI1SK          string    `json:"gsi1sk" dynamodbav:"GSI1SK"`
-	TTL             int64     `json:"ttl" dynamodbav:"ttl"`
-	EntityType      string    `json:"entity_type" dynamodbav:"entity_type"`
+	PK              string    `json:"pk" `
+	SK              string    `json:"sk" `
+	GSI1PK          string    `json:"gsi1pk" `
+	GSI1SK          string    `json:"gsi1sk" `
+	TTL             int64     `json:"ttl" `
+	EntityType      string    `json:"entity_type" `
 }
 
 // PIARecordComplete extends security.PIAResult with DynamoDB integration
 type PIARecordComplete struct {
 	security.PIAResult
-	PK         string `json:"pk" dynamodbav:"PK"`
-	SK         string `json:"sk" dynamodbav:"SK"`
-	EntityType string `json:"entity_type" dynamodbav:"entity_type"`
+	PK         string `json:"pk" `
+	SK         string `json:"sk" `
+	EntityType string `json:"entity_type" `
 }
 
 // DataSubjectRequestComplete represents a complete data subject request
 type DataSubjectRequestComplete struct {
 	security.DataAccessRequest
-	PK           string    `json:"pk" dynamodbav:"PK"`
-	SK           string    `json:"sk" dynamodbav:"SK"`
-	GSI1PK       string    `json:"gsi1pk" dynamodbav:"GSI1PK"`
-	GSI1SK       string    `json:"gsi1sk" dynamodbav:"GSI1SK"`
-	EntityType   string    `json:"entity_type" dynamodbav:"entity_type"`
-	ProcessedBy  string    `json:"processed_by" dynamodbav:"processed_by"`
-	CompletedAt  *time.Time `json:"completed_at,omitempty" dynamodbav:"completed_at"`
+	PK           string    `json:"pk" `
+	SK           string    `json:"sk" `
+	GSI1PK       string    `json:"gsi1pk" `
+	GSI1SK       string    `json:"gsi1sk" `
+	EntityType   string    `json:"entity_type" `
+	ProcessedBy  string    `json:"processed_by" `
+	CompletedAt  *time.Time `json:"completed_at,omitempty" `
 }
 
 // GDPRAuditLogger provides comprehensive audit logging
@@ -855,21 +855,21 @@ type PrivacyBreach struct {
 }
 
 type PrivacyBreachRecord struct {
-	BreachID          string                 `json:"breach_id" dynamodbav:"PK"`
-	BreachType        string                 `json:"breach_type" dynamodbav:"breach_type"`
-	Severity          string                 `json:"severity" dynamodbav:"severity"`
-	DetectedAt        time.Time              `json:"detected_at" dynamodbav:"detected_at"`
-	ReportedAt        time.Time              `json:"reported_at" dynamodbav:"reported_at"`
-	AffectedSubjects  int                    `json:"affected_subjects" dynamodbav:"affected_subjects"`
-	DataCategories    []string               `json:"data_categories" dynamodbav:"data_categories"`
-	Cause             string                 `json:"cause" dynamodbav:"cause"`
-	Mitigation        []string               `json:"mitigation" dynamodbav:"mitigation"`
-	AuthorityNotified bool                   `json:"authority_notified" dynamodbav:"authority_notified"`
-	SubjectsNotified  bool                   `json:"subjects_notified" dynamodbav:"subjects_notified"`
-	AuthorityDeadline time.Time              `json:"authority_deadline" dynamodbav:"authority_deadline"`
-	Status            string                 `json:"status" dynamodbav:"status"`
-	ReportedBy        string                 `json:"reported_by" dynamodbav:"reported_by"`
-	Metadata          map[string]interface{} `json:"metadata" dynamodbav:"metadata"`
+	BreachID          string                 `json:"breach_id" `
+	BreachType        string                 `json:"breach_type" `
+	Severity          string                 `json:"severity" `
+	DetectedAt        time.Time              `json:"detected_at" `
+	ReportedAt        time.Time              `json:"reported_at" `
+	AffectedSubjects  int                    `json:"affected_subjects" `
+	DataCategories    []string               `json:"data_categories" `
+	Cause             string                 `json:"cause" `
+	Mitigation        []string               `json:"mitigation" `
+	AuthorityNotified bool                   `json:"authority_notified" `
+	SubjectsNotified  bool                   `json:"subjects_notified" `
+	AuthorityDeadline time.Time              `json:"authority_deadline" `
+	Status            string                 `json:"status" `
+	ReportedBy        string                 `json:"reported_by" `
+	Metadata          map[string]interface{} `json:"metadata" `
 }
 
 // Audit Logger Implementation

@@ -30,8 +30,14 @@ type LiftAppProps struct {
 	Timeout *float64
 	// Enable DynamoDB table
 	EnableDatabase *bool
-	// Database table name
+	// Database table name (only used if DatabaseTable is not provided)
 	DatabaseTableName *string
+	// Database partition key field name (defaults to "ID" for simple models)
+	DatabasePartitionKey *string
+	// Database sort key field name (optional)
+	DatabaseSortKey *string
+	// Existing table to use (if provided, other database options are ignored)
+	DatabaseTable *liftconstructs.LiftTable
 	// Enable rate limiting table
 	EnableRateLimiting *bool
 	// Rate limiting table name
@@ -99,20 +105,42 @@ func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *Li
 
 	app.Function = liftconstructs.NewLiftFunction(this, jsii.String("Function"), fnProps)
 
-	// Create DynamoDB table if enabled
-	if props.EnableDatabase != nil && *props.EnableDatabase {
+	// Use provided table or create new one if enabled
+	if props.DatabaseTable != nil {
+		// Use the provided table
+		app.Database = props.DatabaseTable
+		// Grant Lambda permissions to access the table
+		app.Database.Table.GrantReadWriteData(app.Function.Function)
+		// Update environment variable with actual table name
+		env["DYNAMODB_TABLE"] = app.Database.Table.TableName()
+	} else if props.EnableDatabase != nil && *props.EnableDatabase {
+		// Create a new table - but warn that field names are unknown
 		tableName := props.DatabaseTableName
 		if tableName == nil {
 			tableName = jsii.String(*props.AppName + "-table")
 		}
 
-		app.Database = liftconstructs.NewLiftTable(this, jsii.String("Database"), &liftconstructs.LiftTableProps{
+		// Use provided key names or defaults
+		partitionKey := props.DatabasePartitionKey
+		if partitionKey == nil {
+			partitionKey = jsii.String("ID") // Common default for simple models
+		}
+
+		tableProps := &liftconstructs.LiftTableProps{
 			TableName:                 tableName,
+			PartitionKeyName:          partitionKey,
 			EnablePointInTimeRecovery: jsii.Bool(true),
 			EnableStreams:             jsii.Bool(true),
 			TimeToLiveAttribute:       jsii.String("ttl"),
 			EnableAutoScaling:         jsii.Bool(true),
-		})
+		}
+
+		// Add sort key if specified
+		if props.DatabaseSortKey != nil {
+			tableProps.SortKeyName = props.DatabaseSortKey
+		}
+
+		app.Database = liftconstructs.NewLiftTable(this, jsii.String("Database"), tableProps)
 
 		// Grant Lambda permissions to access the table
 		app.Database.Table.GrantReadWriteData(app.Function.Function)
@@ -127,6 +155,8 @@ func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *Li
 
 		app.RateLimitTable = liftconstructs.NewLiftTable(this, jsii.String("RateLimitTable"), &liftconstructs.LiftTableProps{
 			TableName:           tableName,
+			PartitionKeyName:    jsii.String("PK"),  // RateLimit struct uses PK/SK
+			SortKeyName:         jsii.String("SK"),
 			TimeToLiveAttribute: jsii.String("expires"),
 		})
 
