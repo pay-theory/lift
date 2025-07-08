@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/pay-theory/dynamorm"
@@ -127,7 +128,16 @@ func LimitedRateLimit(config LimitedConfig) (lift.Middleware, error) {
 
 // IPRateLimitWithLimited creates an IP-based rate limiter
 func IPRateLimitWithLimited(limit int, window time.Duration) (lift.Middleware, error) {
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = os.Getenv("AWS_DEFAULT_REGION")
+	}
+	if region == "" {
+		return nil, fmt.Errorf("AWS_REGION environment variable not set")
+	}
+	
 	return LimitedRateLimit(LimitedConfig{
+		Region: region,
 		Limit:  limit,
 		Window: window,
 	})
@@ -135,7 +145,16 @@ func IPRateLimitWithLimited(limit int, window time.Duration) (lift.Middleware, e
 
 // UserRateLimitWithLimited creates a user-based rate limiter
 func UserRateLimitWithLimited(limit int, window time.Duration) (lift.Middleware, error) {
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = os.Getenv("AWS_DEFAULT_REGION")
+	}
+	if region == "" {
+		return nil, fmt.Errorf("AWS_REGION environment variable not set")
+	}
+	
 	return LimitedRateLimit(LimitedConfig{
+		Region: region,
 		Limit:  limit,
 		Window: window,
 	})
@@ -143,7 +162,16 @@ func UserRateLimitWithLimited(limit int, window time.Duration) (lift.Middleware,
 
 // TenantRateLimitWithLimited creates a tenant-based rate limiter
 func TenantRateLimitWithLimited(limit int, window time.Duration) (lift.Middleware, error) {
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = os.Getenv("AWS_DEFAULT_REGION")
+	}
+	if region == "" {
+		return nil, fmt.Errorf("AWS_REGION environment variable not set")
+	}
+	
 	return LimitedRateLimit(LimitedConfig{
+		Region: region,
 		Limit:  limit,
 		Window: window,
 	})
