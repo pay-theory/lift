@@ -13,48 +13,48 @@ import (
 
 // Tenant represents a tenant in the multi-tenant DynamORM system
 type Tenant struct {
-	PK        string    `json:"pk" dynamodbav:"pk"`                // tenant#{id}
-	SK        string    `json:"sk" dynamodbav:"sk"`                // tenant#{id}
-	TenantID  string    `json:"tenant_id" dynamodbav:"tenant_id"`  // For GSI
-	EntityType string   `json:"entity_type" dynamodbav:"entity_type"` // "tenant"
-	ID        string    `json:"id" dynamodbav:"id"`
-	Name      string    `json:"name" dynamodbav:"name"`
-	Email     string    `json:"email" dynamodbav:"email"`
-	Plan      string    `json:"plan" dynamodbav:"plan"`
-	Status    string    `json:"status" dynamodbav:"status"`
-	CreatedAt time.Time `json:"created_at" dynamodbav:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" dynamodbav:"updated_at"`
-	RateLimit int       `json:"rate_limit" dynamodbav:"rate_limit"`
+	PK        string    `dynamorm:"pk" json:"pk"`                // tenant#{id}
+	SK        string    `dynamorm:"sk" json:"sk"`                // tenant#{id}
+	TenantID  string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`  // For GSI
+	EntityType string   `dynamorm:"index:tenant-entity,sk" json:"entity_type"` // "tenant"
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Plan      string    `json:"plan"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	RateLimit int       `json:"rate_limit"`
 }
 
 // User represents a user within a tenant using DynamORM patterns
 type User struct {
-	PK         string    `json:"pk" dynamodbav:"pk"`                   // tenant#{tenant_id}
-	SK         string    `json:"sk" dynamodbav:"sk"`                   // user#{id}
-	TenantID   string    `json:"tenant_id" dynamodbav:"tenant_id"`     // For tenant isolation
-	EntityType string    `json:"entity_type" dynamodbav:"entity_type"` // "user"
-	ID         string    `json:"id" dynamodbav:"id"`
-	Email      string    `json:"email" dynamodbav:"email"`
-	Name       string    `json:"name" dynamodbav:"name"`
-	Role       string    `json:"role" dynamodbav:"role"`
-	Status     string    `json:"status" dynamodbav:"status"`
-	CreatedAt  time.Time `json:"created_at" dynamodbav:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at" dynamodbav:"updated_at"`
+	PK         string    `dynamorm:"pk" json:"pk"`                   // tenant#{tenant_id}
+	SK         string    `dynamorm:"sk" json:"sk"`                   // user#{id}
+	TenantID   string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`     // For tenant isolation
+	EntityType string    `dynamorm:"index:tenant-entity,sk" json:"entity_type"` // "user"
+	ID         string    `json:"id"`
+	Email      string    `json:"email"`
+	Name       string    `json:"name"`
+	Role       string    `json:"role"`
+	Status     string    `json:"status"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // Project represents a project within a tenant using DynamORM patterns
 type Project struct {
-	PK          string    `json:"pk" dynamodbav:"pk"`                   // tenant#{tenant_id}
-	SK          string    `json:"sk" dynamodbav:"sk"`                   // project#{id}
-	TenantID    string    `json:"tenant_id" dynamodbav:"tenant_id"`     // For tenant isolation
-	EntityType  string    `json:"entity_type" dynamodbav:"entity_type"` // "project"
-	ID          string    `json:"id" dynamodbav:"id"`
-	Name        string    `json:"name" dynamodbav:"name"`
-	Description string    `json:"description" dynamodbav:"description"`
-	Status      string    `json:"status" dynamodbav:"status"`
-	OwnerID     string    `json:"owner_id" dynamodbav:"owner_id"`
-	CreatedAt   time.Time `json:"created_at" dynamodbav:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at" dynamodbav:"updated_at"`
+	PK          string    `dynamorm:"pk" json:"pk"`                   // tenant#{tenant_id}
+	SK          string    `dynamorm:"sk" json:"sk"`                   // project#{id}
+	TenantID    string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`     // For tenant isolation
+	EntityType  string    `dynamorm:"index:tenant-entity,sk" json:"entity_type"` // "project"
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	OwnerID     string    `json:"owner_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // Request DTOs

@@ -154,11 +154,11 @@ func (r *SlidingWindowRateLimiter) checkRateLimit(ctx context.Context, key strin
 	// For demonstration, we'll store a single counter entry per key with timestamp buckets
 	// This is a simplified approach - a full implementation would use proper range queries
 	var windowEntry struct {
-		PK        string    `dynamodbav:"pk"`
-		SK        string    `dynamodbav:"sk"`
-		Count     int       `dynamodbav:"count"`
-		Timestamp time.Time `dynamodbav:"timestamp"`
-		TTL       int64     `dynamodbav:"ttl"`
+		PK        string    ``
+		SK        string    ``
+		Count     int       ``
+		Timestamp time.Time ``
+		TTL       int64     ``
 	}
 	
 	// Get current window entry

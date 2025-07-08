@@ -31,9 +31,11 @@ func NewIdempotencyTable(scope constructs.Construct, id *string, props *Idempote
 		props.TimeToLiveAttribute = jsii.String("expires_at")
 	}
 	
-	// Create table with standard pk/sk attributes
+	// Create table with field names from IdempotencyRecord struct
 	return NewLiftTable(scope, id, &LiftTableProps{
 		TableName:                 props.TableName,
+		PartitionKeyName:          jsii.String("PK"),
+		SortKeyName:               jsii.String("SK"),
 		TimeToLiveAttribute:       props.TimeToLiveAttribute,
 		EnablePointInTimeRecovery: jsii.Bool(true),
 	})

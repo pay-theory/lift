@@ -385,15 +385,15 @@ func WithTags(tags map[string]string) TestTableOption {
 
 // DynamORMTestItem represents a test item for DynamORM tables
 type DynamORMTestItem struct {
-	PK           string            `dynamodbav:"pk"`
-	SK           string            `dynamodbav:"sk"`
-	Type         string            `dynamodbav:"type"`
-	Data         map[string]string `dynamodbav:"data"`
-	TTL          int64             `dynamodbav:"ttl,omitempty"`
-	GSI1PK       string            `dynamodbav:"gsi1pk,omitempty"`
-	GSI1SK       string            `dynamodbav:"gsi1sk,omitempty"`
-	CreatedAt    time.Time         `dynamodbav:"created_at"`
-	UpdatedAt    time.Time         `dynamodbav:"updated_at"`
+	PK           string            ``
+	SK           string            ``
+	Type         string            ``
+	Data         map[string]string ``
+	TTL          int64             ``
+	GSI1PK       string            ``
+	GSI1SK       string            ``
+	CreatedAt    time.Time         ``
+	UpdatedAt    time.Time         ``
 }
 
 // CreateDynamORMItem creates a standard DynamORM test item

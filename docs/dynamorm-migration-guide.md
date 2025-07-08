@@ -43,12 +43,12 @@ table := constructs.NewLiftTable(stack, jsii.String("UserTable"), &constructs.Li
 #### Before (Old Structure)
 ```go
 type User struct {
-    TenantID  string `dynamodbav:"TenantID"`
-    UserID    string `dynamodbav:"UserID"`
-    Email     string `dynamodbav:"Email"`
-    CreatedAt string `dynamodbav:"CreatedAt"`
-    Status    string `dynamodbav:"Status"`
-    Name      string `dynamodbav:"Name"`
+    TenantID  string ``
+    UserID    string ``
+    Email     string ``
+    CreatedAt string ``
+    Status    string ``
+    Name      string ``
 }
 ```
 
@@ -56,28 +56,25 @@ type User struct {
 ```go
 type User struct {
     // Composite keys - BOTH tags required!
-    PK string `dynamorm:"pk" dynamodbav:"pk"`  // tenant#{tenant_id}
-    SK string `dynamorm:"sk" dynamodbav:"sk"`  // user#{user_id}
+    PK string `dynamorm:"pk" `  // tenant#{tenant_id}
+    SK string `dynamorm:"sk" `  // user#{user_id}
     
-    // GSI definitions via struct tags - need dynamodbav for marshaling
-    Email     string `dynamorm:"index:email-index,pk" dynamodbav:"email"`
-    CreatedAt string `dynamorm:"index:email-index,sk" dynamodbav:"created_at"`
-    Status    string `dynamorm:"index:status-index,pk" dynamodbav:"status"`
-    UserID    string `dynamorm:"index:status-index,sk" dynamodbav:"user_id"`
+    // GSI definitions via struct tags
+    Email     string `dynamorm:"index:email-index,pk" `
+    CreatedAt string `dynamorm:"index:email-index,sk" `
+    Status    string `dynamorm:"index:status-index,pk" `
+    UserID    string `dynamorm:"index:status-index,sk" `
     
     // Keep tenant_id for filtering
-    TenantID string `dynamorm:"index:tenant-index,pk" dynamodbav:"tenant_id"`
+    TenantID string `dynamorm:"index:tenant-index,pk" `
     
-    // Business fields - all need dynamodbav tags
-    Name string    `json:"name" dynamodbav:"name"`
-    TTL  int64     `json:"ttl,omitempty" dynamodbav:"ttl,omitempty" dynamorm:"ttl"`
+    // Business fields
+    Name string    `json:"name" `
+    TTL  int64     `json:"ttl,omitempty" dynamorm:"ttl"`
 }
 ```
 
-**Critical**: You MUST include both `dynamorm` and `dynamodbav` tags:
-- `dynamorm` tags identify keys and indexes for DynamORM
-- `dynamodbav` tags handle the actual DynamoDB marshaling
-- Missing `dynamodbav` tags will cause "Missing the key pk in the item" errors
+**Important**: Only `dynamorm` tags are needed - DynamORM handles all marshaling internally
 
 ### 3. Update Data Access Code
 
@@ -134,24 +131,24 @@ import (
 
 // OldUser represents the legacy structure
 type OldUser struct {
-    TenantID  string `dynamodbav:"TenantID"`
-    UserID    string `dynamodbav:"UserID"`
-    Email     string `dynamodbav:"Email"`
-    Name      string `dynamodbav:"Name"`
-    CreatedAt string `dynamodbav:"CreatedAt"`
-    Status    string `dynamodbav:"Status"`
+    TenantID  string ``
+    UserID    string ``
+    Email     string ``
+    Name      string ``
+    CreatedAt string ``
+    Status    string ``
 }
 
 // NewUser represents the new structure
 type NewUser struct {
-    PK        string `dynamorm:"pk" dynamodbav:"pk"`
-    SK        string `dynamorm:"sk" dynamodbav:"sk"`
-    Email     string `dynamorm:"index:email-index,pk" dynamodbav:"email"`
-    CreatedAt string `dynamorm:"index:email-index,sk" dynamodbav:"created_at"`
-    TenantID  string `dynamorm:"index:tenant-index,pk" dynamodbav:"tenant_id"`
-    UserID    string `json:"user_id" dynamodbav:"user_id"`
-    Name      string `json:"name" dynamodbav:"name"`
-    Status    string `json:"status" dynamodbav:"status"`
+    PK        string `dynamorm:"pk" `
+    SK        string `dynamorm:"sk" `
+    Email     string `dynamorm:"index:email-index,pk" `
+    CreatedAt string `dynamorm:"index:email-index,sk" `
+    TenantID  string `dynamorm:"index:tenant-index,pk" `
+    UserID    string `json:"user_id" `
+    Name      string `json:"name" `
+    Status    string `json:"status" `
 }
 
 func migrateUsers(ctx context.Context, oldTable, newTable string) error {
@@ -225,12 +222,12 @@ type RateLimit struct {
 **New Structure:**
 ```go
 type RateLimit struct {
-    PK        string `dynamorm:"pk" dynamodbav:"pk"`  // ratelimit#{identifier}#{window}
-    SK        string `dynamorm:"sk" dynamodbav:"sk"`  // ratelimit#{identifier}#{window}
-    IPAddress string `dynamorm:"index:ip-index,pk" dynamodbav:"ip_address"`
-    UserID    string `dynamorm:"index:user-index,pk" dynamodbav:"user_id"`
-    Count     int    `json:"count" dynamodbav:"count"`
-    ExpiresAt int64  `json:"expires_at" dynamodbav:"expires_at" dynamorm:"ttl"`
+    PK        string `dynamorm:"pk" `  // ratelimit#{identifier}#{window}
+    SK        string `dynamorm:"sk" `  // ratelimit#{identifier}#{window}
+    IPAddress string `dynamorm:"index:ip-index,pk" `
+    UserID    string `dynamorm:"index:user-index,pk" `
+    Count     int    `json:"count" `
+    ExpiresAt int64  `json:"expires_at" dynamorm:"ttl"`
 }
 ```
 
@@ -248,12 +245,12 @@ type Connection struct {
 **New Structure:**
 ```go
 type Connection struct {
-    PK           string `dynamorm:"pk" dynamodbav:"pk"`  // connection#{connection_id}
-    SK           string `dynamorm:"sk" dynamodbav:"sk"`  // connection#{connection_id}
-    UserID       string `dynamorm:"index:user-connections,pk" dynamodbav:"user_id"`
-    ConnectedAt  string `dynamorm:"index:user-connections,sk" dynamodbav:"connected_at"`
-    ConnectionID string `json:"connection_id" dynamodbav:"connection_id"`
-    TTL          int64  `json:"ttl" dynamodbav:"ttl" dynamorm:"ttl"`
+    PK           string `dynamorm:"pk" `  // connection#{connection_id}
+    SK           string `dynamorm:"sk" `  // connection#{connection_id}
+    UserID       string `dynamorm:"index:user-connections,pk" `
+    ConnectedAt  string `dynamorm:"index:user-connections,sk" `
+    ConnectionID string `json:"connection_id" `
+    TTL          int64  `json:"ttl" dynamorm:"ttl"`
 }
 ```
 

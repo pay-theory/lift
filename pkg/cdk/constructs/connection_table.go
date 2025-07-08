@@ -39,9 +39,11 @@ func NewConnectionTable(scope constructs.Construct, id *string, props *Connectio
 		props.TimeToLiveAttribute = jsii.String("ttl")
 	}
 
-	// Create the table with standard pk/sk attributes
+	// Create the table with field names from Connection struct
 	liftTable := NewLiftTable(scope, id, &LiftTableProps{
 		TableName:                 props.TableName,
+		PartitionKeyName:          jsii.String("PK"),
+		SortKeyName:               jsii.String("SK"),
 		TimeToLiveAttribute:       props.TimeToLiveAttribute,
 		EnablePointInTimeRecovery: jsii.Bool(true),
 		EnableStreams:             jsii.Bool(true),
