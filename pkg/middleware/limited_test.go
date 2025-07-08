@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -44,6 +45,10 @@ func TestLimitedRateLimit(t *testing.T) {
 }
 
 func TestIPRateLimitWithLimited(t *testing.T) {
+	// Set AWS_REGION for testing
+	os.Setenv("AWS_REGION", "us-east-1")
+	defer os.Unsetenv("AWS_REGION")
+	
 	middleware, err := IPRateLimitWithLimited(10, time.Minute)
 	if err != nil {
 		t.Skipf("Skipping test due to DynamoDB connection error: %v", err)
@@ -53,6 +58,10 @@ func TestIPRateLimitWithLimited(t *testing.T) {
 }
 
 func TestUserRateLimitWithLimited(t *testing.T) {
+	// Set AWS_REGION for testing
+	os.Setenv("AWS_REGION", "us-east-1")
+	defer os.Unsetenv("AWS_REGION")
+	
 	middleware, err := UserRateLimitWithLimited(100, 15*time.Minute)
 	if err != nil {
 		t.Skipf("Skipping test due to DynamoDB connection error: %v", err)
@@ -62,12 +71,37 @@ func TestUserRateLimitWithLimited(t *testing.T) {
 }
 
 func TestTenantRateLimitWithLimited(t *testing.T) {
+	// Set AWS_REGION for testing
+	os.Setenv("AWS_REGION", "us-east-1")
+	defer os.Unsetenv("AWS_REGION")
+	
 	middleware, err := TenantRateLimitWithLimited(50, 10*time.Minute)
 	if err != nil {
 		t.Skipf("Skipping test due to DynamoDB connection error: %v", err)
 	}
 	
 	assert.NotNil(t, middleware)
+}
+
+func TestRateLimitWithoutAWSRegion(t *testing.T) {
+	// Ensure AWS_REGION is not set
+	os.Unsetenv("AWS_REGION")
+	os.Unsetenv("AWS_DEFAULT_REGION")
+	
+	// Test IPRateLimitWithLimited without region
+	_, err := IPRateLimitWithLimited(10, time.Minute)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "AWS_REGION environment variable not set")
+	
+	// Test UserRateLimitWithLimited without region
+	_, err = UserRateLimitWithLimited(100, 15*time.Minute)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "AWS_REGION environment variable not set")
+	
+	// Test TenantRateLimitWithLimited without region
+	_, err = TenantRateLimitWithLimited(50, 10*time.Minute)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "AWS_REGION environment variable not set")
 }
 
 func TestLimitedConfigDefaults(t *testing.T) {
