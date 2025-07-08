@@ -1,7 +1,6 @@
 package constructs
 
 import (
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -9,21 +8,20 @@ import (
 
 // EventRoutingTableProps defines properties for the event routing table
 type EventRoutingTableProps struct {
-	DynamORMTableProps
-	// Enable source index for querying by event source
-	EnableSourceIndex *bool
-	// Enable status index for querying by processing status
-	EnableStatusIndex *bool
-	// Enable date index for time-based queries
-	EnableDateIndex *bool
+	// Table name
+	TableName *string
+	// TTL attribute name for automatic cleanup
+	TimeToLiveAttribute *string
 }
 
-// EventRoutingTable is a DynamORM table for managing event routing
+// EventRoutingTable is a table for managing event routing
 type EventRoutingTable struct {
-	*DynamORMTable
+	construct constructs.Construct
+	*LiftTable
 }
 
-// NewEventRoutingTable creates a new event routing table using DynamORM
+// NewEventRoutingTable creates a new event routing table
+// The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
 func NewEventRoutingTable(scope constructs.Construct, id *string, props *EventRoutingTableProps) *EventRoutingTable {
 	// Set defaults
 	if props == nil {
@@ -35,122 +33,44 @@ func NewEventRoutingTable(scope constructs.Construct, id *string, props *EventRo
 		props.TableName = jsii.String("event-routing")
 	}
 	
-	// Default partition key for event routing - the event ID
-	if props.PartitionKey == nil {
-		props.PartitionKey = &awsdynamodb.Attribute{
-			Name: jsii.String("event_id"),
-			Type: awsdynamodb.AttributeType_STRING,
-		}
-	}
-	
-	// Default sort key for event routing - the timestamp
-	if props.SortKey == nil {
-		props.SortKey = &awsdynamodb.Attribute{
-			Name: jsii.String("timestamp"),
-			Type: awsdynamodb.AttributeType_STRING,
-		}
-	}
-	
 	// Enable TTL for event cleanup
 	if props.TimeToLiveAttribute == nil {
 		props.TimeToLiveAttribute = jsii.String("ttl")
 	}
-	
-	// Enable point-in-time recovery by default for event tracking
-	if props.PointInTimeRecovery == nil {
-		props.PointInTimeRecovery = jsii.Bool(true)
-	}
 
-	// Create the base DynamORM table with the embedded props
-	dynamormTable := NewDynamORMTable(scope, id, &props.DynamORMTableProps)
+	// Create the table with standard pk/sk attributes
+	liftTable := NewLiftTable(scope, id, &LiftTableProps{
+		TableName:                 props.TableName,
+		TimeToLiveAttribute:       props.TimeToLiveAttribute,
+		EnablePointInTimeRecovery: jsii.Bool(true),
+		EnableStreams:             jsii.Bool(true),
+	})
 	
-	table := &EventRoutingTable{
-		DynamORMTable: dynamormTable,
+	return &EventRoutingTable{
+		construct: scope,
+		LiftTable: liftTable,
 	}
-	
-	// Add source index if enabled
-	enableSourceIndex := true
-	if props.EnableSourceIndex != nil {
-		enableSourceIndex = *props.EnableSourceIndex
-	}
-	
-	if enableSourceIndex {
-		table.AddGSI(&GSIProps{
-			IndexName: jsii.String("source-index"),
-			PartitionKey: &awsdynamodb.Attribute{
-				Name: jsii.String("event_source"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			SortKey: &awsdynamodb.Attribute{
-				Name: jsii.String("timestamp"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			ProjectionType: awsdynamodb.ProjectionType_ALL,
-		})
-	}
-	
-	// Add status index if enabled
-	enableStatusIndex := true
-	if props.EnableStatusIndex != nil {
-		enableStatusIndex = *props.EnableStatusIndex
-	}
-	
-	if enableStatusIndex {
-		table.AddGSI(&GSIProps{
-			IndexName: jsii.String("status-index"),
-			PartitionKey: &awsdynamodb.Attribute{
-				Name: jsii.String("processing_status"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			SortKey: &awsdynamodb.Attribute{
-				Name: jsii.String("timestamp"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			ProjectionType: awsdynamodb.ProjectionType_ALL,
-		})
-	}
-	
-	// Add date index if enabled
-	enableDateIndex := false
-	if props.EnableDateIndex != nil {
-		enableDateIndex = *props.EnableDateIndex
-	}
-	
-	if enableDateIndex {
-		table.AddGSI(&GSIProps{
-			IndexName: jsii.String("date-index"),
-			PartitionKey: &awsdynamodb.Attribute{
-				Name: jsii.String("date"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			SortKey: &awsdynamodb.Attribute{
-				Name: jsii.String("timestamp"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			ProjectionType: awsdynamodb.ProjectionType_ALL,
-		})
-	}
-	
-	return table
 }
 
 // GrantEventManagement grants permissions to manage events
 func (e *EventRoutingTable) GrantEventManagement(grantee awsiam.IGrantable) {
 	// Grant read/write permissions for event management
-	e.GrantReadWrite(grantee)
+	e.Table.GrantReadWriteData(grantee)
 }
 
-// GetSourceIndexName returns the name of the source index
-func (e *EventRoutingTable) GetSourceIndexName() *string {
-	return jsii.String("source-index")
-}
-
-// GetStatusIndexName returns the name of the status index
-func (e *EventRoutingTable) GetStatusIndexName() *string {
-	return jsii.String("status-index")
-}
-
-// GetDateIndexName returns the name of the date index
-func (e *EventRoutingTable) GetDateIndexName() *string {
-	return jsii.String("date-index")
-}
+// Example DynamORM model for event routing:
+//
+// type EventRoute struct {
+//     PK         string    `dynamorm:"pk"`                          // event#{event_id}
+//     SK         string    `dynamorm:"sk"`                          // timestamp#{timestamp}
+//     
+//     // Indexes for queries
+//     EventSource      string `dynamorm:"index:source-index,pk"`  // event_source
+//     Timestamp        string `dynamorm:"index:source-index,sk"`  // ISO timestamp
+//     ProcessingStatus string `dynamorm:"index:status-index,pk"`  // processing_status
+//     Date             string `dynamorm:"index:date-index,pk"`    // YYYY-MM-DD
+//     
+//     // Event data
+//     EventID    string `json:"event_id"`
+//     TTL        int64  `json:"ttl"`
+// }

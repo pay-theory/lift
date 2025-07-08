@@ -39,7 +39,7 @@ type RateLimitedFunctionProps struct {
 type RateLimitedFunction struct {
 	constructs.Construct
 	Function      *LiftFunction
-	RateTable     *DynamORMTable
+	RateTable     *LiftTable
 	rateLimitType RateLimitType
 }
 
@@ -62,7 +62,7 @@ func NewRateLimitedFunction(scope constructs.Construct, id *string, props *RateL
 	}
 
 	// Create or reference the rate limiting table
-	var rateTable *DynamORMTable
+	var rateTable *LiftTable
 	tableName := props.TableName
 	if tableName == nil {
 		tableName = jsii.String(fmt.Sprintf("%s-rate-limits", *id))
@@ -70,12 +70,7 @@ func NewRateLimitedFunction(scope constructs.Construct, id *string, props *RateL
 
 	// Create DynamORM-compatible rate limit table
 	rateTable = NewRateLimitTable(this, jsii.String("RateTable"), &RateLimitTableProps{
-		DynamORMTableProps: DynamORMTableProps{
-			TableName:           tableName,
-			PointInTimeRecovery: jsii.Bool(false), // Not needed for rate limits
-			RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
-			Stream:              "", // No streams needed for rate limiting
-		},
+		TableName:           tableName,
 	})
 
 	// Add rate limiting environment variables
@@ -85,7 +80,7 @@ func NewRateLimitedFunction(scope constructs.Construct, id *string, props *RateL
 	env := *props.LiftFunctionProps.Environment
 	
 	// DynamORM table configuration
-	env["RATE_LIMIT_TABLE_NAME"] = rateTable.GetTableName()
+	env["RATE_LIMIT_TABLE_NAME"] = rateTable.Table.TableName()
 	env["DYNAMORM_REGION"] = awscdk.Stack_Of(this).Region()
 	
 	// Rate limiting configuration
@@ -111,8 +106,8 @@ func NewRateLimitedFunction(scope constructs.Construct, id *string, props *RateL
 	// Create the base Lift function
 	liftFn := NewLiftFunction(this, jsii.String("Function"), &props.LiftFunctionProps)
 
-	// Grant DynamORM permissions
-	rateTable.AddDynamORMPermissions(liftFn.Function)
+	// Grant table permissions
+	rateTable.GrantReadWrite(liftFn.Function)
 
 	// Add CloudWatch metrics permissions if enabled
 	if *props.EnableMetrics {
@@ -142,8 +137,8 @@ func (f *RateLimitedFunction) GetFunction() awslambda.Function {
 	return f.Function.Function
 }
 
-// GetTable returns the rate limiting DynamORM table
-func (f *RateLimitedFunction) GetTable() *DynamORMTable {
+// GetTable returns the rate limiting table
+func (f *RateLimitedFunction) GetTable() *LiftTable {
 	return f.RateTable
 }
 

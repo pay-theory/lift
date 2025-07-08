@@ -109,13 +109,16 @@ func NewEventDrivenAPI(scope constructs.Construct, id *string, props *EventDrive
 	// Create request tracking table using DynamORM if enabled
 	if enableRequestTracking {
 		requestTrackingProps := &liftconstructs.RequestTrackingTableProps{
-			DynamORMTableProps: liftconstructs.DynamORMTableProps{
-				TableName: jsii.String(appName + "-requests"),
-				EnableMultiTenant: props.EnableMultiTenant,
-			},
-			EnableCorrelationIndex: jsii.Bool(true),
-			EnableStatusIndex: jsii.Bool(true),
-			EnableUserIndex: jsii.Bool(true),
+			TableName: jsii.String(appName + "-requests"),
+			// GSIs for correlation, status, and user indexes are now defined in DynamORM models
+			// Example model:
+			// type Request struct {
+			//     PK            string `dynamorm:"pk"`                          // request#{request_id}
+			//     SK            string `dynamorm:"sk"`                          // metadata
+			//     CorrelationID string `dynamorm:"index:correlation-index,pk"`  // For correlation queries
+			//     Status        string `dynamorm:"index:status-index,pk"`       // For status queries
+			//     UserID        string `dynamorm:"index:user-index,pk"`         // For user queries
+			// }
 		}
 		
 		// Override with user-provided props
@@ -142,13 +145,8 @@ func NewEventDrivenAPI(scope constructs.Construct, id *string, props *EventDrive
 		apiEnv["REQUEST_TRACKING_TABLE"] = this.RequestTrackingTable.GetTableName()
 		apiEnv["REQUEST_TRACKING_TABLE_ARN"] = this.RequestTrackingTable.GetTableArn()
 		
-		// Add index names
-		if this.RequestTrackingTable.GetCorrelationIndexName() != nil {
-			apiEnv["CORRELATION_INDEX"] = this.RequestTrackingTable.GetCorrelationIndexName()
-		}
-		if this.RequestTrackingTable.GetStatusIndexName() != nil {
-			apiEnv["STATUS_INDEX"] = this.RequestTrackingTable.GetStatusIndexName()
-		}
+		// GSI names are now determined by DynamORM model struct tags
+		// The index names in the model would be like "correlation-index", "status-index", etc.
 	}
 	
 	// Create API function
@@ -171,7 +169,7 @@ func NewEventDrivenAPI(scope constructs.Construct, id *string, props *EventDrive
 	
 	// Grant permissions to API function
 	if this.RequestTrackingTable != nil {
-		this.RequestTrackingTable.AddDynamORMPermissions(this.APIFunction.Function)
+		this.RequestTrackingTable.GrantReadWrite(this.APIFunction.Function)
 	}
 	
 	// Create HTTP API
@@ -238,7 +236,7 @@ func NewEventDrivenAPI(scope constructs.Construct, id *string, props *EventDrive
 	
 	// Grant permissions to event handler
 	if this.RequestTrackingTable != nil && this.EventHandler != nil {
-		this.RequestTrackingTable.AddDynamORMPermissions(this.EventHandler.Function.Function)
+		this.RequestTrackingTable.GrantReadWrite(this.EventHandler.Function.Function)
 	}
 	
 	// Enable monitoring if requested
@@ -283,7 +281,7 @@ func (e *EventDrivenAPI) GetRequestTrackingTableName() *string {
 // GrantRequestTrackingAccess grants read/write access to the request tracking table
 func (e *EventDrivenAPI) GrantRequestTrackingAccess(grantee awslambda.IFunction) {
 	if e.RequestTrackingTable != nil {
-		e.RequestTrackingTable.AddDynamORMPermissions(grantee)
+		e.RequestTrackingTable.GrantReadWrite(grantee)
 	}
 }
 

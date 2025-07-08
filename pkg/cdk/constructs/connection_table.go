@@ -1,7 +1,6 @@
 package constructs
 
 import (
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -9,19 +8,21 @@ import (
 
 // ConnectionTableProps defines properties for the WebSocket connection table
 type ConnectionTableProps struct {
-	DynamORMTableProps
-	// Enable user index for user-based queries
-	EnableUserIndex *bool
-	// Enable tenant index for multi-tenant support
-	EnableTenantIndex *bool
+	// Table name
+	TableName *string
+	// Enable TTL for automatic connection cleanup
+	TimeToLiveAttribute *string
 }
 
-// ConnectionTable is a DynamORM table for managing WebSocket connections
+// ConnectionTable is a table for managing WebSocket connections
 type ConnectionTable struct {
-	*DynamORMTable
+	construct constructs.Construct
+	*LiftTable
 }
 
-// NewConnectionTable creates a new connection management table using DynamORM
+// NewConnectionTable creates a new connection management table
+// The table uses pk/sk for connection_id and metadata storage
+// GSIs should be defined in your DynamORM model structs
 func NewConnectionTable(scope constructs.Construct, id *string, props *ConnectionTableProps) *ConnectionTable {
 	// Set defaults
 	if props == nil {
@@ -33,88 +34,44 @@ func NewConnectionTable(scope constructs.Construct, id *string, props *Connectio
 		props.TableName = jsii.String("websocket-connections")
 	}
 	
-	// Default partition key for connections - the connection ID
-	if props.PartitionKey == nil {
-		props.PartitionKey = &awsdynamodb.Attribute{
-			Name: jsii.String("connection_id"),
-			Type: awsdynamodb.AttributeType_STRING,
-		}
-	}
-	
 	// Enable TTL for connection cleanup
 	if props.TimeToLiveAttribute == nil {
 		props.TimeToLiveAttribute = jsii.String("ttl")
 	}
-	
-	// Enable point-in-time recovery by default for connections
-	if props.PointInTimeRecovery == nil {
-		props.PointInTimeRecovery = jsii.Bool(true)
-	}
 
-	// Create the base DynamORM table with the embedded props
-	dynamormTable := NewDynamORMTable(scope, id, &props.DynamORMTableProps)
+	// Create the table with standard pk/sk attributes
+	liftTable := NewLiftTable(scope, id, &LiftTableProps{
+		TableName:                 props.TableName,
+		TimeToLiveAttribute:       props.TimeToLiveAttribute,
+		EnablePointInTimeRecovery: jsii.Bool(true),
+		EnableStreams:             jsii.Bool(true),
+	})
 	
-	table := &ConnectionTable{
-		DynamORMTable: dynamormTable,
+	return &ConnectionTable{
+		construct: scope,
+		LiftTable: liftTable,
 	}
-	
-	// Add user index if enabled
-	enableUserIndex := true
-	if props.EnableUserIndex != nil {
-		enableUserIndex = *props.EnableUserIndex
-	}
-	
-	if enableUserIndex {
-		table.AddGSI(&GSIProps{
-			IndexName: jsii.String("user-index"),
-			PartitionKey: &awsdynamodb.Attribute{
-				Name: jsii.String("user_id"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			SortKey: &awsdynamodb.Attribute{
-				Name: jsii.String("created_at"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			ProjectionType: awsdynamodb.ProjectionType_ALL,
-		})
-	}
-	
-	// Add tenant index if multi-tenant is enabled
-	enableTenantIndex := false
-	if props.EnableTenantIndex != nil {
-		enableTenantIndex = *props.EnableTenantIndex
-	}
-	
-	if enableTenantIndex || (props.EnableMultiTenant != nil && *props.EnableMultiTenant) {
-		table.AddGSI(&GSIProps{
-			IndexName: jsii.String("tenant-index"),
-			PartitionKey: &awsdynamodb.Attribute{
-				Name: jsii.String("tenant_id"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			SortKey: &awsdynamodb.Attribute{
-				Name: jsii.String("created_at"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			ProjectionType: awsdynamodb.ProjectionType_ALL,
-		})
-	}
-	
-	return table
 }
 
 // GrantConnectionManagement grants permissions to manage WebSocket connections
 func (c *ConnectionTable) GrantConnectionManagement(grantee awsiam.IGrantable) {
 	// Grant read/write permissions for connection management
-	c.GrantReadWrite(grantee)
+	c.Table.GrantReadWriteData(grantee)
 }
 
-// GetUserIndexName returns the name of the user index
-func (c *ConnectionTable) GetUserIndexName() *string {
-	return jsii.String("user-index")
-}
-
-// GetTenantIndexName returns the name of the tenant index
-func (c *ConnectionTable) GetTenantIndexName() *string {
-	return jsii.String("tenant-index")
-}
+// Example DynamORM model for connections:
+//
+// type Connection struct {
+//     PK         string    `dynamorm:"pk"`                       // connection#{connection_id}
+//     SK         string    `dynamorm:"sk"`                       // connection#{connection_id}
+//     
+//     // Indexes for queries
+//     UserID     string    `dynamorm:"index:user-index,pk"`      // user_id
+//     CreatedAt  string    `dynamorm:"index:user-index,sk"`      // ISO timestamp
+//     TenantID   string    `dynamorm:"index:tenant-index,pk"`    // tenant_id (if multi-tenant)
+//     
+//     // Connection data
+//     ConnectionID string  `json:"connection_id"`
+//     Endpoint     string  `json:"endpoint"`
+//     TTL          int64   `json:"ttl"`
+// }
