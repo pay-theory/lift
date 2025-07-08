@@ -196,18 +196,18 @@ table := awsdynamodb.NewTable(scope, jsii.String("Table"), &awsdynamodb.TablePro
 ### What DynamORM Models Define:
 ```go
 type User struct {
-    // Keys
-    PK string `dynamorm:"pk" json:"-"`
-    SK string `dynamorm:"sk" json:"-"`
+    // Keys - BOTH tags required
+    PK string `dynamorm:"pk" dynamodbav:"pk" json:"-"`
+    SK string `dynamorm:"sk" dynamodbav:"sk" json:"-"`
     
     // GSI definitions in the model
-    TenantID   string `dynamorm:"index:tenant-index,pk" json:"tenant_id"`
-    EntityType string `dynamorm:"index:tenant-index,sk" json:"entity_type"`
-    CreatedAt  string `dynamorm:"index:created-index,pk" json:"created_at"`
+    TenantID   string `dynamorm:"index:tenant-index,pk" dynamodbav:"tenant_id" json:"tenant_id"`
+    EntityType string `dynamorm:"index:tenant-index,sk" dynamodbav:"entity_type" json:"entity_type"`
+    CreatedAt  string `dynamorm:"index:created-index,pk" dynamodbav:"created_at" json:"created_at"`
     
     // Fields
-    UserID    string `json:"user_id"`
-    AccountID string `json:"account_id"`
+    UserID    string `json:"user_id" dynamodbav:"user_id"`
+    AccountID string `json:"account_id" dynamodbav:"account_id"`
 }
 ```
 

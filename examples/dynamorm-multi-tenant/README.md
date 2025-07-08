@@ -72,21 +72,21 @@ Project: pk="tenant#{tenant_id}", sk="project#{project_id}"
 
 ```go
 type User struct {
-    // Standard keys
-    PK string `dynamorm:"pk"`  // tenant#{tenant_id}
-    SK string `dynamorm:"sk"`  // user#{user_id}
+    // Standard keys - BOTH tags required
+    PK string `dynamorm:"pk" dynamodbav:"pk"`  // tenant#{tenant_id}
+    SK string `dynamorm:"sk" dynamodbav:"sk"`  // user#{user_id}
     
     // GSI definitions (replaces CDK GSI creation)
-    TenantID   string `dynamorm:"index:tenant-entity,pk"`
-    EntityType string `dynamorm:"index:tenant-entity,sk"`
-    CreatedAt  string `dynamorm:"index:tenant-timeseries,sk"`
-    Status     string `dynamorm:"index:status-tenant,pk"`
+    TenantID   string `dynamorm:"index:tenant-entity,pk" dynamodbav:"tenant_id"`
+    EntityType string `dynamorm:"index:tenant-entity,sk" dynamodbav:"entity_type"`
+    CreatedAt  string `dynamorm:"index:tenant-timeseries,sk" dynamodbav:"created_at"`
+    Status     string `dynamorm:"index:status-tenant,pk" dynamodbav:"status"`
     
     // Business fields
-    ID    string `json:"id"`
-    Name  string `json:"name"`
-    Email string `json:"email"`
-    TTL   int64  `json:"ttl,omitempty" dynamorm:"ttl"`
+    ID    string `json:"id" dynamodbav:"id"`
+    Name  string `json:"name" dynamodbav:"name"`
+    Email string `json:"email" dynamodbav:"email"`
+    TTL   int64  `json:"ttl,omitempty" dynamodbav:"ttl,omitempty" dynamorm:"ttl"`
 }
 ```
 

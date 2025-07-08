@@ -340,16 +340,20 @@ Lift provides standardized DynamoDB table structures that work seamlessly with D
 **For detailed DynamORM integration, see: [DynamORM Integration Guide](docs/dynamorm-integration.md)**
 
 ```go
-// Define your model with DynamORM tags
+// Define your model with BOTH DynamORM and DynamoDB tags
 type User struct {
-    PK       string `dynamorm:"pk"`                    // user#{user_id}
-    SK       string `dynamorm:"sk"`                    // user#{user_id}
-    Email    string `dynamorm:"index:email-index,pk"`  // GSI for email lookup
-    TenantID string `dynamorm:"index:tenant-index,pk"` // GSI for tenant queries
+    // Keys must have both tags
+    PK       string `dynamorm:"pk" dynamodbav:"pk"`                    // user#{user_id}
+    SK       string `dynamorm:"sk" dynamodbav:"sk"`                    // user#{user_id}
     
-    UserID   string    `json:"user_id"`
-    Name     string    `json:"name"`
-    TTL      int64     `json:"ttl,omitempty" dynamorm:"ttl"`
+    // GSI fields need both tags too
+    Email    string `dynamorm:"index:email-index,pk" dynamodbav:"email"`      // GSI for email lookup
+    TenantID string `dynamorm:"index:tenant-index,pk" dynamodbav:"tenant_id"` // GSI for tenant queries
+    
+    // All fields need dynamodbav for marshaling
+    UserID   string    `json:"user_id" dynamodbav:"user_id"`
+    Name     string    `json:"name" dynamodbav:"name"`
+    TTL      int64     `json:"ttl,omitempty" dynamodbav:"ttl,omitempty" dynamorm:"ttl"`
 }
 
 func GetUser(ctx *lift.Context) error {

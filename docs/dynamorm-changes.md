@@ -42,11 +42,11 @@ table := constructs.NewLiftTable(stack, id, &constructs.LiftTableProps{
     TableName: jsii.String("users"),
 })
 
-// Go Model - GSIs defined here
+// Go Model - GSIs defined here - BOTH tags required
 type User struct {
-    PK    string `dynamorm:"pk"`                    // user#{user_id}
-    SK    string `dynamorm:"sk"`                    // tenant#{tenant_id}
-    Email string `dynamorm:"index:email-index,pk"` // GSI defined in tag
+    PK    string `dynamorm:"pk" dynamodbav:"pk"`                    // user#{user_id}
+    SK    string `dynamorm:"sk" dynamodbav:"sk"`                    // tenant#{tenant_id}
+    Email string `dynamorm:"index:email-index,pk" dynamodbav:"email"` // GSI defined in tag
 }
 ```
 
@@ -64,10 +64,10 @@ PK: "order#2024-001"  // Not just "2024-001"
 GSIs are now defined in struct tags:
 ```go
 type Product struct {
-    PK       string `dynamorm:"pk"`                     // product#{id}
-    SK       string `dynamorm:"sk"`                     // product#{id}
-    Category string `dynamorm:"index:category-index,pk"` // GSI for category queries
-    Price    int    `dynamorm:"index:price-index,pk"`    // GSI for price ranges
+    PK       string `dynamorm:"pk" dynamodbav:"pk"`                     // product#{id}
+    SK       string `dynamorm:"sk" dynamodbav:"sk"`                     // product#{id}
+    Category string `dynamorm:"index:category-index,pk" dynamodbav:"category"` // GSI for category queries
+    Price    int    `dynamorm:"index:price-index,pk" dynamodbav:"price"`    // GSI for price ranges
 }
 ```
 
@@ -84,31 +84,31 @@ PK: "tenant#123", SK: "config#main"  // Tenant config
 ### Rate Limiting
 ```go
 type RateLimit struct {
-    PK        string `dynamorm:"pk"` // ratelimit#{key}#{window}
-    SK        string `dynamorm:"sk"` // ratelimit#{key}#{window}
-    Count     int    `json:"count"`
-    ExpiresAt int64  `json:"expires_at" dynamorm:"ttl"`
+    PK        string `dynamorm:"pk" dynamodbav:"pk"` // ratelimit#{key}#{window}
+    SK        string `dynamorm:"sk" dynamodbav:"sk"` // ratelimit#{key}#{window}
+    Count     int    `json:"count" dynamodbav:"count"`
+    ExpiresAt int64  `json:"expires_at" dynamodbav:"expires_at" dynamorm:"ttl"`
 }
 ```
 
 ### WebSocket Connections
 ```go
 type Connection struct {
-    PK           string `dynamorm:"pk"`                      // connection#{id}
-    SK           string `dynamorm:"sk"`                      // connection#{id}
-    UserID       string `dynamorm:"index:user-index,pk"`     // For user lookups
-    ConnectionID string `json:"connection_id"`
-    TTL          int64  `json:"ttl" dynamorm:"ttl"`
+    PK           string `dynamorm:"pk" dynamodbav:"pk"`                      // connection#{id}
+    SK           string `dynamorm:"sk" dynamodbav:"sk"`                      // connection#{id}
+    UserID       string `dynamorm:"index:user-index,pk" dynamodbav:"user_id"`     // For user lookups
+    ConnectionID string `json:"connection_id" dynamodbav:"connection_id"`
+    TTL          int64  `json:"ttl" dynamodbav:"ttl" dynamorm:"ttl"`
 }
 ```
 
 ### Event Store
 ```go
 type Event struct {
-    PK        string `dynamorm:"pk"`                    // stream#{stream_id}
-    SK        string `dynamorm:"sk"`                    // event#{timestamp}#{id}
-    EventType string `dynamorm:"index:type-index,pk"`   // For type queries
-    Timestamp string `dynamorm:"index:type-index,sk"`
+    PK        string `dynamorm:"pk" dynamodbav:"pk"`                    // stream#{stream_id}
+    SK        string `dynamorm:"sk" dynamodbav:"sk"`                    // event#{timestamp}#{id}
+    EventType string `dynamorm:"index:type-index,pk" dynamodbav:"event_type"`   // For type queries
+    Timestamp string `dynamorm:"index:type-index,sk" dynamodbav:"timestamp"`
 }
 ```
 
