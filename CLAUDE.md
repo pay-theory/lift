@@ -293,33 +293,44 @@ patterns.NewLiftApp(app, jsii.String("MyApp"), &patterns.LiftAppProps{
 app.Synth(nil)
 ```
 
-### DynamORM Multi-Tenant Pattern
-When `EnableMultiTenant: true`, tables are created with standard `pk`/`sk` naming for DynamORM compatibility. Multi-tenant isolation is achieved through key values:
+### DynamORM Integration
+
+All Lift tables now use a standardized structure compatible with DynamORM:
+- Primary key: `pk` (partition key)
+- Sort key: `sk` (sort key)
+- GSIs defined through DynamORM struct tags
+- Composite keys for entity identification and multi-tenancy
 
 ```go
+// Define models with DynamORM tags
 type User struct {
-    PK         string `dynamodbav:"pk"`           // tenant#{tenant_id}
-    SK         string `dynamodbav:"sk"`           // user#{user_id}
-    TenantID   string `dynamodbav:"tenant_id"`    // For GSI queries
-    EntityType string `dynamodbav:"entity_type"`  // "user"
+    // Keys - use composite format for clear identification
+    PK string `dynamorm:"pk"`  // tenant#{tenant_id} or user#{user_id}
+    SK string `dynamorm:"sk"`  // user#{user_id} or hierarchical data
+    
+    // GSI attributes for alternative access patterns
+    Email    string `dynamorm:"index:email-index,pk"`
+    TenantID string `dynamorm:"index:tenant-index,pk"`
+    Created  string `dynamorm:"index:tenant-index,sk"`
     
     // Business fields
-    UserID    string `dynamodbav:"user_id"`
-    Email     string `dynamodbav:"email"`
-    Name      string `dynamodbav:"name"`
+    UserID   string    `json:"user_id"`
+    Name     string    `json:"name"`
+    Status   string    `json:"status"`
+    TTL      int64     `json:"ttl,omitempty" dynamorm:"ttl"`
 }
 
-// Usage
-user := User{
-    PK:         fmt.Sprintf("tenant#%s", tenantID),
-    SK:         fmt.Sprintf("user#%s", userID),
-    TenantID:   tenantID,
-    EntityType: "user",
-    UserID:     userID,
-    Email:      "user@example.com",
-    Name:       "John Doe",
-}
+// Multi-tenant query example
+users, err := dynamorm.Query[User](ctx, db).
+    WithTable(tableName).
+    WithPK(fmt.Sprintf("tenant#%s", tenantID)).
+    WithSKPrefix("user#").
+    Execute()
 ```
+
+**Important**: GSIs are no longer created in CDK. Define them in your DynamORM models using struct tags.
+
+For detailed DynamORM integration patterns, see `docs/dynamorm-integration.md`.
 
 ### CDK Constructs
 - **LiftFunction**: Optimized Lambda with ARM64, tracing, multi-tenant support

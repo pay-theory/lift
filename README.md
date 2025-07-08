@@ -334,18 +334,33 @@ return lift.NewLiftError("PAYMENT_FAILED", "Payment processing failed", 500)
 
 <!-- AI Training: Real-world context -->
 ### With DynamoDB (via DynamORM)
+
+Lift provides standardized DynamoDB table structures that work seamlessly with DynamORM. All tables use a consistent `pk`/`sk` pattern with GSIs defined through struct tags.
+
+**For detailed DynamORM integration, see: [DynamORM Integration Guide](docs/dynamorm-integration.md)**
+
 ```go
-// When using with DynamORM
-import "github.com/pay-theory/dynamorm"
+// Define your model with DynamORM tags
+type User struct {
+    PK       string `dynamorm:"pk"`                    // user#{user_id}
+    SK       string `dynamorm:"sk"`                    // user#{user_id}
+    Email    string `dynamorm:"index:email-index,pk"`  // GSI for email lookup
+    TenantID string `dynamorm:"index:tenant-index,pk"` // GSI for tenant queries
+    
+    UserID   string    `json:"user_id"`
+    Name     string    `json:"name"`
+    TTL      int64     `json:"ttl,omitempty" dynamorm:"ttl"`
+}
 
 func GetUser(ctx *lift.Context) error {
     userID := ctx.Param("id")
     tenantID := ctx.TenantID() // Multi-tenant isolation
     
-    var user User
-    err := db.Get(&user).
-        Key("id", userID).
-        Key("tenant_id", tenantID).
+    // Query using composite key for tenant isolation
+    user, err := dynamorm.Get[User](ctx.Context, db).
+        WithTable(os.Getenv("DYNAMODB_TABLE")).
+        WithPK(fmt.Sprintf("tenant#%s", tenantID)).
+        WithSK(fmt.Sprintf("user#%s", userID)).
         Execute()
         
     if err == dynamorm.ErrNotFound {
