@@ -10,11 +10,12 @@ This example demonstrates a comprehensive multi-tenant SaaS application using Li
 - **IAM Boundary Enforcement**: Policies preventing cross-tenant access
 - **Rate Limiting**: Per-tenant rate limiting based on subscription plans
 
-### DynamORM Integration
-- **Single Table Design**: Efficient DynamORM patterns with tenant#{id} partition keys
-- **Entity Types**: Users, projects, and tenants with proper entity modeling
-- **Access Patterns**: Optimized for tenant-scoped operations
-- **TTL Support**: Automatic data expiration where appropriate
+### DynamORM Integration (New Standardized Approach)
+- **Standard pk/sk Structure**: All tables use `pk` and `sk` attributes
+- **Composite Keys**: Clear entity identification with `tenant#{id}`, `user#{id}` patterns
+- **GSIs via Struct Tags**: No CDK GSI definitions - all indexes defined in DynamORM models
+- **Single Table Design**: Efficient patterns for multi-tenant isolation
+- **TTL Support**: Automatic data expiration using DynamORM tags
 
 ### Monitoring & Observability
 - **CloudWatch Metrics**: Table-level and tenant-specific metrics
@@ -53,41 +54,43 @@ This example demonstrates a comprehensive multi-tenant SaaS application using Li
 
 ## Data Model
 
-### DynamORM Patterns
+### DynamORM Patterns (Standardized pk/sk)
 
 ```go
-// Tenant
-PK: tenant#{tenant_id}
-SK: tenant#{tenant_id}
-tenant_id: {tenant_id}
-entity_type: "tenant"
+// Table structure (created by CDK)
+Primary Key: pk (String)
+Sort Key: sk (String)
+TTL: ttl (optional)
 
-// User within tenant
-PK: tenant#{tenant_id}
-SK: user#{user_id}
-tenant_id: {tenant_id}
-entity_type: "user"
-
-// Project within tenant
-PK: tenant#{tenant_id}
-SK: project#{project_id}
-tenant_id: {tenant_id}
-entity_type: "project"
+// Composite key patterns
+Tenant:  pk="tenant#{tenant_id}", sk="tenant#{tenant_id}"
+User:    pk="tenant#{tenant_id}", sk="user#{user_id}"
+Project: pk="tenant#{tenant_id}", sk="project#{project_id}"
 ```
 
-### Global Secondary Indexes
+### Model Definition with GSIs
 
-1. **gsi-tenant-entity**: Query all entities of a type within a tenant
-   - PK: tenant_id
-   - SK: entity_type
+```go
+type User struct {
+    // Standard keys
+    PK string `dynamorm:"pk"`  // tenant#{tenant_id}
+    SK string `dynamorm:"sk"`  // user#{user_id}
+    
+    // GSI definitions (replaces CDK GSI creation)
+    TenantID   string `dynamorm:"index:tenant-entity,pk"`
+    EntityType string `dynamorm:"index:tenant-entity,sk"`
+    CreatedAt  string `dynamorm:"index:tenant-timeseries,sk"`
+    Status     string `dynamorm:"index:status-tenant,pk"`
+    
+    // Business fields
+    ID    string `json:"id"`
+    Name  string `json:"name"`
+    Email string `json:"email"`
+    TTL   int64  `json:"ttl,omitempty" dynamorm:"ttl"`
+}
+```
 
-2. **gsi-tenant-timeseries**: Time-based queries within tenant
-   - PK: tenant_id
-   - SK: created_at
-
-3. **gsi-tenant-status**: Status-based queries across tenants
-   - PK: status
-   - SK: tenant_id
+**Note**: GSIs are now created automatically by DynamORM based on struct tags, not in CDK.
 
 ## Deployment
 
