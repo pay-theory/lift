@@ -56,18 +56,18 @@ func NewDynamoDBConnectionStore(ctx context.Context, config DynamoDBConnectionSt
 
 // DynamoDBConnection represents a connection record in DynamoDB
 type DynamoDBConnection struct {
-	PK        string                 `dynamodbav:"pk"`     // Primary key: "CONNECTION#<connectionId>"
-	SK        string                 `dynamodbav:"sk"`     // Sort key: "CONNECTION"
-	GSI1PK    string                 `dynamodbav:"gsi1pk"` // GSI1 primary key: "USER#<userId>"
-	GSI1SK    string                 `dynamodbav:"gsi1sk"` // GSI1 sort key: "CONNECTION#<connectionId>"
-	GSI2PK    string                 `dynamodbav:"gsi2pk"` // GSI2 primary key: "TENANT#<tenantId>"
-	GSI2SK    string                 `dynamodbav:"gsi2sk"` // GSI2 sort key: "CONNECTION#<connectionId>"
-	ID        string                 `dynamodbav:"id"`
-	UserID    string                 `dynamodbav:"user_id"`
-	TenantID  string                 `dynamodbav:"tenant_id"`
-	CreatedAt string                 `dynamodbav:"created_at"`
-	TTL       int64                  `dynamodbav:"ttl"`
-	Metadata  map[string]any `dynamodbav:"metadata,omitempty"`
+	PK        string                 ``     // Primary key: "CONNECTION#<connectionId>"
+	SK        string                 ``     // Sort key: "CONNECTION"
+	GSI1PK    string                 `` // GSI1 primary key: "USER#<userId>"
+	GSI1SK    string                 `` // GSI1 sort key: "CONNECTION#<connectionId>"
+	GSI2PK    string                 `` // GSI2 primary key: "TENANT#<tenantId>"
+	GSI2SK    string                 `` // GSI2 sort key: "CONNECTION#<connectionId>"
+	ID        string                 ``
+	UserID    string                 ``
+	TenantID  string                 ``
+	CreatedAt string                 ``
+	TTL       int64                  ``
+	Metadata  map[string]any ``
 }
 
 // Save stores a connection in DynamoDB

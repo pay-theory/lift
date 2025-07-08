@@ -287,7 +287,9 @@ func (e *DynamORMEventStore) createEventTable() {
 		tableProps.TimeToLiveAttribute = jsii.String("ttl")
 	}
 
-	// Create the event table with LiftTable
+	// Create the event table with field names from Event struct
+	tableProps.PartitionKeyName = jsii.String("PK")
+	tableProps.SortKeyName = jsii.String("SK")
 	e.EventTable = NewLiftTable(e, jsii.String("EventTable"), tableProps)
 
 	// Add GSIs if enabled
@@ -347,7 +349,9 @@ func (e *DynamORMEventStore) createSnapshotTable() {
 		tableProps.WriteCapacity = jsii.Number(*e.props.WriteCapacity * 0.1) // 10% of event table capacity
 	}
 
-	// Create the snapshot table with LiftTable
+	// Create the snapshot table with field names from Snapshot struct
+	tableProps.PartitionKeyName = jsii.String("PK")
+	tableProps.SortKeyName = jsii.String("SK")
 	e.SnapshotTable = NewLiftTable(e, jsii.String("SnapshotTable"), tableProps)
 
 	// Add snapshot-specific GSIs

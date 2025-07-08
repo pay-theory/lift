@@ -15,56 +15,56 @@ import (
 
 // Tenant represents a tenant in the multi-tenant system
 type Tenant struct {
-	ID        string    `json:"id" dynamodbav:"id"`
-	Name      string    `json:"name" dynamodbav:"name"`
-	Email     string    `json:"email" dynamodbav:"email"`
-	Plan      string    `json:"plan" dynamodbav:"plan"`
-	Status    string    `json:"status" dynamodbav:"status"`
-	CreatedAt time.Time `json:"created_at" dynamodbav:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" dynamodbav:"updated_at"`
+	ID        string    `json:"id" `
+	Name      string    `json:"name" `
+	Email     string    `json:"email" `
+	Plan      string    `json:"plan" `
+	Status    string    `json:"status" `
+	CreatedAt time.Time `json:"created_at" `
+	UpdatedAt time.Time `json:"updated_at" `
 
 	// Rate limiting configuration
-	RateLimit  int `json:"rate_limit" dynamodbav:"rate_limit"`
-	BurstLimit int `json:"burst_limit" dynamodbav:"burst_limit"`
+	RateLimit  int `json:"rate_limit" `
+	BurstLimit int `json:"burst_limit" `
 }
 
 // User represents a user within a tenant
 type User struct {
-	ID        string    `json:"id" dynamodbav:"id"`
-	TenantID  string    `json:"tenant_id" dynamodbav:"tenant_id"`
-	Email     string    `json:"email" dynamodbav:"email"`
-	Name      string    `json:"name" dynamodbav:"name"`
-	Role      string    `json:"role" dynamodbav:"role"`
-	Status    string    `json:"status" dynamodbav:"status"`
-	CreatedAt time.Time `json:"created_at" dynamodbav:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" dynamodbav:"updated_at"`
+	ID        string    `json:"id" `
+	TenantID  string    `json:"tenant_id" `
+	Email     string    `json:"email" `
+	Name      string    `json:"name" `
+	Role      string    `json:"role" `
+	Status    string    `json:"status" `
+	CreatedAt time.Time `json:"created_at" `
+	UpdatedAt time.Time `json:"updated_at" `
 }
 
 // Project represents a project within a tenant
 type Project struct {
-	ID          string    `json:"id" dynamodbav:"id"`
-	TenantID    string    `json:"tenant_id" dynamodbav:"tenant_id"`
-	Name        string    `json:"name" dynamodbav:"name"`
-	Description string    `json:"description" dynamodbav:"description"`
-	Status      string    `json:"status" dynamodbav:"status"`
-	OwnerID     string    `json:"owner_id" dynamodbav:"owner_id"`
-	CreatedAt   time.Time `json:"created_at" dynamodbav:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at" dynamodbav:"updated_at"`
+	ID          string    `json:"id" `
+	TenantID    string    `json:"tenant_id" `
+	Name        string    `json:"name" `
+	Description string    `json:"description" `
+	Status      string    `json:"status" `
+	OwnerID     string    `json:"owner_id" `
+	CreatedAt   time.Time `json:"created_at" `
+	UpdatedAt   time.Time `json:"updated_at" `
 }
 
 // Task represents a task within a project
 type Task struct {
-	ID          string     `json:"id" dynamodbav:"id"`
-	TenantID    string     `json:"tenant_id" dynamodbav:"tenant_id"`
-	ProjectID   string     `json:"project_id" dynamodbav:"project_id"`
-	Title       string     `json:"title" dynamodbav:"title"`
-	Description string     `json:"description" dynamodbav:"description"`
-	Status      string     `json:"status" dynamodbav:"status"`
-	Priority    string     `json:"priority" dynamodbav:"priority"`
-	AssigneeID  string     `json:"assignee_id" dynamodbav:"assignee_id"`
-	DueDate     *time.Time `json:"due_date,omitempty" dynamodbav:"due_date,omitempty"`
-	CreatedAt   time.Time  `json:"created_at" dynamodbav:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at" dynamodbav:"updated_at"`
+	ID          string     `json:"id" `
+	TenantID    string     `json:"tenant_id" `
+	ProjectID   string     `json:"project_id" `
+	Title       string     `json:"title" `
+	Description string     `json:"description" `
+	Status      string     `json:"status" `
+	Priority    string     `json:"priority" `
+	AssigneeID  string     `json:"assignee_id" `
+	DueDate     *time.Time `json:"due_date,omitempty" `
+	CreatedAt   time.Time  `json:"created_at" `
+	UpdatedAt   time.Time  `json:"updated_at" `
 }
 
 // Request/Response DTOs
