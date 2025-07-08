@@ -123,8 +123,8 @@ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWE
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
 github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
-github.com/pay-theory/dynamorm v1.0.19 h1:XNEzaEcz8qhZ+Rl7Gt21MN9pRcitMKXrb2znHX76k5s=
-github.com/pay-theory/dynamorm v1.0.19/go.mod h1:EwJf2E8ldesemFyZBs/w9Wx6jRMJeHX2Op3IboWmcr0=
+github.com/pay-theory/dynamorm v1.0.23 h1:D9cP8yH+Hz6mbPPk4ztKfGhA3CmkY4LiT5ySS1x4yp8=
+github.com/pay-theory/dynamorm v1.0.23/go.mod h1:EwJf2E8ldesemFyZBs/w9Wx6jRMJeHX2Op3IboWmcr0=
 github.com/pay-theory/limited v1.0.0 h1:70H8MrGXA8xb0UYwJnDgim33ldmJwTk7wjyP1txVYjw=
 github.com/pay-theory/limited v1.0.0/go.mod h1:GycwqvlbQ0Dy6fsQG2vh1sAqtlCLIdE6pQYlYFtg1sk=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

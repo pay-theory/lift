@@ -302,23 +302,27 @@ All Lift tables now use a standardized structure compatible with DynamORM:
 - Composite keys for entity identification and multi-tenancy
 
 ```go
-// Define models with DynamORM tags
+// Define models with BOTH DynamORM and DynamoDB tags
 type User struct {
-    // Keys - use composite format for clear identification
-    PK string `dynamorm:"pk"`  // tenant#{tenant_id} or user#{user_id}
-    SK string `dynamorm:"sk"`  // user#{user_id} or hierarchical data
+    // Keys - MUST have both dynamorm AND dynamodbav tags
+    PK string `dynamorm:"pk" dynamodbav:"pk"`  // tenant#{tenant_id} or user#{user_id}
+    SK string `dynamorm:"sk" dynamodbav:"sk"`  // user#{user_id} or hierarchical data
     
-    // GSI attributes for alternative access patterns
-    Email    string `dynamorm:"index:email-index,pk"`
-    TenantID string `dynamorm:"index:tenant-index,pk"`
-    Created  string `dynamorm:"index:tenant-index,sk"`
+    // GSI attributes - need both tags for proper operation
+    Email    string `dynamorm:"index:email-index,pk" dynamodbav:"email"`
+    TenantID string `dynamorm:"index:tenant-index,pk" dynamodbav:"tenant_id"`
+    Created  string `dynamorm:"index:tenant-index,sk" dynamodbav:"created_at"`
     
-    // Business fields
-    UserID   string    `json:"user_id"`
-    Name     string    `json:"name"`
-    Status   string    `json:"status"`
-    TTL      int64     `json:"ttl,omitempty" dynamorm:"ttl"`
+    // Business fields - all need dynamodbav tags
+    UserID   string    `json:"user_id" dynamodbav:"user_id"`
+    Name     string    `json:"name" dynamodbav:"name"`
+    Status   string    `json:"status" dynamodbav:"status"`
+    TTL      int64     `json:"ttl,omitempty" dynamodbav:"ttl,omitempty" dynamorm:"ttl"`
 }
+
+// IMPORTANT: Both tags are required:
+// - dynamorm: tells DynamORM which fields are keys/indexes
+// - dynamodbav: handles actual DynamoDB marshaling
 
 // Multi-tenant query example
 users, err := dynamorm.Query[User](ctx, db).
