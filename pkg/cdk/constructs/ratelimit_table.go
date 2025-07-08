@@ -1,78 +1,58 @@
 package constructs
 
 import (
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
 
-// RateLimitTableProps defines properties for creating a DynamORM-compatible rate limit table
+// RateLimitTableProps defines properties for creating a rate limit table
 type RateLimitTableProps struct {
-	DynamORMTableProps
-	// Additional rate limit specific properties can be added here
+	// Table name
+	TableName *string
+	// TTL attribute name for automatic cleanup
+	TimeToLiveAttribute *string
 }
 
-// NewRateLimitTable creates a DynamoDB table optimized for rate limiting with DynamORM
-func NewRateLimitTable(scope constructs.Construct, id *string, props *RateLimitTableProps) *DynamORMTable {
-	// Set default values for rate limit table
+// NewRateLimitTable creates a DynamoDB table for rate limiting
+// The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
+func NewRateLimitTable(scope constructs.Construct, id *string, props *RateLimitTableProps) *LiftTable {
+	// Set defaults
+	if props == nil {
+		props = &RateLimitTableProps{}
+	}
+	
+	// Set default table name
+	if props.TableName == nil {
+		props.TableName = jsii.String("rate-limits")
+	}
+	
+	// Set default TTL attribute for automatic cleanup
 	if props.TimeToLiveAttribute == nil {
-		props.TimeToLiveAttribute = jsii.String("ExpiresAt")
+		props.TimeToLiveAttribute = jsii.String("expires_at")
 	}
 	
-	// Set rate limit-specific partition and sort keys
-	props.PartitionKey = &awsdynamodb.Attribute{
-		Name: jsii.String("Identifier"),
-		Type: awsdynamodb.AttributeType_STRING,
-	}
-	props.SortKey = &awsdynamodb.Attribute{
-		Name: jsii.String("WindowTime"),
-		Type: awsdynamodb.AttributeType_STRING,
-	}
-	
-	// Create base DynamORM table with the configured props
-	table := NewDynamORMTable(scope, id, &props.DynamORMTableProps)
-
-	// Add GSIs for different query patterns
-	
-	// GSI for IP-based queries
-	table.AddGSI(&GSIProps{
-		IndexName: jsii.String("gsi-ip"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("IPAddress"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		ProjectionType: awsdynamodb.ProjectionType_ALL,
+	// Create table with standard pk/sk attributes
+	return NewLiftTable(scope, id, &LiftTableProps{
+		TableName:           props.TableName,
+		TimeToLiveAttribute: props.TimeToLiveAttribute,
 	})
-
-	// GSI for User-based queries
-	table.AddGSI(&GSIProps{
-		IndexName: jsii.String("gsi-user"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("UserID"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		ProjectionType: awsdynamodb.ProjectionType_ALL,
-	})
-
-	// GSI for Tenant-based queries
-	table.AddGSI(&GSIProps{
-		IndexName: jsii.String("gsi-tenant"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("TenantID"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		ProjectionType: awsdynamodb.ProjectionType_ALL,
-	})
-
-	// GSI for Bucket-based queries (for Limited library)
-	table.AddGSI(&GSIProps{
-		IndexName: jsii.String("gsi-bucket"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("BucketKey"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		ProjectionType: awsdynamodb.ProjectionType_ALL,
-	})
-
-	return table
 }
+
+// Example DynamORM model for rate limiting:
+//
+// type RateLimit struct {
+//     PK         string    `dynamorm:"pk"`                      // ratelimit#{identifier}#{window}
+//     SK         string    `dynamorm:"sk"`                      // ratelimit#{identifier}#{window}
+//     
+//     // Indexes for different rate limit strategies
+//     IPAddress  string    `dynamorm:"index:ip-index,pk"`       // ip_address
+//     UserID     string    `dynamorm:"index:user-index,pk"`     // user_id  
+//     TenantID   string    `dynamorm:"index:tenant-index,pk"`   // tenant_id
+//     BucketKey  string    `dynamorm:"index:bucket-index,pk"`   // bucket_key (for Limited library)
+//     
+//     // Rate limit data
+//     Identifier string    `json:"identifier"`
+//     WindowTime string    `json:"window_time"`
+//     Count      int       `json:"count"`
+//     ExpiresAt  int64     `json:"expires_at"`                  // TTL
+// }

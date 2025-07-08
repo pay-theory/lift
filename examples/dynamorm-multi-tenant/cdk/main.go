@@ -4,7 +4,6 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
@@ -34,38 +33,18 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 		TopicName: jsii.String("DynamORMMultiTenantAlerts"),
 	})
 
-	// Create DynamORM table with multi-tenant support
-	table := liftconstructs.NewDynamORMTable(stack, jsii.String("MultiTenantTable"), &liftconstructs.DynamORMTableProps{
+	// Create table with multi-tenant support
+	// Note: Multi-tenancy is now handled at the data layer through DynamORM models
+	table := liftconstructs.NewLiftTable(stack, jsii.String("MultiTenantTable"), &liftconstructs.LiftTableProps{
 		TableName: jsii.String("DynamORMMultiTenantTable"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("pk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		SortKey: &awsdynamodb.Attribute{
-			Name: jsii.String("sk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		EnableMultiTenant:   jsii.Bool(true),
-		TenantAttribute:     jsii.String("tenant_id"),
-		EnableVersioning:    jsii.Bool(true),
-		EnableTimestamps:    jsii.Bool(true),
 		TimeToLiveAttribute: jsii.String("ttl"),
-		RemovalPolicy:       awscdk.RemovalPolicy_RETAIN,
+		EnablePointInTimeRecovery: jsii.Bool(true),
+		EnableStreams: jsii.Bool(true),
 	})
 
-	// Configure multi-tenant GSIs
-	table.AddTenantEntityGSI("tenant_id", "entity_type")
-	table.AddTenantTimeSeriesGSI("tenant_id", "created_at")
-	table.AddTenantStatusGSI("status", "tenant_id")
-
-	// Configure comprehensive monitoring
-	monitoringComponents := table.SetupComprehensiveMonitoring(
-		alertTopic.TopicArn(),
-		"DynamORMMultiTenantDashboard",
-	)
-
-	// Enable X-Ray tracing
-	table.ConfigureComprehensiveXRayTracing("DynamORMMultiTenant", false)
+	// GSIs are now defined in DynamORM model structs using tags like:
+	// TenantID string `dynamorm:"index:tenant-entity,pk"`
+	// EntityType string `dynamorm:"index:tenant-entity,sk"`
 
 	// Create Lambda function with DynamORM support
 	lambdaFunction := awslambda.NewFunction(stack, jsii.String("MultiTenantFunction"), &awslambda.FunctionProps{
@@ -73,16 +52,15 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 		Handler: jsii.String("bootstrap"),
 		Code:    awslambda.Code_FromAsset(jsii.String("../"), nil),
 		Environment: &map[string]*string{
-			"DYNAMODB_TABLE_NAME": table.GetTableName(),
+			"DYNAMODB_TABLE_NAME": table.Table.TableName(),
 			"AWS_REGION":          stack.Region(),
 		},
 		Tracing: awslambda.Tracing_ACTIVE,
 		Timeout: awscdk.Duration_Seconds(jsii.Number(30)),
 	})
 
-	// Grant DynamORM permissions to Lambda
-	table.AddDynamORMPermissions(lambdaFunction)
-	table.AddXRayPermissions(lambdaFunction)
+	// Grant permissions to Lambda
+	table.GrantReadWrite(lambdaFunction)
 
 	// Create tenant-specific IAM role for demonstration
 	tenantRole := awsiam.NewRole(stack, jsii.String("TenantRole"), &awsiam.RoleProps{
@@ -92,8 +70,8 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 		},
 	})
 
-	// Attach tenant boundary policy
-	table.AttachTenantBoundaryPolicy(tenantRole, "tenant_id")
+	// Grant table permissions to the tenant role
+	table.Table.GrantReadWriteData(tenantRole)
 
 	// Create API Gateway
 	api := awsapigateway.NewRestApi(stack, jsii.String("MultiTenantAPI"), &awsapigateway.RestApiProps{
@@ -189,12 +167,12 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 
 	// Output important values
 	awscdk.NewCfnOutput(stack, jsii.String("TableName"), &awscdk.CfnOutputProps{
-		Value:       table.GetTableName(),
+		Value:       table.Table.TableName(),
 		Description: jsii.String("DynamORM Multi-Tenant Table Name"),
 	})
 
 	awscdk.NewCfnOutput(stack, jsii.String("TableArn"), &awscdk.CfnOutputProps{
-		Value:       table.GetTableArn(),
+		Value:       table.Table.TableArn(),
 		Description: jsii.String("DynamORM Multi-Tenant Table ARN"),
 	})
 
@@ -219,16 +197,7 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 		Description: jsii.String("SNS Topic for Alerts"),
 	})
 
-	// Output monitoring information
-	if dashboard, exists := monitoringComponents["dashboard"]; exists {
-		if dashboardRef, ok := dashboard.(awscloudwatch.Dashboard); ok {
-			awscdk.NewCfnOutput(stack, jsii.String("DynamORMDashboardURL"), &awscdk.CfnOutputProps{
-				Value: jsii.String("https://console.aws.amazon.com/cloudwatch/home?region=" + 
-					*stack.Region() + "#dashboards:name=" + *dashboardRef.DashboardName()),
-				Description: jsii.String("DynamORM Table Dashboard URL"),
-			})
-		}
-	}
+	// The stack dashboard URL is already output above
 
 	// Output GSI information
 	awscdk.NewCfnOutput(stack, jsii.String("GSIPatterns"), &awscdk.CfnOutputProps{

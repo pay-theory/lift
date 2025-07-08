@@ -211,7 +211,6 @@ func TestComplexStackIntegration(t *testing.T) {
 	// Create DynamoDB tables
 	mainTable := constructs.NewLiftTable(stack, jsii.String("MainTable"), &constructs.LiftTableProps{
 		TableName:                 jsii.String("complex-main-table"),
-		EnableMultiTenant:         jsii.Bool(true),
 		EnableAutoScaling:         jsii.Bool(true),
 		EnablePointInTimeRecovery: jsii.Bool(true),
 		EnableStreams:             jsii.Bool(true),
@@ -246,7 +245,6 @@ func TestCrossConstructIntegration(t *testing.T) {
 	sharedTable := constructs.NewLiftTable(stack, jsii.String("SharedTable"), &constructs.LiftTableProps{
 		TableName:         jsii.String("shared-table"),
 		EnableAutoScaling: jsii.Bool(true),
-		EnableMultiTenant: jsii.Bool(false),
 	})
 
 	// Create multiple functions that share the table

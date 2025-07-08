@@ -290,6 +290,13 @@ func NewComplianceStack(scope constructs.Construct, id string, props *Compliance
 				},
 			},
 		})
+
+		// Create Config rules for compliance frameworks
+		if props.ComplianceFrameworks != nil {
+			for _, framework := range *props.ComplianceFrameworks {
+				createConfigRulesForFramework(this, framework)
+			}
+		}
 	}
 
 	// Create GuardDuty detector
@@ -367,6 +374,42 @@ func NewComplianceStack(scope constructs.Construct, id string, props *Compliance
 }
 
 
+
+// createConfigRulesForFramework creates AWS Config rules based on the compliance framework
+func createConfigRulesForFramework(scope constructs.Construct, framework ComplianceFramework) {
+	switch framework {
+	case SOC2:
+		// Create SOC2-specific Config rules
+		awsconfig.NewCfnConfigRule(scope, jsii.String("SOC2RootAccountMFAEnabled"), &awsconfig.CfnConfigRuleProps{
+			ConfigRuleName: jsii.String("soc2-root-account-mfa-enabled"),
+			Description:    jsii.String("Checks whether MFA is enabled for the root user"),
+			Source: &awsconfig.CfnConfigRule_SourceProperty{
+				Owner:            jsii.String("AWS"),
+				SourceIdentifier: jsii.String("ROOT_ACCOUNT_MFA_ENABLED"),
+			},
+		})
+	case HIPAA:
+		// Create HIPAA-specific Config rules
+		awsconfig.NewCfnConfigRule(scope, jsii.String("HIPAAEncryptedVolumes"), &awsconfig.CfnConfigRuleProps{
+			ConfigRuleName: jsii.String("hipaa-encrypted-volumes"),
+			Description:    jsii.String("Checks whether EBS volumes are encrypted"),
+			Source: &awsconfig.CfnConfigRule_SourceProperty{
+				Owner:            jsii.String("AWS"),
+				SourceIdentifier: jsii.String("ENCRYPTED_VOLUMES"),
+			},
+		})
+	case PCI_DSS:
+		// Create PCI DSS-specific Config rules
+		awsconfig.NewCfnConfigRule(scope, jsii.String("PCIDSSAccessLogsEnabled"), &awsconfig.CfnConfigRuleProps{
+			ConfigRuleName: jsii.String("pci-dss-access-logs-enabled"),
+			Description:    jsii.String("Checks whether access logs are enabled"),
+			Source: &awsconfig.CfnConfigRule_SourceProperty{
+				Owner:            jsii.String("AWS"),
+				SourceIdentifier: jsii.String("S3_BUCKET_LOGGING_ENABLED"),
+			},
+		})
+	}
+}
 
 // enableComplianceStandard enables specific compliance standards in Security Hub
 func enableComplianceStandard(scope constructs.Construct, framework ComplianceFramework, index int) {
