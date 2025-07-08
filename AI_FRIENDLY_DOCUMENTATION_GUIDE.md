@@ -343,10 +343,10 @@ import "github.com/pay-theory/dynamorm"
 // AI Note: Always embed dynamorm.Model for DynamoDB entities.
 type Payment struct {
     dynamorm.Model
-    ID        string `dynamorm:"pk" dynamodbav:"pk" json:"id"`
-    Amount    int64  `dynamorm:"index:amount" dynamodbav:"amount" json:"amount"`
-    Status    string `dynamorm:"index:status" dynamodbav:"status" json:"status"`
-    Customer  string `dynamorm:"index:customer" dynamodbav:"customer" json:"customer_id"`
+    ID        string `dynamorm:"pk" json:"id"`
+    Amount    int64  `dynamorm:"index:amount" json:"amount"`
+    Status    string `dynamorm:"index:status" json:"status"`
+    Customer  string `dynamorm:"index:customer" json:"customer_id"`
 }
 
 // This pattern provides:

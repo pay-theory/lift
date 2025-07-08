@@ -53,7 +53,14 @@
       "Bash(./verify_build.sh:*)",
       "Bash(./check_warnings.sh:*)",
       "WebFetch(domain:docs.aws.amazon.com)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(source .env)",
+      "Bash(./test-local-setup.sh:*)",
+      "Bash(DYNAMODB_TABLE=test-dynamorm-table go run test-dynamorm-local.go)",
+      "Bash(DYNAMODB_TABLE=test-dynamorm-table go run test-dynamorm-correct.go)",
+      "Bash(aws dynamodb list-tables:*)",
+      "Bash(aws dynamodb describe-table:*)",
+      "Bash(./setup-dynamorm-table.sh:*)"
     ],
     "deny": []
   }
