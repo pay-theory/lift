@@ -42,10 +42,7 @@ func TestDynamoStreamProcessor_WithCustomTable_Basic(t *testing.T) {
 			Runtime:      awslambda.Runtime_NODEJS_18_X(),
 		},
 		StreamingTableProps: &StreamingTableProps{
-			DynamORMTableProps: DynamORMTableProps{
-				TableName: jsii.String("custom-streaming-table"),
-				EnableMultiTenant: jsii.Bool(true),
-			},
+			TableName: jsii.String("custom-streaming-table"),
 		},
 	})
 

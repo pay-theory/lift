@@ -40,26 +40,26 @@ func TestNewIdempotentFunction(t *testing.T) {
 					"BillingMode": "PAY_PER_REQUEST",
 					"AttributeDefinitions": assertions.Match_ArrayWith(&[]interface{}{
 						&map[string]interface{}{
-							"AttributeName": "IdempotencyKey",
+							"AttributeName": "pk",
 							"AttributeType": "S",
 						},
 						&map[string]interface{}{
-							"AttributeName": "SK",
+							"AttributeName": "sk",
 							"AttributeType": "S",
 						},
 					}),
 					"KeySchema": &[]interface{}{
 						&map[string]interface{}{
-							"AttributeName": "IdempotencyKey",
+							"AttributeName": "pk",
 							"KeyType": "HASH",
 						},
 						&map[string]interface{}{
-							"AttributeName": "SK",
+							"AttributeName": "sk",
 							"KeyType": "RANGE",
 						},
 					},
 					"TimeToLiveSpecification": &map[string]interface{}{
-						"AttributeName": "ExpiresAt",
+						"AttributeName": "expires_at",
 						"Enabled": true,
 					},
 				})

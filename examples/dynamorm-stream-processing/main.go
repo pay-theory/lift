@@ -24,47 +24,19 @@ func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, pro
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	// Create a DynamORM table with streaming enabled
-	userTable := liftconstructs.NewDynamORMTable(stack, jsii.String("UserTable"), &liftconstructs.DynamORMTableProps{
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("pk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		SortKey: &awsdynamodb.Attribute{
-			Name: jsii.String("sk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
+	// Create a table with streaming enabled
+	userTable := liftconstructs.NewStreamingTable(stack, jsii.String("UserTable"), &liftconstructs.StreamingTableProps{
 		TableName:            jsii.String("users"),
-		EnableMultiTenant:    jsii.Bool(true),
-		TenantAttribute:      jsii.String("tenant_id"),
-		EnableVersioning:     jsii.Bool(true),
-		EnableTimestamps:     jsii.Bool(true),
-		Stream:              awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
-		PointInTimeRecovery: jsii.Bool(true),
-		Tags: &map[string]*string{
-			"Environment": jsii.String("production"),
-			"Service":     jsii.String("user-management"),
-		},
+		StreamViewType:       awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
 	})
 
-	// Configure the table for DynamORM patterns
-	userTable.ConfigureForDynamORM()
-
-	// Add GSIs for common query patterns
-	userTable.AddDynamORMIndex("email", 
-		&awsdynamodb.Attribute{
-			Name: jsii.String("email"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		&awsdynamodb.Attribute{
-			Name: jsii.String("created_at"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-	)
+	// GSIs are now defined in DynamORM model structs using tags like:
+	// Email string `dynamorm:"index:email-index,pk"`
+	// CreatedAt string `dynamorm:"index:email-index,sk"`
 
 	// Create a stream processor for user events
-	userStreamProcessor := liftconstructs.NewDynamORMStreamProcessor(stack, jsii.String("UserStreamProcessor"), &liftconstructs.DynamORMStreamProcessorProps{
-		DynamORMTable: userTable,
+	userStreamProcessor := liftconstructs.NewStreamProcessor(stack, jsii.String("UserStreamProcessor"), &liftconstructs.StreamProcessorProps{
+		StreamingTable: userTable,
 		FunctionProps: awslambda.FunctionProps{
 			FunctionName: jsii.String("user-stream-processor"),
 			Code:         awslambda.Code_FromAsset(jsii.String("./lambda"), nil),
@@ -83,55 +55,21 @@ func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, pro
 		StartingPosition:        awslambda.StartingPosition_LATEST,
 		ParallelizationFactor:   jsii.Number(2),
 		ReportBatchItemFailures: jsii.Bool(true),
-		ProcessingMode:          liftconstructs.StreamProcessingMode_SEQUENTIAL,
-		
-		// Event filtering
-		EventFilters: []liftconstructs.StreamEventFilter{
-			{
-				EventName: jsii.String("INSERT"),
-				AttributeFilters: map[string]string{
-					"entity_type": "User",
-				},
-			},
-			{
-				EventName: jsii.String("MODIFY"),
-				AttributeFilters: map[string]string{
-					"entity_type": "User",
-					"status": "active",
-				},
-			},
-			{
-				EventName: jsii.String("REMOVE"),
-			},
-		},
-		
-		// Multi-tenant configuration
-		EnableMultiTenant: jsii.Bool(true),
-		TenantAttribute:   jsii.String("tenant_id"),
-		
-		// Monitoring and observability
-		EnableMonitoring:        jsii.Bool(true),
-		EnableTracing:          jsii.Bool(true),
-		EnableMetricsCollection: jsii.Bool(true),
-		CustomMetrics:          []string{"UserCreated", "UserUpdated", "UserDeleted", "ProcessingLatency"},
+		// Event filtering and multi-tenancy should be handled in the Lambda function code
+		// based on the DynamORM model structure and business logic
 		
 		// Dead letter queue
 		EnableDeadLetterQueue: jsii.Bool(true),
 	})
 
-	// Set up comprehensive monitoring with X-Ray tracing
-	userStreamProcessor.SetupComprehensiveStreamProcessing("UserService", true, []string{
-		"ValidationErrors",
-		"EnrichmentFailures", 
-		"NotificationsSent",
-	})
+	// Enable X-Ray tracing on the function
+	userStreamProcessor.Function.Function.AddEnvironment(jsii.String("_X_AMZN_TRACE_ID"), jsii.String("enabled"), nil)
 
-	// Configure multi-tenant streaming patterns
-	userStreamProcessor.ConfigureMultiTenantStreaming("tenant_id")
+	// Multi-tenant filtering should be done in the Lambda function code
 
 	// Create another stream processor for analytics
-	analyticsStreamProcessor := liftconstructs.NewDynamORMStreamProcessor(stack, jsii.String("AnalyticsStreamProcessor"), &liftconstructs.DynamORMStreamProcessorProps{
-		DynamORMTable: userTable,
+	_ = liftconstructs.NewStreamProcessor(stack, jsii.String("AnalyticsStreamProcessor"), &liftconstructs.StreamProcessorProps{
+		StreamingTable: userTable,
 		FunctionProps: awslambda.FunctionProps{
 			FunctionName: jsii.String("user-analytics-processor"),
 			Code:         awslambda.Code_FromAsset(jsii.String("./analytics-lambda"), nil),
@@ -149,28 +87,12 @@ func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, pro
 		BatchSize:             jsii.Number(100),  // Larger batches for analytics
 		MaxBatchingWindow:     awscdk.Duration_Seconds(jsii.Number(30)),
 		ParallelizationFactor: jsii.Number(4),   // Higher parallelization
-		ProcessingMode:        liftconstructs.StreamProcessingMode_PARALLEL,
-		
-		// Filter only for specific events
-		EventFilters: []liftconstructs.StreamEventFilter{
-			{
-				EventName: jsii.String("INSERT"),
-			},
-			{
-				EventName: jsii.String("MODIFY"),
-				AttributeFilters: map[string]string{
-					"status": "active",
-				},
-			},
-		},
-		
-		EnableMonitoring: jsii.Bool(true),
-		CustomMetrics:   []string{"AnalyticsProcessed", "DataPoints", "AggregationsComputed"},
+		// Event filtering should be handled in the Lambda function code
 	})
 
 	// Create a notification stream processor for critical events
-	notificationStreamProcessor := liftconstructs.NewDynamORMStreamProcessor(stack, jsii.String("NotificationStreamProcessor"), &liftconstructs.DynamORMStreamProcessorProps{
-		DynamORMTable: userTable,
+	_ = liftconstructs.NewStreamProcessor(stack, jsii.String("NotificationStreamProcessor"), &liftconstructs.StreamProcessorProps{
+		StreamingTable: userTable,
 		FunctionProps: awslambda.FunctionProps{
 			FunctionName: jsii.String("user-notification-processor"),
 			Code:         awslambda.Code_FromAsset(jsii.String("./notification-lambda"), nil),
@@ -183,34 +105,10 @@ func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, pro
 		// Fast processing for notifications
 		BatchSize:         jsii.Number(1),  // Process one at a time for speed
 		MaxBatchingWindow: awscdk.Duration_Seconds(jsii.Number(1)),
-		ProcessingMode:    liftconstructs.StreamProcessingMode_SEQUENTIAL,
-		
-		// Only process specific high-priority events
-		EventFilters: []liftconstructs.StreamEventFilter{
-			{
-				EventName: jsii.String("INSERT"),
-				AttributeFilters: map[string]string{
-					"entity_type": "User",
-					"priority":    "high",
-				},
-			},
-			{
-				EventName: jsii.String("MODIFY"),
-				AttributeFilters: map[string]string{
-					"entity_type": "User",
-					"status":      "suspended",
-				},
-			},
-		},
-		
-		EnableMonitoring: jsii.Bool(true),
-		CustomMetrics:   []string{"NotificationsSent", "NotificationFailures"},
+		// Event filtering should be handled in the Lambda function code
 	})
 
-	// Add environment variables to processors
-	userStreamProcessor.AddEnvironmentVariable("PROCESSOR_TYPE", "user-events")
-	analyticsStreamProcessor.AddEnvironmentVariable("PROCESSOR_TYPE", "analytics")
-	notificationStreamProcessor.AddEnvironmentVariable("PROCESSOR_TYPE", "notifications")
+	// Environment variables are set in the FunctionProps above
 
 	// Grant additional permissions if needed
 	// Example: Grant access to external services

@@ -53,7 +53,7 @@ func TestRateLimitedFunction(t *testing.T) {
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &map[string]interface{}{
 			"BillingMode": "PAY_PER_REQUEST",
 			"TimeToLiveSpecification": map[string]interface{}{
-				"AttributeName": "ExpiresAt",
+				"AttributeName": "expires_at",
 				"Enabled": true,
 			},
 		})

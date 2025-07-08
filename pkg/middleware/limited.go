@@ -32,6 +32,11 @@ type LimitedConfig struct {
 // LimitedRateLimit creates a rate limiting middleware using the limited library
 // This is the CORRECT way to do rate limiting with DynamoDB in Lift
 func LimitedRateLimit(config LimitedConfig) (lift.Middleware, error) {
+	// Validate required fields
+	if config.Region == "" {
+		return nil, fmt.Errorf("region is required for DynamoDB connection")
+	}
+	
 	// Set defaults
 	if config.TableName == "" {
 		config.TableName = "rate-limits"

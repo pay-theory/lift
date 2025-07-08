@@ -1,5 +1,30 @@
 package constructs
 
+// DynamORMEventStore provides event sourcing capabilities using DynamORM
+// 
+// IMPORTANT: This construct now uses standard pk/sk naming for DynamORM compatibility.
+// Instead of aggregate_id/event_sequence, data should be stored as:
+//   - Events: pk="event#{aggregate_id}", sk="seq#{event_sequence}"
+//   - Snapshots: pk="snapshot#{aggregate_id}", sk="ver#{snapshot_version}"
+//
+// Example DynamORM models:
+//
+// type Event struct {
+//     PK         string    `dynamorm:"pk"`                          // event#{aggregate_id}
+//     SK         string    `dynamorm:"sk"`                          // seq#{sequence_number}
+//     
+//     // Indexes
+//     EventType  string    `dynamorm:"index:type-index,pk"`         // event_type
+//     Timestamp  string    `dynamorm:"index:type-index,sk"`         // ISO timestamp
+//     TenantID   string    `dynamorm:"index:tenant-index,pk"`       // tenant_id (if multi-tenant)
+//     
+//     // Event data
+//     AggregateID    string `json:"aggregate_id"`
+//     EventSequence  int64  `json:"event_sequence"`
+//     EventData      string `json:"event_data"`
+//     TTL            int64  `json:"ttl,omitempty"`
+// }
+
 import (
 	"fmt"
 	
@@ -101,10 +126,10 @@ type DynamORMEventStore struct {
 	constructs.Construct
 
 	// Event table for storing events
-	EventTable *DynamORMTable
+	EventTable *LiftTable
 
 	// Snapshot table for storing snapshots
-	SnapshotTable *DynamORMTable
+	SnapshotTable *LiftTable
 
 	// S3 bucket for archival (if enabled)
 	ArchivalBucket awss3.IBucket
@@ -242,32 +267,19 @@ func (e *DynamORMEventStore) applyDefaults(props *DynamORMEventStoreProps) *Dyna
 
 // createEventTable creates the main event table
 func (e *DynamORMEventStore) createEventTable() {
-	// Define partition key and sort key for event table
-	partitionKey := &awsdynamodb.Attribute{
-		Name: jsii.String("aggregate_id"),
-		Type: awsdynamodb.AttributeType_STRING,
-	}
-	sortKey := &awsdynamodb.Attribute{
-		Name: jsii.String("event_sequence"),
-		Type: awsdynamodb.AttributeType_NUMBER,
-	}
-
-	// Create table props
-	tableProps := &DynamORMTableProps{
-		TableName:            e.props.EventTableName,
-		PartitionKey:         partitionKey,
-		SortKey:             sortKey,
-		EnableMultiTenant:   e.props.EnableMultiTenant,
-		TenantAttribute:     e.props.TenantAttribute,
-		EnableVersioning:    e.props.EnableEventVersioning,
-		EnableTimestamps:    jsii.Bool(true),
+	// Create table props using standard pk/sk naming
+	tableProps := &LiftTableProps{
+		TableName:           e.props.EventTableName,
 		EnableAutoScaling:   e.props.EnableAutoScaling,
-		Tags:               e.props.Tags,
+		ReadCapacity:        e.props.ReadCapacity,
+		WriteCapacity:       e.props.WriteCapacity,
+		EnablePointInTimeRecovery: jsii.Bool(true),
 	}
 
 	// Configure streams if enabled
 	if e.props.EventStreamEnabled != nil && *e.props.EventStreamEnabled {
-		tableProps.Stream = awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES
+		tableProps.EnableStreams = jsii.Bool(true)
+		tableProps.StreamViewType = awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES
 	}
 
 	// Configure TTL if specified
@@ -275,76 +287,33 @@ func (e *DynamORMEventStore) createEventTable() {
 		tableProps.TimeToLiveAttribute = jsii.String("ttl")
 	}
 
-	// Configure capacity if specified
-	if e.props.ReadCapacity != nil && e.props.WriteCapacity != nil {
-		tableProps.BillingMode = awsdynamodb.BillingMode_PROVISIONED
-		tableProps.ReadCapacity = e.props.ReadCapacity
-		tableProps.WriteCapacity = e.props.WriteCapacity
-	}
-
-	// Create the event table
-	e.EventTable = NewDynamORMTable(e, jsii.String("EventTable"), tableProps)
+	// Create the event table with LiftTable
+	e.EventTable = NewLiftTable(e, jsii.String("EventTable"), tableProps)
 
 	// Add GSIs if enabled
 	if e.props.EnableGSIs != nil && *e.props.EnableGSIs {
 		e.addEventTableGSIs()
 	}
 
-	// Configure for DynamORM
-	e.EventTable.ConfigureForDynamORM()
-
-	// Multi-tenant GSIs are already added if EnableMultiTenant was set in table props
+	// DynamORM configuration is now handled through model struct tags
+	// Multi-tenant GSIs are defined in DynamORM models
 }
 
 // addEventTableGSIs adds Global Secondary Indexes to the event table
 func (e *DynamORMEventStore) addEventTableGSIs() {
-	// Event type GSI for querying by event type
-	e.EventTable.AddDynamORMIndex("event-type",
-		&awsdynamodb.Attribute{
-			Name: jsii.String("event_type"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		&awsdynamodb.Attribute{
-			Name: jsii.String("created_at"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-	)
-
-	// Aggregate type GSI for querying by aggregate type
-	e.EventTable.AddDynamORMIndex("aggregate-type",
-		&awsdynamodb.Attribute{
-			Name: jsii.String("aggregate_type"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		&awsdynamodb.Attribute{
-			Name: jsii.String("created_at"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-	)
-
-	// Correlation ID GSI for tracking related events
-	e.EventTable.AddDynamORMIndex("correlation",
-		&awsdynamodb.Attribute{
-			Name: jsii.String("correlation_id"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		&awsdynamodb.Attribute{
-			Name: jsii.String("created_at"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-	)
-
-	// Global event timeline GSI
-	e.EventTable.AddDynamORMIndex("timeline",
-		&awsdynamodb.Attribute{
-			Name: jsii.String("event_day"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		&awsdynamodb.Attribute{
-			Name: jsii.String("created_at"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-	)
+	// GSIs are now defined in DynamORM models using struct tags
+	// Example model for events:
+	//
+	// type Event struct {
+	//     PK            string `dynamorm:"pk"`                          // event#{aggregate_id}
+	//     SK            string `dynamorm:"sk"`                          // seq#{sequence}
+	//     EventType     string `dynamorm:"index:event-type,pk"`         // For querying by type
+	//     CreatedAt     string `dynamorm:"index:event-type,sk"`         // For sorting by time
+	//     AggregateType string `dynamorm:"index:aggregate-type,pk"`     // For aggregate queries
+	//     CorrelationID string `dynamorm:"index:correlation,pk"`        // For correlation tracking
+	//     EventDay      string `dynamorm:"index:timeline,pk"`          // For timeline queries
+	//     // ... other fields
+	// }
 }
 
 // createSnapshotTable creates the snapshot table
@@ -354,32 +323,17 @@ func (e *DynamORMEventStore) createSnapshotTable() {
 		e.SnapshotTable = e.EventTable
 		return
 	}
-	// Define partition key and sort key for snapshot table
-	partitionKey := &awsdynamodb.Attribute{
-		Name: jsii.String("aggregate_id"),
-		Type: awsdynamodb.AttributeType_STRING,
-	}
-	sortKey := &awsdynamodb.Attribute{
-		Name: jsii.String("snapshot_version"),
-		Type: awsdynamodb.AttributeType_NUMBER,
-	}
-
-	// Create table props
-	tableProps := &DynamORMTableProps{
-		TableName:            e.props.SnapshotTableName,
-		PartitionKey:         partitionKey,
-		SortKey:             sortKey,
-		EnableMultiTenant:   e.props.EnableMultiTenant,
-		TenantAttribute:     e.props.TenantAttribute,
-		EnableVersioning:    jsii.Bool(true),
-		EnableTimestamps:    jsii.Bool(true),
+	// Create table props using standard pk/sk naming
+	tableProps := &LiftTableProps{
+		TableName:           e.props.SnapshotTableName,
 		EnableAutoScaling:   e.props.EnableAutoScaling,
-		Tags:               e.props.Tags,
+		EnablePointInTimeRecovery: jsii.Bool(true),
 	}
 
 	// Configure streams if enabled
 	if e.props.SnapshotStreamEnabled != nil && *e.props.SnapshotStreamEnabled {
-		tableProps.Stream = awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES
+		tableProps.EnableStreams = jsii.Bool(true)
+		tableProps.StreamViewType = awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES
 	}
 
 	// Configure TTL for snapshot retention
@@ -389,23 +343,21 @@ func (e *DynamORMEventStore) createSnapshotTable() {
 
 	// Configure capacity if specified
 	if e.props.ReadCapacity != nil && e.props.WriteCapacity != nil {
-		tableProps.BillingMode = awsdynamodb.BillingMode_PROVISIONED
 		tableProps.ReadCapacity = jsii.Number(*e.props.ReadCapacity * 0.3) // 30% of event table capacity
 		tableProps.WriteCapacity = jsii.Number(*e.props.WriteCapacity * 0.1) // 10% of event table capacity
 	}
 
-	// Create the snapshot table
-	e.SnapshotTable = NewDynamORMTable(e, jsii.String("SnapshotTable"), tableProps)
+	// Create the snapshot table with LiftTable
+	e.SnapshotTable = NewLiftTable(e, jsii.String("SnapshotTable"), tableProps)
 
 	// Add snapshot-specific GSIs
 	e.addSnapshotTableGSIs()
 
 	// Only configure if it's a separate table (not AGGREGATE_TABLE pattern)
 	if e.props.Pattern != EventStorePattern_AGGREGATE_TABLE {
-		// Configure for DynamORM
-		e.SnapshotTable.ConfigureForDynamORM()
-
-		// Multi-tenant GSIs are already added if EnableMultiTenant was set in table props
+		// DynamORM configuration is now handled through model struct tags
+		// Multi-tenant GSIs are defined in DynamORM models using tags like:
+		// TenantID string `dynamorm:"index:tenant-entity,pk"`
 	}
 }
 
@@ -415,29 +367,17 @@ func (e *DynamORMEventStore) addSnapshotTableGSIs() {
 	if e.props.Pattern == EventStorePattern_AGGREGATE_TABLE {
 		return
 	}
-	// Aggregate type GSI for querying snapshots by type
-	e.SnapshotTable.AddDynamORMIndex("aggregate-type",
-		&awsdynamodb.Attribute{
-			Name: jsii.String("aggregate_type"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		&awsdynamodb.Attribute{
-			Name: jsii.String("created_at"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-	)
-
-	// Latest snapshots GSI
-	e.SnapshotTable.AddDynamORMIndex("latest",
-		&awsdynamodb.Attribute{
-			Name: jsii.String("is_latest"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		&awsdynamodb.Attribute{
-			Name: jsii.String("created_at"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-	)
+	// GSIs are now defined in DynamORM models using struct tags
+	// Example model for snapshots:
+	//
+	// type Snapshot struct {
+	//     PK           string `dynamorm:"pk"`                        // snapshot#{aggregate_id}
+	//     SK           string `dynamorm:"sk"`                        // ver#{version}
+	//     AggregateType string `dynamorm:"index:aggregate-type,pk"`  // For querying by type
+	//     CreatedAt    string `dynamorm:"index:aggregate-type,sk"`   // For sorting by time
+	//     IsLatest     string `dynamorm:"index:latest,pk"`          // For finding latest snapshots
+	//     // ... other fields
+	// }
 }
 
 // createArchivalBucket creates S3 bucket for event archival
@@ -487,9 +427,9 @@ func (e *DynamORMEventStore) createIAMRoles() {
 	})
 
 	// Grant read access to event table
-	e.EventTable.GrantRead(e.EventReaderRole)
+	e.EventTable.Table.GrantReadData(e.EventReaderRole)
 	if e.SnapshotTable != nil {
-		e.SnapshotTable.GrantRead(e.EventReaderRole)
+		e.SnapshotTable.Table.GrantReadData(e.EventReaderRole)
 	}
 
 	// Event writer role
@@ -501,7 +441,7 @@ func (e *DynamORMEventStore) createIAMRoles() {
 	})
 
 	// Grant write access to event table
-	e.EventTable.GrantWrite(e.EventWriterRole)
+	e.EventTable.Table.GrantWriteData(e.EventWriterRole)
 
 	// Snapshot manager role
 	e.SnapshotManagerRole = awsiam.NewRole(e, jsii.String("SnapshotManagerRole"), &awsiam.RoleProps{
@@ -512,9 +452,9 @@ func (e *DynamORMEventStore) createIAMRoles() {
 	})
 
 	// Grant read access to event table and read/write access to snapshot table
-	e.EventTable.GrantRead(e.SnapshotManagerRole)
+	e.EventTable.Table.GrantReadData(e.SnapshotManagerRole)
 	if e.SnapshotTable != nil {
-		e.SnapshotTable.GrantReadWrite(e.SnapshotManagerRole)
+		e.SnapshotTable.Table.GrantReadWriteData(e.SnapshotManagerRole)
 	}
 
 	// Grant archival permissions if archival is enabled
@@ -798,20 +738,20 @@ func (e *DynamORMEventStore) GetEnvironmentVariables() *map[string]*string {
 
 // GrantEventReaderAccess grants event reader access to a Lambda function
 func (e *DynamORMEventStore) GrantEventReaderAccess(grantee awslambda.IFunction) {
-	e.EventTable.GrantRead(grantee)
+	e.EventTable.Table.GrantReadData(awsiam.IGrantable(grantee))
 	if e.SnapshotTable != nil {
-		e.SnapshotTable.GrantRead(grantee)
+		e.SnapshotTable.Table.GrantReadData(awsiam.IGrantable(grantee))
 	}
 }
 
 // GrantEventWriterAccess grants event writer access to a Lambda function
 func (e *DynamORMEventStore) GrantEventWriterAccess(grantee awslambda.IFunction) {
-	e.EventTable.GrantWrite(grantee)
+	e.EventTable.Table.GrantWriteData(awsiam.IGrantable(grantee))
 }
 
 // GrantSnapshotManagerAccess grants snapshot manager access to a Lambda function
 func (e *DynamORMEventStore) GrantSnapshotManagerAccess(grantee awslambda.IFunction) {
-	e.EventTable.GrantRead(grantee)
+	e.EventTable.Table.GrantReadData(awsiam.IGrantable(grantee))
 	if e.SnapshotTable != nil {
 		e.SnapshotTable.GrantReadWrite(grantee)
 	}
@@ -822,9 +762,9 @@ func (e *DynamORMEventStore) GrantSnapshotManagerAccess(grantee awslambda.IFunct
 
 // GrantFullAccess grants full event store access to a Lambda function
 func (e *DynamORMEventStore) GrantFullAccess(grantee awslambda.IFunction) {
-	e.EventTable.AddDynamORMPermissions(grantee)
+	e.EventTable.GrantReadWrite(grantee)
 	if e.SnapshotTable != nil {
-		e.SnapshotTable.AddDynamORMPermissions(grantee)
+		e.SnapshotTable.GrantReadWrite(grantee)
 	}
 	if e.props.EnableArchival != nil && *e.props.EnableArchival && e.ArchivalBucket != nil {
 		e.ArchivalBucket.GrantReadWrite(grantee, nil)
@@ -832,12 +772,12 @@ func (e *DynamORMEventStore) GrantFullAccess(grantee awslambda.IFunction) {
 }
 
 // GetEventTable returns the event table
-func (e *DynamORMEventStore) GetEventTable() *DynamORMTable {
+func (e *DynamORMEventStore) GetEventTable() *LiftTable {
 	return e.EventTable
 }
 
 // GetSnapshotTable returns the snapshot table
-func (e *DynamORMEventStore) GetSnapshotTable() *DynamORMTable {
+func (e *DynamORMEventStore) GetSnapshotTable() *LiftTable {
 	return e.SnapshotTable
 }
 

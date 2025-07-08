@@ -108,7 +108,6 @@ func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *Li
 
 		app.Database = liftconstructs.NewLiftTable(this, jsii.String("Database"), &liftconstructs.LiftTableProps{
 			TableName:                 tableName,
-			EnableMultiTenant:         props.EnableMultiTenant,
 			EnablePointInTimeRecovery: jsii.Bool(true),
 			EnableStreams:             jsii.Bool(true),
 			TimeToLiveAttribute:       jsii.String("ttl"),
@@ -128,7 +127,6 @@ func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *Li
 
 		app.RateLimitTable = liftconstructs.NewLiftTable(this, jsii.String("RateLimitTable"), &liftconstructs.LiftTableProps{
 			TableName:           tableName,
-			EnableMultiTenant:   jsii.Bool(false), // Rate limits are global
 			TimeToLiveAttribute: jsii.String("expires"),
 		})
 

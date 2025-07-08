@@ -12,8 +12,6 @@ import (
 type LiftTableProps struct {
 	// Table name
 	TableName *string
-	// Enable multi-tenant partitioning
-	EnableMultiTenant *bool
 	// Enable point-in-time recovery
 	EnablePointInTimeRecovery *bool
 	// Enable DynamoDB Streams
@@ -60,8 +58,8 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 		Type: awsdynamodb.AttributeType_STRING,
 	}
 
-	// Multi-tenant tables use standard 'pk' naming for DynamORM compatibility
-	// Tenant isolation is achieved through key values, not attribute names
+	// Tables use standard 'pk'/'sk' naming for DynamORM compatibility
+	// All table structure (GSIs, etc.) is defined in DynamORM models via struct tags
 
 	// Create table properties
 	tableProps := &awsdynamodb.TableProps{
@@ -105,22 +103,8 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 		tableProps.TimeToLiveAttribute = props.TimeToLiveAttribute
 	}
 
-	// Create the table
+	// Create the table with only pk/sk - DynamORM handles GSI creation through struct tags
 	table := awsdynamodb.NewTable(this, jsii.String("Table"), tableProps)
-
-	// Add global secondary index for queries by type
-	table.AddGlobalSecondaryIndex(&awsdynamodb.GlobalSecondaryIndexProps{
-		IndexName: jsii.String("gsi1"),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("gsi1pk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		SortKey: &awsdynamodb.Attribute{
-			Name: jsii.String("gsi1sk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		ProjectionType: awsdynamodb.ProjectionType_ALL,
-	})
 
 	// Configure auto-scaling for provisioned mode
 	if billingMode == awsdynamodb.BillingMode_PROVISIONED && props.EnableAutoScaling != nil && *props.EnableAutoScaling {
@@ -150,4 +134,24 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 // GrantReadWrite grants read/write permissions to a Lambda function
 func (t *LiftTable) GrantReadWrite(fn awslambda.IFunction) {
 	t.Table.GrantReadWriteData(fn)
+}
+
+// GetTableName returns the table name
+func (t *LiftTable) GetTableName() *string {
+	return t.Table.TableName()
+}
+
+// GetTableArn returns the table ARN
+func (t *LiftTable) GetTableArn() *string {
+	return t.Table.TableArn()
+}
+
+// GetResourceName returns the resource name for monitoring (implements MonitorableResource interface)
+func (t *LiftTable) GetResourceName() *string {
+	return t.Table.TableName()
+}
+
+// GetStreamArn returns the DynamoDB stream ARN if streams are enabled
+func (t *LiftTable) GetStreamArn() *string {
+	return t.Table.TableStreamArn()
 }

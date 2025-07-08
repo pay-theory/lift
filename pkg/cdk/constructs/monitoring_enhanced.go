@@ -148,7 +148,7 @@ func (m *EnhancedMonitoring) createMetrics(props *EnhancedMonitoringProps) {
 	}
 
 	// DynamoDB table metrics
-	if table, ok := props.Resource.(*DynamORMTable); ok {
+	if table, ok := props.Resource.(*LiftTable); ok {
 		m.createDynamoDBMetrics(table, props)
 	}
 
@@ -302,7 +302,7 @@ func (m *EnhancedMonitoring) createBusinessMetrics(fn *LiftFunction, props *Enha
 	})
 }
 
-func (m *EnhancedMonitoring) createDynamoDBMetrics(table *DynamORMTable, props *EnhancedMonitoringProps) {
+func (m *EnhancedMonitoring) createDynamoDBMetrics(table *LiftTable, props *EnhancedMonitoringProps) {
 	// Props parameter is reserved for future use
 	_ = props
 	

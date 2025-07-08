@@ -76,96 +76,31 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 		})
 
 		// Verify DynamoDB table configuration
+		// Note: GSIs are now handled by DynamORM through struct tags at runtime
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &map[string]interface{}{
 			"KeySchema": []interface{}{
 				map[string]interface{}{
-					"AttributeName": "Identifier",
+					"AttributeName": "pk",
 					"KeyType": "HASH",
 				},
 				map[string]interface{}{
-					"AttributeName": "WindowTime",
+					"AttributeName": "sk",
 					"KeyType": "RANGE",
 				},
 			},
 			"AttributeDefinitions": []interface{}{
 				map[string]interface{}{
-					"AttributeName": "Identifier",
+					"AttributeName": "pk",
 					"AttributeType": "S",
 				},
 				map[string]interface{}{
-					"AttributeName": "WindowTime",
-					"AttributeType": "S",
-				},
-				map[string]interface{}{
-					"AttributeName": "IPAddress",
-					"AttributeType": "S",
-				},
-				map[string]interface{}{
-					"AttributeName": "UserID",
-					"AttributeType": "S",
-				},
-				map[string]interface{}{
-					"AttributeName": "TenantID",
-					"AttributeType": "S",
-				},
-				map[string]interface{}{
-					"AttributeName": "BucketKey",
+					"AttributeName": "sk",
 					"AttributeType": "S",
 				},
 			},
 			"BillingMode": "PAY_PER_REQUEST",
-			"GlobalSecondaryIndexes": []interface{}{
-				map[string]interface{}{
-					"IndexName": "gsi-ip",
-					"KeySchema": []interface{}{
-						map[string]interface{}{
-							"AttributeName": "IPAddress",
-							"KeyType": "HASH",
-						},
-					},
-					"Projection": map[string]interface{}{
-						"ProjectionType": "ALL",
-					},
-				},
-				map[string]interface{}{
-					"IndexName": "gsi-user",
-					"KeySchema": []interface{}{
-						map[string]interface{}{
-							"AttributeName": "UserID",
-							"KeyType": "HASH",
-						},
-					},
-					"Projection": map[string]interface{}{
-						"ProjectionType": "ALL",
-					},
-				},
-				map[string]interface{}{
-					"IndexName": "gsi-tenant",
-					"KeySchema": []interface{}{
-						map[string]interface{}{
-							"AttributeName": "TenantID",
-							"KeyType": "HASH",
-						},
-					},
-					"Projection": map[string]interface{}{
-						"ProjectionType": "ALL",
-					},
-				},
-				map[string]interface{}{
-					"IndexName": "gsi-bucket",
-					"KeySchema": []interface{}{
-						map[string]interface{}{
-							"AttributeName": "BucketKey",
-							"KeyType": "HASH",
-						},
-					},
-					"Projection": map[string]interface{}{
-						"ProjectionType": "ALL",
-					},
-				},
-			},
 			"TimeToLiveSpecification": map[string]interface{}{
-				"AttributeName": "ExpiresAt",
+				"AttributeName": "expires_at",
 				"Enabled": true,
 			},
 		})

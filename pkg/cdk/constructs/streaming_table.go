@@ -7,21 +7,30 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-// StreamingTableProps extends DynamORMTableProps for streaming tables
+// StreamingTableProps defines properties for creating a streaming table
 type StreamingTableProps struct {
-	DynamORMTableProps
+	// Table name
+	TableName *string
 	// Stream view type (NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES, KEYS_ONLY)
 	StreamViewType awsdynamodb.StreamViewType
-	// Enable stream encryption (defaults to true)
-	EnableStreamEncryption *bool
+	// TTL attribute name for automatic cleanup
+	TimeToLiveAttribute *string
+	// Enable auto-scaling
+	EnableAutoScaling *bool
+	// Read capacity (for provisioned mode)
+	ReadCapacity *float64
+	// Write capacity (for provisioned mode)
+	WriteCapacity *float64
 }
 
-// StreamingTable is a DynamORM table with DynamoDB Streams enabled
+// StreamingTable is a table with DynamoDB Streams enabled
 type StreamingTable struct {
-	*DynamORMTable
+	construct constructs.Construct
+	*LiftTable
 }
 
-// NewStreamingTable creates a new DynamoDB table with streams using DynamORM
+// NewStreamingTable creates a new DynamoDB table with streams
+// The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
 func NewStreamingTable(scope constructs.Construct, id *string, props *StreamingTableProps) *StreamingTable {
 	// Set defaults
 	if props == nil {
@@ -33,51 +42,27 @@ func NewStreamingTable(scope constructs.Construct, id *string, props *StreamingT
 		props.StreamViewType = awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES
 	}
 
-	// Enable stream encryption by default
-	_ = true // enableStreamEncryption - reserved for future use
-	if props.EnableStreamEncryption != nil {
-		_ = *props.EnableStreamEncryption
-	}
-
 	// Set streaming table specific defaults
 	if props.TableName == nil {
 		props.TableName = jsii.String("streaming-table")
 	}
-	
-	// Default partition and sort keys for streaming table if not provided
-	if props.PartitionKey == nil {
-		props.PartitionKey = &awsdynamodb.Attribute{
-			Name: jsii.String("pk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		}
-	}
-	
-	if props.SortKey == nil {
-		props.SortKey = &awsdynamodb.Attribute{
-			Name: jsii.String("sk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		}
-	}
 
-	// Enable streams in the base props
-	props.Stream = props.StreamViewType
+	// Create the table with streams enabled
+	liftTable := NewLiftTable(scope, id, &LiftTableProps{
+		TableName:                 props.TableName,
+		EnableStreams:             jsii.Bool(true),
+		StreamViewType:            props.StreamViewType,
+		TimeToLiveAttribute:       props.TimeToLiveAttribute,
+		EnableAutoScaling:         props.EnableAutoScaling,
+		ReadCapacity:              props.ReadCapacity,
+		WriteCapacity:             props.WriteCapacity,
+		EnablePointInTimeRecovery: jsii.Bool(true),
+	})
 	
-	// Create the base DynamORM table with streams enabled
-	dynamormTable := NewDynamORMTable(scope, id, &props.DynamORMTableProps)
-	
-	table := &StreamingTable{
-		DynamORMTable: dynamormTable,
+	return &StreamingTable{
+		construct: scope,
+		LiftTable: liftTable,
 	}
-	
-	// Enable auto-scaling if configured
-	if props.EnableAutoScaling != nil && *props.EnableAutoScaling && props.BillingMode == awsdynamodb.BillingMode_PROVISIONED {
-		table.EnableAutoScaling(nil, nil, nil)
-	}
-	
-	// Add DynamORM-specific permissions
-	// Note: Stream permissions will be granted when Lambda functions need access
-	
-	return table
 }
 
 // GetStreamArn returns the DynamoDB stream ARN
@@ -85,7 +70,35 @@ func (s *StreamingTable) GetStreamArn() *string {
 	return s.Table.TableStreamArn()
 }
 
-// GrantStreamRead grants stream read permissions using DynamORM methods
+// GrantStreamRead grants stream read permissions
 func (s *StreamingTable) GrantStreamRead(grantee awsiam.IGrantable) awsiam.Grant {
 	return s.Table.GrantStreamRead(grantee)
 }
+
+// GetTableName returns the table name
+func (s *StreamingTable) GetTableName() *string {
+	return s.Table.TableName()
+}
+
+// GetTableArn returns the table ARN
+func (s *StreamingTable) GetTableArn() *string {
+	return s.Table.TableArn()
+}
+
+// GetResourceName returns the resource name for monitoring (implements MonitorableResource interface)
+func (s *StreamingTable) GetResourceName() *string {
+	return s.Table.TableName()
+}
+
+// Example DynamORM model for streaming data:
+//
+// type StreamRecord struct {
+//     PK         string    `dynamorm:"pk"`     // entity#{id}
+//     SK         string    `dynamorm:"sk"`     // timestamp#{timestamp}
+//     
+//     // Your data fields
+//     EntityID   string    `json:"entity_id"`
+//     EventType  string    `json:"event_type"`
+//     Data       string    `json:"data"`
+//     TTL        int64     `json:"ttl,omitempty"`
+// }
