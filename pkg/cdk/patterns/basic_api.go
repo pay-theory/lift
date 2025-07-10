@@ -30,8 +30,6 @@ type BasicAPIProps struct {
 	Timeout *float64
 	// Environment variables
 	Environment *map[string]*string
-	// Log retention days (default: 30)
-	LogRetentionDays *float64
 }
 
 // BasicAPI is a pattern that creates an API Gateway with a Lambda function backend
@@ -69,7 +67,6 @@ func NewBasicAPI(scope constructs.Construct, id *string, props *BasicAPIProps) *
 		EnableTracing:         jsii.Bool(true),
 		EnableMetrics:         jsii.Bool(true),
 		EnableDeadLetterQueue: props.EnableDeadLetterQueue,
-		LogRetentionDays:      props.LogRetentionDays,
 	}
 
 	if props.MemorySize != nil {

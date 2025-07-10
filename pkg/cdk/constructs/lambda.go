@@ -40,7 +40,7 @@ type LiftFunctionProps struct {
 // LiftFunction is a Lambda function construct optimized for Lift applications
 type LiftFunction struct {
 	constructs.Construct
-	Function awslambda.Function
+	Function        awslambda.Function
 	DeadLetterQueue awssqs.IQueue
 }
 
@@ -85,12 +85,12 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 			// Create a new DLQ
 			dlqName := fmt.Sprintf("%s-dlq", *id)
 			dlq = awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), &awssqs.QueueProps{
-				QueueName:           jsii.String(dlqName),
-				RetentionPeriod:     awscdk.Duration_Days(jsii.Number(14)),
-				VisibilityTimeout:   awscdk.Duration_Seconds(jsii.Number(300)),
+				QueueName:         jsii.String(dlqName),
+				RetentionPeriod:   awscdk.Duration_Days(jsii.Number(14)),
+				VisibilityTimeout: awscdk.Duration_Seconds(jsii.Number(300)),
 			})
 		}
-		
+
 		// Configure DLQ in Lambda props
 		props.DeadLetterQueueEnabled = jsii.Bool(true)
 		props.DeadLetterQueue = dlq
@@ -120,27 +120,27 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 	if props.EnableMetrics != nil && *props.EnableMetrics {
 		env["LIFT_METRICS_ENABLED"] = jsii.String("true")
 	}
-	
+
 	// Configure DynamORM environment variables if enabled
 	if props.EnableDynamORM != nil && *props.EnableDynamORM {
 		env["DYNAMORM_REGION"] = awscdk.Stack_Of(this).Region()
-		
+
 		if props.DynamORMTableName != nil {
 			env["DYNAMODB_TABLE_NAME"] = props.DynamORMTableName
 		}
-		
+
 		// Set debug mode
 		debugMode := "false"
 		if props.DynamORMDebug != nil && *props.DynamORMDebug {
 			debugMode = "true"
 		}
 		env["DYNAMORM_DEBUG"] = jsii.String(debugMode)
-		
+
 		// Set default retry configuration
 		env["DYNAMORM_RETRY_MAX_ATTEMPTS"] = jsii.String("3")
 		env["DYNAMORM_RETRY_BASE_DELAY"] = jsii.String("100")
 	}
-	
+
 	props.Environment = &env
 
 	// Lambda automatically creates and manages its own LogGroup
@@ -150,8 +150,8 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 	fn := awslambda.NewFunction(this, jsii.String("Function"), &props.FunctionProps)
 
 	return &LiftFunction{
-		Construct: this,
-		Function:  fn,
+		Construct:       this,
+		Function:        fn,
 		DeadLetterQueue: dlq,
 	}
 }
@@ -160,7 +160,6 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 func (f *LiftFunction) GetFunction() awslambda.Function {
 	return f.Function
 }
-
 
 // GetDeadLetterQueue returns the dead letter queue if configured
 func (f *LiftFunction) GetDeadLetterQueue() awssqs.IQueue {
@@ -196,7 +195,7 @@ func (f *LiftFunction) Metric(metricName *string, props *awscloudwatch.MetricOpt
 func (f *LiftFunction) ConfigureDynamORM(tableName *string, debug *bool) {
 	f.AddEnvironment(jsii.String("DYNAMORM_REGION"), awscdk.Stack_Of(f).Region())
 	f.AddEnvironment(jsii.String("DYNAMODB_TABLE_NAME"), tableName)
-	
+
 	debugMode := "false"
 	if debug != nil && *debug {
 		debugMode = "true"
@@ -205,4 +204,3 @@ func (f *LiftFunction) ConfigureDynamORM(tableName *string, debug *bool) {
 	f.AddEnvironment(jsii.String("DYNAMORM_RETRY_MAX_ATTEMPTS"), jsii.String("3"))
 	f.AddEnvironment(jsii.String("DYNAMORM_RETRY_BASE_DELAY"), jsii.String("100"))
 }
-
