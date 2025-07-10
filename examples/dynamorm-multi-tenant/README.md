@@ -13,7 +13,7 @@ This example demonstrates a comprehensive multi-tenant SaaS application using Li
 ### DynamORM Integration (New Standardized Approach)
 - **Standard pk/sk Structure**: All tables use `pk` and `sk` attributes
 - **Composite Keys**: Clear entity identification with `tenant#{id}`, `user#{id}` patterns
-- **GSIs via Struct Tags**: No CDK GSI definitions - all indexes defined in DynamORM models
+- **GSIs via Struct Tags**: DynamORM struct tags define which fields map to GSIs (GSIs must be created in infrastructure)
 - **Single Table Design**: Efficient patterns for multi-tenant isolation
 - **TTL Support**: Automatic data expiration using DynamORM tags
 
@@ -90,7 +90,7 @@ type User struct {
 }
 ```
 
-**Note**: GSIs are now created automatically by DynamORM based on struct tags, not in CDK.
+**Note**: The struct tags tell DynamORM which fields to use for GSI queries. However, you must create the actual GSIs in your infrastructure (CDK, CloudFormation, or AWS Console). DynamORM does not create GSIs at runtime.
 
 ## Deployment
 

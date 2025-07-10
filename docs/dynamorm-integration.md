@@ -7,30 +7,55 @@ This guide explains how DynamORM integrates with Lift for DynamoDB operations, i
 Lift uses a standardized approach for all DynamoDB tables, making them compatible with DynamORM. All tables follow a consistent single-table design pattern with:
 - Primary key: `pk` (partition key)
 - Sort key: `sk` (sort key)
-- Global Secondary Indexes (GSIs) defined through DynamORM struct tags
+- Global Secondary Indexes (GSIs) must be created in your infrastructure code
+- DynamORM struct tags map model fields to existing GSIs
 - Time-to-live (TTL) attributes for automatic data expiration
 
 ## Table Structure
 
 ### Standard Table Design
 
-All Lift tables use the same basic structure:
+All Lift tables use the same basic structure. **Important**: If your table needs GSIs, you must define them in your infrastructure code:
 
 ```go
 // CDK Table Creation
-table := constructs.NewLiftTable(stack, jsii.String("MyTable"), &constructs.LiftTableProps{
+liftTable := constructs.NewLiftTable(stack, jsii.String("MyTable"), &constructs.LiftTableProps{
     TableName:           jsii.String("my-app-table"),
     TimeToLiveAttribute: jsii.String("ttl"),
     EnableStreams:       jsii.Bool(true),
+})
+
+// Add GSIs using the underlying DynamoDB table
+liftTable.Table.AddGlobalSecondaryIndex(&awsdynamodb.GlobalSecondaryIndexProps{
+    IndexName: jsii.String("email-index"),
+    PartitionKey: &awsdynamodb.Attribute{
+        Name: jsii.String("Email"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
+})
+
+liftTable.Table.AddGlobalSecondaryIndex(&awsdynamodb.GlobalSecondaryIndexProps{
+    IndexName: jsii.String("tenant-index"),
+    PartitionKey: &awsdynamodb.Attribute{
+        Name: jsii.String("TenantID"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
+    SortKey: &awsdynamodb.Attribute{
+        Name: jsii.String("CreatedAt"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
 })
 ```
 
 This creates a table with:
 - Partition key: `pk` (String)
 - Sort key: `sk` (String)
+- Global Secondary Indexes as defined
 - Pay-per-request billing
 - Optional TTL attribute
 - Optional DynamoDB Streams
+
+**Note**: GSIs must be created during table creation. DynamORM cannot add GSIs to existing tables.
 
 ### DynamORM Model Definition
 
@@ -368,7 +393,9 @@ type User struct {
 
 ### Common Issues
 
-1. **GSI not created**: GSIs are defined in DynamORM models, not CDK. Ensure your struct has proper index tags.
+1. **GSI not created**: GSIs must be created in your infrastructure (CDK, CloudFormation, or AWS Console). DynamORM struct tags only tell DynamORM how to use existing GSIs - they don't create them. Ensure both:
+   - Your infrastructure creates the GSIs with matching names
+   - Your struct has proper index tags that match the GSI names
 
 2. **Query returns no results**: Check your key construction. Use composite keys correctly.
 
