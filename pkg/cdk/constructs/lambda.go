@@ -162,7 +162,7 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 		logGroup = awslogs.NewLogGroup(this, jsii.String("LogGroup"), &awslogs.LogGroupProps{
 			LogGroupName:  jsii.String(logGroupName),
 			Retention:     getRetentionDays(*props.LogRetentionDays),
-			RemovalPolicy: awscdk.RemovalPolicy_DELETE, // Important: DELETE to avoid conflicts
+			RemovalPolicy: awscdk.RemovalPolicy_DESTROY, // Important: DESTROY to avoid conflicts
 		})
 		
 		// Ensure the log group is created before the function
