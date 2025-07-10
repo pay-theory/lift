@@ -9,6 +9,22 @@ dynamorm-integration
 jwt-auth
 websocket-enhanced
 
+# CDK binary
+/cdk
+
+# Bootstrap files
+bootstrap
+*/bootstrap
+**/bootstrap
+
+# Example binaries
+examples/*/*
+!examples/*/*.go
+!examples/*/*.md
+!examples/*/go.mod
+!examples/*/go.sum
+!examples/*/README.md
+
 # Go build artifacts
 *.test
 *.out
