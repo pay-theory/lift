@@ -60,6 +60,7 @@ type MonitoredFunctionProps struct {
 type MonitoredFunction struct {
 	constructs.Construct
 	Function  *LiftFunction
+	// LogGroup is deprecated - Lambda's LogRetention property handles this automatically
 	LogGroup  awslogs.LogGroup
 	Dashboard awscloudwatch.Dashboard
 	Alarms    map[string]awscloudwatch.Alarm
@@ -124,16 +125,11 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 	env["MONITORING_ENABLED"] = jsii.String("true")
 	props.LiftFunctionProps.Environment = &env
 
+	// Set the log retention in the LiftFunctionProps
+	props.LiftFunctionProps.LogRetentionDays = props.LogRetentionDays
+
 	// Create the base Lift function
 	liftFn := NewLiftFunction(this, jsii.String("Function"), &props.LiftFunctionProps)
-
-	// Create or get the log group
-	logGroupName := fmt.Sprintf("/aws/lambda/%s", *liftFn.Function.FunctionName())
-	logGroup := awslogs.NewLogGroup(this, jsii.String("LogGroup"), &awslogs.LogGroupProps{
-		LogGroupName:  jsii.String(logGroupName),
-		Retention:     getRetentionDays(*props.LogRetentionDays),
-		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-	})
 
 	// Create CloudWatch dashboard if enabled
 	var dashboard awscloudwatch.Dashboard
@@ -242,7 +238,7 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 	monitored := &MonitoredFunction{
 		Construct: this,
 		Function:  liftFn,
-		LogGroup:  logGroup,
+		LogGroup:  liftFn.LogGroup, // Get from LiftFunction
 		Dashboard: dashboard,
 		Alarms:    alarms,
 	}
