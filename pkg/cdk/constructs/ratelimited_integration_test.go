@@ -80,21 +80,21 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &map[string]interface{}{
 			"KeySchema": []interface{}{
 				map[string]interface{}{
-					"AttributeName": "pk",
+					"AttributeName": "PK",
 					"KeyType": "HASH",
 				},
 				map[string]interface{}{
-					"AttributeName": "sk",
+					"AttributeName": "SK",
 					"KeyType": "RANGE",
 				},
 			},
 			"AttributeDefinitions": []interface{}{
 				map[string]interface{}{
-					"AttributeName": "pk",
+					"AttributeName": "PK",
 					"AttributeType": "S",
 				},
 				map[string]interface{}{
-					"AttributeName": "sk",
+					"AttributeName": "SK",
 					"AttributeType": "S",
 				},
 			},
