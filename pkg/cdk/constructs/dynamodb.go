@@ -118,7 +118,7 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 		tableProps.TimeToLiveAttribute = props.TimeToLiveAttribute
 	}
 
-	// Create the table with only pk/sk - DynamORM handles GSI creation through struct tags
+	// Create the table with only pk/sk - GSIs must be added separately using table.AddGlobalSecondaryIndex()
 	table := awsdynamodb.NewTable(this, jsii.String("Table"), tableProps)
 
 	// Configure auto-scaling for provisioned mode

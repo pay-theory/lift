@@ -298,17 +298,48 @@ app.Synth(nil)
 All Lift tables now use a standardized structure compatible with DynamORM:
 - Primary key: `pk` (partition key)
 - Sort key: `sk` (sort key)
-- GSIs defined through DynamORM struct tags
+- GSIs must be defined in CDK during table creation
 - Composite keys for entity identification and multi-tenancy
 
+#### 1. Define GSIs in CDK (Infrastructure)
 ```go
-// Define models with BOTH DynamORM and DynamoDB tags
+// Create the table with LiftTable
+liftTable := constructs.NewLiftTable(stack, jsii.String("UserTable"), &constructs.LiftTableProps{
+    TableName:        jsii.String("my-app-users"),
+    PartitionKeyName: jsii.String("PK"),
+    SortKeyName:      jsii.String("SK"),
+})
+
+// Add GSIs to the underlying DynamoDB table
+liftTable.Table.AddGlobalSecondaryIndex(&awsdynamodb.GlobalSecondaryIndexProps{
+    IndexName: jsii.String("email-index"),
+    PartitionKey: &awsdynamodb.Attribute{
+        Name: jsii.String("Email"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
+})
+
+liftTable.Table.AddGlobalSecondaryIndex(&awsdynamodb.GlobalSecondaryIndexProps{
+    IndexName: jsii.String("tenant-index"),
+    PartitionKey: &awsdynamodb.Attribute{
+        Name: jsii.String("TenantID"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
+    SortKey: &awsdynamodb.Attribute{
+        Name: jsii.String("Created"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
+})
+```
+
+#### 2. Match GSIs in your Go models
+```go
 type User struct {
     // Keys - only dynamorm tags needed
     PK string `dynamorm:"pk" `  // tenant#{tenant_id} or user#{user_id}
     SK string `dynamorm:"sk" `  // user#{user_id} or hierarchical data
     
-    // GSI attributes - need both tags for proper operation
+    // GSI attributes - must match CDK definition
     Email    string `dynamorm:"index:email-index,pk" `
     TenantID string `dynamorm:"index:tenant-index,pk" `
     Created  string `dynamorm:"index:tenant-index,sk" `
@@ -319,20 +350,31 @@ type User struct {
     Status   string    `json:"status" `
     TTL      int64     `json:"ttl,omitempty" dynamorm:"ttl"`
 }
+```
 
-// IMPORTANT: Both tags are required:
-// - dynamorm: tells DynamORM which fields are keys/indexes
-// DynamORM handles all marshaling internally
-
-// Multi-tenant query example
+#### 3. Query using GSIs
+```go
+// Query by email (using email-index GSI)
 users, err := dynamorm.Query[User](ctx, db).
     WithTable(tableName).
-    WithPK(fmt.Sprintf("tenant#%s", tenantID)).
-    WithSKPrefix("user#").
+    WithIndex("email-index").
+    WithPK("user@example.com").
+    Execute()
+
+// Query by tenant with date range (using tenant-index GSI)
+users, err := dynamorm.Query[User](ctx, db).
+    WithTable(tableName).
+    WithIndex("tenant-index").
+    WithPK("tenant-123").
+    WithSKBetween("2024-01-01", "2024-12-31").
     Execute()
 ```
 
-**Important**: GSIs are no longer created in CDK. Define them in your DynamORM models using struct tags.
+**Important**: 
+- GSIs must be defined in CDK during table creation
+- DynamORM cannot add GSIs to existing tables at runtime (this would be a slow, expensive DynamoDB operation)
+- The struct tags in your models tell DynamORM how to use the GSIs for queries, but don't create them
+- GSI attribute names in CDK must match the Go struct field names exactly
 
 For detailed DynamORM integration patterns, see `docs/dynamorm-integration.md`.
 
