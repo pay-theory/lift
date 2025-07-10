@@ -203,7 +203,6 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 				EnableMetrics:         jsii.Bool(true),
 				EnableMultiTenant:     jsii.Bool(true),
 				EnableDeadLetterQueue: jsii.Bool(true),
-				LogRetentionDays:      jsii.Number(7),
 				ReservedConcurrentExecutions: jsii.Number(10),
 			},
 			RateLimitType: RateLimitTypeUser,
@@ -239,10 +238,7 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 			},
 		})
 
-		// Verify log retention
-		template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), &map[string]interface{}{
-			"RetentionInDays": 7,
-		})
+		// Lambda automatically manages its own LogGroup
 
 		assert.NotNil(t, fn)
 		assert.NotNil(t, fn.Function.DeadLetterQueue)

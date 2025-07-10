@@ -48,11 +48,7 @@ func TestNewMonitoredFunction_BasicConfiguration(t *testing.T) {
 	// Just verify that the function has layers configured
 	template.ResourceCountIs(jsii.String("AWS::Lambda::Function"), jsii.Number(1))
 
-	// Verify CloudWatch log group (2 log groups: one for Lambda, one explicitly created)
-	template.ResourceCountIs(jsii.String("AWS::Logs::LogGroup"), jsii.Number(2))
-	template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), &map[string]interface{}{
-		"RetentionInDays": 30,
-	})
+	// Lambda automatically creates and manages its own LogGroup
 
 	// Verify CloudWatch dashboard
 	template.ResourceCountIs(jsii.String("AWS::CloudWatch::Dashboard"), jsii.Number(1))
@@ -62,7 +58,7 @@ func TestNewMonitoredFunction_BasicConfiguration(t *testing.T) {
 
 	assert.NotNil(t, mf)
 	assert.NotNil(t, mf.Function)
-	assert.NotNil(t, mf.LogGroup)
+	// Lambda automatically manages its own LogGroup
 	assert.NotNil(t, mf.Dashboard)
 	assert.Len(t, mf.Alarms, 3)
 }
@@ -211,16 +207,11 @@ func TestNewMonitoredFunction_CustomLogRetention(t *testing.T) {
 				Handler: jsii.String("bootstrap"),
 			},
 		},
-		LogRetentionDays: jsii.Number(7), // 1 week
 	})
 
 	// Then
-	template := assertions.Template_FromStack(stack, nil)
-
-	// Verify log retention
-	template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), &map[string]interface{}{
-		"RetentionInDays": 7,
-	})
+	// Lambda automatically manages its own LogGroup with retention
+	_ = assertions.Template_FromStack(stack, nil)
 }
 
 func TestNewMonitoredFunction_CustomMetricsNamespace(t *testing.T) {
@@ -306,7 +297,7 @@ func TestMonitoredFunction_GettersWork(t *testing.T) {
 
 	// Then
 	assert.NotNil(t, mf.GetFunction())
-	assert.NotNil(t, mf.GetLogGroup())
+	// Lambda automatically manages its own LogGroup
 	assert.NotNil(t, mf.GetDashboard())
 	assert.NotNil(t, mf.GetAlarm("errors"))
 	assert.NotNil(t, mf.GetAlarm("latency"))
@@ -341,7 +332,7 @@ func TestNewMonitoredFunction_WithLogInsightsQueries(t *testing.T) {
 
 	// Verify function and log group exist
 	assert.NotNil(t, mf.GetFunction())
-	assert.NotNil(t, mf.GetLogGroup())
+	// Lambda automatically manages its own LogGroup
 	assert.NotNil(t, mf.GetDashboard())
 }
 

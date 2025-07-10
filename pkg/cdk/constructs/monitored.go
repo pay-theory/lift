@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatchactions"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -38,8 +37,6 @@ type AlarmConfig struct {
 // MonitoredFunctionProps extends LiftFunctionProps with monitoring configuration
 type MonitoredFunctionProps struct {
 	LiftFunctionProps
-	// CloudWatch Logs retention in days
-	LogRetentionDays *float64
 	// Enable CloudWatch dashboard
 	EnableDashboard *bool
 	// Dashboard name (optional - will generate if not provided)
@@ -60,8 +57,6 @@ type MonitoredFunctionProps struct {
 type MonitoredFunction struct {
 	constructs.Construct
 	Function  *LiftFunction
-	// LogGroup is deprecated - Lambda's LogRetention property handles this automatically
-	LogGroup  awslogs.LogGroup
 	Dashboard awscloudwatch.Dashboard
 	Alarms    map[string]awscloudwatch.Alarm
 }
@@ -71,9 +66,6 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 	this := constructs.NewConstruct(scope, id)
 
 	// Set defaults
-	if props.LogRetentionDays == nil {
-		props.LogRetentionDays = jsii.Number(30) // 30 days default
-	}
 	if props.EnableDashboard == nil {
 		props.EnableDashboard = jsii.Bool(true)
 	}
@@ -125,8 +117,6 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 	env["MONITORING_ENABLED"] = jsii.String("true")
 	props.LiftFunctionProps.Environment = &env
 
-	// Set the log retention in the LiftFunctionProps
-	props.LiftFunctionProps.LogRetentionDays = props.LogRetentionDays
 
 	// Create the base Lift function
 	liftFn := NewLiftFunction(this, jsii.String("Function"), &props.LiftFunctionProps)
@@ -238,7 +228,6 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 	monitored := &MonitoredFunction{
 		Construct: this,
 		Function:  liftFn,
-		LogGroup:  liftFn.LogGroup, // Get from LiftFunction
 		Dashboard: dashboard,
 		Alarms:    alarms,
 	}
@@ -256,10 +245,6 @@ func (f *MonitoredFunction) GetFunction() awslambda.Function {
 	return f.Function.Function
 }
 
-// GetLogGroup returns the CloudWatch log group
-func (f *MonitoredFunction) GetLogGroup() awslogs.LogGroup {
-	return f.LogGroup
-}
 
 // GetDashboard returns the CloudWatch dashboard
 func (f *MonitoredFunction) GetDashboard() awscloudwatch.Dashboard {
@@ -297,10 +282,13 @@ func (f *MonitoredFunction) AddLogInsightsQuery(queryName *string, queryString *
 		return
 	}
 
+	// Lambda automatically creates log group with name /aws/lambda/{function-name}
+	logGroupName := jsii.String(fmt.Sprintf("/aws/lambda/%s", *f.Function.Function.FunctionName()))
+
 	// Create a Logs Insights widget
 	logsWidget := awscloudwatch.NewLogQueryWidget(&awscloudwatch.LogQueryWidgetProps{
 		Title:        queryName,
-		LogGroupNames: &[]*string{f.LogGroup.LogGroupName()},
+		LogGroupNames: &[]*string{logGroupName},
 		QueryString:  queryString,
 		Width:        jsii.Number(24),
 		Height:       jsii.Number(6),
