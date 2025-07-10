@@ -44,6 +44,7 @@ type LiftFunctionProps struct {
 type LiftFunction struct {
 	constructs.Construct
 	Function awslambda.Function
+	// LogGroup is deprecated - Lambda's LogRetention property handles this automatically
 	LogGroup awslogs.LogGroup
 	DeadLetterQueue awssqs.IQueue
 }
@@ -153,13 +154,20 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 	// Create the Lambda function
 	fn := awslambda.NewFunction(this, jsii.String("Function"), &props.FunctionProps)
 
-	// Create CloudWatch Log Group with retention
-	logGroupName := fmt.Sprintf("/aws/lambda/%s", *fn.FunctionName())
-	logGroup := awslogs.NewLogGroup(this, jsii.String("LogGroup"), &awslogs.LogGroupProps{
-		LogGroupName:  jsii.String(logGroupName),
-		Retention:     getRetentionDays(*props.LogRetentionDays),
-		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-	})
+	// Create a LogGroup with explicit removal policy to avoid conflicts
+	// Using a deterministic LogGroup name based on the function name
+	var logGroup awslogs.LogGroup
+	if props.LogRetentionDays != nil {
+		logGroupName := fmt.Sprintf("/aws/lambda/%s", *fn.FunctionName())
+		logGroup = awslogs.NewLogGroup(this, jsii.String("LogGroup"), &awslogs.LogGroupProps{
+			LogGroupName:  jsii.String(logGroupName),
+			Retention:     getRetentionDays(*props.LogRetentionDays),
+			RemovalPolicy: awscdk.RemovalPolicy_DELETE, // Important: DELETE to avoid conflicts
+		})
+		
+		// Ensure the log group is created before the function
+		fn.Node().AddDependency(logGroup)
+	}
 
 	return &LiftFunction{
 		Construct: this,
