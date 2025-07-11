@@ -39,16 +39,16 @@ func TestWebSocketAPI_DefaultConfiguration(t *testing.T) {
 		"AutoDeploy": true,
 	})
 
-	// Verify connection table is created with standard pk/sk structure
+	// Verify connection table is created with standard PK/SK structure (uppercase as per ConnectionTable implementation)
 	assertResourceExists(t, template, "AWS::DynamoDB::Table", map[string]interface{}{
 		"TableName": "test-websocket-api-connections",
 		"KeySchema": []interface{}{
 			map[string]interface{}{
-				"AttributeName": "pk",
+				"AttributeName": "PK",
 				"KeyType":       "HASH",
 			},
 			map[string]interface{}{
-				"AttributeName": "sk",
+				"AttributeName": "SK",
 				"KeyType":       "RANGE",
 			},
 		},
