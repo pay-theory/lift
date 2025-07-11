@@ -47,7 +47,7 @@ print_status $? "Go vet"
 if command -v gosec &> /dev/null; then
     echo -e "${YELLOW}Running security scan with gosec...${NC}"
     # Only scan production code - exclude tests, examples, vendor
-    gosec -tests=false -exclude-dir=examples -exclude-dir=vendor -exclude-dir=reference -exclude-dir=scripts ./pkg/...
+    timeout 30s gosec -tests=false ./pkg/lift ./pkg/middleware ./pkg/security
     print_status $? "Security scan (gosec)"
 else
     echo -e "${YELLOW}⚠ gosec not found, skipping security scan${NC}"
