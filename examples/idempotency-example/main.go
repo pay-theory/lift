@@ -64,22 +64,22 @@ func main() {
 	})
 	app.Use(func(next lift.Handler) lift.Handler {
 		return middleware.Idempotency(middleware.IdempotencyOptions{
-		Store:              idempotencyStore,
-		HeaderName:         "Idempotency-Key",
-		TTL:                24 * 60 * 60, // 24 hours
-		ProcessingTimeout:  30,           // 30 seconds
-		IncludeRequestHash: true,         // Validate request body hasn't changed
-		OnDuplicate: func(ctx *lift.Context, record *middleware.IdempotencyRecord) {
-			// Log duplicate request
-			if ctx.Logger != nil {
-				ctx.Logger.Info("Duplicate request detected", map[string]any{
-					"idempotency_key": record.Key,
-					"original_created": record.CreatedAt,
-					"status": record.Status,
-				})
-			}
-		},
-	})(next)
+			Store:              idempotencyStore,
+			HeaderName:         "Idempotency-Key",
+			TTL:                24 * 60 * 60, // 24 hours
+			ProcessingTimeout:  30,           // 30 seconds
+			IncludeRequestHash: true,         // Validate request body hasn't changed
+			OnDuplicate: func(ctx *lift.Context, record *middleware.IdempotencyRecord) {
+				// Log duplicate request
+				if ctx.Logger != nil {
+					ctx.Logger.Info("Duplicate request detected", map[string]any{
+						"idempotency_key":  record.Key,
+						"original_created": record.CreatedAt,
+						"status":           record.Status,
+					})
+				}
+			},
+		})(next)
 	})
 
 	// Payment intent creation endpoint
@@ -88,7 +88,7 @@ func main() {
 	// Health check endpoint (no idempotency needed)
 	app.GET("/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
-			"status": "healthy",
+			"status":  "healthy",
 			"service": "payment-api",
 		})
 	})
@@ -102,16 +102,16 @@ func main() {
 func createPaymentIntent(ctx *lift.Context, req PaymentIntentRequest) (PaymentIntentResponse, error) {
 	// Simulate payment processing
 	// In a real application, this would call your payment processor
-	
+
 	// Generate payment intent ID
 	paymentID := "pi_" + generateID()
-	
+
 	// Log the creation
 	if ctx.Logger != nil {
 		ctx.Logger.Info("Creating payment intent", map[string]any{
 			"payment_id": paymentID,
-			"amount": req.Amount,
-			"currency": req.Currency,
+			"amount":     req.Amount,
+			"currency":   req.Currency,
 		})
 	}
 

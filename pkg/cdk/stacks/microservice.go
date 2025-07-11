@@ -40,13 +40,13 @@ func NewMicroserviceStack(scope constructs.Construct, id string, props *Microser
 
 	// Create the Lift application
 	app := patterns.NewLiftApp(stack, jsii.String("Service"), &patterns.LiftAppProps{
-		AppName:           jsii.String(props.ServiceName),
-		CodeAssetPath:     jsii.String(props.CodePath),
-		EnableDatabase:    jsii.Bool(props.EnableDatabase),
+		AppName:            jsii.String(props.ServiceName),
+		CodeAssetPath:      jsii.String(props.CodePath),
+		EnableDatabase:     jsii.Bool(props.EnableDatabase),
 		EnableRateLimiting: jsii.Bool(true),
-		Environment:       &env,
-		MemorySize:        jsii.Number(props.MemorySize),
-		Timeout:           jsii.Number(300), // 5 minutes in seconds
+		Environment:        &env,
+		MemorySize:         jsii.Number(props.MemorySize),
+		Timeout:            jsii.Number(300), // 5 minutes in seconds
 	})
 
 	// Add stack outputs

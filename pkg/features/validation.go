@@ -13,23 +13,23 @@ import (
 
 // ValidationRule defines a validation rule
 type ValidationRule struct {
-	Field      string                  `json:"field"`
-	Type       string                  `json:"type"`
-	Required   bool                    `json:"required"`
-	Min        any             `json:"min,omitempty"`
-	Max        any             `json:"max,omitempty"`
-	Pattern    string                  `json:"pattern,omitempty"`
-	Enum       []any           `json:"enum,omitempty"`
-	Custom     func(any) error `json:"-"`
-	Message    string                  `json:"message,omitempty"`
-	Conditions []ValidationCondition   `json:"conditions,omitempty"`
+	Field      string                `json:"field"`
+	Type       string                `json:"type"`
+	Required   bool                  `json:"required"`
+	Min        any                   `json:"min,omitempty"`
+	Max        any                   `json:"max,omitempty"`
+	Pattern    string                `json:"pattern,omitempty"`
+	Enum       []any                 `json:"enum,omitempty"`
+	Custom     func(any) error       `json:"-"`
+	Message    string                `json:"message,omitempty"`
+	Conditions []ValidationCondition `json:"conditions,omitempty"`
 }
 
 // ValidationCondition defines conditional validation
 type ValidationCondition struct {
-	Field    string      `json:"field"`
-	Operator string      `json:"operator"` // "eq", "ne", "gt", "lt", "in", "not_in"
-	Value    any `json:"value"`
+	Field    string `json:"field"`
+	Operator string `json:"operator"` // "eq", "ne", "gt", "lt", "in", "not_in"
+	Value    any    `json:"value"`
 }
 
 // ValidationSchema defines a complete validation schema
@@ -38,15 +38,15 @@ type ValidationSchema struct {
 	Properties map[string]ValidationRule `json:"properties"`
 	Required   []string                  `json:"required"`
 	Rules      []ValidationRule          `json:"rules"`
-	Custom     func(any) error   `json:"-"`
+	Custom     func(any) error           `json:"-"`
 }
 
 // ValidationError represents a validation error
 type ValidationError struct {
-	Field   string      `json:"field"`
-	Message string      `json:"message"`
-	Value   any `json:"value,omitempty"`
-	Code    string      `json:"code"`
+	Field   string `json:"field"`
+	Message string `json:"message"`
+	Value   any    `json:"value,omitempty"`
+	Code    string `json:"code"`
 }
 
 // ValidationResult contains validation results

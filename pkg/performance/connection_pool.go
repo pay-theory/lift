@@ -18,20 +18,20 @@ type ConnectionPoolConfig struct {
 	MinConnections    int           `json:"min_connections"`
 	MaxIdleTime       time.Duration `json:"max_idle_time"`
 	ConnectionTimeout time.Duration `json:"connection_timeout"`
-	
+
 	// Retry configuration
-	MaxRetries      int           `json:"max_retries"`
-	RetryDelay      time.Duration `json:"retry_delay"`
-	BackoffMultiplier float64     `json:"backoff_multiplier"`
-	
+	MaxRetries        int           `json:"max_retries"`
+	RetryDelay        time.Duration `json:"retry_delay"`
+	BackoffMultiplier float64       `json:"backoff_multiplier"`
+
 	// Health check configuration
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
 	HealthCheckTimeout  time.Duration `json:"health_check_timeout"`
-	
+
 	// Region and endpoint configuration
 	Region   string `json:"region"`
 	Endpoint string `json:"endpoint,omitempty"`
-	
+
 	// Metrics
 	EnableMetrics bool `json:"enable_metrics"`
 }
@@ -102,17 +102,17 @@ type ConnectionPool struct {
 
 // PoolMetrics tracks connection pool performance
 type PoolMetrics struct {
-	ActiveConnections  int64         `json:"active_connections"`
-	IdleConnections    int64         `json:"idle_connections"`
-	TotalRequests      int64         `json:"total_requests"`
-	FailedRequests     int64         `json:"failed_requests"`
-	AverageWaitTime    time.Duration `json:"average_wait_time"`
-	ConnectionsCreated int64         `json:"connections_created"`
-	ConnectionsDestroyed int64       `json:"connections_destroyed"`
-	HealthChecksPassed int64         `json:"health_checks_passed"`
-	HealthChecksFailed int64         `json:"health_checks_failed"`
-	LastHealthCheck    time.Time     `json:"last_health_check"`
-	
+	ActiveConnections    int64         `json:"active_connections"`
+	IdleConnections      int64         `json:"idle_connections"`
+	TotalRequests        int64         `json:"total_requests"`
+	FailedRequests       int64         `json:"failed_requests"`
+	AverageWaitTime      time.Duration `json:"average_wait_time"`
+	ConnectionsCreated   int64         `json:"connections_created"`
+	ConnectionsDestroyed int64         `json:"connections_destroyed"`
+	HealthChecksPassed   int64         `json:"health_checks_passed"`
+	HealthChecksFailed   int64         `json:"health_checks_failed"`
+	LastHealthCheck      time.Time     `json:"last_health_check"`
+
 	mu sync.RWMutex
 }
 
@@ -121,16 +121,16 @@ func NewConnectionPool(ctx context.Context, cfg *ConnectionPoolConfig) (*Connect
 	if cfg == nil {
 		cfg = DefaultConnectionPoolConfig()
 	}
-	
+
 	// Load AWS configuration
-	awsConfig, err := config.LoadDefaultConfig(ctx, 
+	awsConfig, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(cfg.Region),
 		config.WithRetryMaxAttempts(cfg.MaxRetries),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
-	
+
 	// Override endpoint if specified
 	if cfg.Endpoint != "" {
 		awsConfig.EndpointResolverWithOptions = aws.EndpointResolverWithOptionsFunc(
@@ -140,9 +140,9 @@ func NewConnectionPool(ctx context.Context, cfg *ConnectionPoolConfig) (*Connect
 				}, nil
 			})
 	}
-	
+
 	poolCtx, cancel := context.WithCancel(ctx)
-	
+
 	pool := &ConnectionPool{
 		config:    cfg,
 		clients:   make(chan *dynamodb.Client, cfg.MaxConnections),
@@ -151,7 +151,7 @@ func NewConnectionPool(ctx context.Context, cfg *ConnectionPoolConfig) (*Connect
 		cancel:    cancel,
 		awsConfig: awsConfig,
 	}
-	
+
 	// Create minimum number of connections
 	for i := 0; i < cfg.MinConnections; i++ {
 		client := pool.createClient()
@@ -159,12 +159,12 @@ func NewConnectionPool(ctx context.Context, cfg *ConnectionPoolConfig) (*Connect
 		pool.metrics.ConnectionsCreated++
 		pool.metrics.IdleConnections++
 	}
-	
+
 	// Start health check routine
 	if cfg.HealthCheckInterval > 0 {
 		go pool.healthCheckRoutine()
 	}
-	
+
 	return pool, nil
 }
 
@@ -173,7 +173,7 @@ func (p *ConnectionPool) GetClient(ctx context.Context) (*dynamodb.Client, error
 	if p.closed {
 		return nil, fmt.Errorf("connection pool is closed")
 	}
-	
+
 	start := time.Now()
 	defer func() {
 		waitTime := time.Since(start)
@@ -182,7 +182,7 @@ func (p *ConnectionPool) GetClient(ctx context.Context) (*dynamodb.Client, error
 		p.metrics.AverageWaitTime = (p.metrics.AverageWaitTime + waitTime) / 2
 		p.metrics.mu.Unlock()
 	}()
-	
+
 	// Try to get an existing client
 	select {
 	case client := <-p.clients:
@@ -208,7 +208,7 @@ func (p *ConnectionPool) GetClient(ctx context.Context) (*dynamodb.Client, error
 			p.metrics.mu.Unlock()
 			return client, nil
 		}
-		
+
 		// Wait for available client
 		select {
 		case client := <-p.clients:
@@ -233,7 +233,7 @@ func (p *ConnectionPool) ReturnClient(client *dynamodb.Client) {
 	if p.closed || client == nil {
 		return
 	}
-	
+
 	// Return client to pool if there's space
 	select {
 	case p.clients <- client:
@@ -254,14 +254,14 @@ func (p *ConnectionPool) ReturnClient(client *dynamodb.Client) {
 func (p *ConnectionPool) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	if p.closed {
 		return nil
 	}
-	
+
 	p.closed = true
 	p.cancel()
-	
+
 	// Close all clients in the pool
 	close(p.clients)
 	for client := range p.clients {
@@ -269,7 +269,7 @@ func (p *ConnectionPool) Close() error {
 		_ = client
 		p.metrics.ConnectionsDestroyed++
 	}
-	
+
 	return nil
 }
 
@@ -277,10 +277,20 @@ func (p *ConnectionPool) Close() error {
 func (p *ConnectionPool) GetMetrics() *PoolMetrics {
 	p.metrics.mu.RLock()
 	defer p.metrics.mu.RUnlock()
-	
-	// Return a copy of metrics
-	metrics := *p.metrics
-	return &metrics
+
+	// Return a copy of metrics without the mutex
+	return &PoolMetrics{
+		ActiveConnections:    p.metrics.ActiveConnections,
+		IdleConnections:      p.metrics.IdleConnections,
+		TotalRequests:        p.metrics.TotalRequests,
+		FailedRequests:       p.metrics.FailedRequests,
+		AverageWaitTime:      p.metrics.AverageWaitTime,
+		ConnectionsCreated:   p.metrics.ConnectionsCreated,
+		ConnectionsDestroyed: p.metrics.ConnectionsDestroyed,
+		HealthChecksPassed:   p.metrics.HealthChecksPassed,
+		HealthChecksFailed:   p.metrics.HealthChecksFailed,
+		LastHealthCheck:      p.metrics.LastHealthCheck,
+	}
 }
 
 // createClient creates a new DynamoDB client
@@ -292,7 +302,7 @@ func (p *ConnectionPool) createClient() *dynamodb.Client {
 func (p *ConnectionPool) healthCheckRoutine() {
 	ticker := time.NewTicker(p.config.HealthCheckInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -307,17 +317,17 @@ func (p *ConnectionPool) healthCheckRoutine() {
 func (p *ConnectionPool) performHealthCheck() {
 	ctx, cancel := context.WithTimeout(p.ctx, p.config.HealthCheckTimeout)
 	defer cancel()
-	
+
 	// Sample a few connections for health check
 	healthyCount := 0
 	totalChecked := 0
 	maxCheck := 5 // Check up to 5 connections
-	
+
 	for i := 0; i < maxCheck && len(p.clients) > 0; i++ {
 		select {
 		case client := <-p.clients:
 			totalChecked++
-			
+
 			// Perform a simple operation to check health
 			_, err := client.DescribeEndpoints(ctx, &dynamodb.DescribeEndpointsInput{})
 			if err == nil {
@@ -336,7 +346,7 @@ func (p *ConnectionPool) performHealthCheck() {
 			break
 		}
 	}
-	
+
 	// Update health check metrics
 	p.metrics.mu.Lock()
 	p.metrics.HealthChecksPassed += int64(healthyCount)
@@ -348,20 +358,20 @@ func (p *ConnectionPool) performHealthCheck() {
 // PoolStats returns formatted statistics about the pool
 func (p *ConnectionPool) PoolStats() map[string]interface{} {
 	metrics := p.GetMetrics()
-	
+
 	return map[string]interface{}{
-		"active_connections":     metrics.ActiveConnections,
-		"idle_connections":       metrics.IdleConnections,
-		"total_requests":         metrics.TotalRequests,
-		"failed_requests":        metrics.FailedRequests,
-		"success_rate":           float64(metrics.TotalRequests-metrics.FailedRequests) / float64(metrics.TotalRequests) * 100,
-		"average_wait_time_ms":   metrics.AverageWaitTime.Milliseconds(),
-		"connections_created":    metrics.ConnectionsCreated,
-		"connections_destroyed":  metrics.ConnectionsDestroyed,
-		"health_checks_passed":   metrics.HealthChecksPassed,
-		"health_checks_failed":   metrics.HealthChecksFailed,
-		"last_health_check":      metrics.LastHealthCheck,
-		"pool_utilization":       float64(metrics.ActiveConnections) / float64(p.config.MaxConnections) * 100,
+		"active_connections":    metrics.ActiveConnections,
+		"idle_connections":      metrics.IdleConnections,
+		"total_requests":        metrics.TotalRequests,
+		"failed_requests":       metrics.FailedRequests,
+		"success_rate":          float64(metrics.TotalRequests-metrics.FailedRequests) / float64(metrics.TotalRequests) * 100,
+		"average_wait_time_ms":  metrics.AverageWaitTime.Milliseconds(),
+		"connections_created":   metrics.ConnectionsCreated,
+		"connections_destroyed": metrics.ConnectionsDestroyed,
+		"health_checks_passed":  metrics.HealthChecksPassed,
+		"health_checks_failed":  metrics.HealthChecksFailed,
+		"last_health_check":     metrics.LastHealthCheck,
+		"pool_utilization":      float64(metrics.ActiveConnections) / float64(p.config.MaxConnections) * 100,
 	}
 }
 
@@ -369,9 +379,9 @@ func (p *ConnectionPool) PoolStats() map[string]interface{} {
 func (p *ConnectionPool) OptimizeForWorkload(workloadType string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	var newConfig *ConnectionPoolConfig
-	
+
 	switch workloadType {
 	case "high-throughput":
 		newConfig = HighThroughputConnectionPoolConfig()
@@ -382,12 +392,11 @@ func (p *ConnectionPool) OptimizeForWorkload(workloadType string) error {
 	default:
 		return fmt.Errorf("unknown workload type: %s", workloadType)
 	}
-	
+
 	// Apply new configuration (simplified - in practice would need gradual transition)
 	newConfig.Region = p.config.Region
 	newConfig.Endpoint = p.config.Endpoint
 	p.config = newConfig
-	
+
 	return nil
 }
-

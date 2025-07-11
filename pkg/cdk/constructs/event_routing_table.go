@@ -32,7 +32,7 @@ func NewEventRoutingTable(scope constructs.Construct, id *string, props *EventRo
 	if props.TableName == nil {
 		props.TableName = jsii.String("event-routing")
 	}
-	
+
 	// Enable TTL for event cleanup
 	if props.TimeToLiveAttribute == nil {
 		props.TimeToLiveAttribute = jsii.String("ttl")
@@ -47,7 +47,7 @@ func NewEventRoutingTable(scope constructs.Construct, id *string, props *EventRo
 		EnablePointInTimeRecovery: jsii.Bool(true),
 		EnableStreams:             jsii.Bool(true),
 	})
-	
+
 	return &EventRoutingTable{
 		construct: scope,
 		LiftTable: liftTable,
@@ -65,13 +65,13 @@ func (e *EventRoutingTable) GrantEventManagement(grantee awsiam.IGrantable) {
 // type EventRoute struct {
 //     PK         string    `dynamorm:"pk"`                          // event#{event_id}
 //     SK         string    `dynamorm:"sk"`                          // timestamp#{timestamp}
-//     
+//
 //     // Indexes for queries
 //     EventSource      string `dynamorm:"index:source-index,pk"`  // event_source
 //     Timestamp        string `dynamorm:"index:source-index,sk"`  // ISO timestamp
 //     ProcessingStatus string `dynamorm:"index:status-index,pk"`  // processing_status
 //     Date             string `dynamorm:"index:date-index,pk"`    // YYYY-MM-DD
-//     
+//
 //     // Event data
 //     EventID    string `json:"event_id"`
 //     TTL        int64  `json:"ttl"`

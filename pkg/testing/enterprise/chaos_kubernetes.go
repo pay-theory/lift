@@ -85,17 +85,17 @@ const (
 
 // ChaosExperimentSpec defines Kubernetes-specific experiment specification
 type ChaosExperimentSpec struct {
-	Name           string                 `json:"name"`
-	Namespace      string                 `json:"namespace"`
-	ControllerType ChaosControllerType    `json:"controller_type"`
-	FaultType      FaultType              `json:"fault_type"`
-	TargetSelector *TargetSelector        `json:"target_selector"`
-	FaultConfig    map[string]any `json:"fault_config"`
-	Duration       time.Duration          `json:"duration"`
-	Schedule       *ChaosSchedule         `json:"schedule,omitempty"`
-	Conditions     []ChaosCondition       `json:"conditions,omitempty"`
-	Annotations    map[string]string      `json:"annotations,omitempty"`
-	Labels         map[string]string      `json:"labels,omitempty"`
+	Name           string              `json:"name"`
+	Namespace      string              `json:"namespace"`
+	ControllerType ChaosControllerType `json:"controller_type"`
+	FaultType      FaultType           `json:"fault_type"`
+	TargetSelector *TargetSelector     `json:"target_selector"`
+	FaultConfig    map[string]any      `json:"fault_config"`
+	Duration       time.Duration       `json:"duration"`
+	Schedule       *ChaosSchedule      `json:"schedule,omitempty"`
+	Conditions     []ChaosCondition    `json:"conditions,omitempty"`
+	Annotations    map[string]string   `json:"annotations,omitempty"`
+	Labels         map[string]string   `json:"labels,omitempty"`
 }
 
 // TargetSelector defines target selection criteria
@@ -223,17 +223,17 @@ type ChaosOperator struct {
 	Controllers   []ChaosController           `json:"controllers"`
 	Webhooks      []*AdmissionWebhook         `json:"webhooks"`
 	RBAC          *RBACConfig                 `json:"rbac"`
-	Configuration map[string]any      `json:"configuration"`
+	Configuration map[string]any              `json:"configuration"`
 	Status        OperatorStatus              `json:"status"`
 }
 
 // CustomResourceDefinition defines CRD specifications
 type CustomResourceDefinition struct {
-	APIVersion string                 `json:"api_version"`
-	Kind       string                 `json:"kind"`
+	APIVersion string         `json:"api_version"`
+	Kind       string         `json:"kind"`
 	Metadata   map[string]any `json:"metadata"`
-	Spec       *CRDSpec               `json:"spec"`
-	Status     *CRDStatus             `json:"status"`
+	Spec       *CRDSpec       `json:"spec"`
+	Status     *CRDStatus     `json:"status"`
 }
 
 // CRDSpec defines CRD specification
@@ -246,9 +246,9 @@ type CRDSpec struct {
 
 // CRDVersion defines CRD version
 type CRDVersion struct {
-	Name    string                 `json:"name"`
-	Served  bool                   `json:"served"`
-	Storage bool                   `json:"storage"`
+	Name    string         `json:"name"`
+	Served  bool           `json:"served"`
+	Storage bool           `json:"storage"`
 	Schema  map[string]any `json:"schema"`
 }
 
@@ -457,15 +457,15 @@ type ChaosEventBus struct {
 
 // ChaosEvent defines chaos engineering event
 type ChaosEvent struct {
-	ID        string                 `json:"id"`
-	Type      ChaosEventType         `json:"type"`
-	Source    string                 `json:"source"`
-	Target    string                 `json:"target"`
-	Timestamp time.Time              `json:"timestamp"`
-	Data      map[string]any `json:"data"`
-	Severity  EventSeverity          `json:"severity"`
-	Tags      []string               `json:"tags"`
-	Metadata  map[string]string      `json:"metadata"`
+	ID        string            `json:"id"`
+	Type      ChaosEventType    `json:"type"`
+	Source    string            `json:"source"`
+	Target    string            `json:"target"`
+	Timestamp time.Time         `json:"timestamp"`
+	Data      map[string]any    `json:"data"`
+	Severity  EventSeverity     `json:"severity"`
+	Tags      []string          `json:"tags"`
+	Metadata  map[string]string `json:"metadata"`
 }
 
 // ChaosEventType defines event types
@@ -1068,9 +1068,9 @@ func (t *TimeChaosController) Cleanup(ctx context.Context) error {
 
 // ExperimentStatusInfo represents the status information of a chaos experiment
 type ExperimentStatusInfo struct {
-	ExperimentID string                 `json:"experiment_id"`
-	Status       ExperimentStatus       `json:"status"`
-	Progress     float64                `json:"progress"`
-	LastUpdated  time.Time              `json:"last_updated"`
-	Metadata     map[string]any `json:"metadata"`
+	ExperimentID string           `json:"experiment_id"`
+	Status       ExperimentStatus `json:"status"`
+	Progress     float64          `json:"progress"`
+	LastUpdated  time.Time        `json:"last_updated"`
+	Metadata     map[string]any   `json:"metadata"`
 }

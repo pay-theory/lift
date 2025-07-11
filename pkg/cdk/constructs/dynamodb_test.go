@@ -10,14 +10,14 @@ import (
 )
 
 func TestLiftTable_CreatesTableWithFieldNames(t *testing.T) {
-	// Test default behavior (pk/sk)
-	t.Run("Default pk/sk attributes", func(t *testing.T) {
+	// Test default behavior (PK/SK)
+	t.Run("Default PK/SK attributes", func(t *testing.T) {
 		app := awscdk.NewApp(nil)
 		stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
 		table := NewLiftTable(stack, jsii.String("DefaultTable"), &LiftTableProps{
 			TableName:        jsii.String("test-table"),
-			PartitionKeyName: jsii.String("pk"),
-			SortKeyName:      jsii.String("sk"),
+			PartitionKeyName: jsii.String("PK"),
+			SortKeyName:      jsii.String("SK"),
 		})
 
 		assert.NotNil(t, table)
@@ -25,26 +25,26 @@ func TestLiftTable_CreatesTableWithFieldNames(t *testing.T) {
 
 		// Synthesize and check CloudFormation
 		template := assertions.Template_FromStack(stack, nil)
-		
-		// Check that table has pk and sk as attribute names
+
+		// Check that table has PK and SK as attribute names
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), map[string]interface{}{
 			"KeySchema": []interface{}{
 				map[string]interface{}{
-					"AttributeName": "pk",
+					"AttributeName": "PK",
 					"KeyType":       "HASH",
 				},
 				map[string]interface{}{
-					"AttributeName": "sk",
+					"AttributeName": "SK",
 					"KeyType":       "RANGE",
 				},
 			},
 			"AttributeDefinitions": assertions.Match_ArrayWith(&[]interface{}{
 				map[string]interface{}{
-					"AttributeName": "pk",
+					"AttributeName": "PK",
 					"AttributeType": "S",
 				},
 				map[string]interface{}{
-					"AttributeName": "sk",
+					"AttributeName": "SK",
 					"AttributeType": "S",
 				},
 			}),
@@ -55,7 +55,7 @@ func TestLiftTable_CreatesTableWithFieldNames(t *testing.T) {
 	t.Run("Custom field name attributes", func(t *testing.T) {
 		app := awscdk.NewApp(nil)
 		stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-		
+
 		table := NewLiftTable(stack, jsii.String("CustomTable"), &LiftTableProps{
 			TableName:        jsii.String("custom-table"),
 			PartitionKeyName: jsii.String("ID"),
@@ -67,7 +67,7 @@ func TestLiftTable_CreatesTableWithFieldNames(t *testing.T) {
 
 		// Synthesize and check CloudFormation
 		template := assertions.Template_FromStack(stack, nil)
-		
+
 		// Check that table uses custom attribute names
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), map[string]interface{}{
 			"KeySchema": []interface{}{
@@ -97,7 +97,7 @@ func TestLiftTable_CreatesTableWithFieldNames(t *testing.T) {
 	t.Run("Single key table", func(t *testing.T) {
 		app := awscdk.NewApp(nil)
 		stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-		
+
 		table := NewLiftTable(stack, jsii.String("SingleKeyTable"), &LiftTableProps{
 			TableName:        jsii.String("single-key-table"),
 			PartitionKeyName: jsii.String("PK"),
@@ -109,7 +109,7 @@ func TestLiftTable_CreatesTableWithFieldNames(t *testing.T) {
 
 		// Synthesize and check CloudFormation
 		template := assertions.Template_FromStack(stack, nil)
-		
+
 		// Check that table only has partition key
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), map[string]interface{}{
 			"KeySchema": []interface{}{
@@ -132,7 +132,7 @@ func TestWrapperConstructs_UseCorrectFieldNames(t *testing.T) {
 	t.Run("ConnectionTable uses PK/SK", func(t *testing.T) {
 		app := awscdk.NewApp(nil)
 		stack := awscdk.NewStack(app, jsii.String("ConnectionStack"), nil)
-		
+
 		table := NewConnectionTable(stack, jsii.String("Connections"), &ConnectionTableProps{
 			TableName: jsii.String("connections"),
 		})
@@ -140,7 +140,7 @@ func TestWrapperConstructs_UseCorrectFieldNames(t *testing.T) {
 		assert.NotNil(t, table)
 
 		template := assertions.Template_FromStack(stack, nil)
-		
+
 		// Verify it uses PK/SK as field names
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), map[string]interface{}{
 			"KeySchema": []interface{}{
@@ -159,7 +159,7 @@ func TestWrapperConstructs_UseCorrectFieldNames(t *testing.T) {
 	t.Run("RateLimitTable uses PK/SK", func(t *testing.T) {
 		app := awscdk.NewApp(nil)
 		stack := awscdk.NewStack(app, jsii.String("RateLimitStack"), nil)
-		
+
 		table := NewRateLimitTable(stack, jsii.String("RateLimits"), &RateLimitTableProps{
 			TableName: jsii.String("rate-limits"),
 		})
@@ -167,7 +167,7 @@ func TestWrapperConstructs_UseCorrectFieldNames(t *testing.T) {
 		assert.NotNil(t, table)
 
 		template := assertions.Template_FromStack(stack, nil)
-		
+
 		// Verify it uses PK/SK as field names
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), map[string]interface{}{
 			"KeySchema": []interface{}{

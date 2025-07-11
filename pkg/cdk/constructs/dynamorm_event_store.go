@@ -1,7 +1,7 @@
 package constructs
 
 // DynamORMEventStore provides event sourcing capabilities using DynamORM
-// 
+//
 // IMPORTANT: This construct now uses standard pk/sk naming for DynamORM compatibility.
 // Instead of aggregate_id/event_sequence, data should be stored as:
 //   - Events: pk="event#{aggregate_id}", sk="seq#{event_sequence}"
@@ -12,12 +12,12 @@ package constructs
 // type Event struct {
 //     PK         string    `dynamorm:"pk"`                          // event#{aggregate_id}
 //     SK         string    `dynamorm:"sk"`                          // seq#{sequence_number}
-//     
+//
 //     // Indexes
 //     EventType  string    `dynamorm:"index:type-index,pk"`         // event_type
 //     Timestamp  string    `dynamorm:"index:type-index,sk"`         // ISO timestamp
 //     TenantID   string    `dynamorm:"index:tenant-index,pk"`       // tenant_id (if multi-tenant)
-//     
+//
 //     // Event data
 //     AggregateID    string `json:"aggregate_id"`
 //     EventSequence  int64  `json:"event_sequence"`
@@ -27,7 +27,7 @@ package constructs
 
 import (
 	"fmt"
-	
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
@@ -74,51 +74,51 @@ type DynamORMEventStoreProps struct {
 	EnableEventVersioning  *bool
 	EnableEventEncryption  *bool
 	EnableEventCompression *bool
-	EventTTL              awscdk.Duration  // TTL for old events
+	EventTTL               awscdk.Duration // TTL for old events
 
 	// Snapshot configuration
 	SnapshotStrategy     SnapshotStrategy
-	SnapshotFrequency    *int             // Number of events between snapshots
-	SnapshotSizeLimit    *int             // Size limit in KB for snapshots
-	SnapshotTimeInterval awscdk.Duration  // Time interval for snapshots
-	SnapshotRetention    awscdk.Duration  // How long to keep snapshots
+	SnapshotFrequency    *int            // Number of events between snapshots
+	SnapshotSizeLimit    *int            // Size limit in KB for snapshots
+	SnapshotTimeInterval awscdk.Duration // Time interval for snapshots
+	SnapshotRetention    awscdk.Duration // How long to keep snapshots
 
 	// Performance configuration
-	EventStreamEnabled    *bool            // Enable DynamoDB streams for events
-	SnapshotStreamEnabled *bool            // Enable DynamoDB streams for snapshots
-	EnableAutoScaling     *bool            // Enable auto-scaling
-	ReadCapacity          *float64         // Read capacity units
-	WriteCapacity         *float64         // Write capacity units
+	EventStreamEnabled    *bool    // Enable DynamoDB streams for events
+	SnapshotStreamEnabled *bool    // Enable DynamoDB streams for snapshots
+	EnableAutoScaling     *bool    // Enable auto-scaling
+	ReadCapacity          *float64 // Read capacity units
+	WriteCapacity         *float64 // Write capacity units
 
 	// Archival configuration
-	EnableArchival        *bool            // Enable event archival to S3
-	ArchivalBucket        awss3.IBucket    // S3 bucket for archival
-	ArchivalAfter         awscdk.Duration  // Archive events after this duration
+	EnableArchival *bool           // Enable event archival to S3
+	ArchivalBucket awss3.IBucket   // S3 bucket for archival
+	ArchivalAfter  awscdk.Duration // Archive events after this duration
 
 	// Monitoring configuration
-	EnableMetrics         *bool            // Enable CloudWatch metrics
-	EnableDetailedMetrics *bool            // Enable detailed monitoring
+	EnableMetrics         *bool // Enable CloudWatch metrics
+	EnableDetailedMetrics *bool // Enable detailed monitoring
 	AlertThresholds       *EventStoreAlertThresholds
 
 	// Security configuration
-	EnableEncryption      *bool            // Enable encryption at rest
-	KMSKey               *string          // KMS key for encryption
+	EnableEncryption *bool   // Enable encryption at rest
+	KMSKey           *string // KMS key for encryption
 
 	// Query optimization
-	EnableGSIs           *bool            // Enable Global Secondary Indexes
-	ProjectionQueries    []string         // Queries for projection views
-	
+	EnableGSIs        *bool    // Enable Global Secondary Indexes
+	ProjectionQueries []string // Queries for projection views
+
 	// Tags
-	Tags                 *map[string]*string
+	Tags *map[string]*string
 }
 
 // EventStoreAlertThresholds defines alert thresholds for event store monitoring
 type EventStoreAlertThresholds struct {
-	HighEventRate        *float64         // Events per second threshold
-	HighErrorRate        *float64         // Error rate threshold
-	HighLatency          *float64         // Latency threshold (ms)
-	LowSnapshotFrequency *float64         // Minimum snapshot frequency
-	HighStorageUsage     *float64         // Storage usage threshold (GB)
+	HighEventRate        *float64 // Events per second threshold
+	HighErrorRate        *float64 // Error rate threshold
+	HighLatency          *float64 // Latency threshold (ms)
+	LowSnapshotFrequency *float64 // Minimum snapshot frequency
+	HighStorageUsage     *float64 // Storage usage threshold (GB)
 }
 
 // DynamORMEventStore provides event sourcing capabilities using DynamORM
@@ -269,10 +269,10 @@ func (e *DynamORMEventStore) applyDefaults(props *DynamORMEventStoreProps) *Dyna
 func (e *DynamORMEventStore) createEventTable() {
 	// Create table props using standard pk/sk naming
 	tableProps := &LiftTableProps{
-		TableName:           e.props.EventTableName,
-		EnableAutoScaling:   e.props.EnableAutoScaling,
-		ReadCapacity:        e.props.ReadCapacity,
-		WriteCapacity:       e.props.WriteCapacity,
+		TableName:                 e.props.EventTableName,
+		EnableAutoScaling:         e.props.EnableAutoScaling,
+		ReadCapacity:              e.props.ReadCapacity,
+		WriteCapacity:             e.props.WriteCapacity,
 		EnablePointInTimeRecovery: jsii.Bool(true),
 	}
 
@@ -327,8 +327,8 @@ func (e *DynamORMEventStore) createSnapshotTable() {
 	}
 	// Create table props using standard pk/sk naming
 	tableProps := &LiftTableProps{
-		TableName:           e.props.SnapshotTableName,
-		EnableAutoScaling:   e.props.EnableAutoScaling,
+		TableName:                 e.props.SnapshotTableName,
+		EnableAutoScaling:         e.props.EnableAutoScaling,
 		EnablePointInTimeRecovery: jsii.Bool(true),
 	}
 
@@ -345,7 +345,7 @@ func (e *DynamORMEventStore) createSnapshotTable() {
 
 	// Configure capacity if specified
 	if e.props.ReadCapacity != nil && e.props.WriteCapacity != nil {
-		tableProps.ReadCapacity = jsii.Number(*e.props.ReadCapacity * 0.3) // 30% of event table capacity
+		tableProps.ReadCapacity = jsii.Number(*e.props.ReadCapacity * 0.3)   // 30% of event table capacity
 		tableProps.WriteCapacity = jsii.Number(*e.props.WriteCapacity * 0.1) // 10% of event table capacity
 	}
 
@@ -393,9 +393,9 @@ func (e *DynamORMEventStore) createArchivalBucket() {
 
 	// Create new S3 bucket for archival
 	e.ArchivalBucket = awss3.NewBucket(e, jsii.String("ArchivalBucket"), &awss3.BucketProps{
-		BucketName:    jsii.String(fmt.Sprintf("%s-event-archive", *e.props.EventTableName)),
-		Versioned:     jsii.Bool(true),
-		Encryption:    awss3.BucketEncryption_S3_MANAGED,
+		BucketName:        jsii.String(fmt.Sprintf("%s-event-archive", *e.props.EventTableName)),
+		Versioned:         jsii.Bool(true),
+		Encryption:        awss3.BucketEncryption_S3_MANAGED,
 		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
 		LifecycleRules: &[]*awss3.LifecycleRule{
 			{
@@ -403,16 +403,16 @@ func (e *DynamORMEventStore) createArchivalBucket() {
 				Enabled: jsii.Bool(true),
 				Transitions: &[]*awss3.Transition{
 					{
-						StorageClass:        awss3.StorageClass_INFREQUENT_ACCESS(),
-						TransitionAfter:     awscdk.Duration_Days(jsii.Number(30)),
+						StorageClass:    awss3.StorageClass_INFREQUENT_ACCESS(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(30)),
 					},
 					{
-						StorageClass:        awss3.StorageClass_GLACIER(),
-						TransitionAfter:     awscdk.Duration_Days(jsii.Number(90)),
+						StorageClass:    awss3.StorageClass_GLACIER(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(90)),
 					},
 					{
-						StorageClass:        awss3.StorageClass_DEEP_ARCHIVE(),
-						TransitionAfter:     awscdk.Duration_Days(jsii.Number(365)),
+						StorageClass:    awss3.StorageClass_DEEP_ARCHIVE(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(365)),
 					},
 				},
 			},
@@ -496,7 +496,7 @@ func (e *DynamORMEventStore) createEventStoreMetrics() {
 		MetricName: jsii.String("EventsWritten"),
 		DimensionsMap: &map[string]*string{
 			"TableName": jsii.String(tableName),
-			"Pattern": jsii.String(string(e.props.Pattern)),
+			"Pattern":   jsii.String(string(e.props.Pattern)),
 		},
 		Statistic: jsii.String(string(awscloudwatch.Statistic_SUM)),
 		Period:    awscdk.Duration_Minutes(jsii.Number(1)),
@@ -508,7 +508,7 @@ func (e *DynamORMEventStore) createEventStoreMetrics() {
 		MetricName: jsii.String("EventsRead"),
 		DimensionsMap: &map[string]*string{
 			"TableName": jsii.String(tableName),
-			"Pattern": jsii.String(string(e.props.Pattern)),
+			"Pattern":   jsii.String(string(e.props.Pattern)),
 		},
 		Statistic: jsii.String(string(awscloudwatch.Statistic_SUM)),
 		Period:    awscdk.Duration_Minutes(jsii.Number(1)),
@@ -520,7 +520,7 @@ func (e *DynamORMEventStore) createEventStoreMetrics() {
 			Namespace:  jsii.String("DynamORM/EventStore"),
 			MetricName: jsii.String("SnapshotsCreated"),
 			DimensionsMap: &map[string]*string{
-				"TableName": jsii.String(tableName),
+				"TableName":        jsii.String(tableName),
 				"SnapshotStrategy": jsii.String(string(e.props.SnapshotStrategy)),
 			},
 			Statistic: jsii.String(string(awscloudwatch.Statistic_SUM)),
@@ -531,7 +531,7 @@ func (e *DynamORMEventStore) createEventStoreMetrics() {
 			Namespace:  jsii.String("DynamORM/EventStore"),
 			MetricName: jsii.String("SnapshotLatency"),
 			DimensionsMap: &map[string]*string{
-				"TableName": jsii.String(tableName),
+				"TableName":        jsii.String(tableName),
 				"SnapshotStrategy": jsii.String(string(e.props.SnapshotStrategy)),
 			},
 			Statistic: jsii.String(string(awscloudwatch.Statistic_AVERAGE)),
@@ -579,7 +579,7 @@ func (e *DynamORMEventStore) createEventStoreMetrics() {
 			Namespace:  jsii.String("DynamORM/EventStore/Tenant"),
 			MetricName: jsii.String("EventRate"),
 			DimensionsMap: &map[string]*string{
-				"TableName": jsii.String(tableName),
+				"TableName":       jsii.String(tableName),
 				"TenantAttribute": e.props.TenantAttribute,
 			},
 			Statistic: jsii.String(string(awscloudwatch.Statistic_SUM)),
@@ -600,76 +600,76 @@ func (e *DynamORMEventStore) createDetailedMonitoring() {
 	// Set default thresholds if not provided
 	if thresholds == nil {
 		thresholds = &EventStoreAlertThresholds{
-			HighEventRate:        jsii.Number(1000),  // 1000 events/second
-			HighErrorRate:        jsii.Number(5),     // 5 errors/minute
-			HighLatency:          jsii.Number(100),   // 100ms
-			LowSnapshotFrequency: jsii.Number(1),     // At least 1 snapshot/hour
-			HighStorageUsage:     jsii.Number(100),   // 100GB
+			HighEventRate:        jsii.Number(1000), // 1000 events/second
+			HighErrorRate:        jsii.Number(5),    // 5 errors/minute
+			HighLatency:          jsii.Number(100),  // 100ms
+			LowSnapshotFrequency: jsii.Number(1),    // At least 1 snapshot/hour
+			HighStorageUsage:     jsii.Number(100),  // 100GB
 		}
 	}
 
 	// High event rate alarm
 	if thresholds.HighEventRate != nil {
 		awscloudwatch.NewAlarm(e, jsii.String("HighEventRateAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-event-store-high-rate", tableName)),
-			AlarmDescription:  jsii.String("Event store is receiving high event rate"),
-			Metric:           e.Metrics["EventsWritten"],
-			Threshold:         thresholds.HighEventRate,
-			EvaluationPeriods: jsii.Number(2),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-event-store-high-rate", tableName)),
+			AlarmDescription:   jsii.String("Event store is receiving high event rate"),
+			Metric:             e.Metrics["EventsWritten"],
+			Threshold:          thresholds.HighEventRate,
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
 
 	// High error rate alarm
 	if thresholds.HighErrorRate != nil {
 		awscloudwatch.NewAlarm(e, jsii.String("HighErrorRateAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-event-store-errors", tableName)),
-			AlarmDescription:  jsii.String("Event store is experiencing high error rate"),
-			Metric:           e.Metrics["EventStoreErrors"],
-			Threshold:         thresholds.HighErrorRate,
-			EvaluationPeriods: jsii.Number(2),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-event-store-errors", tableName)),
+			AlarmDescription:   jsii.String("Event store is experiencing high error rate"),
+			Metric:             e.Metrics["EventStoreErrors"],
+			Threshold:          thresholds.HighErrorRate,
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
 
 	// High latency alarm
 	if thresholds.HighLatency != nil {
 		awscloudwatch.NewAlarm(e, jsii.String("HighLatencyAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-event-store-latency", tableName)),
-			AlarmDescription:  jsii.String("Event store latency is too high"),
-			Metric:           e.Metrics["EventStoreLatency"],
-			Threshold:         thresholds.HighLatency,
-			EvaluationPeriods: jsii.Number(3),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-event-store-latency", tableName)),
+			AlarmDescription:   jsii.String("Event store latency is too high"),
+			Metric:             e.Metrics["EventStoreLatency"],
+			Threshold:          thresholds.HighLatency,
+			EvaluationPeriods:  jsii.Number(3),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
 
 	// Low snapshot frequency alarm
 	if thresholds.LowSnapshotFrequency != nil && e.Metrics["SnapshotsCreated"] != nil {
 		awscloudwatch.NewAlarm(e, jsii.String("LowSnapshotFrequencyAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-low-snapshot-frequency", tableName)),
-			AlarmDescription:  jsii.String("Snapshot frequency is too low"),
-			Metric:           e.Metrics["SnapshotsCreated"],
-			Threshold:         thresholds.LowSnapshotFrequency,
-			EvaluationPeriods: jsii.Number(3),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-low-snapshot-frequency", tableName)),
+			AlarmDescription:   jsii.String("Snapshot frequency is too low"),
+			Metric:             e.Metrics["SnapshotsCreated"],
+			Threshold:          thresholds.LowSnapshotFrequency,
+			EvaluationPeriods:  jsii.Number(3),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_LESS_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_BREACHING,
 		})
 	}
 
 	// High storage usage alarm
 	if thresholds.HighStorageUsage != nil {
 		awscloudwatch.NewAlarm(e, jsii.String("HighStorageUsageAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-high-storage", tableName)),
-			AlarmDescription:  jsii.String("Event store storage usage is high"),
-			Metric:           e.Metrics["StorageSize"],
-			Threshold:         thresholds.HighStorageUsage,
-			EvaluationPeriods: jsii.Number(2),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-high-storage", tableName)),
+			AlarmDescription:   jsii.String("Event store storage usage is high"),
+			Metric:             e.Metrics["StorageSize"],
+			Threshold:          thresholds.HighStorageUsage,
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
 }

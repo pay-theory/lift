@@ -44,26 +44,26 @@ type DashboardManagerConfig struct {
 
 // DashboardTemplate defines a dashboard template
 type DashboardTemplate struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Category    string                 `json:"category"`
-	Version     string                 `json:"version"`
-	Widgets     []WidgetTemplate       `json:"widgets"`
-	Variables   map[string]any `json:"variables"`
-	Layout      DashboardLayout        `json:"layout"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Category    string           `json:"category"`
+	Version     string           `json:"version"`
+	Widgets     []WidgetTemplate `json:"widgets"`
+	Variables   map[string]any   `json:"variables"`
+	Layout      DashboardLayout  `json:"layout"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
 }
 
 // WidgetTemplate defines a widget template
 type WidgetTemplate struct {
-	Type       string                 `json:"type"`
-	Title      string                 `json:"title"`
-	Position   WidgetPosition         `json:"position"`
-	Size       WidgetSize             `json:"size"`
-	Properties map[string]any `json:"properties"`
-	Metrics    []MetricDefinition     `json:"metrics"`
+	Type       string             `json:"type"`
+	Title      string             `json:"title"`
+	Position   WidgetPosition     `json:"position"`
+	Size       WidgetSize         `json:"size"`
+	Properties map[string]any     `json:"properties"`
+	Metrics    []MetricDefinition `json:"metrics"`
 }
 
 // MetricDefinition defines a metric for dashboard widgets
@@ -102,14 +102,14 @@ type GridSize struct {
 
 // DeployedDashboard represents a deployed dashboard
 type DeployedDashboard struct {
-	Name        string                 `json:"name"`
-	TemplateID  string                 `json:"template_id"`
-	Version     string                 `json:"version"`
-	Variables   map[string]any `json:"variables"`
-	DeployedAt  time.Time              `json:"deployed_at"`
-	LastUpdated time.Time              `json:"last_updated"`
-	Status      DashboardStatus        `json:"status"`
-	ARN         string                 `json:"arn,omitempty"`
+	Name        string          `json:"name"`
+	TemplateID  string          `json:"template_id"`
+	Version     string          `json:"version"`
+	Variables   map[string]any  `json:"variables"`
+	DeployedAt  time.Time       `json:"deployed_at"`
+	LastUpdated time.Time       `json:"last_updated"`
+	Status      DashboardStatus `json:"status"`
+	ARN         string          `json:"arn,omitempty"`
 }
 
 // DashboardStatus represents dashboard status

@@ -5,8 +5,8 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2integrations"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -29,7 +29,7 @@ type LiftAPIProps struct {
 	// CloudWatch log group for access logs
 	AccessLogGroup awslogs.ILogGroup
 	// Throttle settings
-	ThrottleRateLimit *float64
+	ThrottleRateLimit  *float64
 	ThrottleBurstLimit *float64
 	// Stage name (defaults to $default)
 	StageName *string
@@ -56,8 +56,8 @@ type RequestValidator struct {
 // LiftAPI is an API Gateway HTTP API construct for Lift applications
 type LiftAPI struct {
 	constructs.Construct
-	HttpAPI awsapigatewayv2.HttpApi
-	Stage   awsapigatewayv2.IHttpStage
+	HttpAPI  awsapigatewayv2.HttpApi
+	Stage    awsapigatewayv2.IHttpStage
 	LogGroup awslogs.ILogGroup
 }
 
@@ -77,8 +77,8 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 			logGroup = props.AccessLogGroup
 		} else {
 			logGroup = awslogs.NewLogGroup(this, jsii.String("AccessLogs"), &awslogs.LogGroupProps{
-				LogGroupName: jsii.String("/aws/apigateway/" + *props.Name),
-				Retention:    awslogs.RetentionDays_ONE_WEEK,
+				LogGroupName:  jsii.String("/aws/apigateway/" + *props.Name),
+				Retention:     awslogs.RetentionDays_ONE_WEEK,
 				RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
 			})
 		}
@@ -133,9 +133,9 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 	}
 
 	// Check if we need a custom stage
-	needCustomStage := stageName != "$default" || 
-		props.ThrottleRateLimit != nil || 
-		props.ThrottleBurstLimit != nil || 
+	needCustomStage := stageName != "$default" ||
+		props.ThrottleRateLimit != nil ||
+		props.ThrottleBurstLimit != nil ||
 		props.EnableAccessLogging != nil && *props.EnableAccessLogging ||
 		props.EnableDetailedMetrics != nil && *props.EnableDetailedMetrics
 
@@ -144,8 +144,8 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 	} else {
 		// Create custom stage with configuration
 		stageProps := &awsapigatewayv2.HttpStageProps{
-			HttpApi:   httpApi,
-			StageName: jsii.String(stageName),
+			HttpApi:    httpApi,
+			StageName:  jsii.String(stageName),
 			AutoDeploy: jsii.Bool(true),
 		}
 
@@ -168,9 +168,9 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 	if logGroup != nil {
 		accessLogSettings := &awsapigatewayv2.CfnStage_AccessLogSettingsProperty{
 			DestinationArn: logGroup.LogGroupArn(),
-			Format: jsii.String(`$context.requestId $context.requestTime "$context.httpMethod $context.path $context.protocol" $context.status $context.responseLength $context.error.message $context.error.responseType`),
+			Format:         jsii.String(`$context.requestId $context.requestTime "$context.httpMethod $context.path $context.protocol" $context.status $context.responseLength $context.error.message $context.error.responseType`),
 		}
-		
+
 		cfnStage := stage.Node().DefaultChild().(awsapigatewayv2.CfnStage)
 		cfnStage.SetAccessLogSettings(accessLogSettings)
 
@@ -188,9 +188,9 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 	if props.DomainName != nil && props.CertificateArn != nil {
 		// Create certificate from ARN
 		cert := awscertificatemanager.Certificate_FromCertificateArn(this, jsii.String("Certificate"), props.CertificateArn)
-		
+
 		domainName := awsapigatewayv2.NewDomainName(this, jsii.String("DomainName"), &awsapigatewayv2.DomainNameProps{
-			DomainName: props.DomainName,
+			DomainName:  props.DomainName,
 			Certificate: cert,
 		})
 
@@ -221,7 +221,7 @@ type RouteOptions struct {
 	// Request validation
 	RequestValidator *RequestValidator
 	// Route-specific throttling
-	ThrottleRateLimit *float64
+	ThrottleRateLimit  *float64
 	ThrottleBurstLimit *float64
 }
 
@@ -269,7 +269,7 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 		APIKeyParameter: jsii.String("X-API-Key"),
 		ResultsCacheTtl: jsii.Number(300), // Cache for 5 minutes
 	})
-	
+
 	return authorizer.Authorizer
 }
 
@@ -286,8 +286,8 @@ func (api *LiftAPI) GetArn() *string {
 // GrantInvoke grants invoke permissions to a principal
 func (api *LiftAPI) GrantInvoke(grantee awsiam.IGrantable) awsiam.Grant {
 	return awsiam.Grant_AddToPrincipal(&awsiam.GrantOnPrincipalOptions{
-		Grantee: grantee,
-		Actions: &[]*string{jsii.String("execute-api:Invoke")},
+		Grantee:      grantee,
+		Actions:      &[]*string{jsii.String("execute-api:Invoke")},
 		ResourceArns: &[]*string{api.HttpAPI.ArnForExecuteApi(jsii.String("*"), jsii.String("*"), jsii.String("*"))},
 	})
 }

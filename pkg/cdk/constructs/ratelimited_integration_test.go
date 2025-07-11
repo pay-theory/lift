@@ -22,9 +22,9 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 		fn := NewRateLimitedFunction(stack, jsii.String("IPRateLimitedFunction"), &RateLimitedFunctionProps{
 			LiftFunctionProps: LiftFunctionProps{
 				FunctionProps: awslambda.FunctionProps{
-					Runtime: awslambda.Runtime_NODEJS_18_X(),
-					Handler: jsii.String("index.handler"),
-					Code:    awslambda.Code_FromInline(jsii.String("exports.handler = async (event) => { return { statusCode: 200 }; };")),
+					Runtime:    awslambda.Runtime_NODEJS_18_X(),
+					Handler:    jsii.String("index.handler"),
+					Code:       awslambda.Code_FromInline(jsii.String("exports.handler = async (event) => { return { statusCode: 200 }; };")),
 					MemorySize: jsii.Number(1024),
 					Environment: &map[string]*string{
 						"APP_NAME": jsii.String("test-app"),
@@ -45,9 +45,9 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 
 		// Verify Lambda function configuration
 		template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-			"Runtime": "nodejs18.x",
+			"Runtime":       "nodejs18.x",
 			"Architectures": []interface{}{"arm64"},
-			"MemorySize": 1024,
+			"MemorySize":    1024,
 			"TracingConfig": map[string]interface{}{
 				"Mode": "Active",
 			},
@@ -56,18 +56,18 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 					// App-specific vars
 					"APP_NAME": "test-app",
 					// Lift vars
-					"LIFT_VERSION": "1.0.0",
+					"LIFT_VERSION":         "1.0.0",
 					"LIFT_METRICS_ENABLED": "true",
 					// Rate limiting vars
-					"RATE_LIMIT_ENABLED": "true",
-					"RATE_LIMIT_TYPE": "IP",
-					"RATE_LIMIT_WINDOW": "3600",
-					"RATE_LIMIT_MAX": "1000",
+					"RATE_LIMIT_ENABLED":         "true",
+					"RATE_LIMIT_TYPE":            "IP",
+					"RATE_LIMIT_WINDOW":          "3600",
+					"RATE_LIMIT_MAX":             "1000",
 					"RATE_LIMIT_METRICS_ENABLED": "true",
 					// DynamORM vars
-					"DYNAMORM_DEBUG": "false",
+					"DYNAMORM_DEBUG":              "false",
 					"DYNAMORM_RETRY_MAX_ATTEMPTS": "3",
-					"DYNAMORM_RETRY_BASE_DELAY": "100",
+					"DYNAMORM_RETRY_BASE_DELAY":   "100",
 					// Limited library vars
 					"LIMITED_ENABLED": "true",
 					"LIMITED_BACKEND": "dynamorm",
@@ -80,28 +80,28 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 		template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &map[string]interface{}{
 			"KeySchema": []interface{}{
 				map[string]interface{}{
-					"AttributeName": "pk",
-					"KeyType": "HASH",
+					"AttributeName": "PK",
+					"KeyType":       "HASH",
 				},
 				map[string]interface{}{
-					"AttributeName": "sk",
-					"KeyType": "RANGE",
+					"AttributeName": "SK",
+					"KeyType":       "RANGE",
 				},
 			},
 			"AttributeDefinitions": []interface{}{
 				map[string]interface{}{
-					"AttributeName": "pk",
+					"AttributeName": "PK",
 					"AttributeType": "S",
 				},
 				map[string]interface{}{
-					"AttributeName": "sk",
+					"AttributeName": "SK",
 					"AttributeType": "S",
 				},
 			},
 			"BillingMode": "PAY_PER_REQUEST",
 			"TimeToLiveSpecification": map[string]interface{}{
 				"AttributeName": "expires_at",
-				"Enabled": true,
+				"Enabled":       true,
 			},
 		})
 
@@ -115,7 +115,7 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 							"dynamodb:GetItem",
 							"dynamodb:PutItem",
 						}),
-						"Effect": "Allow",
+						"Effect":   "Allow",
 						"Resource": assertions.Match_AnyValue(),
 					},
 				}),
@@ -125,7 +125,7 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 		// Verify Dead Letter Queue
 		template.HasResourceProperties(jsii.String("AWS::SQS::Queue"), &map[string]interface{}{
 			"MessageRetentionPeriod": 1209600, // 14 days
-			"VisibilityTimeout": 300,
+			"VisibilityTimeout":      300,
 		})
 
 		// Verify function references
@@ -165,9 +165,9 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 			"Environment": map[string]interface{}{
 				"Variables": map[string]interface{}{
 					"LIFT_MULTI_TENANT": "true",
-					"RATE_LIMIT_TYPE": "TENANT",
+					"RATE_LIMIT_TYPE":   "TENANT",
 					"RATE_LIMIT_WINDOW": "3600",
-					"RATE_LIMIT_MAX": "5000",
+					"RATE_LIMIT_MAX":    "5000",
 				},
 			},
 		})
@@ -195,19 +195,18 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 					MemorySize: jsii.Number(2048),
 					Timeout:    awscdk.Duration_Minutes(jsii.Number(5)),
 					Environment: &map[string]*string{
-						"API_KEY":    jsii.String("test-key"),
-						"LOG_LEVEL":  jsii.String("debug"),
+						"API_KEY":   jsii.String("test-key"),
+						"LOG_LEVEL": jsii.String("debug"),
 					},
 				},
-				EnableTracing:         jsii.Bool(true),
-				EnableMetrics:         jsii.Bool(true),
-				EnableMultiTenant:     jsii.Bool(true),
-				EnableDeadLetterQueue: jsii.Bool(true),
-				LogRetentionDays:      jsii.Number(7),
+				EnableTracing:                jsii.Bool(true),
+				EnableMetrics:                jsii.Bool(true),
+				EnableMultiTenant:            jsii.Bool(true),
+				EnableDeadLetterQueue:        jsii.Bool(true),
 				ReservedConcurrentExecutions: jsii.Number(10),
 			},
 			RateLimitType: RateLimitTypeUser,
-			WindowSeconds: jsii.Number(900),  // 15 minutes
+			WindowSeconds: jsii.Number(900), // 15 minutes
 			Limit:         jsii.Number(100),
 			EnableMetrics: jsii.Bool(true),
 		})
@@ -217,8 +216,8 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 
 		// Verify all features are enabled
 		template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-			"MemorySize": 2048,
-			"Timeout": 300,
+			"MemorySize":                   2048,
+			"Timeout":                      300,
 			"ReservedConcurrentExecutions": 10,
 			"TracingConfig": map[string]interface{}{
 				"Mode": "Active",
@@ -226,23 +225,20 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 			"Environment": map[string]interface{}{
 				"Variables": map[string]interface{}{
 					// Custom vars preserved
-					"API_KEY": "test-key",
+					"API_KEY":   "test-key",
 					"LOG_LEVEL": "debug",
 					// All feature flags
-					"LIFT_MULTI_TENANT": "true",
-					"LIFT_METRICS_ENABLED": "true",
-					"RATE_LIMIT_TYPE": "USER",
-					"RATE_LIMIT_WINDOW": "900",
-					"RATE_LIMIT_MAX": "100",
+					"LIFT_MULTI_TENANT":          "true",
+					"LIFT_METRICS_ENABLED":       "true",
+					"RATE_LIMIT_TYPE":            "USER",
+					"RATE_LIMIT_WINDOW":          "900",
+					"RATE_LIMIT_MAX":             "100",
 					"RATE_LIMIT_METRICS_ENABLED": "true",
 				},
 			},
 		})
 
-		// Verify log retention
-		template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), &map[string]interface{}{
-			"RetentionInDays": 7,
-		})
+		// Lambda automatically manages its own LogGroup
 
 		assert.NotNil(t, fn)
 		assert.NotNil(t, fn.Function.DeadLetterQueue)
@@ -276,15 +272,15 @@ func TestRateLimitedFunctionEdgeCases(t *testing.T) {
 
 		// Verify defaults are applied
 		template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-			"Runtime": "nodejs18.x",
+			"Runtime":       "nodejs18.x",
 			"Architectures": []interface{}{"arm64"},
-			"MemorySize": 512,
-			"Timeout": 30,
+			"MemorySize":    512,
+			"Timeout":       30,
 			"Environment": map[string]interface{}{
 				"Variables": map[string]interface{}{
-					"RATE_LIMIT_TYPE": "IP",
-					"RATE_LIMIT_WINDOW": "3600",
-					"RATE_LIMIT_MAX": "1000",
+					"RATE_LIMIT_TYPE":    "IP",
+					"RATE_LIMIT_WINDOW":  "3600",
+					"RATE_LIMIT_MAX":     "1000",
 					"RATE_LIMIT_ENABLED": "true",
 				},
 			},
@@ -298,7 +294,7 @@ func TestRateLimitedFunctionEdgeCases(t *testing.T) {
 		// Create function with conflicting env vars
 		existingEnv := &map[string]*string{
 			"RATE_LIMIT_TYPE": jsii.String("CUSTOM"), // This should be overwritten
-			"CUSTOM_VAR":      jsii.String("value"),   // This should be preserved
+			"CUSTOM_VAR":      jsii.String("value"),  // This should be preserved
 		}
 
 		fn := NewRateLimitedFunction(stack, jsii.String("EnvFunction"), &RateLimitedFunctionProps{
@@ -320,8 +316,8 @@ func TestRateLimitedFunctionEdgeCases(t *testing.T) {
 		template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
 			"Environment": map[string]interface{}{
 				"Variables": map[string]interface{}{
-					"RATE_LIMIT_TYPE": "USER",     // Should override
-					"CUSTOM_VAR":      "value",    // Should preserve
+					"RATE_LIMIT_TYPE": "USER",  // Should override
+					"CUSTOM_VAR":      "value", // Should preserve
 				},
 			},
 		})

@@ -58,12 +58,12 @@ func DefaultHealthEndpointsConfig() HealthEndpointsConfig {
 
 // HealthResponse represents the JSON response for health endpoints
 type HealthResponse struct {
-	Status    string                 `json:"status"`
-	Timestamp string                 `json:"timestamp"`
-	Duration  string                 `json:"duration"`
-	Message   string                 `json:"message,omitempty"`
+	Status    string         `json:"status"`
+	Timestamp string         `json:"timestamp"`
+	Duration  string         `json:"duration"`
+	Message   string         `json:"message,omitempty"`
 	Details   map[string]any `json:"details,omitempty"`
-	Error     string                 `json:"error,omitempty"`
+	Error     string         `json:"error,omitempty"`
 }
 
 // PlainTextResponse represents a simple text response

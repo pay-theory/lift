@@ -34,8 +34,8 @@ func TestNewSecureFunction_BasicConfiguration(t *testing.T) {
 
 	// Verify Lambda function exists
 	template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-		"Runtime": "provided.al2023",
-		"Handler": "bootstrap",
+		"Runtime":       "provided.al2023",
+		"Handler":       "bootstrap",
 		"Architectures": []interface{}{"arm64"},
 		"TracingConfig": map[string]interface{}{
 			"Mode": "Active",
@@ -58,7 +58,7 @@ func TestNewSecureFunction_BasicConfiguration(t *testing.T) {
 	// Verify KMS key was created (enabled by default)
 	template.ResourceCountIs(jsii.String("AWS::KMS::Key"), jsii.Number(1))
 	template.HasResourceProperties(jsii.String("AWS::KMS::Key"), &map[string]interface{}{
-		"EnableKeyRotation": true,
+		"EnableKeyRotation":   true,
 		"PendingWindowInDays": 7,
 	})
 
@@ -82,7 +82,7 @@ func TestNewSecureFunction_WithExistingVPC(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	vpc := awsec2.NewVpc(stack, jsii.String("ExistingVpc"), &awsec2.VpcProps{
 		MaxAzs: jsii.Number(2),
 	})
@@ -142,7 +142,7 @@ func TestNewSecureFunction_WithSecrets(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	secret := awssecretsmanager.NewSecret(stack, jsii.String("TestSecret"), &awssecretsmanager.SecretProps{
 		Description: jsii.String("Test secret"),
 	})
@@ -195,7 +195,7 @@ func TestNewSecureFunction_WithCustomKMSKey(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	customKey := awskms.NewKey(stack, jsii.String("CustomKey"), &awskms.KeyProps{
 		Description: jsii.String("Custom KMS key"),
 	})
@@ -225,7 +225,7 @@ func TestNewSecureFunction_WithAdditionalPolicies(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	additionalPolicy := awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 		Actions: &[]*string{
 			jsii.String("s3:GetObject"),
@@ -257,7 +257,7 @@ func TestSecureFunction_EnableSecretsManagerAccess(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	sf := NewSecureFunction(stack, jsii.String("SecureFunction"), &SecureFunctionProps{
 		LiftFunctionProps: LiftFunctionProps{
 			FunctionProps: awslambda.FunctionProps{
@@ -281,7 +281,7 @@ func TestSecureFunction_GettersWork(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	sf := NewSecureFunction(stack, jsii.String("SecureFunction"), &SecureFunctionProps{
 		LiftFunctionProps: LiftFunctionProps{
 			FunctionProps: awslambda.FunctionProps{

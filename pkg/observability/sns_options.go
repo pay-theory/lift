@@ -17,15 +17,15 @@ func WithDefaultErrorNotifications(snsClient SNSClient) *SNSNotifier {
 	stage := os.Getenv("STAGE")
 	region := os.Getenv("AWS_REGION")
 	accountID := os.Getenv("AWS_ACCOUNT_ID")
-	
+
 	if partner == "" || stage == "" || region == "" || accountID == "" {
 		// Return nil if environment variables are not set
 		return nil
 	}
-	
+
 	// Build the standard SNS topic ARN
 	topicARN := fmt.Sprintf("arn:aws:sns:%s:%s:cns-%s-%s", region, accountID, partner, stage)
-	
+
 	return WithErrorNotifications(snsClient, topicARN)
 }
 
@@ -35,6 +35,6 @@ func WithErrorNotifications(snsClient SNSClient, topicARN string) *SNSNotifier {
 		Client:   snsClient,
 		TopicARN: topicARN,
 	}
-	
+
 	return NewSNSNotifier(config)
 }

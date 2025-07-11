@@ -45,14 +45,14 @@ type PulumiStackConfig struct {
 
 // DeploymentResult represents the result of a deployment
 type DeploymentResult struct {
-	Success   bool                   `json:"success"`
-	StackName string                 `json:"stack_name"`
-	Outputs   map[string]any `json:"outputs"`
-	Resources []ResourceSummary      `json:"resources"`
-	Duration  time.Duration          `json:"duration"`
-	Error     string                 `json:"error,omitempty"`
-	Permalink string                 `json:"permalink,omitempty"`
-	UpdateID  string                 `json:"update_id,omitempty"`
+	Success   bool              `json:"success"`
+	StackName string            `json:"stack_name"`
+	Outputs   map[string]any    `json:"outputs"`
+	Resources []ResourceSummary `json:"resources"`
+	Duration  time.Duration     `json:"duration"`
+	Error     string            `json:"error,omitempty"`
+	Permalink string            `json:"permalink,omitempty"`
+	UpdateID  string            `json:"update_id,omitempty"`
 }
 
 // ResourceSummary represents a summary of a deployed resource
@@ -65,13 +65,13 @@ type ResourceSummary struct {
 
 // PulumiOperationResult represents the result of a Pulumi CLI operation
 type PulumiOperationResult struct {
-	Version   int                    `json:"version"`
-	Kind      string                 `json:"kind"`
-	Stack     string                 `json:"stack"`
-	Project   string                 `json:"project"`
-	Result    string                 `json:"result"`
-	Outputs   map[string]any `json:"outputs"`
-	Resources []PulumiResource       `json:"resources"`
+	Version   int              `json:"version"`
+	Kind      string           `json:"kind"`
+	Stack     string           `json:"stack"`
+	Project   string           `json:"project"`
+	Result    string           `json:"result"`
+	Outputs   map[string]any   `json:"outputs"`
+	Resources []PulumiResource `json:"resources"`
 }
 
 // PulumiResource represents a resource in Pulumi output

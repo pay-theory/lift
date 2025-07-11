@@ -14,16 +14,16 @@ import (
 
 // Message represents a WebSocket message
 type Message struct {
-	Type    string                 `json:"type"`
+	Type    string         `json:"type"`
 	Payload map[string]any `json:"payload"`
 }
 
 // Connection represents a WebSocket connection in DynamoDB
 type Connection struct {
-	ID        string                 `json:"id"`
-	UserID    string                 `json:"user_id"`
-	TenantID  string                 `json:"tenant_id"`
-	CreatedAt string                 `json:"created_at"`
+	ID        string         `json:"id"`
+	UserID    string         `json:"user_id"`
+	TenantID  string         `json:"tenant_id"`
+	CreatedAt string         `json:"created_at"`
 	Metadata  map[string]any `json:"metadata"`
 }
 

@@ -54,8 +54,8 @@ func main() {
 	defer logger2.Close()
 
 	// Example 3: Creating SNS notifier separately for more control
-	defaultTopicARN := fmt.Sprintf("arn:aws:sns:%s:%s:cns-%s-%s", 
-		os.Getenv("AWS_REGION"), 
+	defaultTopicARN := fmt.Sprintf("arn:aws:sns:%s:%s:cns-%s-%s",
+		os.Getenv("AWS_REGION"),
 		os.Getenv("AWS_ACCOUNT_ID"),
 		os.Getenv("PARTNER"),
 		os.Getenv("STAGE"))
@@ -64,7 +64,7 @@ func main() {
 		TopicARN: defaultTopicARN,
 	}
 	notifier := observability.NewSNSNotifier(snsConfig)
-	
+
 	logger3, err := cloudwatch.NewCloudWatchLogger(loggerConfig, cwClient,
 		cloudwatch.CloudWatchLoggerOptions{
 			Notifier: notifier,
@@ -83,25 +83,25 @@ func main() {
 
 	// Use the logger
 	logger := logger1 // Use any of the configured loggers
-	
+
 	// Log various levels
 	logger.Info("Application started")
 	logger.Debug("Debug information", map[string]any{"component": "main"})
 	logger.Warn("This is a warning", map[string]any{"retry_count": 3})
-	
+
 	// Error logs will trigger SNS notifications if configured
 	logger.Error("Critical error occurred", map[string]any{
-		"error_type": "database_connection",
+		"error_type":     "database_connection",
 		"retry_attempts": 5,
 	})
-	
+
 	// Flush logs before exiting
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := logger.Flush(ctx); err != nil {
 		log.Printf("Failed to flush logs: %v", err)
 	}
-	
+
 	fmt.Println("CloudWatch logging with SNS notifications example completed")
 }

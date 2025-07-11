@@ -21,12 +21,12 @@ type MockDynamORMClient struct {
 
 // mockTable represents a mock DynamoDB table
 type mockTable struct {
-	name              string
-	items             map[string]map[string]types.AttributeValue
-	gsis              map[string]*mockGSI
-	ttlAttribute      string
-	streamEnabled     bool
-	billingMode       types.BillingMode
+	name                 string
+	items                map[string]map[string]types.AttributeValue
+	gsis                 map[string]*mockGSI
+	ttlAttribute         string
+	streamEnabled        bool
+	billingMode          types.BillingMode
 	attributeDefinitions []types.AttributeDefinition
 }
 
@@ -74,23 +74,23 @@ func (m *MockDynamORMClient) PutItem(ctx context.Context, params *dynamodb.PutIt
 
 	// Create composite key
 	key := m.createKey(params.Item)
-	
+
 	// Store the item
 	if table.items == nil {
 		table.items = make(map[string]map[string]types.AttributeValue)
 	}
-	
+
 	// Add timestamps if not present
 	item := make(map[string]types.AttributeValue)
 	for k, v := range params.Item {
 		item[k] = v
 	}
-	
+
 	if _, ok := item["created_at"]; !ok {
 		item["created_at"] = &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)}
 	}
 	item["updated_at"] = &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)}
-	
+
 	table.items[key] = item
 
 	return &dynamodb.PutItemOutput{}, nil
@@ -298,7 +298,7 @@ func (m *MockDynamORMClient) CreateTable(ctx context.Context, params *dynamodb.C
 			name:  *gsi.IndexName,
 			items: make(map[string][]map[string]types.AttributeValue),
 		}
-		
+
 		for _, key := range gsi.KeySchema {
 			if key.KeyType == types.KeyTypeHash {
 				mockGSI.partitionKey = *key.AttributeName
@@ -306,7 +306,7 @@ func (m *MockDynamORMClient) CreateTable(ctx context.Context, params *dynamodb.C
 				mockGSI.sortKey = *key.AttributeName
 			}
 		}
-		
+
 		table.gsis[*gsi.IndexName] = mockGSI
 	}
 
@@ -436,19 +436,19 @@ func (m *MockDynamORMClient) UpdateTimeToLive(ctx context.Context, params *dynam
 func (m *MockDynamORMClient) createKey(attrs map[string]types.AttributeValue) string {
 	pk := ""
 	sk := ""
-	
+
 	if pkAttr, ok := attrs["pk"]; ok {
 		if s, ok := pkAttr.(*types.AttributeValueMemberS); ok {
 			pk = s.Value
 		}
 	}
-	
+
 	if skAttr, ok := attrs["sk"]; ok {
 		if s, ok := skAttr.(*types.AttributeValueMemberS); ok {
 			sk = s.Value
 		}
 	}
-	
+
 	if sk != "" {
 		return fmt.Sprintf("%s#%s", pk, sk)
 	}
@@ -503,7 +503,7 @@ func (m *MockDynamORMClient) AddMockTable(tableName string, opts ...TestTableOpt
 func (m *MockDynamORMClient) GetMockTable(tableName string) (*mockTable, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	table, exists := m.tables[tableName]
 	return table, exists
 }
@@ -512,7 +512,7 @@ func (m *MockDynamORMClient) GetMockTable(tableName string) (*mockTable, bool) {
 func (m *MockDynamORMClient) ClearMockTables() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.tables = make(map[string]*mockTable)
 }
 

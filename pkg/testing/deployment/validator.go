@@ -10,7 +10,7 @@ import (
 
 // DeploymentValidator validates deployment strategies
 type DeploymentValidator struct {
-	environments []Environment
+	environments []*Environment
 	healthChecks []HealthCheck
 	rollback     RollbackStrategy
 	monitoring   DeploymentMonitoring
@@ -78,7 +78,7 @@ type DeploymentConfig struct {
 
 // HealthCheck represents a health check function
 type HealthCheck interface {
-	Check(ctx context.Context, env Environment) error
+	Check(ctx context.Context, env *Environment) error
 	Name() string
 	Timeout() time.Duration
 }
@@ -86,29 +86,29 @@ type HealthCheck interface {
 // RollbackStrategy defines rollback behavior
 type RollbackStrategy interface {
 	ShouldRollback(ctx context.Context, metrics EnvironmentMetrics) bool
-	Execute(ctx context.Context, env Environment) error
+	Execute(ctx context.Context, env *Environment) error
 	Name() string
 }
 
 // DeploymentMonitoring monitors deployment progress
 type DeploymentMonitoring interface {
-	StartMonitoring(ctx context.Context, env Environment) error
-	StopMonitoring(ctx context.Context, env Environment) error
-	GetMetrics(ctx context.Context, env Environment) (EnvironmentMetrics, error)
-	AlertOnIssue(ctx context.Context, env Environment, issue string) error
+	StartMonitoring(ctx context.Context, env *Environment) error
+	StopMonitoring(ctx context.Context, env *Environment) error
+	GetMetrics(ctx context.Context, env *Environment) (EnvironmentMetrics, error)
+	AlertOnIssue(ctx context.Context, env *Environment, issue string) error
 }
 
 // TrafficSplitter manages traffic distribution
 type TrafficSplitter interface {
-	SetTrafficWeight(ctx context.Context, env Environment, weight float64) error
-	GetTrafficWeight(ctx context.Context, env Environment) (float64, error)
-	SwitchTraffic(ctx context.Context, fromEnv, toEnv Environment) error
+	SetTrafficWeight(ctx context.Context, env *Environment, weight float64) error
+	GetTrafficWeight(ctx context.Context, env *Environment) (float64, error)
+	SwitchTraffic(ctx context.Context, fromEnv, toEnv *Environment) error
 }
 
 // NewDeploymentValidator creates a new deployment validator
 func NewDeploymentValidator(config DeploymentConfig) *DeploymentValidator {
 	return &DeploymentValidator{
-		environments: make([]Environment, 0),
+		environments: make([]*Environment, 0),
 		healthChecks: make([]HealthCheck, 0),
 		rollback:     &DefaultRollbackStrategy{},
 		monitoring:   &DefaultDeploymentMonitoring{},
@@ -117,7 +117,7 @@ func NewDeploymentValidator(config DeploymentConfig) *DeploymentValidator {
 }
 
 // AddEnvironment adds an environment to validate
-func (d *DeploymentValidator) AddEnvironment(env Environment) {
+func (d *DeploymentValidator) AddEnvironment(env *Environment) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
@@ -139,7 +139,7 @@ func (d *DeploymentValidator) ValidateEnvironment(ctx context.Context, envName s
 	// Run all health checks
 	for _, check := range d.healthChecks {
 		checkCtx, cancel := context.WithTimeout(ctx, check.Timeout())
-		err := check.Check(checkCtx, *env)
+		err := check.Check(checkCtx, env)
 		cancel()
 
 		if err != nil {
@@ -180,7 +180,7 @@ func (d *DeploymentValidator) getEnvironment(name string) (*Environment, error) 
 
 	for i := range d.environments {
 		if d.environments[i].Name == name {
-			return &d.environments[i], nil
+			return d.environments[i], nil
 		}
 	}
 
@@ -189,8 +189,8 @@ func (d *DeploymentValidator) getEnvironment(name string) (*Environment, error) 
 
 // BlueGreenDeployment manages blue/green deployments
 type BlueGreenDeployment struct {
-	blueEnvironment  Environment
-	greenEnvironment Environment
+	blueEnvironment  *Environment
+	greenEnvironment *Environment
 	trafficSplitter  TrafficSplitter
 	validator        *DeploymentValidator
 	currentActive    string // "blue" or "green"
@@ -198,7 +198,7 @@ type BlueGreenDeployment struct {
 }
 
 // NewBlueGreenDeployment creates a new blue/green deployment
-func NewBlueGreenDeployment(blue, green Environment, splitter TrafficSplitter, validator *DeploymentValidator) *BlueGreenDeployment {
+func NewBlueGreenDeployment(blue, green *Environment, splitter TrafficSplitter, validator *DeploymentValidator) *BlueGreenDeployment {
 	return &BlueGreenDeployment{
 		blueEnvironment:  blue,
 		greenEnvironment: green,
@@ -218,10 +218,10 @@ func (bg *BlueGreenDeployment) Deploy(ctx context.Context, newVersion string) er
 	var targetName string
 
 	if bg.currentActive == "blue" {
-		targetEnv = &bg.greenEnvironment
+		targetEnv = bg.greenEnvironment
 		targetName = "green"
 	} else {
-		targetEnv = &bg.blueEnvironment
+		targetEnv = bg.blueEnvironment
 		targetName = "blue"
 	}
 
@@ -240,7 +240,7 @@ func (bg *BlueGreenDeployment) Deploy(ctx context.Context, newVersion string) er
 	}
 
 	// Switch traffic to target environment
-	if err := bg.trafficSplitter.SwitchTraffic(ctx, *bg.getActiveEnvironment(), *targetEnv); err != nil {
+	if err := bg.trafficSplitter.SwitchTraffic(ctx, bg.getActiveEnvironment(), targetEnv); err != nil {
 		return fmt.Errorf("traffic switch failed: %w", err)
 	}
 
@@ -265,10 +265,10 @@ func (bg *BlueGreenDeployment) Rollback(ctx context.Context) error {
 	var rollbackName string
 
 	if bg.currentActive == "blue" {
-		rollbackEnv = &bg.greenEnvironment
+		rollbackEnv = bg.greenEnvironment
 		rollbackName = "green"
 	} else {
-		rollbackEnv = &bg.blueEnvironment
+		rollbackEnv = bg.blueEnvironment
 		rollbackName = "blue"
 	}
 
@@ -278,7 +278,7 @@ func (bg *BlueGreenDeployment) Rollback(ctx context.Context) error {
 	}
 
 	// Switch traffic back
-	if err := bg.trafficSplitter.SwitchTraffic(ctx, *bg.getActiveEnvironment(), *rollbackEnv); err != nil {
+	if err := bg.trafficSplitter.SwitchTraffic(ctx, bg.getActiveEnvironment(), rollbackEnv); err != nil {
 		return fmt.Errorf("rollback traffic switch failed: %w", err)
 	}
 
@@ -291,15 +291,15 @@ func (bg *BlueGreenDeployment) Rollback(ctx context.Context) error {
 // getActiveEnvironment returns the currently active environment
 func (bg *BlueGreenDeployment) getActiveEnvironment() *Environment {
 	if bg.currentActive == "blue" {
-		return &bg.blueEnvironment
+		return bg.blueEnvironment
 	}
-	return &bg.greenEnvironment
+	return bg.greenEnvironment
 }
 
 // CanaryDeployment manages canary deployments
 type CanaryDeployment struct {
-	productionEnvironment Environment
-	canaryEnvironment     Environment
+	productionEnvironment *Environment
+	canaryEnvironment     *Environment
 	trafficSplitter       TrafficSplitter
 	validator             *DeploymentValidator
 	trafficPercentage     float64
@@ -334,7 +334,7 @@ type CanaryConfig struct {
 }
 
 // NewCanaryDeployment creates a new canary deployment
-func NewCanaryDeployment(production, canary Environment, splitter TrafficSplitter, validator *DeploymentValidator, config CanaryConfig) *CanaryDeployment {
+func NewCanaryDeployment(production, canary *Environment, splitter TrafficSplitter, validator *DeploymentValidator, config CanaryConfig) *CanaryDeployment {
 	return &CanaryDeployment{
 		productionEnvironment: production,
 		canaryEnvironment:     canary,
@@ -521,7 +521,7 @@ func (d *DefaultRollbackStrategy) ShouldRollback(ctx context.Context, metrics En
 	return metrics.ErrorRate > 0.1 || metrics.SuccessRate < 0.9
 }
 
-func (d *DefaultRollbackStrategy) Execute(ctx context.Context, env Environment) error {
+func (d *DefaultRollbackStrategy) Execute(ctx context.Context, env *Environment) error {
 	// Simulate rollback execution
 	env.Status = EnvironmentStatusRollingBack
 	time.Sleep(2 * time.Second)
@@ -536,15 +536,15 @@ func (d *DefaultRollbackStrategy) Name() string {
 // DefaultDeploymentMonitoring provides default monitoring
 type DefaultDeploymentMonitoring struct{}
 
-func (d *DefaultDeploymentMonitoring) StartMonitoring(ctx context.Context, env Environment) error {
+func (d *DefaultDeploymentMonitoring) StartMonitoring(ctx context.Context, env *Environment) error {
 	return nil
 }
 
-func (d *DefaultDeploymentMonitoring) StopMonitoring(ctx context.Context, env Environment) error {
+func (d *DefaultDeploymentMonitoring) StopMonitoring(ctx context.Context, env *Environment) error {
 	return nil
 }
 
-func (d *DefaultDeploymentMonitoring) GetMetrics(ctx context.Context, env Environment) (EnvironmentMetrics, error) {
+func (d *DefaultDeploymentMonitoring) GetMetrics(ctx context.Context, env *Environment) (EnvironmentMetrics, error) {
 	// Simulate metrics collection
 	return EnvironmentMetrics{
 		ResponseTime:      50 * time.Millisecond,
@@ -558,7 +558,7 @@ func (d *DefaultDeploymentMonitoring) GetMetrics(ctx context.Context, env Enviro
 	}, nil
 }
 
-func (d *DefaultDeploymentMonitoring) AlertOnIssue(ctx context.Context, env Environment, issue string) error {
+func (d *DefaultDeploymentMonitoring) AlertOnIssue(ctx context.Context, env *Environment, issue string) error {
 	// Simulate alerting
 	fmt.Printf("ALERT: Environment %s - %s\n", env.Name, issue)
 	return nil
@@ -567,18 +567,18 @@ func (d *DefaultDeploymentMonitoring) AlertOnIssue(ctx context.Context, env Envi
 // DefaultTrafficSplitter provides default traffic splitting
 type DefaultTrafficSplitter struct{}
 
-func (d *DefaultTrafficSplitter) SetTrafficWeight(ctx context.Context, env Environment, weight float64) error {
+func (d *DefaultTrafficSplitter) SetTrafficWeight(ctx context.Context, env *Environment, weight float64) error {
 	// Simulate traffic weight setting
 	// Note: In Go, we need to modify the original struct, not a copy
 	// This is a limitation of the interface design - in production, this would modify the actual load balancer
 	return nil
 }
 
-func (d *DefaultTrafficSplitter) GetTrafficWeight(ctx context.Context, env Environment) (float64, error) {
+func (d *DefaultTrafficSplitter) GetTrafficWeight(ctx context.Context, env *Environment) (float64, error) {
 	return env.Config.TrafficWeight, nil
 }
 
-func (d *DefaultTrafficSplitter) SwitchTraffic(ctx context.Context, fromEnv, toEnv Environment) error {
+func (d *DefaultTrafficSplitter) SwitchTraffic(ctx context.Context, fromEnv, toEnv *Environment) error {
 	// Simulate traffic switching
 	// Note: In production, this would update the actual load balancer configuration
 	// The interface design would need pointers to modify the original structs
@@ -603,7 +603,7 @@ func NewHTTPHealthCheck(name string, timeout time.Duration) *HTTPHealthCheck {
 	}
 }
 
-func (h *HTTPHealthCheck) Check(ctx context.Context, env Environment) error {
+func (h *HTTPHealthCheck) Check(ctx context.Context, env *Environment) error {
 	url := env.URL + env.Config.HealthCheckPath
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

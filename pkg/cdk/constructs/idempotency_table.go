@@ -20,17 +20,17 @@ func NewIdempotencyTable(scope constructs.Construct, id *string, props *Idempote
 	if props == nil {
 		props = &IdempotencyTableProps{}
 	}
-	
+
 	// Set default table name
 	if props.TableName == nil {
 		props.TableName = jsii.String("idempotency")
 	}
-	
+
 	// Set default TTL attribute for automatic cleanup
 	if props.TimeToLiveAttribute == nil {
 		props.TimeToLiveAttribute = jsii.String("expires_at")
 	}
-	
+
 	// Create table with field names from IdempotencyRecord struct
 	return NewLiftTable(scope, id, &LiftTableProps{
 		TableName:                 props.TableName,
@@ -46,13 +46,13 @@ func NewIdempotencyTable(scope constructs.Construct, id *string, props *Idempote
 // type IdempotencyRecord struct {
 //     PK         string    `dynamorm:"pk"`                          // idempotency#{key}
 //     SK         string    `dynamorm:"sk"`                          // idempotency#{key}
-//     
+//
 //     // Indexes for queries
 //     FunctionName string  `dynamorm:"index:function-index,pk"`     // function_name
 //     Status       string  `dynamorm:"index:status-index,pk"`       // status
 //     Timestamp    string  `dynamorm:"index:status-index,sk"`       // ISO timestamp
 //     TenantID     string  `dynamorm:"index:tenant-index,pk"`       // tenant_id (if multi-tenant)
-//     
+//
 //     // Record data
 //     IdempotencyKey string `json:"idempotency_key"`
 //     Response       string `json:"response"`

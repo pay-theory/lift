@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 package main
@@ -26,9 +27,9 @@ type SecurityIssue struct {
 
 // SecurityValidator performs security validation on Go code
 type SecurityValidator struct {
-	issues     []SecurityIssue
-	fileSet    *token.FileSet
-	patterns   map[string]*SecurityPattern
+	issues   []SecurityIssue
+	fileSet  *token.FileSet
+	patterns map[string]*SecurityPattern
 }
 
 // SecurityPattern defines a security pattern to check
@@ -42,28 +43,28 @@ type SecurityPattern struct {
 
 func main() {
 	validator := NewSecurityValidator()
-	
+
 	// Scan all Go files in the project
 	err := filepath.Walk("./pkg", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") {
 			return validator.ScanFile(path)
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Error scanning files: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	// Report findings
 	validator.GenerateReport()
-	
+
 	// Exit with error code if critical issues found
 	if validator.HasCriticalIssues() {
 		os.Exit(1)
@@ -73,14 +74,14 @@ func main() {
 // NewSecurityValidator creates a new security validator
 func NewSecurityValidator() *SecurityValidator {
 	validator := &SecurityValidator{
-		issues:  []SecurityIssue{},
-		fileSet: token.NewFileSet(),
+		issues:   []SecurityIssue{},
+		fileSet:  token.NewFileSet(),
 		patterns: make(map[string]*SecurityPattern),
 	}
-	
+
 	// Initialize security patterns
 	validator.initializePatterns()
-	
+
 	return validator
 }
 
@@ -144,7 +145,7 @@ func (sv *SecurityValidator) initializePatterns() {
 			Suggestion:  "Avoid logging sensitive data or redact it",
 		},
 	}
-	
+
 	for _, pattern := range patterns {
 		sv.patterns[pattern.Name] = pattern
 	}
@@ -157,7 +158,7 @@ func (sv *SecurityValidator) ScanFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Parse Go AST for deeper analysis
 	src, err := parser.ParseFile(sv.fileSet, filename, content, parser.ParseComments)
 	if err != nil {
@@ -167,10 +168,10 @@ func (sv *SecurityValidator) ScanFile(filename string) error {
 		// AST-based security checks
 		sv.analyzeAST(filename, src)
 	}
-	
+
 	// Regex pattern matching
 	sv.scanPatterns(filename, string(content))
-	
+
 	return nil
 }
 
@@ -195,7 +196,7 @@ func (sv *SecurityValidator) analyzeCallExpr(filename string, call *ast.CallExpr
 		// Check for dangerous functions
 		if x, ok := sel.X.(*ast.Ident); ok {
 			funcCall := fmt.Sprintf("%s.%s", x.Name, sel.Sel.Name)
-			
+
 			switch funcCall {
 			case "exec.Command":
 				sv.addIssue(SecurityIssue{
@@ -244,13 +245,13 @@ func (sv *SecurityValidator) analyzeFunction(filename string, fn *ast.FuncDecl) 
 	if fn.Name == nil {
 		return
 	}
-	
+
 	// Check for security-sensitive function names
 	name := fn.Name.Name
 	if strings.Contains(strings.ToLower(name), "auth") ||
 		strings.Contains(strings.ToLower(name), "login") ||
 		strings.Contains(strings.ToLower(name), "password") {
-		
+
 		// Ensure function has proper security measures
 		sv.checkAuthFunction(filename, fn)
 	}
@@ -298,7 +299,7 @@ func (sv *SecurityValidator) checkHTTPCalls(filename string, call *ast.CallExpr)
 func (sv *SecurityValidator) checkAuthFunction(filename string, fn *ast.FuncDecl) {
 	hasRateLimit := false
 	hasValidation := false
-	
+
 	ast.Inspect(fn, func(n ast.Node) bool {
 		if call, ok := n.(*ast.CallExpr); ok {
 			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
@@ -315,7 +316,7 @@ func (sv *SecurityValidator) checkAuthFunction(filename string, fn *ast.FuncDecl
 		}
 		return true
 	})
-	
+
 	if !hasRateLimit {
 		sv.addIssue(SecurityIssue{
 			Type:        "missing_rate_limit",
@@ -326,7 +327,7 @@ func (sv *SecurityValidator) checkAuthFunction(filename string, fn *ast.FuncDecl
 			Suggestion:  "Implement rate limiting to prevent brute force attacks",
 		})
 	}
-	
+
 	if !hasValidation {
 		sv.addIssue(SecurityIssue{
 			Type:        "missing_validation",
@@ -342,7 +343,7 @@ func (sv *SecurityValidator) checkAuthFunction(filename string, fn *ast.FuncDecl
 // scanPatterns performs regex pattern matching
 func (sv *SecurityValidator) scanPatterns(filename, content string) {
 	lines := strings.Split(content, "\n")
-	
+
 	for lineNum, line := range lines {
 		for patternName, pattern := range sv.patterns {
 			if matches := pattern.Pattern.FindAllString(line, -1); len(matches) > 0 {
@@ -368,7 +369,7 @@ func (sv *SecurityValidator) isSensitiveVarName(name string) bool {
 		"password", "passwd", "secret", "key", "token", "auth",
 		"credential", "api_key", "apikey", "private_key",
 	}
-	
+
 	lowerName := strings.ToLower(name)
 	for _, s := range sensitive {
 		if strings.Contains(lowerName, s) {
@@ -388,17 +389,17 @@ func (sv *SecurityValidator) GenerateReport() {
 	fmt.Println("==========================================")
 	fmt.Println("        SECURITY VALIDATION REPORT")
 	fmt.Println("==========================================")
-	
+
 	if len(sv.issues) == 0 {
 		fmt.Println("✅ No security issues detected!")
 		return
 	}
-	
+
 	// Group by severity
 	high := []SecurityIssue{}
 	medium := []SecurityIssue{}
 	low := []SecurityIssue{}
-	
+
 	for _, issue := range sv.issues {
 		switch issue.Severity {
 		case "high":
@@ -409,31 +410,31 @@ func (sv *SecurityValidator) GenerateReport() {
 			low = append(low, issue)
 		}
 	}
-	
+
 	fmt.Printf("\n📊 SUMMARY:\n")
 	fmt.Printf("  🔴 High:   %d issues\n", len(high))
 	fmt.Printf("  🟡 Medium: %d issues\n", len(medium))
 	fmt.Printf("  🟢 Low:    %d issues\n", len(low))
 	fmt.Printf("  📝 Total:  %d issues\n", len(sv.issues))
-	
+
 	// Report high severity issues first
 	if len(high) > 0 {
 		fmt.Println("\n🔴 HIGH SEVERITY ISSUES:")
 		sv.reportIssues(high)
 	}
-	
+
 	if len(medium) > 0 {
 		fmt.Println("\n🟡 MEDIUM SEVERITY ISSUES:")
 		sv.reportIssues(medium)
 	}
-	
+
 	if len(low) > 0 {
 		fmt.Println("\n🟢 LOW SEVERITY ISSUES:")
 		sv.reportIssues(low)
 	}
-	
+
 	fmt.Println("\n==========================================")
-	
+
 	// Security recommendations
 	sv.generateRecommendations()
 }
@@ -455,7 +456,7 @@ func (sv *SecurityValidator) reportIssues(issues []SecurityIssue) {
 func (sv *SecurityValidator) generateRecommendations() {
 	fmt.Println("🛡️  SECURITY RECOMMENDATIONS:")
 	fmt.Println()
-	
+
 	recommendations := []string{
 		"Implement comprehensive input validation for all user inputs",
 		"Use parameterized queries to prevent SQL injection",
@@ -470,7 +471,7 @@ func (sv *SecurityValidator) generateRecommendations() {
 		"Regular security assessments and penetration testing",
 		"Use AWS WAF to protect against common web attacks",
 	}
-	
+
 	for i, rec := range recommendations {
 		fmt.Printf("%d. %s\n", i+1, rec)
 	}
@@ -489,12 +490,12 @@ func (sv *SecurityValidator) HasCriticalIssues() bool {
 // ValidateIAMPolicies validates IAM policy configurations
 func (sv *SecurityValidator) ValidateIAMPolicies() {
 	fmt.Println("\n🔐 IAM POLICY VALIDATION:")
-	
+
 	// This would be expanded to validate actual IAM policies
 	fmt.Println("✅ No overly permissive IAM policies detected")
 	fmt.Println("✅ Principle of least privilege appears to be followed")
 	fmt.Println("✅ No wildcard permissions on sensitive resources")
-	
+
 	fmt.Println("\n📋 IAM RECOMMENDATIONS:")
 	fmt.Println("1. Regularly review and rotate IAM access keys")
 	fmt.Println("2. Use IAM roles instead of long-term access keys")
@@ -506,13 +507,13 @@ func (sv *SecurityValidator) ValidateIAMPolicies() {
 // ValidateAWSResources validates AWS resource configurations
 func (sv *SecurityValidator) ValidateAWSResources() {
 	fmt.Println("\n☁️  AWS RESOURCE SECURITY VALIDATION:")
-	
+
 	fmt.Println("✅ S3 buckets configured with proper access controls")
 	fmt.Println("✅ Lambda functions use least privilege execution roles")
 	fmt.Println("✅ DynamoDB tables have encryption enabled")
 	fmt.Println("✅ VPC configuration follows security best practices")
 	fmt.Println("✅ Security groups follow principle of least privilege")
-	
+
 	fmt.Println("\n📋 AWS SECURITY RECOMMENDATIONS:")
 	fmt.Println("1. Enable GuardDuty for threat detection")
 	fmt.Println("2. Use AWS Config for compliance monitoring")

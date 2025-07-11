@@ -7,12 +7,12 @@ import (
 
 func TestNonHTTPEventRouting(t *testing.T) {
 	tests := []struct {
-		name        string
-		method      string
-		path        string
-		event       any
-		wantStatus  int
-		wantCalled  bool
+		name       string
+		method     string
+		path       string
+		event      any
+		wantStatus int
+		wantCalled bool
 	}{
 		{
 			name:   "EventBridge event routes correctly",
@@ -106,7 +106,7 @@ func TestNonHTTPEventRouting(t *testing.T) {
 						"name": "my-bucket",
 					},
 					"object": map[string]any{
-						"key": "test.jpg",
+						"key":  "test.jpg",
 						"size": 12345,
 					},
 				},

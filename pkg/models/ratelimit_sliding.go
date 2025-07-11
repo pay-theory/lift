@@ -10,13 +10,13 @@ type SlidingWindowEntry struct {
 	// Composite key: RateLimitKey#Timestamp
 	PK string `dynamorm:"pk" json:"-"`
 	SK string `dynamorm:"sk" json:"-"`
-	
+
 	// Attributes
 	RateLimitKey string    `json:"rate_limit_key"`
 	Timestamp    time.Time `json:"timestamp"`
 	Weight       int       `json:"weight,omitempty"` // For weighted rate limiting
 	RequestID    string    `json:"request_id"`
-	
+
 	// TTL for automatic cleanup (set to window duration + buffer)
 	ExpiresAt int64 `dynamorm:"ttl" json:"-"`
 }

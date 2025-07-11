@@ -82,7 +82,7 @@ func (a *APIGatewayAdapter) Adapt(rawEvent any) (*Request, error) {
 		// The resource field contains the route template (e.g., /users/{id}) not the actual path
 		return nil, fmt.Errorf("API Gateway v1 event missing 'path' field - check your API Gateway integration configuration")
 	}
-	
+
 	// Handle stage prefix in path (occurs with custom domains)
 	// This matches the behavior of the v2 adapter
 	stage := extractStringField(requestContext, "stage")

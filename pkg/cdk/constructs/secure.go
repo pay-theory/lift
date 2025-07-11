@@ -37,11 +37,11 @@ type SecureFunctionProps struct {
 // SecureFunction is a Lambda function with enhanced security features
 type SecureFunction struct {
 	constructs.Construct
-	Function       *LiftFunction
-	SecurityGroup  awsec2.ISecurityGroup
-	KmsKey         awskms.IKey
-	Vpc            awsec2.IVpc
-	VpcEndpoints   map[string]awsec2.InterfaceVpcEndpoint
+	Function      *LiftFunction
+	SecurityGroup awsec2.ISecurityGroup
+	KmsKey        awskms.IKey
+	Vpc           awsec2.IVpc
+	VpcEndpoints  map[string]awsec2.InterfaceVpcEndpoint
 }
 
 // NewSecureFunction creates a Lambda function with enhanced security
@@ -87,12 +87,12 @@ func NewSecureFunction(scope constructs.Construct, id *string, props *SecureFunc
 				},
 			}
 		}
-		
+
 		natGateways := jsii.Number(1)
 		if *props.PrivateOnly {
 			natGateways = jsii.Number(0)
 		}
-		
+
 		vpc = awsec2.NewVpc(this, jsii.String("SecureVpc"), &awsec2.VpcProps{
 			MaxAzs:              jsii.Number(2),
 			NatGateways:         natGateways,
@@ -118,8 +118,8 @@ func NewSecureFunction(scope constructs.Construct, id *string, props *SecureFunc
 
 	// Create security group
 	securityGroup := awsec2.NewSecurityGroup(this, jsii.String("SecurityGroup"), &awsec2.SecurityGroupProps{
-		Vpc:         vpc,
-		Description: jsii.String("Security group for secure Lambda function"),
+		Vpc:              vpc,
+		Description:      jsii.String("Security group for secure Lambda function"),
 		AllowAllOutbound: jsii.Bool(!*props.PrivateOnly),
 	})
 
@@ -141,10 +141,10 @@ func NewSecureFunction(scope constructs.Construct, id *string, props *SecureFunc
 			kmsKey = props.KmsKey
 		} else {
 			kmsKey = awskms.NewKey(this, jsii.String("KmsKey"), &awskms.KeyProps{
-				Description:         jsii.String("KMS key for Lambda function encryption"),
-				EnableKeyRotation:   jsii.Bool(true),
-				RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
-				PendingWindow:       awscdk.Duration_Days(jsii.Number(7)),
+				Description:       jsii.String("KMS key for Lambda function encryption"),
+				EnableKeyRotation: jsii.Bool(true),
+				RemovalPolicy:     awscdk.RemovalPolicy_DESTROY,
+				PendingWindow:     awscdk.Duration_Days(jsii.Number(7)),
 			})
 
 			// Add alias for easier identification
@@ -235,7 +235,7 @@ func (f *SecureFunction) AddVPCEndpoint(service awsec2.InterfaceVpcEndpointAwsSe
 	// Get a simple service identifier for the endpoint ID
 	var endpointId string
 	serviceName := *service.Name()
-	
+
 	// Use simple identifiers for common services to avoid token issues
 	if service == awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER() {
 		endpointId = "SecretsManagerEndpoint"
@@ -247,12 +247,12 @@ func (f *SecureFunction) AddVPCEndpoint(service awsec2.InterfaceVpcEndpointAwsSe
 		// For other services, use a generic ID
 		endpointId = fmt.Sprintf("VPCEndpoint%d", len(f.VpcEndpoints))
 	}
-	
+
 	// Check if endpoint already exists
 	if endpoint, exists := f.VpcEndpoints[serviceName]; exists {
 		return endpoint
 	}
-	
+
 	// Create the VPC endpoint
 	endpoint := awsec2.NewInterfaceVpcEndpoint(f.Construct, jsii.String(endpointId), &awsec2.InterfaceVpcEndpointProps{
 		Vpc:     f.Vpc,
@@ -260,13 +260,13 @@ func (f *SecureFunction) AddVPCEndpoint(service awsec2.InterfaceVpcEndpointAwsSe
 		Subnets: &awsec2.SubnetSelection{
 			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
 		},
-		SecurityGroups: &[]awsec2.ISecurityGroup{f.SecurityGroup},
+		SecurityGroups:    &[]awsec2.ISecurityGroup{f.SecurityGroup},
 		PrivateDnsEnabled: jsii.Bool(true),
 	})
-	
+
 	// Store the endpoint
 	f.VpcEndpoints[serviceName] = endpoint
-	
+
 	// Allow the Lambda function to access the endpoint
 	endpoint.Connections().AllowFrom(
 		awsec2.NewConnections(&awsec2.ConnectionsProps{
@@ -275,7 +275,7 @@ func (f *SecureFunction) AddVPCEndpoint(service awsec2.InterfaceVpcEndpointAwsSe
 		awsec2.Port_Tcp(jsii.Number(443)),
 		jsii.String(fmt.Sprintf("Allow Lambda to access %s", serviceName)),
 	)
-	
+
 	return endpoint
 }
 

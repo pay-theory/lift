@@ -28,7 +28,7 @@ func main() {
 	// Test endpoint for HTTP requests
 	app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
-			"status": "ok",
+			"status":  "ok",
 			"message": "Test scheduled fix example",
 		})
 	})
@@ -52,7 +52,7 @@ func main() {
 		detailType, _ := eventMap["detail-type"].(string)
 		source, _ := eventMap["source"].(string)
 		eventTime, _ := eventMap["time"].(string)
-		
+
 		log.Printf("Event details - Type: %s, Source: %s, Time: %s", detailType, source, eventTime)
 
 		// Handle scheduled event
@@ -61,9 +61,9 @@ func main() {
 		}
 
 		return ctx.JSON(map[string]interface{}{
-			"status": "processed",
+			"status":    "processed",
 			"eventType": detailType,
-			"source": source,
+			"source":    source,
 		})
 	})
 
@@ -78,7 +78,7 @@ func handleScheduledTask(ctx *lift.Context, event map[string]interface{}) error 
 	detail, ok := event["detail"].(map[string]interface{})
 	if ok && len(detail) > 0 {
 		log.Printf("Custom event detail: %+v", detail)
-		
+
 		// Process based on custom detail
 		taskType, _ := detail["taskType"].(string)
 		switch taskType {
@@ -93,8 +93,8 @@ func handleScheduledTask(ctx *lift.Context, event map[string]interface{}) error 
 
 	// Default scheduled task processing
 	return ctx.JSON(map[string]interface{}{
-		"status": "completed",
-		"message": "Scheduled task processed successfully",
+		"status":    "completed",
+		"message":   "Scheduled task processed successfully",
 		"timestamp": event["time"],
 	})
 }
@@ -103,7 +103,7 @@ func performCleanup(ctx *lift.Context) error {
 	log.Println("Performing cleanup tasks")
 	// Add cleanup logic here
 	return ctx.JSON(map[string]string{
-		"task": "cleanup",
+		"task":   "cleanup",
 		"status": "completed",
 	})
 }
@@ -112,7 +112,7 @@ func generateReport(ctx *lift.Context) error {
 	log.Println("Generating report")
 	// Add report generation logic here
 	return ctx.JSON(map[string]string{
-		"task": "report",
+		"task":   "report",
 		"status": "completed",
 	})
 }

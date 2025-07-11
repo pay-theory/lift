@@ -39,7 +39,7 @@ func IsAuthorizedIPSimple(sourceIP string, allowedIPList string) bool {
 	if allowedIPList == "" {
 		return false
 	}
-	
+
 	allowedIPs := parseIPList(allowedIPList)
 	return checkIPInList(sourceIP, allowedIPs)
 }
@@ -48,11 +48,11 @@ func IsAuthorizedIPSimple(sourceIP string, allowedIPList string) bool {
 func checkIPInList(sourceIP string, allowedIPs []string) bool {
 	// Normalize the source IP (remove port if present)
 	sourceIP = stripPort(strings.TrimSpace(sourceIP))
-	
+
 	for _, allowedIP := range allowedIPs {
 		// Normalize the allowed IP as well
 		allowedIP = stripPort(strings.TrimSpace(allowedIP))
-		
+
 		if allowedIP == sourceIP {
 			return true
 		}
@@ -65,17 +65,17 @@ func parseIPList(ipList string) []string {
 	if ipList == "" {
 		return []string{}
 	}
-	
+
 	parts := strings.Split(ipList, ",")
 	result := make([]string, 0, len(parts))
-	
+
 	for _, part := range parts {
 		trimmed := strings.TrimSpace(part)
 		if trimmed != "" {
 			result = append(result, trimmed)
 		}
 	}
-	
+
 	return result
 }
 
@@ -158,10 +158,10 @@ func (s *SSMIPAuthorizer) IsAuthorizedIP(ctx context.Context, sourceIP string, s
 
 	// Parse the comma-separated list of IPs
 	allowedIPs := parseIPList(*result.Parameter.Value)
-	
+
 	// Cache the parsed IP list
 	s.cache.Set(cacheKey, allowedIPs, s.cacheTTL)
-	
+
 	// Check if the source IP is in the allowed list
 	return checkIPInList(sourceIP, allowedIPs), nil
 }
@@ -231,7 +231,7 @@ func (s *IPAuthorizationService) IsAuthorizedIP(ctx context.Context, sourceIP st
 	if sourceIP == "" {
 		return false, fmt.Errorf("source IP cannot be empty")
 	}
-	
+
 	return s.authorizer.IsAuthorizedIP(ctx, sourceIP, s.ssmParameterName)
 }
 
@@ -241,14 +241,14 @@ func CheckIPAuthorization(ctx context.Context, sourceIP string, ssmClient *ssm.C
 	if sourceIP == "" {
 		return false, fmt.Errorf("source IP cannot be empty")
 	}
-	
+
 	if ssmParameterName == "" {
 		return false, fmt.Errorf("SSM parameter name must be provided")
 	}
 
 	// Create a cached authorizer
 	authorizer := NewSSMIPAuthorizerWithClient(ssmClient)
-	
+
 	// Check if the IP is authorized
 	return authorizer.IsAuthorizedIP(ctx, sourceIP, ssmParameterName)
 }

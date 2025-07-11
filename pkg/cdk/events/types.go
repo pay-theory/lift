@@ -21,7 +21,7 @@ type BaseEvent struct {
 	EventID   string    `json:"eventId"`
 }
 
-func (e BaseEvent) GetSource() string      { return e.Source }
+func (e BaseEvent) GetSource() string       { return e.Source }
 func (e BaseEvent) GetTimestamp() time.Time { return e.Timestamp }
 func (e BaseEvent) GetEventID() string      { return e.EventID }
 
@@ -80,12 +80,12 @@ type ProcessingMetadata struct {
 
 // EventEnvelope wraps any event with metadata
 type EventEnvelope struct {
-	Version  string          `json:"version"`
-	ID       string          `json:"id"`
-	Source   string          `json:"source"`
-	Type     string          `json:"type"`
-	Time     time.Time       `json:"time"`
-	Data     json.RawMessage `json:"data"`
+	Version  string             `json:"version"`
+	ID       string             `json:"id"`
+	Source   string             `json:"source"`
+	Type     string             `json:"type"`
+	Time     time.Time          `json:"time"`
+	Data     json.RawMessage    `json:"data"`
 	Metadata ProcessingMetadata `json:"metadata"`
 }
 
@@ -95,7 +95,7 @@ func NewEventEnvelope(source, eventType string, data interface{}) (*EventEnvelop
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &EventEnvelope{
 		Version: "1.0",
 		ID:      generateEventID(),
@@ -134,10 +134,10 @@ type EventError struct {
 // OrchestratedEvent represents an event in an orchestration flow
 type OrchestratedEvent struct {
 	EventEnvelope
-	CorrelationID string              `json:"correlationId"`
-	SequenceID    int                 `json:"sequenceId"`
-	TotalSteps    int                 `json:"totalSteps"`
-	Status        OrchestrationStatus `json:"status"`
+	CorrelationID string                 `json:"correlationId"`
+	SequenceID    int                    `json:"sequenceId"`
+	TotalSteps    int                    `json:"totalSteps"`
+	Status        OrchestrationStatus    `json:"status"`
 	Context       map[string]interface{} `json:"context"`
 }
 
@@ -145,10 +145,10 @@ type OrchestratedEvent struct {
 type OrchestrationStatus string
 
 const (
-	OrchestrationPending    OrchestrationStatus = "PENDING"
-	OrchestrationInProgress OrchestrationStatus = "IN_PROGRESS"
-	OrchestrationCompleted  OrchestrationStatus = "COMPLETED"
-	OrchestrationFailed     OrchestrationStatus = "FAILED"
+	OrchestrationPending      OrchestrationStatus = "PENDING"
+	OrchestrationInProgress   OrchestrationStatus = "IN_PROGRESS"
+	OrchestrationCompleted    OrchestrationStatus = "COMPLETED"
+	OrchestrationFailed       OrchestrationStatus = "FAILED"
 	OrchestrationCompensating OrchestrationStatus = "COMPENSATING"
 )
 
@@ -176,30 +176,30 @@ const (
 type SagaStatus string
 
 const (
-	SagaPending    SagaStatus = "PENDING"
-	SagaExecuting  SagaStatus = "EXECUTING"
-	SagaCompleted  SagaStatus = "COMPLETED"
-	SagaFailed     SagaStatus = "FAILED"
+	SagaPending     SagaStatus = "PENDING"
+	SagaExecuting   SagaStatus = "EXECUTING"
+	SagaCompleted   SagaStatus = "COMPLETED"
+	SagaFailed      SagaStatus = "FAILED"
 	SagaCompensated SagaStatus = "COMPENSATED"
 )
 
 // SagaError represents an error in saga processing
 type SagaError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code    string                 `json:"code"`
+	Message string                 `json:"message"`
 	Details map[string]interface{} `json:"details,omitempty"`
 }
 
 // AsyncAPIRequest represents a request in the event-driven API pattern
 type AsyncAPIRequest struct {
-	RequestID     string                 `json:"requestId"`
-	Method        string                 `json:"method"`
-	Path          string                 `json:"path"`
-	Headers       map[string]string      `json:"headers"`
-	Body          json.RawMessage        `json:"body"`
-	CallbackURL   string                 `json:"callbackUrl,omitempty"`
-	WebhookURL    string                 `json:"webhookUrl,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	RequestID   string                 `json:"requestId"`
+	Method      string                 `json:"method"`
+	Path        string                 `json:"path"`
+	Headers     map[string]string      `json:"headers"`
+	Body        json.RawMessage        `json:"body"`
+	CallbackURL string                 `json:"callbackUrl,omitempty"`
+	WebhookURL  string                 `json:"webhookUrl,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata"`
 }
 
 // AsyncAPIResponse represents a response in the event-driven API pattern
@@ -225,16 +225,16 @@ const (
 
 // AsyncAPIError represents an error in async API processing
 type AsyncAPIError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code    string                 `json:"code"`
+	Message string                 `json:"message"`
 	Details map[string]interface{} `json:"details,omitempty"`
 }
 
 // WebSocketMessage represents a WebSocket message
 type WebSocketMessage struct {
-	ConnectionID string          `json:"connectionId"`
-	Action       string          `json:"action"`
-	Data         json.RawMessage `json:"data"`
+	ConnectionID string             `json:"connectionId"`
+	Action       string             `json:"action"`
+	Data         json.RawMessage    `json:"data"`
 	Metadata     ProcessingMetadata `json:"metadata"`
 }
 

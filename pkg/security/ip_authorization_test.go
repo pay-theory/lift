@@ -447,21 +447,21 @@ func TestSSMIPAuthorizerCaching(t *testing.T) {
 	t.Run("Cache hit on second request", func(t *testing.T) {
 		// Create a test cache with short TTL for testing
 		testCache := cache.New(1*time.Minute, 30*time.Second)
-		
+
 		// Pre-populate cache with test data
 		cacheKey := "ssm:ip-list:test-parameter"
 		allowedIPs := []string{"192.168.1.100", "192.168.1.101"}
 		testCache.Set(cacheKey, allowedIPs, cache.DefaultExpiration)
-		
+
 		// Note: We're testing the cache behavior directly without using the authorizer
 		// since we're testing cached data retrieval
-		
+
 		// Test that the IP check uses cached data
 		authorized := checkIPInList("192.168.1.100", allowedIPs)
 		if !authorized {
 			t.Error("Expected IP to be authorized from cached list")
 		}
-		
+
 		// Verify cache contains the data
 		if cached, found := testCache.Get(cacheKey); !found {
 			t.Error("Expected cache to contain the IP list")
@@ -475,20 +475,20 @@ func TestSSMIPAuthorizerCaching(t *testing.T) {
 	t.Run("Cache expiration", func(t *testing.T) {
 		// Create a test cache with very short TTL
 		testCache := cache.New(100*time.Millisecond, 50*time.Millisecond)
-		
+
 		// Add data to cache
 		cacheKey := "ssm:ip-list:expiring-parameter"
 		allowedIPs := []string{"10.0.0.1"}
 		testCache.Set(cacheKey, allowedIPs, cache.DefaultExpiration)
-		
+
 		// Verify it's in cache
 		if _, found := testCache.Get(cacheKey); !found {
 			t.Error("Expected cache to contain the IP list immediately after setting")
 		}
-		
+
 		// Wait for expiration
 		time.Sleep(200 * time.Millisecond)
-		
+
 		// Verify it's no longer in cache
 		if _, found := testCache.Get(cacheKey); found {
 			t.Error("Expected cache entry to be expired")
@@ -500,19 +500,19 @@ func TestSSMIPAuthorizerCaching(t *testing.T) {
 			cache:    cache.New(5*time.Minute, 1*time.Minute),
 			cacheTTL: 5 * time.Minute,
 		}
-		
+
 		// Add some data to cache
 		cacheKey := "ssm:ip-list:clear-test"
 		authorizer.cache.Set(cacheKey, []string{"172.16.0.1"}, cache.DefaultExpiration)
-		
+
 		// Verify it's in cache
 		if _, found := authorizer.cache.Get(cacheKey); !found {
 			t.Error("Expected cache to contain data before clearing")
 		}
-		
+
 		// Clear cache
 		authorizer.ClearCache()
-		
+
 		// Verify cache is empty
 		if _, found := authorizer.cache.Get(cacheKey); found {
 			t.Error("Expected cache to be empty after clearing")
@@ -524,17 +524,17 @@ func TestSSMIPAuthorizerCaching(t *testing.T) {
 			cache:    cache.New(5*time.Minute, 1*time.Minute),
 			cacheTTL: 5 * time.Minute,
 		}
-		
+
 		// Initially empty
 		items, _ := authorizer.GetCacheStats()
 		if items != 0 {
 			t.Errorf("Expected 0 items in cache, got %d", items)
 		}
-		
+
 		// Add some items
 		authorizer.cache.Set("ssm:ip-list:param1", []string{"1.1.1.1"}, cache.DefaultExpiration)
 		authorizer.cache.Set("ssm:ip-list:param2", []string{"2.2.2.2"}, cache.DefaultExpiration)
-		
+
 		items, _ = authorizer.GetCacheStats()
 		if items != 2 {
 			t.Errorf("Expected 2 items in cache, got %d", items)
@@ -543,12 +543,12 @@ func TestSSMIPAuthorizerCaching(t *testing.T) {
 
 	t.Run("Multiple parameter caching", func(t *testing.T) {
 		testCache := cache.New(5*time.Minute, 1*time.Minute)
-		
+
 		// Add multiple different parameter values
 		testCache.Set("ssm:ip-list:service1-ips", []string{"10.1.0.1", "10.1.0.2"}, cache.DefaultExpiration)
 		testCache.Set("ssm:ip-list:service2-ips", []string{"10.2.0.1", "10.2.0.2"}, cache.DefaultExpiration)
 		testCache.Set("ssm:ip-list:service3-ips", []string{"10.3.0.1", "10.3.0.2"}, cache.DefaultExpiration)
-		
+
 		// Verify each can be retrieved independently
 		if cached, found := testCache.Get("ssm:ip-list:service1-ips"); found {
 			ips := cached.([]string)
@@ -558,7 +558,7 @@ func TestSSMIPAuthorizerCaching(t *testing.T) {
 		} else {
 			t.Error("service1-ips not found in cache")
 		}
-		
+
 		if cached, found := testCache.Get("ssm:ip-list:service2-ips"); found {
 			ips := cached.([]string)
 			if len(ips) != 2 || ips[0] != "10.2.0.1" {
@@ -635,11 +635,11 @@ func TestIPAuthorizationService(t *testing.T) {
 		// Save current env vars
 		oldPartner := os.Getenv("PARTNER")
 		oldStage := os.Getenv("STAGE")
-		
+
 		// Clear env vars
 		os.Unsetenv("PARTNER")
 		os.Unsetenv("STAGE")
-		
+
 		_, err := NewIPAuthorizationServiceFromEnv(context.Background(), "test-component")
 		if err == nil {
 			t.Error("Expected error for missing env vars")
@@ -647,7 +647,7 @@ func TestIPAuthorizationService(t *testing.T) {
 		if err.Error() != "PARTNER and STAGE environment variables must be set" {
 			t.Errorf("Expected env vars error, got: %v", err)
 		}
-		
+
 		// Restore env vars
 		if oldPartner != "" {
 			os.Setenv("PARTNER", oldPartner)

@@ -118,8 +118,8 @@ func TestExtractClientIP(t *testing.T) {
 			expectedIP: "192.168.1.200",
 		},
 		{
-			name: "Empty headers and context",
-			headers: map[string]string{},
+			name:        "Empty headers and context",
+			headers:     map[string]string{},
 			expectError: true,
 		},
 		{
@@ -139,10 +139,10 @@ func TestExtractClientIP(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "Nil request context",
-			headers: map[string]string{},
+			name:           "Nil request context",
+			headers:        map[string]string{},
 			requestContext: nil,
-			expectError: true,
+			expectError:    true,
 		},
 		{
 			name: "Real-world example - behind multiple proxies",

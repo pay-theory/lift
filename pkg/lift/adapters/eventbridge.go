@@ -65,7 +65,7 @@ func (a *EventBridgeAdapter) Adapt(rawEvent any) (*Request, error) {
 	detail := extractMapField(eventMap, "detail")
 	timestamp := extractStringField(eventMap, "time")
 	eventID := extractStringField(eventMap, "id")
-	
+
 	// Extract resources (for scheduled events)
 	resources := extractSliceField(eventMap, "resources")
 
@@ -76,7 +76,7 @@ func (a *EventBridgeAdapter) Adapt(rawEvent any) (*Request, error) {
 		triggerType = TriggerS3
 	case "aws.sqs":
 		triggerType = TriggerSQS
-	// aws.events remains as EventBridge for scheduled events
+		// aws.events remains as EventBridge for scheduled events
 	}
 
 	return &Request{

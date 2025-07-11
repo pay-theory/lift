@@ -132,129 +132,129 @@ type AuditMetrics struct {
 
 // CustomMetric represents a custom metric
 type CustomMetric struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Value       float64                `json:"value"`
-	Unit        string                 `json:"unit"`
-	Type        string                 `json:"type"`
-	Category    string                 `json:"category"`
-	Timestamp   time.Time              `json:"timestamp"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Value       float64        `json:"value"`
+	Unit        string         `json:"unit"`
+	Type        string         `json:"type"`
+	Category    string         `json:"category"`
+	Timestamp   time.Time      `json:"timestamp"`
 	Metadata    map[string]any `json:"metadata"`
 }
 
 // CustomMetricQuery represents a query for custom metrics
 type CustomMetricQuery struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Query       string                 `json:"query"`
-	Type        string                 `json:"type"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Query       string         `json:"query"`
+	Type        string         `json:"type"`
 	Parameters  map[string]any `json:"parameters"`
-	Aggregation string                 `json:"aggregation"`
-	TimeRange   TimeRange              `json:"time_range"`
+	Aggregation string         `json:"aggregation"`
+	TimeRange   TimeRange      `json:"time_range"`
 }
 
 // DashboardAlert represents a dashboard alert
 type DashboardAlert struct {
-	ID             string                 `json:"id"`
-	Type           string                 `json:"type"`
-	Severity       string                 `json:"severity"`
-	Title          string                 `json:"title"`
-	Description    string                 `json:"description"`
-	Metric         string                 `json:"metric"`
-	Threshold      float64                `json:"threshold"`
-	CurrentValue   float64                `json:"current_value"`
-	Timestamp      time.Time              `json:"timestamp"`
-	Status         string                 `json:"status"`
-	AcknowledgedBy string                 `json:"acknowledged_by,omitempty"`
-	AcknowledgedAt *time.Time             `json:"acknowledged_at,omitempty"`
-	ResolvedAt     *time.Time             `json:"resolved_at,omitempty"`
-	Actions        []AlertAction          `json:"actions"`
+	ID             string         `json:"id"`
+	Type           string         `json:"type"`
+	Severity       string         `json:"severity"`
+	Title          string         `json:"title"`
+	Description    string         `json:"description"`
+	Metric         string         `json:"metric"`
+	Threshold      float64        `json:"threshold"`
+	CurrentValue   float64        `json:"current_value"`
+	Timestamp      time.Time      `json:"timestamp"`
+	Status         string         `json:"status"`
+	AcknowledgedBy string         `json:"acknowledged_by,omitempty"`
+	AcknowledgedAt *time.Time     `json:"acknowledged_at,omitempty"`
+	ResolvedAt     *time.Time     `json:"resolved_at,omitempty"`
+	Actions        []AlertAction  `json:"actions"`
 	Metadata       map[string]any `json:"metadata"`
 }
 
 // AlertAction represents an action for an alert
 type AlertAction struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Type        string                 `json:"type"`
-	Description string                 `json:"description"`
-	Automated   bool                   `json:"automated"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Type        string         `json:"type"`
+	Description string         `json:"description"`
+	Automated   bool           `json:"automated"`
 	Parameters  map[string]any `json:"parameters"`
 }
 
 // DashboardSummary represents a summary of dashboard data
 type DashboardSummary struct {
-	OverallHealth    string                 `json:"overall_health"`
-	ComplianceStatus string                 `json:"compliance_status"`
-	RiskStatus       string                 `json:"risk_status"`
-	AuditStatus      string                 `json:"audit_status"`
-	ActiveAlerts     int                    `json:"active_alerts"`
-	CriticalIssues   int                    `json:"critical_issues"`
-	TrendDirection   string                 `json:"trend_direction"`
-	LastUpdated      time.Time              `json:"last_updated"`
-	KeyMetrics       map[string]float64     `json:"key_metrics"`
-	Recommendations  []string               `json:"recommendations"`
-	Metadata         map[string]any `json:"metadata"`
+	OverallHealth    string             `json:"overall_health"`
+	ComplianceStatus string             `json:"compliance_status"`
+	RiskStatus       string             `json:"risk_status"`
+	AuditStatus      string             `json:"audit_status"`
+	ActiveAlerts     int                `json:"active_alerts"`
+	CriticalIssues   int                `json:"critical_issues"`
+	TrendDirection   string             `json:"trend_direction"`
+	LastUpdated      time.Time          `json:"last_updated"`
+	KeyMetrics       map[string]float64 `json:"key_metrics"`
+	Recommendations  []string           `json:"recommendations"`
+	Metadata         map[string]any     `json:"metadata"`
 }
 
 // ComplianceDataPoint represents a compliance data point
 type ComplianceDataPoint struct {
-	Timestamp       time.Time              `json:"timestamp"`
-	ComplianceScore float64                `json:"compliance_score"`
-	ViolationCount  int                    `json:"violation_count"`
-	ControlCount    int                    `json:"control_count"`
-	Framework       string                 `json:"framework"`
+	Timestamp       time.Time      `json:"timestamp"`
+	ComplianceScore float64        `json:"compliance_score"`
+	ViolationCount  int            `json:"violation_count"`
+	ControlCount    int            `json:"control_count"`
+	Framework       string         `json:"framework"`
 	Metadata        map[string]any `json:"metadata"`
 }
 
 // RiskDataPoint represents a risk data point
 type RiskDataPoint struct {
-	Timestamp     time.Time              `json:"timestamp"`
-	RiskScore     float64                `json:"risk_score"`
-	IncidentCount int                    `json:"incident_count"`
-	ThreatLevel   string                 `json:"threat_level"`
+	Timestamp     time.Time      `json:"timestamp"`
+	RiskScore     float64        `json:"risk_score"`
+	IncidentCount int            `json:"incident_count"`
+	ThreatLevel   string         `json:"threat_level"`
 	Metadata      map[string]any `json:"metadata"`
 }
 
 // AuditDataPoint represents an audit data point
 type AuditDataPoint struct {
-	Timestamp    time.Time              `json:"timestamp"`
-	EventCount   int                    `json:"event_count"`
-	AnomalyCount int                    `json:"anomaly_count"`
-	FailureRate  float64                `json:"failure_rate"`
+	Timestamp    time.Time      `json:"timestamp"`
+	EventCount   int            `json:"event_count"`
+	AnomalyCount int            `json:"anomaly_count"`
+	FailureRate  float64        `json:"failure_rate"`
 	Metadata     map[string]any `json:"metadata"`
 }
 
 // DataPoint represents a generic data point
 type DataPoint struct {
-	Timestamp time.Time              `json:"timestamp"`
-	Value     float64                `json:"value"`
-	Labels    map[string]string      `json:"labels"`
-	Metadata  map[string]any `json:"metadata"`
+	Timestamp time.Time         `json:"timestamp"`
+	Value     float64           `json:"value"`
+	Labels    map[string]string `json:"labels"`
+	Metadata  map[string]any    `json:"metadata"`
 }
 
 // AggregatedDataPoint represents an aggregated data point
 type AggregatedDataPoint struct {
-	Timestamp time.Time              `json:"timestamp"`
-	Value     float64                `json:"value"`
-	Count     int                    `json:"count"`
-	Min       float64                `json:"min"`
-	Max       float64                `json:"max"`
-	Average   float64                `json:"average"`
-	Sum       float64                `json:"sum"`
-	StdDev    float64                `json:"std_dev"`
+	Timestamp time.Time      `json:"timestamp"`
+	Value     float64        `json:"value"`
+	Count     int            `json:"count"`
+	Min       float64        `json:"min"`
+	Max       float64        `json:"max"`
+	Average   float64        `json:"average"`
+	Sum       float64        `json:"sum"`
+	StdDev    float64        `json:"std_dev"`
 	Metadata  map[string]any `json:"metadata"`
 }
 
 // TrendAnalysis represents trend analysis results
 type TrendAnalysis struct {
-	Direction   string                 `json:"direction"`
-	Magnitude   float64                `json:"magnitude"`
-	Confidence  float64                `json:"confidence"`
-	Seasonality bool                   `json:"seasonality"`
-	Forecast    []ForecastPoint        `json:"forecast"`
-	Metadata    map[string]any `json:"metadata"`
+	Direction   string          `json:"direction"`
+	Magnitude   float64         `json:"magnitude"`
+	Confidence  float64         `json:"confidence"`
+	Seasonality bool            `json:"seasonality"`
+	Forecast    []ForecastPoint `json:"forecast"`
+	Metadata    map[string]any  `json:"metadata"`
 }
 
 // ForecastPoint represents a forecast point
@@ -268,27 +268,27 @@ type ForecastPoint struct {
 
 // DataSummary represents a summary of data
 type DataSummary struct {
-	Count       int                    `json:"count"`
-	Min         float64                `json:"min"`
-	Max         float64                `json:"max"`
-	Average     float64                `json:"average"`
-	Median      float64                `json:"median"`
-	StdDev      float64                `json:"std_dev"`
-	Percentiles map[string]float64     `json:"percentiles"`
-	Metadata    map[string]any `json:"metadata"`
+	Count       int                `json:"count"`
+	Min         float64            `json:"min"`
+	Max         float64            `json:"max"`
+	Average     float64            `json:"average"`
+	Median      float64            `json:"median"`
+	StdDev      float64            `json:"std_dev"`
+	Percentiles map[string]float64 `json:"percentiles"`
+	Metadata    map[string]any     `json:"metadata"`
 }
 
 // DashboardWidget represents a dashboard widget
 type DashboardWidget struct {
-	ID          string                 `json:"id"`
-	Type        string                 `json:"type"`
-	Title       string                 `json:"title"`
-	Description string                 `json:"description"`
-	Position    WidgetPosition         `json:"position"`
-	Size        WidgetSize             `json:"size"`
-	Config      WidgetConfig           `json:"config"`
+	ID          string         `json:"id"`
+	Type        string         `json:"type"`
+	Title       string         `json:"title"`
+	Description string         `json:"description"`
+	Position    WidgetPosition `json:"position"`
+	Size        WidgetSize     `json:"size"`
+	Config      WidgetConfig   `json:"config"`
 	Data        any            `json:"data"`
-	LastUpdated time.Time              `json:"last_updated"`
+	LastUpdated time.Time      `json:"last_updated"`
 	Metadata    map[string]any `json:"metadata"`
 }
 
@@ -306,15 +306,15 @@ type WidgetSize struct {
 
 // WidgetConfig represents widget configuration
 type WidgetConfig struct {
-	ChartType   string                 `json:"chart_type"`
-	DataSource  string                 `json:"data_source"`
-	RefreshRate time.Duration          `json:"refresh_rate"`
-	Filters     map[string]any `json:"filters"`
-	Aggregation string                 `json:"aggregation"`
-	TimeRange   TimeRange              `json:"time_range"`
-	Thresholds  map[string]float64     `json:"thresholds"`
-	Colors      map[string]string      `json:"colors"`
-	Metadata    map[string]any `json:"metadata"`
+	ChartType   string             `json:"chart_type"`
+	DataSource  string             `json:"data_source"`
+	RefreshRate time.Duration      `json:"refresh_rate"`
+	Filters     map[string]any     `json:"filters"`
+	Aggregation string             `json:"aggregation"`
+	TimeRange   TimeRange          `json:"time_range"`
+	Thresholds  map[string]float64 `json:"thresholds"`
+	Colors      map[string]string  `json:"colors"`
+	Metadata    map[string]any     `json:"metadata"`
 }
 
 // DashboardLayout represents dashboard layout

@@ -53,7 +53,7 @@ func (d *DynamORMIdempotencyStore) Get(ctx context.Context, key string) (*Idempo
 	// Create DynamORM model instance with key
 	record := &models.IdempotencyRecord{
 		IdempotencyKey: key,
-		SK:            "IDEMPOTENCY",
+		SK:             "IDEMPOTENCY",
 	}
 
 	// Use DynamORM to get the record
@@ -96,17 +96,17 @@ func (d *DynamORMIdempotencyStore) Set(ctx context.Context, key string, record *
 	// Convert middleware record to DynamORM model
 	dynamormRecord := &models.IdempotencyRecord{
 		IdempotencyKey: key,
-		SK:            "IDEMPOTENCY",
-		FunctionName:  record.FunctionName,
-		TenantID:     record.TenantID,
-		Status:       record.Status,
-		Timestamp:    record.CreatedAt,
-		RequestHash:  record.RequestHash,
-		StatusCode:   record.StatusCode,
-		ErrorMessage: record.Error,
-		CreatedAt:    record.CreatedAt,
-		UpdatedAt:    time.Now(),
-		ExpiresAt:    record.ExpiresAt,
+		SK:             "IDEMPOTENCY",
+		FunctionName:   record.FunctionName,
+		TenantID:       record.TenantID,
+		Status:         record.Status,
+		Timestamp:      record.CreatedAt,
+		RequestHash:    record.RequestHash,
+		StatusCode:     record.StatusCode,
+		ErrorMessage:   record.Error,
+		CreatedAt:      record.CreatedAt,
+		UpdatedAt:      time.Now(),
+		ExpiresAt:      record.ExpiresAt,
 	}
 
 	// Marshal response to JSON if present
@@ -136,13 +136,13 @@ func (d *DynamORMIdempotencyStore) SetProcessing(ctx context.Context, key string
 
 	record := &models.IdempotencyRecord{
 		IdempotencyKey: key,
-		SK:            "IDEMPOTENCY",
-		Status:        "processing",
-		Timestamp:     time.Now(),
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-		ExpiresAt:     expiresAt,
-		LockedUntil:   expiresAt,
+		SK:             "IDEMPOTENCY",
+		Status:         "processing",
+		Timestamp:      time.Now(),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		ExpiresAt:      expiresAt,
+		LockedUntil:    expiresAt,
 	}
 
 	return db.Put(ctx, record)

@@ -211,7 +211,7 @@ func JWT(config security.JWTConfig) lift.Middleware {
 				// Log detailed error internally but return generic message
 				if ctx.Logger != nil {
 					ctx.Logger.Error("Token validation failed", map[string]any{
-						"error": err.Error(),
+						"error":      err.Error(),
 						"error_type": fmt.Sprintf("%T", err),
 					})
 				}
@@ -312,8 +312,8 @@ func RequireRole(roles ...string) lift.Middleware {
 				if ctx.Logger != nil {
 					ctx.Logger.Warn("Authorization failed: missing required roles", map[string]any{
 						"required_roles": roles,
-						"user_roles": principal.Roles,
-						"user_id": principal.UserID,
+						"user_roles":     principal.Roles,
+						"user_id":        principal.UserID,
 					})
 				}
 				return lift.AuthorizationError("Insufficient permissions")
@@ -340,8 +340,8 @@ func RequireScope(scopes ...string) lift.Middleware {
 					if ctx.Logger != nil {
 						ctx.Logger.Warn("Authorization failed: missing required scope", map[string]any{
 							"required_scope": scope,
-							"user_scopes": principal.Scopes,
-							"user_id": principal.UserID,
+							"user_scopes":    principal.Scopes,
+							"user_id":        principal.UserID,
 						})
 					}
 					return lift.AuthorizationError("Insufficient permissions")

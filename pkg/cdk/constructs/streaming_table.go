@@ -60,7 +60,7 @@ func NewStreamingTable(scope constructs.Construct, id *string, props *StreamingT
 		WriteCapacity:             props.WriteCapacity,
 		EnablePointInTimeRecovery: jsii.Bool(true),
 	})
-	
+
 	return &StreamingTable{
 		construct: scope,
 		LiftTable: liftTable,
@@ -97,7 +97,7 @@ func (s *StreamingTable) GetResourceName() *string {
 // type StreamRecord struct {
 //     PK         string    `dynamorm:"pk"`     // entity#{id}
 //     SK         string    `dynamorm:"sk"`     // timestamp#{timestamp}
-//     
+//
 //     // Your data fields
 //     EntityID   string    `json:"entity_id"`
 //     EventType  string    `json:"event_type"`

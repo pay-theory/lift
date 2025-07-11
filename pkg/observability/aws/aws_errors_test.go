@@ -303,7 +303,7 @@ func TestErrorWrapping(t *testing.T) {
 		assert.True(t, IsAWSErrorCode(wrappedErr, "ThrottlingException"))
 		assert.True(t, IsThrottlingError(wrappedErr))
 		assert.Equal(t, "ThrottlingException", GetAWSErrorCode(wrappedErr))
-		
+
 		details := ExtractAWSErrorDetails(wrappedErr)
 		require.NotNil(t, details)
 		assert.Equal(t, "ThrottlingException", details["error_code"])

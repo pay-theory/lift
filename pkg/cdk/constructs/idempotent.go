@@ -43,7 +43,7 @@ type IdempotentFunctionProps struct {
 // IdempotentFunction is a Lambda function with built-in idempotency support using DynamORM
 type IdempotentFunction struct {
 	constructs.Construct
-	Function        *LiftFunction
+	Function         *LiftFunction
 	IdempotencyTable *LiftTable
 }
 
@@ -82,7 +82,7 @@ func NewIdempotentFunction(scope constructs.Construct, id *string, props *Idempo
 
 	// Create DynamORM-compatible idempotency table
 	idempotencyTable = NewIdempotencyTable(this, jsii.String("IdempotencyTable"), &IdempotencyTableProps{
-		TableName:           tableName,
+		TableName: tableName,
 	})
 
 	// Add idempotency environment variables
@@ -90,31 +90,31 @@ func NewIdempotentFunction(scope constructs.Construct, id *string, props *Idempo
 		props.LiftFunctionProps.Environment = &map[string]*string{}
 	}
 	env := *props.LiftFunctionProps.Environment
-	
+
 	// DynamORM table configuration
 	env["IDEMPOTENCY_TABLE_NAME"] = idempotencyTable.Table.TableName()
 	// AWS_REGION is automatically set by Lambda runtime
-	
+
 	// Idempotency configuration
 	env["IDEMPOTENCY_KEY_EXTRACTOR"] = jsii.String(string(props.KeyExtractor))
 	env["IDEMPOTENCY_KEY_FIELD"] = props.KeyField
 	env["IDEMPOTENCY_TTL_SECONDS"] = jsii.String(fmt.Sprintf("%.0f", *props.TTLSeconds))
 	env["IDEMPOTENCY_ENABLED"] = jsii.String("true")
-	
+
 	// DynamORM configuration
 	env["DYNAMORM_DEBUG"] = jsii.String("false")
 	env["DYNAMORM_RETRY_MAX_ATTEMPTS"] = jsii.String("2")
 	env["DYNAMORM_RETRY_BASE_DELAY"] = jsii.String("100")
-	
+
 	// Response caching configuration
 	if *props.EnableResponseCaching {
 		env["IDEMPOTENCY_CACHE_RESPONSES"] = jsii.String("true")
 		env["IDEMPOTENCY_MAX_RESPONSE_KB"] = jsii.String(fmt.Sprintf("%.0f", *props.MaxResponseSizeKB))
 	}
-	
+
 	// Function name for tracking
 	env["IDEMPOTENCY_FUNCTION_NAME"] = jsii.String(*id)
-	
+
 	props.LiftFunctionProps.Environment = &env
 
 	// Create the base Lift function

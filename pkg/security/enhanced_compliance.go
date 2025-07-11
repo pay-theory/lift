@@ -55,27 +55,27 @@ type GDPRConfig struct {
 
 // IndustryTemplate for industry-specific compliance
 type IndustryTemplate struct {
-	Industry    string                 `json:"industry"` // "banking", "healthcare", "retail", "government"
-	Regulations []string               `json:"regulations"`
-	Controls    []ComplianceControl    `json:"controls"`
-	Audits      []AuditRequirement     `json:"audits"`
-	Metadata    map[string]any `json:"metadata"`
+	Industry    string              `json:"industry"` // "banking", "healthcare", "retail", "government"
+	Regulations []string            `json:"regulations"`
+	Controls    []ComplianceControl `json:"controls"`
+	Audits      []AuditRequirement  `json:"audits"`
+	Metadata    map[string]any      `json:"metadata"`
 }
 
 // ComplianceControl defines a specific control
 type ComplianceControl struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Framework   string                 `json:"framework"`
-	Category    string                 `json:"category"`
-	Severity    string                 `json:"severity"`
-	Automated   bool                   `json:"automated"`
-	Frequency   time.Duration          `json:"frequency"`
-	Evidence    []EvidenceRequirement  `json:"evidence"`
-	Tests       []ComplianceTest       `json:"tests"`
-	Remediation string                 `json:"remediation"`
-	Metadata    map[string]any `json:"metadata"`
+	ID          string                `json:"id"`
+	Name        string                `json:"name"`
+	Description string                `json:"description"`
+	Framework   string                `json:"framework"`
+	Category    string                `json:"category"`
+	Severity    string                `json:"severity"`
+	Automated   bool                  `json:"automated"`
+	Frequency   time.Duration         `json:"frequency"`
+	Evidence    []EvidenceRequirement `json:"evidence"`
+	Tests       []ComplianceTest      `json:"tests"`
+	Remediation string                `json:"remediation"`
+	Metadata    map[string]any        `json:"metadata"`
 }
 
 // EvidenceRequirement defines required evidence
@@ -88,13 +88,13 @@ type EvidenceRequirement struct {
 
 // ComplianceTest defines automated compliance tests
 type ComplianceTest struct {
-	ID         string                 `json:"id"`
-	Name       string                 `json:"name"`
-	Type       string                 `json:"type"` // "technical", "administrative", "physical"
-	Automated  bool                   `json:"automated"`
-	Frequency  time.Duration          `json:"frequency"`
-	Parameters map[string]any `json:"parameters"`
-	Thresholds map[string]float64     `json:"thresholds"`
+	ID         string             `json:"id"`
+	Name       string             `json:"name"`
+	Type       string             `json:"type"` // "technical", "administrative", "physical"
+	Automated  bool               `json:"automated"`
+	Frequency  time.Duration      `json:"frequency"`
+	Parameters map[string]any     `json:"parameters"`
+	Thresholds map[string]float64 `json:"thresholds"`
 }
 
 // AuditRequirement defines audit requirements
@@ -260,36 +260,36 @@ type BusinessContinuityData struct {
 
 // GDPREvent represents GDPR-related events
 type GDPREvent struct {
-	EventType        string                 `json:"event_type"`
-	DataSubject      string                 `json:"data_subject"`
-	DataController   string                 `json:"data_controller"`
-	DataProcessor    string                 `json:"data_processor"`
-	ProcessingBasis  string                 `json:"processing_basis"`
-	DataCategories   []string               `json:"data_categories"`
-	Recipients       []string               `json:"recipients"`
-	RetentionPeriod  time.Duration          `json:"retention_period"`
-	ConsentGiven     bool                   `json:"consent_given"`
-	ConsentWithdrawn bool                   `json:"consent_withdrawn"`
-	DataPortability  bool                   `json:"data_portability"`
-	RightToErasure   bool                   `json:"right_to_erasure"`
+	EventType        string         `json:"event_type"`
+	DataSubject      string         `json:"data_subject"`
+	DataController   string         `json:"data_controller"`
+	DataProcessor    string         `json:"data_processor"`
+	ProcessingBasis  string         `json:"processing_basis"`
+	DataCategories   []string       `json:"data_categories"`
+	Recipients       []string       `json:"recipients"`
+	RetentionPeriod  time.Duration  `json:"retention_period"`
+	ConsentGiven     bool           `json:"consent_given"`
+	ConsentWithdrawn bool           `json:"consent_withdrawn"`
+	DataPortability  bool           `json:"data_portability"`
+	RightToErasure   bool           `json:"right_to_erasure"`
 	Metadata         map[string]any `json:"metadata"`
-	Timestamp        time.Time              `json:"timestamp"`
+	Timestamp        time.Time      `json:"timestamp"`
 }
 
 // DataProcessingLog for GDPR data processing logging
 type DataProcessingLog struct {
-	ProcessingID      string                 `json:"processing_id"`
-	DataSubject       string                 `json:"data_subject"`
-	ProcessingPurpose string                 `json:"processing_purpose"`
-	LegalBasis        string                 `json:"legal_basis"`
-	DataCategories    []string               `json:"data_categories"`
-	Recipients        []string               `json:"recipients"`
-	ThirdCountries    []string               `json:"third_countries"`
-	RetentionPeriod   time.Duration          `json:"retention_period"`
-	SecurityMeasures  []string               `json:"security_measures"`
-	ConsentDetails    *ConsentData           `json:"consent_details"`
+	ProcessingID      string         `json:"processing_id"`
+	DataSubject       string         `json:"data_subject"`
+	ProcessingPurpose string         `json:"processing_purpose"`
+	LegalBasis        string         `json:"legal_basis"`
+	DataCategories    []string       `json:"data_categories"`
+	Recipients        []string       `json:"recipients"`
+	ThirdCountries    []string       `json:"third_countries"`
+	RetentionPeriod   time.Duration  `json:"retention_period"`
+	SecurityMeasures  []string       `json:"security_measures"`
+	ConsentDetails    *ConsentData   `json:"consent_details"`
 	Metadata          map[string]any `json:"metadata"`
-	Timestamp         time.Time              `json:"timestamp"`
+	Timestamp         time.Time      `json:"timestamp"`
 }
 
 // ConsentData for GDPR consent management
@@ -312,31 +312,31 @@ type ConsentData struct {
 
 // Evidence represents compliance evidence
 type Evidence struct {
-	ID          string                 `json:"id"`
-	Type        string                 `json:"type"`
-	Description string                 `json:"description"`
-	Source      string                 `json:"source"`
-	Timestamp   time.Time              `json:"timestamp"`
+	ID          string         `json:"id"`
+	Type        string         `json:"type"`
+	Description string         `json:"description"`
+	Source      string         `json:"source"`
+	Timestamp   time.Time      `json:"timestamp"`
 	Data        map[string]any `json:"data"`
-	Verified    bool                   `json:"verified"`
+	Verified    bool           `json:"verified"`
 }
 
 // ComplianceTestResult for automated compliance testing
 type ComplianceTestResult struct {
-	TestID          string                 `json:"test_id"`
-	TestName        string                 `json:"test_name"`
-	Framework       string                 `json:"framework"`
-	ControlID       string                 `json:"control_id"`
-	TestType        string                 `json:"test_type"`
-	ExecutionTime   time.Time              `json:"execution_time"`
-	Duration        time.Duration          `json:"duration"`
-	Status          string                 `json:"status"` // "pass", "fail", "warning", "error"
-	Score           float64                `json:"score"`
-	Threshold       float64                `json:"threshold"`
-	Evidence        []Evidence             `json:"evidence"`
-	Findings        []ComplianceFinding    `json:"findings"`
-	Recommendations []string               `json:"recommendations"`
-	Metadata        map[string]any `json:"metadata"`
+	TestID          string              `json:"test_id"`
+	TestName        string              `json:"test_name"`
+	Framework       string              `json:"framework"`
+	ControlID       string              `json:"control_id"`
+	TestType        string              `json:"test_type"`
+	ExecutionTime   time.Time           `json:"execution_time"`
+	Duration        time.Duration       `json:"duration"`
+	Status          string              `json:"status"` // "pass", "fail", "warning", "error"
+	Score           float64             `json:"score"`
+	Threshold       float64             `json:"threshold"`
+	Evidence        []Evidence          `json:"evidence"`
+	Findings        []ComplianceFinding `json:"findings"`
+	Recommendations []string            `json:"recommendations"`
+	Metadata        map[string]any      `json:"metadata"`
 }
 
 // ComplianceFinding represents a compliance finding

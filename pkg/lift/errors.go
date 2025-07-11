@@ -9,11 +9,11 @@ import (
 
 // LiftError represents a structured error in the Lift framework
 type LiftError struct {
-	Code       string                 `json:"code"`
-	Message    string                 `json:"message"`
-	Details    map[string]any         `json:"details,omitempty"`
-	StatusCode int                    `json:"-"`
-	Cause      error                  `json:"-"`
+	Code       string         `json:"code"`
+	Message    string         `json:"message"`
+	Details    map[string]any `json:"details,omitempty"`
+	StatusCode int            `json:"-"`
+	Cause      error          `json:"-"`
 
 	// Observability
 	RequestID  string `json:"request_id,omitempty"`
@@ -32,14 +32,14 @@ type LiftError struct {
 // Error implements the error interface
 func (e *LiftError) Error() string {
 	errStr := fmt.Sprintf("[%s] %s", e.Code, e.Message)
-	
+
 	if e.Cause != nil {
 		errStr += fmt.Sprintf("\ncaused by: %v", e.Cause)
 	}
 
 	if len(e.Details) > 0 {
 		errStr += fmt.Sprintf("\ndetails: %v", e.Details)
-	}	
+	}
 
 	return errStr
 }

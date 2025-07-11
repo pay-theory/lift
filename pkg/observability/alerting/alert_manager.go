@@ -63,42 +63,42 @@ type AlertCondition struct {
 
 // AlertAction defines an action to take when an alert fires
 type AlertAction struct {
-	Type       ActionType             `json:"type"`
-	Channel    string                 `json:"channel"`
-	Template   string                 `json:"template"`
+	Type       ActionType     `json:"type"`
+	Channel    string         `json:"channel"`
+	Template   string         `json:"template"`
 	Parameters map[string]any `json:"parameters"`
-	Enabled    bool                   `json:"enabled"`
+	Enabled    bool           `json:"enabled"`
 }
 
 // Alert represents an active or historical alert
 type Alert struct {
-	ID          string                 `json:"id"`
-	RuleID      string                 `json:"rule_id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Severity    AlertSeverity          `json:"severity"`
-	Priority    AlertPriority          `json:"priority"`
-	Status      AlertStatus            `json:"status"`
-	State       AlertState             `json:"state"`
-	StartTime   time.Time              `json:"start_time"`
-	EndTime     *time.Time             `json:"end_time,omitempty"`
-	Duration    time.Duration          `json:"duration"`
-	Value       float64                `json:"value"`
-	Threshold   float64                `json:"threshold"`
-	Labels      map[string]string      `json:"labels"`
-	Annotations map[string]string      `json:"annotations"`
-	Events      []AlertEvent           `json:"events"`
-	Escalations []AlertEscalation      `json:"escalations"`
-	Metadata    map[string]any `json:"metadata"`
+	ID          string            `json:"id"`
+	RuleID      string            `json:"rule_id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Severity    AlertSeverity     `json:"severity"`
+	Priority    AlertPriority     `json:"priority"`
+	Status      AlertStatus       `json:"status"`
+	State       AlertState        `json:"state"`
+	StartTime   time.Time         `json:"start_time"`
+	EndTime     *time.Time        `json:"end_time,omitempty"`
+	Duration    time.Duration     `json:"duration"`
+	Value       float64           `json:"value"`
+	Threshold   float64           `json:"threshold"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	Events      []AlertEvent      `json:"events"`
+	Escalations []AlertEscalation `json:"escalations"`
+	Metadata    map[string]any    `json:"metadata"`
 }
 
 // AlertEvent represents an event in an alert's lifecycle
 type AlertEvent struct {
-	ID        string                 `json:"id"`
-	Type      AlertEventType         `json:"type"`
-	Timestamp time.Time              `json:"timestamp"`
-	Message   string                 `json:"message"`
-	User      string                 `json:"user,omitempty"`
+	ID        string         `json:"id"`
+	Type      AlertEventType `json:"type"`
+	Timestamp time.Time      `json:"timestamp"`
+	Message   string         `json:"message"`
+	User      string         `json:"user,omitempty"`
 	Metadata  map[string]any `json:"metadata"`
 }
 

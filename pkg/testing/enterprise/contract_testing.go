@@ -18,10 +18,10 @@ type ContractTestingFramework struct {
 
 // ContractTestingConfig configures contract testing
 type ContractTestingConfig struct {
-	DefaultTimeout    time.Duration          `json:"default_timeout"`
-	MaxRetries        int                    `json:"max_retries"`
-	ParallelExecution bool                   `json:"parallel_execution"`
-	ReportFormat      string                 `json:"report_format"`
+	DefaultTimeout    time.Duration  `json:"default_timeout"`
+	MaxRetries        int            `json:"max_retries"`
+	ParallelExecution bool           `json:"parallel_execution"`
+	ReportFormat      string         `json:"report_format"`
 	Environment       map[string]any `json:"environment"`
 }
 

@@ -21,53 +21,53 @@ func (c *DynamORMBenchmarkCommand) Usage() string {
 
 // BenchmarkConfig holds benchmarking configuration
 type BenchmarkConfig struct {
-	TableName    string
-	Operations   []string
-	Concurrency  int
-	Duration     time.Duration
-	ItemSize     int
-	OutputDir    string
-	Region       string
-	Warmup       time.Duration
+	TableName   string
+	Operations  []string
+	Concurrency int
+	Duration    time.Duration
+	ItemSize    int
+	OutputDir   string
+	Region      string
+	Warmup      time.Duration
 }
 
 // BenchmarkResults holds benchmark results
 type BenchmarkResults struct {
-	TableName        string                    `json:"table_name"`
-	StartTime        time.Time                 `json:"start_time"`
-	EndTime          time.Time                 `json:"end_time"`
-	Duration         time.Duration             `json:"duration"`
-	Concurrency      int                       `json:"concurrency"`
+	TableName        string                      `json:"table_name"`
+	StartTime        time.Time                   `json:"start_time"`
+	EndTime          time.Time                   `json:"end_time"`
+	Duration         time.Duration               `json:"duration"`
+	Concurrency      int                         `json:"concurrency"`
 	OperationResults map[string]*OperationResult `json:"operation_results"`
-	ColdStartTime    time.Duration             `json:"cold_start_time"`
-	WarmupTime       time.Duration             `json:"warmup_time"`
-	Environment      BenchmarkEnvironment      `json:"environment"`
+	ColdStartTime    time.Duration               `json:"cold_start_time"`
+	WarmupTime       time.Duration               `json:"warmup_time"`
+	Environment      BenchmarkEnvironment        `json:"environment"`
 }
 
 // OperationResult holds results for a specific operation
 type OperationResult struct {
-	Operation       string        `json:"operation"`
-	TotalRequests   int64         `json:"total_requests"`
-	SuccessRequests int64         `json:"success_requests"`
-	FailedRequests  int64         `json:"failed_requests"`
-	AvgLatency      time.Duration `json:"avg_latency"`
-	MinLatency      time.Duration `json:"min_latency"`
-	MaxLatency      time.Duration `json:"max_latency"`
-	P95Latency      time.Duration `json:"p95_latency"`
-	P99Latency      time.Duration `json:"p99_latency"`
-	Throughput      float64       `json:"throughput"` // requests per second
-	ErrorRate       float64       `json:"error_rate"`
+	Operation       string          `json:"operation"`
+	TotalRequests   int64           `json:"total_requests"`
+	SuccessRequests int64           `json:"success_requests"`
+	FailedRequests  int64           `json:"failed_requests"`
+	AvgLatency      time.Duration   `json:"avg_latency"`
+	MinLatency      time.Duration   `json:"min_latency"`
+	MaxLatency      time.Duration   `json:"max_latency"`
+	P95Latency      time.Duration   `json:"p95_latency"`
+	P99Latency      time.Duration   `json:"p99_latency"`
+	Throughput      float64         `json:"throughput"` // requests per second
+	ErrorRate       float64         `json:"error_rate"`
 	Latencies       []time.Duration `json:"-"` // Raw latencies for percentile calculation
 }
 
 // BenchmarkEnvironment captures environment information
 type BenchmarkEnvironment struct {
-	Region        string `json:"region"`
-	Runtime       string `json:"runtime"`
-	Architecture  string `json:"architecture"`
-	MemorySize    string `json:"memory_size"`
+	Region           string `json:"region"`
+	Runtime          string `json:"runtime"`
+	Architecture     string `json:"architecture"`
+	MemorySize       string `json:"memory_size"`
 	TableBillingMode string `json:"table_billing_mode"`
-	TimestampUTC  string `json:"timestamp_utc"`
+	TimestampUTC     string `json:"timestamp_utc"`
 }
 
 func (c *DynamORMBenchmarkCommand) Execute(ctx context.Context, args []string) error {
@@ -91,7 +91,7 @@ func (c *DynamORMBenchmarkCommand) Execute(ctx context.Context, args []string) e
 	fmt.Printf("📋 Next steps:\n")
 	fmt.Printf("   1. Run: go run %s/benchmark_runner.go\n", config.OutputDir)
 	fmt.Printf("   2. View results in: %s/results.json\n", config.OutputDir)
-	
+
 	return nil
 }
 

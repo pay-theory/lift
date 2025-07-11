@@ -37,9 +37,9 @@ type UpdateUserRequest struct {
 
 // APIError represents an API error
 type APIError struct {
-	Type    string      `json:"type"`
-	Message string      `json:"message"`
-	Details any `json:"details,omitempty"`
+	Type    string `json:"type"`
+	Message string `json:"message"`
+	Details any    `json:"details,omitempty"`
 }
 
 func (e APIError) Error() string {

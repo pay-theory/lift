@@ -27,19 +27,19 @@ type FeatureFlags struct {
 // Feature flag keys
 const (
 	// Core features
-	RateLimitingEnabled     = "rate_limiting_enabled"
-	CircuitBreakerEnabled   = "circuit_breaker_enabled"
-	EnhancedMonitoring      = "enhanced_monitoring"
-	ServiceMeshIntegration  = "service_mesh_integration"
-	
+	RateLimitingEnabled    = "rate_limiting_enabled"
+	CircuitBreakerEnabled  = "circuit_breaker_enabled"
+	EnhancedMonitoring     = "enhanced_monitoring"
+	ServiceMeshIntegration = "service_mesh_integration"
+
 	// Development features
-	MockServicesEnabled     = "mock_services_enabled"
-	DebugLoggingEnabled     = "debug_logging_enabled"
-	DevDashboardEnabled     = "dev_dashboard_enabled"
-	
+	MockServicesEnabled = "mock_services_enabled"
+	DebugLoggingEnabled = "debug_logging_enabled"
+	DevDashboardEnabled = "dev_dashboard_enabled"
+
 	// UI features
-	NewDashboardUI          = "new_dashboard_ui"
-	
+	NewDashboardUI = "new_dashboard_ui"
+
 	// Security features
 	AdvancedSecurityEnabled = "advanced_security_enabled"
 	IPAllowlistEnabled      = "ip_allowlist_enabled"
@@ -62,16 +62,16 @@ func NewFeatureFlags(config FeatureFlagConfig) (*FeatureFlags, error) {
 		clientId:    generateClientId(),
 		stopRefresh: make(chan struct{}),
 	}
-	
+
 	// Load defaults first
 	ff.loadDefaults()
-	
+
 	// If local only mode, don't connect to AWS
 	if config.LocalOnly {
 		ff.loadLocalOverrides()
 		return ff, nil
 	}
-	
+
 	// Initialize AWS client
 	cfg, err := awsconfig.LoadDefaultConfig(context.Background(),
 		awsconfig.WithRegion(config.Region),
@@ -80,20 +80,20 @@ func NewFeatureFlags(config FeatureFlagConfig) (*FeatureFlags, error) {
 		// Continue with defaults if AWS config fails
 		return ff, nil
 	}
-	
+
 	ff.client = appconfig.NewFromConfig(cfg)
-	
+
 	// Load initial flags
 	if err := ff.refresh(); err != nil {
 		// Log error but continue with defaults
 		// In production, you'd use proper logging here
 	}
-	
+
 	// Start refresh goroutine if client is available
 	if ff.client != nil {
 		go ff.refreshLoop()
 	}
-	
+
 	return ff, nil
 }
 
@@ -101,19 +101,19 @@ func NewFeatureFlags(config FeatureFlagConfig) (*FeatureFlags, error) {
 func (ff *FeatureFlags) IsEnabled(flag string) bool {
 	ff.mu.RLock()
 	defer ff.mu.RUnlock()
-	
+
 	// Check environment variable override first
 	envKey := "LIFT_FEATURE_" + flag
 	if envVal := os.Getenv(envKey); envVal != "" {
 		return envVal == "true" || envVal == "1"
 	}
-	
+
 	enabled, exists := ff.flags[flag]
 	if !exists {
 		// Return safe default
 		return ff.getDefault(flag)
 	}
-	
+
 	return enabled
 }
 
@@ -128,7 +128,7 @@ func (ff *FeatureFlags) SetFlag(flag string, enabled bool) {
 func (ff *FeatureFlags) GetAllFlags() map[string]bool {
 	ff.mu.RLock()
 	defer ff.mu.RUnlock()
-	
+
 	result := make(map[string]bool)
 	for k, v := range ff.flags {
 		result[k] = v
@@ -141,10 +141,10 @@ func (ff *FeatureFlags) refresh() error {
 	if ff.client == nil {
 		return fmt.Errorf("no AWS client available")
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	// Get configuration from AWS AppConfig
 	resp, err := ff.client.GetConfiguration(ctx, &appconfig.GetConfigurationInput{
 		Application:   aws.String(ff.application),
@@ -152,21 +152,21 @@ func (ff *FeatureFlags) refresh() error {
 		Configuration: aws.String("feature-flags"),
 		ClientId:      aws.String(ff.clientId),
 	})
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to get configuration: %w", err)
 	}
-	
+
 	// Parse configuration
 	var flags map[string]bool
 	if err := json.Unmarshal(resp.Content, &flags); err != nil {
 		return fmt.Errorf("failed to parse configuration: %w", err)
 	}
-	
+
 	ff.mu.Lock()
 	ff.flags = flags
 	ff.mu.Unlock()
-	
+
 	return nil
 }
 
@@ -174,7 +174,7 @@ func (ff *FeatureFlags) refresh() error {
 func (ff *FeatureFlags) refreshLoop() {
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -197,22 +197,22 @@ func (ff *FeatureFlags) getDefault(flag string) bool {
 	// Safe defaults for production
 	defaults := map[string]bool{
 		// Core features - enabled by default
-		RateLimitingEnabled:    true,
-		CircuitBreakerEnabled:  true,
-		EnhancedMonitoring:     true,
-		
+		RateLimitingEnabled:   true,
+		CircuitBreakerEnabled: true,
+		EnhancedMonitoring:    true,
+
 		// Optional features - disabled by default
 		ServiceMeshIntegration: false,
 		MockServicesEnabled:    false,
 		DebugLoggingEnabled:    false,
 		DevDashboardEnabled:    false,
 		NewDashboardUI:         false,
-		
+
 		// Security features - enabled by default
 		AdvancedSecurityEnabled: true,
 		IPAllowlistEnabled:      false,
 	}
-	
+
 	// Check if we're in development mode
 	if isDevelopment() {
 		// Different defaults for development
@@ -220,11 +220,11 @@ func (ff *FeatureFlags) getDefault(flag string) bool {
 		defaults[DebugLoggingEnabled] = true
 		defaults[DevDashboardEnabled] = true
 	}
-	
+
 	if val, exists := defaults[flag]; exists {
 		return val
 	}
-	
+
 	// Unknown flags default to false
 	return false
 }
@@ -233,7 +233,7 @@ func (ff *FeatureFlags) getDefault(flag string) bool {
 func (ff *FeatureFlags) loadDefaults() {
 	ff.mu.Lock()
 	defer ff.mu.Unlock()
-	
+
 	// Load all defaults
 	for flag := range getAllKnownFlags() {
 		ff.flags[flag] = ff.getDefault(flag)
@@ -247,7 +247,7 @@ func (ff *FeatureFlags) loadLocalOverrides() {
 	if configFile == "" {
 		configFile = ".lift-features.json"
 	}
-	
+
 	data, err := os.ReadFile(configFile)
 	if err == nil {
 		var overrides map[string]bool

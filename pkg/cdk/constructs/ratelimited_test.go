@@ -35,16 +35,16 @@ func TestRateLimitedFunction(t *testing.T) {
 
 		// Check Lambda function
 		template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-			"Runtime": "provided.al2023",
+			"Runtime":       "provided.al2023",
 			"Architectures": []interface{}{"arm64"},
-			"MemorySize": 512,
-			"Timeout": 30,
+			"MemorySize":    512,
+			"Timeout":       30,
 			"Environment": map[string]interface{}{
 				"Variables": map[string]interface{}{
 					"RATE_LIMIT_ENABLED": "true",
-					"RATE_LIMIT_TYPE": "IP",
-					"RATE_LIMIT_WINDOW": "3600",
-					"RATE_LIMIT_MAX": "1000",
+					"RATE_LIMIT_TYPE":    "IP",
+					"RATE_LIMIT_WINDOW":  "3600",
+					"RATE_LIMIT_MAX":     "1000",
 				},
 			},
 		})
@@ -54,7 +54,7 @@ func TestRateLimitedFunction(t *testing.T) {
 			"BillingMode": "PAY_PER_REQUEST",
 			"TimeToLiveSpecification": map[string]interface{}{
 				"AttributeName": "expires_at",
-				"Enabled": true,
+				"Enabled":       true,
 			},
 		})
 	})
@@ -63,7 +63,7 @@ func TestRateLimitedFunction(t *testing.T) {
 		// Create test app and stack
 		app := awscdk.NewApp(nil)
 		stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-		
+
 		// Create rate limited function with custom settings
 		fn := NewRateLimitedFunction(stack, jsii.String("CustomRateFunction"), &RateLimitedFunctionProps{
 			LiftFunctionProps: LiftFunctionProps{
@@ -74,7 +74,7 @@ func TestRateLimitedFunction(t *testing.T) {
 			},
 			RateLimitType: RateLimitTypeUser,
 			WindowSeconds: jsii.Number(300), // 5 minutes
-			Limit: jsii.Number(100),
+			Limit:         jsii.Number(100),
 			EnableMetrics: jsii.Bool(false),
 		})
 
@@ -87,9 +87,9 @@ func TestRateLimitedFunction(t *testing.T) {
 		template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
 			"Environment": map[string]interface{}{
 				"Variables": map[string]interface{}{
-					"RATE_LIMIT_TYPE": "USER",
+					"RATE_LIMIT_TYPE":   "USER",
 					"RATE_LIMIT_WINDOW": "300",
-					"RATE_LIMIT_MAX": "100",
+					"RATE_LIMIT_MAX":    "100",
 				},
 			},
 		})
@@ -99,9 +99,9 @@ func TestRateLimitedFunction(t *testing.T) {
 		// Create test app and stack
 		app := awscdk.NewApp(nil)
 		stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-		
+
 		tableName := jsii.String("existing-rate-table")
-		
+
 		fn := NewRateLimitedFunction(stack, jsii.String("ExistingTableFunction"), &RateLimitedFunctionProps{
 			LiftFunctionProps: LiftFunctionProps{
 				FunctionProps: awslambda.FunctionProps{
