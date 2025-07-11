@@ -28,7 +28,7 @@ func (e *IPExtractionError) Error() string {
 func ExtractClientIP(headers map[string]string, requestContext map[string]any) (string, error) {
 	// Collect relevant headers for error reporting
 	relevantHeaders := make(map[string]string)
-	
+
 	// Try X-Forwarded-For header first (most common for load balancers)
 	if forwardedFor, ok := headers["X-Forwarded-For"]; ok && forwardedFor != "" {
 		relevantHeaders["X-Forwarded-For"] = forwardedFor
@@ -130,6 +130,6 @@ func isValidIP(ip string) bool {
 			ip = host
 		}
 	}
-	
+
 	return net.ParseIP(ip) != nil
 }

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/jsii-runtime-go"
 )
 
@@ -78,23 +78,23 @@ func TestAuditingConstruct(t *testing.T) {
 
 	// Test CloudWatch Log Groups
 	template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), map[string]interface{}{
-		"LogGroupName": "/aws/audit/test-app/application",
+		"LogGroupName":    "/aws/audit/test-app/application",
 		"RetentionInDays": 3653,
 	})
 
 	template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), map[string]interface{}{
-		"LogGroupName": "/aws/audit/test-app/database",
+		"LogGroupName":    "/aws/audit/test-app/database",
 		"RetentionInDays": 3653,
 	})
 
 	template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), map[string]interface{}{
-		"LogGroupName": "/aws/audit/test-app/system",
+		"LogGroupName":    "/aws/audit/test-app/system",
 		"RetentionInDays": 3653,
 	})
 
 	// Test Kinesis Stream
 	template.HasResourceProperties(jsii.String("AWS::Kinesis::Stream"), map[string]interface{}{
-		"Name": "test-app-audit-stream",
+		"Name":       "test-app-audit-stream",
 		"ShardCount": 2,
 		"StreamEncryption": map[string]interface{}{
 			"EncryptionType": "KMS",
@@ -130,12 +130,12 @@ func TestAuditingConstruct(t *testing.T) {
 	// Test EventBridge Rules
 	template.HasResourceProperties(jsii.String("AWS::Events::Rule"), map[string]interface{}{
 		"ScheduleExpression": "rate(1 day)",
-		"State": "ENABLED",
+		"State":              "ENABLED",
 	})
 
 	template.HasResourceProperties(jsii.String("AWS::Events::Rule"), map[string]interface{}{
 		"ScheduleExpression": "rate(7 days)",
-		"State": "ENABLED",
+		"State":              "ENABLED",
 	})
 
 	// Test CloudWatch Dashboard
@@ -145,33 +145,33 @@ func TestAuditingConstruct(t *testing.T) {
 
 	// Test CloudWatch Alarms
 	template.HasResourceProperties(jsii.String("AWS::CloudWatch::Alarm"), map[string]interface{}{
-		"AlarmName": "test-app-failed-login-attempts",
-		"Threshold": 10,
+		"AlarmName":         "test-app-failed-login-attempts",
+		"Threshold":         10,
 		"EvaluationPeriods": 1,
 		"DatapointsToAlarm": 1,
-		"TreatMissingData": "notBreaching",
+		"TreatMissingData":  "notBreaching",
 	})
 
 	template.HasResourceProperties(jsii.String("AWS::CloudWatch::Alarm"), map[string]interface{}{
-		"AlarmName": "test-app-suspicious-activity",
-		"Threshold": 100,
+		"AlarmName":         "test-app-suspicious-activity",
+		"Threshold":         100,
 		"EvaluationPeriods": 2,
 		"DatapointsToAlarm": 2,
-		"TreatMissingData": "notBreaching",
+		"TreatMissingData":  "notBreaching",
 	})
 
 	// Test SSM Parameters
 	template.HasResourceProperties(jsii.String("AWS::SSM::Parameter"), map[string]interface{}{
-		"Name": "/test-app/audit/level",
-		"Value": "DETAILED",
-		"Type": "String",
+		"Name":        "/test-app/audit/level",
+		"Value":       "DETAILED",
+		"Type":        "String",
 		"Description": "Audit logging level",
 	})
 
 	template.HasResourceProperties(jsii.String("AWS::SSM::Parameter"), map[string]interface{}{
-		"Name": "/test-app/audit/retention-days",
-		"Value": "2555",
-		"Type": "String",
+		"Name":        "/test-app/audit/retention-days",
+		"Value":       "2555",
+		"Type":        "String",
 		"Description": "Audit log retention period in days",
 	})
 }
@@ -183,29 +183,29 @@ func TestAuditingConstructWithCustomConfiguration(t *testing.T) {
 
 	// Create AuditingConstruct with custom configuration
 	auditingConstruct := NewAuditingConstruct(stack, "TestAuditing", &AuditingProps{
-		AppName:                       jsii.String("custom-app"),
-		AuditLevel:                    AuditLevelComprehensive,
-		EnableCloudTrail:              jsii.Bool(true),
-		EnableApplicationLogs:         jsii.Bool(true),
-		EnableDatabaseLogs:            jsii.Bool(true),
-		EnableRealTimeProcessing:      jsii.Bool(true),
-		EnableTamperProtection:        jsii.Bool(true),
-		EnableLogAggregation:          jsii.Bool(true),
-		LogRetentionDays:              jsii.Number(365),
-		EnableSIEMIntegration:         jsii.Bool(true),
-		SIEMEndpoint:                  jsii.String("https://siem.example.com"),
-		EnableLogAnalysis:             jsii.Bool(true),
-		EnableComplianceReporting:     jsii.Bool(true),
-		Environment:                   jsii.String("production"),
-		EnableEncryption:              jsii.Bool(true),
-		EnableCrossAccountAccess:      jsii.Bool(true),
-		CrossAccountRoleArns:          &[]*string{jsii.String("arn:aws:iam::123456789012:role/CrossAccountRole")},
-		EnableIntegrityChecking:       jsii.Bool(true),
-		EnableDashboard:               jsii.Bool(true),
-		EnableAlerting:                jsii.Bool(true),
-		EnableImmutableLogs:           jsii.Bool(true),
-		EnableRegulatoryCompliance:    jsii.Bool(true),
-		ComplianceFrameworks:          &[]string{"SOC2", "HIPAA", "PCI-DSS"},
+		AppName:                    jsii.String("custom-app"),
+		AuditLevel:                 AuditLevelComprehensive,
+		EnableCloudTrail:           jsii.Bool(true),
+		EnableApplicationLogs:      jsii.Bool(true),
+		EnableDatabaseLogs:         jsii.Bool(true),
+		EnableRealTimeProcessing:   jsii.Bool(true),
+		EnableTamperProtection:     jsii.Bool(true),
+		EnableLogAggregation:       jsii.Bool(true),
+		LogRetentionDays:           jsii.Number(365),
+		EnableSIEMIntegration:      jsii.Bool(true),
+		SIEMEndpoint:               jsii.String("https://siem.example.com"),
+		EnableLogAnalysis:          jsii.Bool(true),
+		EnableComplianceReporting:  jsii.Bool(true),
+		Environment:                jsii.String("production"),
+		EnableEncryption:           jsii.Bool(true),
+		EnableCrossAccountAccess:   jsii.Bool(true),
+		CrossAccountRoleArns:       &[]*string{jsii.String("arn:aws:iam::123456789012:role/CrossAccountRole")},
+		EnableIntegrityChecking:    jsii.Bool(true),
+		EnableDashboard:            jsii.Bool(true),
+		EnableAlerting:             jsii.Bool(true),
+		EnableImmutableLogs:        jsii.Bool(true),
+		EnableRegulatoryCompliance: jsii.Bool(true),
+		ComplianceFrameworks:       &[]string{"SOC2", "HIPAA", "PCI-DSS"},
 	})
 
 	// Verify construct was created
@@ -234,25 +234,25 @@ func TestAuditingConstructWithCustomConfiguration(t *testing.T) {
 
 	// Test SSM Parameter with custom retention
 	template.HasResourceProperties(jsii.String("AWS::SSM::Parameter"), map[string]interface{}{
-		"Name": "/custom-app/audit/retention-days",
-		"Value": "365",
-		"Type": "String",
+		"Name":        "/custom-app/audit/retention-days",
+		"Value":       "365",
+		"Type":        "String",
 		"Description": "Audit log retention period in days",
 	})
 
 	// Test SSM Parameter with comprehensive audit level
 	template.HasResourceProperties(jsii.String("AWS::SSM::Parameter"), map[string]interface{}{
-		"Name": "/custom-app/audit/level",
-		"Value": "COMPREHENSIVE",
-		"Type": "String",
+		"Name":        "/custom-app/audit/level",
+		"Value":       "COMPREHENSIVE",
+		"Type":        "String",
 		"Description": "Audit logging level",
 	})
 
 	// Test SSM Parameter with compliance frameworks
 	template.HasResourceProperties(jsii.String("AWS::SSM::Parameter"), map[string]interface{}{
-		"Name": "/custom-app/audit/compliance-frameworks",
-		"Value": "[SOC2 HIPAA PCI-DSS]",
-		"Type": "String",
+		"Name":        "/custom-app/audit/compliance-frameworks",
+		"Value":       "[SOC2 HIPAA PCI-DSS]",
+		"Type":        "String",
 		"Description": "Enabled compliance frameworks",
 	})
 
@@ -337,9 +337,9 @@ func TestAuditingConstructBasicConfiguration(t *testing.T) {
 
 	// Test SSM Parameters are still created
 	template.HasResourceProperties(jsii.String("AWS::SSM::Parameter"), map[string]interface{}{
-		"Name": "/basic-app/audit/level",
-		"Value": "BASIC",
-		"Type": "String",
+		"Name":        "/basic-app/audit/level",
+		"Value":       "BASIC",
+		"Type":        "String",
 		"Description": "Audit logging level",
 	})
 }
@@ -446,7 +446,7 @@ func TestAuditingConstructLogGroupRetention(t *testing.T) {
 				})
 			} else {
 				template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), map[string]interface{}{
-					"LogGroupName": fmt.Sprintf("/aws/audit/test-app-%s/application", tc.name),
+					"LogGroupName":    fmt.Sprintf("/aws/audit/test-app-%s/application", tc.name),
 					"RetentionInDays": assertions.Match_AnyValue(),
 				})
 			}
@@ -461,19 +461,19 @@ func TestAuditingConstructResourceCount(t *testing.T) {
 
 	// Create AuditingConstruct with full configuration
 	NewAuditingConstruct(stack, "TestAuditing", &AuditingProps{
-		AppName:                       jsii.String("full-app"),
-		AuditLevel:                    AuditLevelComprehensive,
-		EnableCloudTrail:              jsii.Bool(true),
-		EnableRealTimeProcessing:      jsii.Bool(true),
-		EnableLogAggregation:          jsii.Bool(true),
-		EnableIntegrityChecking:       jsii.Bool(true),
-		EnableComplianceReporting:     jsii.Bool(true),
-		EnableDashboard:               jsii.Bool(true),
-		EnableAlerting:                jsii.Bool(true),
-		EnableEncryption:              jsii.Bool(true),
-		EnableCrossAccountAccess:      jsii.Bool(true),
-		CrossAccountRoleArns:          &[]*string{jsii.String("arn:aws:iam::123456789012:role/CrossAccountRole")},
-		ComplianceFrameworks:          &[]string{"SOC2", "HIPAA"},
+		AppName:                   jsii.String("full-app"),
+		AuditLevel:                AuditLevelComprehensive,
+		EnableCloudTrail:          jsii.Bool(true),
+		EnableRealTimeProcessing:  jsii.Bool(true),
+		EnableLogAggregation:      jsii.Bool(true),
+		EnableIntegrityChecking:   jsii.Bool(true),
+		EnableComplianceReporting: jsii.Bool(true),
+		EnableDashboard:           jsii.Bool(true),
+		EnableAlerting:            jsii.Bool(true),
+		EnableEncryption:          jsii.Bool(true),
+		EnableCrossAccountAccess:  jsii.Bool(true),
+		CrossAccountRoleArns:      &[]*string{jsii.String("arn:aws:iam::123456789012:role/CrossAccountRole")},
+		ComplianceFrameworks:      &[]string{"SOC2", "HIPAA"},
 	})
 
 	// Create template for assertions
@@ -488,7 +488,7 @@ func TestAuditingConstructResourceCount(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::Kinesis::Stream"), jsii.Number(1))
 	template.ResourceCountIs(jsii.String("AWS::KinesisFirehose::DeliveryStream"), jsii.Number(1))
 	template.ResourceCountIs(jsii.String("AWS::Lambda::Function"), jsii.Number(3)) // processing, integrity, compliance
-	template.ResourceCountIs(jsii.String("AWS::Events::Rule"), jsii.Number(2)) // integrity + compliance schedules
+	template.ResourceCountIs(jsii.String("AWS::Events::Rule"), jsii.Number(2))     // integrity + compliance schedules
 	template.ResourceCountIs(jsii.String("AWS::CloudWatch::Dashboard"), jsii.Number(1))
 	template.ResourceCountIs(jsii.String("AWS::CloudWatch::Alarm"), jsii.Number(2))
 	template.ResourceCountIs(jsii.String("AWS::SSM::Parameter"), jsii.Number(3)) // level, retention, frameworks

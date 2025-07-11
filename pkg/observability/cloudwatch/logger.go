@@ -17,7 +17,6 @@ import (
 	"github.com/pay-theory/lift/pkg/utils/sanitization"
 )
 
-
 // sharedLoggerState contains state shared between logger instances created via WithFields
 type sharedLoggerState struct {
 	buffer        chan *observability.LogEntry
@@ -40,7 +39,7 @@ type CloudWatchLogger struct {
 	flushInterval time.Duration
 	contextFields map[string]any
 	snsNotifier   *observability.SNSNotifier
-	
+
 	// Shared state between logger instances
 	shared *sharedLoggerState
 }
@@ -93,7 +92,7 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 			closed:        &closed,
 		},
 	}
-	
+
 	// Configure SNS notifier if provided
 	if len(opts) > 0 && opts[0].Notifier != nil {
 		logger.snsNotifier = opts[0].Notifier
@@ -156,9 +155,9 @@ func (l *CloudWatchLogger) WithFields(fields map[string]any) lift.Logger {
 		logStream:     l.logStream,
 		batchSize:     l.batchSize,
 		flushInterval: l.flushInterval,
-		contextFields: newFields,       // Only context fields are different
-		snsNotifier:   l.snsNotifier,   // Share SNS notifier
-		shared:        l.shared,        // Share all state
+		contextFields: newFields,     // Only context fields are different
+		snsNotifier:   l.snsNotifier, // Share SNS notifier
+		shared:        l.shared,      // Share all state
 	}
 }
 
@@ -193,7 +192,7 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]an
 	if atomic.LoadInt32(l.shared.closed) == 1 {
 		return
 	}
-	
+
 	entry := &observability.LogEntry{
 		Timestamp: time.Now().UTC(),
 		Level:     level,
@@ -240,14 +239,14 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]an
 	select {
 	case l.shared.buffer <- entry:
 		atomic.AddInt64(&l.shared.stats.entriesLogged, 1)
-		
+
 		// Send SNS notification for errors if configured
 		if level == "ERROR" && l.snsNotifier != nil {
 			// Async SNS notification to avoid blocking the logger
 			go func(e *observability.LogEntry) {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
-				
+
 				if err := l.snsNotifier.NotifyError(ctx, e); err != nil {
 					// Log SNS error to stats but don't block
 					atomic.AddInt64(&l.shared.stats.errorCount, 1)
@@ -330,7 +329,7 @@ func (l *CloudWatchLogger) flushBatch(batch []*observability.LogEntry) {
 	}
 
 	start := time.Now()
-	
+
 	defer func() {
 		duration := time.Since(start)
 		atomic.AddInt64(&l.shared.stats.flushCount, 1)
@@ -441,13 +440,13 @@ func (l *CloudWatchLogger) Close() error {
 	l.shared.closeOnce.Do(func() {
 		// Mark as closed to prevent new logs
 		atomic.StoreInt32(l.shared.closed, 1)
-		
+
 		// Signal shutdown
 		close(l.shared.done)
-		
+
 		// Wait for the flush loop to finish
 		l.shared.wg.Wait()
-		
+
 		// Close the buffer channel after the flush loop has exited
 		close(l.shared.buffer)
 	})
@@ -488,4 +487,3 @@ func (l *CloudWatchLogger) GetStats() observability.LoggerStats {
 		LastError:        l.shared.stats.lastError,
 	}
 }
-

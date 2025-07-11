@@ -13,8 +13,8 @@ import (
 // MockDynamORM provides a mock implementation of DynamORM for testing
 type MockDynamORM struct {
 	mu           sync.RWMutex
-	data         map[string]map[string]any // table -> key -> item
-	transactions map[string]*MockTransaction       // transaction ID -> transaction
+	data         map[string]map[string]any   // table -> key -> item
+	transactions map[string]*MockTransaction // transaction ID -> transaction
 	config       *dynamorm.DynamORMConfig
 
 	// Behavior configuration
@@ -319,9 +319,9 @@ func (tx *MockTransaction) Rollback() error {
 // MockAWSService provides a generic mock for AWS services
 type MockAWSService struct {
 	mu        sync.RWMutex
-	responses map[string]any // operation -> response
-	errors    map[string]error       // operation -> error
-	callCount map[string]int         // operation -> call count
+	responses map[string]any   // operation -> response
+	errors    map[string]error // operation -> error
+	callCount map[string]int   // operation -> call count
 }
 
 // NewMockAWSService creates a new mock AWS service
@@ -560,13 +560,13 @@ const (
 
 // MockConnection represents a WebSocket connection in the mock
 type MockConnection struct {
-	ID           string                 `json:"id"`
-	State        ConnectionState        `json:"state"`
-	CreatedAt    time.Time              `json:"created_at"`
-	LastActiveAt time.Time              `json:"last_active_at"`
-	SourceIP     string                 `json:"source_ip"`
-	UserAgent    string                 `json:"user_agent"`
-	Metadata     map[string]any `json:"metadata,omitempty"`
+	ID           string          `json:"id"`
+	State        ConnectionState `json:"state"`
+	CreatedAt    time.Time       `json:"created_at"`
+	LastActiveAt time.Time       `json:"last_active_at"`
+	SourceIP     string          `json:"source_ip"`
+	UserAgent    string          `json:"user_agent"`
+	Metadata     map[string]any  `json:"metadata,omitempty"`
 }
 
 // MockAPIGatewayConfig configures the behavior of the API Gateway mock
@@ -965,12 +965,12 @@ const (
 
 // MockMetricDatum represents a single metric data point
 type MockMetricDatum struct {
-	MetricName string                 `json:"metric_name"`
-	Value      float64                `json:"value"`
-	Unit       MetricUnit             `json:"unit"`
-	Timestamp  time.Time              `json:"timestamp"`
-	Dimensions map[string]string      `json:"dimensions,omitempty"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
+	MetricName string            `json:"metric_name"`
+	Value      float64           `json:"value"`
+	Unit       MetricUnit        `json:"unit"`
+	Timestamp  time.Time         `json:"timestamp"`
+	Dimensions map[string]string `json:"dimensions,omitempty"`
+	Metadata   map[string]any    `json:"metadata,omitempty"`
 }
 
 // AlarmState represents the state of a CloudWatch alarm

@@ -27,13 +27,13 @@ type Tenant struct {
 
 // TenantConfig holds tenant-specific configuration
 type TenantConfig struct {
-	Theme           ThemeConfig            `json:"theme"`
-	PaymentMethods  []string               `json:"paymentMethods"`
-	ShippingMethods []string               `json:"shippingMethods"`
-	Currency        string                 `json:"currency"`
-	Locale          string                 `json:"locale"`
-	Features        FeatureFlags           `json:"features"`
-	Limits          TenantLimits           `json:"limits"`
+	Theme           ThemeConfig    `json:"theme"`
+	PaymentMethods  []string       `json:"paymentMethods"`
+	ShippingMethods []string       `json:"shippingMethods"`
+	Currency        string         `json:"currency"`
+	Locale          string         `json:"locale"`
+	Features        FeatureFlags   `json:"features"`
+	Limits          TenantLimits   `json:"limits"`
 	CustomSettings  map[string]any `json:"customSettings"`
 }
 
@@ -88,23 +88,23 @@ type TenantOwner struct {
 
 // Product represents a product in the catalog
 type Product struct {
-	ID           string                 `json:"id"`
-	TenantID     string                 `json:"tenantId"`
-	SKU          string                 `json:"sku"`
-	Name         string                 `json:"name"`
-	Description  string                 `json:"description"`
-	Price        Money                  `json:"price"`
-	ComparePrice *Money                 `json:"comparePrice,omitempty"`
-	Inventory    Inventory              `json:"inventory"`
-	Categories   []string               `json:"categories"`
-	Tags         []string               `json:"tags"`
-	Attributes   map[string]any `json:"attributes"`
-	Images       []ProductImage         `json:"images"`
-	SEO          SEOData                `json:"seo"`
-	Status       ProductStatus          `json:"status"`
-	CreatedAt    time.Time              `json:"createdAt"`
-	UpdatedAt    time.Time              `json:"updatedAt"`
-	Variants     []ProductVariant       `json:"variants,omitempty"`
+	ID           string           `json:"id"`
+	TenantID     string           `json:"tenantId"`
+	SKU          string           `json:"sku"`
+	Name         string           `json:"name"`
+	Description  string           `json:"description"`
+	Price        Money            `json:"price"`
+	ComparePrice *Money           `json:"comparePrice,omitempty"`
+	Inventory    Inventory        `json:"inventory"`
+	Categories   []string         `json:"categories"`
+	Tags         []string         `json:"tags"`
+	Attributes   map[string]any   `json:"attributes"`
+	Images       []ProductImage   `json:"images"`
+	SEO          SEOData          `json:"seo"`
+	Status       ProductStatus    `json:"status"`
+	CreatedAt    time.Time        `json:"createdAt"`
+	UpdatedAt    time.Time        `json:"updatedAt"`
+	Variants     []ProductVariant `json:"variants,omitempty"`
 }
 
 // Money represents monetary values
@@ -345,16 +345,16 @@ type CreateTenantRequest struct {
 }
 
 type CreateProductRequest struct {
-	SKU         string                 `json:"sku" validate:"required"`
-	Name        string                 `json:"name" validate:"required"`
-	Description string                 `json:"description"`
-	Price       Money                  `json:"price" validate:"required"`
-	Inventory   Inventory              `json:"inventory"`
-	Categories  []string               `json:"categories"`
-	Tags        []string               `json:"tags"`
+	SKU         string         `json:"sku" validate:"required"`
+	Name        string         `json:"name" validate:"required"`
+	Description string         `json:"description"`
+	Price       Money          `json:"price" validate:"required"`
+	Inventory   Inventory      `json:"inventory"`
+	Categories  []string       `json:"categories"`
+	Tags        []string       `json:"tags"`
 	Attributes  map[string]any `json:"attributes"`
-	Images      []ProductImage         `json:"images"`
-	SEO         SEOData                `json:"seo"`
+	Images      []ProductImage `json:"images"`
+	SEO         SEOData        `json:"seo"`
 }
 
 type CreateCustomerRequest struct {

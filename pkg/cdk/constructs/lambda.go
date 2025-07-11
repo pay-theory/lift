@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -28,8 +27,6 @@ type LiftFunctionProps struct {
 	DeadLetterQueue awssqs.IQueue
 	// DeadLetterQueueMaxReceiveCount before sending to DLQ (default: 3)
 	DeadLetterQueueMaxReceiveCount *float64
-	// LogRetentionDays for CloudWatch Logs (default: 30)
-	LogRetentionDays *float64
 	// ReservedConcurrentExecutions to limit concurrent executions
 	ReservedConcurrentExecutions *float64
 	// EnableDynamORM configures DynamORM environment variables
@@ -43,8 +40,7 @@ type LiftFunctionProps struct {
 // LiftFunction is a Lambda function construct optimized for Lift applications
 type LiftFunction struct {
 	constructs.Construct
-	Function awslambda.Function
-	LogGroup awslogs.LogGroup
+	Function        awslambda.Function
 	DeadLetterQueue awssqs.IQueue
 }
 
@@ -73,9 +69,6 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 	if props.EnableTracing != nil && *props.EnableTracing {
 		props.Tracing = awslambda.Tracing_ACTIVE
 	}
-	if props.LogRetentionDays == nil {
-		props.LogRetentionDays = jsii.Number(30)
-	}
 	if props.EnableDeadLetterQueue == nil {
 		props.EnableDeadLetterQueue = jsii.Bool(true)
 	}
@@ -92,12 +85,12 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 			// Create a new DLQ
 			dlqName := fmt.Sprintf("%s-dlq", *id)
 			dlq = awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), &awssqs.QueueProps{
-				QueueName:           jsii.String(dlqName),
-				RetentionPeriod:     awscdk.Duration_Days(jsii.Number(14)),
-				VisibilityTimeout:   awscdk.Duration_Seconds(jsii.Number(300)),
+				QueueName:         jsii.String(dlqName),
+				RetentionPeriod:   awscdk.Duration_Days(jsii.Number(14)),
+				VisibilityTimeout: awscdk.Duration_Seconds(jsii.Number(300)),
 			})
 		}
-		
+
 		// Configure DLQ in Lambda props
 		props.DeadLetterQueueEnabled = jsii.Bool(true)
 		props.DeadLetterQueue = dlq
@@ -127,44 +120,38 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 	if props.EnableMetrics != nil && *props.EnableMetrics {
 		env["LIFT_METRICS_ENABLED"] = jsii.String("true")
 	}
-	
+
 	// Configure DynamORM environment variables if enabled
 	if props.EnableDynamORM != nil && *props.EnableDynamORM {
 		env["DYNAMORM_REGION"] = awscdk.Stack_Of(this).Region()
-		
+
 		if props.DynamORMTableName != nil {
 			env["DYNAMODB_TABLE_NAME"] = props.DynamORMTableName
 		}
-		
+
 		// Set debug mode
 		debugMode := "false"
 		if props.DynamORMDebug != nil && *props.DynamORMDebug {
 			debugMode = "true"
 		}
 		env["DYNAMORM_DEBUG"] = jsii.String(debugMode)
-		
+
 		// Set default retry configuration
 		env["DYNAMORM_RETRY_MAX_ATTEMPTS"] = jsii.String("3")
 		env["DYNAMORM_RETRY_BASE_DELAY"] = jsii.String("100")
 	}
-	
+
 	props.Environment = &env
+
+	// Lambda automatically creates and manages its own LogGroup
+	// We don't set any log-related properties to avoid conflicts
 
 	// Create the Lambda function
 	fn := awslambda.NewFunction(this, jsii.String("Function"), &props.FunctionProps)
 
-	// Create CloudWatch Log Group with retention
-	logGroupName := fmt.Sprintf("/aws/lambda/%s", *fn.FunctionName())
-	logGroup := awslogs.NewLogGroup(this, jsii.String("LogGroup"), &awslogs.LogGroupProps{
-		LogGroupName:  jsii.String(logGroupName),
-		Retention:     getRetentionDays(*props.LogRetentionDays),
-		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-	})
-
 	return &LiftFunction{
-		Construct: this,
-		Function:  fn,
-		LogGroup:  logGroup,
+		Construct:       this,
+		Function:        fn,
 		DeadLetterQueue: dlq,
 	}
 }
@@ -172,11 +159,6 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 // GetFunction returns the underlying Lambda function
 func (f *LiftFunction) GetFunction() awslambda.Function {
 	return f.Function
-}
-
-// GetLogGroup returns the CloudWatch log group
-func (f *LiftFunction) GetLogGroup() awslogs.LogGroup {
-	return f.LogGroup
 }
 
 // GetDeadLetterQueue returns the dead letter queue if configured
@@ -213,7 +195,7 @@ func (f *LiftFunction) Metric(metricName *string, props *awscloudwatch.MetricOpt
 func (f *LiftFunction) ConfigureDynamORM(tableName *string, debug *bool) {
 	f.AddEnvironment(jsii.String("DYNAMORM_REGION"), awscdk.Stack_Of(f).Region())
 	f.AddEnvironment(jsii.String("DYNAMODB_TABLE_NAME"), tableName)
-	
+
 	debugMode := "false"
 	if debug != nil && *debug {
 		debugMode = "true"
@@ -221,57 +203,4 @@ func (f *LiftFunction) ConfigureDynamORM(tableName *string, debug *bool) {
 	f.AddEnvironment(jsii.String("DYNAMORM_DEBUG"), jsii.String(debugMode))
 	f.AddEnvironment(jsii.String("DYNAMORM_RETRY_MAX_ATTEMPTS"), jsii.String("3"))
 	f.AddEnvironment(jsii.String("DYNAMORM_RETRY_BASE_DELAY"), jsii.String("100"))
-}
-
-// Helper function to convert retention days
-func getRetentionDays(days float64) awslogs.RetentionDays {
-	switch days {
-	case 1:
-		return awslogs.RetentionDays_ONE_DAY
-	case 3:
-		return awslogs.RetentionDays_THREE_DAYS
-	case 5:
-		return awslogs.RetentionDays_FIVE_DAYS
-	case 7:
-		return awslogs.RetentionDays_ONE_WEEK
-	case 14:
-		return awslogs.RetentionDays_TWO_WEEKS
-	case 30:
-		return awslogs.RetentionDays_ONE_MONTH
-	case 60:
-		return awslogs.RetentionDays_TWO_MONTHS
-	case 90:
-		return awslogs.RetentionDays_THREE_MONTHS
-	case 120:
-		return awslogs.RetentionDays_FOUR_MONTHS
-	case 150:
-		return awslogs.RetentionDays_FIVE_MONTHS
-	case 180:
-		return awslogs.RetentionDays_SIX_MONTHS
-	case 365:
-		return awslogs.RetentionDays_ONE_YEAR
-	case 400:
-		return awslogs.RetentionDays_THIRTEEN_MONTHS
-	case 545:
-		return awslogs.RetentionDays_EIGHTEEN_MONTHS
-	case 731:
-		return awslogs.RetentionDays_TWO_YEARS
-	case 1096:
-		return awslogs.RetentionDays_THREE_YEARS
-	case 1827:
-		return awslogs.RetentionDays_FIVE_YEARS
-	case 2192:
-		return awslogs.RetentionDays_SIX_YEARS
-	case 2557:
-		return awslogs.RetentionDays_SEVEN_YEARS
-	case 2922:
-		return awslogs.RetentionDays_EIGHT_YEARS
-	case 3288:
-		return awslogs.RetentionDays_NINE_YEARS
-	case 3653:
-		return awslogs.RetentionDays_TEN_YEARS
-	default:
-		// Default to 30 days if not a valid value
-		return awslogs.RetentionDays_ONE_MONTH
-	}
 }

@@ -31,7 +31,7 @@ func NewRequestTrackingTable(scope constructs.Construct, id *string, props *Requ
 	if props.TableName == nil {
 		props.TableName = jsii.String("request-tracking")
 	}
-	
+
 	// Enable TTL for request cleanup
 	if props.TimeToLiveAttribute == nil {
 		props.TimeToLiveAttribute = jsii.String("ttl")
@@ -46,7 +46,7 @@ func NewRequestTrackingTable(scope constructs.Construct, id *string, props *Requ
 		EnablePointInTimeRecovery: jsii.Bool(true),
 		EnableStreams:             jsii.Bool(true),
 	})
-	
+
 	return &RequestTrackingTable{
 		construct: scope,
 		LiftTable: liftTable,
@@ -58,14 +58,14 @@ func NewRequestTrackingTable(scope constructs.Construct, id *string, props *Requ
 // type RequestTracking struct {
 //     PK         string    `dynamorm:"pk"`                             // request#{request_id}
 //     SK         string    `dynamorm:"sk"`                             // request#{request_id}
-//     
+//
 //     // Indexes for queries
 //     CorrelationID string `dynamorm:"index:correlation-index,pk"`    // correlation_id
 //     Timestamp     string `dynamorm:"index:correlation-index,sk"`    // ISO timestamp
 //     Status        string `dynamorm:"index:status-index,pk"`         // status
 //     UserID        string `dynamorm:"index:user-index,pk"`           // user_id
 //     Date          string `dynamorm:"index:timestamp-index,pk"`      // YYYY-MM-DD
-//     
+//
 //     // Request data
 //     RequestID     string `json:"request_id"`
 //     TTL           int64  `json:"ttl"`

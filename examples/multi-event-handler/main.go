@@ -22,7 +22,7 @@ func main() {
 	// Handle HTTP requests from API Gateway
 	app.GET("/status", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
-			"status": "healthy",
+			"status":  "healthy",
 			"handler": "multi-event",
 		})
 	})
@@ -30,7 +30,7 @@ func main() {
 	// Handle SQS messages
 	app.SQS("process-order", func(ctx *lift.Context) error {
 		log.Println("Processing SQS message")
-		
+
 		// Parse message body
 		var order map[string]interface{}
 		if err := json.Unmarshal(ctx.Request.Body, &order); err != nil {
@@ -44,18 +44,18 @@ func main() {
 	// Handle S3 events
 	app.S3("file-uploaded", func(ctx *lift.Context) error {
 		log.Println("Processing S3 event")
-		
+
 		// Get S3 event details from context
 		event := ctx.Request.RawEvent
 		log.Printf("S3 event: %+v", event)
-		
+
 		return nil
 	})
 
 	// Handle EventBridge events
 	app.EventBridge("user-signup", func(ctx *lift.Context) error {
 		log.Println("Processing EventBridge user signup event")
-		
+
 		// Process user signup
 		var userData map[string]interface{}
 		if err := json.Unmarshal(ctx.Request.Body, &userData); err != nil {
@@ -69,11 +69,11 @@ func main() {
 	// Handle DynamoDB Streams
 	app.Handle("DynamoDBStreams", "user-table-stream", func(ctx *lift.Context) error {
 		log.Println("Processing DynamoDB stream event")
-		
+
 		// Process stream records
 		event := ctx.Request.RawEvent
 		log.Printf("DynamoDB stream event: %+v", event)
-		
+
 		return nil
 	})
 

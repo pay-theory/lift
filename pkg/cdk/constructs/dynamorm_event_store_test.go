@@ -133,9 +133,9 @@ func TestDynamORMEventStoreWithArchival(t *testing.T) {
 
 	// Create event store with archival enabled
 	eventStore := NewDynamORMEventStore(stack, jsii.String("TestEventStore"), &DynamORMEventStoreProps{
-		Pattern:            EventStorePattern_SINGLE_TABLE,
-		EnableArchival:     jsii.Bool(true),
-		ArchivalAfter:      awscdk.Duration_Days(jsii.Number(180)), // 6 months
+		Pattern:           EventStorePattern_SINGLE_TABLE,
+		EnableArchival:    jsii.Bool(true),
+		ArchivalAfter:     awscdk.Duration_Days(jsii.Number(180)),  // 6 months
 		EventTTL:          awscdk.Duration_Days(jsii.Number(2555)), // 7 years
 		SnapshotRetention: awscdk.Duration_Days(jsii.Number(365)),  // 1 year
 	})

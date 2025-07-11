@@ -33,7 +33,7 @@ func NewConnectionTable(scope constructs.Construct, id *string, props *Connectio
 	if props.TableName == nil {
 		props.TableName = jsii.String("websocket-connections")
 	}
-	
+
 	// Enable TTL for connection cleanup
 	if props.TimeToLiveAttribute == nil {
 		props.TimeToLiveAttribute = jsii.String("ttl")
@@ -48,7 +48,7 @@ func NewConnectionTable(scope constructs.Construct, id *string, props *Connectio
 		EnablePointInTimeRecovery: jsii.Bool(true),
 		EnableStreams:             jsii.Bool(true),
 	})
-	
+
 	return &ConnectionTable{
 		construct: scope,
 		LiftTable: liftTable,
@@ -66,12 +66,12 @@ func (c *ConnectionTable) GrantConnectionManagement(grantee awsiam.IGrantable) {
 // type Connection struct {
 //     PK         string    `dynamorm:"pk"`                       // connection#{connection_id}
 //     SK         string    `dynamorm:"sk"`                       // connection#{connection_id}
-//     
+//
 //     // Indexes for queries
 //     UserID     string    `dynamorm:"index:user-index,pk"`      // user_id
 //     CreatedAt  string    `dynamorm:"index:user-index,sk"`      // ISO timestamp
 //     TenantID   string    `dynamorm:"index:tenant-index,pk"`    // tenant_id (if multi-tenant)
-//     
+//
 //     // Connection data
 //     ConnectionID string  `json:"connection_id"`
 //     Endpoint     string  `json:"endpoint"`

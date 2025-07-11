@@ -23,16 +23,16 @@ type Account struct {
 }
 
 type Transaction struct {
-	ID             string                 `json:"id"`
-	FromAccountID  string                 `json:"fromAccountId"`
-	ToAccountID    string                 `json:"toAccountId"`
-	Amount         float64                `json:"amount"`
-	Currency       string                 `json:"currency"`
-	Type           string                 `json:"type"`
-	Status         string                 `json:"status"`
-	Description    string                 `json:"description"`
-	Reference      string                 `json:"reference"`
-	ProcessedAt    time.Time              `json:"processedAt"`
+	ID             string         `json:"id"`
+	FromAccountID  string         `json:"fromAccountId"`
+	ToAccountID    string         `json:"toAccountId"`
+	Amount         float64        `json:"amount"`
+	Currency       string         `json:"currency"`
+	Type           string         `json:"type"`
+	Status         string         `json:"status"`
+	Description    string         `json:"description"`
+	Reference      string         `json:"reference"`
+	ProcessedAt    time.Time      `json:"processedAt"`
 	ComplianceData map[string]any `json:"complianceData,omitempty"`
 }
 

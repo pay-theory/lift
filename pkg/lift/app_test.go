@@ -199,9 +199,9 @@ func TestIsLambda(t *testing.T) {
 		{
 			name: "Non-Lambda environment variables",
 			envVars: map[string]string{
-				"HOME":     "/home/user",
-				"PATH":     "/usr/bin:/bin",
-				"USER":     "testuser",
+				"HOME": "/home/user",
+				"PATH": "/usr/bin:/bin",
+				"USER": "testuser",
 			},
 			expected: false,
 		},
@@ -215,7 +215,7 @@ func TestIsLambda(t *testing.T) {
 				savedEnv[key] = os.Getenv(key)
 				os.Unsetenv(key)
 			}
-			
+
 			// Also ensure Lambda env vars are unset when testing non-Lambda scenarios
 			lambdaVars := []string{"AWS_LAMBDA_FUNCTION_NAME", "LAMBDA_TASK_ROOT", "AWS_EXECUTION_ENV"}
 			for _, key := range lambdaVars {

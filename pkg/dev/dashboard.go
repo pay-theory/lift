@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	
+
 	"github.com/pay-theory/lift/pkg/features"
 )
 
@@ -33,7 +33,7 @@ func NewDevDashboard(server *DevServer, port int) *DevDashboard {
 			LocalOnly: true,
 		})
 	}
-	
+
 	return &DevDashboard{
 		server:     server,
 		port:       port,
@@ -77,7 +77,7 @@ func (d *DevDashboard) Stop() error {
 	if d.logService != nil {
 		d.logService.Stop()
 	}
-	
+
 	if d.httpServer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -154,17 +154,17 @@ func (d *DevDashboard) handleAPILogs(w http.ResponseWriter, r *http.Request) {
 			limit = parsed
 		}
 	}
-	
+
 	// Get search query if provided
 	searchQuery := query.Get("search")
-	
+
 	var logs []LogEntry
 	if searchQuery != "" {
 		logs = d.logService.SearchLogs(searchQuery)
 	} else {
 		logs = d.logService.GetRecentLogs(limit)
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(logs)
 }

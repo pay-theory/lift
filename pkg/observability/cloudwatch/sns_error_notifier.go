@@ -8,7 +8,7 @@ import (
 // WithErrorNotifications creates CloudWatch logger options with SNS error notifications
 func WithErrorNotifications(snsClient *sns.Client, topicARN string) CloudWatchLoggerOptions {
 	notifier := observability.WithErrorNotifications(snsClient, topicARN)
-	
+
 	return CloudWatchLoggerOptions{
 		Notifier: notifier,
 	}
@@ -17,7 +17,7 @@ func WithErrorNotifications(snsClient *sns.Client, topicARN string) CloudWatchLo
 // WithDefaultErrorNotifications creates CloudWatch logger options with default SNS error notifications
 func WithDefaultErrorNotifications(snsClient *sns.Client) CloudWatchLoggerOptions {
 	notifier := observability.WithDefaultErrorNotifications(snsClient)
-	
+
 	return CloudWatchLoggerOptions{
 		Notifier: notifier,
 	}

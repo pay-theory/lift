@@ -40,12 +40,12 @@ func NewLogService(logFile string, ff *features.FeatureFlags) *LogService {
 		stopWatching: make(chan struct{}),
 		features:     ff,
 	}
-	
+
 	// Start watching log file if it exists
 	if logFile != "" {
 		go ls.watchLogFile()
 	}
-	
+
 	return ls
 }
 
@@ -53,9 +53,9 @@ func NewLogService(logFile string, ff *features.FeatureFlags) *LogService {
 func (ls *LogService) AddLog(entry LogEntry) {
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
-	
+
 	ls.logs = append(ls.logs, entry)
-	
+
 	// Keep only the most recent logs
 	if len(ls.logs) > ls.maxLogs {
 		ls.logs = ls.logs[len(ls.logs)-ls.maxLogs:]
@@ -66,17 +66,17 @@ func (ls *LogService) AddLog(entry LogEntry) {
 func (ls *LogService) GetRecentLogs(limit int) []LogEntry {
 	ls.mu.RLock()
 	defer ls.mu.RUnlock()
-	
+
 	if limit <= 0 || limit > len(ls.logs) {
 		limit = len(ls.logs)
 	}
-	
+
 	// Return the most recent logs
 	start := len(ls.logs) - limit
 	if start < 0 {
 		start = 0
 	}
-	
+
 	result := make([]LogEntry, limit)
 	copy(result, ls.logs[start:])
 	return result
@@ -86,14 +86,14 @@ func (ls *LogService) GetRecentLogs(limit int) []LogEntry {
 func (ls *LogService) GetLogsSince(since time.Time) []LogEntry {
 	ls.mu.RLock()
 	defer ls.mu.RUnlock()
-	
+
 	var result []LogEntry
 	for _, log := range ls.logs {
 		if log.Timestamp.After(since) {
 			result = append(result, log)
 		}
 	}
-	
+
 	return result
 }
 
@@ -101,16 +101,16 @@ func (ls *LogService) GetLogsSince(since time.Time) []LogEntry {
 func (ls *LogService) SearchLogs(query string) []LogEntry {
 	ls.mu.RLock()
 	defer ls.mu.RUnlock()
-	
+
 	query = strings.ToLower(query)
 	var result []LogEntry
-	
+
 	for _, log := range ls.logs {
 		if strings.Contains(strings.ToLower(log.Message), query) {
 			result = append(result, log)
 			continue
 		}
-		
+
 		// Also search in fields
 		for _, v := range log.Fields {
 			if str, ok := v.(string); ok {
@@ -121,7 +121,7 @@ func (ls *LogService) SearchLogs(query string) []LogEntry {
 			}
 		}
 	}
-	
+
 	return result
 }
 
@@ -145,19 +145,19 @@ func (ls *LogService) watchLogFile() {
 	if ls.logFile == "" {
 		return
 	}
-	
+
 	ls.watching = true
 	defer func() { ls.watching = false }()
-	
+
 	// Initial read of existing logs
 	ls.readExistingLogs()
-	
+
 	// Watch for new logs
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-	
+
 	var lastSize int64
-	
+
 	for {
 		select {
 		case <-ls.stopWatching:
@@ -167,7 +167,7 @@ func (ls *LogService) watchLogFile() {
 			if err != nil {
 				continue
 			}
-			
+
 			if info.Size() > lastSize {
 				ls.readNewLogs(lastSize)
 				lastSize = info.Size()
@@ -188,7 +188,7 @@ func (ls *LogService) readExistingLogs() {
 		return
 	}
 	defer file.Close()
-	
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		entry := ls.parseLogLine(scanner.Text())
@@ -205,13 +205,13 @@ func (ls *LogService) readNewLogs(offset int64) {
 		return
 	}
 	defer file.Close()
-	
+
 	// Seek to offset
 	_, err = file.Seek(offset, 0)
 	if err != nil {
 		return
 	}
-	
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		entry := ls.parseLogLine(scanner.Text())
@@ -228,7 +228,7 @@ func (ls *LogService) parseLogLine(line string) *LogEntry {
 	if err := json.Unmarshal([]byte(line), &entry); err == nil {
 		return &entry
 	}
-	
+
 	// Otherwise, parse as plain text log
 	// Format: TIMESTAMP LEVEL MESSAGE
 	parts := strings.SplitN(line, " ", 3)
@@ -240,12 +240,12 @@ func (ls *LogService) parseLogLine(line string) *LogEntry {
 			Message:   line,
 		}
 	}
-	
+
 	timestamp, err := time.Parse(time.RFC3339, parts[0])
 	if err != nil {
 		timestamp = time.Now()
 	}
-	
+
 	return &LogEntry{
 		Timestamp: timestamp,
 		Level:     parts[1],
@@ -265,13 +265,13 @@ func NewMockLogService(ff *features.FeatureFlags) *MockLogService {
 		LogService: NewLogService("", ff),
 		startTime:  time.Now(),
 	}
-	
+
 	// Add some initial mock logs
 	mls.generateInitialLogs()
-	
+
 	// Start generating periodic logs
 	go mls.generatePeriodicLogs()
-	
+
 	return mls
 }
 
@@ -306,7 +306,7 @@ func (mls *MockLogService) generateInitialLogs() {
 			Message:   "Dashboard available at http://localhost:3001",
 		},
 	}
-	
+
 	for _, log := range logs {
 		mls.AddLog(log)
 	}
@@ -316,9 +316,9 @@ func (mls *MockLogService) generateInitialLogs() {
 func (mls *MockLogService) generatePeriodicLogs() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	
+
 	requestCount := 0
-	
+
 	for {
 		select {
 		case <-mls.stopWatching:
@@ -337,7 +337,7 @@ func (mls *MockLogService) generatePeriodicLogs() {
 					},
 				})
 			}
-			
+
 			if requestCount%7 == 0 {
 				mls.AddLog(LogEntry{
 					Timestamp: time.Now(),
@@ -349,7 +349,7 @@ func (mls *MockLogService) generatePeriodicLogs() {
 					},
 				})
 			}
-			
+
 			if requestCount%15 == 0 {
 				mls.AddLog(LogEntry{
 					Timestamp: time.Now(),
@@ -361,7 +361,7 @@ func (mls *MockLogService) generatePeriodicLogs() {
 					},
 				})
 			}
-			
+
 			requestCount++
 		}
 	}
@@ -373,7 +373,7 @@ func LogServiceFactory(logFile string, ff *features.FeatureFlags) *LogService {
 	if ff != nil && ff.IsEnabled(features.MockServicesEnabled) {
 		return NewMockLogService(ff).LogService
 	}
-	
+
 	// Use real log service in production
 	return NewLogService(logFile, ff)
 }

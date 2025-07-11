@@ -18,147 +18,147 @@ import (
 // ServiceDiscoveryConfig defines service discovery configuration
 type ServiceDiscoveryConfig struct {
 	Namespace               *string
-	ServiceName            *string
-	HealthCheckPath        *string
-	HealthCheckInterval    *awscdk.Duration
-	HealthCheckTimeout     *awscdk.Duration
-	HealthyThresholdCount  *float64
+	ServiceName             *string
+	HealthCheckPath         *string
+	HealthCheckInterval     *awscdk.Duration
+	HealthCheckTimeout      *awscdk.Duration
+	HealthyThresholdCount   *float64
 	UnhealthyThresholdCount *float64
-	DNSRecordType          awsservicediscovery.DnsRecordType
-	TTL                    *awscdk.Duration
+	DNSRecordType           awsservicediscovery.DnsRecordType
+	TTL                     *awscdk.Duration
 }
 
 // LoadBalancerConfig defines load balancer configuration
 type LoadBalancerConfig struct {
-	Enabled               *bool
-	Certificate           awselasticloadbalancingv2.IListenerCertificate
-	DomainName            *string
-	EnableHTTP2           *bool
-	EnableSSLRedirect     *bool
-	IdleTimeout           *awscdk.Duration
-	HealthCheckPath       *string
-	HealthCheckInterval   *awscdk.Duration
-	HealthCheckTimeout    *awscdk.Duration
-	HealthyThresholdCount *float64
+	Enabled                 *bool
+	Certificate             awselasticloadbalancingv2.IListenerCertificate
+	DomainName              *string
+	EnableHTTP2             *bool
+	EnableSSLRedirect       *bool
+	IdleTimeout             *awscdk.Duration
+	HealthCheckPath         *string
+	HealthCheckInterval     *awscdk.Duration
+	HealthCheckTimeout      *awscdk.Duration
+	HealthyThresholdCount   *float64
 	UnhealthyThresholdCount *float64
-	DeregistrationDelay   *awscdk.Duration
-	StickinessEnabled     *bool
-	TargetGroupProtocol   awselasticloadbalancingv2.ApplicationProtocol
+	DeregistrationDelay     *awscdk.Duration
+	StickinessEnabled       *bool
+	TargetGroupProtocol     awselasticloadbalancingv2.ApplicationProtocol
 }
 
 // AutoScalingConfig defines auto-scaling configuration
 type AutoScalingConfig struct {
-	MinCapacity                *float64
-	MaxCapacity                *float64
-	TargetCPUUtilization      *float64
-	TargetMemoryUtilization   *float64
-	ScaleInCooldown           *awscdk.Duration
-	ScaleOutCooldown          *awscdk.Duration
-	RequestsPerTarget         *float64
-	EnablePredictiveScaling   *bool
-	EnableScheduledScaling    *bool
-	ScheduledScalingActions   *[]ScheduledScalingAction
+	MinCapacity             *float64
+	MaxCapacity             *float64
+	TargetCPUUtilization    *float64
+	TargetMemoryUtilization *float64
+	ScaleInCooldown         *awscdk.Duration
+	ScaleOutCooldown        *awscdk.Duration
+	RequestsPerTarget       *float64
+	EnablePredictiveScaling *bool
+	EnableScheduledScaling  *bool
+	ScheduledScalingActions *[]ScheduledScalingAction
 }
 
 // ScheduledScalingAction defines a scheduled scaling action
 type ScheduledScalingAction struct {
-	Name       string
-	Schedule   string
-	MinCapacity *float64
-	MaxCapacity *float64
+	Name            string
+	Schedule        string
+	MinCapacity     *float64
+	MaxCapacity     *float64
 	DesiredCapacity *float64
-	Timezone   *string
+	Timezone        *string
 }
 
 // HealthCheckConfig defines health check configuration
 type HealthCheckConfig struct {
-	Path             *string
-	Port             *float64
-	Protocol         *string
-	Interval         *awscdk.Duration
-	Timeout          *awscdk.Duration
-	HealthyThreshold *float64
+	Path               *string
+	Port               *float64
+	Protocol           *string
+	Interval           *awscdk.Duration
+	Timeout            *awscdk.Duration
+	HealthyThreshold   *float64
 	UnhealthyThreshold *float64
-	GracePeriod      *awscdk.Duration
+	GracePeriod        *awscdk.Duration
 }
 
 // NetworkConfig defines network configuration
 type NetworkConfig struct {
-	VPC                    awsec2.IVpc
-	SubnetSelection        *awsec2.SubnetSelection
-	SecurityGroups         *[]awsec2.ISecurityGroup
-	AssignPublicIP         *bool
-	EnableVPCLogs          *bool
+	VPC                     awsec2.IVpc
+	SubnetSelection         *awsec2.SubnetSelection
+	SecurityGroups          *[]awsec2.ISecurityGroup
+	AssignPublicIP          *bool
+	EnableVPCLogs           *bool
 	EnableContainerInsights *bool
 }
 
 // ContainerConfig defines container configuration
 type ContainerConfig struct {
-	ImageURI                *string
-	CodeAssetPath          *string
-	Platform               awsecs.CpuArchitecture
-	CPU                    *float64
-	Memory                 *float64
-	Environment            *map[string]*string
-	Secrets                *map[string]awsecs.Secret
-	LogRetentionDays       awslogs.RetentionDays
-	EnableXRayTracing      *bool
-	EnableFirelens         *bool
-	Command                *[]*string
-	EntryPoint             *[]*string
-	WorkingDirectory       *string
-	User                   *string
+	ImageURI          *string
+	CodeAssetPath     *string
+	Platform          awsecs.CpuArchitecture
+	CPU               *float64
+	Memory            *float64
+	Environment       *map[string]*string
+	Secrets           *map[string]awsecs.Secret
+	LogRetentionDays  awslogs.RetentionDays
+	EnableXRayTracing *bool
+	EnableFirelens    *bool
+	Command           *[]*string
+	EntryPoint        *[]*string
+	WorkingDirectory  *string
+	User              *string
 }
 
 // MicroserviceCompleteProps defines comprehensive microservice properties
 type MicroserviceCompleteProps struct {
 	awscdk.StackProps
 	// Basic configuration
-	ServiceName         *string
-	Environment         *string
+	ServiceName *string
+	Environment *string
 	// Network configuration
-	NetworkConfig       *NetworkConfig
+	NetworkConfig *NetworkConfig
 	// Container configuration
-	ContainerConfig     *ContainerConfig
+	ContainerConfig *ContainerConfig
 	// Service discovery
-	ServiceDiscovery    *ServiceDiscoveryConfig
+	ServiceDiscovery *ServiceDiscoveryConfig
 	// Load balancer
-	LoadBalancer        *LoadBalancerConfig
+	LoadBalancer *LoadBalancerConfig
 	// Auto scaling
-	AutoScaling         *AutoScalingConfig
+	AutoScaling *AutoScalingConfig
 	// Health checks
-	HealthCheck         *HealthCheckConfig
+	HealthCheck *HealthCheckConfig
 	// Enable enhanced monitoring
 	EnableEnhancedMonitoring *bool
 	// Enable enhanced security
-	EnableEnhancedSecurity   *bool
+	EnableEnhancedSecurity *bool
 	// Tags
-	Tags                *map[string]*string
+	Tags *map[string]*string
 }
 
 // MicroserviceComplete represents a complete microservice implementation
 type MicroserviceComplete struct {
 	constructs.Construct
 	// Infrastructure
-	VPC               awsec2.IVpc
-	Cluster           awsecs.ICluster
-	Service           awsecs.FargateService
-	TaskDefinition    awsecs.FargateTaskDefinition
+	VPC            awsec2.IVpc
+	Cluster        awsecs.ICluster
+	Service        awsecs.FargateService
+	TaskDefinition awsecs.FargateTaskDefinition
 	// Service discovery
-	Namespace         awsservicediscovery.IPrivateDnsNamespace
-	ServiceDiscovery  awsservicediscovery.IService
+	Namespace        awsservicediscovery.IPrivateDnsNamespace
+	ServiceDiscovery awsservicediscovery.IService
 	// Load balancing
-	LoadBalancer      awselasticloadbalancingv2.IApplicationLoadBalancer
-	TargetGroup       awselasticloadbalancingv2.IApplicationTargetGroup
-	Listener          awselasticloadbalancingv2.IApplicationListener
+	LoadBalancer awselasticloadbalancingv2.IApplicationLoadBalancer
+	TargetGroup  awselasticloadbalancingv2.IApplicationTargetGroup
+	Listener     awselasticloadbalancingv2.IApplicationListener
 	// Auto scaling
-	ScalableTarget    awsecs.ScalableTaskCount
+	ScalableTarget awsecs.ScalableTaskCount
 	// Monitoring and security
-	Monitoring        *liftconstructs.EnhancedMonitoring
-	Security          *liftconstructs.EnhancedSecurity
+	Monitoring *liftconstructs.EnhancedMonitoring
+	Security   *liftconstructs.EnhancedSecurity
 	// Outputs
-	ServiceEndpoint   *string
-	LoadBalancerDNS   *string
+	ServiceEndpoint          *string
+	LoadBalancerDNS          *string
 	ServiceDiscoveryEndpoint *string
 }
 
@@ -374,8 +374,8 @@ func (m *MicroserviceComplete) createCluster(props *MicroserviceCompleteProps) {
 func (m *MicroserviceComplete) setupServiceDiscovery(props *MicroserviceCompleteProps) {
 	// Create private DNS namespace
 	m.Namespace = awsservicediscovery.NewPrivateDnsNamespace(m.Construct, jsii.String("Namespace"), &awsservicediscovery.PrivateDnsNamespaceProps{
-		Name: props.ServiceDiscovery.Namespace,
-		Vpc:  m.VPC,
+		Name:        props.ServiceDiscovery.Namespace,
+		Vpc:         m.VPC,
 		Description: jsii.String(fmt.Sprintf("Service discovery namespace for %s", *props.ServiceName)),
 	})
 
@@ -387,9 +387,9 @@ func (m *MicroserviceComplete) createTaskDefinition(props *MicroserviceCompleteP
 	// Create task definition
 	m.TaskDefinition = awsecs.NewFargateTaskDefinition(m.Construct, jsii.String("TaskDef"), &awsecs.FargateTaskDefinitionProps{
 		MemoryLimitMiB: jsii.Number(*props.ContainerConfig.Memory),
-		Cpu:           jsii.Number(*props.ContainerConfig.CPU),
+		Cpu:            jsii.Number(*props.ContainerConfig.CPU),
 		RuntimePlatform: &awsecs.RuntimePlatform{
-			CpuArchitecture:      props.ContainerConfig.Platform,
+			CpuArchitecture:       props.ContainerConfig.Platform,
 			OperatingSystemFamily: awsecs.OperatingSystemFamily_LINUX(),
 		},
 	})
@@ -424,8 +424,8 @@ func (m *MicroserviceComplete) createTaskDefinition(props *MicroserviceCompleteP
 		HealthCheck: &awsecs.HealthCheck{
 			Command: &[]*string{
 				jsii.String("CMD-SHELL"),
-				jsii.String(fmt.Sprintf("curl -f http://localhost:%s%s || exit 1", 
-					fmt.Sprintf("%.0f", *props.HealthCheck.Port), 
+				jsii.String(fmt.Sprintf("curl -f http://localhost:%s%s || exit 1",
+					fmt.Sprintf("%.0f", *props.HealthCheck.Port),
 					*props.HealthCheck.Path)),
 			},
 			Interval:    *props.HealthCheck.Interval,
@@ -466,7 +466,7 @@ func (m *MicroserviceComplete) createTaskDefinition(props *MicroserviceCompleteP
 				StreamPrefix: jsii.String("xray"),
 				LogRetention: awslogs.RetentionDays_ONE_WEEK,
 			}),
-			Essential: jsii.Bool(false),
+			Essential:            jsii.Bool(false),
 			MemoryReservationMiB: jsii.Number(256),
 		}).AddPortMappings(&awsecs.PortMapping{
 			ContainerPort: jsii.Number(2000),
@@ -486,28 +486,28 @@ func (m *MicroserviceComplete) createService(props *MicroserviceCompleteProps) {
 
 	// Create the Fargate service
 	serviceProps := &awsecs.FargateServiceProps{
-		Cluster:              m.Cluster,
-		TaskDefinition:       m.TaskDefinition,
-		DesiredCount:         props.AutoScaling.MinCapacity,
-		AssignPublicIp:       props.NetworkConfig.AssignPublicIP,
-		VpcSubnets:           subnetSelection,
-		SecurityGroups:       props.NetworkConfig.SecurityGroups,
-		PlatformVersion:      awsecs.FargatePlatformVersion_LATEST,
+		Cluster:         m.Cluster,
+		TaskDefinition:  m.TaskDefinition,
+		DesiredCount:    props.AutoScaling.MinCapacity,
+		AssignPublicIp:  props.NetworkConfig.AssignPublicIP,
+		VpcSubnets:      subnetSelection,
+		SecurityGroups:  props.NetworkConfig.SecurityGroups,
+		PlatformVersion: awsecs.FargatePlatformVersion_LATEST,
 		CircuitBreaker: &awsecs.DeploymentCircuitBreaker{
 			Rollback: jsii.Bool(true),
 		},
-		MaxHealthyPercent:        jsii.Number(200),
-		MinHealthyPercent:        jsii.Number(50),
+		MaxHealthyPercent: jsii.Number(200),
+		MinHealthyPercent: jsii.Number(50),
 	}
 
 	// Add service discovery configuration
 	if props.ServiceDiscovery != nil {
 		serviceProps.CloudMapOptions = &awsecs.CloudMapOptions{
-			Name:              props.ServiceDiscovery.ServiceName,
-			DnsRecordType:     props.ServiceDiscovery.DNSRecordType,
-			DnsTtl:            *props.ServiceDiscovery.TTL,
-			Container:         m.TaskDefinition.FindContainer(jsii.String("Container")),
-			ContainerPort:     jsii.Number(*props.HealthCheck.Port),
+			Name:          props.ServiceDiscovery.ServiceName,
+			DnsRecordType: props.ServiceDiscovery.DNSRecordType,
+			DnsTtl:        *props.ServiceDiscovery.TTL,
+			Container:     m.TaskDefinition.FindContainer(jsii.String("Container")),
+			ContainerPort: jsii.Number(*props.HealthCheck.Port),
 		}
 
 		// Add health check configuration if specified
@@ -520,8 +520,8 @@ func (m *MicroserviceComplete) createService(props *MicroserviceCompleteProps) {
 
 	// Store service discovery endpoint
 	if props.ServiceDiscovery != nil {
-		m.ServiceDiscoveryEndpoint = jsii.String(fmt.Sprintf("%s.%s", 
-			*props.ServiceDiscovery.ServiceName, 
+		m.ServiceDiscoveryEndpoint = jsii.String(fmt.Sprintf("%s.%s",
+			*props.ServiceDiscovery.ServiceName,
 			*props.ServiceDiscovery.Namespace))
 	}
 }
@@ -540,15 +540,15 @@ func (m *MicroserviceComplete) setupLoadBalancer(props *MicroserviceCompleteProp
 
 	// Create target group
 	m.TargetGroup = awselasticloadbalancingv2.NewApplicationTargetGroup(m.Construct, jsii.String("TargetGroup"), &awselasticloadbalancingv2.ApplicationTargetGroupProps{
-		Vpc:      m.VPC,
-		Port:     jsii.Number(*props.HealthCheck.Port),
-		Protocol: props.LoadBalancer.TargetGroupProtocol,
+		Vpc:        m.VPC,
+		Port:       jsii.Number(*props.HealthCheck.Port),
+		Protocol:   props.LoadBalancer.TargetGroupProtocol,
 		TargetType: awselasticloadbalancingv2.TargetType_IP,
 		HealthCheck: &awselasticloadbalancingv2.HealthCheck{
 			Path:                    props.LoadBalancer.HealthCheckPath,
 			HealthyHttpCodes:        jsii.String("200"),
-			Interval:               *props.LoadBalancer.HealthCheckInterval,
-			Timeout:                *props.LoadBalancer.HealthCheckTimeout,
+			Interval:                *props.LoadBalancer.HealthCheckInterval,
+			Timeout:                 *props.LoadBalancer.HealthCheckTimeout,
 			HealthyThresholdCount:   jsii.Number(*props.LoadBalancer.HealthyThresholdCount),
 			UnhealthyThresholdCount: jsii.Number(*props.LoadBalancer.UnhealthyThresholdCount),
 		},
@@ -583,8 +583,8 @@ func (m *MicroserviceComplete) setupLoadBalancer(props *MicroserviceCompleteProp
 				Port:     jsii.Number(80),
 				Protocol: awselasticloadbalancingv2.ApplicationProtocol_HTTP,
 				DefaultAction: awselasticloadbalancingv2.ListenerAction_Redirect(&awselasticloadbalancingv2.RedirectOptions{
-					Protocol: jsii.String("HTTPS"),
-					Port:     jsii.String("443"),
+					Protocol:  jsii.String("HTTPS"),
+					Port:      jsii.String("443"),
 					Permanent: jsii.Bool(true),
 				}),
 			})
@@ -628,11 +628,11 @@ func (m *MicroserviceComplete) setupAutoScaling(props *MicroserviceCompleteProps
 	// Request-based scaling if load balancer is configured
 	if m.TargetGroup != nil && props.AutoScaling.RequestsPerTarget != nil {
 		m.ScalableTarget.ScaleOnRequestCount(jsii.String("RequestScaling"), &awsecs.RequestCountScalingProps{
-			RequestsPerTarget:    props.AutoScaling.RequestsPerTarget,
+			RequestsPerTarget: props.AutoScaling.RequestsPerTarget,
 			// TargetGroup should be concrete type, not interface
 			// This would need refactoring to work properly
-			ScaleInCooldown:      *props.AutoScaling.ScaleInCooldown,
-			ScaleOutCooldown:     *props.AutoScaling.ScaleOutCooldown,
+			ScaleInCooldown:  *props.AutoScaling.ScaleInCooldown,
+			ScaleOutCooldown: *props.AutoScaling.ScaleOutCooldown,
 		})
 	}
 
@@ -640,7 +640,7 @@ func (m *MicroserviceComplete) setupAutoScaling(props *MicroserviceCompleteProps
 	if props.AutoScaling.ScheduledScalingActions != nil {
 		for _, action := range *props.AutoScaling.ScheduledScalingActions {
 			m.ScalableTarget.ScaleOnSchedule(jsii.String(action.Name), &awsapplicationautoscaling.ScalingSchedule{
-				Schedule: awsapplicationautoscaling.Schedule_Expression(jsii.String(action.Schedule)),
+				Schedule:    awsapplicationautoscaling.Schedule_Expression(jsii.String(action.Schedule)),
 				MinCapacity: action.MinCapacity,
 				MaxCapacity: action.MaxCapacity,
 				// TimeZone: action.Timezone, // TimeZone requires awscdk.TimeZone type
@@ -666,11 +666,11 @@ func (m *MicroserviceComplete) setupEnhancedMonitoring(props *MicroserviceComple
 func (m *MicroserviceComplete) setupEnhancedSecurity(props *MicroserviceCompleteProps) {
 	// Create enhanced security configuration
 	m.Security = liftconstructs.NewEnhancedSecurity(m.Construct, jsii.String("Security"), &liftconstructs.EnhancedSecurityProps{
-		Vpc:                m.VPC,
-		EnableWAF:          jsii.Bool(true),
-		EnableVPCFlowLogs:  jsii.Bool(true),
-		Environment:        props.Environment,
-		ApplicationName:    props.ServiceName,
+		Vpc:               m.VPC,
+		EnableWAF:         jsii.Bool(true),
+		EnableVPCFlowLogs: jsii.Bool(true),
+		Environment:       props.Environment,
+		ApplicationName:   props.ServiceName,
 		IngressRules: []liftconstructs.SecurityRule{
 			{
 				Port:        *props.HealthCheck.Port,
@@ -735,10 +735,10 @@ func (m *MicroserviceComplete) createOutputs(props *MicroserviceCompleteProps) {
 func (m *MicroserviceComplete) applyTags(props *MicroserviceCompleteProps) {
 	// Apply default tags
 	defaultTags := map[string]*string{
-		"Environment":   props.Environment,
-		"ServiceName":   props.ServiceName,
-		"ManagedBy":     jsii.String("CDK"),
-		"Project":       jsii.String("Lift"),
+		"Environment": props.Environment,
+		"ServiceName": props.ServiceName,
+		"ManagedBy":   jsii.String("CDK"),
+		"Project":     jsii.String("Lift"),
 	}
 
 	// Merge with custom tags

@@ -16,10 +16,10 @@ func TestAPIGatewayV2StageHandling(t *testing.T) {
 		{
 			name: "Custom domain with stage prefix",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "ANY /v1/customers",
-				"rawPath":   "/paytheorystudy/v1/customers",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "ANY /v1/customers",
+				"rawPath":  "/paytheorystudy/v1/customers",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"stage":     "paytheorystudy",
 					"requestId": "test-123",
@@ -35,10 +35,10 @@ func TestAPIGatewayV2StageHandling(t *testing.T) {
 		{
 			name: "Direct API Gateway URL without stage in path",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "GET /users",
-				"rawPath":   "/users",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "GET /users",
+				"rawPath":  "/users",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"stage":     "prod",
 					"requestId": "test-456",
@@ -54,10 +54,10 @@ func TestAPIGatewayV2StageHandling(t *testing.T) {
 		{
 			name: "$default stage",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "POST /api/data",
-				"rawPath":   "/api/data",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "POST /api/data",
+				"rawPath":  "/api/data",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"stage":     "$default",
 					"requestId": "test-789",
@@ -73,10 +73,10 @@ func TestAPIGatewayV2StageHandling(t *testing.T) {
 		{
 			name: "Root path with stage",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "GET /",
-				"rawPath":   "/dev",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "GET /",
+				"rawPath":  "/dev",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"stage":     "dev",
 					"requestId": "test-root",
@@ -92,10 +92,10 @@ func TestAPIGatewayV2StageHandling(t *testing.T) {
 		{
 			name: "Path with stage-like prefix but different stage",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "GET /production/data",
-				"rawPath":   "/production/data",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "GET /production/data",
+				"rawPath":  "/production/data",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"stage":     "dev",
 					"requestId": "test-mismatch",
@@ -111,10 +111,10 @@ func TestAPIGatewayV2StageHandling(t *testing.T) {
 		{
 			name: "Complex path with multiple segments",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "PUT /v1/users/{id}/profile",
-				"rawPath":   "/staging/v1/users/123/profile",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "PUT /v1/users/{id}/profile",
+				"rawPath":  "/staging/v1/users/123/profile",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"stage":     "staging",
 					"requestId": "test-complex",
@@ -154,10 +154,10 @@ func TestAPIGatewayV2StageHandlingEdgeCases(t *testing.T) {
 		{
 			name: "Empty stage",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "GET /test",
-				"rawPath":   "/test",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "GET /test",
+				"rawPath":  "/test",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"stage":     "",
 					"requestId": "test-empty",
@@ -172,10 +172,10 @@ func TestAPIGatewayV2StageHandlingEdgeCases(t *testing.T) {
 		{
 			name: "Missing stage in context",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "GET /test",
-				"rawPath":   "/test",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "GET /test",
+				"rawPath":  "/test",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"requestId": "test-no-stage",
 					"http": map[string]any{
@@ -189,10 +189,10 @@ func TestAPIGatewayV2StageHandlingEdgeCases(t *testing.T) {
 		{
 			name: "Stage with special characters",
 			event: map[string]any{
-				"version":   "2.0",
-				"routeKey":  "GET /api",
-				"rawPath":   "/stage-123/api",
-				"headers":   map[string]any{},
+				"version":  "2.0",
+				"routeKey": "GET /api",
+				"rawPath":  "/stage-123/api",
+				"headers":  map[string]any{},
 				"requestContext": map[string]any{
 					"stage":     "stage-123",
 					"requestId": "test-special",

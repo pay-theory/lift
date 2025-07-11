@@ -17,9 +17,9 @@ import (
 // DynamORMIntegrationSuite provides a base suite for DynamORM integration tests
 type DynamORMIntegrationSuite struct {
 	suite.Suite
-	helper       *DynamORMTestHelper
-	client       *dynamodb.Client
-	tablePrefix  string
+	helper        *DynamORMTestHelper
+	client        *dynamodb.Client
+	tablePrefix   string
 	createdTables []string
 }
 
@@ -33,7 +33,7 @@ func (s *DynamORMIntegrationSuite) SetupSuite() {
 	// Create test helper
 	s.helper = NewDynamORMTestHelper(s.T())
 	s.client = s.helper.DynamoClient
-	
+
 	// Generate unique table prefix to avoid conflicts
 	s.tablePrefix = fmt.Sprintf("test-%d-", time.Now().Unix())
 }
@@ -218,21 +218,21 @@ func (s *DynamORMTestScenarios) TestMultiTenantAccess(t *testing.T, tableName st
 	// Create items for different tenants
 	tenant1Items := []map[string]types.AttributeValue{
 		{
-			"pk": &types.AttributeValueMemberS{Value: "TENANT#abc123"},
-			"sk": &types.AttributeValueMemberS{Value: "USER#1"},
+			"pk":   &types.AttributeValueMemberS{Value: "TENANT#abc123"},
+			"sk":   &types.AttributeValueMemberS{Value: "USER#1"},
 			"data": &types.AttributeValueMemberS{Value: "Tenant ABC User 1"},
 		},
 		{
-			"pk": &types.AttributeValueMemberS{Value: "TENANT#abc123"},
-			"sk": &types.AttributeValueMemberS{Value: "USER#2"},
+			"pk":   &types.AttributeValueMemberS{Value: "TENANT#abc123"},
+			"sk":   &types.AttributeValueMemberS{Value: "USER#2"},
 			"data": &types.AttributeValueMemberS{Value: "Tenant ABC User 2"},
 		},
 	}
 
 	tenant2Items := []map[string]types.AttributeValue{
 		{
-			"pk": &types.AttributeValueMemberS{Value: "TENANT#xyz789"},
-			"sk": &types.AttributeValueMemberS{Value: "USER#1"},
+			"pk":   &types.AttributeValueMemberS{Value: "TENANT#xyz789"},
+			"sk":   &types.AttributeValueMemberS{Value: "USER#1"},
 			"data": &types.AttributeValueMemberS{Value: "Tenant XYZ User 1"},
 		},
 	}
@@ -275,8 +275,8 @@ func (s *DynamORMTestScenarios) TestPaginatedQueries(t *testing.T, tableName str
 	// Create many items
 	for i := 0; i < 25; i++ {
 		item := map[string]types.AttributeValue{
-			"pk": &types.AttributeValueMemberS{Value: "PAGINATED"},
-			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("ITEM#%03d", i)},
+			"pk":   &types.AttributeValueMemberS{Value: "PAGINATED"},
+			"sk":   &types.AttributeValueMemberS{Value: fmt.Sprintf("ITEM#%03d", i)},
 			"data": &types.AttributeValueMemberS{Value: fmt.Sprintf("Item %d", i)},
 		}
 		s.helper.PutTestItem(t, tableName, item)
@@ -323,7 +323,7 @@ func (s *DynamORMTestScenarios) TestPaginatedQueries(t *testing.T, tableName str
 // TestConditionalWrites tests conditional write operations
 func (s *DynamORMTestScenarios) TestConditionalWrites(t *testing.T, tableName string) {
 	ctx := context.Background()
-	
+
 	// First write should succeed
 	item := map[string]types.AttributeValue{
 		"pk":      &types.AttributeValueMemberS{Value: "CONDITIONAL"},
@@ -348,7 +348,7 @@ func (s *DynamORMTestScenarios) TestConditionalWrites(t *testing.T, tableName st
 		Item:                item,
 		ConditionExpression: aws.String("attribute_not_exists(pk)"),
 	})
-	
+
 	if err == nil {
 		t.Error("Expected conditional write to fail, but it succeeded")
 	}
@@ -360,7 +360,7 @@ func (s *DynamORMTestScenarios) TestConditionalWrites(t *testing.T, tableName st
 			"pk": &types.AttributeValueMemberS{Value: "CONDITIONAL"},
 			"sk": &types.AttributeValueMemberS{Value: "TEST"},
 		},
-		UpdateExpression: aws.String("SET #data = :data, #version = :newVersion"),
+		UpdateExpression:    aws.String("SET #data = :data, #version = :newVersion"),
 		ConditionExpression: aws.String("#version = :oldVersion"),
 		ExpressionAttributeNames: map[string]string{
 			"#data":    "data",
@@ -372,7 +372,7 @@ func (s *DynamORMTestScenarios) TestConditionalWrites(t *testing.T, tableName st
 			":newVersion": &types.AttributeValueMemberN{Value: "2"},
 		},
 	})
-	
+
 	if err != nil {
 		t.Errorf("Conditional update failed: %v", err)
 	}

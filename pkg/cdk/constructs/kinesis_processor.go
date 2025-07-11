@@ -221,7 +221,7 @@ func NewKinesisProcessor(scope constructs.Construct, id *string, props *KinesisP
 		if consumerName == nil {
 			consumerName = jsii.String("LiftConsumer")
 		}
-		
+
 		// Note: Enhanced fan-out consumer creation is not directly supported in CDK Go
 		// You would need to create the consumer using CloudFormation or after deployment
 		// For now, we just set the consumer name as an environment variable
@@ -280,7 +280,7 @@ func (k *KinesisProcessor) GetDLQUrl() *string {
 
 // AddConsumer adds an enhanced fan-out consumer to the stream
 func (k *KinesisProcessor) AddConsumer(id *string, consumerName *string) awskinesis.IStreamConsumer {
-	// This is a simplified approach - in a real implementation, 
+	// This is a simplified approach - in a real implementation,
 	// you would use CfnStreamConsumer or handle this differently
 	k.Function.Function.AddEnvironment(jsii.String("KINESIS_CONSUMER_"+*id), consumerName, nil)
 	return k.Consumer

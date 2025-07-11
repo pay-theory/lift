@@ -70,10 +70,10 @@ type EnhancedMonitoringProps struct {
 // EnhancedMonitoring provides comprehensive monitoring with real CloudWatch metrics
 type EnhancedMonitoring struct {
 	constructs.Construct
-	Metrics    map[string]awscloudwatch.IMetric
-	Alarms     map[string]awscloudwatch.IAlarm
-	Dashboard  awscloudwatch.Dashboard
-	LogGroup   awslogs.LogGroup
+	Metrics       map[string]awscloudwatch.IMetric
+	Alarms        map[string]awscloudwatch.IAlarm
+	Dashboard     awscloudwatch.Dashboard
+	LogGroup      awslogs.LogGroup
 	MetricFilters map[string]awslogs.MetricFilter
 }
 
@@ -130,10 +130,10 @@ func (m *EnhancedMonitoring) setDefaults(props *EnhancedMonitoringProps) {
 	}
 	if props.AlarmThresholds == nil {
 		props.AlarmThresholds = &AlarmThresholds{
-			ErrorRate:            jsii.Number(5.0),   // 5% error rate
-			LatencyP99:           jsii.Number(3000),  // 3 seconds
-			ThrottleCount:        jsii.Number(5),     // 5 throttles
-			ConcurrentExecutions: jsii.Number(100),   // 100 concurrent
+			ErrorRate:            jsii.Number(5.0),  // 5% error rate
+			LatencyP99:           jsii.Number(3000), // 3 seconds
+			ThrottleCount:        jsii.Number(5),    // 5 throttles
+			ConcurrentExecutions: jsii.Number(100),  // 100 concurrent
 		}
 	}
 	if props.Environment == nil {
@@ -166,30 +166,30 @@ func (m *EnhancedMonitoring) createLambdaMetrics(fn *LiftFunction, props *Enhanc
 
 	// Request metrics with detailed dimensions
 	m.Metrics["Requests"] = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-		Namespace:  props.Namespace,
-		MetricName: jsii.String("Requests"),
+		Namespace:     props.Namespace,
+		MetricName:    jsii.String("Requests"),
 		DimensionsMap: baseDimensions,
-		Statistic:  jsii.String("Sum"),
-		Period:     awscdk.Duration_Minutes(jsii.Number(1)),
+		Statistic:     jsii.String("Sum"),
+		Period:        awscdk.Duration_Minutes(jsii.Number(1)),
 	})
 
 	// Error metrics with categorization
 	m.Metrics["Errors"] = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-		Namespace:  props.Namespace,
-		MetricName: jsii.String("Errors"),
+		Namespace:     props.Namespace,
+		MetricName:    jsii.String("Errors"),
 		DimensionsMap: baseDimensions,
-		Statistic:  jsii.String("Sum"),
-		Period:     awscdk.Duration_Minutes(jsii.Number(1)),
+		Statistic:     jsii.String("Sum"),
+		Period:        awscdk.Duration_Minutes(jsii.Number(1)),
 	})
 
 	// Latency percentiles
 	for _, p := range *props.MetricConfig.Percentiles {
 		m.Metrics[fmt.Sprintf("LatencyP%v", *p)] = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:  props.Namespace,
-			MetricName: jsii.String("Duration"),
+			Namespace:     props.Namespace,
+			MetricName:    jsii.String("Duration"),
 			DimensionsMap: baseDimensions,
-			Statistic:  jsii.String(fmt.Sprintf("p%v", *p)),
-			Period:     awscdk.Duration_Minutes(jsii.Number(1)),
+			Statistic:     jsii.String(fmt.Sprintf("p%v", *p)),
+			Period:        awscdk.Duration_Minutes(jsii.Number(1)),
 		})
 	}
 
@@ -268,7 +268,7 @@ func (m *EnhancedMonitoring) createBusinessMetrics(fn *LiftFunction, props *Enha
 	// Parameters are used for context but not directly in metric creation
 	_ = fn
 	_ = props
-	
+
 	// Success rate metric
 	m.Metrics["SuccessRate"] = awscloudwatch.NewMathExpression(&awscloudwatch.MathExpressionProps{
 		Expression: jsii.String("100 * (requests - errors) / requests"),
@@ -305,7 +305,7 @@ func (m *EnhancedMonitoring) createBusinessMetrics(fn *LiftFunction, props *Enha
 func (m *EnhancedMonitoring) createDynamoDBMetrics(table *LiftTable, props *EnhancedMonitoringProps) {
 	// Props parameter is reserved for future use
 	_ = props
-	
+
 	// Consumed capacity metrics
 	m.Metrics["ConsumedReadCapacity"] = table.Table.MetricConsumedReadCapacityUnits(&awscloudwatch.MetricOptions{
 		Period: awscdk.Duration_Minutes(jsii.Number(1)),
@@ -348,8 +348,8 @@ func (m *EnhancedMonitoring) createDynamoDBMetrics(table *LiftTable, props *Enha
 	for _, op := range operations {
 		opName := string(op)
 		m.Metrics[fmt.Sprintf("%sLatency", opName)] = table.Table.MetricSuccessfulRequestLatency(&awscloudwatch.MetricOptions{
-			Statistic:  jsii.String("Average"),
-			Period:     awscdk.Duration_Minutes(jsii.Number(1)),
+			Statistic: jsii.String("Average"),
+			Period:    awscdk.Duration_Minutes(jsii.Number(1)),
 		})
 	}
 }
@@ -357,7 +357,7 @@ func (m *EnhancedMonitoring) createDynamoDBMetrics(table *LiftTable, props *Enha
 func (m *EnhancedMonitoring) createAPIMetrics(api *LiftAPI, props *EnhancedMonitoringProps) {
 	// Props parameter is reserved for future use
 	_ = props
-	
+
 	// API Gateway v2 metrics
 	stageName := jsii.String("$default")
 
@@ -422,11 +422,11 @@ func (m *EnhancedMonitoring) createAlarms(props *EnhancedMonitoringProps) {
 			DatapointsToAlarm: jsii.Number(2),
 			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		}
-		
+
 		if props.AlertTopic != nil {
 			alarmProps.ActionsEnabled = jsii.Bool(true)
 		}
-		
+
 		m.Alarms["HighErrorRate"] = awscloudwatch.NewAlarm(m.Construct, jsii.String("HighErrorRate"), alarmProps)
 	}
 
@@ -567,7 +567,7 @@ func (m *EnhancedMonitoring) createDashboard(props *EnhancedMonitoringProps) {
 			{
 				awscloudwatch.NewAlarmWidget(&awscloudwatch.AlarmWidgetProps{
 					Title:  jsii.String("Active Alarms"),
-					Alarm: m.Alarms["HighErrorRate"],
+					Alarm:  m.Alarms["HighErrorRate"],
 					Width:  jsii.Number(24),
 					Height: jsii.Number(4),
 				}),

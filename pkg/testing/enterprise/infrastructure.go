@@ -16,12 +16,12 @@ type ComplianceValidator struct {
 
 // ValidationRule defines a compliance validation rule
 type ValidationRule struct {
-	ID          string                 `json:"id"`
-	Framework   string                 `json:"framework"`
-	Category    string                 `json:"category"`
-	Description string                 `json:"description"`
-	Severity    ValidationSeverity     `json:"severity"`
-	Parameters  map[string]any `json:"parameters"`
+	ID          string             `json:"id"`
+	Framework   string             `json:"framework"`
+	Category    string             `json:"category"`
+	Description string             `json:"description"`
+	Severity    ValidationSeverity `json:"severity"`
+	Parameters  map[string]any     `json:"parameters"`
 }
 
 // ValidationProcessor processes validation rules
@@ -31,11 +31,11 @@ type ValidationProcessor interface {
 
 // ValidationResult represents the result of a validation
 type ValidationResult struct {
-	RuleID    string                 `json:"rule_id"`
-	Status    ValidationStatus       `json:"status"`
-	Message   string                 `json:"message"`
-	Details   map[string]any `json:"details"`
-	Timestamp time.Time              `json:"timestamp"`
+	RuleID    string           `json:"rule_id"`
+	Status    ValidationStatus `json:"status"`
+	Message   string           `json:"message"`
+	Details   map[string]any   `json:"details"`
+	Timestamp time.Time        `json:"timestamp"`
 }
 
 // ValidationStatus is already defined in types.go
@@ -85,7 +85,7 @@ type InfrastructureComplianceMonitor struct {
 
 // MonitorAction defines an action to take when a monitor triggers
 type MonitorAction struct {
-	Type       ActionType             `json:"type"`
+	Type       ActionType     `json:"type"`
 	Parameters map[string]any `json:"parameters"`
 }
 
@@ -197,12 +197,12 @@ type InfrastructureEvidenceIndexer interface {
 
 // EvidenceFilter defines filters for evidence queries
 type EvidenceFilter struct {
-	Framework string                 `json:"framework"`
-	ControlID string                 `json:"control_id"`
-	Type      EvidenceType           `json:"type"`
-	StartTime time.Time              `json:"start_time"`
-	EndTime   time.Time              `json:"end_time"`
-	Tags      []string               `json:"tags"`
+	Framework string         `json:"framework"`
+	ControlID string         `json:"control_id"`
+	Type      EvidenceType   `json:"type"`
+	StartTime time.Time      `json:"start_time"`
+	EndTime   time.Time      `json:"end_time"`
+	Tags      []string       `json:"tags"`
 	Metadata  map[string]any `json:"metadata"`
 }
 
@@ -233,14 +233,14 @@ type CustomRetentionPolicy struct {
 
 // RetentionCondition defines a condition for retention
 type RetentionCondition struct {
-	Field    string      `json:"field"`
-	Operator string      `json:"operator"`
-	Value    any `json:"value"`
+	Field    string `json:"field"`
+	Operator string `json:"operator"`
+	Value    any    `json:"value"`
 }
 
 // RetentionAction defines an action for retention
 type RetentionAction struct {
-	Type       string                 `json:"type"`
+	Type       string         `json:"type"`
 	Parameters map[string]any `json:"parameters"`
 }
 
@@ -294,12 +294,12 @@ func (e *EvidenceStore) StoreReport(ctx context.Context, report *ComplianceRepor
 
 // InfrastructureTest represents an infrastructure test
 type InfrastructureTest struct {
-	ID       string                 `json:"id"`
-	Name     string                 `json:"name"`
-	Type     string                 `json:"type"`
-	Target   string                 `json:"target"`
-	Config   map[string]any `json:"config"`
-	Timeout  time.Duration          `json:"timeout"`
-	Retries  int                    `json:"retries"`
-	Severity ValidationSeverity     `json:"severity"`
+	ID       string             `json:"id"`
+	Name     string             `json:"name"`
+	Type     string             `json:"type"`
+	Target   string             `json:"target"`
+	Config   map[string]any     `json:"config"`
+	Timeout  time.Duration      `json:"timeout"`
+	Retries  int                `json:"retries"`
+	Severity ValidationSeverity `json:"severity"`
 }

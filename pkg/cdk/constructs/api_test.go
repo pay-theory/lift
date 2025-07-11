@@ -89,14 +89,14 @@ func TestNewLiftAPI(t *testing.T) {
 			assertions: func(t *testing.T, template assertions.Template) {
 				// Check log group is created
 				template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), &map[string]interface{}{
-					"LogGroupName":   "/aws/apigateway/test-api",
+					"LogGroupName":    "/aws/apigateway/test-api",
 					"RetentionInDays": 7,
 				})
 				// Check stage has access log settings
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Stage"), &map[string]interface{}{
 					"AccessLogSettings": &map[string]interface{}{
 						"DestinationArn": assertions.Match_AnyValue(),
-						"Format":        assertions.Match_AnyValue(),
+						"Format":         assertions.Match_AnyValue(),
 					},
 				})
 			},
@@ -125,7 +125,7 @@ func TestNewLiftAPI(t *testing.T) {
 			},
 			assertions: func(t *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Stage"), &map[string]interface{}{
-					"StageName": "prod",
+					"StageName":  "prod",
 					"AutoDeploy": true,
 				})
 			},
@@ -186,14 +186,14 @@ func TestLiftAPI_AddLambdaRoute(t *testing.T) {
 	// Assert route is created
 	template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Route"), &map[string]interface{}{
 		"RouteKey": "GET /test",
-		"Target": assertions.Match_AnyValue(),
+		"Target":   assertions.Match_AnyValue(),
 	})
 
 	// Assert integration is created
 	template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Integration"), &map[string]interface{}{
-		"IntegrationType": "AWS_PROXY",
+		"IntegrationType":      "AWS_PROXY",
 		"PayloadFormatVersion": "2.0",
-		"IntegrationUri": assertions.Match_AnyValue(),
+		"IntegrationUri":       assertions.Match_AnyValue(),
 	})
 }
 
@@ -340,9 +340,9 @@ func TestLiftAPI_Integration(t *testing.T) {
 
 	// Assert API is created with all features
 	template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"), &map[string]interface{}{
-		"Name":             "test-api",
-		"Description":      "Test API with all features",
-		"ProtocolType":     "HTTP",
+		"Name":              "test-api",
+		"Description":       "Test API with all features",
+		"ProtocolType":      "HTTP",
 		"CorsConfiguration": assertions.Match_AnyValue(),
 	})
 

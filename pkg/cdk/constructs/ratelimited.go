@@ -70,7 +70,7 @@ func NewRateLimitedFunction(scope constructs.Construct, id *string, props *RateL
 
 	// Create DynamORM-compatible rate limit table
 	rateTable = NewRateLimitTable(this, jsii.String("RateTable"), &RateLimitTableProps{
-		TableName:           tableName,
+		TableName: tableName,
 	})
 
 	// Add rate limiting environment variables
@@ -78,26 +78,26 @@ func NewRateLimitedFunction(scope constructs.Construct, id *string, props *RateL
 		props.LiftFunctionProps.Environment = &map[string]*string{}
 	}
 	env := *props.LiftFunctionProps.Environment
-	
+
 	// DynamORM table configuration
 	env["RATE_LIMIT_TABLE_NAME"] = rateTable.Table.TableName()
 	env["DYNAMORM_REGION"] = awscdk.Stack_Of(this).Region()
-	
+
 	// Rate limiting configuration
 	env["RATE_LIMIT_TYPE"] = jsii.String(string(props.RateLimitType))
 	env["RATE_LIMIT_WINDOW"] = jsii.String(fmt.Sprintf("%.0f", *props.WindowSeconds))
 	env["RATE_LIMIT_MAX"] = jsii.String(fmt.Sprintf("%.0f", *props.Limit))
 	env["RATE_LIMIT_ENABLED"] = jsii.String("true")
-	
+
 	// DynamORM configuration
 	env["DYNAMORM_DEBUG"] = jsii.String("false")
 	env["DYNAMORM_RETRY_MAX_ATTEMPTS"] = jsii.String("3")
 	env["DYNAMORM_RETRY_BASE_DELAY"] = jsii.String("100")
-	
+
 	// Limited library configuration
 	env["LIMITED_ENABLED"] = jsii.String("true")
 	env["LIMITED_BACKEND"] = jsii.String("dynamorm")
-	
+
 	if *props.EnableMetrics {
 		env["RATE_LIMIT_METRICS_ENABLED"] = jsii.String("true")
 	}
@@ -151,19 +151,19 @@ func (f *RateLimitedFunction) AddRateLimitAlarm(alarmName *string, threshold *fl
 	if threshold == nil {
 		threshold = jsii.Number(10) // Default to 10 rate limit violations
 	}
-	
+
 	// Create a metric for rate limit violations
 	metric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
 		Namespace:  jsii.String("LiftApp/RateLimiting"),
 		MetricName: jsii.String("RateLimitExceeded"),
 		DimensionsMap: &map[string]*string{
-			"FunctionName": f.Function.Function.FunctionName(),
+			"FunctionName":  f.Function.Function.FunctionName(),
 			"RateLimitType": jsii.String(string(f.rateLimitType)),
 		},
 		Statistic: jsii.String("Sum"),
 		Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 	})
-	
+
 	// Create the alarm
 	alarm := awscloudwatch.NewAlarm(f, alarmName, &awscloudwatch.AlarmProps{
 		Metric:            metric,
@@ -172,8 +172,8 @@ func (f *RateLimitedFunction) AddRateLimitAlarm(alarmName *string, threshold *fl
 		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		AlarmDescription:  jsii.String(fmt.Sprintf("Alarm when rate limit violations exceed %v in 5 minutes", *threshold)),
 	})
-	
+
 	// Note: Add alarm actions to an SNS topic if needed
-	
+
 	return alarm
 }

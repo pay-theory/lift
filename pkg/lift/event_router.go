@@ -60,7 +60,7 @@ func (er *EventRouter) FindEventHandler(ctx *Context) (EventHandler, error) {
 	er.mu.RLock()
 	routes, exists := er.routes[triggerType]
 	er.mu.RUnlock()
-	
+
 	if !exists || len(routes) == 0 {
 		return nil, fmt.Errorf("no routes found for trigger type: %s", triggerType)
 	}
@@ -116,7 +116,7 @@ func (er *EventRouter) matchSQSPattern(ctx *Context, pattern string) bool {
 // matchS3Pattern matches S3 bucket names and object keys
 func (er *EventRouter) matchS3Pattern(ctx *Context, pattern string) bool {
 	var bucketName, objectKey string
-	
+
 	// Check if this is an S3 event through EventBridge
 	if ctx.Request.Source == "aws.s3" && ctx.Request.Detail != nil {
 		// For EventBridge S3 events, bucket and object info is in the detail field
@@ -153,27 +153,27 @@ func (er *EventRouter) matchS3PatternString(bucketName, objectKey, pattern strin
 	if pattern == "*" {
 		return true
 	}
-	
+
 	// If pattern starts with /, treat it as an object key pattern
 	if strings.HasPrefix(pattern, "/") {
 		return er.matchObjectKeyPattern(objectKey, pattern[1:]) // Remove leading /
 	}
-	
+
 	// If pattern contains /, treat it as bucket/key pattern
 	if strings.Contains(pattern, "/") {
 		parts := strings.SplitN(pattern, "/", 2)
 		bucketPattern := parts[0]
 		keyPattern := parts[1]
-		
+
 		// Match bucket part
 		if !er.matchWildcardPattern(bucketName, bucketPattern) {
 			return false
 		}
-		
+
 		// Match key part
 		return er.matchObjectKeyPattern(objectKey, keyPattern)
 	}
-	
+
 	// Otherwise, just match bucket name
 	return er.matchWildcardPattern(bucketName, pattern)
 }
@@ -183,7 +183,7 @@ func (er *EventRouter) matchObjectKeyPattern(objectKey, pattern string) bool {
 	if pattern == "*" || pattern == "**" {
 		return true
 	}
-	
+
 	// Support path-like patterns
 	// e.g., "uploads/*", "*/file.zip", "data/*/reports"
 	return er.matchWildcardPattern(objectKey, pattern)
@@ -195,24 +195,24 @@ func (er *EventRouter) matchWildcardPattern(str, pattern string) bool {
 	if pattern == str {
 		return true
 	}
-	
+
 	// Single wildcard
 	if pattern == "*" {
 		return true
 	}
-	
+
 	// Prefix match: "prefix*"
 	if strings.HasSuffix(pattern, "*") && !strings.Contains(pattern[:len(pattern)-1], "*") {
 		prefix := strings.TrimSuffix(pattern, "*")
 		return strings.HasPrefix(str, prefix)
 	}
-	
+
 	// Suffix match: "*suffix"
 	if strings.HasPrefix(pattern, "*") && !strings.Contains(pattern[1:], "*") {
 		suffix := strings.TrimPrefix(pattern, "*")
 		return strings.HasSuffix(str, suffix)
 	}
-	
+
 	// Middle wildcard: "prefix*suffix"
 	if strings.Count(pattern, "*") == 1 {
 		parts := strings.Split(pattern, "*")
@@ -220,7 +220,7 @@ func (er *EventRouter) matchWildcardPattern(str, pattern string) bool {
 			return strings.HasPrefix(str, parts[0]) && strings.HasSuffix(str, parts[1])
 		}
 	}
-	
+
 	// Multiple wildcards - convert to simple regex-like matching
 	// This is a simplified implementation
 	if strings.Contains(pattern, "*") {
@@ -247,7 +247,7 @@ func (er *EventRouter) matchWildcardPattern(str, pattern string) bool {
 		}
 		return true
 	}
-	
+
 	return false
 }
 
@@ -325,7 +325,6 @@ func (er *EventRouter) matchScheduledEventPattern(ctx *Context, pattern string) 
 	return ruleName == pattern
 }
 
-
 // HandleEvent routes an event to the appropriate handler
 func (er *EventRouter) HandleEvent(ctx *Context) error {
 	handler, err := er.FindEventHandler(ctx)
@@ -340,7 +339,7 @@ func (er *EventRouter) HandleEvent(ctx *Context) error {
 func (er *EventRouter) GetRoutes() map[TriggerType][]*EventRoute {
 	er.mu.RLock()
 	defer er.mu.RUnlock()
-	
+
 	// Create a copy to avoid external modifications
 	routesCopy := make(map[TriggerType][]*EventRoute)
 	for k, v := range er.routes {
@@ -351,34 +350,33 @@ func (er *EventRouter) GetRoutes() map[TriggerType][]*EventRoute {
 
 // SQSMessage represents a parsed SQS message for type-safe handling
 type SQSMessage struct {
-	MessageID     string                 `json:"messageId"`
-	Body          string                 `json:"body"`
-	ReceiptHandle string                 `json:"receiptHandle"`
+	MessageID     string         `json:"messageId"`
+	Body          string         `json:"body"`
+	ReceiptHandle string         `json:"receiptHandle"`
 	Attributes    map[string]any `json:"attributes"`
-	EventSource   string                 `json:"eventSource"`
+	EventSource   string         `json:"eventSource"`
 }
 
 // S3Event represents a parsed S3 event for type-safe handling
 type S3Event struct {
-	EventSource string                 `json:"eventSource"`
-	EventName   string                 `json:"eventName"`
-	EventTime   string                 `json:"eventTime"`
-	Bucket      string                 `json:"bucket"`
-	ObjectKey   string                 `json:"objectKey"`
-	ObjectSize  int64                  `json:"objectSize"`
+	EventSource string         `json:"eventSource"`
+	EventName   string         `json:"eventName"`
+	EventTime   string         `json:"eventTime"`
+	Bucket      string         `json:"bucket"`
+	ObjectKey   string         `json:"objectKey"`
+	ObjectSize  int64          `json:"objectSize"`
 	S3Data      map[string]any `json:"s3"`
 }
 
 // EventBridgeEvent represents a parsed EventBridge event for type-safe handling
 type EventBridgeEvent struct {
-	Source     string                 `json:"source"`
-	DetailType string                 `json:"detail-type"`
+	Source     string         `json:"source"`
+	DetailType string         `json:"detail-type"`
 	Detail     map[string]any `json:"detail"`
-	Time       string                 `json:"time"`
-	ID         string                 `json:"id"`
-	Resources  []string               `json:"resources"`
+	Time       string         `json:"time"`
+	ID         string         `json:"id"`
+	Resources  []string       `json:"resources"`
 }
-
 
 // ParseSQSMessages extracts SQS messages from the request
 func (ctx *Context) ParseSQSMessages() ([]SQSMessage, error) {
@@ -466,8 +464,8 @@ func (ctx *Context) ParseEventBridgeEvent() (*EventBridgeEvent, error) {
 
 // IsScheduledEvent checks if this EventBridge event is a scheduled event
 func (ctx *Context) IsScheduledEvent() bool {
-	return ctx.Request.TriggerType == TriggerEventBridge && 
-		ctx.Request.Source == "aws.events" && 
+	return ctx.Request.TriggerType == TriggerEventBridge &&
+		ctx.Request.Source == "aws.events" &&
 		ctx.Request.DetailType == "Scheduled Event"
 }
 
@@ -490,7 +488,6 @@ func (ctx *Context) GetScheduledRuleName() string {
 
 	return ""
 }
-
 
 // Helper functions for safe field extraction
 func getStringField(data map[string]any, key string) string {

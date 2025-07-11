@@ -3,13 +3,13 @@ package sanitization
 import (
 	"strings"
 	"testing"
-	
+
 	"github.com/pay-theory/lift/pkg/security"
 )
 
 func TestSanitizeFieldValue(t *testing.T) {
 	s := Default()
-	
+
 	tests := []struct {
 		name     string
 		key      string
@@ -35,7 +35,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    "credit",
 			expected: "credit",
 		},
-		
+
 		// Sensitive number fields (DataRestricted)
 		{
 			name:     "ssn with dashes",
@@ -67,7 +67,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    12345,
 			expected: "[REDACTED]",
 		},
-		
+
 		// Highly sensitive fields (DataConfidential)
 		{
 			name:     "password field",
@@ -99,7 +99,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    "123",
 			expected: "[REDACTED]",
 		},
-		
+
 		// User content fields (DataInternal)
 		{
 			name:     "request_body",
@@ -125,7 +125,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    "This is a user comment",
 			expected: "[USER_CONTENT_22_CHARS]",
 		},
-		
+
 		// Error fields (DataPublic - not classified as sensitive by dataprotection)
 		{
 			name:     "short error message",
@@ -151,7 +151,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    "invalid user input: email@example.com",
 			expected: "invalid user input: email@example.com",
 		},
-		
+
 		// Large strings (only sanitized if DataInternal)
 		{
 			name:     "large string",
@@ -165,7 +165,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    strings.Repeat("a", 200),
 			expected: strings.Repeat("a", 200),
 		},
-		
+
 		// Normal fields
 		{
 			name:     "normal field",
@@ -185,7 +185,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    true,
 			expected: true,
 		},
-		
+
 		// Case insensitive
 		{
 			name:     "uppercase PASSWORD",
@@ -200,7 +200,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			expected: "test@example.com", // Email is DataInternal
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := s.SanitizeFieldValue(tt.key, tt.value)
@@ -213,7 +213,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 
 func TestSanitizeHeaders(t *testing.T) {
 	s := Default()
-	
+
 	tests := []struct {
 		name     string
 		headers  map[string][]string
@@ -264,7 +264,7 @@ func TestSanitizeHeaders(t *testing.T) {
 			expected: map[string]string{},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := s.SanitizeHeaders(tt.headers)
@@ -282,7 +282,7 @@ func TestSanitizeHeaders(t *testing.T) {
 
 func TestSanitizeQueryParams(t *testing.T) {
 	s := Default()
-	
+
 	tests := []struct {
 		name     string
 		params   map[string][]string
@@ -335,7 +335,7 @@ func TestSanitizeQueryParams(t *testing.T) {
 			expected: map[string]string{},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := s.SanitizeQueryParams(tt.params)
@@ -353,7 +353,7 @@ func TestSanitizeQueryParams(t *testing.T) {
 
 func TestSanitizeMap(t *testing.T) {
 	s := Default()
-	
+
 	input := map[string]any{
 		"username":    "john_doe",
 		"password":    "secret123",
@@ -363,9 +363,9 @@ func TestSanitizeMap(t *testing.T) {
 		"ssn":         "123-45-6789",
 		"description": "This is a long user description that should be sanitized",
 	}
-	
+
 	result := s.SanitizeMap(input)
-	
+
 	expected := map[string]any{
 		"username":    "john_doe",
 		"password":    "[REDACTED]",
@@ -375,7 +375,7 @@ func TestSanitizeMap(t *testing.T) {
 		"ssn":         "*****6789",
 		"description": "[USER_CONTENT_56_CHARS]",
 	}
-	
+
 	for key, expectedValue := range expected {
 		if result[key] != expectedValue {
 			t.Errorf("SanitizeMap()[%q] = %v, want %v", key, result[key], expectedValue)
@@ -389,20 +389,20 @@ func TestCustomDataProtectionManager(t *testing.T) {
 		DefaultClassification: security.DataPublic,
 		FieldClassifications: map[string]security.DataClassification{
 			"custom_field":   security.DataPublic,
-			"mysecret":      security.DataConfidential,
-			"custom_number": security.DataRestricted,
+			"mysecret":       security.DataConfidential,
+			"custom_number":  security.DataRestricted,
 			"custom_content": security.DataInternal,
 		},
 		EncryptionKey: "test-key",
 	}
-	
+
 	dpm, err := security.NewDataProtectionManager(config)
 	if err != nil {
 		t.Fatalf("Failed to create data protection manager: %v", err)
 	}
-	
+
 	s := New(dpm)
-	
+
 	tests := []struct {
 		name     string
 		key      string
@@ -440,7 +440,7 @@ func TestCustomDataProtectionManager(t *testing.T) {
 			expected: strings.Repeat("x", 201), // DataPublic classification doesn't sanitize large strings
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := s.SanitizeFieldValue(tt.key, tt.value)
@@ -457,7 +457,7 @@ func TestGlobalFunctions(t *testing.T) {
 	if result != "[REDACTED]" {
 		t.Errorf("Global SanitizeFieldValue() = %v, want [REDACTED]", result)
 	}
-	
+
 	// Test global SanitizeHeaders
 	headers := map[string][]string{
 		"Authorization": {"Bearer token"},
@@ -466,7 +466,7 @@ func TestGlobalFunctions(t *testing.T) {
 	if headerResult["Authorization"] != "[REDACTED]" {
 		t.Errorf("Global SanitizeHeaders() = %v, want [REDACTED]", headerResult["Authorization"])
 	}
-	
+
 	// Test global SanitizeQueryParams
 	params := map[string][]string{
 		"token": {"abc123"},
@@ -475,7 +475,7 @@ func TestGlobalFunctions(t *testing.T) {
 	if paramResult["token"] != "[SANITIZED_QUERY_PARAMS]" {
 		t.Errorf("Global SanitizeQueryParams() = %v, want [SANITIZED_QUERY_PARAMS]", paramResult["token"])
 	}
-	
+
 	// Test global SanitizeMap
 	data := map[string]any{
 		"email": "test@example.com",

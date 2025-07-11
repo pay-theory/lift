@@ -314,7 +314,7 @@ func TestS3Processor_EnvironmentVariables(t *testing.T) {
 			envProps := env.(map[string]interface{})
 			if variables, ok := envProps["Variables"]; ok {
 				vars := variables.(map[string]interface{})
-				
+
 				// Check custom environment variable is preserved
 				if vars["CUSTOM_VAR"] != "custom_value" {
 					t.Error("Custom environment variable should be preserved")

@@ -78,7 +78,7 @@ func (a *APIGatewayV2Adapter) Adapt(rawEvent any) (*Request, error) {
 	// Extract basic HTTP information
 	method := extractStringField(httpContext, "method")
 	path := extractStringField(httpContext, "path")
-	
+
 	// Handle stage prefix in path (occurs with custom domains)
 	// When using custom domains with base path mapping, API Gateway includes
 	// the stage in the path. We need to strip it for proper routing.

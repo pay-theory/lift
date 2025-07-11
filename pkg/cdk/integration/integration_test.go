@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package integration
@@ -34,12 +35,12 @@ const (
 )
 
 type TestContext struct {
-	CFNClient  *cloudformation.Client
+	CFNClient    *cloudformation.Client
 	LambdaClient *lambda.Client
-	APIClient  *apigatewayv2.Client
+	APIClient    *apigatewayv2.Client
 	DynamoClient *dynamodb.Client
-	StackName  string
-	Region     string
+	StackName    string
+	Region       string
 }
 
 func setupTestContext(t *testing.T) *TestContext {
@@ -103,7 +104,7 @@ func TestLiftFunctionIntegration(t *testing.T) {
 		"httpMethod": "GET",
 		"path":       "/test",
 	}
-	
+
 	payloadBytes, _ := json.Marshal(payload)
 	invokeResp, err := tc.LambdaClient.Invoke(ctx, &lambda.InvokeInput{
 		FunctionName: functionName,
@@ -117,10 +118,10 @@ func TestLiftFunctionIntegration(t *testing.T) {
 	err = json.Unmarshal(invokeResp.Payload, &response)
 	require.NoError(t, err)
 	assert.Equal(t, float64(200), response["statusCode"])
-	
+
 	body, ok := response["body"].(string)
 	require.True(t, ok)
-	
+
 	var bodyData map[string]interface{}
 	err = json.Unmarshal([]byte(body), &bodyData)
 	require.NoError(t, err)
@@ -158,7 +159,7 @@ func TestBasicAPIPatternIntegration(t *testing.T) {
 
 	// Get API endpoint
 	apiId := basicAPI.API.ApiId()
-	
+
 	// List stages to get the endpoint
 	stagesResp, err := tc.APIClient.GetStages(ctx, &apigatewayv2.GetStagesInput{
 		ApiId: apiId,
@@ -242,8 +243,8 @@ func TestMonitoredFunctionIntegration(t *testing.T) {
 		},
 		EnableDashboard:          jsii.Bool(true),
 		EnableLogInsightsQueries: jsii.Bool(true),
-		DashboardName:           jsii.String(fmt.Sprintf("%s-dashboard", tc.StackName)),
-		LogRetentionDays:        jsii.Number(1), // Minimum for testing
+		DashboardName:            jsii.String(fmt.Sprintf("%s-dashboard", tc.StackName)),
+		LogRetentionDays:         jsii.Number(1), // Minimum for testing
 		AlarmConfig: &constructs.AlarmConfig{
 			EnableErrorAlarm:    jsii.Bool(true),
 			EnableLatencyAlarm:  jsii.Bool(true),
@@ -264,7 +265,7 @@ func TestMonitoredFunctionIntegration(t *testing.T) {
 			"path":       fmt.Sprintf("/test/%d", i),
 		}
 		payloadBytes, _ := json.Marshal(payload)
-		
+
 		_, err := tc.LambdaClient.Invoke(ctx, &lambda.InvokeInput{
 			FunctionName: functionName,
 			Payload:      payloadBytes,
@@ -310,7 +311,7 @@ func deployStack(ctx context.Context, tc *TestContext, app awscdk.App) error {
 	// 1. Run `cdk synth` to generate CloudFormation template
 	// 2. Use CloudFormation SDK to deploy the stack
 	// 3. Wait for deployment to complete
-	
+
 	// For now, we'll return an error indicating this needs CDK CLI
 	return fmt.Errorf("integration tests require CDK CLI to be installed and configured")
 }

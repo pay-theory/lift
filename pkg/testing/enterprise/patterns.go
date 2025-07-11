@@ -321,7 +321,7 @@ type PatternTestReport struct {
 	ChaosResults    *ChaosMetrics                  `json:"chaosResults,omitempty"`
 	PerformanceData map[string]PerformanceBaseline `json:"performanceData,omitempty"`
 	Environment     string                         `json:"environment"`
-	Metadata        map[string]any         `json:"metadata"`
+	Metadata        map[string]any                 `json:"metadata"`
 }
 
 // GenerateReport generates a comprehensive test report

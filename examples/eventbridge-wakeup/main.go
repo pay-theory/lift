@@ -34,7 +34,7 @@ func main() {
 		}
 
 		return ctx.JSON(map[string]string{
-			"status": "success",
+			"status":  "success",
 			"message": "Wakeup completed successfully",
 		})
 	})
@@ -49,14 +49,14 @@ func performWakeupTasks(ctx *lift.Context) error {
 	// 2. Warm up connection pools
 	// 3. Pre-load frequently accessed data
 	// 4. Clear expired caches
-	
+
 	log.Println("Performing wakeup tasks...")
-	
+
 	// Simulate some work
 	if os.Getenv("ENVIRONMENT") == "production" {
 		// Production-specific warmup
 		log.Println("Production environment warmup")
 	}
-	
+
 	return nil
 }

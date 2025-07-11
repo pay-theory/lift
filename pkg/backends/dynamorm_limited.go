@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-
 )
 
 // DynamORMBackend implements the Limited library backend interface using DynamORM
@@ -27,9 +26,9 @@ func NewDynamORMBackend() *DynamORMBackend {
 func (b *DynamORMBackend) Increment(ctx context.Context, key string, window time.Time) (int64, error) {
 	// This is a placeholder showing the pattern
 	// In a real implementation, this would use DynamORM's UpdateBuilder
-	
+
 	// record := models.NewRateLimitRecord(key, window)
-	
+
 	// Pseudo-code for DynamORM update:
 	// result := b.db.Model(record).
 	//     Where("Identifier", "=", key).
@@ -40,7 +39,7 @@ func (b *DynamORMBackend) Increment(ctx context.Context, key string, window time
 	//     SetIfNotExists("ExpiresAt", window.Add(2 * time.Hour)).
 	//     Return("Count").
 	//     Execute()
-	
+
 	// For now, return a placeholder
 	return 1, nil
 }
@@ -53,7 +52,7 @@ func (b *DynamORMBackend) Get(ctx context.Context, key string, window time.Time)
 	//     Where("Identifier", "=", key).
 	//     Where("WindowTime", "=", window.Format(time.RFC3339)).
 	//     First(ctx, &record)
-	
+
 	// For now, return a placeholder
 	return 0, nil
 }
@@ -65,7 +64,7 @@ func (b *DynamORMBackend) Reset(ctx context.Context, key string, window time.Tim
 	//     Where("Identifier", "=", key).
 	//     Where("WindowTime", "=", window.Format(time.RFC3339)).
 	//     Delete(ctx)
-	
+
 	return nil
 }
 
@@ -78,7 +77,7 @@ func (b *DynamORMBackend) IncrementBy(ctx context.Context, key string, window ti
 // GetMultiple retrieves counts for multiple windows (for sliding window rate limiting)
 func (b *DynamORMBackend) GetMultiple(ctx context.Context, key string, windows []time.Time) (map[time.Time]int64, error) {
 	counts := make(map[time.Time]int64)
-	
+
 	// Pseudo-code for batch get:
 	// keys := make([]dynamorm.Key, len(windows))
 	// for i, window := range windows {
@@ -87,15 +86,15 @@ func (b *DynamORMBackend) GetMultiple(ctx context.Context, key string, windows [
 	//         SK: window.Format(time.RFC3339),
 	//     }
 	// }
-	// 
+	//
 	// var records []models.RateLimitRecord
 	// result := b.db.Model(&models.RateLimitRecord{}).
 	//     BatchGet(ctx, keys, &records)
-	
+
 	for _, window := range windows {
 		counts[window] = 0 // Placeholder
 	}
-	
+
 	return counts, nil
 }
 
@@ -106,7 +105,7 @@ func (b *DynamORMBackend) SetMetadata(ctx context.Context, key string, window ti
 	//     Where("Identifier", "=", key).
 	//     Where("WindowTime", "=", window.Format(time.RFC3339)).
 	//     Update(ctx)
-	// 
+	//
 	// if ip, ok := metadata["ip"]; ok {
 	//     update.Set("IPAddress", ip)
 	// }
@@ -116,9 +115,9 @@ func (b *DynamORMBackend) SetMetadata(ctx context.Context, key string, window ti
 	// if tenantID, ok := metadata["tenant_id"]; ok {
 	//     update.Set("TenantID", tenantID)
 	// }
-	// 
+	//
 	// return update.Execute().Error
-	
+
 	return nil
 }
 
@@ -126,11 +125,11 @@ func (b *DynamORMBackend) SetMetadata(ctx context.Context, key string, window ti
 func (b *DynamORMBackend) Cleanup(ctx context.Context) error {
 	// With DynamoDB TTL, this is typically not needed
 	// But could be implemented for manual cleanup:
-	// 
+	//
 	// result := b.db.Model(&models.RateLimitRecord{}).
 	//     Where("ExpiresAt", "<", time.Now()).
 	//     Delete(ctx)
-	
+
 	return nil
 }
 

@@ -36,31 +36,31 @@ func TestNewIdempotentFunction(t *testing.T) {
 
 				// Check idempotency table is created with correct structure
 				template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &map[string]interface{}{
-					"TableName": assertions.Match_StringLikeRegexp(jsii.String(".*-idempotency")),
+					"TableName":   assertions.Match_StringLikeRegexp(jsii.String(".*-idempotency")),
 					"BillingMode": "PAY_PER_REQUEST",
 					"AttributeDefinitions": assertions.Match_ArrayWith(&[]interface{}{
 						&map[string]interface{}{
-							"AttributeName": "pk",
+							"AttributeName": "PK",
 							"AttributeType": "S",
 						},
 						&map[string]interface{}{
-							"AttributeName": "sk",
+							"AttributeName": "SK",
 							"AttributeType": "S",
 						},
 					}),
 					"KeySchema": &[]interface{}{
 						&map[string]interface{}{
-							"AttributeName": "pk",
-							"KeyType": "HASH",
+							"AttributeName": "PK",
+							"KeyType":       "HASH",
 						},
 						&map[string]interface{}{
-							"AttributeName": "sk",
-							"KeyType": "RANGE",
+							"AttributeName": "SK",
+							"KeyType":       "RANGE",
 						},
 					},
 					"TimeToLiveSpecification": &map[string]interface{}{
 						"AttributeName": "expires_at",
-						"Enabled": true,
+						"Enabled":       true,
 					},
 				})
 
@@ -73,7 +73,7 @@ func TestNewIdempotentFunction(t *testing.T) {
 									"dynamodb:GetItem",
 									"dynamodb:PutItem",
 								}),
-								"Effect": "Allow",
+								"Effect":   "Allow",
 								"Resource": assertions.Match_AnyValue(),
 							},
 						}),
@@ -91,10 +91,10 @@ func TestNewIdempotentFunction(t *testing.T) {
 						Handler: jsii.String("bootstrap"),
 					},
 				},
-				TableName:     jsii.String("custom-idempotency-table"),
-				KeyExtractor:  IdempotentKeyHeader,
-				KeyField:      jsii.String("X-Idempotency-Key"),
-				TTLSeconds:    jsii.Number(48 * 3600),
+				TableName:    jsii.String("custom-idempotency-table"),
+				KeyExtractor: IdempotentKeyHeader,
+				KeyField:     jsii.String("X-Idempotency-Key"),
+				TTLSeconds:   jsii.Number(48 * 3600),
 			},
 			assertions: func(t *testing.T, template assertions.Template, fn *IdempotentFunction) {
 				// Check custom table name
@@ -306,7 +306,7 @@ func TestIdempotentFunction_Integration(t *testing.T) {
 						"dynamodb:GetItem",
 						"dynamodb:PutItem",
 					}),
-					"Effect": "Allow",
+					"Effect":   "Allow",
 					"Resource": assertions.Match_AnyValue(),
 				},
 			}),

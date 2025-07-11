@@ -49,16 +49,16 @@ func NewEventDrivenStack(scope constructs.Construct, id string, props *EventDriv
 
 	// Create SQS queues for event processing
 	dlq := awssqs.NewQueue(stack, jsii.String("DLQ"), &awssqs.QueueProps{
-		QueueName: jsii.String(props.AppName + "-dlq"),
+		QueueName:       jsii.String(props.AppName + "-dlq"),
 		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
 	})
 
 	eventQueue := awssqs.NewQueue(stack, jsii.String("EventQueue"), &awssqs.QueueProps{
-		QueueName: jsii.String(props.AppName + "-events"),
+		QueueName:         jsii.String(props.AppName + "-events"),
 		VisibilityTimeout: awscdk.Duration_Minutes(jsii.Number(5)),
 		DeadLetterQueue: &awssqs.DeadLetterQueue{
 			MaxReceiveCount: jsii.Number(3),
-			Queue: dlq,
+			Queue:           dlq,
 		},
 	})
 
@@ -80,8 +80,8 @@ func NewEventDrivenStack(scope constructs.Construct, id string, props *EventDriv
 	// Add SQS event source
 	eventProcessor.Function.AddEventSource(
 		awslambdaeventsources.NewSqsEventSource(eventQueue, &awslambdaeventsources.SqsEventSourceProps{
-			BatchSize: jsii.Number(10),
-			MaxBatchingWindow: awscdk.Duration_Seconds(jsii.Number(5)),
+			BatchSize:               jsii.Number(10),
+			MaxBatchingWindow:       awscdk.Duration_Seconds(jsii.Number(5)),
 			ReportBatchItemFailures: jsii.Bool(true),
 		}),
 	)
@@ -92,7 +92,7 @@ func NewEventDrivenStack(scope constructs.Construct, id string, props *EventDriv
 
 	// Create API with event publishing capability
 	apiEnv := map[string]*string{
-		"EVENT_BUS_NAME": eventBus.EventBusName(),
+		"EVENT_BUS_NAME":  eventBus.EventBusName(),
 		"EVENT_QUEUE_URL": eventQueue.QueueUrl(),
 	}
 

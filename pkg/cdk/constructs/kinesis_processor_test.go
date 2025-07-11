@@ -53,7 +53,7 @@ func TestKinesisProcessor_DefaultConfiguration(t *testing.T) {
 
 	// Verify event source mapping
 	template.HasResourceProperties(jsii.String("AWS::Lambda::EventSourceMapping"), &map[string]interface{}{
-		"BatchSize": 100, // Default batch size
+		"BatchSize":        100, // Default batch size
 		"StartingPosition": "LATEST",
 	})
 
@@ -79,10 +79,10 @@ func TestKinesisProcessor_ProvisionedMode(t *testing.T) {
 				Code:    awslambda.Code_FromAsset(jsii.String("../test"), nil),
 			},
 		},
-		StreamMode: &streamMode,
-		ShardCount: jsii.Number(5),
+		StreamMode:           &streamMode,
+		ShardCount:           jsii.Number(5),
 		RetentionPeriodHours: jsii.Number(72), // 3 days
-		Encryption: &encryption,
+		Encryption:           &encryption,
 	})
 
 	// Then
@@ -93,7 +93,7 @@ func TestKinesisProcessor_ProvisionedMode(t *testing.T) {
 		"StreamModeDetails": map[string]interface{}{
 			"StreamMode": "PROVISIONED",
 		},
-		"ShardCount": 5,
+		"ShardCount":           5,
 		"RetentionPeriodHours": 72,
 		"StreamEncryption": map[string]interface{}{
 			"EncryptionType": "KMS",
@@ -118,7 +118,7 @@ func TestKinesisProcessor_EnhancedFanOut(t *testing.T) {
 			},
 		},
 		EnableEnhancedFanOut: jsii.Bool(true),
-		ConsumerName: jsii.String("MyConsumer"),
+		ConsumerName:         jsii.String("MyConsumer"),
 	})
 
 	// Then
@@ -147,15 +147,15 @@ func TestKinesisProcessor_CustomEventSourceConfiguration(t *testing.T) {
 				Code:    awslambda.Code_FromAsset(jsii.String("../test"), nil),
 			},
 		},
-		BatchSize: jsii.Number(50),
+		BatchSize:                jsii.Number(50),
 		MaxBatchingWindowSeconds: jsii.Number(5),
-		ParallelizationFactor: jsii.Number(5),
-		StartingPosition: &startingPos,
-		MaxRecordAgeSeconds: jsii.Number(3600),
-		BisectBatchOnError: jsii.Bool(true),
-		RetryAttempts: jsii.Number(3),
-		TumblingWindowSeconds: jsii.Number(30),
-		ReportBatchItemFailures: jsii.Bool(true),
+		ParallelizationFactor:    jsii.Number(5),
+		StartingPosition:         &startingPos,
+		MaxRecordAgeSeconds:      jsii.Number(3600),
+		BisectBatchOnError:       jsii.Bool(true),
+		RetryAttempts:            jsii.Number(3),
+		TumblingWindowSeconds:    jsii.Number(30),
+		ReportBatchItemFailures:  jsii.Bool(true),
 	})
 
 	// Then
@@ -163,15 +163,15 @@ func TestKinesisProcessor_CustomEventSourceConfiguration(t *testing.T) {
 
 	// Verify custom event source mapping configuration
 	template.HasResourceProperties(jsii.String("AWS::Lambda::EventSourceMapping"), &map[string]interface{}{
-		"BatchSize": 50,
+		"BatchSize":                      50,
 		"MaximumBatchingWindowInSeconds": 5,
-		"ParallelizationFactor": 5,
-		"StartingPosition": "TRIM_HORIZON",
-		"MaximumRecordAgeInSeconds": 3600,
-		"BisectBatchOnFunctionError": true,
-		"MaximumRetryAttempts": 3,
-		"TumblingWindowInSeconds": 30,
-		"FunctionResponseTypes": []interface{}{"ReportBatchItemFailures"},
+		"ParallelizationFactor":          5,
+		"StartingPosition":               "TRIM_HORIZON",
+		"MaximumRecordAgeInSeconds":      3600,
+		"BisectBatchOnFunctionError":     true,
+		"MaximumRetryAttempts":           3,
+		"TumblingWindowInSeconds":        30,
+		"FunctionResponseTypes":          []interface{}{"ReportBatchItemFailures"},
 	})
 
 	assert.NotNil(t, processor)
@@ -263,12 +263,12 @@ func TestKinesisProcessor_CustomStreamProps(t *testing.T) {
 			},
 		},
 		StreamProps: &awskinesis.StreamProps{
-			StreamName: jsii.String("custom-stream"),
-			StreamMode: awskinesis.StreamMode_ON_DEMAND,
+			StreamName:      jsii.String("custom-stream"),
+			StreamMode:      awskinesis.StreamMode_ON_DEMAND,
 			RetentionPeriod: awscdk.Duration_Days(jsii.Number(2)),
 		},
 		DLQProps: &awssqs.QueueProps{
-			QueueName: jsii.String("custom-dlq"),
+			QueueName:       jsii.String("custom-dlq"),
 			RetentionPeriod: awscdk.Duration_Days(jsii.Number(7)),
 		},
 	})
@@ -278,13 +278,13 @@ func TestKinesisProcessor_CustomStreamProps(t *testing.T) {
 
 	// Verify custom stream configuration
 	template.HasResourceProperties(jsii.String("AWS::Kinesis::Stream"), &map[string]interface{}{
-		"Name": "custom-stream",
+		"Name":                 "custom-stream",
 		"RetentionPeriodHours": 48, // 2 days in hours
 	})
 
 	// Verify custom DLQ configuration
 	template.HasResourceProperties(jsii.String("AWS::SQS::Queue"), &map[string]interface{}{
-		"QueueName": "custom-dlq",
+		"QueueName":              "custom-dlq",
 		"MessageRetentionPeriod": 604800, // 7 days in seconds
 	})
 

@@ -36,14 +36,14 @@ func NewProductionApiStack(scope constructs.Construct, id string, props *awscdk.
 
 	// Create production-grade Lift application
 	app := patterns.NewLiftApp(stack, jsii.String("ProductionApi"), &patterns.LiftAppProps{
-		AppName:            jsii.String("production-api"),
-		CodeAssetPath:      jsii.String("../dist"),
-		EnableDatabase:     jsii.Bool(true),
-		EnableRateLimiting: jsii.Bool(true),
-		EnableMultiTenant:  jsii.Bool(true),
+		AppName:             jsii.String("production-api"),
+		CodeAssetPath:       jsii.String("../dist"),
+		EnableDatabase:      jsii.Bool(true),
+		EnableRateLimiting:  jsii.Bool(true),
+		EnableMultiTenant:   jsii.Bool(true),
 		EnableAccessLogging: jsii.Bool(true),
-		MemorySize:         jsii.Number(1024),
-		Timeout:            jsii.Number(300),
+		MemorySize:          jsii.Number(1024),
+		Timeout:             jsii.Number(300),
 		Environment: &map[string]*string{
 			"LOG_LEVEL":   jsii.String("info"),
 			"ENVIRONMENT": jsii.String("production"),
@@ -55,7 +55,7 @@ func NewProductionApiStack(scope constructs.Construct, id string, props *awscdk.
 	})
 
 	// Add additional production configurations
-	
+
 	// Configure auto-scaling for the DynamoDB table
 	if app.Database != nil {
 		// Read capacity auto-scaling
@@ -85,9 +85,9 @@ func NewProductionApiStack(scope constructs.Construct, id string, props *awscdk.
 
 	// Add CloudWatch alarms
 	NewLiftAlarms(stack, jsii.String("Alarms"), &LiftAlarmsProps{
-		Function:  app.Function.Function,
-		Api:       app.API.HttpAPI,
-		Table:     app.Database.Table,
+		Function:   app.Function.Function,
+		Api:        app.API.HttpAPI,
+		Table:      app.Database.Table,
 		AlarmEmail: jsii.String("alerts@example.com"), // Change this
 	})
 

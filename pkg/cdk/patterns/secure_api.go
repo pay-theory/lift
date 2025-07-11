@@ -36,7 +36,7 @@ type SecureAPIProps struct {
 	// Enable WAF protection
 	EnableWAF *bool
 	// Custom domain configuration
-	DomainName *string
+	DomainName     *string
 	CertificateArn *string
 	// SNS topic for alarms
 	AlarmTopic awssns.ITopic
@@ -84,7 +84,7 @@ func NewSecureAPI(scope constructs.Construct, id *string, props *SecureAPIProps)
 	var lambdaFn awslambda.Function
 	var secureFn *liftconstructs.SecureFunction
 	var rateLimitedFn *liftconstructs.RateLimitedFunction
-	
+
 	if *props.EnableRateLimiting {
 		// Create rate limited function with VPC if provided
 		rateLimitedProps := &liftconstructs.RateLimitedFunctionProps{
@@ -95,25 +95,24 @@ func NewSecureAPI(scope constructs.Construct, id *string, props *SecureAPIProps)
 					Environment: props.Environment,
 					MemorySize:  props.MemorySize,
 				},
-				EnableTracing:    jsii.Bool(true),
-				EnableMetrics:    jsii.Bool(true),
-				LogRetentionDays: jsii.Number(90),
+				EnableTracing: jsii.Bool(true),
+				EnableMetrics: jsii.Bool(true),
 			},
 			RateLimitType: props.RateLimitType,
 			WindowSeconds: props.RateLimitWindow,
 			Limit:         props.RateLimitMax,
 			EnableMetrics: jsii.Bool(true),
 		}
-		
+
 		// Add VPC configuration if provided
 		if props.Vpc != nil {
 			rateLimitedProps.LiftFunctionProps.FunctionProps.Vpc = props.Vpc
 		}
-		
+
 		if props.Timeout != nil {
 			rateLimitedProps.LiftFunctionProps.Timeout = awscdk.Duration_Seconds(props.Timeout)
 		}
-		
+
 		rateLimitedFn = liftconstructs.NewRateLimitedFunction(this, jsii.String("Function"), rateLimitedProps)
 		lambdaFn = rateLimitedFn.GetFunction()
 	} else {
@@ -126,9 +125,8 @@ func NewSecureAPI(scope constructs.Construct, id *string, props *SecureAPIProps)
 					Environment: props.Environment,
 					MemorySize:  props.MemorySize,
 				},
-				EnableTracing:    jsii.Bool(true),
-				EnableMetrics:    jsii.Bool(true),
-				LogRetentionDays: jsii.Number(90),
+				EnableTracing: jsii.Bool(true),
+				EnableMetrics: jsii.Bool(true),
 			},
 			Vpc:                 props.Vpc,
 			EnableKMSEncryption: jsii.Bool(true),
@@ -162,22 +160,22 @@ func NewSecureAPI(scope constructs.Construct, id *string, props *SecureAPIProps)
 	var webACL awswafv2.CfnWebACL
 	if *props.EnableWAF {
 		webACL = awswafv2.NewCfnWebACL(this, jsii.String("WebACL"), &awswafv2.CfnWebACLProps{
-			Scope:             jsii.String("REGIONAL"),
-			DefaultAction:     &awswafv2.CfnWebACL_DefaultActionProperty{Allow: &map[string]interface{}{}},
-			Description:       jsii.String("WAF protection for " + *props.ApiName),
-			Name:              jsii.String(*props.ApiName + "-waf"),
-			Rules:             createWAFRules(),
-			VisibilityConfig:  createWAFVisibilityConfig(props.ApiName),
+			Scope:            jsii.String("REGIONAL"),
+			DefaultAction:    &awswafv2.CfnWebACL_DefaultActionProperty{Allow: &map[string]interface{}{}},
+			Description:      jsii.String("WAF protection for " + *props.ApiName),
+			Name:             jsii.String(*props.ApiName + "-waf"),
+			Rules:            createWAFRules(),
+			VisibilityConfig: createWAFVisibilityConfig(props.ApiName),
 		})
 
 		// Associate WAF with API Gateway
 		// Note: HTTP API ARN construction for WAF association
 		apiArn := awscdk.Stack_Of(this).FormatArn(&awscdk.ArnComponents{
-			Service:    jsii.String("apigateway"),
-			Resource:   jsii.String("apis"),
+			Service:      jsii.String("apigateway"),
+			Resource:     jsii.String("apis"),
 			ResourceName: api.HttpAPI.HttpApiId(),
 		})
-		
+
 		awswafv2.NewCfnWebACLAssociation(this, jsii.String("WebACLAssociation"), &awswafv2.CfnWebACLAssociationProps{
 			ResourceArn: apiArn,
 			WebAclArn:   webACL.AttrArn(),
@@ -192,10 +190,10 @@ func NewSecureAPI(scope constructs.Construct, id *string, props *SecureAPIProps)
 
 	return &SecureAPI{
 		Construct:       this,
-		Api:            api,
-		Function:       secureFn,
+		Api:             api,
+		Function:        secureFn,
 		RateLimitedFunc: rateLimitedFn,
-		WebACL:         webACL,
+		WebACL:          webACL,
 	}
 }
 
@@ -228,7 +226,7 @@ func createWAFRules() *[]*awswafv2.CfnWebACL_RuleProperty {
 			},
 			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
 				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:              jsii.String("SQLInjectionRule"),
+				MetricName:               jsii.String("SQLInjectionRule"),
 				SampledRequestsEnabled:   jsii.Bool(true),
 			},
 		},
@@ -260,7 +258,7 @@ func createWAFRules() *[]*awswafv2.CfnWebACL_RuleProperty {
 			},
 			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
 				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:              jsii.String("XSSRule"),
+				MetricName:               jsii.String("XSSRule"),
 				SampledRequestsEnabled:   jsii.Bool(true),
 			},
 		},
@@ -270,8 +268,8 @@ func createWAFRules() *[]*awswafv2.CfnWebACL_RuleProperty {
 			Priority: jsii.Number(3),
 			Statement: &awswafv2.CfnWebACL_StatementProperty{
 				RateBasedStatement: &awswafv2.CfnWebACL_RateBasedStatementProperty{
-					Limit:              jsii.Number(2000), // 2000 requests per 5 minutes
-					AggregateKeyType:   jsii.String("IP"),
+					Limit:            jsii.Number(2000), // 2000 requests per 5 minutes
+					AggregateKeyType: jsii.String("IP"),
 				},
 			},
 			Action: &awswafv2.CfnWebACL_RuleActionProperty{
@@ -279,7 +277,7 @@ func createWAFRules() *[]*awswafv2.CfnWebACL_RuleProperty {
 			},
 			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
 				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:              jsii.String("RateLimitRule"),
+				MetricName:               jsii.String("RateLimitRule"),
 				SampledRequestsEnabled:   jsii.Bool(true),
 			},
 		},
@@ -290,7 +288,7 @@ func createWAFRules() *[]*awswafv2.CfnWebACL_RuleProperty {
 func createWAFVisibilityConfig(apiName *string) *awswafv2.CfnWebACL_VisibilityConfigProperty {
 	return &awswafv2.CfnWebACL_VisibilityConfigProperty{
 		CloudWatchMetricsEnabled: jsii.Bool(true),
-		MetricName:              jsii.String(*apiName + "-waf"),
+		MetricName:               jsii.String(*apiName + "-waf"),
 		SampledRequestsEnabled:   jsii.Bool(true),
 	}
 }
@@ -299,21 +297,21 @@ func createWAFVisibilityConfig(apiName *string) *awswafv2.CfnWebACL_VisibilityCo
 func createSecurityAlarms(scope constructs.Construct, fn awslambda.Function, topic awssns.ITopic, apiName *string) {
 	// High error rate alarm
 	errorAlarm := fn.MetricErrors(nil).CreateAlarm(scope, jsii.String("HighErrorRateAlarm"), &awscloudwatch.CreateAlarmOptions{
-		AlarmName:          jsii.String(*apiName + "-high-error-rate"),
-		AlarmDescription:   jsii.String("High error rate detected in secure API"),
-		Threshold:          jsii.Number(10),
-		EvaluationPeriods:  jsii.Number(2),
-		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+		AlarmName:         jsii.String(*apiName + "-high-error-rate"),
+		AlarmDescription:  jsii.String("High error rate detected in secure API"),
+		Threshold:         jsii.Number(10),
+		EvaluationPeriods: jsii.Number(2),
+		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 	})
 	errorAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(topic))
 
 	// Throttling alarm
 	throttleAlarm := fn.MetricThrottles(nil).CreateAlarm(scope, jsii.String("ThrottlingAlarm"), &awscloudwatch.CreateAlarmOptions{
-		AlarmName:          jsii.String(*apiName + "-throttling"),
-		AlarmDescription:   jsii.String("API throttling detected"),
-		Threshold:          jsii.Number(5),
-		EvaluationPeriods:  jsii.Number(1),
-		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+		AlarmName:         jsii.String(*apiName + "-throttling"),
+		AlarmDescription:  jsii.String("API throttling detected"),
+		Threshold:         jsii.Number(5),
+		EvaluationPeriods: jsii.Number(1),
+		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 	})
 	throttleAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(topic))
 }

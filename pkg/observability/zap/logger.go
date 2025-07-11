@@ -285,19 +285,19 @@ func (z *ZapLogger) GetStats() observability.LoggerStats {
 // mergeFields merges context fields with additional field maps
 func (z *ZapLogger) mergeFields(fieldMaps ...map[string]any) map[string]any {
 	merged := make(map[string]any)
-	
+
 	// Start with context fields
 	for k, v := range z.contextFields {
 		merged[k] = v
 	}
-	
+
 	// Merge additional fields
 	for _, fields := range fieldMaps {
 		for k, v := range fields {
 			merged[k] = v
 		}
 	}
-	
+
 	return merged
 }
 

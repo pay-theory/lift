@@ -62,19 +62,19 @@ type BufferedAuditLogger struct {
 
 // AuditLogEntry represents a complete audit log entry
 type AuditLogEntry struct {
-	ID            string                 `json:"id"`
-	AuditID       string                 `json:"audit_id"`
-	TenantID      string                 `json:"tenant_id"`
-	UserID        string                 `json:"user_id"`
-	EntryType     string                 `json:"entry_type"` // request, response, data_access, security_event
-	Timestamp     time.Time              `json:"timestamp"`
-	TTL           int64                  `json:"ttl"`
-	Request       *AuditRequest          `json:"request,omitempty"`
-	Response      *AuditResponse         `json:"response,omitempty"`
-	DataAccess    *DataAccessLog         `json:"data_access,omitempty"`
-	SecurityEvent *SecurityEvent         `json:"security_event,omitempty"`
+	ID            string         `json:"id"`
+	AuditID       string         `json:"audit_id"`
+	TenantID      string         `json:"tenant_id"`
+	UserID        string         `json:"user_id"`
+	EntryType     string         `json:"entry_type"` // request, response, data_access, security_event
+	Timestamp     time.Time      `json:"timestamp"`
+	TTL           int64          `json:"ttl"`
+	Request       *AuditRequest  `json:"request,omitempty"`
+	Response      *AuditResponse `json:"response,omitempty"`
+	DataAccess    *DataAccessLog `json:"data_access,omitempty"`
+	SecurityEvent *SecurityEvent `json:"security_event,omitempty"`
 	Metadata      map[string]any `json:"metadata,omitempty"`
-	Checksum      string                 `json:"checksum"`
+	Checksum      string         `json:"checksum"`
 }
 
 // AuditQueryResult represents the result of an audit query
