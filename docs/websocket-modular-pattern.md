@@ -1,15 +1,19 @@
-# WebSocket API Modular Pattern
+# WebSocket API - Breaking Change (v1.0.54+)
 
-## Problem
+## Breaking Change Notice
 
-When using the WebSocket API construct with default settings, it creates Lambda functions internally which leads to deep nesting in the CDK construct tree. This causes CloudFormation to generate very long resource names for Lambda permissions, which can exceed AWS limits.
+**As of v1.0.54, the WebSocket API construct requires external Lambda functions to be provided.**
 
-Example of problematic long names:
+The previous versions allowed internal function creation which caused CloudFormation resource names to exceed AWS limits due to deep construct nesting.
+
+## Problem Fixed
+
+Long Lambda permission resource names like:
 - `PennyWebSocketAPIDisconnectFunctionInvokevX45SoP9HzavMlHnWXJDq59djssXRa0Z7T35MPhgI655A3BBA`
 
-## Solution
+## Required Pattern (v1.0.54+)
 
-Create Lambda functions at the stack level and pass them to the WebSocket API construct. This reduces nesting depth and results in shorter resource names.
+Lambda functions **must** be created externally and passed to the WebSocket API construct. This eliminates deep nesting and ensures shorter CloudFormation resource names.
 
 ## Modular Pattern Example
 
@@ -120,15 +124,15 @@ func NewWebSocketStack(scope constructs.Construct, id string, props *WebSocketSt
 
 4. **Clearer Architecture**: The infrastructure code better reflects the actual architecture with explicit function definitions.
 
-## Migration Guide
+## Migration Guide (Breaking Change)
 
-If you're currently using the default pattern:
+### Before v1.0.54 (No longer supported):
 
 ```go
-// OLD: Functions created internally
+// OLD: Functions created internally - NO LONGER WORKS
 wsApi := constructs.NewWebSocketAPI(stack, jsii.String("WebSocketAPI"), &constructs.WebSocketAPIProps{
     ApiName: jsii.String("my-api"),
-    FunctionProps: awslambda.FunctionProps{
+    FunctionProps: awslambda.FunctionProps{  // REMOVED
         Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
         Handler: jsii.String("bootstrap"),
         Runtime: awslambda.Runtime_PROVIDED_AL2023(),
@@ -136,23 +140,41 @@ wsApi := constructs.NewWebSocketAPI(stack, jsii.String("WebSocketAPI"), &constru
 })
 ```
 
-Migrate to the modular pattern:
+### v1.0.54+ (Required):
 
 ```go
-// NEW: Functions created externally
-connectFn := awslambda.NewFunction(stack, jsii.String("C"), &awslambda.FunctionProps{
+// NEW: Functions must be created externally
+connectFn := awslambda.NewFunction(stack, jsii.String("Connect"), &awslambda.FunctionProps{
     Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
     Handler: jsii.String("bootstrap"),
     Runtime: awslambda.Runtime_PROVIDED_AL2023(),
 })
-// ... create other functions ...
+disconnectFn := awslambda.NewFunction(stack, jsii.String("Disconnect"), &awslambda.FunctionProps{
+    Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+    Handler: jsii.String("bootstrap"),
+    Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+})
+defaultFn := awslambda.NewFunction(stack, jsii.String("Default"), &awslambda.FunctionProps{
+    Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+    Handler: jsii.String("bootstrap"),
+    Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+})
 
 wsApi := constructs.NewWebSocketAPI(stack, jsii.String("API"), &constructs.WebSocketAPIProps{
-    ApiName:              jsii.String("my-api"),
-    ConnectRouteFunction: connectFn,
-    // ... other functions ...
+    ApiName:                 jsii.String("my-api"),
+    ConnectRouteFunction:    connectFn,    // REQUIRED
+    DisconnectRouteFunction: disconnectFn, // REQUIRED  
+    DefaultRouteFunction:    defaultFn,    // REQUIRED
 })
 ```
+
+### Removed Fields:
+- `FunctionProps` - No longer exists
+- Internal function fields (`ConnectFunction`, `DisconnectFunction`, `DefaultFunction`) - Removed from struct
+
+### Removed Methods:
+- `AddEnvironmentVariable()` - Set variables directly on your Lambda functions
+- Internal function creation logic - Functions must be provided externally
 
 ## Best Practices
 
