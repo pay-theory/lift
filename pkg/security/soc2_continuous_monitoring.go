@@ -67,31 +67,31 @@ type AlertManager interface {
 
 // SOC2Control represents a SOC 2 control for monitoring
 type SOC2Control struct {
-	ID               string                 `json:"id"`
-	Name             string                 `json:"name"`
-	Description      string                 `json:"description"`
-	Category         string                 `json:"category"` // "CC1", "CC2", etc.
-	Type             string                 `json:"type"`     // "preventive", "detective", "corrective"
-	Frequency        time.Duration          `json:"frequency"`
-	AutomatedTesting bool                   `json:"automated_testing"`
-	ManualTesting    bool                   `json:"manual_testing"`
-	EvidenceRequired []string               `json:"evidence_required"`
-	TestProcedures   []TestProcedure        `json:"test_procedures"`
-	ComplianceTarget float64                `json:"compliance_target"`
-	CriticalControl  bool                   `json:"critical_control"`
-	Dependencies     []string               `json:"dependencies"`
-	Metadata         map[string]any `json:"metadata"`
+	ID               string          `json:"id"`
+	Name             string          `json:"name"`
+	Description      string          `json:"description"`
+	Category         string          `json:"category"` // "CC1", "CC2", etc.
+	Type             string          `json:"type"`     // "preventive", "detective", "corrective"
+	Frequency        time.Duration   `json:"frequency"`
+	AutomatedTesting bool            `json:"automated_testing"`
+	ManualTesting    bool            `json:"manual_testing"`
+	EvidenceRequired []string        `json:"evidence_required"`
+	TestProcedures   []TestProcedure `json:"test_procedures"`
+	ComplianceTarget float64         `json:"compliance_target"`
+	CriticalControl  bool            `json:"critical_control"`
+	Dependencies     []string        `json:"dependencies"`
+	Metadata         map[string]any  `json:"metadata"`
 }
 
 // TestProcedure defines how to test a control
 type TestProcedure struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Type        string                 `json:"type"` // "inquiry", "observation", "inspection", "reperformance"
-	Automated   bool                   `json:"automated"`
-	Description string                 `json:"description"`
-	Steps       []string               `json:"steps"`
-	Expected    string                 `json:"expected"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Type        string         `json:"type"` // "inquiry", "observation", "inspection", "reperformance"
+	Automated   bool           `json:"automated"`
+	Description string         `json:"description"`
+	Steps       []string       `json:"steps"`
+	Expected    string         `json:"expected"`
 	Parameters  map[string]any `json:"parameters"`
 }
 
@@ -112,99 +112,99 @@ type ControlTestResult struct {
 	TestDuration    time.Duration          `json:"test_duration"`
 	TesterID        string                 `json:"tester_id"`
 	ReviewerID      string                 `json:"reviewer_id"`
-	Metadata        map[string]any `json:"metadata"`
+	Metadata        map[string]any         `json:"metadata"`
 }
 
 // ControlStatus represents the current status of a control
 type ControlStatus struct {
-	ControlID           string                 `json:"control_id"`
-	CurrentStatus       string                 `json:"current_status"`
-	LastTestDate        time.Time              `json:"last_test_date"`
-	NextTestDate        time.Time              `json:"next_test_date"`
-	ComplianceRate      float64                `json:"compliance_rate"`
-	ExceptionCount      int                    `json:"exception_count"`
-	TrendDirection      string                 `json:"trend_direction"` // "improving", "stable", "declining"
-	RiskLevel           string                 `json:"risk_level"`
-	EffectivenessRating float64                `json:"effectiveness_rating"`
+	ControlID           string         `json:"control_id"`
+	CurrentStatus       string         `json:"current_status"`
+	LastTestDate        time.Time      `json:"last_test_date"`
+	NextTestDate        time.Time      `json:"next_test_date"`
+	ComplianceRate      float64        `json:"compliance_rate"`
+	ExceptionCount      int            `json:"exception_count"`
+	TrendDirection      string         `json:"trend_direction"` // "improving", "stable", "declining"
+	RiskLevel           string         `json:"risk_level"`
+	EffectivenessRating float64        `json:"effectiveness_rating"`
 	Metadata            map[string]any `json:"metadata"`
 }
 
 // ControlEvidence represents evidence collected for a control
 type ControlEvidence struct {
-	ID               string                 `json:"id"`
-	ControlID        string                 `json:"control_id"`
-	EvidenceType     string                 `json:"evidence_type"`
-	Description      string                 `json:"description"`
-	Source           string                 `json:"source"`
-	CollectionDate   time.Time              `json:"collection_date"`
+	ID               string         `json:"id"`
+	ControlID        string         `json:"control_id"`
+	EvidenceType     string         `json:"evidence_type"`
+	Description      string         `json:"description"`
+	Source           string         `json:"source"`
+	CollectionDate   time.Time      `json:"collection_date"`
 	Data             map[string]any `json:"data"`
-	Verified         bool                   `json:"verified"`
-	VerificationDate *time.Time             `json:"verification_date,omitempty"`
-	VerifiedBy       string                 `json:"verified_by"`
-	Integrity        string                 `json:"integrity"` // checksum/hash
-	RetentionDate    time.Time              `json:"retention_date"`
-	Archived         bool                   `json:"archived"`
+	Verified         bool           `json:"verified"`
+	VerificationDate *time.Time     `json:"verification_date,omitempty"`
+	VerifiedBy       string         `json:"verified_by"`
+	Integrity        string         `json:"integrity"` // checksum/hash
+	RetentionDate    time.Time      `json:"retention_date"`
+	Archived         bool           `json:"archived"`
 	Metadata         map[string]any `json:"metadata"`
 }
 
 // SystemEvidence represents system-wide evidence
 type SystemEvidence struct {
-	CollectionDate    time.Time              `json:"collection_date"`
-	SystemMetrics     map[string]any `json:"system_metrics"`
-	SecurityLogs      []SecurityLogEntry     `json:"security_logs"`
-	AccessLogs        []AccessLogEntry       `json:"access_logs"`
-	ConfigurationData map[string]any `json:"configuration_data"`
-	NetworkData       map[string]any `json:"network_data"`
-	Metadata          map[string]any `json:"metadata"`
+	CollectionDate    time.Time          `json:"collection_date"`
+	SystemMetrics     map[string]any     `json:"system_metrics"`
+	SecurityLogs      []SecurityLogEntry `json:"security_logs"`
+	AccessLogs        []AccessLogEntry   `json:"access_logs"`
+	ConfigurationData map[string]any     `json:"configuration_data"`
+	NetworkData       map[string]any     `json:"network_data"`
+	Metadata          map[string]any     `json:"metadata"`
 }
 
 // SecurityLogEntry represents a security log entry
 type SecurityLogEntry struct {
-	Timestamp time.Time              `json:"timestamp"`
-	EventType string                 `json:"event_type"`
-	Severity  string                 `json:"severity"`
-	Source    string                 `json:"source"`
-	UserID    string                 `json:"user_id"`
-	Action    string                 `json:"action"`
-	Resource  string                 `json:"resource"`
-	Result    string                 `json:"result"`
-	IPAddress string                 `json:"ip_address"`
-	UserAgent string                 `json:"user_agent"`
+	Timestamp time.Time      `json:"timestamp"`
+	EventType string         `json:"event_type"`
+	Severity  string         `json:"severity"`
+	Source    string         `json:"source"`
+	UserID    string         `json:"user_id"`
+	Action    string         `json:"action"`
+	Resource  string         `json:"resource"`
+	Result    string         `json:"result"`
+	IPAddress string         `json:"ip_address"`
+	UserAgent string         `json:"user_agent"`
 	Details   map[string]any `json:"details"`
 }
 
 // AccessLogEntry represents an access log entry
 type AccessLogEntry struct {
-	Timestamp    time.Time              `json:"timestamp"`
-	UserID       string                 `json:"user_id"`
-	Resource     string                 `json:"resource"`
-	Action       string                 `json:"action"`
-	Result       string                 `json:"result"`
-	IPAddress    string                 `json:"ip_address"`
-	SessionID    string                 `json:"session_id"`
-	Duration     time.Duration          `json:"duration"`
-	DataAccessed []string               `json:"data_accessed"`
+	Timestamp    time.Time      `json:"timestamp"`
+	UserID       string         `json:"user_id"`
+	Resource     string         `json:"resource"`
+	Action       string         `json:"action"`
+	Result       string         `json:"result"`
+	IPAddress    string         `json:"ip_address"`
+	SessionID    string         `json:"session_id"`
+	Duration     time.Duration  `json:"duration"`
+	DataAccessed []string       `json:"data_accessed"`
 	Metadata     map[string]any `json:"metadata"`
 }
 
 // ComplianceException represents a compliance exception
 type ComplianceException struct {
-	ID                 string                 `json:"id"`
-	ControlID          string                 `json:"control_id"`
-	ExceptionType      string                 `json:"exception_type"`
-	Severity           string                 `json:"severity"`
-	Description        string                 `json:"description"`
-	DetectedDate       time.Time              `json:"detected_date"`
-	ReportedBy         string                 `json:"reported_by"`
-	Status             string                 `json:"status"` // "open", "in_progress", "resolved", "accepted"
-	AssignedTo         string                 `json:"assigned_to"`
-	DueDate            time.Time              `json:"due_date"`
-	Resolution         *ExceptionResolution   `json:"resolution,omitempty"`
-	Impact             string                 `json:"impact"`
-	RootCause          string                 `json:"root_cause"`
-	Remediation        string                 `json:"remediation"`
-	PreventiveMeasures []string               `json:"preventive_measures"`
-	Metadata           map[string]any `json:"metadata"`
+	ID                 string               `json:"id"`
+	ControlID          string               `json:"control_id"`
+	ExceptionType      string               `json:"exception_type"`
+	Severity           string               `json:"severity"`
+	Description        string               `json:"description"`
+	DetectedDate       time.Time            `json:"detected_date"`
+	ReportedBy         string               `json:"reported_by"`
+	Status             string               `json:"status"` // "open", "in_progress", "resolved", "accepted"
+	AssignedTo         string               `json:"assigned_to"`
+	DueDate            time.Time            `json:"due_date"`
+	Resolution         *ExceptionResolution `json:"resolution,omitempty"`
+	Impact             string               `json:"impact"`
+	RootCause          string               `json:"root_cause"`
+	Remediation        string               `json:"remediation"`
+	PreventiveMeasures []string             `json:"preventive_measures"`
+	Metadata           map[string]any       `json:"metadata"`
 }
 
 // ExceptionResolution represents the resolution of an exception
@@ -235,35 +235,35 @@ type ExceptionTrends struct {
 
 // ComplianceAlert represents a compliance alert
 type ComplianceAlert struct {
-	ID             string                 `json:"id"`
-	Type           string                 `json:"type"`
-	Severity       string                 `json:"severity"`
-	Title          string                 `json:"title"`
-	Description    string                 `json:"description"`
-	ControlID      string                 `json:"control_id"`
-	Timestamp      time.Time              `json:"timestamp"`
-	Recipients     []string               `json:"recipients"`
-	Channels       []string               `json:"channels"`
-	Escalated      bool                   `json:"escalated"`
-	Acknowledged   bool                   `json:"acknowledged"`
-	AcknowledgedBy string                 `json:"acknowledged_by"`
-	AcknowledgedAt *time.Time             `json:"acknowledged_at,omitempty"`
-	Resolved       bool                   `json:"resolved"`
-	ResolvedAt     *time.Time             `json:"resolved_at,omitempty"`
+	ID             string         `json:"id"`
+	Type           string         `json:"type"`
+	Severity       string         `json:"severity"`
+	Title          string         `json:"title"`
+	Description    string         `json:"description"`
+	ControlID      string         `json:"control_id"`
+	Timestamp      time.Time      `json:"timestamp"`
+	Recipients     []string       `json:"recipients"`
+	Channels       []string       `json:"channels"`
+	Escalated      bool           `json:"escalated"`
+	Acknowledged   bool           `json:"acknowledged"`
+	AcknowledgedBy string         `json:"acknowledged_by"`
+	AcknowledgedAt *time.Time     `json:"acknowledged_at,omitempty"`
+	Resolved       bool           `json:"resolved"`
+	ResolvedAt     *time.Time     `json:"resolved_at,omitempty"`
 	Metadata       map[string]any `json:"metadata"`
 }
 
 // AlertRule defines alerting rules
 type AlertRule struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Condition   string                 `json:"condition"`
-	Threshold   float64                `json:"threshold"`
-	Severity    string                 `json:"severity"`
-	Recipients  []string               `json:"recipients"`
-	Channels    []string               `json:"channels"`
-	Enabled     bool                   `json:"enabled"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Condition   string         `json:"condition"`
+	Threshold   float64        `json:"threshold"`
+	Severity    string         `json:"severity"`
+	Recipients  []string       `json:"recipients"`
+	Channels    []string       `json:"channels"`
+	Enabled     bool           `json:"enabled"`
 	Metadata    map[string]any `json:"metadata"`
 }
 

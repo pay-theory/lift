@@ -40,7 +40,7 @@ func NewMultiTenantSaaSStack(scope constructs.Construct, id string, props *Multi
 	var userPool awscognito.UserPool
 	if props.EnableAuth {
 		userPool = awscognito.NewUserPool(stack, jsii.String("UserPool"), &awscognito.UserPoolProps{
-			UserPoolName: jsii.String(props.AppName + "-users"),
+			UserPoolName:      jsii.String(props.AppName + "-users"),
 			SelfSignUpEnabled: jsii.Bool(true),
 			SignInAliases: &awscognito.SignInAliases{
 				Email: jsii.Bool(true),
@@ -49,21 +49,21 @@ func NewMultiTenantSaaSStack(scope constructs.Construct, id string, props *Multi
 				Email: jsii.Bool(true),
 			},
 			PasswordPolicy: &awscognito.PasswordPolicy{
-				MinLength: jsii.Number(8),
+				MinLength:        jsii.Number(8),
 				RequireLowercase: jsii.Bool(true),
 				RequireUppercase: jsii.Bool(true),
-				RequireDigits: jsii.Bool(true),
-				RequireSymbols: jsii.Bool(true),
+				RequireDigits:    jsii.Bool(true),
+				RequireSymbols:   jsii.Bool(true),
 			},
 			AccountRecovery: awscognito.AccountRecovery_EMAIL_ONLY,
-			RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
+			RemovalPolicy:   awscdk.RemovalPolicy_RETAIN,
 		})
 
 		// Create app client
 		client := userPool.AddClient(jsii.String("AppClient"), &awscognito.UserPoolClientOptions{
 			AuthFlows: &awscognito.AuthFlow{
 				UserPassword: jsii.Bool(true),
-				UserSrp: jsii.Bool(true),
+				UserSrp:      jsii.Bool(true),
 			},
 			GenerateSecret: jsii.Bool(false),
 		})
@@ -77,16 +77,16 @@ func NewMultiTenantSaaSStack(scope constructs.Construct, id string, props *Multi
 	var storageBucket awss3.Bucket
 	if props.EnableFileStorage {
 		storageBucket = awss3.NewBucket(stack, jsii.String("Storage"), &awss3.BucketProps{
-			BucketName: jsii.String(props.AppName + "-storage"),
-			Versioned: jsii.Bool(true),
-			Encryption: awss3.BucketEncryption_S3_MANAGED,
+			BucketName:        jsii.String(props.AppName + "-storage"),
+			Versioned:         jsii.Bool(true),
+			Encryption:        awss3.BucketEncryption_S3_MANAGED,
 			BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
-			RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
+			RemovalPolicy:     awscdk.RemovalPolicy_RETAIN,
 			LifecycleRules: &[]*awss3.LifecycleRule{
 				{
-					Id: jsii.String("delete-old-versions"),
+					Id:                          jsii.String("delete-old-versions"),
 					NoncurrentVersionExpiration: awscdk.Duration_Days(jsii.Number(90)),
-					Enabled: jsii.Bool(true),
+					Enabled:                     jsii.Bool(true),
 				},
 			},
 		})
@@ -96,23 +96,23 @@ func NewMultiTenantSaaSStack(scope constructs.Construct, id string, props *Multi
 
 	// Create the main application
 	appProps := &patterns.LiftAppProps{
-		AppName:            jsii.String(props.AppName),
-		CodeAssetPath:      jsii.String(props.CodePath),
-		EnableMultiTenant:  jsii.Bool(true),
-		EnableDatabase:     jsii.Bool(true),
-		EnableRateLimiting: jsii.Bool(true),
+		AppName:             jsii.String(props.AppName),
+		CodeAssetPath:       jsii.String(props.CodePath),
+		EnableMultiTenant:   jsii.Bool(true),
+		EnableDatabase:      jsii.Bool(true),
+		EnableRateLimiting:  jsii.Bool(true),
 		EnableAccessLogging: jsii.Bool(true),
-		Environment:        &env,
-		MemorySize:         jsii.Number(1024),
-		Timeout:            jsii.Number(300), // 5 minutes in seconds
+		Environment:         &env,
+		MemorySize:          jsii.Number(1024),
+		Timeout:             jsii.Number(300), // 5 minutes in seconds
 	}
-	
+
 	// Only set domain name if provided
 	if props.DomainName != "" {
 		appProps.DomainName = jsii.String(props.DomainName)
 		appProps.CertificateArn = jsii.String(props.CertificateArn)
 	}
-	
+
 	app := patterns.NewLiftApp(stack, jsii.String("App"), appProps)
 
 	// Grant permissions for file storage

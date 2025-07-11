@@ -46,7 +46,7 @@ func TestIdempotencyMiddleware(t *testing.T) {
 		middleware := Idempotency(IdempotencyOptions{
 			Store: store,
 		})
-		
+
 		handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
 			return ctx.JSON(TestPaymentIntent{
 				ID:     "pi_123",
@@ -54,29 +54,29 @@ func TestIdempotencyMiddleware(t *testing.T) {
 				Status: "succeeded",
 			})
 		}))
-		
+
 		// Execute request without idempotency key
 		ctx := createIdempotencyTestContext("POST", "/payment", nil)
-		
+
 		err := handler.Handle(ctx)
 		assert.NoError(t, err)
-		
+
 		// Verify response
 		assert.NotNil(t, ctx.Response.Body)
 		payment, ok := ctx.Response.Body.(TestPaymentIntent)
 		assert.True(t, ok)
 		assert.Equal(t, "pi_123", payment.ID)
 	})
-	
+
 	t.Run("returns cached response for duplicate request", func(t *testing.T) {
 		// Setup
 		store := NewMemoryIdempotencyStore()
 		callCount := 0
-		
+
 		middleware := Idempotency(IdempotencyOptions{
 			Store: store,
 		})
-		
+
 		handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
 			callCount++
 			return ctx.JSON(TestPaymentIntent{
@@ -85,37 +85,37 @@ func TestIdempotencyMiddleware(t *testing.T) {
 				Status: "succeeded",
 			})
 		}))
-		
+
 		// First request with idempotency key
 		ctx1 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx1.Request.Headers["Idempotency-Key"] = "test-key-123"
-		
+
 		err := handler.Handle(ctx1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, callCount)
-		
+
 		// Second request with same idempotency key
 		ctx2 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx2.Request.Headers["Idempotency-Key"] = "test-key-123"
-		
+
 		err = handler.Handle(ctx2)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, callCount) // Handler should not be called again
-		
+
 		// Verify both responses are identical
 		assert.Equal(t, ctx1.Response.Body, ctx2.Response.Body)
 		assert.Equal(t, "true", ctx2.Response.Headers["X-Idempotent-Replay"])
 	})
-	
+
 	t.Run("handles concurrent duplicate requests", func(t *testing.T) {
 		// Setup
 		store := NewMemoryIdempotencyStore()
-		
+
 		middleware := Idempotency(IdempotencyOptions{
 			Store:             store,
 			ProcessingTimeout: 1 * time.Second,
 		})
-		
+
 		handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
 			// Simulate slow processing
 			time.Sleep(100 * time.Millisecond)
@@ -125,7 +125,7 @@ func TestIdempotencyMiddleware(t *testing.T) {
 				Status: "succeeded",
 			})
 		}))
-		
+
 		// Start first request
 		done1 := make(chan error)
 		go func() {
@@ -133,70 +133,70 @@ func TestIdempotencyMiddleware(t *testing.T) {
 			ctx.Request.Headers["Idempotency-Key"] = "concurrent-key"
 			done1 <- handler.Handle(ctx)
 		}()
-		
+
 		// Give first request time to start
 		time.Sleep(10 * time.Millisecond)
-		
+
 		// Try concurrent request with same key
 		ctx2 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx2.Request.Headers["Idempotency-Key"] = "concurrent-key"
-		
+
 		err := handler.Handle(ctx2)
 		assert.Error(t, err)
 		liftErr, ok := err.(*lift.LiftError)
 		require.True(t, ok)
 		assert.Equal(t, 409, liftErr.StatusCode)
 		assert.Contains(t, liftErr.Message, "already being processed")
-		
+
 		// Wait for first request to complete
 		assert.NoError(t, <-done1)
 	})
-	
+
 	t.Run("caches error responses", func(t *testing.T) {
 		// Setup
 		store := NewMemoryIdempotencyStore()
 		callCount := 0
-		
+
 		middleware := Idempotency(IdempotencyOptions{
 			Store: store,
 		})
-		
+
 		handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
 			callCount++
 			return lift.NewLiftError("PAYMENT_FAILED", "Insufficient funds", 400)
 		}))
-		
+
 		// First request
 		ctx1 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx1.Request.Headers["Idempotency-Key"] = "error-key"
-		
+
 		err1 := handler.Handle(ctx1)
 		assert.Error(t, err1)
 		assert.Equal(t, 1, callCount)
-		
+
 		// Second request should return cached error
 		ctx2 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx2.Request.Headers["Idempotency-Key"] = "error-key"
-		
+
 		err2 := handler.Handle(ctx2)
 		assert.Error(t, err2)
 		assert.Equal(t, 1, callCount) // Handler not called again
-		
+
 		// Verify errors match
 		liftErr1, _ := err1.(*lift.LiftError)
 		liftErr2, _ := err2.(*lift.LiftError)
 		assert.Equal(t, liftErr1.StatusCode, liftErr2.StatusCode)
 	})
-	
+
 	t.Run("isolates keys by account", func(t *testing.T) {
 		// Setup
 		store := NewMemoryIdempotencyStore()
 		responses := make(map[string]string)
-		
+
 		middleware := Idempotency(IdempotencyOptions{
 			Store: store,
 		})
-		
+
 		handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
 			accountID := ctx.Get("account_id").(string)
 			response := TestPaymentIntent{
@@ -207,38 +207,38 @@ func TestIdempotencyMiddleware(t *testing.T) {
 			responses[accountID] = response.ID
 			return ctx.JSON(response)
 		}))
-		
+
 		// Request from account1
 		ctx1 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx1.Request.Headers["Idempotency-Key"] = "shared-key"
 		ctx1.Set("account_id", "account1")
-		
+
 		err := handler.Handle(ctx1)
 		assert.NoError(t, err)
-		
+
 		// Request from account2 with same idempotency key
 		ctx2 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx2.Request.Headers["Idempotency-Key"] = "shared-key"
 		ctx2.Set("account_id", "account2")
-		
+
 		err = handler.Handle(ctx2)
 		assert.NoError(t, err)
-		
+
 		// Verify different responses (not cached across accounts)
 		assert.Equal(t, "pi_account1", responses["account1"])
 		assert.Equal(t, "pi_account2", responses["account2"])
 	})
-	
+
 	t.Run("respects TTL for cached responses", func(t *testing.T) {
 		// Setup with short TTL
 		store := NewMemoryIdempotencyStore()
 		callCount := 0
-		
+
 		middleware := Idempotency(IdempotencyOptions{
 			Store: store,
 			TTL:   100 * time.Millisecond,
 		})
-		
+
 		handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
 			callCount++
 			return ctx.JSON(TestPaymentIntent{
@@ -247,22 +247,22 @@ func TestIdempotencyMiddleware(t *testing.T) {
 				Status: "succeeded",
 			})
 		}))
-		
+
 		// First request
 		ctx1 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx1.Request.Headers["Idempotency-Key"] = "ttl-key"
-		
+
 		err := handler.Handle(ctx1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, callCount)
-		
+
 		// Wait for TTL to expire
 		time.Sleep(150 * time.Millisecond)
-		
+
 		// Second request should process normally
 		ctx2 := createIdempotencyTestContext("POST", "/payment", nil)
 		ctx2.Request.Headers["Idempotency-Key"] = "ttl-key"
-		
+
 		err = handler.Handle(ctx2)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, callCount) // Handler called again
@@ -273,7 +273,7 @@ func TestMemoryIdempotencyStore(t *testing.T) {
 	t.Run("stores and retrieves records", func(t *testing.T) {
 		store := NewMemoryIdempotencyStore()
 		ctx := context.Background()
-		
+
 		record := &IdempotencyRecord{
 			Key:        "test-key",
 			Status:     "completed",
@@ -282,11 +282,11 @@ func TestMemoryIdempotencyStore(t *testing.T) {
 			CreatedAt:  time.Now(),
 			ExpiresAt:  time.Now().Add(24 * time.Hour),
 		}
-		
+
 		// Store record
 		err := store.Set(ctx, "test-key", record)
 		assert.NoError(t, err)
-		
+
 		// Retrieve record
 		retrieved, err := store.Get(ctx, "test-key")
 		assert.NoError(t, err)
@@ -295,20 +295,20 @@ func TestMemoryIdempotencyStore(t *testing.T) {
 		assert.Equal(t, record.Status, retrieved.Status)
 		assert.Equal(t, record.StatusCode, retrieved.StatusCode)
 	})
-	
+
 	t.Run("returns nil for non-existent keys", func(t *testing.T) {
 		store := NewMemoryIdempotencyStore()
 		ctx := context.Background()
-		
+
 		retrieved, err := store.Get(ctx, "non-existent")
 		assert.NoError(t, err)
 		assert.Nil(t, retrieved)
 	})
-	
+
 	t.Run("respects expiration", func(t *testing.T) {
 		store := NewMemoryIdempotencyStore()
 		ctx := context.Background()
-		
+
 		record := &IdempotencyRecord{
 			Key:        "expired-key",
 			Status:     "completed",
@@ -317,21 +317,21 @@ func TestMemoryIdempotencyStore(t *testing.T) {
 			CreatedAt:  time.Now().Add(-2 * time.Hour),
 			ExpiresAt:  time.Now().Add(-1 * time.Hour), // Already expired
 		}
-		
+
 		// Store expired record
 		err := store.Set(ctx, "expired-key", record)
 		assert.NoError(t, err)
-		
+
 		// Try to retrieve - should return nil
 		retrieved, err := store.Get(ctx, "expired-key")
 		assert.NoError(t, err)
 		assert.Nil(t, retrieved)
 	})
-	
+
 	t.Run("handles concurrent access", func(t *testing.T) {
 		store := NewMemoryIdempotencyStore()
 		ctx := context.Background()
-		
+
 		// Concurrent writes
 		done := make(chan bool, 10)
 		for i := 0; i < 10; i++ {
@@ -348,12 +348,12 @@ func TestMemoryIdempotencyStore(t *testing.T) {
 				done <- true
 			}(i)
 		}
-		
+
 		// Wait for all writes
 		for i := 0; i < 10; i++ {
 			<-done
 		}
-		
+
 		// Verify all records exist
 		for i := 0; i < 10; i++ {
 			key := fmt.Sprintf("key-%d", i)

@@ -38,16 +38,16 @@ type PerformanceAnalyticsConfig struct {
 
 // PerformanceMetric represents a performance metric data point
 type PerformanceMetric struct {
-	ID            string                 `json:"id"`
-	Name          string                 `json:"name"`
-	Value         float64                `json:"value"`
-	Unit          string                 `json:"unit"`
-	Timestamp     time.Time              `json:"timestamp"`
-	Source        string                 `json:"source"`
-	Tags          map[string]string      `json:"tags"`
-	Dimensions    map[string]string      `json:"dimensions"`
-	Metadata      map[string]any `json:"metadata"`
-	AggregateType AggregateType          `json:"aggregate_type"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	Value         float64           `json:"value"`
+	Unit          string            `json:"unit"`
+	Timestamp     time.Time         `json:"timestamp"`
+	Source        string            `json:"source"`
+	Tags          map[string]string `json:"tags"`
+	Dimensions    map[string]string `json:"dimensions"`
+	Metadata      map[string]any    `json:"metadata"`
+	AggregateType AggregateType     `json:"aggregate_type"`
 }
 
 // PerformanceAnalysis represents the result of performance analysis
@@ -373,10 +373,10 @@ type ForecastPoint struct {
 }
 
 type AnomalyContext struct {
-	PrecedingTrend   string                 `json:"preceding_trend"`
-	ConcurrentEvents []ConcurrentEvent      `json:"concurrent_events"`
-	RelatedMetrics   []RelatedMetric        `json:"related_metrics"`
-	SystemState      map[string]any `json:"system_state"`
+	PrecedingTrend   string            `json:"preceding_trend"`
+	ConcurrentEvents []ConcurrentEvent `json:"concurrent_events"`
+	RelatedMetrics   []RelatedMetric   `json:"related_metrics"`
+	SystemState      map[string]any    `json:"system_state"`
 }
 
 type ConcurrentEvent struct {
@@ -425,12 +425,12 @@ type PredictionScenario struct {
 }
 
 type RecommendedAction struct {
-	Type        string                 `json:"type"`
-	Description string                 `json:"description"`
-	Command     string                 `json:"command,omitempty"`
+	Type        string         `json:"type"`
+	Description string         `json:"description"`
+	Command     string         `json:"command,omitempty"`
 	Parameters  map[string]any `json:"parameters,omitempty"`
-	Validation  string                 `json:"validation,omitempty"`
-	Rollback    string                 `json:"rollback,omitempty"`
+	Validation  string         `json:"validation,omitempty"`
+	Rollback    string         `json:"rollback,omitempty"`
 }
 
 type CostEstimate struct {
@@ -468,19 +468,19 @@ type ThresholdViolation struct {
 }
 
 type AlertContext struct {
-	TriggerMetric   string                 `json:"trigger_metric"`
-	RelatedMetrics  []string               `json:"related_metrics"`
+	TriggerMetric   string         `json:"trigger_metric"`
+	RelatedMetrics  []string       `json:"related_metrics"`
 	SystemContext   map[string]any `json:"system_context"`
 	UserContext     map[string]any `json:"user_context"`
 	BusinessContext map[string]any `json:"business_context"`
 }
 
 type AlertAction struct {
-	Type        string                 `json:"type"`
-	Description string                 `json:"description"`
-	Target      string                 `json:"target"`
+	Type        string         `json:"type"`
+	Description string         `json:"description"`
+	Target      string         `json:"target"`
 	Parameters  map[string]any `json:"parameters"`
-	Automated   bool                   `json:"automated"`
+	Automated   bool           `json:"automated"`
 }
 
 type MetricQuery struct {

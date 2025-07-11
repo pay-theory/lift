@@ -47,12 +47,12 @@ func (rb *ResponseBuffer) SetHeader(key, value string) {
 func (rb *ResponseBuffer) Get() (body any, statusCode int, headers map[string]string, capturedData any) {
 	rb.mu.RLock()
 	defer rb.mu.RUnlock()
-	
+
 	// Make a copy of headers
 	headersCopy := make(map[string]string)
 	for k, v := range rb.Headers {
 		headersCopy[k] = v
 	}
-	
+
 	return rb.Body, rb.StatusCode, headersCopy, rb.CapturedData
 }

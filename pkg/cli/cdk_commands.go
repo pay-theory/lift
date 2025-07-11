@@ -341,7 +341,7 @@ func (c *CDKDeployCommand) Execute(ctx context.Context, args []string) error {
 
 	// Prepare CDK deploy command
 	cdkArgs := []string{"deploy", "--require-approval", "never"}
-	
+
 	// Add stack name or --all flag
 	if len(args) > 0 {
 		if args[0] == "--all" {
@@ -487,7 +487,7 @@ func (c *CDKDestroyCommand) Execute(ctx context.Context, args []string) error {
 
 	// Prepare CDK destroy command
 	cdkArgs := []string{"destroy", "--force"}
-	
+
 	// Add stack name or --all flag
 	if len(args) > 0 {
 		if args[0] == "--all" {
@@ -500,7 +500,7 @@ func (c *CDKDestroyCommand) Execute(ctx context.Context, args []string) error {
 	// Confirm destruction
 	fmt.Println("⚠️  WARNING: This will destroy all resources in the stack!")
 	fmt.Print("Are you sure? (y/N): ")
-	
+
 	var response string
 	fmt.Scanln(&response)
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
@@ -539,7 +539,7 @@ func (c *BuildCommand) Usage() string {
 
 func (c *BuildCommand) Execute(ctx context.Context, args []string) error {
 	arch := "arm64" // Default to ARM64
-	
+
 	// Parse architecture flag
 	for i, arg := range args {
 		if arg == "--arch" && i+1 < len(args) {

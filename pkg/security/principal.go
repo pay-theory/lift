@@ -31,8 +31,8 @@ type Principal struct {
 
 // Permission represents a specific permission in the RBAC system
 type Permission struct {
-	Resource   string                 `json:"resource"`   // "users", "payments", "accounts"
-	Action     string                 `json:"action"`     // "read", "write", "delete"
+	Resource   string         `json:"resource"`   // "users", "payments", "accounts"
+	Action     string         `json:"action"`     // "read", "write", "delete"
 	Conditions map[string]any `json:"conditions"` // Dynamic conditions
 }
 

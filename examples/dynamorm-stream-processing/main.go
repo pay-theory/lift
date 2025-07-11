@@ -26,8 +26,8 @@ func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, pro
 
 	// Create a table with streaming enabled
 	userTable := liftconstructs.NewStreamingTable(stack, jsii.String("UserTable"), &liftconstructs.StreamingTableProps{
-		TableName:            jsii.String("users"),
-		StreamViewType:       awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
+		TableName:      jsii.String("users"),
+		StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
 	})
 
 	// GSIs are now defined in DynamORM model structs using tags like:
@@ -57,7 +57,7 @@ func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, pro
 		ReportBatchItemFailures: jsii.Bool(true),
 		// Event filtering and multi-tenancy should be handled in the Lambda function code
 		// based on the DynamORM model structure and business logic
-		
+
 		// Dead letter queue
 		EnableDeadLetterQueue: jsii.Bool(true),
 	})
@@ -84,9 +84,9 @@ func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, pro
 			},
 		},
 		// Different configuration for analytics
-		BatchSize:             jsii.Number(100),  // Larger batches for analytics
+		BatchSize:             jsii.Number(100), // Larger batches for analytics
 		MaxBatchingWindow:     awscdk.Duration_Seconds(jsii.Number(30)),
-		ParallelizationFactor: jsii.Number(4),   // Higher parallelization
+		ParallelizationFactor: jsii.Number(4), // Higher parallelization
 		// Event filtering should be handled in the Lambda function code
 	})
 
@@ -103,7 +103,7 @@ func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, pro
 			MemorySize:   jsii.Number(256),
 		},
 		// Fast processing for notifications
-		BatchSize:         jsii.Number(1),  // Process one at a time for speed
+		BatchSize:         jsii.Number(1), // Process one at a time for speed
 		MaxBatchingWindow: awscdk.Duration_Seconds(jsii.Number(1)),
 		// Event filtering should be handled in the Lambda function code
 	})

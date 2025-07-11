@@ -30,7 +30,7 @@ type InfrastructureTemplate struct {
 	Resources   map[string]Resource    `json:"resources"`
 	Outputs     map[string]Output      `json:"outputs"`
 	Parameters  map[string]Parameter   `json:"parameters"`
-	Metadata    map[string]any `json:"metadata"`
+	Metadata    map[string]any         `json:"metadata"`
 	Tags        map[string]string      `json:"tags"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
@@ -38,31 +38,31 @@ type InfrastructureTemplate struct {
 
 // Resource represents an infrastructure resource
 type Resource struct {
-	Type         string                 `json:"type"`
-	Name         string                 `json:"name"`
-	Properties   map[string]any `json:"properties"`
-	Dependencies []string               `json:"dependencies,omitempty"`
-	Condition    string                 `json:"condition,omitempty"`
-	Metadata     map[string]any `json:"metadata,omitempty"`
-	Tags         map[string]string      `json:"tags,omitempty"`
+	Type         string            `json:"type"`
+	Name         string            `json:"name"`
+	Properties   map[string]any    `json:"properties"`
+	Dependencies []string          `json:"dependencies,omitempty"`
+	Condition    string            `json:"condition,omitempty"`
+	Metadata     map[string]any    `json:"metadata,omitempty"`
+	Tags         map[string]string `json:"tags,omitempty"`
 }
 
 // Output represents a template output
 type Output struct {
-	Value       any `json:"value"`
-	Description string      `json:"description"`
-	Export      bool        `json:"export,omitempty"`
+	Value       any    `json:"value"`
+	Description string `json:"description"`
+	Export      bool   `json:"export,omitempty"`
 }
 
 // Parameter represents a template parameter
 type Parameter struct {
-	Type          string        `json:"type"`
-	Description   string        `json:"description"`
-	Default       any   `json:"default,omitempty"`
-	AllowedValues []any `json:"allowed_values,omitempty"`
-	MinLength     *int          `json:"min_length,omitempty"`
-	MaxLength     *int          `json:"max_length,omitempty"`
-	Pattern       string        `json:"pattern,omitempty"`
+	Type          string `json:"type"`
+	Description   string `json:"description"`
+	Default       any    `json:"default,omitempty"`
+	AllowedValues []any  `json:"allowed_values,omitempty"`
+	MinLength     *int   `json:"min_length,omitempty"`
+	MaxLength     *int   `json:"max_length,omitempty"`
+	Pattern       string `json:"pattern,omitempty"`
 }
 
 // InfrastructureConfig holds configuration for infrastructure generation
@@ -93,8 +93,8 @@ type InfrastructureConfig struct {
 	Networking NetworkingConfig `json:"networking"`
 
 	// Tags and metadata
-	Tags     map[string]string      `json:"tags"`
-	Metadata map[string]any `json:"metadata"`
+	Tags     map[string]string `json:"tags"`
+	Metadata map[string]any    `json:"metadata"`
 }
 
 // LambdaConfig holds Lambda function configuration
@@ -245,22 +245,22 @@ type DashboardConfig struct {
 }
 
 type DashboardWidget struct {
-	Type       string                 `json:"type"`
-	Title      string                 `json:"title"`
+	Type       string         `json:"type"`
+	Title      string         `json:"title"`
 	Properties map[string]any `json:"properties"`
 }
 
 // Additional supporting types
 type IAMRoleConfig struct {
-	Name             string                 `json:"name"`
-	AssumeRolePolicy map[string]any `json:"assume_role_policy"`
-	Policies         []string               `json:"policies"`
-	InlinePolicies   []InlinePolicyConfig   `json:"inline_policies,omitempty"`
+	Name             string               `json:"name"`
+	AssumeRolePolicy map[string]any       `json:"assume_role_policy"`
+	Policies         []string             `json:"policies"`
+	InlinePolicies   []InlinePolicyConfig `json:"inline_policies,omitempty"`
 }
 
 type KMSKeyConfig struct {
-	Alias       string                 `json:"alias"`
-	Description string                 `json:"description"`
+	Alias       string         `json:"alias"`
+	Description string         `json:"description"`
 	Policy      map[string]any `json:"policy,omitempty"`
 }
 
@@ -280,9 +280,9 @@ type WAFConfig struct {
 }
 
 type WAFRule struct {
-	Name      string                 `json:"name"`
-	Priority  int                    `json:"priority"`
-	Action    string                 `json:"action"`
+	Name      string         `json:"name"`
+	Priority  int            `json:"priority"`
+	Action    string         `json:"action"`
 	Statement map[string]any `json:"statement"`
 }
 
@@ -365,7 +365,7 @@ type MetricFilterConfig struct {
 }
 
 type InlinePolicyConfig struct {
-	Name   string                 `json:"name"`
+	Name   string         `json:"name"`
 	Policy map[string]any `json:"policy"`
 }
 

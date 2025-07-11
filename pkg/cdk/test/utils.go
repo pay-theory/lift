@@ -21,7 +21,7 @@ type TestStack struct {
 func NewTestStack() *TestStack {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	return &TestStack{
 		app:   app,
 		stack: stack,
@@ -32,7 +32,7 @@ func NewTestStack() *TestStack {
 func NewTestStackWithTesting(t *testing.T) *TestStack {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	return &TestStack{
 		t:     t,
 		app:   app,
@@ -80,7 +80,7 @@ func (ts *TestStack) AssertHasOutput(outputName string) {
 		ts.t.Errorf("No outputs found in stack")
 		return
 	}
-	
+
 	if _, ok := (*outputs)[outputName]; !ok {
 		ts.t.Errorf("Output %s not found in stack", outputName)
 	}
@@ -89,8 +89,8 @@ func (ts *TestStack) AssertHasOutput(outputName string) {
 // AssertLambdaFunction asserts Lambda function properties
 func (ts *TestStack) AssertLambdaFunction(functionName string, runtime string, architecture string) {
 	ts.Template().HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-		"FunctionName": functionName,
-		"Runtime":      runtime,
+		"FunctionName":  functionName,
+		"Runtime":       runtime,
 		"Architectures": []string{architecture},
 	})
 }
@@ -106,7 +106,7 @@ func (ts *TestStack) AssertDynamoDBTable(tableName string, billingMode string) {
 // AssertAPIGateway asserts API Gateway properties
 func (ts *TestStack) AssertAPIGateway(apiName string) {
 	ts.Template().HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"), &map[string]interface{}{
-		"Name": apiName,
+		"Name":         apiName,
 		"ProtocolType": "HTTP",
 	})
 }
@@ -146,26 +146,26 @@ func NewLiftStackTester(t *testing.T) *LiftStackTester {
 // AssertLiftFunction asserts Lift Lambda function configuration
 func (lst *LiftStackTester) AssertLiftFunction(props map[string]interface{}) {
 	defaultProps := map[string]interface{}{
-		"Runtime": "provided.al2023",
-		"Handler": "bootstrap",
+		"Runtime":       "provided.al2023",
+		"Handler":       "bootstrap",
 		"Architectures": []string{"arm64"},
 	}
-	
+
 	// Merge provided props with defaults
 	for k, v := range props {
 		defaultProps[k] = v
 	}
-	
+
 	lst.Template().HasResourceProperties(jsii.String("AWS::Lambda::Function"), &defaultProps)
 }
 
 // AssertLiftAPI asserts Lift API Gateway configuration
 func (lst *LiftStackTester) AssertLiftAPI(apiName string, hasCORS bool) {
 	lst.Template().HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"), &map[string]interface{}{
-		"Name": apiName,
+		"Name":         apiName,
 		"ProtocolType": "HTTP",
 	})
-	
+
 	if hasCORS {
 		lst.Template().HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"), &map[string]interface{}{
 			"CorsConfiguration": map[string]interface{}{
@@ -190,16 +190,16 @@ func (lst *LiftStackTester) AssertLiftTable(tableName string, hasGSI bool, hasSt
 			{"AttributeName": "sk", "KeyType": "RANGE"},
 		},
 	}
-	
+
 	// Note: GSIs are now handled by DynamORM through struct tags at runtime,
 	// so we don't expect GSI attributes in the CDK template anymore
-	
+
 	if hasStreams {
 		tableProps["StreamSpecification"] = map[string]interface{}{
 			"StreamViewType": "NEW_AND_OLD_IMAGES",
 		}
 	}
-	
+
 	lst.Template().HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &tableProps)
 }
 
@@ -209,30 +209,30 @@ func (lst *LiftStackTester) AssertCompleteInfrastructure(appName string, hasData
 	lst.AssertLiftFunction(map[string]interface{}{
 		"FunctionName": appName,
 	})
-	
+
 	// API Gateway
 	lst.AssertLiftAPI(appName+"-api", true)
-	
+
 	// API routes
 	lst.AssertHasResource("AWS::ApiGatewayV2::Route")
 	lst.AssertHasResource("AWS::ApiGatewayV2::Integration")
-	
+
 	// Database table
 	if hasDatabase {
 		lst.AssertLiftTable(appName+"-table", true, true)
 	}
-	
+
 	// Rate limiting table
 	if hasRateLimiting {
 		lst.AssertHasResourceWithProperties("AWS::DynamoDB::Table", map[string]interface{}{
 			"TableName": appName + "-rate-limits",
 		})
 	}
-	
+
 	// IAM permissions
 	lst.AssertHasResource("AWS::IAM::Role")
 	lst.AssertHasResource("AWS::IAM::Policy")
-	
+
 	// CloudWatch logs
 	lst.AssertHasResource("AWS::Logs::LogGroup")
 }

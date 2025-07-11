@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,7 +37,7 @@ func TestComplianceStack_Creation(t *testing.T) {
 
 	// Verify KMS key is created
 	template.HasResourceProperties(jsii.String("AWS::KMS::Key"), map[string]interface{}{
-		"Description": "Compliance encryption key for test-app",
+		"Description":       "Compliance encryption key for test-app",
 		"EnableKeyRotation": true,
 	})
 
@@ -79,7 +79,7 @@ func TestComplianceStack_Creation(t *testing.T) {
 
 	// Verify GuardDuty detector is created
 	template.HasResourceProperties(jsii.String("AWS::GuardDuty::Detector"), map[string]interface{}{
-		"Enable": true,
+		"Enable":                     true,
 		"FindingPublishingFrequency": "FIFTEEN_MINUTES",
 	})
 
@@ -223,7 +223,7 @@ func TestComplianceStack_HIPAAFramework(t *testing.T) {
 		ComplianceFrameworks: &[]ComplianceFramework{
 			HIPAA,
 		},
-		EnableConfig:     jsii.Bool(true),
+		EnableConfig:      jsii.Bool(true),
 		EnableSecurityHub: jsii.Bool(true),
 	})
 
@@ -254,7 +254,7 @@ func TestComplianceStack_PCIDSSFramework(t *testing.T) {
 		ComplianceFrameworks: &[]ComplianceFramework{
 			PCI_DSS,
 		},
-		EnableConfig:     jsii.Bool(true),
+		EnableConfig:      jsii.Bool(true),
 		EnableSecurityHub: jsii.Bool(true),
 	})
 
@@ -273,7 +273,6 @@ func TestComplianceStack_PCIDSSFramework(t *testing.T) {
 		"StandardsArn": assertions.Match_StringLikeRegexp(jsii.String(".*pci-dss.*")),
 	})
 }
-
 
 func TestComplianceStack_DataRetentionPolicy(t *testing.T) {
 	// GIVEN
@@ -294,8 +293,8 @@ func TestComplianceStack_DataRetentionPolicy(t *testing.T) {
 		"LifecycleConfiguration": map[string]interface{}{
 			"Rules": []interface{}{
 				map[string]interface{}{
-					"Id":     "ComplianceDataLifecycle",
-					"Status": "Enabled",
+					"Id":               "ComplianceDataLifecycle",
+					"Status":           "Enabled",
 					"ExpirationInDays": 365,
 				},
 			},
@@ -346,7 +345,7 @@ func TestComplianceStack_EncryptionConfiguration(t *testing.T) {
 		"EnableLogFileValidation": true,
 	})
 
-	// Verify CloudWatch log group is created (KMS encryption handled separately)  
+	// Verify CloudWatch log group is created (KMS encryption handled separately)
 	template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), map[string]interface{}{
 		"LogGroupName": "/aws/compliance/encryption-app",
 	})
@@ -396,7 +395,7 @@ func TestComplianceStack_AddComplianceRule(t *testing.T) {
 
 	// THEN
 	template := assertions.Template_FromStack(stack, nil)
-	
+
 	// Verify additional Config rule was created
 	template.HasResourceProperties(jsii.String("AWS::Config::ConfigRule"), map[string]interface{}{
 		"ConfigRuleName": "AdditionalRule-rule",
@@ -420,7 +419,7 @@ func TestComplianceStack_MultipleFrameworks(t *testing.T) {
 			PCI_DSS,
 			FedRAMP,
 		},
-		EnableConfig:     jsii.Bool(true),
+		EnableConfig:      jsii.Bool(true),
 		EnableSecurityHub: jsii.Bool(true),
 	})
 

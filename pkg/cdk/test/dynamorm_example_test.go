@@ -19,10 +19,10 @@ import (
 func TestPaymentService_CreatePayment_WithMocks(t *testing.T) {
 	// Create mock client
 	mockClient := NewMockDynamORMClient()
-	
+
 	// Set up expectations
 	mockClient.On("PutItem", mock.Anything, mock.Anything, mock.Anything).Return(&dynamodb.PutItemOutput{}, nil)
-	
+
 	// Create a payment
 	payment := map[string]types.AttributeValue{
 		"pk":     &types.AttributeValueMemberS{Value: "PAYMENT#123"},
@@ -30,14 +30,14 @@ func TestPaymentService_CreatePayment_WithMocks(t *testing.T) {
 		"amount": &types.AttributeValueMemberN{Value: "1000"},
 		"status": &types.AttributeValueMemberS{Value: "pending"},
 	}
-	
+
 	// Call the service (this would be your actual service code)
 	ctx := context.Background()
 	_, err := mockClient.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String("payments"),
 		Item:      payment,
 	})
-	
+
 	// Verify
 	assert.NoError(t, err)
 	mockClient.AssertExpectations(t)
@@ -47,13 +47,13 @@ func TestPaymentService_CreatePayment_WithMocks(t *testing.T) {
 func TestUserService_QueryUsers_WithMockTable(t *testing.T) {
 	// Create mock client with table
 	mockClient := NewMockDynamORMClient()
-	mockClient.AddMockTable("users", 
+	mockClient.AddMockTable("users",
 		WithGSI("email-index", "email", "sk"),
 		WithTTL("expires_at"),
 	)
-	
+
 	// Don't set expectations - use default behavior
-	
+
 	// Add test data
 	ctx := context.Background()
 	testUser := map[string]types.AttributeValue{
@@ -62,13 +62,13 @@ func TestUserService_QueryUsers_WithMockTable(t *testing.T) {
 		"email": &types.AttributeValueMemberS{Value: "test@example.com"},
 		"name":  &types.AttributeValueMemberS{Value: "Test User"},
 	}
-	
+
 	_, err := mockClient.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String("users"),
 		Item:      testUser,
 	})
 	assert.NoError(t, err)
-	
+
 	// Query the data
 	output, err := mockClient.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String("users"),
@@ -77,7 +77,7 @@ func TestUserService_QueryUsers_WithMockTable(t *testing.T) {
 			"sk": &types.AttributeValueMemberS{Value: "PROFILE"},
 		},
 	})
-	
+
 	assert.NoError(t, err)
 	assert.NotNil(t, output.Item)
 	assert.Equal(t, "Test User", output.Item["name"].(*types.AttributeValueMemberS).Value)
@@ -89,10 +89,10 @@ func TestPaymentService_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
-	
+
 	// Create test helper
 	helper := NewDynamORMTestHelper(t)
-	
+
 	// Create test table
 	tableName := "test-payments-" + time.Now().Format("20060102150405")
 	helper.CreateTestTable(t, tableName,
@@ -100,7 +100,7 @@ func TestPaymentService_Integration(t *testing.T) {
 		WithTTL("expires_at"),
 	)
 	defer helper.DeleteTestTable(t, tableName)
-	
+
 	// Test data
 	payment := map[string]types.AttributeValue{
 		"pk":         &types.AttributeValueMemberS{Value: "PAYMENT#123"},
@@ -110,20 +110,20 @@ func TestPaymentService_Integration(t *testing.T) {
 		"created_at": &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 		"status":     &types.AttributeValueMemberS{Value: "pending"},
 	}
-	
+
 	// Put item
 	helper.PutTestItem(t, tableName, payment)
-	
+
 	// Get item back
 	retrieved := helper.GetTestItem(t, tableName, map[string]types.AttributeValue{
 		"pk": &types.AttributeValueMemberS{Value: "PAYMENT#123"},
 		"sk": &types.AttributeValueMemberS{Value: "METADATA"},
 	})
-	
+
 	assert.NotNil(t, retrieved)
 	assert.Equal(t, "1000", retrieved["amount"].(*types.AttributeValueMemberN).Value)
 	assert.Equal(t, "pending", retrieved["status"].(*types.AttributeValueMemberS).Value)
-	
+
 	// Query by user ID using GSI
 	ctx := context.Background()
 	queryResp, err := helper.DynamoClient.Query(ctx, &dynamodb.QueryInput{
@@ -134,7 +134,7 @@ func TestPaymentService_Integration(t *testing.T) {
 			":uid": &types.AttributeValueMemberS{Value: "USER#456"},
 		},
 	})
-	
+
 	assert.NoError(t, err)
 	assert.Len(t, queryResp.Items, 1)
 }
@@ -147,23 +147,23 @@ func TestDynamORMModel_Serialization(t *testing.T) {
 	item.Data["name"] = "Test User"
 	item.GSI1PK = "EMAIL#test@example.com"
 	item.GSI1SK = "USER#123"
-	
+
 	// Marshal to DynamoDB attributes
 	av, err := attributevalue.MarshalMap(item)
 	assert.NoError(t, err)
-	
+
 	// Verify attributes
 	assert.Equal(t, "USER#123", av["pk"].(*types.AttributeValueMemberS).Value)
 	assert.Equal(t, "PROFILE", av["sk"].(*types.AttributeValueMemberS).Value)
 	assert.Equal(t, "user", av["type"].(*types.AttributeValueMemberS).Value)
 	assert.NotNil(t, av["created_at"])
 	assert.NotNil(t, av["updated_at"])
-	
+
 	// Unmarshal back
 	var unmarshaled DynamORMTestItem
 	err = attributevalue.UnmarshalMap(av, &unmarshaled)
 	assert.NoError(t, err)
-	
+
 	assert.Equal(t, item.PK, unmarshaled.PK)
 	assert.Equal(t, item.SK, unmarshaled.SK)
 	assert.Equal(t, item.Type, unmarshaled.Type)
@@ -176,18 +176,18 @@ func TestMultiTenantScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
-	
+
 	// Create test helper and scenarios
 	helper := NewDynamORMTestHelper(t)
 	scenarios := NewDynamORMTestScenarios(helper)
-	
+
 	// Create multi-tenant table
 	tableName := "test-multitenant-" + time.Now().Format("20060102150405")
 	helper.CreateTestTable(t, tableName,
 		WithGSI("tenant-user-index", "tenant_id", "user_id"),
 	)
 	defer helper.DeleteTestTable(t, tableName)
-	
+
 	// Run multi-tenant test scenario
 	scenarios.TestMultiTenantAccess(t, tableName)
 }
@@ -198,16 +198,16 @@ func TestPaginationScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
-	
+
 	// Create test helper and scenarios
 	helper := NewDynamORMTestHelper(t)
 	scenarios := NewDynamORMTestScenarios(helper)
-	
+
 	// Create table
 	tableName := "test-pagination-" + time.Now().Format("20060102150405")
 	helper.CreateTestTable(t, tableName)
 	defer helper.DeleteTestTable(t, tableName)
-	
+
 	// Run pagination test scenario
 	scenarios.TestPaginatedQueries(t, tableName)
 }
@@ -218,16 +218,16 @@ func TestConditionalWritesScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
-	
+
 	// Create test helper and scenarios
 	helper := NewDynamORMTestHelper(t)
 	scenarios := NewDynamORMTestScenarios(helper)
-	
+
 	// Create table
 	tableName := "test-conditional-" + time.Now().Format("20060102150405")
 	helper.CreateTestTable(t, tableName)
 	defer helper.DeleteTestTable(t, tableName)
-	
+
 	// Run conditional writes test scenario
 	scenarios.TestConditionalWrites(t, tableName)
 }
@@ -237,19 +237,19 @@ func BenchmarkPutItem_WithMocks(b *testing.B) {
 	// Create mock client
 	mockClient := NewMockDynamORMClient()
 	mockClient.AddMockTable("benchmark-table")
-	
+
 	// Prepare test item
 	item := map[string]types.AttributeValue{
 		"pk":   &types.AttributeValueMemberS{Value: "BENCH#123"},
 		"sk":   &types.AttributeValueMemberS{Value: "DATA"},
 		"data": &types.AttributeValueMemberS{Value: "benchmark data"},
 	}
-	
+
 	ctx := context.Background()
-	
+
 	// Reset timer to exclude setup
 	b.ResetTimer()
-	
+
 	// Run benchmark
 	for i := 0; i < b.N; i++ {
 		_, _ = mockClient.PutItem(ctx, &dynamodb.PutItemInput{
@@ -267,7 +267,7 @@ type PaymentServiceTestSuite struct {
 
 func (s *PaymentServiceTestSuite) SetupSuite() {
 	s.DynamORMIntegrationSuite.SetupSuite()
-	
+
 	// Create payments table
 	s.paymentsTable = s.CreateTestTable("payments",
 		WithGSI("user-payments", "user_id", "created_at"),
@@ -285,15 +285,15 @@ func (s *PaymentServiceTestSuite) TestCreatePayment() {
 		"status":     &types.AttributeValueMemberS{Value: "completed"},
 		"created_at": &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 	}
-	
+
 	s.helper.PutTestItem(s.T(), s.paymentsTable, payment)
-	
+
 	// Verify payment was created
 	retrieved := s.helper.GetTestItem(s.T(), s.paymentsTable, map[string]types.AttributeValue{
 		"pk": &types.AttributeValueMemberS{Value: "PAYMENT#789"},
 		"sk": &types.AttributeValueMemberS{Value: "METADATA"},
 	})
-	
+
 	s.NotNil(retrieved)
 	s.Equal("5000", retrieved["amount"].(*types.AttributeValueMemberN).Value)
 }
@@ -312,7 +312,7 @@ func (s *PaymentServiceTestSuite) TestQueryUserPayments() {
 		}
 		s.helper.PutTestItem(s.T(), s.paymentsTable, payment)
 	}
-	
+
 	// Query user payments
 	ctx := context.Background()
 	resp, err := s.client.Query(ctx, &dynamodb.QueryInput{
@@ -324,7 +324,7 @@ func (s *PaymentServiceTestSuite) TestQueryUserPayments() {
 		},
 		ScanIndexForward: aws.Bool(false), // Most recent first
 	})
-	
+
 	s.NoError(err)
 	s.Len(resp.Items, 5)
 }

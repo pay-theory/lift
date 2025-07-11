@@ -68,13 +68,13 @@ type ComplianceConfig struct {
 
 // ComplianceRule defines a custom compliance rule
 type ComplianceRule struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Framework   string                 `json:"framework"`
-	Severity    string                 `json:"severity"`
-	Description string                 `json:"description"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Framework   string         `json:"framework"`
+	Severity    string         `json:"severity"`
+	Description string         `json:"description"`
 	Condition   map[string]any `json:"condition"`
-	Action      string                 `json:"action"`
+	Action      string         `json:"action"`
 }
 
 // AuditLogger handles audit trail logging
@@ -139,37 +139,37 @@ type DataAccessLog struct {
 
 // SecurityEvent represents a security-related event
 type SecurityEvent struct {
-	EventType   string                 `json:"event_type"`
-	Severity    string                 `json:"severity"`
-	Description string                 `json:"description"`
+	EventType   string         `json:"event_type"`
+	Severity    string         `json:"severity"`
+	Description string         `json:"description"`
 	Metadata    map[string]any `json:"metadata,omitempty"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Resolved    bool                   `json:"resolved"`
+	Timestamp   time.Time      `json:"timestamp"`
+	Resolved    bool           `json:"resolved"`
 }
 
 // ComplianceResult represents the result of compliance validation
 type ComplianceResult struct {
-	Compliant  bool                   `json:"compliant"`
-	Framework  string                 `json:"framework"`
-	Violations []ComplianceViolation  `json:"violations,omitempty"`
-	Warnings   []string               `json:"warnings,omitempty"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
-	Timestamp  time.Time              `json:"timestamp"`
+	Compliant  bool                  `json:"compliant"`
+	Framework  string                `json:"framework"`
+	Violations []ComplianceViolation `json:"violations,omitempty"`
+	Warnings   []string              `json:"warnings,omitempty"`
+	Metadata   map[string]any        `json:"metadata,omitempty"`
+	Timestamp  time.Time             `json:"timestamp"`
 }
 
 // ComplianceViolation represents a compliance violation
 type ComplianceViolation struct {
-	ID          string                 `json:"id"`
-	RuleID      string                 `json:"rule_id"`
-	Framework   string                 `json:"framework"`
-	Severity    string                 `json:"severity"`
-	Description string                 `json:"description"`
-	UserID      string                 `json:"user_id,omitempty"`
-	TenantID    string                 `json:"tenant_id,omitempty"`
-	Resource    string                 `json:"resource,omitempty"`
-	Timestamp   time.Time              `json:"timestamp"`
+	ID          string         `json:"id"`
+	RuleID      string         `json:"rule_id"`
+	Framework   string         `json:"framework"`
+	Severity    string         `json:"severity"`
+	Description string         `json:"description"`
+	UserID      string         `json:"user_id,omitempty"`
+	TenantID    string         `json:"tenant_id,omitempty"`
+	Resource    string         `json:"resource,omitempty"`
+	Timestamp   time.Time      `json:"timestamp"`
 	Metadata    map[string]any `json:"metadata,omitempty"`
-	Resolved    bool                   `json:"resolved"`
+	Resolved    bool           `json:"resolved"`
 }
 
 // ComplianceReport represents a compliance report
@@ -200,13 +200,13 @@ type ComplianceTrend struct {
 
 // AuditEntry represents an audit trail entry
 type AuditEntry struct {
-	ID        string                 `json:"id"`
-	UserID    string                 `json:"user_id"`
-	TenantID  string                 `json:"tenant_id"`
-	Action    string                 `json:"action"`
-	Resource  string                 `json:"resource"`
-	Timestamp time.Time              `json:"timestamp"`
-	Result    string                 `json:"result"`
+	ID        string         `json:"id"`
+	UserID    string         `json:"user_id"`
+	TenantID  string         `json:"tenant_id"`
+	Action    string         `json:"action"`
+	Resource  string         `json:"resource"`
+	Timestamp time.Time      `json:"timestamp"`
+	Result    string         `json:"result"`
 	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
@@ -349,7 +349,7 @@ func (cf *ComplianceFramework) sanitizeHeaders(headers map[string][]string) map[
 		"x-csrf-token":  true,
 		"x-session-id":  true,
 	}
-	
+
 	result := make(map[string]string)
 	for key, values := range headers {
 		lowerKey := strings.ToLower(key)
@@ -374,7 +374,7 @@ func (cf *ComplianceFramework) sanitizeQueryParams(params map[string][]string) m
 		"session":  true,
 		"key":      true,
 	}
-	
+
 	result := make(map[string]string)
 	for key, values := range params {
 		lowerKey := strings.ToLower(key)

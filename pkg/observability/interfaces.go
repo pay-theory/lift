@@ -27,15 +27,15 @@ type SNSClient interface {
 
 // LogEntry represents a structured log entry with multi-tenant context
 type LogEntry struct {
-	Timestamp time.Time              `json:"timestamp"`
-	Level     string                 `json:"level"`
-	Message   string                 `json:"message"`
+	Timestamp time.Time      `json:"timestamp"`
+	Level     string         `json:"level"`
+	Message   string         `json:"message"`
 	Fields    map[string]any `json:"fields,omitempty"`
-	RequestID string                 `json:"request_id,omitempty"`
-	TenantID  string                 `json:"tenant_id,omitempty"`
-	UserID    string                 `json:"user_id,omitempty"`
-	TraceID   string                 `json:"trace_id,omitempty"`
-	SpanID    string                 `json:"span_id,omitempty"`
+	RequestID string         `json:"request_id,omitempty"`
+	TenantID  string         `json:"tenant_id,omitempty"`
+	UserID    string         `json:"user_id,omitempty"`
+	TraceID   string         `json:"trace_id,omitempty"`
+	SpanID    string         `json:"span_id,omitempty"`
 }
 
 // LogBuffer defines the interface for buffering log entries
@@ -126,12 +126,12 @@ type LoggerFactory interface {
 
 // MetricEntry represents a metric data point
 type MetricEntry struct {
-	Name      string                 `json:"name"`
-	Value     float64                `json:"value"`
-	Unit      string                 `json:"unit"`
-	Timestamp time.Time              `json:"timestamp"`
-	Tags      map[string]string      `json:"tags,omitempty"`
-	Fields    map[string]any `json:"fields,omitempty"`
+	Name      string            `json:"name"`
+	Value     float64           `json:"value"`
+	Unit      string            `json:"unit"`
+	Timestamp time.Time         `json:"timestamp"`
+	Tags      map[string]string `json:"tags,omitempty"`
+	Fields    map[string]any    `json:"fields,omitempty"`
 }
 
 // MetricsCollector extends the basic lift.MetricsCollector with additional functionality

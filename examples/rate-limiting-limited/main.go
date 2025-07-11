@@ -17,7 +17,7 @@ func RateLimitMiddleware(limiter *limited.DynamoRateLimiter) lift.Middleware {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			// Generate rate limit key
 			key := generateRateLimitKey(ctx)
-			
+
 			// Check rate limit
 			decision, err := limiter.CheckAndIncrement(ctx.Context, key)
 			if err != nil {
@@ -30,7 +30,7 @@ func RateLimitMiddleware(limiter *limited.DynamoRateLimiter) lift.Middleware {
 				}
 				return next.Handle(ctx)
 			}
-			
+
 			// Set rate limit headers
 			remaining := decision.Limit - decision.CurrentCount
 			if remaining < 0 {
@@ -39,14 +39,14 @@ func RateLimitMiddleware(limiter *limited.DynamoRateLimiter) lift.Middleware {
 			ctx.Response.Header("X-RateLimit-Limit", fmt.Sprintf("%d", decision.Limit))
 			ctx.Response.Header("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
 			ctx.Response.Header("X-RateLimit-Reset", fmt.Sprintf("%d", decision.ResetsAt.Unix()))
-			
+
 			if !decision.Allowed {
 				retryAfter := 60 // default to 60 seconds
 				if decision.RetryAfter != nil {
 					retryAfter = int(decision.RetryAfter.Seconds())
 				}
 				ctx.Response.Header("Retry-After", fmt.Sprintf("%d", retryAfter))
-				
+
 				return ctx.Response.Status(429).JSON(map[string]any{
 					"error":       "Rate limit exceeded",
 					"limit":       decision.Limit,
@@ -55,7 +55,7 @@ func RateLimitMiddleware(limiter *limited.DynamoRateLimiter) lift.Middleware {
 					"retry_after": retryAfter,
 				})
 			}
-			
+
 			return next.Handle(ctx)
 		})
 	}
@@ -68,7 +68,7 @@ func generateRateLimitKey(ctx *lift.Context) limited.RateLimitKey {
 		Operation: ctx.Request.Method,
 		Metadata:  make(map[string]string),
 	}
-	
+
 	// Use user ID if authenticated
 	if userID := ctx.UserID(); userID != "" {
 		key.Identifier = fmt.Sprintf("user:%s", userID)
@@ -85,18 +85,18 @@ func generateRateLimitKey(ctx *lift.Context) limited.RateLimitKey {
 		key.Identifier = fmt.Sprintf("ip:%s", ip)
 		key.Metadata["ip"] = ip
 	}
-	
+
 	// Add tenant ID if present
 	if tenantID := ctx.TenantID(); tenantID != "" {
 		key.Metadata["tenant_id"] = tenantID
 	}
-	
+
 	return key
 }
 
 func main() {
 	app := lift.New()
-	
+
 	// Initialize DynamoDB connection using DynamORM's NewBasic
 	db, err := dynamorm.NewBasic(session.Config{
 		Region: "us-east-1",
@@ -106,11 +106,11 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to initialize DynamoDB: %v", err))
 	}
-	
+
 	// Create logger
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
-	
+
 	// Create rate limiting strategies
 	// Public endpoints: 1000 requests per hour
 	publicStrategy := limited.NewFixedWindowStrategy(time.Hour, 1000)
@@ -120,19 +120,19 @@ func main() {
 		publicStrategy,
 		logger,
 	)
-	
+
 	// Note: In a real implementation, you would create different limiters
 	// for different endpoints and apply them selectively
-	
+
 	// Apply global rate limiting (you can be more specific with different limiters)
 	app.Use(RateLimitMiddleware(publicLimiter))
-	
+
 	// Public endpoints
 	public := app.Group("/public")
 	public.POST("/signup", handleSignup)
 	public.POST("/login", handleLogin)
 	public.POST("/forgot-password", handleForgotPassword)
-	
+
 	// API endpoints
 	api := app.Group("/api")
 	api.GET("/users", handleListUsers)
@@ -142,10 +142,10 @@ func main() {
 	api.DELETE("/users/:id", handleDeleteUser)
 	api.POST("/expensive-operation", handleExpensiveOperation)
 	api.POST("/data-export", handleDataExport)
-	
+
 	// Health check (no rate limiting)
 	app.GET("/health", handleHealth)
-	
+
 	app.Start()
 }
 
@@ -156,7 +156,7 @@ func handleSignup(ctx *lift.Context) error {
 	if err := ctx.ParseRequest(&req); err != nil {
 		return err
 	}
-	
+
 	// Process signup...
 	return ctx.Status(201).JSON(map[string]any{
 		"message": "Account created successfully",
@@ -169,7 +169,7 @@ func handleLogin(ctx *lift.Context) error {
 	if err := ctx.ParseRequest(&req); err != nil {
 		return err
 	}
-	
+
 	// Process login...
 	return ctx.JSON(map[string]any{
 		"token": "jwt-token-here",
@@ -185,7 +185,7 @@ func handleForgotPassword(ctx *lift.Context) error {
 	if err := ctx.ParseRequest(&req); err != nil {
 		return err
 	}
-	
+
 	// Process password reset...
 	return ctx.JSON(map[string]any{
 		"message": "Password reset email sent",
@@ -200,10 +200,10 @@ func handleExpensiveOperation(ctx *lift.Context) error {
 			"user_id":   ctx.UserID(),
 		})
 	}
-	
+
 	// Simulate expensive operation
 	time.Sleep(100 * time.Millisecond)
-	
+
 	return ctx.JSON(map[string]any{
 		"result": "Operation completed",
 		"cost":   "high",
@@ -215,7 +215,7 @@ func handleDataExport(ctx *lift.Context) error {
 	if exportType == "" {
 		return ctx.BadRequest("Export type is required", nil)
 	}
-	
+
 	return ctx.JSON(map[string]any{
 		"export_id": "export-123",
 		"type":      exportType,
@@ -238,7 +238,7 @@ func handleCreateUser(ctx *lift.Context) error {
 	if err := ctx.ParseRequest(&req); err != nil {
 		return err
 	}
-	
+
 	return ctx.Status(201).JSON(map[string]any{
 		"id":   "new-user-id",
 		"name": req.Name,
@@ -259,7 +259,7 @@ func handleUpdateUser(ctx *lift.Context) error {
 	if err := ctx.ParseRequest(&req); err != nil {
 		return err
 	}
-	
+
 	return ctx.JSON(map[string]any{
 		"id":   userID,
 		"name": req.Name,

@@ -251,10 +251,10 @@ type HealthEndpoint struct {
 
 // CustomHealthCheck defines a custom health check
 type CustomHealthCheck struct {
-	Name     string                 `json:"name"`
-	Type     string                 `json:"type"`
+	Name     string         `json:"name"`
+	Type     string         `json:"type"`
 	Config   map[string]any `json:"config"`
-	Critical bool                   `json:"critical"`
+	Critical bool           `json:"critical"`
 }
 
 // DataReplicationConfig defines data replication configuration
@@ -322,10 +322,10 @@ type NotificationConfig struct {
 
 // NotificationChannel defines a notification channel
 type NotificationChannel struct {
-	Type     string                 `json:"type"` // email, sms, slack, pagerduty
+	Type     string         `json:"type"` // email, sms, slack, pagerduty
 	Config   map[string]any `json:"config"`
-	Events   []string               `json:"events"`
-	Severity []string               `json:"severity"`
+	Events   []string       `json:"events"`
+	Severity []string       `json:"severity"`
 }
 
 // EscalationConfig defines escalation configuration

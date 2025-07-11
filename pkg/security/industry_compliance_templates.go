@@ -125,15 +125,15 @@ type IndustryComplianceReport struct {
 
 // RegulationCompliance represents compliance with a specific regulation
 type RegulationCompliance struct {
-	Regulation          string                 `json:"regulation"`
-	Status              string                 `json:"status"`
-	Score               float64                `json:"score"`
-	RequiredControls    int                    `json:"required_controls"`
-	ImplementedControls int                    `json:"implemented_controls"`
-	Findings            []ComplianceFinding    `json:"findings"`
-	LastAssessment      time.Time              `json:"last_assessment"`
-	NextAssessment      time.Time              `json:"next_assessment"`
-	Metadata            map[string]any `json:"metadata"`
+	Regulation          string              `json:"regulation"`
+	Status              string              `json:"status"`
+	Score               float64             `json:"score"`
+	RequiredControls    int                 `json:"required_controls"`
+	ImplementedControls int                 `json:"implemented_controls"`
+	Findings            []ComplianceFinding `json:"findings"`
+	LastAssessment      time.Time           `json:"last_assessment"`
+	NextAssessment      time.Time           `json:"next_assessment"`
+	Metadata            map[string]any      `json:"metadata"`
 }
 
 // ComplianceRecommendation represents a compliance recommendation
@@ -232,16 +232,16 @@ type RiskMitigation struct {
 
 // RiskAssessmentTemplate represents a risk assessment template
 type RiskAssessmentTemplate struct {
-	ID               string                 `json:"id"`
-	Name             string                 `json:"name"`
-	Industry         string                 `json:"industry"`
-	Scope            []string               `json:"scope"`
-	RiskFactors      []RiskFactor           `json:"risk_factors"`
-	ThreatSources    []string               `json:"threat_sources"`
-	AssetCategories  []string               `json:"asset_categories"`
-	ImpactCategories []string               `json:"impact_categories"`
-	Methodology      string                 `json:"methodology"`
-	Frequency        time.Duration          `json:"frequency"`
+	ID               string         `json:"id"`
+	Name             string         `json:"name"`
+	Industry         string         `json:"industry"`
+	Scope            []string       `json:"scope"`
+	RiskFactors      []RiskFactor   `json:"risk_factors"`
+	ThreatSources    []string       `json:"threat_sources"`
+	AssetCategories  []string       `json:"asset_categories"`
+	ImpactCategories []string       `json:"impact_categories"`
+	Methodology      string         `json:"methodology"`
+	Frequency        time.Duration  `json:"frequency"`
 	Metadata         map[string]any `json:"metadata"`
 }
 

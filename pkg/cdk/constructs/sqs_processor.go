@@ -2,7 +2,7 @@ package constructs
 
 import (
 	"fmt"
-	
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
@@ -34,14 +34,14 @@ type SQSProcessorProps struct {
 	EventSourceProps *awslambdaeventsources.SqsEventSourceProps
 
 	// Additional SQS processor settings
-	BatchSize           *float64 // Default: 10
-	MaxBatchingWindow   awscdk.Duration // Default: 5 seconds
-	VisibilityTimeout   awscdk.Duration // Default: 6 times function timeout
-	MessageRetentionPeriod awscdk.Duration // Default: 14 days
-	MaxReceiveCount     *float64 // Default: 3
-	EnableContentBasedDeduplication *bool // For FIFO queues
-	FifoQueue          *bool     // Default: false
-	ReceiveMessageWaitTimeSeconds *float64 // For long polling (0-20)
+	BatchSize                       *float64        // Default: 10
+	MaxBatchingWindow               awscdk.Duration // Default: 5 seconds
+	VisibilityTimeout               awscdk.Duration // Default: 6 times function timeout
+	MessageRetentionPeriod          awscdk.Duration // Default: 14 days
+	MaxReceiveCount                 *float64        // Default: 3
+	EnableContentBasedDeduplication *bool           // For FIFO queues
+	FifoQueue                       *bool           // Default: false
+	ReceiveMessageWaitTimeSeconds   *float64        // For long polling (0-20)
 
 	// Lift-specific settings
 	EnableTracing     *bool
@@ -153,13 +153,13 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 
 			dlqConfig = &awssqs.DeadLetterQueue{
 				MaxReceiveCount: jsii.Number(maxReceiveCount),
-				Queue:          this.DeadLetterQueue,
+				Queue:           this.DeadLetterQueue,
 			}
 		}
 
 		// Create main queue
 		queueProps := &awssqs.QueueProps{
-			VisibilityTimeout:       visibilityTimeout,
+			VisibilityTimeout:      visibilityTimeout,
 			RetentionPeriod:        messageRetentionPeriod,
 			DeadLetterQueue:        dlqConfig,
 			ReceiveMessageWaitTime: awscdk.Duration_Seconds(jsii.Number(longPollingWaitTime)),
@@ -238,7 +238,7 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 	if props.EnableMultiTenant != nil {
 		liftProps.EnableMultiTenant = props.EnableMultiTenant
 	}
-	
+
 	// Disable Lambda DLQ when SQS DLQ is disabled to avoid confusion
 	if !enableDLQ {
 		liftProps.EnableDeadLetterQueue = jsii.Bool(false)
@@ -302,114 +302,114 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 func (s *SQSProcessor) enableMonitoring() {
 	// Create SNS topic for alerts
 	_ = awssns.NewTopic(s, jsii.String("AlarmTopic"), &awssns.TopicProps{
-		TopicName: jsii.String(fmt.Sprintf("%s-alarms", *s.Queue.QueueName())),
+		TopicName:   jsii.String(fmt.Sprintf("%s-alarms", *s.Queue.QueueName())),
 		DisplayName: jsii.String(fmt.Sprintf("Alarms for %s", *s.Queue.QueueName())),
 	})
-	
+
 	// Queue depth alarm - warns when messages accumulate
 	awscloudwatch.NewAlarm(s, jsii.String("QueueDepthAlarm"), &awscloudwatch.AlarmProps{
-		AlarmName:         jsii.String(fmt.Sprintf("%s-queue-depth", *s.Queue.QueueName())),
-		AlarmDescription:  jsii.String("Queue depth is too high"),
+		AlarmName:        jsii.String(fmt.Sprintf("%s-queue-depth", *s.Queue.QueueName())),
+		AlarmDescription: jsii.String("Queue depth is too high"),
 		Metric: s.Queue.MetricApproximateNumberOfMessagesVisible(&awscloudwatch.MetricOptions{
 			Period: awscdk.Duration_Minutes(jsii.Number(5)),
 		}),
-		Threshold:         jsii.Number(1000),
-		EvaluationPeriods: jsii.Number(2),
+		Threshold:          jsii.Number(1000),
+		EvaluationPeriods:  jsii.Number(2),
 		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 	})
-	
+
 	// Message age alarm - warns when messages are not processed quickly
 	awscloudwatch.NewAlarm(s, jsii.String("MessageAgeAlarm"), &awscloudwatch.AlarmProps{
-		AlarmName:         jsii.String(fmt.Sprintf("%s-message-age", *s.Queue.QueueName())),
-		AlarmDescription:  jsii.String("Messages are aging in queue"),
+		AlarmName:        jsii.String(fmt.Sprintf("%s-message-age", *s.Queue.QueueName())),
+		AlarmDescription: jsii.String("Messages are aging in queue"),
 		Metric: s.Queue.MetricApproximateAgeOfOldestMessage(&awscloudwatch.MetricOptions{
 			Period: awscdk.Duration_Minutes(jsii.Number(5)),
 		}),
-		Threshold:         jsii.Number(300), // 5 minutes
-		EvaluationPeriods: jsii.Number(2),
+		Threshold:          jsii.Number(300), // 5 minutes
+		EvaluationPeriods:  jsii.Number(2),
 		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 	})
-	
+
 	// DLQ message count alarm
 	if s.DeadLetterQueue != nil {
 		awscloudwatch.NewAlarm(s, jsii.String("DLQMessagesAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-dlq-messages", *s.Queue.QueueName())),
-			AlarmDescription:  jsii.String("Messages in dead letter queue"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-dlq-messages", *s.Queue.QueueName())),
+			AlarmDescription: jsii.String("Messages in dead letter queue"),
 			Metric: s.DeadLetterQueue.MetricApproximateNumberOfMessagesVisible(&awscloudwatch.MetricOptions{
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(1),
-			EvaluationPeriods: jsii.Number(1),
+			Threshold:          jsii.Number(1),
+			EvaluationPeriods:  jsii.Number(1),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
-	
+
 	// Lambda function monitoring
 	if s.Function != nil && s.Function.Function != nil {
 		function := s.Function.Function
-		
+
 		// Function error rate alarm
 		awscloudwatch.NewAlarm(s, jsii.String("FunctionErrorAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-processor-errors", *s.Queue.QueueName())),
-			AlarmDescription:  jsii.String("SQS processor function errors"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-errors", *s.Queue.QueueName())),
+			AlarmDescription: jsii.String("SQS processor function errors"),
 			Metric: function.MetricErrors(&awscloudwatch.MetricOptions{
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(5),
-			EvaluationPeriods: jsii.Number(2),
+			Threshold:          jsii.Number(5),
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
+
 		// Function throttles alarm
 		awscloudwatch.NewAlarm(s, jsii.String("FunctionThrottleAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-processor-throttles", *s.Queue.QueueName())),
-			AlarmDescription:  jsii.String("SQS processor function throttled"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-throttles", *s.Queue.QueueName())),
+			AlarmDescription: jsii.String("SQS processor function throttled"),
 			Metric: function.MetricThrottles(&awscloudwatch.MetricOptions{
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(1),
-			EvaluationPeriods: jsii.Number(1),
+			Threshold:          jsii.Number(1),
+			EvaluationPeriods:  jsii.Number(1),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
+
 		// Function duration alarm
 		awscloudwatch.NewAlarm(s, jsii.String("FunctionDurationAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-processor-duration", *s.Queue.QueueName())),
-			AlarmDescription:  jsii.String("SQS processor taking too long"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-duration", *s.Queue.QueueName())),
+			AlarmDescription: jsii.String("SQS processor taking too long"),
 			Metric: function.MetricDuration(&awscloudwatch.MetricOptions{
-				Period: awscdk.Duration_Minutes(jsii.Number(5)),
+				Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 				Statistic: awscloudwatch.Stats_AVERAGE(),
 			}),
-			Threshold:         jsii.Number(30000), // 30 seconds
-			EvaluationPeriods: jsii.Number(2),
+			Threshold:          jsii.Number(30000), // 30 seconds
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
-	
+
 	// Queue in-flight messages alarm
 	awscloudwatch.NewAlarm(s, jsii.String("InFlightMessagesAlarm"), &awscloudwatch.AlarmProps{
-		AlarmName:         jsii.String(fmt.Sprintf("%s-in-flight-messages", *s.Queue.QueueName())),
-		AlarmDescription:  jsii.String("Too many messages in flight"),
+		AlarmName:        jsii.String(fmt.Sprintf("%s-in-flight-messages", *s.Queue.QueueName())),
+		AlarmDescription: jsii.String("Too many messages in flight"),
 		Metric: s.Queue.MetricApproximateNumberOfMessagesNotVisible(&awscloudwatch.MetricOptions{
 			Period: awscdk.Duration_Minutes(jsii.Number(5)),
 		}),
-		Threshold:         jsii.Number(5000),
-		EvaluationPeriods: jsii.Number(2),
+		Threshold:          jsii.Number(5000),
+		EvaluationPeriods:  jsii.Number(2),
 		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 	})
-	
+
 	// Create CloudWatch dashboard
 	dashboard := awscloudwatch.NewDashboard(s, jsii.String("ProcessorDashboard"), &awscloudwatch.DashboardProps{
 		DashboardName: jsii.String(fmt.Sprintf("%s-processor-dashboard", *s.Queue.QueueName())),
 	})
-	
+
 	// Add widgets to dashboard
 	dashboard.AddWidgets(
 		awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
@@ -423,7 +423,7 @@ func (s *SQSProcessor) enableMonitoring() {
 			},
 		}),
 	)
-	
+
 	if s.DeadLetterQueue != nil {
 		dashboard.AddWidgets(
 			awscloudwatch.NewSingleValueWidget(&awscloudwatch.SingleValueWidgetProps{
@@ -434,7 +434,7 @@ func (s *SQSProcessor) enableMonitoring() {
 			}),
 		)
 	}
-	
+
 	if s.Function != nil && s.Function.Function != nil {
 		dashboard.AddWidgets(
 			awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{

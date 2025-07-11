@@ -47,7 +47,15 @@ print_status $? "Go vet"
 if command -v gosec &> /dev/null; then
     echo -e "${YELLOW}Running security scan with gosec...${NC}"
     # Only scan production code - exclude tests, examples, vendor
-    timeout 30s gosec -tests=false ./pkg/lift ./pkg/middleware ./pkg/security
+    # Check if timeout is available (GNU coreutils on macOS) or use fallback
+    if command -v timeout &> /dev/null; then
+        timeout 30s gosec -tests=false ./pkg/lift ./pkg/middleware ./pkg/security
+    elif command -v gtimeout &> /dev/null; then
+        gtimeout 30s gosec -tests=false ./pkg/lift ./pkg/middleware ./pkg/security
+    else
+        # Run without timeout on systems that don't have it
+        gosec -tests=false ./pkg/lift ./pkg/middleware ./pkg/security
+    fi
     print_status $? "Security scan (gosec)"
 else
     echo -e "${YELLOW}⚠ gosec not found, skipping security scan${NC}"

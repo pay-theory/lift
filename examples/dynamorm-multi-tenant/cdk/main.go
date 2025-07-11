@@ -36,10 +36,10 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 	// Create table with multi-tenant support
 	// Note: Multi-tenancy is now handled at the data layer through DynamORM models
 	table := liftconstructs.NewLiftTable(stack, jsii.String("MultiTenantTable"), &liftconstructs.LiftTableProps{
-		TableName: jsii.String("DynamORMMultiTenantTable"),
-		TimeToLiveAttribute: jsii.String("ttl"),
+		TableName:                 jsii.String("DynamORMMultiTenantTable"),
+		TimeToLiveAttribute:       jsii.String("ttl"),
 		EnablePointInTimeRecovery: jsii.Bool(true),
-		EnableStreams: jsii.Bool(true),
+		EnableStreams:             jsii.Bool(true),
 	})
 
 	// GSIs are now defined in DynamORM model structs using tags like:
@@ -103,7 +103,7 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 	// Tenant management
 	tenantsResource := apiResource.AddResource(jsii.String("tenants"), nil)
 	tenantsResource.AddMethod(jsii.String("POST"), integration, nil)
-	
+
 	tenantResource := tenantsResource.AddResource(jsii.String("{id}"), nil)
 	tenantResource.AddMethod(jsii.String("GET"), integration, nil)
 
@@ -187,7 +187,7 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 	})
 
 	awscdk.NewCfnOutput(stack, jsii.String("DashboardURL"), &awscdk.CfnOutputProps{
-		Value: jsii.String("https://console.aws.amazon.com/cloudwatch/home?region=" + 
+		Value: jsii.String("https://console.aws.amazon.com/cloudwatch/home?region=" +
 			*stack.Region() + "#dashboards:name=DynamORMMultiTenantStack"),
 		Description: jsii.String("CloudWatch Dashboard URL"),
 	})
@@ -201,12 +201,12 @@ func NewDynamORMMultiTenantStack(scope constructs.Construct, id string, props *D
 
 	// Output GSI information
 	awscdk.NewCfnOutput(stack, jsii.String("GSIPatterns"), &awscdk.CfnOutputProps{
-		Value: jsii.String("gsi-tenant-entity, gsi-tenant-timeseries, gsi-tenant-status"),
+		Value:       jsii.String("gsi-tenant-entity, gsi-tenant-timeseries, gsi-tenant-status"),
 		Description: jsii.String("Available Global Secondary Indexes"),
 	})
 
 	awscdk.NewCfnOutput(stack, jsii.String("AccessPatterns"), &awscdk.CfnOutputProps{
-		Value: jsii.String("PK=tenant#{id} SK=user#{id}|project#{id}, GSI queries by tenant_id"),
+		Value:       jsii.String("PK=tenant#{id} SK=user#{id}|project#{id}, GSI queries by tenant_id"),
 		Description: jsii.String("DynamORM Access Patterns"),
 	})
 

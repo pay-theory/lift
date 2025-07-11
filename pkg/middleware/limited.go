@@ -37,7 +37,7 @@ func LimitedRateLimit(config LimitedConfig) (lift.Middleware, error) {
 	if config.Region == "" {
 		return nil, fmt.Errorf("region is required for DynamoDB connection")
 	}
-	
+
 	// Set defaults
 	if config.TableName == "" {
 		config.TableName = "rate-limits"
@@ -135,7 +135,7 @@ func IPRateLimitWithLimited(limit int, window time.Duration) (lift.Middleware, e
 	if region == "" {
 		return nil, fmt.Errorf("AWS_REGION environment variable not set")
 	}
-	
+
 	return LimitedRateLimit(LimitedConfig{
 		Region: region,
 		Limit:  limit,
@@ -152,7 +152,7 @@ func UserRateLimitWithLimited(limit int, window time.Duration) (lift.Middleware,
 	if region == "" {
 		return nil, fmt.Errorf("AWS_REGION environment variable not set")
 	}
-	
+
 	return LimitedRateLimit(LimitedConfig{
 		Region: region,
 		Limit:  limit,
@@ -169,7 +169,7 @@ func TenantRateLimitWithLimited(limit int, window time.Duration) (lift.Middlewar
 	if region == "" {
 		return nil, fmt.Errorf("AWS_REGION environment variable not set")
 	}
-	
+
 	return LimitedRateLimit(LimitedConfig{
 		Region: region,
 		Limit:  limit,

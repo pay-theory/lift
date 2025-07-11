@@ -42,11 +42,11 @@ type ControlCriteria struct {
 
 // ControlTest defines how to test a control
 type ControlTest struct {
-	ID         string                 `json:"id"`
-	Type       TestType               `json:"type"`
-	Procedure  string                 `json:"procedure"`
-	Frequency  TestFrequency          `json:"frequency"`
-	Automated  bool                   `json:"automated"`
+	ID         string         `json:"id"`
+	Type       TestType       `json:"type"`
+	Procedure  string         `json:"procedure"`
+	Frequency  TestFrequency  `json:"frequency"`
+	Automated  bool           `json:"automated"`
 	Parameters map[string]any `json:"parameters"`
 	Expected   any            `json:"expected"`
 }

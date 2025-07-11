@@ -45,14 +45,14 @@ func (a *EventAdapter) HandleSQSEvent(ctx context.Context, sqsEvent events.SQSEv
 		SQSEvent:           sqsEvent,
 		ProcessingMetadata: a.metadata,
 	}
-	
+
 	// Add correlation ID from message attributes if available
 	if len(sqsEvent.Records) > 0 {
 		if corrID, ok := sqsEvent.Records[0].MessageAttributes["correlationId"]; ok && corrID.StringValue != nil {
 			liftEvent.ProcessingMetadata.CorrelationID = *corrID.StringValue
 		}
 	}
-	
+
 	return a.processor.ProcessEvent(ctx, liftEvent)
 }
 
@@ -67,7 +67,7 @@ func (a *EventAdapter) HandleEventBridgeEvent(ctx context.Context, event events.
 		CloudWatchEvent:    event,
 		ProcessingMetadata: a.metadata,
 	}
-	
+
 	// Extract correlation ID from detail if available
 	var detail map[string]interface{}
 	if err := json.Unmarshal(event.Detail, &detail); err == nil {
@@ -75,7 +75,7 @@ func (a *EventAdapter) HandleEventBridgeEvent(ctx context.Context, event events.
 			liftEvent.ProcessingMetadata.CorrelationID = corrID
 		}
 	}
-	
+
 	return a.processor.ProcessEvent(ctx, liftEvent)
 }
 
@@ -90,7 +90,7 @@ func (a *EventAdapter) HandleS3Event(ctx context.Context, s3Event events.S3Event
 		S3Event:            s3Event,
 		ProcessingMetadata: a.metadata,
 	}
-	
+
 	return a.processor.ProcessEvent(ctx, liftEvent)
 }
 
@@ -105,7 +105,7 @@ func (a *EventAdapter) HandleDynamoDBEvent(ctx context.Context, dynamoEvent even
 		DynamoDBEvent:      dynamoEvent,
 		ProcessingMetadata: a.metadata,
 	}
-	
+
 	return a.processor.ProcessEvent(ctx, liftEvent)
 }
 
@@ -120,7 +120,7 @@ func (a *EventAdapter) HandleSNSEvent(ctx context.Context, snsEvent events.SNSEv
 		SNSEvent:           snsEvent,
 		ProcessingMetadata: a.metadata,
 	}
-	
+
 	return a.processor.ProcessEvent(ctx, liftEvent)
 }
 
@@ -135,7 +135,7 @@ func (a *EventAdapter) HandleKinesisEvent(ctx context.Context, kinesisEvent even
 		KinesisEvent:       kinesisEvent,
 		ProcessingMetadata: a.metadata,
 	}
-	
+
 	return a.processor.ProcessEvent(ctx, liftEvent)
 }
 
@@ -159,7 +159,7 @@ func (l *LiftContextAdapter) AdaptSQSToHTTP(record events.SQSMessage) (*lift.Con
 			"message": record.Body,
 		}
 	}
-	
+
 	// Extract headers from message attributes
 	headers := make(map[string]string)
 	for key, attr := range record.MessageAttributes {
@@ -167,13 +167,13 @@ func (l *LiftContextAdapter) AdaptSQSToHTTP(record events.SQSMessage) (*lift.Con
 			headers[key] = *attr.StringValue
 		}
 	}
-	
+
 	// Marshal body to JSON
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal SQS body: %w", err)
 	}
-	
+
 	// Create a synthetic HTTP request
 	ctx := &lift.Context{
 		Request: &lift.Request{
@@ -183,12 +183,12 @@ func (l *LiftContextAdapter) AdaptSQSToHTTP(record events.SQSMessage) (*lift.Con
 			Body:    bodyBytes,
 		},
 	}
-	
+
 	// Add SQS-specific data
 	ctx.Set("sqsMessageId", record.MessageId)
 	ctx.Set("sqsReceiptHandle", record.ReceiptHandle)
 	ctx.Set("sqsEventSourceARN", record.EventSourceARN)
-	
+
 	return ctx, nil
 }
 
@@ -199,22 +199,22 @@ func (l *LiftContextAdapter) AdaptEventBridgeToHTTP(event events.CloudWatchEvent
 	if err := json.Unmarshal(event.Detail, &body); err != nil {
 		return nil, fmt.Errorf("failed to parse event detail: %w", err)
 	}
-	
+
 	// Create headers from event metadata
 	headers := map[string]string{
-		"X-Event-Source":     event.Source,
-		"X-Event-Type":       event.DetailType,
-		"X-Event-ID":         event.ID,
-		"X-Event-Time":       event.Time.Format(timeRFC3339),
-		"X-Event-Region":     event.Region,
+		"X-Event-Source": event.Source,
+		"X-Event-Type":   event.DetailType,
+		"X-Event-ID":     event.ID,
+		"X-Event-Time":   event.Time.Format(timeRFC3339),
+		"X-Event-Region": event.Region,
 	}
-	
+
 	// Marshal body to JSON
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal EventBridge body: %w", err)
 	}
-	
+
 	// Create synthetic HTTP request
 	ctx := &lift.Context{
 		Request: &lift.Request{
@@ -224,12 +224,12 @@ func (l *LiftContextAdapter) AdaptEventBridgeToHTTP(event events.CloudWatchEvent
 			Body:    bodyBytes,
 		},
 	}
-	
+
 	// Add EventBridge-specific data
 	ctx.Set("eventBridgeSource", event.Source)
 	ctx.Set("eventBridgeDetailType", event.DetailType)
 	ctx.Set("eventBridgeResources", event.Resources)
-	
+
 	return ctx, nil
 }
 
@@ -243,7 +243,7 @@ func (l *LiftContextAdapter) AdaptS3ToHTTP(record events.S3EventRecord) (*lift.C
 		"X-S3-Region":     record.AWSRegion,
 		"X-S3-Request-ID": record.ResponseElements["x-amz-request-id"],
 	}
-	
+
 	// Create body with S3 event details
 	body := map[string]interface{}{
 		"bucket":    record.S3.Bucket.Name,
@@ -252,13 +252,13 @@ func (l *LiftContextAdapter) AdaptS3ToHTTP(record events.S3EventRecord) (*lift.C
 		"etag":      record.S3.Object.ETag,
 		"eventName": record.EventName,
 	}
-	
+
 	// Marshal body to JSON
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal S3 body: %w", err)
 	}
-	
+
 	// Create synthetic HTTP request
 	ctx := &lift.Context{
 		Request: &lift.Request{
@@ -268,12 +268,12 @@ func (l *LiftContextAdapter) AdaptS3ToHTTP(record events.S3EventRecord) (*lift.C
 			Body:    bodyBytes,
 		},
 	}
-	
+
 	// Add S3-specific data
 	ctx.Set("s3Bucket", record.S3.Bucket.Name)
 	ctx.Set("s3Key", record.S3.Object.Key)
 	ctx.Set("s3EventName", record.EventName)
-	
+
 	return ctx, nil
 }
 
@@ -298,13 +298,13 @@ func (b *BatchEventProcessor) ProcessBatch(events []LiftEvent) error {
 		if end > len(events) {
 			end = len(events)
 		}
-		
+
 		batch := events[i:end]
 		if err := b.processor(batch); err != nil {
 			return fmt.Errorf("batch processing failed at index %d: %w", i, err)
 		}
 	}
-	
+
 	return nil
 }
 

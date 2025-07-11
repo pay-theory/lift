@@ -68,15 +68,15 @@ func (h *DynamORMTestHelper) CreateTestTable(t *testing.T, tableName string, opt
 	t.Helper()
 
 	config := &testTableConfig{
-		tableName:       tableName,
-		billingMode:     types.BillingModePayPerRequest,
-		partitionKey:    "pk",
-		sortKey:         "sk",
-		ttlAttribute:    "",
-		streamEnabled:   false,
-		gsiDefinitions:  []gsiDefinition{},
-		lsiDefinitions:  []lsiDefinition{},
-		tags:            map[string]string{},
+		tableName:      tableName,
+		billingMode:    types.BillingModePayPerRequest,
+		partitionKey:   "pk",
+		sortKey:        "sk",
+		ttlAttribute:   "",
+		streamEnabled:  false,
+		gsiDefinitions: []gsiDefinition{},
+		lsiDefinitions: []lsiDefinition{},
+		tags:           map[string]string{},
 	}
 
 	// Apply options
@@ -385,15 +385,15 @@ func WithTags(tags map[string]string) TestTableOption {
 
 // DynamORMTestItem represents a test item for DynamORM tables
 type DynamORMTestItem struct {
-	PK           string            ``
-	SK           string            ``
-	Type         string            ``
-	Data         map[string]string ``
-	TTL          int64             ``
-	GSI1PK       string            ``
-	GSI1SK       string            ``
-	CreatedAt    time.Time         ``
-	UpdatedAt    time.Time         ``
+	PK        string            ``
+	SK        string            ``
+	Type      string            ``
+	Data      map[string]string ``
+	TTL       int64             ``
+	GSI1PK    string            ``
+	GSI1SK    string            ``
+	CreatedAt time.Time         ``
+	UpdatedAt time.Time         ``
 }
 
 // CreateDynamORMItem creates a standard DynamORM test item
@@ -408,4 +408,3 @@ func CreateDynamORMItem(pk, sk, itemType string) DynamORMTestItem {
 		UpdatedAt: now,
 	}
 }
-

@@ -63,7 +63,7 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			defer func() {
 				if r := recover(); r != nil {
 					panicErr := fmt.Errorf("panic in request handler: %v", r)
-					
+
 					// Log to X-Ray if possible
 					if segment != nil {
 						if err := segment.AddError(panicErr); err != nil {
@@ -72,13 +72,13 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 						}
 						segment.Close(panicErr)
 					}
-					
+
 					// In production, convert panic to error response
 					if config.RecoverPanics {
 						ctx.Response.StatusCode = http.StatusInternalServerError
 						ctx.Response.Body = []byte(`{"error":"internal server error"}`)
 						ctx.Response.Headers["Content-Type"] = "application/json"
-						
+
 						// Log the panic details for debugging
 						if ctx.Logger != nil {
 							ctx.Logger.Error("Recovered from panic", map[string]any{

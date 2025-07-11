@@ -3,21 +3,21 @@ package lift
 import (
 	"sync"
 	"testing"
-	
+
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 )
 
 // TestEventRouterThreadSafety tests concurrent access to EventRouter
 func TestEventRouterThreadSafety(t *testing.T) {
 	router := NewEventRouter()
-	
+
 	// Number of concurrent goroutines
 	numGoroutines := 100
 	numOperations := 1000
-	
+
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines * 3) // 3 operations per goroutine
-	
+
 	// Concurrent writes (AddEventRoute)
 	for i := 0; i < numGoroutines; i++ {
 		go func(id int) {
@@ -33,7 +33,7 @@ func TestEventRouterThreadSafety(t *testing.T) {
 			}
 		}(i)
 	}
-	
+
 	// Concurrent reads (FindEventHandler)
 	for i := 0; i < numGoroutines; i++ {
 		go func(id int) {
@@ -55,7 +55,7 @@ func TestEventRouterThreadSafety(t *testing.T) {
 			}
 		}(i)
 	}
-	
+
 	// Concurrent reads (GetRoutes)
 	for i := 0; i < numGoroutines; i++ {
 		go func(id int) {
@@ -67,16 +67,16 @@ func TestEventRouterThreadSafety(t *testing.T) {
 			}
 		}(i)
 	}
-	
+
 	// Wait for all operations to complete
 	wg.Wait()
-	
+
 	// Verify routes were added
 	routes := router.GetRoutes()
 	if len(routes[TriggerSQS]) == 0 {
 		t.Fatal("No routes were added")
 	}
-	
+
 	// Verify GetRoutes returns a copy
 	originalLen := len(routes[TriggerSQS])
 	routes[TriggerSQS] = nil
@@ -89,7 +89,7 @@ func TestEventRouterThreadSafety(t *testing.T) {
 // TestEventRouterMatchingThreadSafety tests pattern matching under concurrent access
 func TestEventRouterMatchingThreadSafety(t *testing.T) {
 	router := NewEventRouter()
-	
+
 	// Add multiple routes with different patterns
 	patterns := []string{"*", "test-*", "*-queue", "specific-queue"}
 	for _, pattern := range patterns {
@@ -97,7 +97,7 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 			return nil
 		}))
 	}
-	
+
 	// Add S3 routes
 	s3Patterns := []string{"*", "my-bucket/*", "*/uploads/*", "docs/*/reports"}
 	for _, pattern := range s3Patterns {
@@ -105,10 +105,10 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 			return nil
 		}))
 	}
-	
+
 	var wg sync.WaitGroup
 	numGoroutines := 50
-	
+
 	// Concurrent pattern matching for SQS
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
@@ -137,7 +137,7 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 			}
 		}(i)
 	}
-	
+
 	// Concurrent pattern matching for S3
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
@@ -173,6 +173,6 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 			}
 		}(i)
 	}
-	
+
 	wg.Wait()
 }

@@ -17,23 +17,23 @@ func NewDefaultLoggerConfig(level string) LoggerConfig {
 	functionName := os.Getenv("AWS_LAMBDA_FUNCTION_NAME")
 	partner := os.Getenv("PARTNER")
 	stage := os.Getenv("STAGE")
-	
+
 	logGroup := fmt.Sprintf("/aws/lambda/%s-%s-%s", functionName, partner, stage)
-	
+
 	// Generate log stream name with timestamp and version
 	version := os.Getenv("AWS_LAMBDA_FUNCTION_VERSION")
 	if version == "" {
 		version = "$LATEST"
 	}
-	
+
 	// Create a unique log stream identifier
 	streamID := strings.ReplaceAll(uuid.New().String(), "-", "")
-	logStream := fmt.Sprintf("%s/[%s]%s", 
-		time.Now().Format("2006/01/02"), 
-		version, 
+	logStream := fmt.Sprintf("%s/[%s]%s",
+		time.Now().Format("2006/01/02"),
+		version,
 		streamID,
 	)
-	
+
 	return LoggerConfig{
 		Level:         level,
 		Format:        "json",
@@ -50,12 +50,12 @@ func NewDefaultLoggerConfig(level string) LoggerConfig {
 func NewLoggerConfigWithOptions(level string, opts ...LoggerConfigOption) LoggerConfig {
 	// Start with defaults
 	config := NewDefaultLoggerConfig(level)
-	
+
 	// Apply options
 	for _, opt := range opts {
 		opt(&config)
 	}
-	
+
 	return config
 }
 
