@@ -1,4 +1,5 @@
 # golangci-lint configuration for Lift and CDK code
+version: "2"
 
 run:
   timeout: 5m
@@ -28,11 +29,10 @@ linters:
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
     - unused
     
     # Additional linters for code quality
-    - gofmt
+    - gofumpt
     - goimports
     - misspell
     - unconvert

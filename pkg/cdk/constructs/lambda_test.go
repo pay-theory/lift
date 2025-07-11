@@ -26,10 +26,10 @@ func TestLiftFunction(t *testing.T) {
 			},
 			validate: func(tester *test.LiftStackTester) {
 				tester.AssertLiftFunction(map[string]interface{}{
-					"Handler":     "bootstrap",
-					"Runtime":     "provided.al2023",
-					"MemorySize":  512,
-					"Timeout":     30,
+					"Handler":       "bootstrap",
+					"Runtime":       "provided.al2023",
+					"MemorySize":    512,
+					"Timeout":       30,
 					"Architectures": []string{"arm64"},
 				})
 			},
@@ -93,9 +93,9 @@ func TestLiftFunction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tester := test.NewLiftStackTester(t)
-			
+
 			constructs.NewLiftFunction(tester.Stack(), jsii.String("TestFunction"), tt.props)
-			
+
 			tester.Synthesize()
 			tt.validate(tester)
 		})
@@ -104,12 +104,12 @@ func TestLiftFunction(t *testing.T) {
 
 func TestLiftFunctionEnvironmentVariables(t *testing.T) {
 	tester := test.NewLiftStackTester(t)
-	
+
 	customEnv := map[string]*string{
 		"CUSTOM_VAR": jsii.String("custom_value"),
 		"LOG_LEVEL":  jsii.String("debug"),
 	}
-	
+
 	constructs.NewLiftFunction(tester.Stack(), jsii.String("TestFunction"), &constructs.LiftFunctionProps{
 		FunctionProps: awslambda.FunctionProps{
 			Code:        awslambda.Code_FromAsset(jsii.String("."), nil),
@@ -118,9 +118,9 @@ func TestLiftFunctionEnvironmentVariables(t *testing.T) {
 		},
 		EnableMultiTenant: jsii.Bool(true),
 	})
-	
+
 	tester.Synthesize()
-	
+
 	// Verify all environment variables are present
 	tester.AssertHasResourceWithProperties("AWS::Lambda::Function", map[string]interface{}{
 		"Environment": map[string]interface{}{

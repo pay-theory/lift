@@ -88,11 +88,11 @@ func TestNewBasicAPI_DisableCORS(t *testing.T) {
 
 	// Verify API exists without CORS
 	template.ResourceCountIs(jsii.String("AWS::ApiGatewayV2::Api"), jsii.Number(1))
-	
+
 	// Check that CORS is not configured
 	fnResource := template.ToJSON()
 	resources := (*fnResource)["Resources"].(map[string]interface{})
-	
+
 	hasCORS := false
 	for _, resource := range resources {
 		if resMap, ok := resource.(map[string]interface{}); ok {
@@ -105,7 +105,7 @@ func TestNewBasicAPI_DisableCORS(t *testing.T) {
 			}
 		}
 	}
-	
+
 	assert.False(t, hasCORS, "CORS should not be configured")
 }
 
@@ -145,7 +145,6 @@ func TestNewBasicAPI_CustomConfiguration(t *testing.T) {
 		MemorySize:            jsii.Number(1024),
 		Timeout:               jsii.Number(60),
 		Environment:           &env,
-		LogRetentionDays:      jsii.Number(7),
 		EnableDeadLetterQueue: jsii.Bool(false),
 	})
 
@@ -198,7 +197,7 @@ func TestBasicAPI_AddRoute(t *testing.T) {
 
 	// Should have 2 routes now (default + custom)
 	template.ResourceCountIs(jsii.String("AWS::ApiGatewayV2::Route"), jsii.Number(2))
-	
+
 	// Verify custom route exists
 	template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Route"), &map[string]interface{}{
 		"RouteKey": "GET /custom",

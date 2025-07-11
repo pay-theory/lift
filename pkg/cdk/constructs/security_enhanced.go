@@ -89,12 +89,12 @@ type EnhancedSecurityProps struct {
 // EnhancedSecurity provides comprehensive security features
 type EnhancedSecurity struct {
 	constructs.Construct
-	SecurityGroup      awsec2.SecurityGroup
-	WAF                awswafv2.CfnWebACL
-	Secrets            map[string]awssecretsmanager.Secret
-	VPCFlowLogsGroup   awslogs.LogGroup
-	SecurityMetrics    map[string]awscloudwatch.IMetric
-	VPCEndpoints       map[string]awsec2.InterfaceVpcEndpoint
+	SecurityGroup    awsec2.SecurityGroup
+	WAF              awswafv2.CfnWebACL
+	Secrets          map[string]awssecretsmanager.Secret
+	VPCFlowLogsGroup awslogs.LogGroup
+	SecurityMetrics  map[string]awscloudwatch.IMetric
+	VPCEndpoints     map[string]awsec2.InterfaceVpcEndpoint
 }
 
 // NewEnhancedSecurity creates a comprehensive security construct
@@ -165,10 +165,10 @@ func (s *EnhancedSecurity) setDefaults(props *EnhancedSecurityProps) {
 
 func (s *EnhancedSecurity) createSecurityGroup(props *EnhancedSecurityProps) {
 	s.SecurityGroup = awsec2.NewSecurityGroup(s.Construct, jsii.String("SecurityGroup"), &awsec2.SecurityGroupProps{
-		Vpc:              props.Vpc,
-		Description:      jsii.String(fmt.Sprintf("Security group for %s", *props.ApplicationName)),
-		AllowAllOutbound: jsii.Bool(false), // Explicit egress rules only
-		DisableInlineRules: jsii.Bool(true), // Force explicit rule creation
+		Vpc:                props.Vpc,
+		Description:        jsii.String(fmt.Sprintf("Security group for %s", *props.ApplicationName)),
+		AllowAllOutbound:   jsii.Bool(false), // Explicit egress rules only
+		DisableInlineRules: jsii.Bool(true),  // Force explicit rule creation
 	})
 
 	// Add ingress rules with least privilege
@@ -409,7 +409,6 @@ func (s *EnhancedSecurity) configureWAF(props *EnhancedSecurityProps) {
 				MetricName:               jsii.String("GeoBlocking"),
 			},
 		})
-		priority++
 	}
 
 	// Custom response bodies
@@ -453,9 +452,9 @@ func (s *EnhancedSecurity) configureWAF(props *EnhancedSecurityProps) {
 
 func (s *EnhancedSecurity) createIPSet(name string, ips *[]*string) *string {
 	ipSet := awswafv2.NewCfnIPSet(s.Construct, jsii.String(fmt.Sprintf("IPSet%s", name)), &awswafv2.CfnIPSetProps{
-		Scope:     jsii.String("REGIONAL"),
+		Scope:            jsii.String("REGIONAL"),
 		IpAddressVersion: jsii.String("IPV4"),
-		Addresses: ips,
+		Addresses:        ips,
 		Tags: &[]*awscdk.CfnTag{
 			{
 				Key:   jsii.String("Name"),
@@ -476,7 +475,7 @@ func (s *EnhancedSecurity) createWAFLogging(props *EnhancedSecurityProps) {
 
 	// Create WAF logging configuration
 	awswafv2.NewCfnLoggingConfiguration(s.Construct, jsii.String("WAFLogging"), &awswafv2.CfnLoggingConfigurationProps{
-		ResourceArn:      s.WAF.AttrArn(),
+		ResourceArn:           s.WAF.AttrArn(),
 		LogDestinationConfigs: &[]*string{wafLogGroup.LogGroupArn()},
 		RedactedFields: &[]awswafv2.CfnLoggingConfiguration_FieldToMatchProperty{
 			{
@@ -503,14 +502,14 @@ func (s *EnhancedSecurity) createSecrets(props *EnhancedSecurityProps) {
 		// Configure secret generation if template provided
 		if secretConfig.Template != "" {
 			secretProps.GenerateSecretString = &awssecretsmanager.SecretStringGenerator{
-				SecretStringTemplate: jsii.String(secretConfig.Template),
-				GenerateStringKey:    jsii.String(secretConfig.GenerateKey),
-				ExcludeCharacters:    jsii.String(secretConfig.ExcludeChars),
-				PasswordLength:       jsii.Number(secretConfig.Length),
-				ExcludePunctuation:   jsii.Bool(true),
-				ExcludeNumbers:       jsii.Bool(false),
-				ExcludeLowercase:     jsii.Bool(false),
-				ExcludeUppercase:     jsii.Bool(false),
+				SecretStringTemplate:    jsii.String(secretConfig.Template),
+				GenerateStringKey:       jsii.String(secretConfig.GenerateKey),
+				ExcludeCharacters:       jsii.String(secretConfig.ExcludeChars),
+				PasswordLength:          jsii.Number(secretConfig.Length),
+				ExcludePunctuation:      jsii.Bool(true),
+				ExcludeNumbers:          jsii.Bool(false),
+				ExcludeLowercase:        jsii.Bool(false),
+				ExcludeUppercase:        jsii.Bool(false),
 				RequireEachIncludedType: jsii.Bool(true),
 			}
 		}
@@ -545,9 +544,9 @@ func (s *EnhancedSecurity) createSecrets(props *EnhancedSecurityProps) {
 func (s *EnhancedSecurity) createVPCEndpoints(props *EnhancedSecurityProps) {
 	// Secrets Manager VPC Endpoint
 	s.VPCEndpoints["SecretsManager"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("SecretsManagerEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:     props.Vpc,
-		Service: awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER(),
-		SecurityGroups: &[]awsec2.ISecurityGroup{s.SecurityGroup},
+		Vpc:               props.Vpc,
+		Service:           awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER(),
+		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
 		PrivateDnsEnabled: jsii.Bool(true),
 		Subnets: &awsec2.SubnetSelection{
 			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
@@ -556,9 +555,9 @@ func (s *EnhancedSecurity) createVPCEndpoints(props *EnhancedSecurityProps) {
 
 	// CloudWatch Logs VPC Endpoint
 	s.VPCEndpoints["CloudWatchLogs"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("CloudWatchLogsEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:     props.Vpc,
-		Service: awsec2.InterfaceVpcEndpointAwsService_CLOUDWATCH_LOGS(),
-		SecurityGroups: &[]awsec2.ISecurityGroup{s.SecurityGroup},
+		Vpc:               props.Vpc,
+		Service:           awsec2.InterfaceVpcEndpointAwsService_CLOUDWATCH_LOGS(),
+		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
 		PrivateDnsEnabled: jsii.Bool(true),
 		Subnets: &awsec2.SubnetSelection{
 			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
@@ -567,9 +566,9 @@ func (s *EnhancedSecurity) createVPCEndpoints(props *EnhancedSecurityProps) {
 
 	// X-Ray VPC Endpoint
 	s.VPCEndpoints["XRay"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("XRayEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:     props.Vpc,
-		Service: awsec2.InterfaceVpcEndpointAwsService_XRAY(),
-		SecurityGroups: &[]awsec2.ISecurityGroup{s.SecurityGroup},
+		Vpc:               props.Vpc,
+		Service:           awsec2.InterfaceVpcEndpointAwsService_XRAY(),
+		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
 		PrivateDnsEnabled: jsii.Bool(true),
 		Subnets: &awsec2.SubnetSelection{
 			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
@@ -607,9 +606,9 @@ func (s *EnhancedSecurity) enableVPCFlowLogs(props *EnhancedSecurityProps) {
 
 	// Enable VPC Flow Logs
 	awsec2.NewFlowLog(s.Construct, jsii.String("VPCFlowLogs"), &awsec2.FlowLogProps{
-		ResourceType:    awsec2.FlowLogResourceType_FromVpc(props.Vpc),
-		Destination:     awsec2.FlowLogDestination_ToCloudWatchLogs(s.VPCFlowLogsGroup, flowLogsRole),
-		TrafficType:     awsec2.FlowLogTrafficType_ALL,
+		ResourceType:           awsec2.FlowLogResourceType_FromVpc(props.Vpc),
+		Destination:            awsec2.FlowLogDestination_ToCloudWatchLogs(s.VPCFlowLogsGroup, flowLogsRole),
+		TrafficType:            awsec2.FlowLogTrafficType_ALL,
 		MaxAggregationInterval: awsec2.FlowLogMaxAggregationInterval_ONE_MINUTE,
 	})
 }
@@ -672,10 +671,10 @@ func (s *EnhancedSecurity) createSecurityRuleMetric(ruleId, direction string, ru
 		Namespace:  jsii.String("Security/NetworkRules"),
 		MetricName: jsii.String(metricName),
 		DimensionsMap: &map[string]*string{
-			"RuleId":     jsii.String(ruleId),
-			"Direction":  jsii.String(direction),
-			"Port":       jsii.String(fmt.Sprintf("%.0f", rule.Port)),
-			"Protocol":   jsii.String(string(rule.Protocol)),
+			"RuleId":    jsii.String(ruleId),
+			"Direction": jsii.String(direction),
+			"Port":      jsii.String(fmt.Sprintf("%.0f", rule.Port)),
+			"Protocol":  jsii.String(string(rule.Protocol)),
 		},
 		Statistic: jsii.String("Sum"),
 		Period:    awscdk.Duration_Minutes(jsii.Number(5)),

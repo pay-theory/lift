@@ -30,7 +30,7 @@ func TestNewSecureAPI_DefaultConfiguration(t *testing.T) {
 
 	// Verify Lambda function exists (only 1 - either secure or rate limited)
 	template.ResourceCountIs(jsii.String("AWS::Lambda::Function"), jsii.Number(1))
-	
+
 	// When rate limiting is enabled (default), no VPC/KMS are created
 	// Only check that resources exist when they should
 
@@ -67,7 +67,7 @@ func TestNewSecureAPI_DefaultConfiguration(t *testing.T) {
 	assert.NotNil(t, secureAPI)
 	assert.NotNil(t, secureAPI.Api)
 	assert.NotNil(t, secureAPI.RateLimitedFunc) // Rate limiting is enabled by default
-	assert.Nil(t, secureAPI.Function) // SecureFunction is not used when rate limiting is enabled
+	assert.Nil(t, secureAPI.Function)           // SecureFunction is not used when rate limiting is enabled
 	assert.NotNil(t, secureAPI.WebACL)
 }
 
@@ -88,17 +88,17 @@ func TestNewSecureAPI_DisableRateLimiting(t *testing.T) {
 
 	// Should have 1 Lambda function (SecureFunction)
 	template.ResourceCountIs(jsii.String("AWS::Lambda::Function"), jsii.Number(1))
-	
+
 	// When rate limiting is disabled, SecureFunction creates VPC, KMS, etc.
 	template.ResourceCountIs(jsii.String("AWS::EC2::VPC"), jsii.Number(1))
 	template.ResourceCountIs(jsii.String("AWS::EC2::SecurityGroup"), jsii.Number(1))
 	template.ResourceCountIs(jsii.String("AWS::KMS::Key"), jsii.Number(1))
-	
+
 	// No rate limiting table should exist
 	tables := 0
 	fnResource := template.ToJSON()
 	resources := (*fnResource)["Resources"].(map[string]interface{})
-	
+
 	for _, resource := range resources {
 		if resMap, ok := resource.(map[string]interface{}); ok {
 			if resMap["Type"] == "AWS::DynamoDB::Table" {
@@ -110,7 +110,7 @@ func TestNewSecureAPI_DisableRateLimiting(t *testing.T) {
 			}
 		}
 	}
-	
+
 	assert.Equal(t, 0, tables, "Rate limiting table should not exist")
 }
 
@@ -132,7 +132,7 @@ func TestNewSecureAPI_DisableWAF(t *testing.T) {
 	// No WAF WebACL should exist
 	template.ResourceCountIs(jsii.String("AWS::WAFv2::WebACL"), jsii.Number(0))
 	template.ResourceCountIs(jsii.String("AWS::WAFv2::WebACLAssociation"), jsii.Number(0))
-	
+
 	assert.NotNil(t, secureAPI)
 	assert.Nil(t, secureAPI.WebACL)
 }
@@ -141,7 +141,7 @@ func TestNewSecureAPI_WithExistingVPC(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	vpc := awsec2.NewVpc(stack, jsii.String("ExistingVpc"), &awsec2.VpcProps{
 		MaxAzs: jsii.Number(2),
 	})
@@ -193,7 +193,7 @@ func TestNewSecureAPI_WithAlarms(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	alarmTopic := awssns.NewTopic(stack, jsii.String("AlarmTopic"), &awssns.TopicProps{
 		DisplayName: jsii.String("Security Alarms"),
 	})
@@ -210,13 +210,13 @@ func TestNewSecureAPI_WithAlarms(t *testing.T) {
 
 	// Verify alarms are created
 	template.ResourceCountIs(jsii.String("AWS::CloudWatch::Alarm"), jsii.Number(2)) // Error and Throttle alarms
-	
+
 	// Verify error alarm
 	template.HasResourceProperties(jsii.String("AWS::CloudWatch::Alarm"), &map[string]interface{}{
 		"AlarmName":        "secure-api-high-error-rate",
 		"AlarmDescription": "High error rate detected in secure API",
 	})
-	
+
 	// Verify throttle alarm
 	template.HasResourceProperties(jsii.String("AWS::CloudWatch::Alarm"), &map[string]interface{}{
 		"AlarmName":        "secure-api-throttling",
@@ -256,7 +256,7 @@ func TestNewSecureAPI_WithAdditionalPolicies(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	additionalPolicy := awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 		Actions: &[]*string{
 			jsii.String("s3:GetObject"),

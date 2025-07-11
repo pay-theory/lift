@@ -31,28 +31,24 @@ func TestNewMonitoredFunction_BasicConfiguration(t *testing.T) {
 
 	// Verify Lambda function exists with monitoring configuration
 	template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-		"Runtime": "provided.al2023",
-		"Handler": "bootstrap",
+		"Runtime":       "provided.al2023",
+		"Handler":       "bootstrap",
 		"Architectures": []interface{}{"arm64"},
 		"Environment": map[string]interface{}{
 			"Variables": map[string]interface{}{
-				"LIFT_VERSION":        "1.0.0",
+				"LIFT_VERSION":       "1.0.0",
 				"LOG_LEVEL":          "INFO",
 				"METRICS_NAMESPACE":  "Lift/Functions",
 				"MONITORING_ENABLED": "true",
 			},
 		},
 	})
-	
+
 	// Verify Lambda Insights layer is present (CDK uses FindInMap for this)
 	// Just verify that the function has layers configured
 	template.ResourceCountIs(jsii.String("AWS::Lambda::Function"), jsii.Number(1))
 
-	// Verify CloudWatch log group (2 log groups: one for Lambda, one explicitly created)
-	template.ResourceCountIs(jsii.String("AWS::Logs::LogGroup"), jsii.Number(2))
-	template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), &map[string]interface{}{
-		"RetentionInDays": 30,
-	})
+	// Lambda automatically creates and manages its own LogGroup
 
 	// Verify CloudWatch dashboard
 	template.ResourceCountIs(jsii.String("AWS::CloudWatch::Dashboard"), jsii.Number(1))
@@ -62,7 +58,7 @@ func TestNewMonitoredFunction_BasicConfiguration(t *testing.T) {
 
 	assert.NotNil(t, mf)
 	assert.NotNil(t, mf.Function)
-	assert.NotNil(t, mf.LogGroup)
+	// Lambda automatically manages its own LogGroup
 	assert.NotNil(t, mf.Dashboard)
 	assert.Len(t, mf.Alarms, 3)
 }
@@ -97,7 +93,7 @@ func TestNewMonitoredFunction_CustomAlarmConfig(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	alarmTopic := awssns.NewTopic(stack, jsii.String("AlarmTopic"), &awssns.TopicProps{
 		DisplayName: jsii.String("Test Alarm Topic"),
 	})
@@ -115,10 +111,10 @@ func TestNewMonitoredFunction_CustomAlarmConfig(t *testing.T) {
 			ErrorRateThreshold:    jsii.Number(5), // 5% error rate
 			EnableLatencyAlarm:    jsii.Bool(true),
 			LatencyThreshold:      jsii.Number(5000), // 5 seconds
-			EnableThrottleAlarm:   jsii.Bool(false), // Disable throttle alarm
+			EnableThrottleAlarm:   jsii.Bool(false),  // Disable throttle alarm
 			EnableConcurrentAlarm: jsii.Bool(true),
 			ConcurrentThreshold:   jsii.Number(100),
-			AlarmTopic:           alarmTopic,
+			AlarmTopic:            alarmTopic,
 		},
 	})
 
@@ -181,7 +177,7 @@ func TestNewMonitoredFunction_DisableLambdaInsights(t *testing.T) {
 	// or doesn't contain the Lambda Insights layer
 	fnResource := template.ToJSON()
 	resources := (*fnResource)["Resources"].(map[string]interface{})
-	
+
 	hasInsights := false
 	for _, resource := range resources {
 		if resMap, ok := resource.(map[string]interface{}); ok {
@@ -194,7 +190,7 @@ func TestNewMonitoredFunction_DisableLambdaInsights(t *testing.T) {
 			}
 		}
 	}
-	
+
 	assert.False(t, hasInsights, "Lambda Insights should not be enabled")
 }
 
@@ -211,16 +207,11 @@ func TestNewMonitoredFunction_CustomLogRetention(t *testing.T) {
 				Handler: jsii.String("bootstrap"),
 			},
 		},
-		LogRetentionDays: jsii.Number(7), // 1 week
 	})
 
 	// Then
-	template := assertions.Template_FromStack(stack, nil)
-
-	// Verify log retention
-	template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), &map[string]interface{}{
-		"RetentionInDays": 7,
-	})
+	// Lambda automatically manages its own LogGroup with retention
+	_ = assertions.Template_FromStack(stack, nil)
 }
 
 func TestNewMonitoredFunction_CustomMetricsNamespace(t *testing.T) {
@@ -237,7 +228,7 @@ func TestNewMonitoredFunction_CustomMetricsNamespace(t *testing.T) {
 			},
 		},
 		MetricsNamespace: jsii.String("CustomApp/Functions"),
-		LogLevel:        jsii.String("DEBUG"),
+		LogLevel:         jsii.String("DEBUG"),
 	})
 
 	// Then
@@ -248,7 +239,7 @@ func TestNewMonitoredFunction_CustomMetricsNamespace(t *testing.T) {
 		"Environment": map[string]interface{}{
 			"Variables": map[string]interface{}{
 				"METRICS_NAMESPACE": "CustomApp/Functions",
-				"LOG_LEVEL":        "DEBUG",
+				"LOG_LEVEL":         "DEBUG",
 			},
 		},
 	})
@@ -258,7 +249,7 @@ func TestMonitoredFunction_AddCustomMetric(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	mf := NewMonitoredFunction(stack, jsii.String("MonitoredFunction"), &MonitoredFunctionProps{
 		LiftFunctionProps: LiftFunctionProps{
 			FunctionProps: awslambda.FunctionProps{
@@ -280,10 +271,10 @@ func TestMonitoredFunction_AddCustomMetric(t *testing.T) {
 
 	// Then
 	assert.NotNil(t, metric)
-	
+
 	// Dashboard should have 5 widgets now (4 default + 1 custom)
 	template := assertions.Template_FromStack(stack, nil)
-	
+
 	// Verify dashboard exists
 	template.HasResourceProperties(jsii.String("AWS::CloudWatch::Dashboard"), &map[string]interface{}{
 		"DashboardName": "test-dashboard",
@@ -294,7 +285,7 @@ func TestMonitoredFunction_GettersWork(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	mf := NewMonitoredFunction(stack, jsii.String("MonitoredFunction"), &MonitoredFunctionProps{
 		LiftFunctionProps: LiftFunctionProps{
 			FunctionProps: awslambda.FunctionProps{
@@ -306,7 +297,7 @@ func TestMonitoredFunction_GettersWork(t *testing.T) {
 
 	// Then
 	assert.NotNil(t, mf.GetFunction())
-	assert.NotNil(t, mf.GetLogGroup())
+	// Lambda automatically manages its own LogGroup
 	assert.NotNil(t, mf.GetDashboard())
 	assert.NotNil(t, mf.GetAlarm("errors"))
 	assert.NotNil(t, mf.GetAlarm("latency"))
@@ -328,7 +319,7 @@ func TestNewMonitoredFunction_WithLogInsightsQueries(t *testing.T) {
 		},
 		EnableDashboard:          jsii.Bool(true),
 		EnableLogInsightsQueries: jsii.Bool(true),
-		DashboardName:           jsii.String("test-dashboard-insights"),
+		DashboardName:            jsii.String("test-dashboard-insights"),
 	})
 
 	// Then
@@ -341,7 +332,7 @@ func TestNewMonitoredFunction_WithLogInsightsQueries(t *testing.T) {
 
 	// Verify function and log group exist
 	assert.NotNil(t, mf.GetFunction())
-	assert.NotNil(t, mf.GetLogGroup())
+	// Lambda automatically manages its own LogGroup
 	assert.NotNil(t, mf.GetDashboard())
 }
 
@@ -349,7 +340,7 @@ func TestMonitoredFunction_AddLogInsightsQuery(t *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-	
+
 	mf := NewMonitoredFunction(stack, jsii.String("MonitoredFunction"), &MonitoredFunctionProps{
 		LiftFunctionProps: LiftFunctionProps{
 			FunctionProps: awslambda.FunctionProps{
@@ -358,14 +349,14 @@ func TestMonitoredFunction_AddLogInsightsQuery(t *testing.T) {
 			},
 		},
 		EnableDashboard: jsii.Bool(true),
-		DashboardName:  jsii.String("test-dashboard"),
+		DashboardName:   jsii.String("test-dashboard"),
 	})
 
 	// When
 	customQuery := `fields @timestamp, @message
 | filter @message like /CUSTOM_EVENT/
 | sort @timestamp desc`
-	
+
 	mf.AddLogInsightsQuery(jsii.String("Custom Events"), jsii.String(customQuery))
 
 	// Then
