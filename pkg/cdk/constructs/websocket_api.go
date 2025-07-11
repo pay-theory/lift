@@ -206,10 +206,12 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 	// Initialize routes map
 	this.Routes = make(map[string]awsapigatewayv2.WebSocketRoute)
 
-	// Create Lambda functions for standard routes
-	this.createStandardFunctions(props)
+	// Only create Lambda functions if not provided via props
+	if props.ConnectRouteFunction == nil || props.DisconnectRouteFunction == nil || props.DefaultRouteFunction == nil {
+		this.createStandardFunctions(props)
+	}
 
-	// Create standard routes using functions
+	// Use provided functions or fall back to created ones
 	connectFunction := props.ConnectRouteFunction
 	if connectFunction == nil && this.ConnectFunction != nil {
 		connectFunction = this.ConnectFunction.Function
@@ -286,7 +288,7 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 	return this
 }
 
-// createStandardFunctions creates Lambda functions for standard WebSocket routes
+// createStandardFunctions creates Lambda functions for standard WebSocket routes that weren't provided
 func (w *WebSocketAPI) createStandardFunctions(props *WebSocketAPIProps) {
 	// Create base function props with Lift optimizations
 	baseFunctionProps := &LiftFunctionProps{
@@ -307,29 +309,35 @@ func (w *WebSocketAPI) createStandardFunctions(props *WebSocketAPIProps) {
 		baseFunctionProps.FunctionProps.Timeout = awscdk.Duration_Seconds(jsii.Number(30))
 	}
 
-	// Create connect function
-	connectProps := *baseFunctionProps
-	connectProps.FunctionProps.FunctionName = jsii.String("websocket-connect")
-	if props.FunctionProps.FunctionName != nil {
-		connectProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-connect")
+	// Only create connect function if not provided
+	if props.ConnectRouteFunction == nil {
+		connectProps := *baseFunctionProps
+		connectProps.FunctionProps.FunctionName = jsii.String("websocket-connect")
+		if props.FunctionProps.FunctionName != nil {
+			connectProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-connect")
+		}
+		w.ConnectFunction = NewLiftFunction(w, jsii.String("C"), &connectProps) // Minimal ID
 	}
-	w.ConnectFunction = NewLiftFunction(w, jsii.String("C"), &connectProps) // Minimal ID
 
-	// Create disconnect function
-	disconnectProps := *baseFunctionProps
-	disconnectProps.FunctionProps.FunctionName = jsii.String("websocket-disconnect")
-	if props.FunctionProps.FunctionName != nil {
-		disconnectProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-disconnect")
+	// Only create disconnect function if not provided
+	if props.DisconnectRouteFunction == nil {
+		disconnectProps := *baseFunctionProps
+		disconnectProps.FunctionProps.FunctionName = jsii.String("websocket-disconnect")
+		if props.FunctionProps.FunctionName != nil {
+			disconnectProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-disconnect")
+		}
+		w.DisconnectFunction = NewLiftFunction(w, jsii.String("D"), &disconnectProps) // Minimal ID
 	}
-	w.DisconnectFunction = NewLiftFunction(w, jsii.String("D"), &disconnectProps) // Minimal ID
 
-	// Create default function
-	defaultProps := *baseFunctionProps
-	defaultProps.FunctionProps.FunctionName = jsii.String("websocket-default")
-	if props.FunctionProps.FunctionName != nil {
-		defaultProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-default")
+	// Only create default function if not provided
+	if props.DefaultRouteFunction == nil {
+		defaultProps := *baseFunctionProps
+		defaultProps.FunctionProps.FunctionName = jsii.String("websocket-default")
+		if props.FunctionProps.FunctionName != nil {
+			defaultProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-default")
+		}
+		w.DefaultFunction = NewLiftFunction(w, jsii.String("X"), &defaultProps) // Minimal ID
 	}
-	w.DefaultFunction = NewLiftFunction(w, jsii.String("X"), &defaultProps) // Minimal ID
 }
 
 // AddRoute adds a new route to the WebSocket API

@@ -382,6 +382,66 @@ func TestWebSocketAPI_EnvironmentVariables(t *testing.T) {
 	}
 }
 
+func TestWebSocketAPI_ModularFunctions(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
+
+	// Create Lambda functions at stack level to avoid deep nesting
+	connectFunction := awslambda.NewFunction(stack, jsii.String("WSConnect"), &awslambda.FunctionProps{
+		FunctionName: jsii.String("ws-connect"),
+		Code:         awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
+		Handler:      jsii.String("index.handler"),
+		Runtime:      awslambda.Runtime_NODEJS_18_X(),
+	})
+
+	disconnectFunction := awslambda.NewFunction(stack, jsii.String("WSDisconnect"), &awslambda.FunctionProps{
+		FunctionName: jsii.String("ws-disconnect"),
+		Code:         awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
+		Handler:      jsii.String("index.handler"),
+		Runtime:      awslambda.Runtime_NODEJS_18_X(),
+	})
+
+	defaultFunction := awslambda.NewFunction(stack, jsii.String("WSDefault"), &awslambda.FunctionProps{
+		FunctionName: jsii.String("ws-default"),
+		Code:         awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
+		Handler:      jsii.String("index.handler"),
+		Runtime:      awslambda.Runtime_NODEJS_18_X(),
+	})
+
+	// Create WebSocket API with externally created functions
+	wsApi := NewWebSocketAPI(stack, jsii.String("WSAPI"), &WebSocketAPIProps{
+		ApiName:                 jsii.String("modular-websocket-api"),
+		ConnectRouteFunction:    connectFunction,
+		DisconnectRouteFunction: disconnectFunction,
+		DefaultRouteFunction:    defaultFunction,
+	})
+
+	template := synthesizeTemplate(stack)
+
+	// Verify that internal functions were NOT created
+	if wsApi.ConnectFunction != nil {
+		t.Error("ConnectFunction should be nil when external function is provided")
+	}
+	if wsApi.DisconnectFunction != nil {
+		t.Error("DisconnectFunction should be nil when external function is provided")
+	}
+	if wsApi.DefaultFunction != nil {
+		t.Error("DefaultFunction should be nil when external function is provided")
+	}
+
+	// Verify routes are still created
+	routes := findResourcesByType(template, "AWS::ApiGatewayV2::Route")
+	if len(routes) != 3 {
+		t.Errorf("Expected 3 routes, got %d", len(routes))
+	}
+
+	// Verify only 3 Lambda functions exist (the ones we created)
+	functions := findResourcesByType(template, "AWS::Lambda::Function")
+	if len(functions) != 3 {
+		t.Errorf("Expected exactly 3 Lambda functions, got %d", len(functions))
+	}
+}
+
 func TestWebSocketAPI_HelperMethods(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)

@@ -61,7 +61,8 @@
       "Bash(aws dynamodb list-tables:*)",
       "Bash(aws dynamodb describe-table:*)",
       "Bash(./setup-dynamorm-table.sh:*)",
-      "Bash(gh pr list:*)"
+      "Bash(gh pr list:*)",
+      "Bash(git describe:*)"
     ],
     "deny": []
   }
