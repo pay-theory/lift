@@ -34,7 +34,7 @@ func TestDeploymentValidator(t *testing.T) {
 		},
 	}
 
-	validator.AddEnvironment(env)
+	validator.AddEnvironment(&env)
 
 	// Add HTTP health check
 	healthCheck := NewHTTPHealthCheck("http-health", 5*time.Second)
@@ -96,7 +96,7 @@ func TestBlueGreenDeployment(t *testing.T) {
 	splitter := &DefaultTrafficSplitter{}
 
 	// Create blue/green deployment
-	bgDeployment := NewBlueGreenDeployment(blueEnv, greenEnv, splitter, validator)
+	bgDeployment := NewBlueGreenDeployment(&blueEnv, &greenEnv, splitter, validator)
 
 	// Test initial state
 	if bgDeployment.currentActive != "blue" {
@@ -176,7 +176,7 @@ func TestCanaryDeployment(t *testing.T) {
 	}
 
 	// Create canary deployment
-	canaryDeployment := NewCanaryDeployment(prodEnv, canaryEnv, splitter, validator, canaryConfig)
+	canaryDeployment := NewCanaryDeployment(&prodEnv, &canaryEnv, splitter, validator, canaryConfig)
 
 	// Test initial state
 	if canaryDeployment.trafficPercentage != 0 {
@@ -232,7 +232,7 @@ func TestHTTPHealthCheck(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := healthCheck.Check(ctx, env)
+	err := healthCheck.Check(ctx, &env)
 
 	if err == nil {
 		t.Error("Expected health check to fail against non-existent server")
@@ -292,13 +292,13 @@ func TestDefaultDeploymentMonitoring(t *testing.T) {
 	ctx := context.Background()
 
 	// Test start monitoring
-	err := monitoring.StartMonitoring(ctx, env)
+	err := monitoring.StartMonitoring(ctx, &env)
 	if err != nil {
 		t.Errorf("Start monitoring should not fail: %v", err)
 	}
 
 	// Test get metrics
-	metrics, err := monitoring.GetMetrics(ctx, env)
+	metrics, err := monitoring.GetMetrics(ctx, &env)
 	if err != nil {
 		t.Errorf("Get metrics should not fail: %v", err)
 	}
@@ -312,13 +312,13 @@ func TestDefaultDeploymentMonitoring(t *testing.T) {
 	}
 
 	// Test alert
-	err = monitoring.AlertOnIssue(ctx, env, "test issue")
+	err = monitoring.AlertOnIssue(ctx, &env, "test issue")
 	if err != nil {
 		t.Errorf("Alert should not fail: %v", err)
 	}
 
 	// Test stop monitoring
-	err = monitoring.StopMonitoring(ctx, env)
+	err = monitoring.StopMonitoring(ctx, &env)
 	if err != nil {
 		t.Errorf("Stop monitoring should not fail: %v", err)
 	}
@@ -337,7 +337,7 @@ func TestDefaultTrafficSplitter(t *testing.T) {
 	ctx := context.Background()
 
 	// Test get traffic weight
-	weight, err := splitter.GetTrafficWeight(ctx, env)
+	weight, err := splitter.GetTrafficWeight(ctx, &env)
 	if err != nil {
 		t.Errorf("Get traffic weight should not fail: %v", err)
 	}
@@ -347,7 +347,7 @@ func TestDefaultTrafficSplitter(t *testing.T) {
 	}
 
 	// Test set traffic weight (mock implementation doesn't modify struct)
-	err = splitter.SetTrafficWeight(ctx, env, 0.8)
+	err = splitter.SetTrafficWeight(ctx, &env, 0.8)
 	if err != nil {
 		t.Errorf("Set traffic weight should not fail: %v", err)
 	}
@@ -370,7 +370,7 @@ func TestDefaultTrafficSplitter(t *testing.T) {
 		},
 	}
 
-	err = splitter.SwitchTraffic(ctx, env1, env2)
+	err = splitter.SwitchTraffic(ctx, &env1, &env2)
 	if err != nil {
 		t.Errorf("Switch traffic should not fail: %v", err)
 	}
