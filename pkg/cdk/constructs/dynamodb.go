@@ -44,7 +44,7 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 
 	// Default to on-demand billing
 	billingMode := awsdynamodb.BillingMode_PAY_PER_REQUEST
-	
+
 	// If capacity is specified, use provisioned mode
 	if props.ReadCapacity != nil || props.WriteCapacity != nil {
 		billingMode = awsdynamodb.BillingMode_PROVISIONED
@@ -57,7 +57,7 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 		// For now, we'll require it to be specified
 		panic("PartitionKeyName is required in LiftTableProps to match DynamORM model field name")
 	}
-	
+
 	partitionKey := &awsdynamodb.Attribute{
 		Name: partitionKeyName,
 		Type: awsdynamodb.AttributeType_STRING,
@@ -74,12 +74,12 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 
 	// Create table properties matching DynamORM model field names
 	tableProps := &awsdynamodb.TableProps{
-		TableName:    props.TableName,
-		PartitionKey: partitionKey,
-		BillingMode:  billingMode,
+		TableName:     props.TableName,
+		PartitionKey:  partitionKey,
+		BillingMode:   billingMode,
 		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
 	}
-	
+
 	// Only add sort key if provided
 	if sortKey != nil {
 		tableProps.SortKey = sortKey
@@ -101,7 +101,9 @@ func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps)
 
 	// Enable point-in-time recovery
 	if props.EnablePointInTimeRecovery != nil && *props.EnablePointInTimeRecovery {
-		tableProps.PointInTimeRecovery = jsii.Bool(true)
+		tableProps.PointInTimeRecoverySpecification = &awsdynamodb.PointInTimeRecoverySpecification{
+			PointInTimeRecoveryEnabled: jsii.Bool(true),
+		}
 	}
 
 	// Enable streams

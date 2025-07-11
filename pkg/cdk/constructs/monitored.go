@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatchactions"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -38,8 +37,6 @@ type AlarmConfig struct {
 // MonitoredFunctionProps extends LiftFunctionProps with monitoring configuration
 type MonitoredFunctionProps struct {
 	LiftFunctionProps
-	// CloudWatch Logs retention in days
-	LogRetentionDays *float64
 	// Enable CloudWatch dashboard
 	EnableDashboard *bool
 	// Dashboard name (optional - will generate if not provided)
@@ -60,8 +57,6 @@ type MonitoredFunctionProps struct {
 type MonitoredFunction struct {
 	constructs.Construct
 	Function  *LiftFunction
-	// LogGroup is deprecated - Lambda's LogRetention property handles this automatically
-	LogGroup  awslogs.LogGroup
 	Dashboard awscloudwatch.Dashboard
 	Alarms    map[string]awscloudwatch.Alarm
 }
@@ -71,9 +66,6 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 	this := constructs.NewConstruct(scope, id)
 
 	// Set defaults
-	if props.LogRetentionDays == nil {
-		props.LogRetentionDays = jsii.Number(30) // 30 days default
-	}
 	if props.EnableDashboard == nil {
 		props.EnableDashboard = jsii.Bool(true)
 	}
@@ -112,21 +104,18 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 
 	// Enable Lambda Insights
 	if *props.EnableLambdaInsights {
-		props.LiftFunctionProps.InsightsVersion = awslambda.LambdaInsightsVersion_VERSION_1_0_229_0()
+		props.InsightsVersion = awslambda.LambdaInsightsVersion_VERSION_1_0_229_0()
 	}
 
 	// Add monitoring environment variables
-	if props.LiftFunctionProps.Environment == nil {
-		props.LiftFunctionProps.Environment = &map[string]*string{}
+	if props.Environment == nil {
+		props.Environment = &map[string]*string{}
 	}
-	env := *props.LiftFunctionProps.Environment
+	env := *props.Environment
 	env["LOG_LEVEL"] = props.LogLevel
 	env["METRICS_NAMESPACE"] = props.MetricsNamespace
 	env["MONITORING_ENABLED"] = jsii.String("true")
-	props.LiftFunctionProps.Environment = &env
-
-	// Set the log retention in the LiftFunctionProps
-	props.LiftFunctionProps.LogRetentionDays = props.LogRetentionDays
+	props.Environment = &env
 
 	// Create the base Lift function
 	liftFn := NewLiftFunction(this, jsii.String("Function"), &props.LiftFunctionProps)
@@ -159,11 +148,11 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 		errorAlarm := liftFn.Function.MetricErrors(&awscloudwatch.MetricOptions{
 			Period: awscdk.Duration_Minutes(jsii.Number(5)),
 		}).CreateAlarm(this, jsii.String("ErrorAlarm"), &awscloudwatch.CreateAlarmOptions{
-			AlarmName:          jsii.String(fmt.Sprintf("%s-errors", *liftFn.Function.FunctionName())),
-			AlarmDescription:   jsii.String("Lambda function error rate too high"),
-			Threshold:          props.AlarmConfig.ErrorRateThreshold,
-			EvaluationPeriods:  jsii.Number(2),
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+			AlarmName:         jsii.String(fmt.Sprintf("%s-errors", *liftFn.Function.FunctionName())),
+			AlarmDescription:  jsii.String("Lambda function error rate too high"),
+			Threshold:         props.AlarmConfig.ErrorRateThreshold,
+			EvaluationPeriods: jsii.Number(2),
+			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 		alarms["errors"] = errorAlarm
 
@@ -178,11 +167,11 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 			Statistic: jsii.String("Average"),
 		}).CreateAlarm(this, jsii.String("LatencyAlarm"), &awscloudwatch.CreateAlarmOptions{
-			AlarmName:          jsii.String(fmt.Sprintf("%s-latency", *liftFn.Function.FunctionName())),
-			AlarmDescription:   jsii.String("Lambda function latency too high"),
-			Threshold:          props.AlarmConfig.LatencyThreshold,
-			EvaluationPeriods:  jsii.Number(2),
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+			AlarmName:         jsii.String(fmt.Sprintf("%s-latency", *liftFn.Function.FunctionName())),
+			AlarmDescription:  jsii.String("Lambda function latency too high"),
+			Threshold:         props.AlarmConfig.LatencyThreshold,
+			EvaluationPeriods: jsii.Number(2),
+			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 		alarms["latency"] = latencyAlarm
 
@@ -196,11 +185,11 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 		throttleAlarm := liftFn.Function.MetricThrottles(&awscloudwatch.MetricOptions{
 			Period: awscdk.Duration_Minutes(jsii.Number(5)),
 		}).CreateAlarm(this, jsii.String("ThrottleAlarm"), &awscloudwatch.CreateAlarmOptions{
-			AlarmName:          jsii.String(fmt.Sprintf("%s-throttles", *liftFn.Function.FunctionName())),
-			AlarmDescription:   jsii.String("Lambda function throttling detected"),
-			Threshold:          props.AlarmConfig.ThrottleThreshold,
-			EvaluationPeriods:  jsii.Number(1),
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+			AlarmName:         jsii.String(fmt.Sprintf("%s-throttles", *liftFn.Function.FunctionName())),
+			AlarmDescription:  jsii.String("Lambda function throttling detected"),
+			Threshold:         props.AlarmConfig.ThrottleThreshold,
+			EvaluationPeriods: jsii.Number(1),
+			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 		alarms["throttles"] = throttleAlarm
 
@@ -220,13 +209,13 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 			},
 			Period: awscdk.Duration_Minutes(jsii.Number(5)),
 		})
-		
+
 		concurrentAlarm := concurrentMetric.CreateAlarm(this, jsii.String("ConcurrentAlarm"), &awscloudwatch.CreateAlarmOptions{
-			AlarmName:          jsii.String(fmt.Sprintf("%s-concurrent", *liftFn.Function.FunctionName())),
-			AlarmDescription:   jsii.String("Lambda function concurrent executions too high"),
-			Threshold:          props.AlarmConfig.ConcurrentThreshold,
-			EvaluationPeriods:  jsii.Number(2),
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+			AlarmName:         jsii.String(fmt.Sprintf("%s-concurrent", *liftFn.Function.FunctionName())),
+			AlarmDescription:  jsii.String("Lambda function concurrent executions too high"),
+			Threshold:         props.AlarmConfig.ConcurrentThreshold,
+			EvaluationPeriods: jsii.Number(2),
+			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 		alarms["concurrent"] = concurrentAlarm
 
@@ -238,7 +227,6 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 	monitored := &MonitoredFunction{
 		Construct: this,
 		Function:  liftFn,
-		LogGroup:  liftFn.LogGroup, // Get from LiftFunction
 		Dashboard: dashboard,
 		Alarms:    alarms,
 	}
@@ -256,11 +244,6 @@ func (f *MonitoredFunction) GetFunction() awslambda.Function {
 	return f.Function.Function
 }
 
-// GetLogGroup returns the CloudWatch log group
-func (f *MonitoredFunction) GetLogGroup() awslogs.LogGroup {
-	return f.LogGroup
-}
-
 // GetDashboard returns the CloudWatch dashboard
 func (f *MonitoredFunction) GetDashboard() awscloudwatch.Dashboard {
 	return f.Dashboard
@@ -274,17 +257,17 @@ func (f *MonitoredFunction) GetAlarm(name string) awscloudwatch.Alarm {
 // AddCustomMetric adds a custom metric to the dashboard
 func (f *MonitoredFunction) AddCustomMetric(metricName *string, namespace *string, dimensions *map[string]*string) awscloudwatch.Metric {
 	metric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-		MetricName: metricName,
-		Namespace:  namespace,
+		MetricName:    metricName,
+		Namespace:     namespace,
 		DimensionsMap: dimensions,
 	})
 
 	if f.Dashboard != nil {
 		f.Dashboard.AddWidgets(awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:   metricName,
-			Left:    &[]awscloudwatch.IMetric{metric},
-			Width:   jsii.Number(12),
-			Height:  jsii.Number(6),
+			Title:  metricName,
+			Left:   &[]awscloudwatch.IMetric{metric},
+			Width:  jsii.Number(12),
+			Height: jsii.Number(6),
 		}))
 	}
 
@@ -297,13 +280,16 @@ func (f *MonitoredFunction) AddLogInsightsQuery(queryName *string, queryString *
 		return
 	}
 
+	// Lambda automatically creates log group with name /aws/lambda/{function-name}
+	logGroupName := jsii.String(fmt.Sprintf("/aws/lambda/%s", *f.Function.Function.FunctionName()))
+
 	// Create a Logs Insights widget
 	logsWidget := awscloudwatch.NewLogQueryWidget(&awscloudwatch.LogQueryWidgetProps{
-		Title:        queryName,
-		LogGroupNames: &[]*string{f.LogGroup.LogGroupName()},
-		QueryString:  queryString,
-		Width:        jsii.Number(24),
-		Height:       jsii.Number(6),
+		Title:         queryName,
+		LogGroupNames: &[]*string{logGroupName},
+		QueryString:   queryString,
+		Width:         jsii.Number(24),
+		Height:        jsii.Number(6),
 	})
 
 	f.Dashboard.AddWidgets(logsWidget)
@@ -425,7 +411,7 @@ func createConcurrentExecutionsWidget(fn awslambda.Function) awscloudwatch.Graph
 			"FunctionName": fn.FunctionName(),
 		},
 	})
-	
+
 	return awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
 		Title: jsii.String("Concurrent Executions"),
 		Left: &[]awscloudwatch.IMetric{
