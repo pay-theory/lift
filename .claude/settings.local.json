@@ -60,7 +60,8 @@
       "Bash(DYNAMODB_TABLE=test-dynamorm-table go run test-dynamorm-correct.go)",
       "Bash(aws dynamodb list-tables:*)",
       "Bash(aws dynamodb describe-table:*)",
-      "Bash(./setup-dynamorm-table.sh:*)"
+      "Bash(./setup-dynamorm-table.sh:*)",
+      "Bash(gh pr list:*)"
     ],
     "deny": []
   }

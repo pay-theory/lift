@@ -2,6 +2,7 @@ package constructs
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
@@ -174,7 +175,7 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 		}
 	}
 	
-	this.WebSocketApi = awsapigatewayv2.NewWebSocketApi(this, jsii.String("WebSocketApi"), apiProps)
+	this.WebSocketApi = awsapigatewayv2.NewWebSocketApi(this, jsii.String("Api"), apiProps) // Shorter ID
 	
 	// Create connection management table using DynamORM if enabled
 	if enableConnectionManagement {
@@ -198,8 +199,8 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 		//     TenantID string `dynamorm:"index:tenant-index,pk"` // For tenant queries (if multi-tenant)
 		// }
 		
-		// Create the DynamORM-based connection table
-		this.ConnectionTable = NewConnectionTable(this, jsii.String("ConnectionTable"), connectionTableProps)
+		// Create the DynamORM-based connection table with minimal ID
+		this.ConnectionTable = NewConnectionTable(this, jsii.String("T"), connectionTableProps) // Minimal ID
 	}
 	
 	// Initialize routes map
@@ -312,7 +313,7 @@ func (w *WebSocketAPI) createStandardFunctions(props *WebSocketAPIProps) {
 	if props.FunctionProps.FunctionName != nil {
 		connectProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-connect")
 	}
-	w.ConnectFunction = NewLiftFunction(w, jsii.String("ConnectFunction"), &connectProps)
+	w.ConnectFunction = NewLiftFunction(w, jsii.String("C"), &connectProps) // Minimal ID
 	
 	// Create disconnect function
 	disconnectProps := *baseFunctionProps
@@ -320,7 +321,7 @@ func (w *WebSocketAPI) createStandardFunctions(props *WebSocketAPIProps) {
 	if props.FunctionProps.FunctionName != nil {
 		disconnectProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-disconnect")
 	}
-	w.DisconnectFunction = NewLiftFunction(w, jsii.String("DisconnectFunction"), &disconnectProps)
+	w.DisconnectFunction = NewLiftFunction(w, jsii.String("D"), &disconnectProps) // Minimal ID
 	
 	// Create default function
 	defaultProps := *baseFunctionProps
@@ -328,14 +329,36 @@ func (w *WebSocketAPI) createStandardFunctions(props *WebSocketAPIProps) {
 	if props.FunctionProps.FunctionName != nil {
 		defaultProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-default")
 	}
-	w.DefaultFunction = NewLiftFunction(w, jsii.String("DefaultFunction"), &defaultProps)
+	w.DefaultFunction = NewLiftFunction(w, jsii.String("X"), &defaultProps) // Minimal ID
 }
 
 // AddRoute adds a new route to the WebSocket API
 func (w *WebSocketAPI) AddRoute(routeKey string, function awslambda.IFunction, config *WebSocketRouteConfig) awsapigatewayv2.WebSocketRoute {
-	// Create Lambda integration
+	// Sanitize route key for naming
+	sanitizedName := strings.ReplaceAll(routeKey, "$", "")
+	sanitizedName = strings.ReplaceAll(sanitizedName, "/", "")
+	
+	// Create Lambda integration - use minimal ID
+	// Use single letter for standard routes to minimize nesting
+	shortId := ""
+	switch routeKey {
+	case "$connect":
+		shortId = "C"
+	case "$disconnect":
+		shortId = "D"
+	case "$default":
+		shortId = "X"
+	default:
+		// For custom routes, use first letter or two
+		if len(sanitizedName) > 0 {
+			shortId = string(sanitizedName[0])
+		} else {
+			shortId = "R"
+		}
+	}
+	
 	integration := awsapigatewayv2integrations.NewWebSocketLambdaIntegration(
-		jsii.String(fmt.Sprintf("%sIntegration", routeKey)),
+		jsii.String(shortId),
 		function,
 		nil,
 	)
@@ -352,19 +375,6 @@ func (w *WebSocketAPI) AddRoute(routeKey string, function awslambda.IFunction, c
 	
 	// Create the route
 	route := w.WebSocketApi.AddRoute(jsii.String(routeKey), routeOptions)
-	
-	// Grant permissions
-	apiGatewayPrincipal := awsiam.NewServicePrincipal(
-		jsii.String("apigateway.amazonaws.com"),
-		&awsiam.ServicePrincipalOpts{
-			Conditions: &map[string]interface{}{
-				"ArnLike": map[string]interface{}{
-					"aws:SourceArn": fmt.Sprintf("arn:aws:execute-api:*:*:%s/*/*", *w.WebSocketApi.ApiId()),
-				},
-			},
-		},
-	)
-	function.GrantInvoke(apiGatewayPrincipal)
 	
 	// Store in routes map
 	w.Routes[routeKey] = route
@@ -432,17 +442,8 @@ func (w *WebSocketAPI) AddEnvironmentVariable(key string, value string) {
 
 // grantApiGatewayInvokePermissions grants API Gateway permission to invoke Lambda functions
 func (w *WebSocketAPI) grantApiGatewayInvokePermissions() {
-	apiGatewayPrincipal := awsiam.NewServicePrincipal(jsii.String("apigateway.amazonaws.com"), &awsiam.ServicePrincipalOpts{})
-	
-	if w.ConnectFunction != nil {
-		w.ConnectFunction.Function.GrantInvoke(apiGatewayPrincipal)
-	}
-	if w.DisconnectFunction != nil {
-		w.DisconnectFunction.Function.GrantInvoke(apiGatewayPrincipal)
-	}
-	if w.DefaultFunction != nil {
-		w.DefaultFunction.Function.GrantInvoke(apiGatewayPrincipal)
-	}
+	// Permissions are now created automatically by WebSocketLambdaIntegration
+	// when routes are added. This avoids duplicate permissions.
 }
 
 // setupEnvironmentVariables sets up common environment variables for WebSocket functions
