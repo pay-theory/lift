@@ -52,10 +52,10 @@ type DataProtectionManager struct {
 
 // DataContext represents data with its classification and metadata
 type DataContext struct {
-	Data           any                   `json:"data"`
+	Data           any                           `json:"data"`
 	Classification DataClassification            `json:"classification"`
 	Fields         map[string]DataClassification `json:"fields"`
-	Metadata       map[string]any        `json:"metadata"`
+	Metadata       map[string]any                `json:"metadata"`
 	Timestamp      time.Time                     `json:"timestamp"`
 	UserID         string                        `json:"user_id"`
 	TenantID       string                        `json:"tenant_id"`
@@ -65,25 +65,25 @@ type DataContext struct {
 
 // DataProtectionRequest represents a request to access protected data
 type DataProtectionRequest struct {
-	UserID         string                 `json:"user_id"`
-	TenantID       string                 `json:"tenant_id"`
-	DataType       string                 `json:"data_type"`
-	Classification DataClassification     `json:"classification"`
-	Purpose        string                 `json:"purpose"`
-	Region         string                 `json:"region"`
-	Fields         []string               `json:"fields"`
-	Metadata       map[string]any `json:"metadata"`
+	UserID         string             `json:"user_id"`
+	TenantID       string             `json:"tenant_id"`
+	DataType       string             `json:"data_type"`
+	Classification DataClassification `json:"classification"`
+	Purpose        string             `json:"purpose"`
+	Region         string             `json:"region"`
+	Fields         []string           `json:"fields"`
+	Metadata       map[string]any     `json:"metadata"`
 }
 
 // DataAccessResult represents the result of a data access request
 type DataAccessResult struct {
-	Allowed       bool                   `json:"allowed"`
+	Allowed       bool           `json:"allowed"`
 	Data          any            `json:"data,omitempty"`
 	MaskedData    any            `json:"masked_data,omitempty"`
-	Restrictions  []string               `json:"restrictions,omitempty"`
-	Violations    []string               `json:"violations,omitempty"`
-	AuditRequired bool                   `json:"audit_required"`
-	ExpiresAt     time.Time              `json:"expires_at,omitempty"`
+	Restrictions  []string       `json:"restrictions,omitempty"`
+	Violations    []string       `json:"violations,omitempty"`
+	AuditRequired bool           `json:"audit_required"`
+	ExpiresAt     time.Time      `json:"expires_at,omitempty"`
 	Metadata      map[string]any `json:"metadata,omitempty"`
 }
 
@@ -184,26 +184,26 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 
 	// Sensitive number fields
 	sensitiveNumberFields := map[string]bool{
-		"account_number":                true,
-		"business_tin_ssn_number":       true,
-		"card_num":                      true,
-		"card_number":                   true,
-		"cardnumber":                    true,
-		"dda_number":                    true,
-		"ein":                           true,
+		"account_number":                 true,
+		"business_tin_ssn_number":        true,
+		"card_num":                       true,
+		"card_number":                    true,
+		"cardnumber":                     true,
+		"dda_number":                     true,
+		"ein":                            true,
 		"employer_identification_number": true,
-		"merchant_tax_id":               true,
-		"number":                        true,
-		"owner_tin_ssn_number":          true,
-		"social_security":               true,
-		"social_security_number":        true,
-		"ssn":                           true,
-		"tax_id":                        true,
-		"tax_identification_number":     true,
-		"taxid":                         true,
-		"tin":                           true,
+		"merchant_tax_id":                true,
+		"number":                         true,
+		"owner_tin_ssn_number":           true,
+		"social_security":                true,
+		"social_security_number":         true,
+		"ssn":                            true,
+		"tax_id":                         true,
+		"tax_identification_number":      true,
+		"taxid":                          true,
+		"tin":                            true,
 	}
-	
+
 	if sensitiveNumberFields[fieldLower] {
 		return DataRestricted
 	}

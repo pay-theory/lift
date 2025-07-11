@@ -392,10 +392,10 @@ func setupDemoRoutes(app *lift.App) {
 	// Test inter-service communication
 	app.POST("/demo/service-call", func(ctx *lift.Context) error {
 		var request struct {
-			Service string      `json:"service"`
-			Method  string      `json:"method"`
-			Path    string      `json:"path"`
-			Data    any `json:"data"`
+			Service string `json:"service"`
+			Method  string `json:"method"`
+			Path    string `json:"path"`
+			Data    any    `json:"data"`
 		}
 
 		if err := ctx.ParseRequest(&request); err != nil {

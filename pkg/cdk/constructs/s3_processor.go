@@ -2,7 +2,7 @@ package constructs
 
 import (
 	"fmt"
-	
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
@@ -33,7 +33,7 @@ type S3ProcessorProps struct {
 	// Key prefix filter for S3 events (optional)
 	KeyPrefix *string
 
-	// Key suffix filter for S3 events (optional)  
+	// Key suffix filter for S3 events (optional)
 	KeySuffix *string
 
 	// Dead letter queue properties (optional)
@@ -56,13 +56,13 @@ type S3ProcessorProps struct {
 	// Lifecycle rules
 	EnableLifecycleRules *bool
 	LifecycleRules       *[]*awss3.LifecycleRule
-	
+
 	// External bucket support
 	ExternalBucket awss3.IBucket
-	
+
 	// Event filtering
 	EventFilter *S3EventFilter
-	
+
 	// Access logging
 	EnableAccessLogging *bool
 	AccessLogsBucket    awss3.IBucket
@@ -149,11 +149,11 @@ func NewS3Processor(scope constructs.Construct, id *string, props *S3ProcessorPr
 	} else {
 		// Create bucket
 		bucketProps := &awss3.BucketProps{
-			Versioned:           jsii.Bool(enableVersioning),
-			BlockPublicAccess:   awss3.BlockPublicAccess_BLOCK_ALL(),
-			Encryption:          awss3.BucketEncryption_S3_MANAGED,
-			EnforceSSL:          jsii.Bool(true),
-			EventBridgeEnabled:  jsii.Bool(true),
+			Versioned:          jsii.Bool(enableVersioning),
+			BlockPublicAccess:  awss3.BlockPublicAccess_BLOCK_ALL(),
+			Encryption:         awss3.BucketEncryption_S3_MANAGED,
+			EnforceSSL:         jsii.Bool(true),
+			EventBridgeEnabled: jsii.Bool(true),
 		}
 
 		// Override with user-provided props
@@ -192,8 +192,8 @@ func NewS3Processor(scope constructs.Construct, id *string, props *S3ProcessorPr
 			// Default lifecycle rules
 			defaultLifecycleRules := []*awss3.LifecycleRule{
 				{
-					Id:                       jsii.String("DeleteIncompleteMultipartUploads"),
-					Enabled:                  jsii.Bool(true),
+					Id:                                  jsii.String("DeleteIncompleteMultipartUploads"),
+					Enabled:                             jsii.Bool(true),
 					AbortIncompleteMultipartUploadAfter: awscdk.Duration_Days(jsii.Number(1)),
 				},
 				{
@@ -201,7 +201,7 @@ func NewS3Processor(scope constructs.Construct, id *string, props *S3ProcessorPr
 					Enabled: jsii.Bool(true),
 					Transitions: &[]*awss3.Transition{
 						{
-							StorageClass:   awss3.StorageClass_INFREQUENT_ACCESS(),
+							StorageClass:    awss3.StorageClass_INFREQUENT_ACCESS(),
 							TransitionAfter: awscdk.Duration_Days(jsii.Number(30)),
 						},
 					},
@@ -353,190 +353,190 @@ func NewS3Processor(scope constructs.Construct, id *string, props *S3ProcessorPr
 func (s *S3Processor) enableMonitoring() {
 	// Create SNS topic for alerts
 	_ = awssns.NewTopic(s, jsii.String("AlarmTopic"), &awssns.TopicProps{
-		TopicName: jsii.String(fmt.Sprintf("%s-alarms", *s.Bucket.BucketName())),
+		TopicName:   jsii.String(fmt.Sprintf("%s-alarms", *s.Bucket.BucketName())),
 		DisplayName: jsii.String(fmt.Sprintf("Alarms for %s processor", *s.Bucket.BucketName())),
 	})
-	
+
 	// Lambda function monitoring
 	if s.Function != nil {
 		function := s.Function.GetFunction()
-		
+
 		// Function error alarm
 		awscloudwatch.NewAlarm(s, jsii.String("FunctionErrorAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-processor-errors", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("S3 processor function errors"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-errors", *s.Bucket.BucketName())),
+			AlarmDescription: jsii.String("S3 processor function errors"),
 			Metric: function.MetricErrors(&awscloudwatch.MetricOptions{
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(5),
-			EvaluationPeriods: jsii.Number(2),
+			Threshold:          jsii.Number(5),
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
+
 		// Function throttles alarm
 		awscloudwatch.NewAlarm(s, jsii.String("FunctionThrottleAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-processor-throttles", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("S3 processor function throttled"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-throttles", *s.Bucket.BucketName())),
+			AlarmDescription: jsii.String("S3 processor function throttled"),
 			Metric: function.MetricThrottles(&awscloudwatch.MetricOptions{
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(1),
-			EvaluationPeriods: jsii.Number(1),
+			Threshold:          jsii.Number(1),
+			EvaluationPeriods:  jsii.Number(1),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
+
 		// Function duration alarm
 		awscloudwatch.NewAlarm(s, jsii.String("FunctionDurationAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-processor-duration", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("S3 processor taking too long"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-duration", *s.Bucket.BucketName())),
+			AlarmDescription: jsii.String("S3 processor taking too long"),
 			Metric: function.MetricDuration(&awscloudwatch.MetricOptions{
-				Period: awscdk.Duration_Minutes(jsii.Number(5)),
+				Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 				Statistic: awscloudwatch.Stats_AVERAGE(),
 			}),
-			Threshold:         jsii.Number(30000), // 30 seconds
-			EvaluationPeriods: jsii.Number(2),
+			Threshold:          jsii.Number(30000), // 30 seconds
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
+
 		// Function concurrent executions alarm
 		concurrentExecutionsMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:   jsii.String("AWS/Lambda"),
-			MetricName:  jsii.String("ConcurrentExecutions"),
+			Namespace:  jsii.String("AWS/Lambda"),
+			MetricName: jsii.String("ConcurrentExecutions"),
 			DimensionsMap: &map[string]*string{
 				"FunctionName": function.FunctionName(),
 			},
-			Period: awscdk.Duration_Minutes(jsii.Number(5)),
+			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 			Statistic: awscloudwatch.Stats_MAXIMUM(),
 		})
-		
+
 		awscloudwatch.NewAlarm(s, jsii.String("FunctionConcurrencyAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-processor-concurrency", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("S3 processor high concurrent executions"),
-			Metric:           concurrentExecutionsMetric,
-			Threshold:         jsii.Number(900), // Near default Lambda limit
-			EvaluationPeriods: jsii.Number(2),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-processor-concurrency", *s.Bucket.BucketName())),
+			AlarmDescription:   jsii.String("S3 processor high concurrent executions"),
+			Metric:             concurrentExecutionsMetric,
+			Threshold:          jsii.Number(900), // Near default Lambda limit
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
-	
+
 	// S3 bucket metrics
 	var client4xxErrorsMetric awscloudwatch.IMetric
 	var server5xxErrorsMetric awscloudwatch.IMetric
 	var objectSizeMetric awscloudwatch.IMetric
 	var objectCountMetric awscloudwatch.IMetric
-	
+
 	if s.Bucket != nil {
 		// 4xx errors alarm
 		client4xxErrorsMetric = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:   jsii.String("AWS/S3"),
-			MetricName:  jsii.String("4xxErrors"),
+			Namespace:  jsii.String("AWS/S3"),
+			MetricName: jsii.String("4xxErrors"),
 			DimensionsMap: &map[string]*string{
 				"BucketName": s.Bucket.BucketName(),
 			},
-			Period: awscdk.Duration_Minutes(jsii.Number(5)),
+			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 			Statistic: awscloudwatch.Stats_SUM(),
 		})
-		
+
 		awscloudwatch.NewAlarm(s, jsii.String("Bucket4xxErrorsAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-4xx-errors", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("S3 bucket 4xx errors"),
-			Metric:           client4xxErrorsMetric,
-			Threshold:         jsii.Number(10),
-			EvaluationPeriods: jsii.Number(2),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-4xx-errors", *s.Bucket.BucketName())),
+			AlarmDescription:   jsii.String("S3 bucket 4xx errors"),
+			Metric:             client4xxErrorsMetric,
+			Threshold:          jsii.Number(10),
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
+
 		// 5xx errors alarm
 		server5xxErrorsMetric = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:   jsii.String("AWS/S3"),
-			MetricName:  jsii.String("5xxErrors"),
+			Namespace:  jsii.String("AWS/S3"),
+			MetricName: jsii.String("5xxErrors"),
 			DimensionsMap: &map[string]*string{
 				"BucketName": s.Bucket.BucketName(),
 			},
-			Period: awscdk.Duration_Minutes(jsii.Number(5)),
+			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 			Statistic: awscloudwatch.Stats_SUM(),
 		})
-		
+
 		awscloudwatch.NewAlarm(s, jsii.String("Bucket5xxErrorsAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-5xx-errors", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("S3 bucket 5xx errors"),
-			Metric:           server5xxErrorsMetric,
-			Threshold:         jsii.Number(1),
-			EvaluationPeriods: jsii.Number(1),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-5xx-errors", *s.Bucket.BucketName())),
+			AlarmDescription:   jsii.String("S3 bucket 5xx errors"),
+			Metric:             server5xxErrorsMetric,
+			Threshold:          jsii.Number(1),
+			EvaluationPeriods:  jsii.Number(1),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
+
 		// Object size monitoring (for large file detection)
 		objectSizeMetric = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:   jsii.String("AWS/S3"),
-			MetricName:  jsii.String("BucketSizeBytes"),
+			Namespace:  jsii.String("AWS/S3"),
+			MetricName: jsii.String("BucketSizeBytes"),
 			DimensionsMap: &map[string]*string{
-				"BucketName": s.Bucket.BucketName(),
+				"BucketName":  s.Bucket.BucketName(),
 				"StorageType": jsii.String("StandardStorage"),
 			},
-			Period: awscdk.Duration_Days(jsii.Number(1)),
+			Period:    awscdk.Duration_Days(jsii.Number(1)),
 			Statistic: awscloudwatch.Stats_AVERAGE(),
 		})
-		
+
 		awscloudwatch.NewAlarm(s, jsii.String("BucketSizeAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-bucket-size", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("S3 bucket size is large"),
-			Metric:           objectSizeMetric,
-			Threshold:         jsii.Number(100 * 1024 * 1024 * 1024), // 100 GB
-			EvaluationPeriods: jsii.Number(1),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-bucket-size", *s.Bucket.BucketName())),
+			AlarmDescription:   jsii.String("S3 bucket size is large"),
+			Metric:             objectSizeMetric,
+			Threshold:          jsii.Number(100 * 1024 * 1024 * 1024), // 100 GB
+			EvaluationPeriods:  jsii.Number(1),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
+
 		// Number of objects monitoring
 		objectCountMetric = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:   jsii.String("AWS/S3"),
-			MetricName:  jsii.String("NumberOfObjects"),
+			Namespace:  jsii.String("AWS/S3"),
+			MetricName: jsii.String("NumberOfObjects"),
 			DimensionsMap: &map[string]*string{
-				"BucketName": s.Bucket.BucketName(),
+				"BucketName":  s.Bucket.BucketName(),
 				"StorageType": jsii.String("AllStorageTypes"),
 			},
-			Period: awscdk.Duration_Days(jsii.Number(1)),
+			Period:    awscdk.Duration_Days(jsii.Number(1)),
 			Statistic: awscloudwatch.Stats_AVERAGE(),
 		})
-		
+
 		awscloudwatch.NewAlarm(s, jsii.String("ObjectCountAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-object-count", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("S3 bucket has many objects"),
-			Metric:           objectCountMetric,
-			Threshold:         jsii.Number(1000000), // 1 million objects
-			EvaluationPeriods: jsii.Number(1),
+			AlarmName:          jsii.String(fmt.Sprintf("%s-object-count", *s.Bucket.BucketName())),
+			AlarmDescription:   jsii.String("S3 bucket has many objects"),
+			Metric:             objectCountMetric,
+			Threshold:          jsii.Number(1000000), // 1 million objects
+			EvaluationPeriods:  jsii.Number(1),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
-	
+
 	// DLQ monitoring if enabled
 	if s.DeadLetterQueue != nil {
 		awscloudwatch.NewAlarm(s, jsii.String("DLQMessagesAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-processor-dlq-messages", *s.Bucket.BucketName())),
-			AlarmDescription:  jsii.String("Messages in S3 processor dead letter queue"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-dlq-messages", *s.Bucket.BucketName())),
+			AlarmDescription: jsii.String("Messages in S3 processor dead letter queue"),
 			Metric: s.DeadLetterQueue.MetricApproximateNumberOfMessagesVisible(&awscloudwatch.MetricOptions{
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(1),
-			EvaluationPeriods: jsii.Number(1),
+			Threshold:          jsii.Number(1),
+			EvaluationPeriods:  jsii.Number(1),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
-	
+
 	// Create CloudWatch dashboard
 	dashboard := awscloudwatch.NewDashboard(s, jsii.String("ProcessorDashboard"), &awscloudwatch.DashboardProps{
 		DashboardName: jsii.String(fmt.Sprintf("%s-processor-dashboard", *s.Bucket.BucketName())),
 	})
-	
+
 	// Add widgets to dashboard
 	if s.Function != nil {
 		dashboard.AddWidgets(
@@ -553,7 +553,7 @@ func (s *S3Processor) enableMonitoring() {
 			}),
 		)
 	}
-	
+
 	if s.Bucket != nil {
 		dashboard.AddWidgets(
 			awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
@@ -572,7 +572,7 @@ func (s *S3Processor) enableMonitoring() {
 			}),
 		)
 	}
-	
+
 	if s.DeadLetterQueue != nil {
 		dashboard.AddWidgets(
 			awscloudwatch.NewSingleValueWidget(&awscloudwatch.SingleValueWidgetProps{
@@ -650,7 +650,7 @@ func (s *S3Processor) SetBucketPolicy(policy map[string]interface{}) {
 		for _, stmt := range statements {
 			if stmtMap, ok := stmt.(map[string]interface{}); ok {
 				policyStatement := s.parsePolicyStatement(stmtMap)
-				
+
 				// Apply each policy statement to the bucket
 				if bucket, ok := s.Bucket.(awss3.Bucket); ok {
 					bucket.AddToResourcePolicy(policyStatement)
@@ -663,7 +663,7 @@ func (s *S3Processor) SetBucketPolicy(policy map[string]interface{}) {
 // parsePolicyStatement converts a map to PolicyStatement
 func (s *S3Processor) parsePolicyStatement(stmt map[string]interface{}) awsiam.PolicyStatement {
 	props := &awsiam.PolicyStatementProps{}
-	
+
 	// Set Effect
 	if effect, ok := stmt["Effect"].(string); ok {
 		if effect == "Allow" {
@@ -672,7 +672,7 @@ func (s *S3Processor) parsePolicyStatement(stmt map[string]interface{}) awsiam.P
 			props.Effect = awsiam.Effect_DENY
 		}
 	}
-	
+
 	// Set Actions
 	var actionList []*string
 	if actions, ok := stmt["Action"].([]interface{}); ok {
@@ -687,7 +687,7 @@ func (s *S3Processor) parsePolicyStatement(stmt map[string]interface{}) awsiam.P
 	if len(actionList) > 0 {
 		props.Actions = &actionList
 	}
-	
+
 	// Set Resources
 	var resourceList []*string
 	if resources, ok := stmt["Resource"].([]interface{}); ok {
@@ -702,7 +702,7 @@ func (s *S3Processor) parsePolicyStatement(stmt map[string]interface{}) awsiam.P
 	if len(resourceList) > 0 {
 		props.Resources = &resourceList
 	}
-	
+
 	// Set Principals
 	var principals []awsiam.IPrincipal
 	if principal, ok := stmt["Principal"].(map[string]interface{}); ok {
@@ -716,7 +716,7 @@ func (s *S3Processor) parsePolicyStatement(stmt map[string]interface{}) awsiam.P
 	if len(principals) > 0 {
 		props.Principals = &principals
 	}
-	
+
 	return awsiam.NewPolicyStatement(props)
 }
 
@@ -727,18 +727,18 @@ func (s *S3Processor) enableCrossRegionReplication() {
 		AssumedBy: awsiam.NewServicePrincipal(jsii.String("s3.amazonaws.com"), nil),
 		Path:      jsii.String("/"),
 	})
-	
+
 	// Grant permissions to read from source bucket
 	s.Bucket.GrantRead(replicationRole, jsii.String("*"))
-	
+
 	// Grant permissions to replicate to destination bucket
 	if s.ReplicationBucket != nil {
 		s.ReplicationBucket.GrantWrite(replicationRole, jsii.String("*"), nil)
-		
+
 		// Add replication configuration
 		if sourceBucket, ok := s.Bucket.(awss3.Bucket); ok {
 			cfnBucket := sourceBucket.Node().DefaultChild().(awss3.CfnBucket)
-			
+
 			replicationConfig := &awss3.CfnBucket_ReplicationConfigurationProperty{
 				Role: replicationRole.RoleArn(),
 				Rules: &[]awss3.CfnBucket_ReplicationRuleProperty{
@@ -754,7 +754,7 @@ func (s *S3Processor) enableCrossRegionReplication() {
 					},
 				},
 			}
-			
+
 			cfnBucket.SetReplicationConfiguration(replicationConfig)
 		}
 	}

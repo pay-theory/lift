@@ -59,13 +59,13 @@ const (
 
 // HealthCheckResult represents the result of a health check
 type HealthCheckResult struct {
-	Name      string                 `json:"name"`
-	Status    HealthStatus           `json:"status"`
-	Message   string                 `json:"message,omitempty"`
-	Duration  time.Duration          `json:"duration"`
-	Timestamp time.Time              `json:"timestamp"`
+	Name      string         `json:"name"`
+	Status    HealthStatus   `json:"status"`
+	Message   string         `json:"message,omitempty"`
+	Duration  time.Duration  `json:"duration"`
+	Timestamp time.Time      `json:"timestamp"`
 	Details   map[string]any `json:"details,omitempty"`
-	Required  bool                   `json:"required"`
+	Required  bool           `json:"required"`
 }
 
 // OverallHealthResult represents the overall system health

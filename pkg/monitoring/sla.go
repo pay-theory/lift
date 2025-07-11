@@ -116,7 +116,7 @@ const (
 
 // AlertAction defines alert actions
 type AlertAction struct {
-	Type   string                 `json:"type"`
+	Type   string         `json:"type"`
 	Config map[string]any `json:"config"`
 }
 
@@ -588,11 +588,11 @@ func (sm *SLAMonitor) GetSLOStatus(sloName string) (*SLAMetrics, error) {
 
 // Alert represents an alert
 type Alert struct {
-	ID        string                 `json:"id"`
-	Type      string                 `json:"type"`
-	Severity  Severity               `json:"severity"`
-	Message   string                 `json:"message"`
-	Timestamp time.Time              `json:"timestamp"`
+	ID        string         `json:"id"`
+	Type      string         `json:"type"`
+	Severity  Severity       `json:"severity"`
+	Message   string         `json:"message"`
+	Timestamp time.Time      `json:"timestamp"`
 	Metadata  map[string]any `json:"metadata"`
 }
 

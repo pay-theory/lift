@@ -104,12 +104,12 @@ func New(options ...AppOption) *App {
 // Use adds middleware to the application
 func (a *App) Use(middleware Middleware) *App {
 	a.middleware = append(a.middleware, middleware)
-	
+
 	// Note: Since Middleware is a function type, not an interface,
 	// we'll need to handle response interception detection differently
 	// For now, we'll assume middleware that needs interception will
 	// be wrapped with InterceptingMiddleware
-	
+
 	return a
 }
 
@@ -374,7 +374,7 @@ func (a *App) parseEvent(event any) (*Request, error) {
 		if a.logger != nil {
 			// Log the raw event for debugging
 			a.logger.WithField("event_type", fmt.Sprintf("%T", event)).Debug("Parsing Lambda event")
-			
+
 			// Log event fields if it's a map
 			if eventMap, ok := event.(map[string]any); ok {
 				fields := make([]string, 0, len(eventMap))
@@ -385,7 +385,7 @@ func (a *App) parseEvent(event any) (*Request, error) {
 			}
 		}
 	}
-	
+
 	// Use the adapter registry to automatically detect and parse the event
 	adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
 	if err != nil {
@@ -416,12 +416,12 @@ func (a *App) handleError(ctx *Context, err error) (any, error) {
 			"code":    liftErr.Code,
 			"message": liftErr.Message,
 		}
-		
+
 		// Include details if present
 		if len(liftErr.Details) > 0 {
 			resp["details"] = liftErr.Details
 		}
-		
+
 		ctx.Status(liftErr.StatusCode).JSON(resp)
 		return ctx.Response, nil
 	}
@@ -505,18 +505,18 @@ func (a *App) convertEventHandler(handler any) (EventHandler, error) {
 	if eh, ok := handler.(EventHandler); ok {
 		return eh, nil
 	}
-	
+
 	// Check if it's an EventHandlerFunc
 	if ehf, ok := handler.(func(*Context) error); ok {
 		return EventHandlerFunc(ehf), nil
 	}
-	
+
 	// Try to convert as HTTP handler and wrap it
 	httpHandler, err := convertHandlerUsingReflection(handler)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Wrap HTTP handler as EventHandler
 	return EventHandlerFunc(func(ctx *Context) error {
 		return httpHandler.Handle(ctx)
@@ -735,7 +735,7 @@ func (a *App) RunLocalTest() {
 		}
 		return
 	}
-	
+
 	eventData, err := os.ReadFile(testFile)
 	if err != nil {
 		if a.logger != nil {

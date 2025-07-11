@@ -23,17 +23,17 @@ type IdempotencyStore interface {
 
 // IdempotencyRecord represents a stored idempotent response
 type IdempotencyRecord struct {
-	Key            string    `json:"key"`
-	Status         string    `json:"status"` // "processing", "completed", "error"
-	Response       any       `json:"response,omitempty"`
-	StatusCode     int       `json:"status_code,omitempty"`
-	Error          string    `json:"error,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	ExpiresAt      time.Time `json:"expires_at"`
-	RequestHash    string    `json:"request_hash,omitempty"`
-	FunctionName   string    `json:"function_name,omitempty"`
-	TenantID       string    `json:"tenant_id,omitempty"`
-	UserID         string    `json:"user_id,omitempty"`
+	Key          string    `json:"key"`
+	Status       string    `json:"status"` // "processing", "completed", "error"
+	Response     any       `json:"response,omitempty"`
+	StatusCode   int       `json:"status_code,omitempty"`
+	Error        string    `json:"error,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	RequestHash  string    `json:"request_hash,omitempty"`
+	FunctionName string    `json:"function_name,omitempty"`
+	TenantID     string    `json:"tenant_id,omitempty"`
+	UserID       string    `json:"user_id,omitempty"`
 }
 
 // IdempotencyOptions configures the idempotency middleware
@@ -51,7 +51,6 @@ type IdempotencyOptions struct {
 	// OnDuplicate is called when a duplicate request is detected
 	OnDuplicate func(ctx *lift.Context, record *IdempotencyRecord)
 }
-
 
 // Idempotency creates middleware that provides idempotent request handling
 func Idempotency(opts IdempotencyOptions) Middleware {
@@ -96,14 +95,14 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 					ctx.Response.Body = existing.Response
 					ctx.Response.Header("Content-Type", "application/json")
 					return nil
-					
+
 				case "error":
 					// Return cached error
 					if existing.Error != "" {
 						return lift.NewLiftError("IDEMPOTENT_ERROR_REPLAY", existing.Error, existing.StatusCode)
 					}
 					return lift.NewLiftError("IDEMPOTENT_ERROR_REPLAY", "Previous request failed", 500)
-					
+
 				case "processing":
 					// Check if processing timeout has elapsed
 					if time.Now().After(existing.ExpiresAt) {
@@ -111,7 +110,7 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 						if err := opts.Store.Delete(ctx.Request.Context(), idempotencyKey); err != nil {
 							if ctx.Logger != nil {
 								ctx.Logger.Error("Failed to delete expired idempotency key", map[string]any{
-									"key": idempotencyKey,
+									"key":   idempotencyKey,
 									"error": err.Error(),
 								})
 							}
@@ -125,12 +124,12 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 
 			// Mark as processing to prevent concurrent duplicates
 			expiresAt := time.Now().Add(opts.ProcessingTimeout)
-			
+
 			if err := opts.Store.SetProcessing(ctx.Request.Context(), idempotencyKey, expiresAt); err != nil {
 				// Log but continue - idempotency is best-effort
 				if ctx.Logger != nil {
 					ctx.Logger.Warn("Failed to set idempotency processing lock", map[string]any{
-						"key": idempotencyKey,
+						"key":   idempotencyKey,
 						"error": err.Error(),
 					})
 				}
@@ -141,11 +140,11 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 
 			// Execute handler
 			handlerErr := next.Handle(ctx)
-			
+
 			// Capture response after handler execution
 			var capturedResponse any
 			var capturedStatus int
-			
+
 			// Try to get response from buffer first
 			if buffer := ctx.GetResponseBuffer(); buffer != nil {
 				capturedResponse = buffer.CapturedData
@@ -155,7 +154,7 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 				capturedResponse = ctx.Response.Body
 				capturedStatus = ctx.Response.StatusCode
 			}
-			
+
 			if capturedStatus == 0 {
 				capturedStatus = 200
 			}
@@ -191,7 +190,7 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 				// Log but don't fail the request
 				if ctx.Logger != nil {
 					ctx.Logger.Error("Failed to store idempotency record", map[string]any{
-						"key": idempotencyKey,
+						"key":   idempotencyKey,
 						"error": storeErr.Error(),
 					})
 				}
@@ -220,17 +219,17 @@ func NewMemoryIdempotencyStore() *MemoryIdempotencyStore {
 func (m *MemoryIdempotencyStore) Get(ctx context.Context, key string) (*IdempotencyRecord, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	record, exists := m.records[key]
 	if !exists {
 		return nil, nil
 	}
-	
+
 	// Check if expired
 	if time.Now().After(record.ExpiresAt) {
 		return nil, nil
 	}
-	
+
 	return record, nil
 }
 
@@ -238,12 +237,12 @@ func (m *MemoryIdempotencyStore) Get(ctx context.Context, key string) (*Idempote
 func (m *MemoryIdempotencyStore) Set(ctx context.Context, key string, record *IdempotencyRecord) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.records[key] = record
-	
+
 	// Clean up expired records periodically
 	m.cleanupExpired()
-	
+
 	return nil
 }
 
@@ -261,7 +260,7 @@ func (m *MemoryIdempotencyStore) SetProcessing(ctx context.Context, key string, 
 func (m *MemoryIdempotencyStore) Delete(ctx context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	delete(m.records, key)
 	return nil
 }

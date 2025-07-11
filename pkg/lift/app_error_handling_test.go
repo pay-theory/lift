@@ -83,7 +83,7 @@ func TestHandleRequestLiftErrorStatusCodes(t *testing.T) {
 
 			// Simulate HandleRequest flow
 			ctx := NewContext(context.Background(), req)
-			
+
 			// Start the app to transfer middleware
 			err := app.Start()
 			require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestHandleRequestNonLiftError(t *testing.T) {
 
 	// Simulate HandleRequest flow
 	ctx := NewContext(context.Background(), req)
-	
+
 	// Start the app
 	err := app.Start()
 	require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestMiddlewareLiftErrorStatusCodes(t *testing.T) {
 
 	// Simulate HandleRequest flow
 	ctx := NewContext(context.Background(), req)
-	
+
 	// Start the app
 	err := app.Start()
 	require.NoError(t, err)

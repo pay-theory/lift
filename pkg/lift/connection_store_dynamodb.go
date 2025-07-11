@@ -56,17 +56,17 @@ func NewDynamoDBConnectionStore(ctx context.Context, config DynamoDBConnectionSt
 
 // DynamoDBConnection represents a connection record in DynamoDB
 type DynamoDBConnection struct {
-	PK        string                 ``     // Primary key: "CONNECTION#<connectionId>"
-	SK        string                 ``     // Sort key: "CONNECTION"
-	GSI1PK    string                 `` // GSI1 primary key: "USER#<userId>"
-	GSI1SK    string                 `` // GSI1 sort key: "CONNECTION#<connectionId>"
-	GSI2PK    string                 `` // GSI2 primary key: "TENANT#<tenantId>"
-	GSI2SK    string                 `` // GSI2 sort key: "CONNECTION#<connectionId>"
-	ID        string                 ``
-	UserID    string                 ``
-	TenantID  string                 ``
-	CreatedAt string                 ``
-	TTL       int64                  ``
+	PK        string         `` // Primary key: "CONNECTION#<connectionId>"
+	SK        string         `` // Sort key: "CONNECTION"
+	GSI1PK    string         `` // GSI1 primary key: "USER#<userId>"
+	GSI1SK    string         `` // GSI1 sort key: "CONNECTION#<connectionId>"
+	GSI2PK    string         `` // GSI2 primary key: "TENANT#<tenantId>"
+	GSI2SK    string         `` // GSI2 sort key: "CONNECTION#<connectionId>"
+	ID        string         ``
+	UserID    string         ``
+	TenantID  string         ``
+	CreatedAt string         ``
+	TTL       int64          ``
 	Metadata  map[string]any ``
 }
 

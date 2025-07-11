@@ -22,7 +22,7 @@ const (
 type Request struct {
 	// Event metadata
 	TriggerType TriggerType `json:"trigger_type"`
-	RawEvent    any `json:"raw_event,omitempty"`
+	RawEvent    any         `json:"raw_event,omitempty"`
 	EventID     string      `json:"event_id,omitempty"`
 	Timestamp   string      `json:"timestamp,omitempty"`
 
@@ -37,8 +37,8 @@ type Request struct {
 	// Event-specific data
 	Records    []any          `json:"records,omitempty"`
 	Detail     map[string]any `json:"detail,omitempty"`
-	Source     string                 `json:"source,omitempty"`
-	DetailType string                 `json:"detail_type,omitempty"`
+	Source     string         `json:"source,omitempty"`
+	DetailType string         `json:"detail_type,omitempty"`
 
 	// Additional metadata for specific event types (e.g., WebSocket)
 	Metadata map[string]any `json:"metadata,omitempty"`
@@ -97,14 +97,14 @@ func (r *AdapterRegistry) DetectAndAdapt(rawEvent any) (*Request, error) {
 	// Track which adapters were tried and why they failed
 	var attemptedAdapters []string
 	var detectedFields []string
-	
+
 	// Extract fields from the event for debugging
 	if eventMap, ok := rawEvent.(map[string]any); ok {
 		for key := range eventMap {
 			detectedFields = append(detectedFields, key)
 		}
 	}
-	
+
 	// Try each adapter to see which one can handle the event
 	for triggerType, adapter := range r.adapters {
 		attemptedAdapters = append(attemptedAdapters, string(triggerType))
@@ -115,7 +115,7 @@ func (r *AdapterRegistry) DetectAndAdapt(rawEvent any) (*Request, error) {
 
 	// If no adapter can handle it, return a detailed error
 	eventType := reflect.TypeOf(rawEvent)
-	return nil, fmt.Errorf("no adapter found for event type: %v\nDetected fields: %v\nTried adapters: %v\nHint: Check if your API Gateway integration is configured correctly", 
+	return nil, fmt.Errorf("no adapter found for event type: %v\nDetected fields: %v\nTried adapters: %v\nHint: Check if your API Gateway integration is configured correctly",
 		eventType, detectedFields, attemptedAdapters)
 }
 

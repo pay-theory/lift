@@ -30,11 +30,11 @@ func (m *mockSNSClient) Publish(ctx context.Context, params *sns.PublishInput, o
 
 func TestSNSNotifier_NotifyError(t *testing.T) {
 	tests := []struct {
-		name           string
-		logEntry       *LogEntry
-		topicARN       string
-		expectedCalls  int
-		validateMsg    func(t *testing.T, msg SNSNotificationMessage)
+		name          string
+		logEntry      *LogEntry
+		topicARN      string
+		expectedCalls int
+		validateMsg   func(t *testing.T, msg SNSNotificationMessage)
 	}{
 		{
 			name: "error log triggers notification",
@@ -82,29 +82,29 @@ func TestSNSNotifier_NotifyError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mock SNS client
 			mockClient := &mockSNSClient{}
-			
+
 			// Create notifier
 			notifier := NewSNSNotifier(SNSConfig{
 				Client:   mockClient,
 				TopicARN: tt.topicARN,
 			})
-			
+
 			// Send notification
 			err := notifier.NotifyError(context.Background(), tt.logEntry)
 			require.NoError(t, err)
-			
+
 			// Verify calls
 			assert.Len(t, mockClient.publishCalls, tt.expectedCalls)
-			
+
 			// Validate message if a call was made
 			if tt.expectedCalls > 0 && tt.validateMsg != nil {
 				publishCall := mockClient.publishCalls[0]
 				assert.Equal(t, tt.topicARN, *publishCall.TargetArn)
-				
+
 				var msg SNSNotificationMessage
 				err := json.Unmarshal([]byte(*publishCall.Message), &msg)
 				require.NoError(t, err)
-				
+
 				tt.validateMsg(t, msg)
 			}
 		})
@@ -114,13 +114,13 @@ func TestSNSNotifier_NotifyError(t *testing.T) {
 func TestSNSNotifier_FieldOverrides(t *testing.T) {
 	// Create mock SNS client
 	mockClient := &mockSNSClient{}
-	
+
 	// Create notifier
 	notifier := NewSNSNotifier(SNSConfig{
 		Client:   mockClient,
 		TopicARN: "arn:aws:sns:us-east-1:123456789012:test-topic",
 	})
-	
+
 	// Create log entry with field overrides
 	logEntry := &LogEntry{
 		Timestamp: time.Now(),
@@ -134,17 +134,17 @@ func TestSNSNotifier_FieldOverrides(t *testing.T) {
 			"account_id":    "999888777666",
 		},
 	}
-	
+
 	// Send notification
 	err := notifier.NotifyError(context.Background(), logEntry)
 	require.NoError(t, err)
-	
+
 	// Verify message
 	assert.Len(t, mockClient.publishCalls, 1)
 	var msg SNSNotificationMessage
 	err = json.Unmarshal([]byte(*mockClient.publishCalls[0].Message), &msg)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, "production", msg.Environment)
 	assert.Equal(t, "my-service", msg.Service)
 	assert.Equal(t, "custom-function", msg.Function)

@@ -72,8 +72,8 @@ func TestEventBridgeHandler_WithEventPattern(t *testing.T) {
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
 
 	eventPattern := &awsevents.EventPattern{
-		Source:      &[]*string{jsii.String("myapp.orders")},
-		DetailType:  &[]*string{jsii.String("Order Placed")},
+		Source:     &[]*string{jsii.String("myapp.orders")},
+		DetailType: &[]*string{jsii.String("Order Placed")},
 		Detail: &map[string]interface{}{
 			"state": &[]*string{jsii.String("pending")},
 		},
@@ -106,8 +106,8 @@ func TestEventBridgeHandler_WithEventPattern(t *testing.T) {
 	// Verify rule has event pattern
 	assertResourceExists(t, template, "AWS::Events::Rule", map[string]interface{}{
 		"EventPattern": map[string]interface{}{
-			"source":       []string{"myapp.orders"},
-			"detail-type":  []string{"Order Placed"},
+			"source":      []string{"myapp.orders"},
+			"detail-type": []string{"Order Placed"},
 			"detail": map[string]interface{}{
 				"state": []string{"pending"},
 			},
@@ -418,7 +418,7 @@ func TestEventBridgeHandler_ErrorOnBothEventPatternAndSchedule(t *testing.T) {
 		},
 		ScheduleExpression: jsii.String("rate(5 minutes)"),
 	})
-	
+
 	if err == nil {
 		t.Error("Expected error when both EventPattern and ScheduleExpression are provided")
 	}

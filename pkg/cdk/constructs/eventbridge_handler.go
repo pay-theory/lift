@@ -2,7 +2,7 @@ package constructs
 
 import (
 	"fmt"
-	
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsevents"
@@ -260,7 +260,7 @@ func NewEventBridgeHandler(scope constructs.Construct, id *string, props *EventB
 
 	// Create and add target
 	this.Target = awseventstargets.NewLambdaFunction(this.Function.Function, targetProps)
-	
+
 	// Add target to rule
 	this.Rule.AddTarget(this.Target)
 
@@ -282,34 +282,34 @@ func NewEventBridgeHandler(scope constructs.Construct, id *string, props *EventB
 func (e *EventBridgeHandler) enableMonitoring() {
 	if e.Function != nil {
 		function := e.Function.GetFunction()
-		
+
 		// Function error rate alarm
 		awscloudwatch.NewAlarm(e, jsii.String("FunctionErrorAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-errors", *e.Rule.RuleName())),
-			AlarmDescription:  jsii.String("EventBridge handler function errors"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-errors", *e.Rule.RuleName())),
+			AlarmDescription: jsii.String("EventBridge handler function errors"),
 			Metric: function.MetricErrors(&awscloudwatch.MetricOptions{
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(3),
-			EvaluationPeriods: jsii.Number(2),
+			Threshold:          jsii.Number(3),
+			EvaluationPeriods:  jsii.Number(2),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
-		
-		// Function duration alarm  
+
+		// Function duration alarm
 		awscloudwatch.NewAlarm(e, jsii.String("FunctionDurationAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-duration", *e.Rule.RuleName())),
-			AlarmDescription:  jsii.String("EventBridge handler function duration"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-duration", *e.Rule.RuleName())),
+			AlarmDescription: jsii.String("EventBridge handler function duration"),
 			Metric: function.MetricDuration(&awscloudwatch.MetricOptions{
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(30000), // 30 seconds
-			EvaluationPeriods: jsii.Number(3),
+			Threshold:          jsii.Number(30000), // 30 seconds
+			EvaluationPeriods:  jsii.Number(3),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
-	
+
 	// EventBridge rule invocation metrics (not used but kept for reference)
 	_ = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
 		Namespace:  jsii.String("AWS/Events"),
@@ -319,11 +319,11 @@ func (e *EventBridgeHandler) enableMonitoring() {
 		},
 		Period: awscdk.Duration_Minutes(jsii.Number(5)),
 	})
-	
+
 	// Rule invocation failure alarm
 	awscloudwatch.NewAlarm(e, jsii.String("RuleFailureAlarm"), &awscloudwatch.AlarmProps{
-		AlarmName:         jsii.String(fmt.Sprintf("%s-rule-failures", *e.Rule.RuleName())),
-		AlarmDescription:  jsii.String("EventBridge rule invocation failures"),
+		AlarmName:        jsii.String(fmt.Sprintf("%s-rule-failures", *e.Rule.RuleName())),
+		AlarmDescription: jsii.String("EventBridge rule invocation failures"),
 		Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
 			Namespace:  jsii.String("AWS/Events"),
 			MetricName: jsii.String("FailedInvocations"),
@@ -332,17 +332,17 @@ func (e *EventBridgeHandler) enableMonitoring() {
 			},
 			Period: awscdk.Duration_Minutes(jsii.Number(5)),
 		}),
-		Threshold:         jsii.Number(5),
-		EvaluationPeriods: jsii.Number(2),
+		Threshold:          jsii.Number(5),
+		EvaluationPeriods:  jsii.Number(2),
 		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 	})
-	
+
 	// DLQ monitoring if DLQ exists
 	if e.DeadLetterQueue != nil {
 		awscloudwatch.NewAlarm(e, jsii.String("DLQAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-dlq-messages", *e.Rule.RuleName())),
-			AlarmDescription:  jsii.String("Messages in EventBridge handler DLQ"),
+			AlarmName:        jsii.String(fmt.Sprintf("%s-dlq-messages", *e.Rule.RuleName())),
+			AlarmDescription: jsii.String("Messages in EventBridge handler DLQ"),
 			Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
 				Namespace:  jsii.String("AWS/SQS"),
 				MetricName: jsii.String("ApproximateNumberOfMessages"),
@@ -351,10 +351,10 @@ func (e *EventBridgeHandler) enableMonitoring() {
 				},
 				Period: awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:         jsii.Number(10),
-			EvaluationPeriods: jsii.Number(1),
+			Threshold:          jsii.Number(10),
+			EvaluationPeriods:  jsii.Number(1),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 	}
 }

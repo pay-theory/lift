@@ -26,13 +26,13 @@ func TestLiftApp(t *testing.T) {
 				tester.AssertLiftFunction(map[string]interface{}{
 					"FunctionName": "test-app",
 				})
-				
+
 				// Check API Gateway
 				tester.AssertLiftAPI("test-app-api", true)
-				
+
 				// Check DynamoDB table
 				tester.AssertLiftTable("test-app-table", true, true)
-				
+
 				// Check outputs
 				tester.AssertHasOutput("ApiUrl")
 				tester.AssertHasOutput("FunctionName")
@@ -55,7 +55,7 @@ func TestLiftApp(t *testing.T) {
 						"Enabled":       true,
 					},
 				})
-				
+
 				// Check Lambda has table name in environment
 				tester.AssertHasResourceWithProperties("AWS::Lambda::Function", map[string]interface{}{
 					"Environment": map[string]interface{}{
@@ -83,7 +83,7 @@ func TestLiftApp(t *testing.T) {
 						},
 					},
 				})
-				
+
 				// Check tenant-aware table configuration (uses standard pk/sk naming)
 				tester.AssertHasResourceWithProperties("AWS::DynamoDB::Table", map[string]interface{}{
 					"KeySchema": []map[string]interface{}{
@@ -126,7 +126,7 @@ func TestLiftApp(t *testing.T) {
 						},
 					},
 				})
-				
+
 				// Check complete infrastructure
 				tester.AssertCompleteInfrastructure("prod-app", true, true)
 			},
@@ -136,9 +136,9 @@ func TestLiftApp(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tester := test.NewLiftStackTester(t)
-			
+
 			patterns.NewLiftApp(tester.Stack(), jsii.String("TestApp"), tt.props)
-			
+
 			tester.Synthesize()
 			tt.validate(tester)
 		})
@@ -147,27 +147,27 @@ func TestLiftApp(t *testing.T) {
 
 func TestLiftAppRouting(t *testing.T) {
 	tester := test.NewLiftStackTester(t)
-	
+
 	app := patterns.NewLiftApp(tester.Stack(), jsii.String("TestApp"), &patterns.LiftAppProps{
 		AppName:       jsii.String("routing-app"),
 		CodeAssetPath: jsii.String("."),
 	})
-	
+
 	tester.Synthesize()
-	
+
 	// Check catch-all route
 	tester.AssertHasResourceWithProperties("AWS::ApiGatewayV2::Route", map[string]interface{}{
 		"RouteKey": "ANY /{proxy+}",
 	})
-	
+
 	// Check root route
 	tester.AssertHasResourceWithProperties("AWS::ApiGatewayV2::Route", map[string]interface{}{
 		"RouteKey": "ANY /",
 	})
-	
+
 	// Check Lambda integration
 	tester.AssertHasResource("AWS::ApiGatewayV2::Integration")
-	
+
 	// Verify API has reference to function
 	if app.Function == nil || app.API == nil {
 		t.Error("LiftApp should expose Function and API properties")
@@ -176,22 +176,22 @@ func TestLiftAppRouting(t *testing.T) {
 
 func TestLiftAppPermissions(t *testing.T) {
 	tester := test.NewLiftStackTester(t)
-	
+
 	patterns.NewLiftApp(tester.Stack(), jsii.String("TestApp"), &patterns.LiftAppProps{
 		AppName:            jsii.String("perms-app"),
 		CodeAssetPath:      jsii.String("."),
 		EnableDatabase:     jsii.Bool(true),
 		EnableRateLimiting: jsii.Bool(true),
 	})
-	
+
 	tester.Synthesize()
-	
+
 	// Check IAM role exists
 	tester.AssertHasResource("AWS::IAM::Role")
-	
+
 	// Check IAM policy exists (structure may vary due to CDK implementation details)
 	tester.AssertHasResource("AWS::IAM::Policy")
-	
+
 	// Verify the policy has DynamoDB permissions by checking template contains DynamoDB actions
 	template := tester.Template().ToJSON()
 	if template == nil {

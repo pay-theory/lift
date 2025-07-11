@@ -8,12 +8,12 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsevents"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awseventstargets"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awskinesisfirehose"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskinesis"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awskinesisfirehose"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsssm"
@@ -117,19 +117,19 @@ type AuditingProps struct {
 // AuditingConstruct creates comprehensive audit logging infrastructure
 type AuditingConstruct struct {
 	constructs.Construct
-	AuditBucket           awss3.Bucket
-	EncryptionKey         awskms.Key
-	CloudTrail            awscloudtrail.Trail
-	ApplicationLogGroup   awslogs.LogGroup
-	DatabaseLogGroup      awslogs.LogGroup
-	AuditLogGroup         awslogs.LogGroup
-	LogProcessingFunction awslambda.Function
-	LogStream             awskinesis.Stream
+	AuditBucket            awss3.Bucket
+	EncryptionKey          awskms.Key
+	CloudTrail             awscloudtrail.Trail
+	ApplicationLogGroup    awslogs.LogGroup
+	DatabaseLogGroup       awslogs.LogGroup
+	AuditLogGroup          awslogs.LogGroup
+	LogProcessingFunction  awslambda.Function
+	LogStream              awskinesis.Stream
 	FirehoseDeliveryStream awskinesisfirehose.CfnDeliveryStream
-	AuditDashboard        awscloudwatch.Dashboard
-	AuditAlarms           []awscloudwatch.Alarm
-	IntegrityFunction     awslambda.Function
-	ComplianceFunction    awslambda.Function
+	AuditDashboard         awscloudwatch.Dashboard
+	AuditAlarms            []awscloudwatch.Alarm
+	IntegrityFunction      awslambda.Function
+	ComplianceFunction     awslambda.Function
 }
 
 // NewAuditingConstruct creates a new auditing construct
@@ -345,10 +345,10 @@ func NewAuditingConstruct(scope constructs.Construct, id string, props *Auditing
 	var logStream awskinesis.Stream
 	if props.EnableRealTimeProcessing != nil && *props.EnableRealTimeProcessing {
 		logStream = awskinesis.NewStream(this, jsii.String("AuditLogStream"), &awskinesis.StreamProps{
-			StreamName:   jsii.String(fmt.Sprintf("%s-audit-stream", *props.AppName)),
-			ShardCount:   jsii.Number(2),
-			Encryption:   awskinesis.StreamEncryption_KMS,
-			EncryptionKey: encryptionKey,
+			StreamName:      jsii.String(fmt.Sprintf("%s-audit-stream", *props.AppName)),
+			ShardCount:      jsii.Number(2),
+			Encryption:      awskinesis.StreamEncryption_KMS,
+			EncryptionKey:   encryptionKey,
 			RetentionPeriod: awscdk.Duration_Hours(jsii.Number(24)),
 		})
 	}
@@ -504,12 +504,12 @@ func createFirehoseDeliveryStream(scope constructs.Construct, props *AuditingPro
 		DeliveryStreamType: jsii.String("KinesisStreamAsSource"),
 		KinesisStreamSourceConfiguration: &awskinesisfirehose.CfnDeliveryStream_KinesisStreamSourceConfigurationProperty{
 			KinesisStreamArn: stream.StreamArn(),
-			RoleArn:         firehoseRole.RoleArn(),
+			RoleArn:          firehoseRole.RoleArn(),
 		},
 		S3DestinationConfiguration: &awskinesisfirehose.CfnDeliveryStream_S3DestinationConfigurationProperty{
-			BucketArn: bucket.BucketArn(),
-			RoleArn:   firehoseRole.RoleArn(),
-			Prefix:    jsii.String("audit-logs/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/"),
+			BucketArn:         bucket.BucketArn(),
+			RoleArn:           firehoseRole.RoleArn(),
+			Prefix:            jsii.String("audit-logs/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/"),
 			ErrorOutputPrefix: jsii.String("error-logs/"),
 			BufferingHints: &awskinesisfirehose.CfnDeliveryStream_BufferingHintsProperty{
 				SizeInMBs:         jsii.Number(5),
@@ -580,14 +580,14 @@ func createLogProcessingFunction(scope constructs.Construct, props *AuditingProp
 
 	// Add Kinesis event source using higher-level construct
 	eventSource := awslambdaeventsources.NewKinesisEventSource(stream, &awslambdaeventsources.KinesisEventSourceProps{
-		BatchSize:              jsii.Number(100),
-		StartingPosition:       awslambda.StartingPosition_LATEST,
-		MaxBatchingWindow:      awscdk.Duration_Seconds(jsii.Number(5)),
-		BisectBatchOnError:     jsii.Bool(true),
+		BatchSize:               jsii.Number(100),
+		StartingPosition:        awslambda.StartingPosition_LATEST,
+		MaxBatchingWindow:       awscdk.Duration_Seconds(jsii.Number(5)),
+		BisectBatchOnError:      jsii.Bool(true),
 		ReportBatchItemFailures: jsii.Bool(true),
-		RetryAttempts:          jsii.Number(3),
-		MaxRecordAge:           awscdk.Duration_Minutes(jsii.Number(60)),
-		ParallelizationFactor:  jsii.Number(1),
+		RetryAttempts:           jsii.Number(3),
+		MaxRecordAge:            awscdk.Duration_Minutes(jsii.Number(60)),
+		ParallelizationFactor:   jsii.Number(1),
 	})
 	function.AddEventSource(eventSource)
 
@@ -776,25 +776,25 @@ func storeAuditConfiguration(scope constructs.Construct, props *AuditingProps) {
 // GetAuditStatus returns the current audit status
 func (a *AuditingConstruct) GetAuditStatus() map[string]interface{} {
 	return map[string]interface{}{
-		"cloudtrail_enabled":      a.CloudTrail != nil,
+		"cloudtrail_enabled":       a.CloudTrail != nil,
 		"application_logs_enabled": a.ApplicationLogGroup != nil,
-		"database_logs_enabled":   a.DatabaseLogGroup != nil,
-		"real_time_processing":    a.LogProcessingFunction != nil,
-		"integrity_checking":      a.IntegrityFunction != nil,
-		"compliance_reporting":    a.ComplianceFunction != nil,
-		"dashboard_enabled":       a.AuditDashboard != nil,
-		"alerting_enabled":        len(a.AuditAlarms) > 0,
-		"encryption_enabled":      a.EncryptionKey != nil,
-		"stream_processing":       a.LogStream != nil,
-		"log_aggregation":         a.FirehoseDeliveryStream != nil,
+		"database_logs_enabled":    a.DatabaseLogGroup != nil,
+		"real_time_processing":     a.LogProcessingFunction != nil,
+		"integrity_checking":       a.IntegrityFunction != nil,
+		"compliance_reporting":     a.ComplianceFunction != nil,
+		"dashboard_enabled":        a.AuditDashboard != nil,
+		"alerting_enabled":         len(a.AuditAlarms) > 0,
+		"encryption_enabled":       a.EncryptionKey != nil,
+		"stream_processing":        a.LogStream != nil,
+		"log_aggregation":          a.FirehoseDeliveryStream != nil,
 	}
 }
 
 // AddCustomAuditRule adds a custom audit rule
 func (a *AuditingConstruct) AddCustomAuditRule(ruleId string, logGroup awslogs.LogGroup, filterPattern string) {
 	awslogs.NewMetricFilter(a.Construct, jsii.String(fmt.Sprintf("CustomAuditRule_%s", ruleId)), &awslogs.MetricFilterProps{
-		LogGroup:      logGroup,
-		FilterPattern: awslogs.FilterPattern_Literal(jsii.String(filterPattern)),
+		LogGroup:        logGroup,
+		FilterPattern:   awslogs.FilterPattern_Literal(jsii.String(filterPattern)),
 		MetricNamespace: jsii.String("Audit/Custom"),
 		MetricName:      jsii.String(ruleId),
 		MetricValue:     jsii.String("1"),

@@ -50,27 +50,27 @@ type ServiceClientConfig struct {
 
 // ServiceRequest represents a service call request
 type ServiceRequest struct {
-	ServiceName         string                 `json:"service_name"`
-	Method              string                 `json:"method"`
-	Path                string                 `json:"path"`
-	Headers             map[string]string      `json:"headers"`
-	Body                any                    `json:"body"`
-	TenantID            string                 `json:"tenant_id,omitempty"`
-	UserID              string                 `json:"user_id,omitempty"`
-	RequestID           string                 `json:"request_id,omitempty"`
-	LoadBalanceStrategy LoadBalanceStrategy    `json:"load_balance_strategy"`
-	Timeout             time.Duration          `json:"timeout"`
-	Metadata            map[string]any         `json:"metadata"`
+	ServiceName         string              `json:"service_name"`
+	Method              string              `json:"method"`
+	Path                string              `json:"path"`
+	Headers             map[string]string   `json:"headers"`
+	Body                any                 `json:"body"`
+	TenantID            string              `json:"tenant_id,omitempty"`
+	UserID              string              `json:"user_id,omitempty"`
+	RequestID           string              `json:"request_id,omitempty"`
+	LoadBalanceStrategy LoadBalanceStrategy `json:"load_balance_strategy"`
+	Timeout             time.Duration       `json:"timeout"`
+	Metadata            map[string]any      `json:"metadata"`
 }
 
 // ServiceResponse represents a service call response
 type ServiceResponse struct {
-	StatusCode int                    `json:"status_code"`
-	Headers    map[string]string      `json:"headers"`
-	Body       []byte                 `json:"body"`
-	Metadata   map[string]any         `json:"metadata"`
-	Duration   time.Duration          `json:"duration"`
-	Instance   *ServiceInstance       `json:"instance"`
+	StatusCode int               `json:"status_code"`
+	Headers    map[string]string `json:"headers"`
+	Body       []byte            `json:"body"`
+	Metadata   map[string]any    `json:"metadata"`
+	Duration   time.Duration     `json:"duration"`
+	Instance   *ServiceInstance  `json:"instance"`
 }
 
 // RetryPolicy defines retry behavior
@@ -303,14 +303,14 @@ func (c *ServiceClient) addTracingHeaders(req *http.Request, request *ServiceReq
 		} else {
 			req.Header.Set("X-Trace-ID", c.generateTraceID())
 		}
-		
+
 		if spanID, ok := request.Metadata["span_id"].(string); ok && spanID != "" {
 			req.Header.Set("X-Parent-Span-ID", spanID)
 		}
 	} else {
 		req.Header.Set("X-Trace-ID", c.generateTraceID())
 	}
-	
+
 	req.Header.Set("X-Span-ID", c.generateSpanID())
 }
 

@@ -33,11 +33,11 @@ type APIKeyAuthorizer struct {
 // NewAPIKeyAuthorizer creates a new API key authorizer
 func NewAPIKeyAuthorizer(scope constructs.Construct, id *string, props *APIKeyAuthorizerProps) *APIKeyAuthorizer {
 	this := constructs.NewConstruct(scope, id)
-	
+
 	auth := &APIKeyAuthorizer{
 		Construct: this,
 	}
-	
+
 	// Set defaults
 	if props.APIKeySource == nil {
 		props.APIKeySource = jsii.String("header")
@@ -48,14 +48,14 @@ func NewAPIKeyAuthorizer(scope constructs.Construct, id *string, props *APIKeyAu
 	if props.ResultsCacheTtl == nil {
 		props.ResultsCacheTtl = jsii.Number(300) // 5 minutes default
 	}
-	
+
 	// Create or use validator function
 	if props.ValidatorFunction != nil {
 		auth.ValidatorFunction = props.ValidatorFunction
 	} else {
 		auth.ValidatorFunction = auth.createValidatorFunction(props)
 	}
-	
+
 	// Create the Lambda authorizer
 	auth.Authorizer = awsapigatewayv2authorizers.NewHttpLambdaAuthorizer(
 		jsii.String("APIKeyAuthorizer"),
@@ -70,7 +70,7 @@ func NewAPIKeyAuthorizer(scope constructs.Construct, id *string, props *APIKeyAu
 			},
 		},
 	)
-	
+
 	return auth
 }
 
@@ -80,19 +80,19 @@ func (auth *APIKeyAuthorizer) createValidatorFunction(props *APIKeyAuthorizerPro
 	if props.APIKeyTableName != nil {
 		tableName = *props.APIKeyTableName
 	}
-	
+
 	code := generateAPIKeyValidatorCode(*props.APIKeySource, *props.APIKeyParameter, tableName)
-	
+
 	fn := NewLiftFunction(auth, jsii.String("ValidatorFunction"), &LiftFunctionProps{
 		FunctionProps: awslambda.FunctionProps{
-			Runtime:     awslambda.Runtime_NODEJS_18_X(),
-			Handler:     jsii.String("index.handler"),
-			Code:        awslambda.Code_FromInline(jsii.String(code)),
-			MemorySize:  jsii.Number(256),
-			Timeout:     awscdk.Duration_Seconds(jsii.Number(10)),
+			Runtime:    awslambda.Runtime_NODEJS_18_X(),
+			Handler:    jsii.String("index.handler"),
+			Code:       awslambda.Code_FromInline(jsii.String(code)),
+			MemorySize: jsii.Number(256),
+			Timeout:    awscdk.Duration_Seconds(jsii.Number(10)),
 			Environment: &map[string]*string{
-				"API_KEY_TABLE": jsii.String(tableName),
-				"API_KEY_SOURCE": props.APIKeySource,
+				"API_KEY_TABLE":     jsii.String(tableName),
+				"API_KEY_SOURCE":    props.APIKeySource,
 				"API_KEY_PARAMETER": props.APIKeyParameter,
 			},
 		},

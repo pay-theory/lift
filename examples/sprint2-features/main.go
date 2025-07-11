@@ -83,7 +83,7 @@ func main() {
 
 	// Example API routes
 	api := app.Group("/api/v1")
-	
+
 	// Apply tenant-based rate limiting to API group
 	tenantLimiter, _ := middleware.TenantRateLimitWithLimited(500, time.Hour)
 	app.Use(tenantLimiter) // RouteGroup doesn't have Use method, apply to app
@@ -91,8 +91,8 @@ func main() {
 	// Health check endpoint (used by service mesh)
 	app.GET("/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]interface{}{
-			"status": "healthy",
-			"service": "sprint2-features-demo",
+			"status":    "healthy",
+			"service":   "sprint2-features-demo",
 			"timestamp": time.Now().UTC(),
 		})
 	})
@@ -105,10 +105,10 @@ func main() {
 		// - Service mesh integration
 		// - Load shedding
 		// - Response caching
-		
+
 		return ctx.JSON(map[string]interface{}{
-			"message": "Successfully accessed protected resource",
-			"user_id": ctx.UserID(),
+			"message":   "Successfully accessed protected resource",
+			"user_id":   ctx.UserID(),
 			"tenant_id": ctx.TenantID(),
 			"features": []string{
 				"sliding_window_rate_limiting",

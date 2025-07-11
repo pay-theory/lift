@@ -167,39 +167,39 @@ func TestWebSocketContext_GetRegion(t *testing.T) {
 
 func TestWebSocketContext_HelperMethods(t *testing.T) {
 	tests := []struct {
-		name                  string
-		routeKey              string
-		expectedIsConnect     bool
-		expectedIsDisconnect  bool
-		expectedIsMessage     bool
+		name                 string
+		routeKey             string
+		expectedIsConnect    bool
+		expectedIsDisconnect bool
+		expectedIsMessage    bool
 	}{
 		{
-			name:                  "connect event",
-			routeKey:              "$connect",
-			expectedIsConnect:     true,
-			expectedIsDisconnect:  false,
-			expectedIsMessage:     false,
+			name:                 "connect event",
+			routeKey:             "$connect",
+			expectedIsConnect:    true,
+			expectedIsDisconnect: false,
+			expectedIsMessage:    false,
 		},
 		{
-			name:                  "disconnect event",
-			routeKey:              "$disconnect",
-			expectedIsConnect:     false,
-			expectedIsDisconnect:  true,
-			expectedIsMessage:     false,
+			name:                 "disconnect event",
+			routeKey:             "$disconnect",
+			expectedIsConnect:    false,
+			expectedIsDisconnect: true,
+			expectedIsMessage:    false,
 		},
 		{
-			name:                  "default message event",
-			routeKey:              "$default",
-			expectedIsConnect:     false,
-			expectedIsDisconnect:  false,
-			expectedIsMessage:     true,
+			name:                 "default message event",
+			routeKey:             "$default",
+			expectedIsConnect:    false,
+			expectedIsDisconnect: false,
+			expectedIsMessage:    true,
 		},
 		{
-			name:                  "custom route event",
-			routeKey:              "customAction",
-			expectedIsConnect:     false,
-			expectedIsDisconnect:  false,
-			expectedIsMessage:     true,
+			name:                 "custom route event",
+			routeKey:             "customAction",
+			expectedIsConnect:    false,
+			expectedIsDisconnect: false,
+			expectedIsMessage:    true,
 		},
 	}
 
@@ -226,9 +226,9 @@ func TestWebSocketContext_HelperMethods(t *testing.T) {
 
 func TestWebSocketContext_GetAuthorizationFromQuery(t *testing.T) {
 	tests := []struct {
-		name             string
-		setupContext     func() *WebSocketContext
-		expectedAuth     string
+		name         string
+		setupContext func() *WebSocketContext
+		expectedAuth string
 	}{
 		{
 			name: "authorization in query params",
@@ -301,12 +301,12 @@ func TestWebSocketContext_EndpointMethods(t *testing.T) {
 		{
 			name: "all metadata present",
 			metadata: map[string]any{
-				"connectionId":        "conn-123",
-				"routeKey":            "$connect",
-				"eventType":           "CONNECT",
-				"stage":               "prod",
-				"domainName":          "api.example.com",
-				"managementEndpoint":  "https://api.example.com/prod",
+				"connectionId":       "conn-123",
+				"routeKey":           "$connect",
+				"eventType":          "CONNECT",
+				"stage":              "prod",
+				"domainName":         "api.example.com",
+				"managementEndpoint": "https://api.example.com/prod",
 			},
 			expectedConnID:     "conn-123",
 			expectedRouteKey:   "$connect",
@@ -373,7 +373,7 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			Request: &adapters.Request{
 				TriggerType: TriggerWebSocket,
 				Metadata: map[string]any{
-					"connectionId": 123, // wrong type
+					"connectionId": 123,  // wrong type
 					"routeKey":     true, // wrong type
 				},
 			},
@@ -568,8 +568,8 @@ func TestWebSocketContext_MalformedEvents(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			name: "completely empty event",
-			event: map[string]any{},
+			name:      "completely empty event",
+			event:     map[string]any{},
 			expectErr: true,
 		},
 		{
@@ -599,7 +599,7 @@ func TestWebSocketContext_MalformedEvents(t *testing.T) {
 			}
 			ctx := NewContext(context.Background(), req)
 			wsCtx, err := ctx.AsWebSocket()
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 				assert.Nil(t, wsCtx)

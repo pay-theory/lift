@@ -56,7 +56,7 @@ func TestAllConstructsSynthesize(t *testing.T) {
 				},
 			},
 			KeyExtractor: constructs.IdempotentKeyHeader,
-			KeyField:    jsii.String("x-request-id"),
+			KeyField:     jsii.String("x-request-id"),
 		})
 	})
 
@@ -96,8 +96,8 @@ func TestAllPatternsSynthesize(t *testing.T) {
 
 	t.Run("BasicAPI", func(t *testing.T) {
 		patterns.NewBasicAPI(stack, jsii.String("BasicAPI"), &patterns.BasicAPIProps{
-			ApiName:  jsii.String("basic-api"),
-			Code:     awslambda.Code_FromAsset(jsii.String("."), nil),
+			ApiName: jsii.String("basic-api"),
+			Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
 		})
 	})
 
@@ -112,10 +112,10 @@ func TestAllPatternsSynthesize(t *testing.T) {
 
 	t.Run("LiftApp", func(t *testing.T) {
 		patterns.NewLiftApp(stack, jsii.String("LiftApp"), &patterns.LiftAppProps{
-			AppName:           jsii.String("full-app"),
-			CodeAssetPath:     jsii.String("."),
-			EnableMultiTenant: jsii.Bool(true),
-			EnableDatabase:    jsii.Bool(true),
+			AppName:            jsii.String("full-app"),
+			CodeAssetPath:      jsii.String("."),
+			EnableMultiTenant:  jsii.Bool(true),
+			EnableDatabase:     jsii.Bool(true),
 			EnableRateLimiting: jsii.Bool(true),
 		})
 	})
@@ -223,13 +223,13 @@ func TestComplexStackIntegration(t *testing.T) {
 
 	// Synthesize and verify
 	template := assertions.Template_FromStack(stack, nil)
-	
+
 	// Verify resources exist
 	template.ResourceCountIs(jsii.String("AWS::Lambda::Function"), jsii.Number(2))
 	template.ResourceCountIs(jsii.String("AWS::DynamoDB::Table"), jsii.Number(2)) // Main + rate limit
 	template.ResourceCountIs(jsii.String("AWS::ApiGatewayV2::Api"), jsii.Number(1))
 	template.ResourceCountIs(jsii.String("AWS::CloudWatch::Dashboard"), jsii.Number(1))
-	
+
 	// Verify integrations
 	template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Integration"), &map[string]interface{}{
 		"IntegrationType": "AWS_PROXY",
@@ -250,20 +250,20 @@ func TestCrossConstructIntegration(t *testing.T) {
 	// Create multiple functions that share the table
 	functions := []constructs.LiftFunction{}
 	for i := 0; i < 3; i++ {
-		name := string(rune('A' + i)) + "Function"
+		name := string(rune('A'+i)) + "Function"
 		fn := constructs.NewLiftFunction(stack, jsii.String(name), &constructs.LiftFunctionProps{
 			FunctionProps: awslambda.FunctionProps{
 				Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
 				Handler: jsii.String("bootstrap"),
 			},
 		})
-		
+
 		// Grant read/write access
 		sharedTable.Table.GrantReadWriteData(fn.Function)
-		
+
 		// Add table name to environment
 		fn.Function.AddEnvironment(jsii.String("TABLE_NAME"), sharedTable.Table.TableName(), nil)
-		
+
 		functions = append(functions, *fn)
 	}
 
@@ -279,12 +279,12 @@ func TestCrossConstructIntegration(t *testing.T) {
 
 	// Verify synthesis
 	template := assertions.Template_FromStack(stack, nil)
-	
+
 	// Should have 3 functions, 1 table, 1 API
 	template.ResourceCountIs(jsii.String("AWS::Lambda::Function"), jsii.Number(3))
 	template.ResourceCountIs(jsii.String("AWS::DynamoDB::Table"), jsii.Number(1))
 	template.ResourceCountIs(jsii.String("AWS::ApiGatewayV2::Api"), jsii.Number(1))
-	
+
 	// Verify each function has TABLE_NAME environment variable set
 	// We don't check the exact Ref value since it's generated
 	template.ResourceCountIs(jsii.String("AWS::Lambda::Function"), jsii.Number(3))

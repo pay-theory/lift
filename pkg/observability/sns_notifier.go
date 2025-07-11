@@ -26,18 +26,18 @@ type SNSNotifier struct {
 
 // SNSNotificationMessage represents the structure sent to SNS
 type SNSNotificationMessage struct {
-	AlertConfig AlertConfig            `json:"alert_config"`
-	LogTime     string                 `json:"log_time"`
-	Environment string                 `json:"environment,omitempty"`
-	Service     string                 `json:"service,omitempty"`
-	Partner     string                 `json:"partner"`
-	Stage       string                 `json:"stage"`
-	AWSRegion   string                 `json:"aws_region"`
-	AWSAccount  string                 `json:"aws_account"`
-	Function    string                 `json:"function"`
-	Subsystem   string                 `json:"subsystem"`
-	Severity    string                 `json:"severity"`
-	Message     string                 `json:"message"`
+	AlertConfig AlertConfig `json:"alert_config"`
+	LogTime     string      `json:"log_time"`
+	Environment string      `json:"environment,omitempty"`
+	Service     string      `json:"service,omitempty"`
+	Partner     string      `json:"partner"`
+	Stage       string      `json:"stage"`
+	AWSRegion   string      `json:"aws_region"`
+	AWSAccount  string      `json:"aws_account"`
+	Function    string      `json:"function"`
+	Subsystem   string      `json:"subsystem"`
+	Severity    string      `json:"severity"`
+	Message     string      `json:"message"`
 }
 
 // AlertConfig contains alert configuration
@@ -68,29 +68,29 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error
 
 	// Get function name once to use for both Function and Subsystem
 	functionName := getEnvOrDefault("AWS_LAMBDA_FUNCTION_NAME", "unknown")
-	
+
 	// Create JSON string representation of the log entry
 	logEntryJSON, err := json.Marshal(logEntry)
 	if err != nil {
 		// Fallback to just the message if marshaling fails
 		logEntryJSON = []byte(logEntry.Message)
 	}
-	
+
 	// Build the notification message
 	notification := SNSNotificationMessage{
 		AlertConfig: AlertConfig{
 			AlertType:       "LiftError",
 			AlertTargetType: "SLACK",
 		},
-		LogTime:     logEntry.Timestamp.UTC().Format(time.RFC3339),
-		Partner:     strings.ToLower(getEnvOrDefault("PARTNER", "unknown")),
-		Stage:       strings.ToLower(getEnvOrDefault("STAGE", "unknown")),
-		AWSRegion:   getEnvOrDefault("AWS_REGION", "unknown"),
-		AWSAccount:  getEnvOrDefault("AWS_ACCOUNT_ID", "unknown"),
-		Severity:    "ERROR",
-		Function:    functionName,
-		Subsystem:   functionName, // Set to same value as Function
-		Message:     string(logEntryJSON),
+		LogTime:    logEntry.Timestamp.UTC().Format(time.RFC3339),
+		Partner:    strings.ToLower(getEnvOrDefault("PARTNER", "unknown")),
+		Stage:      strings.ToLower(getEnvOrDefault("STAGE", "unknown")),
+		AWSRegion:  getEnvOrDefault("AWS_REGION", "unknown"),
+		AWSAccount: getEnvOrDefault("AWS_ACCOUNT_ID", "unknown"),
+		Severity:   "ERROR",
+		Function:   functionName,
+		Subsystem:  functionName, // Set to same value as Function
+		Message:    string(logEntryJSON),
 	}
 
 	// Add environment and service from fields if available
@@ -100,7 +100,7 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error
 	if svc, ok := logEntry.Fields["service"].(string); ok {
 		notification.Service = svc
 	}
-	
+
 	// Override function name if provided in fields
 	if funcName, ok := logEntry.Fields["function_name"].(string); ok {
 		notification.Function = funcName
@@ -109,14 +109,14 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error
 		notification.Function = funcName
 		notification.Subsystem = funcName // Keep subsystem same as function
 	}
-	
+
 	// Override AWS region if provided in fields
 	if region, ok := logEntry.Fields["aws_region"].(string); ok {
 		notification.AWSRegion = region
 	} else if region, ok := logEntry.Fields["region"].(string); ok {
 		notification.AWSRegion = region
 	}
-	
+
 	// Override AWS account if provided in fields
 	// Check for account_id from Lift context first (this comes from Context.AccountID())
 	if account, ok := logEntry.Fields["account_id"].(string); ok {

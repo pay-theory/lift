@@ -20,17 +20,17 @@ func NewRateLimitTable(scope constructs.Construct, id *string, props *RateLimitT
 	if props == nil {
 		props = &RateLimitTableProps{}
 	}
-	
+
 	// Set default table name
 	if props.TableName == nil {
 		props.TableName = jsii.String("rate-limits")
 	}
-	
+
 	// Set default TTL attribute for automatic cleanup
 	if props.TimeToLiveAttribute == nil {
 		props.TimeToLiveAttribute = jsii.String("expires_at")
 	}
-	
+
 	// Create table with field names from RateLimit struct
 	return NewLiftTable(scope, id, &LiftTableProps{
 		TableName:           props.TableName,
@@ -45,13 +45,13 @@ func NewRateLimitTable(scope constructs.Construct, id *string, props *RateLimitT
 // type RateLimit struct {
 //     PK         string    `dynamorm:"pk"`                      // ratelimit#{identifier}#{window}
 //     SK         string    `dynamorm:"sk"`                      // ratelimit#{identifier}#{window}
-//     
+//
 //     // Indexes for different rate limit strategies
 //     IPAddress  string    `dynamorm:"index:ip-index,pk"`       // ip_address
-//     UserID     string    `dynamorm:"index:user-index,pk"`     // user_id  
+//     UserID     string    `dynamorm:"index:user-index,pk"`     // user_id
 //     TenantID   string    `dynamorm:"index:tenant-index,pk"`   // tenant_id
 //     BucketKey  string    `dynamorm:"index:bucket-index,pk"`   // bucket_key (for Limited library)
-//     
+//
 //     // Rate limit data
 //     Identifier string    `json:"identifier"`
 //     WindowTime string    `json:"window_time"`

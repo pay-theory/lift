@@ -2,7 +2,7 @@ package constructs
 
 import (
 	"fmt"
-	
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
@@ -29,15 +29,15 @@ type StreamProcessorProps struct {
 	EventSourceProps *awslambdaeventsources.DynamoEventSourceProps
 
 	// Additional stream processor settings
-	BatchSize             *float64            // Default: 10
-	MaxBatchingWindow     awscdk.Duration     // Default: 5 seconds
-	StartingPosition      awslambda.StartingPosition // Default: LATEST
-	MaxRecordAge          awscdk.Duration     // Default: 24 hours
-	BisectBatchOnError    *bool               // Default: false
-	RetryAttempts         *float64            // Default: 10000
-	ReportBatchItemFailures *bool             // Default: true
-	TumblingWindow        awscdk.Duration     // For tumbling window processing
-	ParallelizationFactor *float64            // Default: 1
+	BatchSize               *float64                   // Default: 10
+	MaxBatchingWindow       awscdk.Duration            // Default: 5 seconds
+	StartingPosition        awslambda.StartingPosition // Default: LATEST
+	MaxRecordAge            awscdk.Duration            // Default: 24 hours
+	BisectBatchOnError      *bool                      // Default: false
+	RetryAttempts           *float64                   // Default: 10000
+	ReportBatchItemFailures *bool                      // Default: true
+	TumblingWindow          awscdk.Duration            // For tumbling window processing
+	ParallelizationFactor   *float64                   // Default: 1
 }
 
 // StreamProcessor processes DynamoDB streams with Lambda
@@ -90,7 +90,7 @@ func NewStreamProcessor(scope constructs.Construct, id *string, props *StreamPro
 	// Create dead letter queue if enabled
 	if enableDLQ {
 		dlqProps := &awssqs.QueueProps{
-			QueueName: jsii.String(fmt.Sprintf("%s-dlq", *props.FunctionProps.FunctionName)),
+			QueueName:       jsii.String(fmt.Sprintf("%s-dlq", *props.FunctionProps.FunctionName)),
 			RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
 		}
 		if props.DeadLetterQueueProps != nil {
@@ -120,10 +120,10 @@ func NewStreamProcessor(scope constructs.Construct, id *string, props *StreamPro
 
 	// Create event source
 	eventSourceProps := &awslambdaeventsources.DynamoEventSourceProps{
-		StartingPosition:         startingPosition,
-		BatchSize:                jsii.Number(batchSize),
-		Enabled:                  jsii.Bool(true),
-		ReportBatchItemFailures:  jsii.Bool(true),
+		StartingPosition:        startingPosition,
+		BatchSize:               jsii.Number(batchSize),
+		Enabled:                 jsii.Bool(true),
+		ReportBatchItemFailures: jsii.Bool(true),
 	}
 
 	// Apply optional settings

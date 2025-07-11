@@ -36,7 +36,7 @@ require (
 
 	t.Run("basic scaffold", func(t *testing.T) {
 		args := []string{"scaffold", "--model", "User", "--table", "users"}
-		
+
 		err := cmd.Execute(context.Background(), args)
 		require.NoError(t, err)
 
@@ -73,7 +73,7 @@ require (
 
 	t.Run("multi-tenant scaffold", func(t *testing.T) {
 		args := []string{"scaffold", "--model", "Product", "--multi-tenant", "--enable-ttl"}
-		
+
 		err := cmd.Execute(context.Background(), args)
 		require.NoError(t, err)
 
@@ -81,7 +81,7 @@ require (
 		modelFile := filepath.Join("models", "product.go")
 		modelContent, err := os.ReadFile(modelFile)
 		require.NoError(t, err)
-		
+
 		assert.Contains(t, string(modelContent), "TenantID string")
 		assert.Contains(t, string(modelContent), "TTL       int64")
 		assert.Contains(t, string(modelContent), "ExpiresAt time.Time")
@@ -90,7 +90,7 @@ require (
 
 	t.Run("scaffold with GSI", func(t *testing.T) {
 		args := []string{"scaffold", "--model", "Order", "--gsi", "Status:Status:CreatedAt", "--gsi", "Customer:CustomerID"}
-		
+
 		err := cmd.Execute(context.Background(), args)
 		require.NoError(t, err)
 
@@ -98,17 +98,17 @@ require (
 		modelFile := filepath.Join("models", "order.go")
 		modelContent, err := os.ReadFile(modelFile)
 		require.NoError(t, err)
-		
+
 		assert.Contains(t, string(modelContent), "Status string")
 		assert.Contains(t, string(modelContent), "CustomerID string")
 		assert.Contains(t, string(modelContent), "gsi:Status")
 		assert.Contains(t, string(modelContent), "gsi:Customer")
 
-		// Check CDK file content  
+		// Check CDK file content
 		cdkFile := filepath.Join("cdk", "constructs", "order_table.go")
 		cdkContent, err := os.ReadFile(cdkFile)
 		require.NoError(t, err)
-		
+
 		assert.Contains(t, string(cdkContent), `IndexName: jsii.String("Status")`)
 		assert.Contains(t, string(cdkContent), `IndexName: jsii.String("Customer")`)
 		assert.Contains(t, string(cdkContent), `PartitionKey:   jsii.String("Status")`)
@@ -117,7 +117,7 @@ require (
 
 	t.Run("missing model argument", func(t *testing.T) {
 		args := []string{"scaffold"}
-		
+
 		err := cmd.Execute(context.Background(), args)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "--model is required")
@@ -126,9 +126,9 @@ require (
 	t.Run("not in Lift project", func(t *testing.T) {
 		// Remove go.mod to simulate not being in a Lift project
 		os.Remove("go.mod")
-		
+
 		args := []string{"scaffold", "--model", "Test"}
-		
+
 		err := cmd.Execute(context.Background(), args)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not in a Lift project directory")
@@ -140,10 +140,10 @@ func TestParseScaffoldArgs(t *testing.T) {
 
 	t.Run("basic args", func(t *testing.T) {
 		args := []string{"--model", "User", "--table", "custom_users"}
-		
+
 		config, err := cmd.parseScaffoldArgs(args)
 		require.NoError(t, err)
-		
+
 		assert.Equal(t, "User", config.ModelName)
 		assert.Equal(t, "custom_users", config.TableName)
 		assert.False(t, config.MultiTenant)
@@ -154,10 +154,10 @@ func TestParseScaffoldArgs(t *testing.T) {
 
 	t.Run("multi-tenant with TTL", func(t *testing.T) {
 		args := []string{"--model", "Product", "--multi-tenant", "--enable-ttl", "--enable-streams"}
-		
+
 		config, err := cmd.parseScaffoldArgs(args)
 		require.NoError(t, err)
-		
+
 		assert.Equal(t, "Product", config.ModelName)
 		assert.Equal(t, "products", config.TableName) // Default table name
 		assert.True(t, config.MultiTenant)
@@ -171,17 +171,17 @@ func TestParseScaffoldArgs(t *testing.T) {
 			"--gsi", "Status:Status:CreatedAt",
 			"--gsi", "Customer:CustomerID",
 		}
-		
+
 		config, err := cmd.parseScaffoldArgs(args)
 		require.NoError(t, err)
-		
+
 		assert.Len(t, config.GSIs, 2)
-		
+
 		// First GSI
 		assert.Equal(t, "Status", config.GSIs[0].IndexName)
 		assert.Equal(t, "Status", config.GSIs[0].PartitionKey)
 		assert.Equal(t, "CreatedAt", config.GSIs[0].SortKey)
-		
+
 		// Second GSI
 		assert.Equal(t, "Customer", config.GSIs[1].IndexName)
 		assert.Equal(t, "CustomerID", config.GSIs[1].PartitionKey)
@@ -190,7 +190,7 @@ func TestParseScaffoldArgs(t *testing.T) {
 
 	t.Run("invalid GSI format", func(t *testing.T) {
 		args := []string{"--model", "Order", "--gsi", "InvalidFormat"}
-		
+
 		_, err := cmd.parseScaffoldArgs(args)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "--gsi format should be")
@@ -198,7 +198,7 @@ func TestParseScaffoldArgs(t *testing.T) {
 
 	t.Run("missing model", func(t *testing.T) {
 		args := []string{"--table", "users"}
-		
+
 		_, err := cmd.parseScaffoldArgs(args)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "--model is required")
@@ -209,7 +209,7 @@ func TestTemplateGeneration(t *testing.T) {
 	tempDir := t.TempDir()
 	originalDir, _ := os.Getwd()
 	defer os.Chdir(originalDir)
-	
+
 	os.Chdir(tempDir)
 
 	cmd := &DynamORMScaffoldCommand{}

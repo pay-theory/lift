@@ -7,7 +7,7 @@ import (
 // Response represents a unified response structure for Lambda functions
 type Response struct {
 	StatusCode      int               `json:"statusCode"`
-	Body            any       `json:"body"`
+	Body            any               `json:"body"`
 	Headers         map[string]string `json:"headers"`
 	IsBase64Encoded bool              `json:"isBase64Encoded"`
 

@@ -22,8 +22,10 @@ type DynamORMScaffoldCommand struct{}
 // DynamORMMigrateCommand handles migration from existing DynamoDB tables to DynamORM
 type DynamORMMigrateCommand struct{}
 
-func (c *DynamORMScaffoldCommand) Name() string        { return "scaffold" }
-func (c *DynamORMScaffoldCommand) Description() string { return "Generate DynamORM models with CDK constructs" }
+func (c *DynamORMScaffoldCommand) Name() string { return "scaffold" }
+func (c *DynamORMScaffoldCommand) Description() string {
+	return "Generate DynamORM models with CDK constructs"
+}
 func (c *DynamORMScaffoldCommand) Usage() string {
 	return "lift dynamorm-scaffold --model <ModelName> [--table <table-name>] [--multi-tenant] [--enable-ttl] [--enable-streams] [--gsi <name:pk:sk>]"
 }
@@ -600,31 +602,33 @@ func main() {
 }
 
 // DynamORMMigrateCommand methods
-func (c *DynamORMMigrateCommand) Name() string        { return "migrate" }
-func (c *DynamORMMigrateCommand) Description() string { return "Migrate existing DynamoDB tables to DynamORM" }
+func (c *DynamORMMigrateCommand) Name() string { return "migrate" }
+func (c *DynamORMMigrateCommand) Description() string {
+	return "Migrate existing DynamoDB tables to DynamORM"
+}
 func (c *DynamORMMigrateCommand) Usage() string {
 	return "lift dynamorm migrate --table <table-name> [--region <region>] [--output-dir <dir>] [--analyze-only]"
 }
 
 // TableAnalysis contains the analysis results of a DynamoDB table
 type TableAnalysis struct {
-	TableName           string                  `json:"table_name"`
-	PartitionKey        AttributeSpec          `json:"partition_key"`
-	SortKey             *AttributeSpec         `json:"sort_key,omitempty"`
-	GlobalSecondaryIndexes []GSIAnalysis       `json:"global_secondary_indexes,omitempty"`
-	LocalSecondaryIndexes  []LSIAnalysis       `json:"local_secondary_indexes,omitempty"`
-	TimeToLiveSpec      *TTLSpec               `json:"time_to_live,omitempty"`
-	StreamSpec          *StreamSpec            `json:"stream,omitempty"`
-	BillingMode         string                 `json:"billing_mode"`
-	ItemCount           int64                  `json:"item_count"`
-	TableSizeBytes      int64                  `json:"table_size_bytes"`
-	RecommendedModel    string                 `json:"recommended_model"`
-	MultiTenantCandidate bool                  `json:"multi_tenant_candidate"`
-	Attributes          map[string]AttributeSpec `json:"attributes"`
-	SampleItems         []map[string]interface{} `json:"sample_items,omitempty"`
-	MigrationComplexity string                 `json:"migration_complexity"`
-	Warnings            []string               `json:"warnings,omitempty"`
-	CreatedAt           time.Time              `json:"created_at"`
+	TableName              string                   `json:"table_name"`
+	PartitionKey           AttributeSpec            `json:"partition_key"`
+	SortKey                *AttributeSpec           `json:"sort_key,omitempty"`
+	GlobalSecondaryIndexes []GSIAnalysis            `json:"global_secondary_indexes,omitempty"`
+	LocalSecondaryIndexes  []LSIAnalysis            `json:"local_secondary_indexes,omitempty"`
+	TimeToLiveSpec         *TTLSpec                 `json:"time_to_live,omitempty"`
+	StreamSpec             *StreamSpec              `json:"stream,omitempty"`
+	BillingMode            string                   `json:"billing_mode"`
+	ItemCount              int64                    `json:"item_count"`
+	TableSizeBytes         int64                    `json:"table_size_bytes"`
+	RecommendedModel       string                   `json:"recommended_model"`
+	MultiTenantCandidate   bool                     `json:"multi_tenant_candidate"`
+	Attributes             map[string]AttributeSpec `json:"attributes"`
+	SampleItems            []map[string]interface{} `json:"sample_items,omitempty"`
+	MigrationComplexity    string                   `json:"migration_complexity"`
+	Warnings               []string                 `json:"warnings,omitempty"`
+	CreatedAt              time.Time                `json:"created_at"`
 }
 
 // AttributeSpec defines an attribute specification
@@ -636,11 +640,11 @@ type AttributeSpec struct {
 
 // GSIAnalysis contains GSI analysis
 type GSIAnalysis struct {
-	IndexName      string        `json:"index_name"`
-	PartitionKey   AttributeSpec `json:"partition_key"`
-	SortKey        *AttributeSpec `json:"sort_key,omitempty"`
-	ProjectionType string        `json:"projection_type"`
-	ItemCount      int64         `json:"item_count"`
+	IndexName      string                   `json:"index_name"`
+	PartitionKey   AttributeSpec            `json:"partition_key"`
+	SortKey        *AttributeSpec           `json:"sort_key,omitempty"`
+	ProjectionType string                   `json:"projection_type"`
+	ItemCount      int64                    `json:"item_count"`
 	KeySchema      []types.KeySchemaElement `json:"key_schema"`
 }
 
@@ -660,9 +664,9 @@ type TTLSpec struct {
 
 // StreamSpec defines stream specification
 type StreamSpec struct {
-	Enabled    bool   `json:"enabled"`
-	ViewType   string `json:"view_type"`
-	StreamArn  string `json:"stream_arn"`
+	Enabled   bool   `json:"enabled"`
+	ViewType  string `json:"view_type"`
+	StreamArn string `json:"stream_arn"`
 }
 
 // MigrationConfig holds migration configuration
@@ -805,7 +809,7 @@ func (c *DynamORMMigrateCommand) generateModelName(tableName string) string {
 	name = strings.TrimPrefix(name, "app-")
 	name = strings.TrimSuffix(name, "-table")
 	name = strings.TrimSuffix(name, "s")
-	
+
 	// Convert to PascalCase
 	parts := strings.Split(name, "-")
 	var result strings.Builder
@@ -814,7 +818,7 @@ func (c *DynamORMMigrateCommand) generateModelName(tableName string) string {
 			result.WriteString(strings.ToUpper(part[:1]) + strings.ToLower(part[1:]))
 		}
 	}
-	
+
 	return result.String()
 }
 
@@ -923,9 +927,9 @@ func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynam
 	// In practice, you'd make a separate DescribeTimeToLive API call
 	for _, attr := range table.AttributeDefinitions {
 		attrName := *attr.AttributeName
-		if strings.HasSuffix(strings.ToLower(attrName), "ttl") || 
-		   strings.HasSuffix(strings.ToLower(attrName), "expires") ||
-		   strings.HasSuffix(strings.ToLower(attrName), "expiry") {
+		if strings.HasSuffix(strings.ToLower(attrName), "ttl") ||
+			strings.HasSuffix(strings.ToLower(attrName), "expires") ||
+			strings.HasSuffix(strings.ToLower(attrName), "expiry") {
 			analysis.TimeToLiveSpec = &TTLSpec{
 				AttributeName: attrName,
 				Enabled:       false, // Would need separate API call to confirm
@@ -1021,19 +1025,19 @@ func (c *DynamORMMigrateCommand) convertAttributeValue(av types.AttributeValue) 
 
 func (c *DynamORMMigrateCommand) determineMigrationComplexity(analysis *TableAnalysis) string {
 	complexity := "Simple"
-	
+
 	if len(analysis.GlobalSecondaryIndexes) > 2 {
 		complexity = "Medium"
 	}
-	
+
 	if len(analysis.LocalSecondaryIndexes) > 0 {
 		complexity = "Medium"
 	}
-	
+
 	if analysis.StreamSpec != nil && analysis.StreamSpec.Enabled {
 		complexity = "Medium"
 	}
-	
+
 	if len(analysis.SampleItems) > 0 {
 		// Check for complex nested structures
 		for _, item := range analysis.SampleItems {
@@ -1043,7 +1047,7 @@ func (c *DynamORMMigrateCommand) determineMigrationComplexity(analysis *TableAna
 			}
 		}
 	}
-	
+
 	return complexity
 }
 
@@ -1075,13 +1079,13 @@ func (c *DynamORMMigrateCommand) isMultiTenantCandidate(analysis *TableAnalysis)
 	// Check if partition key suggests multi-tenancy
 	pkName := strings.ToLower(analysis.PartitionKey.Name)
 	tenantIndicators := []string{"tenant", "org", "account", "customer", "company"}
-	
+
 	for _, indicator := range tenantIndicators {
 		if strings.Contains(pkName, indicator) {
 			return true
 		}
 	}
-	
+
 	// Check GSI names
 	for _, gsi := range analysis.GlobalSecondaryIndexes {
 		gsiName := strings.ToLower(gsi.IndexName)
@@ -1091,7 +1095,7 @@ func (c *DynamORMMigrateCommand) isMultiTenantCandidate(analysis *TableAnalysis)
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -1100,18 +1104,18 @@ func (c *DynamORMMigrateCommand) saveAnalysis(analysis *TableAnalysis, path stri
 	if err != nil {
 		return err
 	}
-	
+
 	return os.WriteFile(path, data, 0644)
 }
 
 func (c *DynamORMMigrateCommand) printAnalysisSummary(analysis *TableAnalysis) {
 	fmt.Printf("\n📋 Analysis Summary for %s:\n", analysis.TableName)
 	fmt.Printf("   • Partition Key: %s (%s)\n", analysis.PartitionKey.Name, analysis.PartitionKey.Type)
-	
+
 	if analysis.SortKey != nil {
 		fmt.Printf("   • Sort Key: %s (%s)\n", analysis.SortKey.Name, analysis.SortKey.Type)
 	}
-	
+
 	fmt.Printf("   • GSIs: %d\n", len(analysis.GlobalSecondaryIndexes))
 	fmt.Printf("   • LSIs: %d\n", len(analysis.LocalSecondaryIndexes))
 	fmt.Printf("   • Item Count: %d\n", analysis.ItemCount)
@@ -1120,15 +1124,15 @@ func (c *DynamORMMigrateCommand) printAnalysisSummary(analysis *TableAnalysis) {
 	fmt.Printf("   • Migration Complexity: %s\n", analysis.MigrationComplexity)
 	fmt.Printf("   • Recommended Model: %s\n", analysis.RecommendedModel)
 	fmt.Printf("   • Multi-Tenant Candidate: %t\n", analysis.MultiTenantCandidate)
-	
+
 	if analysis.TimeToLiveSpec != nil {
 		fmt.Printf("   • TTL: %s\n", analysis.TimeToLiveSpec.AttributeName)
 	}
-	
+
 	if analysis.StreamSpec != nil {
 		fmt.Printf("   • Stream: %s\n", analysis.StreamSpec.ViewType)
 	}
-	
+
 	if len(analysis.Warnings) > 0 {
 		fmt.Printf("   ⚠️  Warnings:\n")
 		for _, warning := range analysis.Warnings {
@@ -1142,24 +1146,24 @@ func (c *DynamORMMigrateCommand) generateMigrationCode(analysis *TableAnalysis, 
 	if err := c.generateMigrationModel(analysis, config); err != nil {
 		return fmt.Errorf("failed to generate model: %w", err)
 	}
-	
+
 	// Generate CDK construct
 	if err := c.generateMigrationCDK(analysis, config); err != nil {
 		return fmt.Errorf("failed to generate CDK: %w", err)
 	}
-	
+
 	// Generate migration script
 	if err := c.generateMigrationScript(analysis, config); err != nil {
 		return fmt.Errorf("failed to generate migration script: %w", err)
 	}
-	
+
 	// Generate tests if requested
 	if config.GenerateTests {
 		if err := c.generateMigrationTests(analysis, config); err != nil {
 			return fmt.Errorf("failed to generate tests: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -1227,8 +1231,8 @@ func (m *{{.ModelName}}) Update() {
 
 	data := struct {
 		*TableAnalysis
-		ModelName      string
-		IsMultiTenant  bool
+		ModelName     string
+		IsMultiTenant bool
 	}{
 		TableAnalysis: analysis,
 		ModelName:     config.ModelName,
@@ -1396,8 +1400,8 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 
 	data := struct {
 		*TableAnalysis
-		ModelName      string
-		IsMultiTenant  bool
+		ModelName     string
+		IsMultiTenant bool
 	}{
 		TableAnalysis: analysis,
 		ModelName:     config.ModelName,
@@ -2065,8 +2069,8 @@ func Benchmark{{.ModelName}}_CRUD(b *testing.B) {
 
 	data := struct {
 		*TableAnalysis
-		ModelName      string
-		IsMultiTenant  bool
+		ModelName     string
+		IsMultiTenant bool
 	}{
 		TableAnalysis: analysis,
 		ModelName:     config.ModelName,

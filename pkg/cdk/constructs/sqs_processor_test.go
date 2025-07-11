@@ -23,7 +23,7 @@ func assertResourceExists(_ *testing.T, template assertions.Template, resourceTy
 func findResourcesByType(template assertions.Template, resourceType string) []map[string]interface{} {
 	templateJSON := template.ToJSON()
 	resources := (*templateJSON)["Resources"].(map[string]interface{})
-	
+
 	var found []map[string]interface{}
 	for _, resource := range resources {
 		if resMap, ok := resource.(map[string]interface{}); ok {
@@ -83,7 +83,7 @@ func TestSQSProcessor_DefaultConfiguration(t *testing.T) {
 
 	// Verify event source mapping
 	assertResourceExists(t, template, "AWS::Lambda::EventSourceMapping", map[string]interface{}{
-		"BatchSize": jsii.Number(10),
+		"BatchSize":             jsii.Number(10),
 		"FunctionResponseTypes": []string{"ReportBatchItemFailures"},
 	})
 }
@@ -150,16 +150,16 @@ func TestSQSProcessor_FIFOQueue(t *testing.T) {
 
 	// Verify FIFO queue configuration
 	assertResourceExists(t, template, "AWS::SQS::Queue", map[string]interface{}{
-		"QueueName":                     "fifo-sqs-processor-queue.fifo",
-		"FifoQueue":                     true,
-		"ContentBasedDeduplication":     true,
+		"QueueName":                 "fifo-sqs-processor-queue.fifo",
+		"FifoQueue":                 true,
+		"ContentBasedDeduplication": true,
 	})
 
 	// Verify FIFO DLQ configuration
 	assertResourceExists(t, template, "AWS::SQS::Queue", map[string]interface{}{
-		"QueueName":                     "fifo-sqs-processor-dlq.fifo",
-		"FifoQueue":                     true,
-		"ContentBasedDeduplication":     true,
+		"QueueName":                 "fifo-sqs-processor-dlq.fifo",
+		"FifoQueue":                 true,
+		"ContentBasedDeduplication": true,
 	})
 }
 
@@ -363,10 +363,10 @@ func TestSQSProcessor_CustomEventSourceProps(t *testing.T) {
 			Runtime:      awslambda.Runtime_NODEJS_18_X(),
 		},
 		EventSourceProps: &awslambdaeventsources.SqsEventSourceProps{
-			BatchSize:                   jsii.Number(5),
-			MaxBatchingWindow:           awscdk.Duration_Seconds(jsii.Number(30)),
-			ReportBatchItemFailures:     jsii.Bool(false),
-			MaxConcurrency:              jsii.Number(10),
+			BatchSize:               jsii.Number(5),
+			MaxBatchingWindow:       awscdk.Duration_Seconds(jsii.Number(30)),
+			ReportBatchItemFailures: jsii.Bool(false),
+			MaxConcurrency:          jsii.Number(10),
 		},
 	})
 

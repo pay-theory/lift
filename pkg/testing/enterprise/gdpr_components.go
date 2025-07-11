@@ -16,31 +16,31 @@ type DataMapper struct {
 
 // DataMapping represents a data mapping entry
 type DataMapping struct {
-	ID          string                 `json:"id"`
-	DataType    PersonalDataType       `json:"data_type"`
-	Source      string                 `json:"source"`
-	Destination string                 `json:"destination"`
-	Purpose     string                 `json:"purpose"`
-	LegalBasis  string                 `json:"legal_basis"`
-	Retention   time.Duration          `json:"retention"`
-	Processors  []string               `json:"processors"`
-	Recipients  []string               `json:"recipients"`
-	Safeguards  []string               `json:"safeguards"`
-	Documented  bool                   `json:"documented"`
-	LastUpdated time.Time              `json:"last_updated"`
-	Metadata    map[string]any `json:"metadata"`
+	ID          string           `json:"id"`
+	DataType    PersonalDataType `json:"data_type"`
+	Source      string           `json:"source"`
+	Destination string           `json:"destination"`
+	Purpose     string           `json:"purpose"`
+	LegalBasis  string           `json:"legal_basis"`
+	Retention   time.Duration    `json:"retention"`
+	Processors  []string         `json:"processors"`
+	Recipients  []string         `json:"recipients"`
+	Safeguards  []string         `json:"safeguards"`
+	Documented  bool             `json:"documented"`
+	LastUpdated time.Time        `json:"last_updated"`
+	Metadata    map[string]any   `json:"metadata"`
 }
 
 // DataProcessor represents a data processor
 type DataProcessor struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Type        ProcessorType          `json:"type"`
-	Location    string                 `json:"location"`
-	Safeguards  []string               `json:"safeguards"`
-	Agreements  []string               `json:"agreements"`
-	Certified   bool                   `json:"certified"`
-	LastAudited *time.Time             `json:"last_audited,omitempty"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Type        ProcessorType  `json:"type"`
+	Location    string         `json:"location"`
+	Safeguards  []string       `json:"safeguards"`
+	Agreements  []string       `json:"agreements"`
+	Certified   bool           `json:"certified"`
+	LastAudited *time.Time     `json:"last_audited,omitempty"`
 	Metadata    map[string]any `json:"metadata"`
 }
 
@@ -56,15 +56,15 @@ const (
 
 // ProcessingPurpose represents a data processing purpose
 type ProcessingPurpose struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	LegalBasis  string                 `json:"legal_basis"`
-	Categories  []PersonalDataType     `json:"categories"`
-	Retention   time.Duration          `json:"retention"`
-	Automated   bool                   `json:"automated"`
-	Profiling   bool                   `json:"profiling"`
-	Metadata    map[string]any `json:"metadata"`
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	LegalBasis  string             `json:"legal_basis"`
+	Categories  []PersonalDataType `json:"categories"`
+	Retention   time.Duration      `json:"retention"`
+	Automated   bool               `json:"automated"`
+	Profiling   bool               `json:"profiling"`
+	Metadata    map[string]any     `json:"metadata"`
 }
 
 // NewDataMapper creates a new data mapper
@@ -91,22 +91,22 @@ func (dm *DataMapper) GetDataMappings(ctx context.Context) map[string]*DataMappi
 
 // LocalConsentRecord represents a consent record (local version to avoid conflicts)
 type LocalConsentRecord struct {
-	ID          string                 `json:"id"`
-	Purpose     string                 `json:"purpose"`
-	LegalBasis  string                 `json:"legal_basis"`
-	Granted     bool                   `json:"granted"`
-	Timestamp   time.Time              `json:"timestamp"`
-	ExpiryDate  *time.Time             `json:"expiry_date,omitempty"`
-	Withdrawn   bool                   `json:"withdrawn"`
-	WithdrawnAt *time.Time             `json:"withdrawn_at,omitempty"`
-	Granular    bool                   `json:"granular"`
+	ID          string         `json:"id"`
+	Purpose     string         `json:"purpose"`
+	LegalBasis  string         `json:"legal_basis"`
+	Granted     bool           `json:"granted"`
+	Timestamp   time.Time      `json:"timestamp"`
+	ExpiryDate  *time.Time     `json:"expiry_date,omitempty"`
+	Withdrawn   bool           `json:"withdrawn"`
+	WithdrawnAt *time.Time     `json:"withdrawn_at,omitempty"`
+	Granular    bool           `json:"granular"`
 	Metadata    map[string]any `json:"metadata"`
 }
 
 // LocalConsentHistory represents consent history (local version to avoid conflicts)
 type LocalConsentHistory struct {
-	Timestamp time.Time              `json:"timestamp"`
-	Action    string                 `json:"action"`
+	Timestamp time.Time      `json:"timestamp"`
+	Action    string         `json:"action"`
 	Details   map[string]any `json:"details"`
 }
 
@@ -120,21 +120,21 @@ type ConsentManager struct {
 
 // ConsentPreferences represents user consent preferences
 type ConsentPreferences struct {
-	UserID      string                 `json:"user_id"`
-	Preferences map[string]bool        `json:"preferences"`
-	LastUpdated time.Time              `json:"last_updated"`
-	Metadata    map[string]any `json:"metadata"`
+	UserID      string          `json:"user_id"`
+	Preferences map[string]bool `json:"preferences"`
+	LastUpdated time.Time       `json:"last_updated"`
+	Metadata    map[string]any  `json:"metadata"`
 }
 
 // ConsentPolicy represents a consent policy
 type ConsentPolicy struct {
-	ID       string                 `json:"id"`
-	Name     string                 `json:"name"`
-	Version  string                 `json:"version"`
-	Purposes []string               `json:"purposes"`
-	Required bool                   `json:"required"`
-	Granular bool                   `json:"granular"`
-	Expiry   *time.Duration         `json:"expiry,omitempty"`
+	ID       string         `json:"id"`
+	Name     string         `json:"name"`
+	Version  string         `json:"version"`
+	Purposes []string       `json:"purposes"`
+	Required bool           `json:"required"`
+	Granular bool           `json:"granular"`
+	Expiry   *time.Duration `json:"expiry,omitempty"`
 	Metadata map[string]any `json:"metadata"`
 }
 
@@ -219,33 +219,33 @@ type TransferValidator struct {
 
 // TransferMechanismConfig configures transfer mechanisms
 type TransferMechanismConfig struct {
-	ID           string                 `json:"id"`
-	Name         string                 `json:"name"`
-	Type         TransferMechanism      `json:"type"`
-	Requirements []string               `json:"requirements"`
-	Validity     time.Duration          `json:"validity"`
-	Automated    bool                   `json:"automated"`
-	Metadata     map[string]any `json:"metadata"`
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Type         TransferMechanism `json:"type"`
+	Requirements []string          `json:"requirements"`
+	Validity     time.Duration     `json:"validity"`
+	Automated    bool              `json:"automated"`
+	Metadata     map[string]any    `json:"metadata"`
 }
 
 // CountryInfo provides information about countries for transfers
 type CountryInfo struct {
-	Code             string                 `json:"code"`
-	Name             string                 `json:"name"`
-	AdequacyDecision bool                   `json:"adequacy_decision"`
-	DecisionDate     *time.Time             `json:"decision_date,omitempty"`
-	Restrictions     []string               `json:"restrictions"`
-	Safeguards       []string               `json:"safeguards"`
+	Code             string         `json:"code"`
+	Name             string         `json:"name"`
+	AdequacyDecision bool           `json:"adequacy_decision"`
+	DecisionDate     *time.Time     `json:"decision_date,omitempty"`
+	Restrictions     []string       `json:"restrictions"`
+	Safeguards       []string       `json:"safeguards"`
 	Metadata         map[string]any `json:"metadata"`
 }
 
 // SafeguardConfig configures transfer safeguards
 type SafeguardConfig struct {
-	ID            string                 `json:"id"`
-	Name          string                 `json:"name"`
-	Type          string                 `json:"type"`
-	Requirements  []string               `json:"requirements"`
-	Effectiveness string                 `json:"effectiveness"`
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Type          string         `json:"type"`
+	Requirements  []string       `json:"requirements"`
+	Effectiveness string         `json:"effectiveness"`
 	Metadata      map[string]any `json:"metadata"`
 }
 

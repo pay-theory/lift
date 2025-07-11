@@ -27,10 +27,10 @@ func TestGenerateSQSEvent(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// When
 	event := helpers.GenerateSQSEvent(messages)
-	
+
 	// Then
 	assert.Len(t, event.Records, 1)
 	assert.Equal(t, "msg-1", event.Records[0].MessageId)
@@ -47,15 +47,15 @@ func TestGenerateEventBridgeEvent(t *testing.T) {
 		"orderId": "12345",
 		"status":  "processing",
 	}
-	
+
 	// When
 	event := helpers.GenerateEventBridgeEvent("order.service", "Order Updated", detail)
-	
+
 	// Then
 	assert.Equal(t, "order.service", event.Source)
 	assert.Equal(t, "Order Updated", event.DetailType)
 	assert.Equal(t, "us-east-1", event.Region)
-	
+
 	var parsedDetail map[string]interface{}
 	err := json.Unmarshal(event.Detail, &parsedDetail)
 	require.NoError(t, err)
@@ -66,10 +66,10 @@ func TestGenerateEventBridgeEvent(t *testing.T) {
 func TestGenerateS3Event(t *testing.T) {
 	// Given
 	helpers := NewEventHelpers()
-	
+
 	// When
 	event := helpers.GenerateS3Event("test-bucket", "path/to/file.txt", "ObjectCreated:Put")
-	
+
 	// Then
 	assert.Len(t, event.Records, 1)
 	assert.Equal(t, "ObjectCreated:Put", event.Records[0].EventName)
@@ -96,10 +96,10 @@ func TestGenerateDynamoDBStreamEvent(t *testing.T) {
 			StreamViewType: "NEW_AND_OLD_IMAGES",
 		},
 	}
-	
+
 	// When
 	event := helpers.GenerateDynamoDBStreamEvent("test-table", records)
-	
+
 	// Then
 	assert.Len(t, event.Records, 1)
 	assert.Equal(t, "INSERT", event.Records[0].EventName)
@@ -112,14 +112,14 @@ func TestGenerateDynamoDBStreamEvent(t *testing.T) {
 func TestGenerateSNSEvent(t *testing.T) {
 	// Given
 	helpers := NewEventHelpers()
-	
+
 	// When
 	event := helpers.GenerateSNSEvent(
 		"arn:aws:sns:us-east-1:123456789012:test-topic",
 		"Test Subject",
 		"Test message body",
 	)
-	
+
 	// Then
 	assert.Len(t, event.Records, 1)
 	assert.Equal(t, "aws:sns", event.Records[0].EventSource)
@@ -143,10 +143,10 @@ func TestGenerateKinesisEvent(t *testing.T) {
 			PartitionKey:   "partition-2",
 		},
 	}
-	
+
 	// When
 	event := helpers.GenerateKinesisEvent("arn:aws:kinesis:us-east-1:123456789012:stream/test-stream", records)
-	
+
 	// Then
 	assert.Len(t, event.Records, 2)
 	assert.Equal(t, "aws:kinesis", event.Records[0].EventSource)
@@ -162,15 +162,15 @@ func TestValidateEventPattern(t *testing.T) {
 		"source":      []string{"order.service", "payment.service"},
 		"detail-type": []string{"Order Created", "Payment Processed"},
 	}
-	
+
 	// When/Then - matching event
 	matchingEvent := helpers.GenerateEventBridgeEvent("order.service", "Order Created", nil)
 	assert.True(t, helpers.ValidateEventPattern(pattern, matchingEvent))
-	
+
 	// When/Then - non-matching source
 	nonMatchingSource := helpers.GenerateEventBridgeEvent("inventory.service", "Order Created", nil)
 	assert.False(t, helpers.ValidateEventPattern(pattern, nonMatchingSource))
-	
+
 	// When/Then - non-matching detail type
 	nonMatchingDetail := helpers.GenerateEventBridgeEvent("order.service", "Order Updated", nil)
 	assert.False(t, helpers.ValidateEventPattern(pattern, nonMatchingDetail))
@@ -183,16 +183,16 @@ func TestMockEventSource(t *testing.T) {
 	mock.AddEvent("event2")
 	mock.AddEvent("event3")
 	mock.SetDelay(10 * time.Millisecond)
-	
+
 	// When
 	events := mock.Emit()
-	
+
 	// Then
 	received := make([]interface{}, 0)
 	for event := range events {
 		received = append(received, event)
 	}
-	
+
 	assert.Len(t, received, 3)
 	assert.Equal(t, "event1", received[0])
 	assert.Equal(t, "event2", received[1])
@@ -202,22 +202,22 @@ func TestMockEventSource(t *testing.T) {
 func TestEventRecorder(t *testing.T) {
 	// Given
 	recorder := NewEventRecorder()
-	
+
 	// When
 	recorder.Record("event1")
 	recorder.Record("event2")
 	recorder.RecordError(assert.AnError)
-	
+
 	// Then
 	assert.Equal(t, 2, recorder.GetEventCount())
 	assert.Equal(t, 1, recorder.GetErrorCount())
 	assert.Equal(t, "event1", recorder.RecordedEvents[0])
 	assert.Equal(t, "event2", recorder.RecordedEvents[1])
 	assert.Equal(t, assert.AnError, recorder.Errors[0])
-	
+
 	// When
 	recorder.Clear()
-	
+
 	// Then
 	assert.Equal(t, 0, recorder.GetEventCount())
 	assert.Equal(t, 0, recorder.GetErrorCount())
@@ -228,15 +228,15 @@ func TestEventReplay(t *testing.T) {
 	events := []interface{}{"event1", "event2", "event3"}
 	replay := NewEventReplay(events)
 	processedEvents := make([]interface{}, 0)
-	
+
 	handler := func(event interface{}) error {
 		processedEvents = append(processedEvents, event)
 		return nil
 	}
-	
+
 	// When
 	err := replay.Replay(handler)
-	
+
 	// Then
 	require.NoError(t, err)
 	assert.Equal(t, events, processedEvents)
@@ -247,14 +247,14 @@ func TestEventReplayWithDelay(t *testing.T) {
 	events := []interface{}{"event1", "event2"}
 	replay := NewEventReplay(events)
 	startTime := time.Now()
-	
+
 	handler := func(event interface{}) error {
 		return nil
 	}
-	
+
 	// When
 	err := replay.ReplayWithDelay(handler, 50*time.Millisecond)
-	
+
 	// Then
 	require.NoError(t, err)
 	elapsed := time.Since(startTime)
@@ -264,7 +264,7 @@ func TestEventReplayWithDelay(t *testing.T) {
 func TestEventValidator(t *testing.T) {
 	// Given
 	validator := NewEventValidator()
-	
+
 	// Test SQS validation
 	t.Run("ValidateSQSMessage", func(t *testing.T) {
 		// Valid message
@@ -273,16 +273,16 @@ func TestEventValidator(t *testing.T) {
 			Body:      "test",
 		}
 		assert.NoError(t, validator.ValidateSQSMessage(validMsg))
-		
+
 		// Invalid - missing ID
 		invalidMsg1 := events.SQSMessage{Body: "test"}
 		assert.Error(t, validator.ValidateSQSMessage(invalidMsg1))
-		
+
 		// Invalid - missing body
 		invalidMsg2 := events.SQSMessage{MessageId: "123"}
 		assert.Error(t, validator.ValidateSQSMessage(invalidMsg2))
 	})
-	
+
 	// Test EventBridge validation
 	t.Run("ValidateEventBridgeEvent", func(t *testing.T) {
 		// Valid event
@@ -291,16 +291,16 @@ func TestEventValidator(t *testing.T) {
 			DetailType: "Test Event",
 		}
 		assert.NoError(t, validator.ValidateEventBridgeEvent(validEvent))
-		
+
 		// Invalid - missing source
 		invalidEvent1 := events.CloudWatchEvent{DetailType: "Test Event"}
 		assert.Error(t, validator.ValidateEventBridgeEvent(invalidEvent1))
-		
+
 		// Invalid - missing detail type
 		invalidEvent2 := events.CloudWatchEvent{Source: "test.source"}
 		assert.Error(t, validator.ValidateEventBridgeEvent(invalidEvent2))
 	})
-	
+
 	// Test S3 validation
 	t.Run("ValidateS3Event", func(t *testing.T) {
 		// Valid event
@@ -315,11 +315,11 @@ func TestEventValidator(t *testing.T) {
 			},
 		}
 		assert.NoError(t, validator.ValidateS3Event(validEvent))
-		
+
 		// Invalid - no records
 		invalidEvent1 := events.S3Event{}
 		assert.Error(t, validator.ValidateS3Event(invalidEvent1))
-		
+
 		// Invalid - missing bucket name
 		invalidEvent2 := events.S3Event{
 			Records: []events.S3EventRecord{

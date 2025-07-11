@@ -111,8 +111,8 @@ type UpdateTaskRequest struct {
 
 // PaginatedResponse represents a paginated response
 type PaginatedResponse struct {
-	Data       any `json:"data"`
-	Pagination Pagination  `json:"pagination"`
+	Data       any        `json:"data"`
+	Pagination Pagination `json:"pagination"`
 }
 
 // Pagination represents pagination metadata

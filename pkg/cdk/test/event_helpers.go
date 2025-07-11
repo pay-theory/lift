@@ -21,7 +21,7 @@ func (e *EventHelpers) GenerateSQSEvent(messages []SQSMessage) events.SQSEvent {
 	event := events.SQSEvent{
 		Records: make([]events.SQSMessage, len(messages)),
 	}
-	
+
 	for i, msg := range messages {
 		event.Records[i] = events.SQSMessage{
 			MessageId:     msg.ID,
@@ -36,7 +36,7 @@ func (e *EventHelpers) GenerateSQSEvent(messages []SQSMessage) events.SQSEvent {
 			EventSourceARN:    msg.SourceARN,
 		}
 	}
-	
+
 	return event
 }
 
@@ -52,7 +52,7 @@ type SQSMessage struct {
 // GenerateEventBridgeEvent creates a mock EventBridge event for testing
 func (e *EventHelpers) GenerateEventBridgeEvent(source, detailType string, detail interface{}) events.CloudWatchEvent {
 	detailBytes, _ := json.Marshal(detail)
-	
+
 	return events.CloudWatchEvent{
 		ID:         "test-event-" + time.Now().Format("20060102150405"),
 		Source:     source,
@@ -97,7 +97,7 @@ func (e *EventHelpers) GenerateDynamoDBStreamEvent(tableName string, records []D
 	event := events.DynamoDBEvent{
 		Records: make([]events.DynamoDBEventRecord, len(records)),
 	}
-	
+
 	for i, record := range records {
 		event.Records[i] = events.DynamoDBEventRecord{
 			EventID:        "test-event-" + record.ID,
@@ -105,16 +105,16 @@ func (e *EventHelpers) GenerateDynamoDBStreamEvent(tableName string, records []D
 			EventSource:    "aws:dynamodb",
 			EventSourceArn: "arn:aws:dynamodb:us-east-1:123456789012:table/" + tableName + "/stream/test-stream",
 			Change: events.DynamoDBStreamRecord{
-				Keys:        record.Keys,
-				NewImage:    record.NewImage,
-				OldImage:    record.OldImage,
-				SizeBytes:   256,
+				Keys:           record.Keys,
+				NewImage:       record.NewImage,
+				OldImage:       record.OldImage,
+				SizeBytes:      256,
 				StreamViewType: record.StreamViewType,
 			},
 			AWSRegion: "us-east-1",
 		}
 	}
-	
+
 	return event
 }
 
@@ -135,11 +135,11 @@ func (e *EventHelpers) GenerateSNSEvent(topicArn, subject, message string) event
 			{
 				EventSource: "aws:sns",
 				SNS: events.SNSEntity{
-					TopicArn:     topicArn,
-					Subject:      subject,
-					Message:      message,
-					MessageID:    "test-message-id",
-					Timestamp:    time.Now(),
+					TopicArn:  topicArn,
+					Subject:   subject,
+					Message:   message,
+					MessageID: "test-message-id",
+					Timestamp: time.Now(),
 					MessageAttributes: map[string]interface{}{
 						"test": map[string]interface{}{
 							"Type":  "String",
@@ -157,21 +157,21 @@ func (e *EventHelpers) GenerateKinesisEvent(streamArn string, records []KinesisR
 	event := events.KinesisEvent{
 		Records: make([]events.KinesisEventRecord, len(records)),
 	}
-	
+
 	for i, record := range records {
 		event.Records[i] = events.KinesisEventRecord{
 			EventSource:    "aws:kinesis",
 			EventSourceArn: streamArn,
 			Kinesis: events.KinesisRecord{
-				Data:              []byte(record.Data),
-				SequenceNumber:    record.SequenceNumber,
-				PartitionKey:      record.PartitionKey,
+				Data:                        []byte(record.Data),
+				SequenceNumber:              record.SequenceNumber,
+				PartitionKey:                record.PartitionKey,
 				ApproximateArrivalTimestamp: events.SecondsEpochTime{Time: time.Now()},
 			},
 			EventID: "test-event-" + record.SequenceNumber,
 		}
 	}
-	
+
 	return event
 }
 
@@ -197,7 +197,7 @@ func (e *EventHelpers) ValidateEventPattern(pattern map[string]interface{}, even
 			return false
 		}
 	}
-	
+
 	// Check detail-type
 	if detailTypes, ok := pattern["detail-type"].([]string); ok {
 		found := false
@@ -211,7 +211,7 @@ func (e *EventHelpers) ValidateEventPattern(pattern map[string]interface{}, even
 			return false
 		}
 	}
-	
+
 	// Additional pattern matching would go here
 	return true
 }
@@ -243,7 +243,7 @@ func (m *MockEventSource) SetDelay(delay time.Duration) {
 // Emit emits all events with the configured delay
 func (m *MockEventSource) Emit() <-chan interface{} {
 	ch := make(chan interface{})
-	
+
 	go func() {
 		defer close(ch)
 		for _, event := range m.Events {
@@ -253,7 +253,7 @@ func (m *MockEventSource) Emit() <-chan interface{} {
 			}
 		}
 	}()
-	
+
 	return ch
 }
 

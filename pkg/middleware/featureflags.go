@@ -11,17 +11,17 @@ func FeatureFlagMiddleware(ff *features.FeatureFlags) lift.Middleware {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			// Add feature flags instance to context
 			ctx.Set("feature_flags", ff)
-			
+
 			// Add helper method for checking flags
 			ctx.Set("is_feature_enabled", func(flag string) bool {
 				return ff.IsEnabled(flag)
 			})
-			
+
 			// Add all current flags for debugging (only in dev mode)
 			if ff.IsEnabled(features.DebugLoggingEnabled) {
 				ctx.Set("all_feature_flags", ff.GetAllFlags())
 			}
-			
+
 			return next.Handle(ctx)
 		})
 	}

@@ -354,11 +354,11 @@ func TestCloudWatchLogger_SanitizationCardBin(t *testing.T) {
 
 	// Test that card_bin is NOT redacted while other card fields ARE redacted
 	logger.Info("payment info", map[string]any{
-		"card_bin":    "424242",  // Should NOT be redacted (BIN is not sensitive)
-		"card_number": "4242424242424242",  // Should be redacted
-		"card_cvv":    "123",  // Should be redacted
-		"cardholder":  "John Doe",  // Should be redacted
-		"user_id":     "12345",  // Should not be redacted
+		"card_bin":    "424242",           // Should NOT be redacted (BIN is not sensitive)
+		"card_number": "4242424242424242", // Should be redacted
+		"card_cvv":    "123",              // Should be redacted
+		"cardholder":  "John Doe",         // Should be redacted
+		"user_id":     "12345",            // Should not be redacted
 	})
 
 	// Wait for flush

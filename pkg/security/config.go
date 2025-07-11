@@ -87,7 +87,7 @@ type RateLimitConfig struct {
 	UserPeriod  time.Duration `json:"user_period"`
 
 	// Storage backend for rate limiting
-	StorageType   string                 `json:"storage_type"` // "memory", "redis", "dynamodb"
+	StorageType   string         `json:"storage_type"` // "memory", "redis", "dynamodb"
 	StorageConfig map[string]any `json:"storage_config"`
 }
 

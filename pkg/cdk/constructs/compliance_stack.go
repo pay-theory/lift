@@ -94,7 +94,6 @@ type ComplianceStackProps struct {
 	NotificationTopicArn *string
 }
 
-
 // ComplianceStack creates a comprehensive compliance stack
 type ComplianceStack struct {
 	constructs.Construct
@@ -158,7 +157,7 @@ func NewComplianceStack(scope constructs.Construct, id string, props *Compliance
 							Principals: &[]awsiam.IPrincipal{
 								awsiam.NewAccountRootPrincipal(),
 							},
-							Actions: &[]*string{jsii.String("kms:*")},
+							Actions:   &[]*string{jsii.String("kms:*")},
 							Resources: &[]*string{jsii.String("*")},
 						}),
 						awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
@@ -373,8 +372,6 @@ func NewComplianceStack(scope constructs.Construct, id string, props *Compliance
 	}
 }
 
-
-
 // createConfigRulesForFramework creates AWS Config rules based on the compliance framework
 func createConfigRulesForFramework(scope constructs.Construct, framework ComplianceFramework) {
 	switch framework {
@@ -494,11 +491,11 @@ func createComplianceFunction(scope constructs.Construct, props *ComplianceStack
 func createComplianceReports(scope constructs.Construct, props *ComplianceStackProps, bucket awss3.Bucket, complianceFunction awslambda.Function) {
 	// Create EventBridge rule for daily compliance reports
 	// This would trigger the compliance function daily to generate reports
-	
+
 	// Create Service Catalog portfolio for compliance templates
 	awsservicecatalog.NewPortfolio(scope, jsii.String("CompliancePortfolio"), &awsservicecatalog.PortfolioProps{
-		DisplayName: jsii.String(fmt.Sprintf("%s Compliance Templates", *props.AppName)),
-		Description: jsii.String("Pre-approved compliance templates for consistent deployment"),
+		DisplayName:  jsii.String(fmt.Sprintf("%s Compliance Templates", *props.AppName)),
+		Description:  jsii.String("Pre-approved compliance templates for consistent deployment"),
 		ProviderName: jsii.String("Compliance Team"),
 	})
 }
@@ -511,7 +508,7 @@ func storeComplianceConfiguration(scope constructs.Construct, props *ComplianceS
 		for i, framework := range *props.ComplianceFrameworks {
 			frameworks[i] = string(framework)
 		}
-		
+
 		awsssm.NewStringParameter(scope, jsii.String("ComplianceFrameworks"), &awsssm.StringParameterProps{
 			ParameterName: jsii.String(fmt.Sprintf("/%s/compliance/frameworks", *props.AppName)),
 			StringValue:   jsii.String(fmt.Sprintf("%v", frameworks)),

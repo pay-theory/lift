@@ -75,17 +75,17 @@ func main() {
 	// Alternative: Use custom SNS topic
 	app.GET("/custom", func(ctx *lift.Context) error {
 		// Example with custom SNS topic ARN
-		customTopicARN := fmt.Sprintf("arn:aws:sns:%s:%s:my-custom-alerts", 
-			os.Getenv("AWS_REGION"), 
+		customTopicARN := fmt.Sprintf("arn:aws:sns:%s:%s:my-custom-alerts",
+			os.Getenv("AWS_REGION"),
 			os.Getenv("AWS_ACCOUNT_ID"))
-		
-		customLogger, _ := zap.NewZapLogger(loggerConfig, 
+
+		customLogger, _ := zap.NewZapLogger(loggerConfig,
 			zap.WithErrorNotifications(snsClient, customTopicARN))
-		
+
 		customLogger.Error("Error with custom SNS topic", map[string]any{
 			"topic": customTopicARN,
 		})
-		
+
 		return ctx.JSON(map[string]string{
 			"message": "Sent to custom topic",
 		})

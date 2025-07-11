@@ -311,22 +311,22 @@ type GDPRPrivacyFramework struct {
 
 // GDPRArticle represents a GDPR article for testing
 type GDPRArticle struct {
-	Number      string                 `json:"number"`
-	Title       string                 `json:"title"`
-	Category    GDPRCategory           `json:"category"`
-	Description string                 `json:"description"`
-	Tests       []GDPRTest             `json:"tests"`
-	Evidence    []EvidenceRequirement  `json:"evidence"`
-	Metadata    map[string]any `json:"metadata"`
+	Number      string                `json:"number"`
+	Title       string                `json:"title"`
+	Category    GDPRCategory          `json:"category"`
+	Description string                `json:"description"`
+	Tests       []GDPRTest            `json:"tests"`
+	Evidence    []EvidenceRequirement `json:"evidence"`
+	Metadata    map[string]any        `json:"metadata"`
 }
 
 // GDPRTest represents a test for a GDPR article
 type GDPRTest struct {
-	ID        string                 `json:"id"`
-	Type      PrivacyTestType        `json:"type"`
-	Procedure string                 `json:"procedure"`
-	Expected  any            `json:"expected"`
-	Metadata  map[string]any `json:"metadata"`
+	ID        string          `json:"id"`
+	Type      PrivacyTestType `json:"type"`
+	Procedure string          `json:"procedure"`
+	Expected  any             `json:"expected"`
+	Metadata  map[string]any  `json:"metadata"`
 }
 
 // GovernanceCategory represents governance categories
@@ -366,7 +366,7 @@ type GDPRReport struct {
 	OverallStatus  ComplianceStatus          `json:"overall_status"`
 	Articles       map[string]*ArticleResult `json:"articles"`
 	RiskAssessment *RiskAssessment           `json:"risk_assessment"`
-	Metadata       map[string]any    `json:"metadata"`
+	Metadata       map[string]any            `json:"metadata"`
 }
 
 // ArticleResult represents the result of testing a GDPR article
@@ -379,25 +379,25 @@ type ArticleResult struct {
 	StartTime     time.Time                        `json:"start_time"`
 	EndTime       time.Time                        `json:"end_time"`
 	Duration      time.Duration                    `json:"duration"`
-	Metadata      map[string]any           `json:"metadata"`
+	Metadata      map[string]any                   `json:"metadata"`
 }
 
 // RiskAssessment represents a privacy risk assessment
 type RiskAssessment struct {
-	OverallRisk string                 `json:"overall_risk"`
-	RiskFactors []RiskFactor           `json:"risk_factors"`
-	Mitigations []string               `json:"mitigations"`
-	LastUpdated time.Time              `json:"last_updated"`
+	OverallRisk string         `json:"overall_risk"`
+	RiskFactors []RiskFactor   `json:"risk_factors"`
+	Mitigations []string       `json:"mitigations"`
+	LastUpdated time.Time      `json:"last_updated"`
 	Metadata    map[string]any `json:"metadata"`
 }
 
 // RiskFactor represents a privacy risk factor
 type RiskFactor struct {
-	Type        string                 `json:"type"`
-	Severity    Severity               `json:"severity"`
-	Description string                 `json:"description"`
-	Impact      string                 `json:"impact"`
-	Likelihood  string                 `json:"likelihood"`
+	Type        string         `json:"type"`
+	Severity    Severity       `json:"severity"`
+	Description string         `json:"description"`
+	Impact      string         `json:"impact"`
+	Likelihood  string         `json:"likelihood"`
 	Metadata    map[string]any `json:"metadata"`
 }
 

@@ -65,25 +65,25 @@ func GetAWSErrorCode(err error) string {
 // IsThrottlingError checks if the error is an AWS throttling error
 func IsThrottlingError(err error) bool {
 	code := GetAWSErrorCode(err)
-	return code == "ThrottlingException" || 
-		   code == "ProvisionedThroughputExceededException" ||
-		   code == "RequestLimitExceeded" ||
-		   code == "TooManyRequestsException"
+	return code == "ThrottlingException" ||
+		code == "ProvisionedThroughputExceededException" ||
+		code == "RequestLimitExceeded" ||
+		code == "TooManyRequestsException"
 }
 
 // IsAccessDeniedError checks if the error is an AWS access denied error
 func IsAccessDeniedError(err error) bool {
 	code := GetAWSErrorCode(err)
-	return code == "AccessDeniedException" || 
-		   code == "UnauthorizedException" ||
-		   code == "AccessDenied"
+	return code == "AccessDeniedException" ||
+		code == "UnauthorizedException" ||
+		code == "AccessDenied"
 }
 
 // IsResourceNotFoundError checks if the error is an AWS resource not found error
 func IsResourceNotFoundError(err error) bool {
 	code := GetAWSErrorCode(err)
-	return code == "ResourceNotFoundException" || 
-		   code == "NoSuchKey" ||
-		   code == "NotFound" ||
-		   code == "NotFoundException"
+	return code == "ResourceNotFoundException" ||
+		code == "NoSuchKey" ||
+		code == "NotFound" ||
+		code == "NotFoundException"
 }

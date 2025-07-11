@@ -13,25 +13,25 @@ import (
 
 // Tenant represents a tenant in the multi-tenant DynamORM system
 type Tenant struct {
-	PK        string    `dynamorm:"pk" json:"pk"`                // tenant#{id}
-	SK        string    `dynamorm:"sk" json:"sk"`                // tenant#{id}
-	TenantID  string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`  // For GSI
-	EntityType string   `dynamorm:"index:tenant-entity,sk" json:"entity_type"` // "tenant"
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Plan      string    `json:"plan"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	RateLimit int       `json:"rate_limit"`
+	PK         string    `dynamorm:"pk" json:"pk"`                              // tenant#{id}
+	SK         string    `dynamorm:"sk" json:"sk"`                              // tenant#{id}
+	TenantID   string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`   // For GSI
+	EntityType string    `dynamorm:"index:tenant-entity,sk" json:"entity_type"` // "tenant"
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	Email      string    `json:"email"`
+	Plan       string    `json:"plan"`
+	Status     string    `json:"status"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	RateLimit  int       `json:"rate_limit"`
 }
 
 // User represents a user within a tenant using DynamORM patterns
 type User struct {
-	PK         string    `dynamorm:"pk" json:"pk"`                   // tenant#{tenant_id}
-	SK         string    `dynamorm:"sk" json:"sk"`                   // user#{id}
-	TenantID   string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`     // For tenant isolation
+	PK         string    `dynamorm:"pk" json:"pk"`                              // tenant#{tenant_id}
+	SK         string    `dynamorm:"sk" json:"sk"`                              // user#{id}
+	TenantID   string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`   // For tenant isolation
 	EntityType string    `dynamorm:"index:tenant-entity,sk" json:"entity_type"` // "user"
 	ID         string    `json:"id"`
 	Email      string    `json:"email"`
@@ -44,9 +44,9 @@ type User struct {
 
 // Project represents a project within a tenant using DynamORM patterns
 type Project struct {
-	PK          string    `dynamorm:"pk" json:"pk"`                   // tenant#{tenant_id}
-	SK          string    `dynamorm:"sk" json:"sk"`                   // project#{id}
-	TenantID    string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`     // For tenant isolation
+	PK          string    `dynamorm:"pk" json:"pk"`                              // tenant#{tenant_id}
+	SK          string    `dynamorm:"sk" json:"sk"`                              // project#{id}
+	TenantID    string    `dynamorm:"index:tenant-entity,pk" json:"tenant_id"`   // For tenant isolation
 	EntityType  string    `dynamorm:"index:tenant-entity,sk" json:"entity_type"` // "project"
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
@@ -135,11 +135,11 @@ func (s *TenantService) GetTenant(ctx context.Context, id string) (*Tenant, erro
 	tenant := &Tenant{}
 	pk := fmt.Sprintf("tenant#%s", id)
 	sk := fmt.Sprintf("tenant#%s", id)
-	
+
 	if err := s.db.GetItem(ctx, pk, sk, tenant); err != nil {
 		return nil, fmt.Errorf("tenant not found: %w", err)
 	}
-	
+
 	return tenant, nil
 }
 
@@ -366,7 +366,7 @@ func TenantIsolationMiddleware() lift.Middleware {
 
 			// Set tenant ID in context
 			ctx.Set("tenant_id", tenantID)
-			
+
 			// Log tenant access for monitoring
 			if logger := ctx.Logger; logger != nil {
 				logger.WithField("tenant_id", tenantID).Info("Tenant access")
@@ -445,7 +445,7 @@ func main() {
 
 	// Add tenant isolation middleware
 	app.Use(TenantIsolationMiddleware())
-	
+
 	// Tenant-scoped routes
 	tenantGroup := app.Group("/api")
 
@@ -464,8 +464,8 @@ func main() {
 	tenantGroup.GET("/metrics", func(ctx *lift.Context) error {
 		tenantID := ctx.TenantID()
 		return ctx.JSON(map[string]interface{}{
-			"tenant_id":        tenantID,
-			"table_name":       tableName,
+			"tenant_id":  tenantID,
+			"table_name": tableName,
 			"access_patterns": []string{
 				fmt.Sprintf("PK: tenant#%s", tenantID),
 				"SK: user#{id}, project#{id}",

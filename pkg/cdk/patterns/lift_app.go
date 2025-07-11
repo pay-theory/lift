@@ -20,8 +20,8 @@ type LiftAppProps struct {
 	// Enable API Gateway access logging
 	EnableAccessLogging *bool
 	// Custom domain configuration
-	DomainName      *string
-	CertificateArn  *string
+	DomainName     *string
+	CertificateArn *string
 	// Environment variables for Lambda
 	Environment *map[string]*string
 	// Memory size for Lambda function
@@ -49,9 +49,9 @@ type LiftAppProps struct {
 // LiftApp is a complete Lift application pattern with API Gateway, Lambda, and DynamoDB
 type LiftApp struct {
 	constructs.Construct
-	API      *liftconstructs.LiftAPI
-	Function *liftconstructs.LiftFunction
-	Database *liftconstructs.LiftTable
+	API            *liftconstructs.LiftAPI
+	Function       *liftconstructs.LiftFunction
+	Database       *liftconstructs.LiftTable
 	RateLimitTable *liftconstructs.LiftTable
 }
 
@@ -70,7 +70,7 @@ func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *Li
 			env[k] = v
 		}
 	}
-	
+
 	// Add database table name if enabled
 	if props.EnableDatabase != nil && *props.EnableDatabase {
 		tableName := props.DatabaseTableName
@@ -79,7 +79,7 @@ func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *Li
 		}
 		env["DYNAMODB_TABLE"] = tableName
 	}
-	
+
 	// Add rate limit table name if enabled
 	if props.EnableRateLimiting != nil && *props.EnableRateLimiting {
 		tableName := props.RateLimitTableName
@@ -97,7 +97,12 @@ func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *Li
 			Handler:      jsii.String("bootstrap"),
 			Environment:  &env,
 			MemorySize:   props.MemorySize,
-			Timeout:      func() awscdk.Duration { if props.Timeout != nil { return awscdk.Duration_Seconds(props.Timeout) }; return awscdk.Duration_Seconds(jsii.Number(30)) }(),
+			Timeout: func() awscdk.Duration {
+				if props.Timeout != nil {
+					return awscdk.Duration_Seconds(props.Timeout)
+				}
+				return awscdk.Duration_Seconds(jsii.Number(30))
+			}(),
 		},
 		EnableTracing:     jsii.Bool(true),
 		EnableMultiTenant: props.EnableMultiTenant,
@@ -155,7 +160,7 @@ func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *Li
 
 		app.RateLimitTable = liftconstructs.NewLiftTable(this, jsii.String("RateLimitTable"), &liftconstructs.LiftTableProps{
 			TableName:           tableName,
-			PartitionKeyName:    jsii.String("PK"),  // RateLimit struct uses PK/SK
+			PartitionKeyName:    jsii.String("PK"), // RateLimit struct uses PK/SK
 			SortKeyName:         jsii.String("SK"),
 			TimeToLiveAttribute: jsii.String("expires"),
 		})
