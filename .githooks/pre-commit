@@ -46,16 +46,12 @@ print_status $? "Go vet"
 # 4. Run security checks with gosec (if available)
 if command -v gosec &> /dev/null; then
     echo -e "${YELLOW}Running security scan with gosec...${NC}"
-    # Run gosec with timeout, excluding test files and vendor
-    timeout 30s gosec -exclude-dir=vendor -exclude-dir=examples -tests=false -fmt=text -severity=medium ./... 2>/dev/null
-    GOSEC_EXIT=$?
-    if [ $GOSEC_EXIT -eq 124 ]; then
-        echo -e "${YELLOW}⚠ gosec timed out after 30s, skipping${NC}"
-    else
-        print_status $GOSEC_EXIT "Security scan (gosec)"
-    fi
+    # Only scan production code - exclude tests, examples, vendor
+    gosec -tests=false -exclude-dir=examples -exclude-dir=vendor -exclude-dir=reference -exclude-dir=scripts ./pkg/...
+    print_status $? "Security scan (gosec)"
 else
     echo -e "${YELLOW}⚠ gosec not found, skipping security scan${NC}"
+    echo -e "${YELLOW}  Install: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b \$(go env GOPATH)/bin${NC}"
 fi
 
 # 5. Run golangci-lint (if available)
