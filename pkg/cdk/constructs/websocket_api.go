@@ -35,8 +35,6 @@ type WebSocketAPIProps struct {
 	// Route selection expression (default: "$request.body.action")
 	RouteSelectionExpression *string
 
-	// Lambda function properties for handlers
-	FunctionProps awslambda.FunctionProps
 
 	// Connection management table properties (uses DynamORM)
 	ConnectionTableProps *ConnectionTableProps
@@ -46,13 +44,13 @@ type WebSocketAPIProps struct {
 	// WebSocket route configurations
 	Routes []*WebSocketRouteConfig
 
-	// Default route function (for unmatched routes)
+	// Default route function (for unmatched routes) - REQUIRED
 	DefaultRouteFunction awslambda.IFunction
 
-	// Connect route function ($connect)
+	// Connect route function ($connect) - REQUIRED
 	ConnectRouteFunction awslambda.IFunction
 
-	// Disconnect route function ($disconnect)
+	// Disconnect route function ($disconnect) - REQUIRED
 	DisconnectRouteFunction awslambda.IFunction
 
 	// Stage configuration
@@ -88,10 +86,10 @@ type WebSocketAPI struct {
 	// The stage
 	Stage awsapigatewayv2.WebSocketStage
 
-	// Lambda functions for different routes
-	ConnectFunction    *LiftFunction
-	DisconnectFunction *LiftFunction
-	DefaultFunction    *LiftFunction
+	// Lambda functions for different routes - REMOVED: Functions must be created externally
+	// ConnectFunction    *LiftFunction
+	// DisconnectFunction *LiftFunction
+	// DefaultFunction    *LiftFunction
 
 	// Connection management table (DynamORM-based)
 	ConnectionTable *ConnectionTable
@@ -203,29 +201,24 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 		this.ConnectionTable = NewConnectionTable(this, jsii.String("T"), connectionTableProps) // Minimal ID
 	}
 
+	// Validate required functions
+	if props.ConnectRouteFunction == nil {
+		panic("ConnectRouteFunction is required. Create Lambda function externally and pass via props to avoid long CloudFormation resource names.")
+	}
+	if props.DisconnectRouteFunction == nil {
+		panic("DisconnectRouteFunction is required. Create Lambda function externally and pass via props to avoid long CloudFormation resource names.")
+	}
+	if props.DefaultRouteFunction == nil {
+		panic("DefaultRouteFunction is required. Create Lambda function externally and pass via props to avoid long CloudFormation resource names.")
+	}
+
 	// Initialize routes map
 	this.Routes = make(map[string]awsapigatewayv2.WebSocketRoute)
 
-	// Only create Lambda functions if not provided via props
-	if props.ConnectRouteFunction == nil || props.DisconnectRouteFunction == nil || props.DefaultRouteFunction == nil {
-		this.createStandardFunctions(props)
-	}
-
-	// Use provided functions or fall back to created ones
+	// Use provided functions
 	connectFunction := props.ConnectRouteFunction
-	if connectFunction == nil && this.ConnectFunction != nil {
-		connectFunction = this.ConnectFunction.Function
-	}
-
 	disconnectFunction := props.DisconnectRouteFunction
-	if disconnectFunction == nil && this.DisconnectFunction != nil {
-		disconnectFunction = this.DisconnectFunction.Function
-	}
-
 	defaultFunction := props.DefaultRouteFunction
-	if defaultFunction == nil && this.DefaultFunction != nil {
-		defaultFunction = this.DefaultFunction.Function
-	}
 
 	// Add standard routes
 	if connectFunction != nil {
@@ -282,63 +275,13 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 	// Grant API Gateway permissions to invoke Lambda functions
 	this.grantApiGatewayInvokePermissions()
 
-	// Set up environment variables for Lambda functions
-	this.setupEnvironmentVariables()
+	// Environment variables are no longer set automatically
+	// Use GetWebSocketURL(), GetConnectionTableName(), etc. to get values for your functions
 
 	return this
 }
 
-// createStandardFunctions creates Lambda functions for standard WebSocket routes that weren't provided
-func (w *WebSocketAPI) createStandardFunctions(props *WebSocketAPIProps) {
-	// Create base function props with Lift optimizations
-	baseFunctionProps := &LiftFunctionProps{
-		FunctionProps:         props.FunctionProps,
-		EnableTracing:         props.EnableTracing,
-		EnableMultiTenant:     props.EnableMultiTenant,
-		EnableDeadLetterQueue: props.EnableDeadLetterQueue,
-	}
-
-	// Set defaults for WebSocket functions
-	if baseFunctionProps.FunctionProps.Runtime == nil {
-		baseFunctionProps.FunctionProps.Runtime = awslambda.Runtime_PROVIDED_AL2023()
-	}
-	if baseFunctionProps.FunctionProps.Architecture == nil {
-		baseFunctionProps.FunctionProps.Architecture = awslambda.Architecture_ARM_64()
-	}
-	if baseFunctionProps.FunctionProps.Timeout == nil {
-		baseFunctionProps.FunctionProps.Timeout = awscdk.Duration_Seconds(jsii.Number(30))
-	}
-
-	// Only create connect function if not provided
-	if props.ConnectRouteFunction == nil {
-		connectProps := *baseFunctionProps
-		connectProps.FunctionProps.FunctionName = jsii.String("websocket-connect")
-		if props.FunctionProps.FunctionName != nil {
-			connectProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-connect")
-		}
-		w.ConnectFunction = NewLiftFunction(w, jsii.String("C"), &connectProps) // Minimal ID
-	}
-
-	// Only create disconnect function if not provided
-	if props.DisconnectRouteFunction == nil {
-		disconnectProps := *baseFunctionProps
-		disconnectProps.FunctionProps.FunctionName = jsii.String("websocket-disconnect")
-		if props.FunctionProps.FunctionName != nil {
-			disconnectProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-disconnect")
-		}
-		w.DisconnectFunction = NewLiftFunction(w, jsii.String("D"), &disconnectProps) // Minimal ID
-	}
-
-	// Only create default function if not provided
-	if props.DefaultRouteFunction == nil {
-		defaultProps := *baseFunctionProps
-		defaultProps.FunctionProps.FunctionName = jsii.String("websocket-default")
-		if props.FunctionProps.FunctionName != nil {
-			defaultProps.FunctionProps.FunctionName = jsii.String(*props.FunctionProps.FunctionName + "-default")
-		}
-		w.DefaultFunction = NewLiftFunction(w, jsii.String("X"), &defaultProps) // Minimal ID
-	}
-}
+// REMOVED: createStandardFunctions - Functions must now be created externally to avoid deep nesting
 
 // AddRoute adds a new route to the WebSocket API
 func (w *WebSocketAPI) AddRoute(routeKey string, function awslambda.IFunction, config *WebSocketRouteConfig) awsapigatewayv2.WebSocketRoute {
@@ -435,18 +378,8 @@ func (w *WebSocketAPI) GrantApiInvoke(grantee awsiam.IGrantable) awsiam.Grant {
 	})
 }
 
-// AddEnvironmentVariable adds an environment variable to all WebSocket functions
-func (w *WebSocketAPI) AddEnvironmentVariable(key string, value string) {
-	if w.ConnectFunction != nil {
-		w.ConnectFunction.Function.AddEnvironment(jsii.String(key), jsii.String(value), nil)
-	}
-	if w.DisconnectFunction != nil {
-		w.DisconnectFunction.Function.AddEnvironment(jsii.String(key), jsii.String(value), nil)
-	}
-	if w.DefaultFunction != nil {
-		w.DefaultFunction.Function.AddEnvironment(jsii.String(key), jsii.String(value), nil)
-	}
-}
+// REMOVED: AddEnvironmentVariable - Functions are now managed externally
+// Add environment variables directly to the Lambda functions you create
 
 // grantApiGatewayInvokePermissions grants API Gateway permission to invoke Lambda functions
 func (w *WebSocketAPI) grantApiGatewayInvokePermissions() {
@@ -454,33 +387,8 @@ func (w *WebSocketAPI) grantApiGatewayInvokePermissions() {
 	// when routes are added. This avoids duplicate permissions.
 }
 
-// setupEnvironmentVariables sets up common environment variables for WebSocket functions
-func (w *WebSocketAPI) setupEnvironmentVariables() {
-	// WebSocket API URL
-	wsUrl := fmt.Sprintf("wss://%s.execute-api.%s.amazonaws.com/%s",
-		*w.WebSocketApi.ApiId(),
-		*w.WebSocketApi.Stack().Region(),
-		*w.Stage.StageName(),
-	)
-	w.AddEnvironmentVariable("WEBSOCKET_API_URL", wsUrl)
-	w.AddEnvironmentVariable("WEBSOCKET_API_ID", *w.WebSocketApi.ApiId())
-	w.AddEnvironmentVariable("WEBSOCKET_STAGE", *w.Stage.StageName())
-
-	// Connection table - using DynamORM table
-	if w.ConnectionTable != nil {
-		w.AddEnvironmentVariable("CONNECTION_TABLE_NAME", *w.ConnectionTable.Table.TableName())
-		w.AddEnvironmentVariable("CONNECTION_TABLE_ARN", *w.ConnectionTable.Table.TableArn())
-
-		// GSI names are now determined by DynamORM model struct tags
-		// Example: UserID string `dynamorm:"index:user-index,pk"`
-		// The index name in the model would be "user-index"
-	}
-
-	// Access log group
-	if w.AccessLogGroup != nil {
-		w.AddEnvironmentVariable("ACCESS_LOG_GROUP", *w.AccessLogGroup.LogGroupName())
-	}
-}
+// REMOVED: setupEnvironmentVariables - Set environment variables directly on your Lambda functions
+// Use GetWebSocketURL(), GetConnectionTableName(), etc. to get values to set on your functions
 
 // GetConnectionTableName returns the connection table name
 func (w *WebSocketAPI) GetConnectionTableName() *string {
