@@ -52,9 +52,7 @@ func CheckIPAuthorization(ctx *lift.Context, ipAuthService *security.IPAuthoriza
 	// Check if the source IP is authorized
 	authorized, err := ipAuthService.IsAuthorizedIP(ctx.Context, sourceIP)
 	if err != nil {
-		return ctx.JSON(map[string]string{
-			"error": "Failed to check IP authorization",
-		})
+		return ctx.SystemError("Failed to check IP authorization", err)
 	}
 
 	if !authorized {
