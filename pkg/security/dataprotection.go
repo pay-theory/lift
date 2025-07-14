@@ -208,18 +208,51 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		return DataRestricted
 	}
 
+	// IP address fields should be public (not redacted) - check BEFORE other patterns
+	// Check exact matches first
+	ipExactMatches := []string{
+		"ip_address", "ipaddress",
+		"client_ip", "source_ip", "remote_ip",
+		"x_forwarded_for", "x_real_ip", "cf_connecting_ip",
+		"x-forwarded-for", "x-real-ip", "cf-connecting-ip",
+		"sourceip", "clientip", "remoteip",
+		"server_ip", "user_ip", "host_ip",
+	}
+
+	for _, ipPattern := range ipExactMatches {
+		if strings.EqualFold(fieldLower, ipPattern) {
+			return DataPublic
+		}
+	}
+
+	// Special case: exact match for "ip" field
+	if fieldLower == "ip" {
+		return DataPublic
+	}
+	
+	// Check for IP-related field names with word boundaries
+	if strings.HasSuffix(fieldLower, "_ip") || strings.HasPrefix(fieldLower, "ip_") || 
+	   strings.Contains(fieldLower, "_ip_") {
+		return DataPublic
+	}
+	
+	// Check for specific IP header patterns
+	if strings.Contains(fieldLower, "forwarded") && strings.Contains(fieldLower, "ip") {
+		return DataPublic
+	}
+
 	// High sensitivity fields from sanitization logic
 	highSensitiveFields := []string{
 		"password", "token", "secret", "auth", "credential",
 		"email", "phone", "ssn", "card", "account", "routing",
-		"pin", "cvv", "security", "private", "confidential",
+		"pin", "cvv", "security", "private", "confidential", "key",
 	}
 
 	for _, sensitive := range highSensitiveFields {
 		if strings.Contains(fieldLower, sensitive) {
 			// Determine classification based on the type of sensitive field
 			switch sensitive {
-			case "ssn", "card", "account", "routing", "cvv", "pin":
+			case "ssn", "card", "account", "routing", "cvv", "pin", "key":
 				return DataRestricted
 			case "password", "token", "secret", "auth", "credential", "private":
 				return DataConfidential
@@ -255,6 +288,8 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		}
 	}
 
+	
+
 	// Additional confidential data patterns
 	confidentialPatterns := []string{
 		"salary", "income", "financial", "revenue", "profit",
@@ -284,7 +319,8 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		}
 	}
 
-	return DataPublic
+	// Return the configured default classification
+	return dpm.config.DefaultClassification
 }
 
 // isRestrictedValue checks if a value matches restricted data patterns
@@ -575,8 +611,16 @@ func (dpm *DataProtectionManager) applyDefaultMasking(value any, classification 
 		}
 		return strValue[:2] + strings.Repeat("*", len(strValue)-4) + strValue[len(strValue)-2:]
 
+	case DataInternal:
+		// Internal data shows metadata only (e.g., length)
+		return fmt.Sprintf("[INTERNAL_%d_chars]", len(strValue))
+
+	case DataPublic:
+		// Public data is not masked - this includes IP addresses
+		return value
+
 	default:
-		// Internal and Public data are not masked by default
+		// Default to no masking
 		return value
 	}
 }
