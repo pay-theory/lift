@@ -322,7 +322,11 @@ func (c *Context) BadRequest(message string, err error) error {
 	if respErr == nil {
 		c.captureResponseData()
 	}
-	return respErr
+	// Return the original error to stop processing, not the response write result
+	if err != nil {
+		return err
+	}
+	return NewLiftError("BAD_REQUEST", message, 400)
 }
 
 // NotFound sends a 404 Not Found response
@@ -357,7 +361,11 @@ func (c *Context) Forbidden(message string, err error) error {
 	if respErr == nil {
 		c.captureResponseData()
 	}
-	return respErr
+	// Return the original error to stop processing, not the response write result
+	if err != nil {
+		return err
+	}
+	return NewLiftError("FORBIDDEN", message, 403)
 }
 
 // SystemError sends a 500 Internal Server Error response
@@ -374,7 +382,11 @@ func (c *Context) SystemError(message string, err error) error {
 	if respErr == nil {
 		c.captureResponseData()
 	}
-	return respErr
+	// Return the original error to stop processing, not the response write result
+	if err != nil {
+		return err
+	}
+	return NewLiftError("SYSTEM_ERROR", message, 500)
 }
 
 // Unauthorized sends a 401 Unauthorized response
