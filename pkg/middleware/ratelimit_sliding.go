@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -67,15 +68,15 @@ func NewSlidingWindowRateLimiter(config RateLimitConfig) (*SlidingWindowRateLimi
 			parts = append(parts, "method", ctx.Request.Method)
 		}
 
-		key := ""
+		var builder strings.Builder
 		for i, part := range parts {
 			if i > 0 {
-				key += ":"
+				builder.WriteString(":")
 			}
-			key += part
+			builder.WriteString(part)
 		}
 
-		return key
+		return builder.String()
 	}
 
 	return &SlidingWindowRateLimiter{
