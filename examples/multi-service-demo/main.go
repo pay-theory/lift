@@ -538,6 +538,3 @@ func writeResponse(w http.ResponseWriter, response *lift.Response) {
 	}
 }
 
-func intPtr(i int) *int {
-	return &i
-}

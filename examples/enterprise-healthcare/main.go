@@ -421,7 +421,7 @@ func (e *mockEncryptionService) GenerateKey() ([]byte, error) {
 }
 
 // Mock service implementations
-func (m *mockPatientService) CreatePatient(ctx context.Context, req CreatePatientRequest) (*Patient, error) {
+func (m *mockPatientService) CreatePatient(_ context.Context, req CreatePatientRequest) (*Patient, error) {
 	patient := &Patient{
 		ID:              generateID(),
 		MRN:             generateMRN(),
@@ -441,7 +441,7 @@ func (m *mockPatientService) CreatePatient(ctx context.Context, req CreatePatien
 	return patient, nil
 }
 
-func (m *mockPatientService) GetPatient(ctx context.Context, id string, providerID string) (*Patient, error) {
+func (m *mockPatientService) GetPatient(_ context.Context, id string, _ string) (*Patient, error) {
 	// Simulate patient lookup with access logging
 	patient := &Patient{
 		ID:  id,

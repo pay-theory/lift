@@ -229,16 +229,16 @@ func (m *mockProductService) GetProduct(_ context.Context, tenantID, id string) 
 	}, nil
 }
 
-func (m *mockProductService) UpdateProduct(_ context.Context, tenantID, id string, product *Product) error {
+func (m *mockProductService) UpdateProduct(_ context.Context, _, _ string, product *Product) error {
 	product.UpdatedAt = time.Now()
 	return nil
 }
 
-func (m *mockProductService) DeleteProduct(_ context.Context, tenantID, id string) error {
+func (m *mockProductService) DeleteProduct(_ context.Context, _, _ string) error {
 	return nil
 }
 
-func (m *mockProductService) ListProducts(_ context.Context, tenantID string, filters ProductFilters) ([]Product, error) {
+func (m *mockProductService) ListProducts(_ context.Context, tenantID string, _ ProductFilters) ([]Product, error) {
 	products := []Product{
 		{
 			ID:       "product_1",
@@ -304,7 +304,7 @@ func (m *mockProductService) SearchProducts(ctx context.Context, tenantID, query
 	return results, nil
 }
 
-func (m *mockProductService) UpdateInventory(_ context.Context, tenantID, productID string, quantity int) error {
+func (m *mockProductService) UpdateInventory(_ context.Context, _, _ string, _ int) error {
 	// Simulate inventory update
 	return nil
 }
@@ -383,12 +383,12 @@ func (m *mockCustomerService) GetCustomer(_ context.Context, tenantID, id string
 	}, nil
 }
 
-func (m *mockCustomerService) UpdateCustomer(_ context.Context, tenantID, id string, customer *Customer) error {
+func (m *mockCustomerService) UpdateCustomer(_ context.Context, _, _ string, customer *Customer) error {
 	customer.UpdatedAt = time.Now()
 	return nil
 }
 
-func (m *mockCustomerService) ListCustomers(_ context.Context, tenantID string, limit, offset int) ([]Customer, error) {
+func (m *mockCustomerService) ListCustomers(_ context.Context, tenantID string, _, _ int) ([]Customer, error) {
 	customers := []Customer{
 		{
 			ID:       "customer_1",
@@ -417,7 +417,7 @@ func (m *mockCustomerService) ListCustomers(_ context.Context, tenantID string, 
 	return customers, nil
 }
 
-func (m *mockCustomerService) AuthenticateCustomer(ctx context.Context, tenantID, email, password string) (*Customer, error) {
+func (m *mockCustomerService) AuthenticateCustomer(ctx context.Context, tenantID, _, _ string) (*Customer, error) {
 	// Simulate authentication
 	return m.GetCustomer(ctx, tenantID, "customer_auth")
 }
@@ -499,11 +499,11 @@ func (m *mockOrderService) GetOrder(_ context.Context, tenantID, id string) (*Or
 	}, nil
 }
 
-func (m *mockOrderService) UpdateOrderStatus(_ context.Context, tenantID, id string, status OrderStatus) error {
+func (m *mockOrderService) UpdateOrderStatus(_ context.Context, _, _ string, _ OrderStatus) error {
 	return nil
 }
 
-func (m *mockOrderService) ListOrders(_ context.Context, tenantID string, filters OrderFilters) ([]Order, error) {
+func (m *mockOrderService) ListOrders(_ context.Context, tenantID string, _ OrderFilters) ([]Order, error) {
 	orders := []Order{
 		{
 			ID:          "order_1",
@@ -536,11 +536,11 @@ func (m *mockOrderService) GetCustomerOrders(ctx context.Context, tenantID, cust
 	return m.ListOrders(ctx, tenantID, OrderFilters{CustomerID: customerID})
 }
 
-func (m *mockOrderService) CancelOrder(_ context.Context, tenantID, id string) error {
+func (m *mockOrderService) CancelOrder(_ context.Context, _, _ string) error {
 	return nil
 }
 
-func (m *mockOrderService) RefundOrder(_ context.Context, tenantID, id string, amount Money) error {
+func (m *mockOrderService) RefundOrder(_ context.Context, _, _ string, _ Money) error {
 	return nil
 }
 
@@ -573,22 +573,22 @@ func (m *mockCartService) GetCart(_ context.Context, tenantID, customerID string
 	}, nil
 }
 
-func (m *mockCartService) AddToCart(ctx context.Context, tenantID, customerID string, req AddToCartRequest) (*ShoppingCart, error) {
+func (m *mockCartService) AddToCart(ctx context.Context, tenantID, customerID string, _ AddToCartRequest) (*ShoppingCart, error) {
 	// Simulate adding item to cart
 	return m.GetCart(ctx, tenantID, customerID)
 }
 
-func (m *mockCartService) UpdateCartItem(ctx context.Context, tenantID, cartID, itemID string, req UpdateCartItemRequest) (*ShoppingCart, error) {
+func (m *mockCartService) UpdateCartItem(ctx context.Context, tenantID, _, _ string, _ UpdateCartItemRequest) (*ShoppingCart, error) {
 	// Simulate updating cart item
 	return m.GetCart(ctx, tenantID, "customer_from_cart")
 }
 
-func (m *mockCartService) RemoveFromCart(ctx context.Context, tenantID, cartID, itemID string) (*ShoppingCart, error) {
+func (m *mockCartService) RemoveFromCart(ctx context.Context, tenantID, _, _ string) (*ShoppingCart, error) {
 	// Simulate removing item from cart
 	return m.GetCart(ctx, tenantID, "customer_from_cart")
 }
 
-func (m *mockCartService) ClearCart(_ context.Context, tenantID, cartID string) error {
+func (m *mockCartService) ClearCart(_ context.Context, _, _ string) error {
 	return nil
 }
 
