@@ -500,7 +500,7 @@ func (m *MockDynamORMClient) AddMockTable(tableName string, opts ...TestTableOpt
 }
 
 // GetMockTable returns a mock table for inspection
-func (m *MockDynamORMClient) GetMockTable(tableName string) (*mockTable, bool) {
+func (m *MockDynamORMClient) getMockTable(tableName string) (*mockTable, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

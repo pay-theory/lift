@@ -694,7 +694,7 @@ type RateLimitConfig struct {
 }
 
 // Rate limit middleware
-func RateLimit(config RateLimitConfig) lift.Middleware {
+func RateLimit(_ RateLimitConfig) lift.Middleware {
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			// Simple rate limiting implementation

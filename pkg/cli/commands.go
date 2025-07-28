@@ -90,7 +90,7 @@ func (c *NewCommand) Name() string        { return "new" }
 func (c *NewCommand) Description() string { return "Create a new Lift project" }
 func (c *NewCommand) Usage() string       { return "lift new <project-name> [template]" }
 
-func (c *NewCommand) Execute(ctx context.Context, args []string) error {
+func (c *NewCommand) Execute(_ context.Context, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("project name is required\nUsage: %s", c.Usage())
 	}
@@ -379,7 +379,7 @@ func (c *TestCommand) Name() string        { return "test" }
 func (c *TestCommand) Description() string { return "Run comprehensive test suite" }
 func (c *TestCommand) Usage() string       { return "lift test [--coverage] [--race] [package...]" }
 
-func (c *TestCommand) Execute(ctx context.Context, args []string) error {
+func (c *TestCommand) Execute(_ context.Context, args []string) error {
 	coverage := false
 	race := false
 	packages := []string{"./..."}
@@ -426,7 +426,7 @@ func (c *BenchmarkCommand) Name() string        { return "benchmark" }
 func (c *BenchmarkCommand) Description() string { return "Execute performance benchmarks" }
 func (c *BenchmarkCommand) Usage() string       { return "lift benchmark [--cpu] [--mem] [pattern...]" }
 
-func (c *BenchmarkCommand) Execute(ctx context.Context, args []string) error {
+func (c *BenchmarkCommand) Execute(_ context.Context, args []string) error {
 	cpuProfile := false
 	memProfile := false
 	patterns := []string{".*"}
@@ -475,7 +475,7 @@ func (c *DeployCommand) Name() string        { return "deploy" }
 func (c *DeployCommand) Description() string { return "Deploy to specified environment" }
 func (c *DeployCommand) Usage() string       { return "lift deploy <environment> [--dry-run]" }
 
-func (c *DeployCommand) Execute(ctx context.Context, args []string) error {
+func (c *DeployCommand) Execute(_ context.Context, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("environment is required\nUsage: %s", c.Usage())
 	}
@@ -584,7 +584,7 @@ func (c *MetricsCommand) Name() string        { return "metrics" }
 func (c *MetricsCommand) Description() string { return "View metrics dashboard" }
 func (c *MetricsCommand) Usage() string       { return "lift metrics <function> [--period=1h]" }
 
-func (c *MetricsCommand) Execute(ctx context.Context, args []string) error {
+func (c *MetricsCommand) Execute(_ context.Context, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("function name is required\nUsage: %s", c.Usage())
 	}
@@ -637,7 +637,7 @@ func (c *HealthCommand) Name() string        { return "health" }
 func (c *HealthCommand) Description() string { return "Check function health status" }
 func (c *HealthCommand) Usage() string       { return "lift health <function> [--detailed]" }
 
-func (c *HealthCommand) Execute(ctx context.Context, args []string) error {
+func (c *HealthCommand) Execute(_ context.Context, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("function name is required\nUsage: %s", c.Usage())
 	}
@@ -697,7 +697,7 @@ func (c *VersionCommand) Name() string        { return "version" }
 func (c *VersionCommand) Description() string { return "Display version information" }
 func (c *VersionCommand) Usage() string       { return "lift version" }
 
-func (c *VersionCommand) Execute(ctx context.Context, args []string) error {
+func (c *VersionCommand) Execute(_ context.Context, args []string) error {
 	fmt.Printf("🚀 Lift Framework\n")
 	fmt.Printf("Version: %s\n", c.version)
 	fmt.Printf("Built with Go: %s\n", "1.21")
@@ -719,7 +719,7 @@ func (c *HelpCommand) Name() string        { return "help" }
 func (c *HelpCommand) Description() string { return "Display help information" }
 func (c *HelpCommand) Usage() string       { return "lift help [command]" }
 
-func (c *HelpCommand) Execute(ctx context.Context, args []string) error {
+func (c *HelpCommand) Execute(_ context.Context, args []string) error {
 	if len(args) > 0 {
 		// Show help for specific command
 		cmdName := args[0]

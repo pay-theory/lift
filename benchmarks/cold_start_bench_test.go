@@ -23,7 +23,8 @@ func recoverMiddleware() lift.Middleware {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			defer func() {
 				if r := recover(); r != nil {
-					// Simple recovery
+					// Log or handle panic if needed in the future
+					_ = r
 				}
 			}()
 			return next.Handle(ctx)

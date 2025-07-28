@@ -449,9 +449,8 @@ func createLogGroup(scope constructs.Construct, id string, logGroupName string, 
 				return awslogs.RetentionDays_FIVE_YEARS
 			} else if *retentionDays <= 3653 {
 				return awslogs.RetentionDays_TEN_YEARS
-			} else {
-				return awslogs.RetentionDays_INFINITE
 			}
+			return awslogs.RetentionDays_INFINITE
 		}(),
 		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
 		EncryptionKey: encryptionKey,

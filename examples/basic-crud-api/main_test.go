@@ -265,19 +265,19 @@ type MockDynamORMWrapper struct {
 	tenantID  string
 }
 
-func (m *MockDynamORMWrapper) Get(ctx context.Context, key any, result any) error {
+func (m *MockDynamORMWrapper) Get(_ context.Context, key any, result any) error {
 	return m.mockDB.Model(result).Where("ID", "=", key).First(result)
 }
 
-func (m *MockDynamORMWrapper) Put(ctx context.Context, item any) error {
+func (m *MockDynamORMWrapper) Put(_ context.Context, item any) error {
 	return m.mockDB.Model(item).Create()
 }
 
-func (m *MockDynamORMWrapper) Delete(ctx context.Context, key any) error {
+func (m *MockDynamORMWrapper) Delete(_ context.Context, key any) error {
 	return m.mockDB.Model(&struct{}{}).Where("ID", "=", key).Delete()
 }
 
-func (m *MockDynamORMWrapper) Query(ctx context.Context, query any) (any, error) {
+func (m *MockDynamORMWrapper) Query(_ context.Context, query any) (any, error) {
 	// Simple implementation for testing
 	return []any{}, nil
 }

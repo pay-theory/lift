@@ -138,7 +138,7 @@ type RateLimitConfig struct {
 }
 
 // Rate limit middleware
-func RateLimit(config RateLimitConfig) lift.Middleware {
+func RateLimit(_ RateLimitConfig) lift.Middleware {
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			// Simple rate limiting implementation
@@ -357,7 +357,7 @@ type mockEncryptionService struct {
 }
 
 // Encryption service implementation
-func NewMockEncryptionService() *mockEncryptionService {
+func newMockEncryptionService() *mockEncryptionService {
 	// In production, this would use proper key management (AWS KMS, etc.)
 	key := make([]byte, 32) // AES-256
 	rand.Read(key)
@@ -435,7 +435,7 @@ func (m *mockPatientService) CreatePatient(ctx context.Context, req CreatePatien
 	}
 
 	// Hash sensitive data
-	encService := NewMockEncryptionService()
+	encService := newMockEncryptionService()
 	patient.Demographics.SSN = encService.Hash(req.Demographics.SSN)
 
 	return patient, nil
@@ -523,7 +523,7 @@ func (m *mockPatientService) UpdateConsent(ctx context.Context, patientID string
 }
 
 func (m *mockMedicalRecordService) CreateRecord(ctx context.Context, req CreateMedicalRecordRequest, providerID string) (*MedicalRecord, error) {
-	encService := NewMockEncryptionService()
+	encService := newMockEncryptionService()
 
 	// Encrypt the medical record content
 	encryptedContent, err := encService.Encrypt([]byte(req.Content))

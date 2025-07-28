@@ -47,7 +47,7 @@ type GSIConfig struct {
 	SortKey      string
 }
 
-func (c *DynamORMScaffoldCommand) Execute(ctx context.Context, args []string) error {
+func (c *DynamORMScaffoldCommand) Execute(_ context.Context, args []string) error {
 	// Check if we're in a Lift project
 	if !c.isLiftProject() {
 		return fmt.Errorf("not in a Lift project directory - run 'lift new' first")
@@ -171,7 +171,7 @@ func (c *DynamORMScaffoldCommand) parseGSI(gsiArg string) (GSIConfig, error) {
 	return gsi, nil
 }
 
-func (c *DynamORMScaffoldCommand) createDirectories(config *ScaffoldConfig) error {
+func (c *DynamORMScaffoldCommand) createDirectories(_ *ScaffoldConfig) error {
 	dirs := []string{
 		"models",
 		"cdk/constructs",

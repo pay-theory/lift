@@ -362,6 +362,7 @@ func (e *DynamORMEventStore) createSnapshotTable() {
 		// DynamORM configuration is now handled through model struct tags
 		// Multi-tenant GSIs are defined in DynamORM models using tags like:
 		// TenantID string `dynamorm:"index:tenant-entity,pk"`
+		// Future table-specific configuration can be added here
 	}
 }
 

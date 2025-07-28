@@ -24,7 +24,7 @@ func (c *CDKInitCommand) Usage() string {
 	return "lift cdk-init [stack-type]"
 }
 
-func (c *CDKInitCommand) Execute(ctx context.Context, args []string) error {
+func (c *CDKInitCommand) Execute(_ context.Context, args []string) error {
 	stackType := "basic"
 	if len(args) > 0 {
 		stackType = args[0]

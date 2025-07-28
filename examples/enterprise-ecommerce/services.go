@@ -11,7 +11,7 @@ import (
 // Mock Tenant Service
 type mockTenantService struct{}
 
-func (m *mockTenantService) CreateTenant(ctx context.Context, req CreateTenantRequest) (*Tenant, error) {
+func (m *mockTenantService) CreateTenant(_ context.Context, req CreateTenantRequest) (*Tenant, error) {
 	tenant := &Tenant{
 		ID:     generateID(),
 		Name:   req.Name,
@@ -62,7 +62,7 @@ func (m *mockTenantService) CreateTenant(ctx context.Context, req CreateTenantRe
 	return tenant, nil
 }
 
-func (m *mockTenantService) GetTenant(ctx context.Context, id string) (*Tenant, error) {
+func (m *mockTenantService) GetTenant(_ context.Context, id string) (*Tenant, error) {
 	return &Tenant{
 		ID:     id,
 		Name:   "Demo Store",
@@ -106,12 +106,12 @@ func (m *mockTenantService) GetTenantByDomain(ctx context.Context, domain string
 	return m.GetTenant(ctx, "tenant_"+domain)
 }
 
-func (m *mockTenantService) UpdateTenant(ctx context.Context, id string, tenant *Tenant) error {
+func (m *mockTenantService) UpdateTenant(_ context.Context, _ string, tenant *Tenant) error {
 	tenant.UpdatedAt = time.Now()
 	return nil
 }
 
-func (m *mockTenantService) ListTenants(ctx context.Context, limit, offset int) ([]Tenant, error) {
+func (m *mockTenantService) ListTenants(_ context.Context, _, _ int) ([]Tenant, error) {
 	tenants := []Tenant{
 		{
 			ID:     "tenant_1",
@@ -140,14 +140,14 @@ func (m *mockTenantService) ListTenants(ctx context.Context, limit, offset int) 
 	return tenants, nil
 }
 
-func (m *mockTenantService) DeactivateTenant(ctx context.Context, id string) error {
+func (m *mockTenantService) DeactivateTenant(_ context.Context, _ string) error {
 	return nil
 }
 
 // Mock Product Service
 type mockProductService struct{}
 
-func (m *mockProductService) CreateProduct(ctx context.Context, tenantID string, req CreateProductRequest) (*Product, error) {
+func (m *mockProductService) CreateProduct(_ context.Context, tenantID string, req CreateProductRequest) (*Product, error) {
 	product := &Product{
 		ID:          generateID(),
 		TenantID:    tenantID,
@@ -176,7 +176,7 @@ func (m *mockProductService) CreateProduct(ctx context.Context, tenantID string,
 	return product, nil
 }
 
-func (m *mockProductService) GetProduct(ctx context.Context, tenantID, id string) (*Product, error) {
+func (m *mockProductService) GetProduct(_ context.Context, tenantID, id string) (*Product, error) {
 	return &Product{
 		ID:           id,
 		TenantID:     tenantID,
@@ -229,12 +229,12 @@ func (m *mockProductService) GetProduct(ctx context.Context, tenantID, id string
 	}, nil
 }
 
-func (m *mockProductService) UpdateProduct(ctx context.Context, tenantID, id string, product *Product) error {
+func (m *mockProductService) UpdateProduct(_ context.Context, tenantID, id string, product *Product) error {
 	product.UpdatedAt = time.Now()
 	return nil
 }
 
-func (m *mockProductService) DeleteProduct(ctx context.Context, tenantID, id string) error {
+func (m *mockProductService) DeleteProduct(_ context.Context, tenantID, id string) error {
 	return nil
 }
 

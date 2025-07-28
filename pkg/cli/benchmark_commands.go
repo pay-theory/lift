@@ -70,7 +70,7 @@ type BenchmarkEnvironment struct {
 	TimestampUTC     string `json:"timestamp_utc"`
 }
 
-func (c *DynamORMBenchmarkCommand) Execute(ctx context.Context, args []string) error {
+func (c *DynamORMBenchmarkCommand) Execute(_ context.Context, args []string) error {
 	// Parse arguments
 	config, err := c.parseBenchmarkArgs(args)
 	if err != nil {
@@ -192,11 +192,7 @@ func (c *DynamORMBenchmarkCommand) generateBenchmarkCode(config *BenchmarkConfig
 	}
 
 	// Generate results analyzer
-	if err := c.generateResultsAnalyzer(config); err != nil {
-		return err
-	}
-
-	return nil
+	return c.generateResultsAnalyzer(config)
 }
 
 func (c *DynamORMBenchmarkCommand) generateBenchmarkRunner(config *BenchmarkConfig) error {
@@ -578,12 +574,12 @@ type BenchmarkEnvironment struct {
 	return t.Execute(file, config)
 }
 
-func (c *DynamORMBenchmarkCommand) generateBenchmarkOperations(config *BenchmarkConfig) error {
+func (c *DynamORMBenchmarkCommand) generateBenchmarkOperations(_ *BenchmarkConfig) error {
 	// Generate operations.go file with custom benchmark operations
 	return nil
 }
 
-func (c *DynamORMBenchmarkCommand) generateResultsAnalyzer(config *BenchmarkConfig) error {
+func (c *DynamORMBenchmarkCommand) generateResultsAnalyzer(_ *BenchmarkConfig) error {
 	// Generate analyzer.go file for results analysis
 	return nil
 }

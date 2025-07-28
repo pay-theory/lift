@@ -444,6 +444,7 @@ func (m *EnhancedMonitoring) createAlarms(props *EnhancedMonitoringProps) {
 
 		if props.AlertTopic != nil {
 			// AddAlarmAction not available on IAlarm interface
+			// Alert topic integration can be added here when interface is available
 		}
 	}
 
@@ -460,6 +461,7 @@ func (m *EnhancedMonitoring) createAlarms(props *EnhancedMonitoringProps) {
 
 		if props.AlertTopic != nil {
 			// AddAlarmAction not available on IAlarm interface
+			// Alert topic integration can be added here when interface is available
 		}
 	}
 
@@ -476,6 +478,7 @@ func (m *EnhancedMonitoring) createAlarms(props *EnhancedMonitoringProps) {
 
 		if props.AlertTopic != nil {
 			// AddAlarmAction not available on IAlarm interface
+			// Alert topic integration can be added here when interface is available
 		}
 	}
 }

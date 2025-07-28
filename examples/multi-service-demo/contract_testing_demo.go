@@ -85,13 +85,13 @@ func runContractTestingDemo() {
 	fmt.Println("\n⚡ Demo 6: Contract Performance Testing")
 	fmt.Println("--------------------------------------")
 
-	demonstratePerformanceTesting(framework, ctx)
+	demonstratePerformanceTesting(ctx, framework)
 
 	// Demo 7: Error Handling and Edge Cases
 	fmt.Println("\n🚨 Demo 7: Error Handling and Edge Cases")
 	fmt.Println("----------------------------------------")
 
-	demonstrateErrorHandling(framework, ctx)
+	demonstrateErrorHandling(ctx, framework)
 
 	fmt.Println("\n✅ Contract Testing Demo Completed Successfully!")
 	fmt.Println("===============================================")
@@ -495,7 +495,7 @@ func demonstrateSchemaEvolution(framework *enterprise.ContractTestingFramework, 
 	fmt.Println("✅ Schema evolution testing completed")
 }
 
-func demonstratePerformanceTesting(framework *enterprise.ContractTestingFramework, ctx context.Context) {
+func demonstratePerformanceTesting(ctx context.Context, framework *enterprise.ContractTestingFramework) {
 	fmt.Println("Running performance tests...")
 
 	// Create a contract with many interactions for performance testing
@@ -567,7 +567,7 @@ func demonstratePerformanceTesting(framework *enterprise.ContractTestingFramewor
 	}
 }
 
-func demonstrateErrorHandling(framework *enterprise.ContractTestingFramework, ctx context.Context) {
+func demonstrateErrorHandling(ctx context.Context, framework *enterprise.ContractTestingFramework) {
 	fmt.Println("Testing error handling and edge cases...")
 
 	// Test 1: Invalid HTTP method

@@ -84,19 +84,19 @@ func NewDynamORMService(tableName string) *DynamORMService {
 	return &DynamORMService{tableName: tableName}
 }
 
-func (s *DynamORMService) PutItem(ctx context.Context, item interface{}) error {
+func (s *DynamORMService) PutItem(_ context.Context, item interface{}) error {
 	// In real implementation, this would use DynamORM client
 	fmt.Printf("DynamORM: Putting item to table %s\n", s.tableName)
 	return nil
 }
 
-func (s *DynamORMService) GetItem(ctx context.Context, pk, sk string, item interface{}) error {
+func (s *DynamORMService) GetItem(_ context.Context, pk, sk string, item interface{}) error {
 	// In real implementation, this would use DynamORM client
 	fmt.Printf("DynamORM: Getting item from table %s with PK=%s, SK=%s\n", s.tableName, pk, sk)
 	return nil
 }
 
-func (s *DynamORMService) QueryByTenant(ctx context.Context, tenantID string, entityType string, items interface{}) error {
+func (s *DynamORMService) QueryByTenant(_ context.Context, tenantID string, entityType string, items interface{}) error {
 	// In real implementation, this would query the tenant GSI
 	fmt.Printf("DynamORM: Querying tenant %s for entity type %s\n", tenantID, entityType)
 	return nil

@@ -715,7 +715,7 @@ func (p *PodChaosController) GetType() ChaosControllerType {
 }
 
 // Initialize initializes the pod chaos controller
-func (p *PodChaosController) Initialize(ctx context.Context, config *KubernetesConfig) error {
+func (p *PodChaosController) Initialize(_ context.Context, config *KubernetesConfig) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -726,7 +726,7 @@ func (p *PodChaosController) Initialize(ctx context.Context, config *KubernetesC
 }
 
 // CreateChaosExperiment creates a pod chaos experiment
-func (p *PodChaosController) CreateChaosExperiment(ctx context.Context, spec *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
+func (p *PodChaosController) CreateChaosExperiment(_ context.Context, spec *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -745,7 +745,7 @@ func (p *PodChaosController) CreateChaosExperiment(ctx context.Context, spec *Ch
 }
 
 // MonitorExperiment monitors a pod chaos experiment
-func (p *PodChaosController) MonitorExperiment(ctx context.Context, experimentID string) (*ExperimentStatusInfo, error) {
+func (p *PodChaosController) MonitorExperiment(_ context.Context, experimentID string) (*ExperimentStatusInfo, error) {
 	// Implementation would include actual experiment monitoring
 	return &ExperimentStatusInfo{
 		ExperimentID: experimentID,
@@ -756,7 +756,7 @@ func (p *PodChaosController) MonitorExperiment(ctx context.Context, experimentID
 }
 
 // StopExperiment stops a pod chaos experiment
-func (p *PodChaosController) StopExperiment(ctx context.Context, experimentID string) error {
+func (p *PodChaosController) StopExperiment(_ context.Context, experimentID string) error {
 	// Implementation would include actual experiment stopping
 	return nil
 }
@@ -780,7 +780,7 @@ func (p *PodChaosController) ValidateSpec(spec *ChaosExperimentSpec) error {
 }
 
 // Cleanup cleans up controller resources
-func (p *PodChaosController) Cleanup(ctx context.Context) error {
+func (p *PodChaosController) Cleanup(_ context.Context) error {
 	// Implementation would include actual cleanup
 	return nil
 }
@@ -856,17 +856,17 @@ type DashboardManager struct{}
 type EventProcessor struct{}
 
 // Placeholder constructor functions
-func NewCRDManager(config *KubernetesConfig) (*CRDManager, error) {
+func NewCRDManager(_ *KubernetesConfig) (*CRDManager, error) {
 	return &CRDManager{}, nil
 }
 
-func NewChaosOperatorManager(config *KubernetesConfig) (*ChaosOperatorManager, error) {
+func NewChaosOperatorManager(_ *KubernetesConfig) (*ChaosOperatorManager, error) {
 	return &ChaosOperatorManager{
 		operators: make(map[string]*ChaosOperator),
 	}, nil
 }
 
-func NewKubernetesMonitoringSystem(config *KubernetesConfig) (*KubernetesMonitoringSystem, error) {
+func NewKubernetesMonitoringSystem(_ *KubernetesConfig) (*KubernetesMonitoringSystem, error) {
 	return &KubernetesMonitoringSystem{}, nil
 }
 
@@ -879,11 +879,11 @@ func (n *NetworkChaosController) GetType() ChaosControllerType {
 	return NetworkChaosControllerType
 }
 
-func (n *NetworkChaosController) Initialize(ctx context.Context, config *KubernetesConfig) error {
+func (n *NetworkChaosController) Initialize(_ context.Context, _ *KubernetesConfig) error {
 	return nil
 }
 
-func (n *NetworkChaosController) CreateChaosExperiment(ctx context.Context, spec *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
+func (n *NetworkChaosController) CreateChaosExperiment(_ context.Context, _ *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
 	return &ChaosExperimentResult{
 		ExperimentID: fmt.Sprintf("network-chaos-%d", time.Now().Unix()),
 		Status:       ExperimentStatusRunning,
@@ -891,7 +891,7 @@ func (n *NetworkChaosController) CreateChaosExperiment(ctx context.Context, spec
 	}, nil
 }
 
-func (n *NetworkChaosController) MonitorExperiment(ctx context.Context, experimentID string) (*ExperimentStatusInfo, error) {
+func (n *NetworkChaosController) MonitorExperiment(_ context.Context, experimentID string) (*ExperimentStatusInfo, error) {
 	return &ExperimentStatusInfo{
 		ExperimentID: experimentID,
 		Status:       ExperimentStatusRunning,
@@ -900,7 +900,7 @@ func (n *NetworkChaosController) MonitorExperiment(ctx context.Context, experime
 	}, nil
 }
 
-func (n *NetworkChaosController) StopExperiment(ctx context.Context, experimentID string) error {
+func (n *NetworkChaosController) StopExperiment(_ context.Context, _ string) error {
 	return nil
 }
 
@@ -912,11 +912,11 @@ func (n *NetworkChaosController) GetSupportedFaults() []FaultType {
 	}
 }
 
-func (n *NetworkChaosController) ValidateSpec(spec *ChaosExperimentSpec) error {
+func (n *NetworkChaosController) ValidateSpec(_ *ChaosExperimentSpec) error {
 	return nil
 }
 
-func (n *NetworkChaosController) Cleanup(ctx context.Context) error {
+func (n *NetworkChaosController) Cleanup(_ context.Context) error {
 	return nil
 }
 
@@ -929,11 +929,11 @@ func (s *StressChaosController) GetType() ChaosControllerType {
 	return StressChaosControllerType
 }
 
-func (s *StressChaosController) Initialize(ctx context.Context, config *KubernetesConfig) error {
+func (s *StressChaosController) Initialize(_ context.Context, _ *KubernetesConfig) error {
 	return nil
 }
 
-func (s *StressChaosController) CreateChaosExperiment(ctx context.Context, spec *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
+func (s *StressChaosController) CreateChaosExperiment(_ context.Context, _ *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
 	return &ChaosExperimentResult{
 		ExperimentID: fmt.Sprintf("stress-chaos-%d", time.Now().Unix()),
 		Status:       ExperimentStatusRunning,
@@ -941,7 +941,7 @@ func (s *StressChaosController) CreateChaosExperiment(ctx context.Context, spec 
 	}, nil
 }
 
-func (s *StressChaosController) MonitorExperiment(ctx context.Context, experimentID string) (*ExperimentStatusInfo, error) {
+func (s *StressChaosController) MonitorExperiment(_ context.Context, experimentID string) (*ExperimentStatusInfo, error) {
 	return &ExperimentStatusInfo{
 		ExperimentID: experimentID,
 		Status:       ExperimentStatusRunning,
@@ -950,7 +950,7 @@ func (s *StressChaosController) MonitorExperiment(ctx context.Context, experimen
 	}, nil
 }
 
-func (s *StressChaosController) StopExperiment(ctx context.Context, experimentID string) error {
+func (s *StressChaosController) StopExperiment(_ context.Context, _ string) error {
 	return nil
 }
 
@@ -962,11 +962,11 @@ func (s *StressChaosController) GetSupportedFaults() []FaultType {
 	}
 }
 
-func (s *StressChaosController) ValidateSpec(spec *ChaosExperimentSpec) error {
+func (s *StressChaosController) ValidateSpec(_ *ChaosExperimentSpec) error {
 	return nil
 }
 
-func (s *StressChaosController) Cleanup(ctx context.Context) error {
+func (s *StressChaosController) Cleanup(_ context.Context) error {
 	return nil
 }
 
@@ -979,11 +979,11 @@ func (i *IOChaosController) GetType() ChaosControllerType {
 	return IOChaosControllerType
 }
 
-func (i *IOChaosController) Initialize(ctx context.Context, config *KubernetesConfig) error {
+func (i *IOChaosController) Initialize(_ context.Context, _ *KubernetesConfig) error {
 	return nil
 }
 
-func (i *IOChaosController) CreateChaosExperiment(ctx context.Context, spec *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
+func (i *IOChaosController) CreateChaosExperiment(_ context.Context, _ *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
 	return &ChaosExperimentResult{
 		ExperimentID: fmt.Sprintf("io-chaos-%d", time.Now().Unix()),
 		Status:       ExperimentStatusRunning,
@@ -991,7 +991,7 @@ func (i *IOChaosController) CreateChaosExperiment(ctx context.Context, spec *Cha
 	}, nil
 }
 
-func (i *IOChaosController) MonitorExperiment(ctx context.Context, experimentID string) (*ExperimentStatusInfo, error) {
+func (i *IOChaosController) MonitorExperiment(_ context.Context, experimentID string) (*ExperimentStatusInfo, error) {
 	return &ExperimentStatusInfo{
 		ExperimentID: experimentID,
 		Status:       ExperimentStatusRunning,
@@ -1000,7 +1000,7 @@ func (i *IOChaosController) MonitorExperiment(ctx context.Context, experimentID 
 	}, nil
 }
 
-func (i *IOChaosController) StopExperiment(ctx context.Context, experimentID string) error {
+func (i *IOChaosController) StopExperiment(_ context.Context, _ string) error {
 	return nil
 }
 
@@ -1010,11 +1010,11 @@ func (i *IOChaosController) GetSupportedFaults() []FaultType {
 	}
 }
 
-func (i *IOChaosController) ValidateSpec(spec *ChaosExperimentSpec) error {
+func (i *IOChaosController) ValidateSpec(_ *ChaosExperimentSpec) error {
 	return nil
 }
 
-func (i *IOChaosController) Cleanup(ctx context.Context) error {
+func (i *IOChaosController) Cleanup(_ context.Context) error {
 	return nil
 }
 
@@ -1027,11 +1027,11 @@ func (t *TimeChaosController) GetType() ChaosControllerType {
 	return TimeChaosControllerType
 }
 
-func (t *TimeChaosController) Initialize(ctx context.Context, config *KubernetesConfig) error {
+func (t *TimeChaosController) Initialize(_ context.Context, _ *KubernetesConfig) error {
 	return nil
 }
 
-func (t *TimeChaosController) CreateChaosExperiment(ctx context.Context, spec *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
+func (t *TimeChaosController) CreateChaosExperiment(_ context.Context, _ *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
 	return &ChaosExperimentResult{
 		ExperimentID: fmt.Sprintf("time-chaos-%d", time.Now().Unix()),
 		Status:       ExperimentStatusRunning,
@@ -1039,7 +1039,7 @@ func (t *TimeChaosController) CreateChaosExperiment(ctx context.Context, spec *C
 	}, nil
 }
 
-func (t *TimeChaosController) MonitorExperiment(ctx context.Context, experimentID string) (*ExperimentStatusInfo, error) {
+func (t *TimeChaosController) MonitorExperiment(_ context.Context, experimentID string) (*ExperimentStatusInfo, error) {
 	return &ExperimentStatusInfo{
 		ExperimentID: experimentID,
 		Status:       ExperimentStatusRunning,
@@ -1048,7 +1048,7 @@ func (t *TimeChaosController) MonitorExperiment(ctx context.Context, experimentI
 	}, nil
 }
 
-func (t *TimeChaosController) StopExperiment(ctx context.Context, experimentID string) error {
+func (t *TimeChaosController) StopExperiment(_ context.Context, _ string) error {
 	return nil
 }
 
@@ -1058,11 +1058,11 @@ func (t *TimeChaosController) GetSupportedFaults() []FaultType {
 	}
 }
 
-func (t *TimeChaosController) ValidateSpec(spec *ChaosExperimentSpec) error {
+func (t *TimeChaosController) ValidateSpec(_ *ChaosExperimentSpec) error {
 	return nil
 }
 
-func (t *TimeChaosController) Cleanup(ctx context.Context) error {
+func (t *TimeChaosController) Cleanup(_ context.Context) error {
 	return nil
 }
 
