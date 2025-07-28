@@ -109,7 +109,7 @@ func (auth *APIKeyAuthorizer) getIdentitySource(props *APIKeyAuthorizerProps) st
 }
 
 // generateAPIKeyValidatorCode generates the Lambda code for API key validation
-func generateAPIKeyValidatorCode(source, parameter, tableName string) string {
+func generateAPIKeyValidatorCode(_, _, _ string) string {
 	return `const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 

@@ -71,22 +71,22 @@ func (c *Context) ParseJSON(target any) error {
 // noOpLogger is a fallback logger that does nothing
 type noOpLogger struct{}
 
-func (l *noOpLogger) Debug(msg string, fields ...map[string]any) {}
-func (l *noOpLogger) Info(msg string, fields ...map[string]any)  {}
-func (l *noOpLogger) Warn(msg string, fields ...map[string]any)  {}
-func (l *noOpLogger) Error(msg string, fields ...map[string]any) {}
-func (l *noOpLogger) Fatal(msg string, fields ...map[string]any) {}
+func (l *noOpLogger) Debug(_ string, _ ...map[string]any) {}
+func (l *noOpLogger) Info(_ string, _ ...map[string]any)  {}
+func (l *noOpLogger) Warn(_ string, _ ...map[string]any)  {}
+func (l *noOpLogger) Error(_ string, _ ...map[string]any) {}
+func (l *noOpLogger) Fatal(_ string, _ ...map[string]any) {}
 
 // lift.Logger interface methods
-func (l *noOpLogger) WithField(key string, value any) lift.Logger  { return l }
-func (l *noOpLogger) WithFields(fields map[string]any) lift.Logger { return l }
+func (l *noOpLogger) WithField(_ string, _ any) lift.Logger  { return l }
+func (l *noOpLogger) WithFields(_ map[string]any) lift.Logger { return l }
 
 // StructuredLogger interface methods
-func (l *noOpLogger) WithRequestID(requestID string) observability.StructuredLogger { return l }
-func (l *noOpLogger) WithTenantID(tenantID string) observability.StructuredLogger   { return l }
-func (l *noOpLogger) WithUserID(userID string) observability.StructuredLogger       { return l }
-func (l *noOpLogger) WithTraceID(traceID string) observability.StructuredLogger     { return l }
-func (l *noOpLogger) WithSpanID(spanID string) observability.StructuredLogger       { return l }
+func (l *noOpLogger) WithRequestID(_ string) observability.StructuredLogger { return l }
+func (l *noOpLogger) WithTenantID(_ string) observability.StructuredLogger   { return l }
+func (l *noOpLogger) WithUserID(_ string) observability.StructuredLogger       { return l }
+func (l *noOpLogger) WithTraceID(_ string) observability.StructuredLogger     { return l }
+func (l *noOpLogger) WithSpanID(_ string) observability.StructuredLogger       { return l }
 
 func (l *noOpLogger) Flush(ctx context.Context) error     { return nil }
 func (l *noOpLogger) Close() error                        { return nil }

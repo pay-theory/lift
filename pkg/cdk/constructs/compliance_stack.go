@@ -488,7 +488,7 @@ func createComplianceFunction(scope constructs.Construct, props *ComplianceStack
 }
 
 // createComplianceReports creates compliance reporting automation
-func createComplianceReports(scope constructs.Construct, props *ComplianceStackProps, bucket awss3.Bucket, complianceFunction awslambda.Function) {
+func createComplianceReports(scope constructs.Construct, props *ComplianceStackProps, _ awss3.Bucket, _ awslambda.Function) {
 	// Create EventBridge rule for daily compliance reports
 	// This would trigger the compliance function daily to generate reports
 

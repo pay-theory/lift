@@ -654,7 +654,7 @@ func createAuditDashboard(scope constructs.Construct, props *AuditingProps, appL
 }
 
 // createAuditAlarms creates CloudWatch alarms for audit monitoring
-func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogGroup awslogs.LogGroup, dbLogGroup awslogs.LogGroup, auditLogGroup awslogs.LogGroup) []awscloudwatch.Alarm {
+func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogGroup awslogs.LogGroup, _ awslogs.LogGroup, auditLogGroup awslogs.LogGroup) []awscloudwatch.Alarm {
 	var alarms []awscloudwatch.Alarm
 
 	// Failed login attempts alarm
@@ -750,7 +750,7 @@ func (a *AuditingConstruct) AddCustomAuditRule(ruleId string, logGroup awslogs.L
 }
 
 // EnableSIEMIntegration enables SIEM integration for audit logs
-func (a *AuditingConstruct) EnableSIEMIntegration(endpoint string) {
+func (a *AuditingConstruct) EnableSIEMIntegration(_ string) {
 	// Create a destination for SIEM integration
 	// This would typically involve creating a subscription filter
 	// to forward logs to external SIEM systems

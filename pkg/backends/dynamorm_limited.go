@@ -23,7 +23,7 @@ func NewDynamORMBackend() *DynamORMBackend {
 }
 
 // Increment atomically increments the counter for the given key and window
-func (b *DynamORMBackend) Increment(_ context.Context, key string, window time.Time) (int64, error) {
+func (b *DynamORMBackend) Increment(_ context.Context, _ string, _ time.Time) (int64, error) {
 	// This is a placeholder showing the pattern
 	// In a real implementation, this would use DynamORM's UpdateBuilder
 
@@ -45,7 +45,7 @@ func (b *DynamORMBackend) Increment(_ context.Context, key string, window time.T
 }
 
 // Get retrieves the current count for the given key and window
-func (b *DynamORMBackend) Get(_ context.Context, key string, window time.Time) (int64, error) {
+func (b *DynamORMBackend) Get(_ context.Context, _ string, _ time.Time) (int64, error) {
 	// Pseudo-code for DynamORM query:
 	// var record models.RateLimitRecord
 	// result := b.db.Model(&models.RateLimitRecord{}).
@@ -58,7 +58,7 @@ func (b *DynamORMBackend) Get(_ context.Context, key string, window time.Time) (
 }
 
 // Reset removes the rate limit entry for the given key and window
-func (b *DynamORMBackend) Reset(_ context.Context, key string, window time.Time) error {
+func (b *DynamORMBackend) Reset(_ context.Context, _ string, _ time.Time) error {
 	// Pseudo-code for DynamORM delete:
 	// result := b.db.Model(&models.RateLimitRecord{}).
 	//     Where("Identifier", "=", key).
@@ -69,13 +69,13 @@ func (b *DynamORMBackend) Reset(_ context.Context, key string, window time.Time)
 }
 
 // IncrementBy atomically increments the counter by the specified amount
-func (b *DynamORMBackend) IncrementBy(_ context.Context, key string, window time.Time, amount int64) (int64, error) {
+func (b *DynamORMBackend) IncrementBy(_ context.Context, _ string, _ time.Time, amount int64) (int64, error) {
 	// Similar to Increment but with a custom amount
 	return amount, nil
 }
 
 // GetMultiple retrieves counts for multiple windows (for sliding window rate limiting)
-func (b *DynamORMBackend) GetMultiple(_ context.Context, key string, windows []time.Time) (map[time.Time]int64, error) {
+func (b *DynamORMBackend) GetMultiple(_ context.Context, _ string, windows []time.Time) (map[time.Time]int64, error) {
 	counts := make(map[time.Time]int64)
 
 	// Pseudo-code for batch get:
@@ -99,7 +99,7 @@ func (b *DynamORMBackend) GetMultiple(_ context.Context, key string, windows []t
 }
 
 // SetMetadata associates metadata with a rate limit key (e.g., IP, UserID, TenantID)
-func (b *DynamORMBackend) SetMetadata(_ context.Context, key string, window time.Time, metadata map[string]string) error {
+func (b *DynamORMBackend) SetMetadata(_ context.Context, _ string, _ time.Time, _ map[string]string) error {
 	// Pseudo-code for updating metadata:
 	// update := b.db.Model(&models.RateLimitRecord{}).
 	//     Where("Identifier", "=", key).

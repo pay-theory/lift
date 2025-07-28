@@ -42,7 +42,7 @@ func NewDynamORMTestHelper(t *testing.T) *DynamORMTestHelper {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(region),
 		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			func(service, _ string, _ ...interface{}) (aws.Endpoint, error) {
 				if service == dynamodb.ServiceID && endpoint != "" {
 					return aws.Endpoint{
 						URL: endpoint,

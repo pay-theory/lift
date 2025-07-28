@@ -95,7 +95,7 @@ func (e *DynamORMTestEnvironment) GetDynamoDBClient(t *testing.T) *dynamodb.Clie
 		cfg, err = config.LoadDefaultConfig(context.TODO(),
 			config.WithRegion(e.Region),
 			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+				func(service, _ string, _ ...interface{}) (aws.Endpoint, error) {
 					if service == dynamodb.ServiceID {
 						return aws.Endpoint{
 							URL: e.LocalEndpoint,

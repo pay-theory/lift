@@ -482,11 +482,11 @@ func (s *SOC2TypeIICompliance) calculateOverallStatus(controls map[string]*Contr
 
 	if passing == total {
 		return CompliantStatus
-	} else if passing > total/2 {
-		return PartiallyCompliant
-	} else {
-		return NonCompliantStatus
 	}
+	if passing > total/2 {
+		return PartiallyCompliant
+	}
+	return NonCompliantStatus
 }
 
 func (s *SOC2TypeIICompliance) calculateControlStatus(testResults map[string]*ComplianceTestResult) ControlStatus {
@@ -501,9 +501,8 @@ func (s *SOC2TypeIICompliance) calculateControlStatus(testResults map[string]*Co
 
 	if passed == total {
 		return ControlPassing
-	} else {
-		return ControlFailing
 	}
+	return ControlFailing
 }
 
 func (s *SOC2TypeIICompliance) evaluateTestResult(actual, expected any) ComplianceTestStatus {

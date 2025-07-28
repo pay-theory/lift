@@ -462,7 +462,7 @@ func (e *EventOrchestrator) enableMonitoring(props *EventOrchestratorProps) {
 }
 
 // createMonitoringDashboard creates a basic dashboard for the event orchestrator
-func (e *EventOrchestrator) createMonitoringDashboard(appName string, alertTopic awssns.ITopic) {
+func (e *EventOrchestrator) createMonitoringDashboard(appName string, _ awssns.ITopic) {
 	// Create a basic dashboard
 	awscloudwatch.NewDashboard(e, jsii.String("Dashboard"), &awscloudwatch.DashboardProps{
 		DashboardName: jsii.String(fmt.Sprintf("%s-event-orchestrator", appName)),
@@ -485,7 +485,7 @@ func (e *EventOrchestrator) GrantEventRoutingAccess(grantee awslambda.IFunction)
 }
 
 // AddEventSource adds a new event source to the orchestrator
-func (e *EventOrchestrator) AddEventSource(sourceConfig EventSourceConfig) {
+func (e *EventOrchestrator) AddEventSource(_ EventSourceConfig) {
 	// TODO: Implement dynamic event source addition
 	// This would create a new EventBridgeHandler and add it to the orchestrator
 }

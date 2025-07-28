@@ -248,7 +248,7 @@ func NewEventDrivenAPI(scope constructs.Construct, id *string, props *EventDrive
 }
 
 // enableMonitoring adds CloudWatch alarms and metrics
-func (e *EventDrivenAPI) enableMonitoring(props *EventDrivenAPIProps) {
+func (e *EventDrivenAPI) enableMonitoring(_ *EventDrivenAPIProps) {
 	// Basic monitoring implementation with Lambda function metrics only
 	if e.APIFunction != nil {
 		function := e.APIFunction.GetFunction()

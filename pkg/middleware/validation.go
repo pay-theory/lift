@@ -103,11 +103,7 @@ func validateRequest(ctx *lift.Context, config ValidationConfig) error {
 	}
 
 	// Validate request body
-	if err := validateRequestBody(ctx, config); err != nil {
-		return err
-	}
-
-	return nil
+	return validateRequestBody(ctx, config)
 }
 
 // validateRequestSize validates the request body size

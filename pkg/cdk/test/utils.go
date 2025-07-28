@@ -178,7 +178,7 @@ func (lst *LiftStackTester) AssertLiftAPI(apiName string, hasCORS bool) {
 }
 
 // AssertLiftTable asserts Lift DynamoDB table configuration
-func (lst *LiftStackTester) AssertLiftTable(tableName string, hasGSI bool, hasStreams bool) {
+func (lst *LiftStackTester) AssertLiftTable(tableName string, _ bool, hasStreams bool) {
 	tableProps := map[string]interface{}{
 		"TableName": tableName,
 		"AttributeDefinitions": []map[string]string{

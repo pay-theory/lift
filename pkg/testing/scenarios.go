@@ -82,7 +82,7 @@ func (lt *LoadTester) RunLoadTest(ctx context.Context, request func(*TestApp) *T
 
 	// Start workers
 	for i := 0; i < lt.config.ConcurrentUsers; i++ {
-		go func(workerID int) {
+		go func(_ int) {
 			for {
 				select {
 				case <-ctx.Done():
@@ -681,7 +681,7 @@ func RateLimitingScenarios(endpoint string, limit int) []TestScenario {
 				// Return the last successful request
 				return app.GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				resp.AssertRateLimitHeaders()
 				resp.AssertRateLimitRemaining(0)
@@ -700,7 +700,7 @@ func RateLimitingScenarios(endpoint string, limit int) []TestScenario {
 			Request: func(app *TestApp) *TestResponse {
 				return app.GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertRateLimitExceeded()
 			},
 		},
@@ -710,7 +710,7 @@ func RateLimitingScenarios(endpoint string, limit int) []TestScenario {
 			Request: func(app *TestApp) *TestResponse {
 				return app.GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertRateLimitHeaders()
 				resp.AssertRateLimitLimit(limit)
 			},
@@ -738,7 +738,7 @@ func MultiTenantScenarios(endpoint string) []TestScenario {
 					Token:    "valid-token",
 				}).GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				resp.AssertTenantIsolation("tenant-1")
 			},
@@ -752,7 +752,7 @@ func MultiTenantScenarios(endpoint string) []TestScenario {
 					// No TenantID
 				}).GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(400)
 				resp.AssertJSONPath("$.error", "Tenant ID required")
 			},
@@ -777,7 +777,7 @@ func MultiTenantScenarios(endpoint string) []TestScenario {
 					Token:    "valid-token",
 				}).GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				// Should return empty results, not tenant-1's data
 				resp.AssertJSONPathCount("$.data", 0)
@@ -800,7 +800,7 @@ func AuthenticationScenarios(endpoint string) []TestScenario {
 					TenantID: "test-tenant",
 				}).GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 			},
 		},
@@ -810,7 +810,7 @@ func AuthenticationScenarios(endpoint string) []TestScenario {
 			Request: func(app *TestApp) *TestResponse {
 				return app.ClearHeaders().GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertUnauthorized()
 			},
 		},
@@ -822,7 +822,7 @@ func AuthenticationScenarios(endpoint string) []TestScenario {
 					Token: "invalid-token",
 				}).GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertUnauthorized()
 			},
 		},
@@ -834,7 +834,7 @@ func AuthenticationScenarios(endpoint string) []TestScenario {
 					Token: "expired-token",
 				}).GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertUnauthorized()
 			},
 		},
@@ -854,7 +854,7 @@ func CRUDScenarios(basePath string, createData, updateData map[string]any) []Tes
 			Request: func(app *TestApp) *TestResponse {
 				return app.POST(basePath, createData)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(201)
 				resp.AssertJSONPathExists("$.id")
 				// Store the created ID for subsequent tests
@@ -867,7 +867,7 @@ func CRUDScenarios(basePath string, createData, updateData map[string]any) []Tes
 			Request: func(app *TestApp) *TestResponse {
 				return app.GET(fmt.Sprintf("%s/%s", basePath, createdID), nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				resp.AssertJSONPath("$.id", createdID)
 			},
@@ -878,7 +878,7 @@ func CRUDScenarios(basePath string, createData, updateData map[string]any) []Tes
 			Request: func(app *TestApp) *TestResponse {
 				return app.PUT(fmt.Sprintf("%s/%s", basePath, createdID), updateData)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				resp.AssertJSONPath("$.id", createdID)
 				// Verify update data
@@ -893,7 +893,7 @@ func CRUDScenarios(basePath string, createData, updateData map[string]any) []Tes
 			Request: func(app *TestApp) *TestResponse {
 				return app.GET(basePath, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				resp.AssertJSONPathExists("$.data")
 				// Should contain at least one item
@@ -906,7 +906,7 @@ func CRUDScenarios(basePath string, createData, updateData map[string]any) []Tes
 			Request: func(app *TestApp) *TestResponse {
 				return app.DELETE(fmt.Sprintf("%s/%s", basePath, createdID))
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(204)
 			},
 		},
@@ -916,7 +916,7 @@ func CRUDScenarios(basePath string, createData, updateData map[string]any) []Tes
 			Request: func(app *TestApp) *TestResponse {
 				return app.GET(fmt.Sprintf("%s/%s", basePath, createdID), nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(404)
 			},
 		},
@@ -934,7 +934,7 @@ func ValidationScenarios(endpoint string, invalidData map[string]any, expectedEr
 			Request: func(app *TestApp) *TestResponse {
 				return app.POST(endpoint, invalidData)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertValidationErrors(expectedErrors)
 			},
 		},
@@ -944,7 +944,7 @@ func ValidationScenarios(endpoint string, invalidData map[string]any, expectedEr
 			Request: func(app *TestApp) *TestResponse {
 				return app.POST(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(400)
 			},
 		},
@@ -955,7 +955,7 @@ func ValidationScenarios(endpoint string, invalidData map[string]any, expectedEr
 				// This would need to be implemented to send raw malformed JSON
 				return app.POST(endpoint, "invalid-json")
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(400)
 				resp.AssertJSONPath("$.error", "Invalid JSON")
 			},
@@ -999,7 +999,7 @@ func PaginationScenarios(endpoint string, totalItems int) []TestScenario {
 			Request: func(app *TestApp) *TestResponse {
 				return app.GET(endpoint, nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				resp.AssertPagination(totalItems, 1, 10) // Assuming default page size of 10
 			},
@@ -1012,7 +1012,7 @@ func PaginationScenarios(endpoint string, totalItems int) []TestScenario {
 					"per_page": "5",
 				})
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				resp.AssertJSONPath("$.pagination.per_page", 5)
 				resp.AssertJSONPathCount("$.data", 5)
@@ -1027,7 +1027,7 @@ func PaginationScenarios(endpoint string, totalItems int) []TestScenario {
 					"per_page": "5",
 				})
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(200)
 				resp.AssertJSONPath("$.pagination.page", 2)
 				resp.AssertHasPrevPage()
@@ -1047,7 +1047,7 @@ func ErrorHandlingScenarios() []TestScenario {
 			Request: func(app *TestApp) *TestResponse {
 				return app.GET("/api/nonexistent/12345", nil)
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(404)
 				resp.AssertJSONPath("$.error", "Not found")
 			},
@@ -1058,7 +1058,7 @@ func ErrorHandlingScenarios() []TestScenario {
 			Request: func(app *TestApp) *TestResponse {
 				return app.PATCH("/api/readonly-endpoint", map[string]any{})
 			},
-			Assertions: func(t *testing.T, resp *TestResponse) {
+			Assertions: func(_ *testing.T, resp *TestResponse) {
 				resp.AssertStatus(405)
 				resp.AssertHeaderExists("Allow")
 			},

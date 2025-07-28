@@ -600,7 +600,7 @@ func (g *GDPRCompleteService) collectFromTable(ctx context.Context, tableName st
 	return g.queryUserData(ctx, tableName, dataSubjectID)
 }
 
-func (g *GDPRCompleteService) queryUserData(ctx context.Context, tableName string, dataSubjectID string) ([]map[string]interface{}, error) {
+func (g *GDPRCompleteService) queryUserData(_ context.Context, _ string, _ string) ([]map[string]interface{}, error) {
 	// This is a simplified implementation - in practice, you'd need to know
 	// the specific query patterns for each table
 	// TODO: Implement using DynamORM Query methods
@@ -617,12 +617,11 @@ func (g *GDPRCompleteService) queryUserData(ctx context.Context, tableName strin
 	// }
 
 	var items []map[string]interface{}
-	_ = dataSubjectID // Currently unused but will be used in DynamORM implementation
 
 	return items, nil
 }
 
-func (g *GDPRCompleteService) deleteItem(ctx context.Context, tableName string, item map[string]interface{}) error {
+func (g *GDPRCompleteService) deleteItem(_ context.Context, tableName string, item map[string]interface{}) error {
 	// Extract primary key from item
 	key := make(map[string]types.AttributeValue)
 
@@ -664,7 +663,7 @@ func (g *GDPRCompleteService) shouldRetainData(item map[string]interface{}, tabl
 	return false, ""
 }
 
-func (g *GDPRCompleteService) deleteUserFiles(ctx context.Context, dataSubjectID string) error {
+func (g *GDPRCompleteService) deleteUserFiles(_ context.Context, dataSubjectID string) error {
 	if g.s3Client == nil {
 		return nil // S3 not configured, skip file deletion
 	}
@@ -705,7 +704,7 @@ func (g *GDPRCompleteService) encryptData(data []byte) ([]byte, []byte, error) {
 	return ciphertext, key, nil
 }
 
-func (g *GDPRCompleteService) uploadToS3(ctx context.Context, bucket, key string, data []byte) error {
+func (g *GDPRCompleteService) uploadToS3(_ context.Context, bucket, key string, data []byte) error {
 	if g.s3Client == nil {
 		return fmt.Errorf("S3 client not configured")
 	}
@@ -775,7 +774,7 @@ func (g *GDPRCompleteService) getUserAgent(ctx context.Context) string {
 	return "unknown"
 }
 
-func (g *GDPRCompleteService) getNextConsentVersion(ctx context.Context, dataSubjectID string) string {
+func (g *GDPRCompleteService) getNextConsentVersion(_ context.Context, _ string) string {
 	// Query existing consents to determine next version
 	return fmt.Sprintf("v%d", time.Now().Unix())
 }
@@ -803,14 +802,14 @@ func (g *GDPRCompleteService) validateConsentCategories(consent ConsentUpdate) e
 	return nil
 }
 
-func (g *GDPRCompleteService) updateProcessingRules(ctx context.Context, dataSubjectID string, consent ConsentUpdate) error {
+func (g *GDPRCompleteService) updateProcessingRules(_ context.Context, dataSubjectID string, consent ConsentUpdate) error {
 	// Update processing rules based on consent
 	// This would integrate with your application's processing logic
 	log.Printf("Updated processing rules for %s: %v", dataSubjectID, consent.Categories)
 	return nil
 }
 
-func (g *GDPRCompleteService) sendDeletionNotification(ctx context.Context, record *DataDeletionRecord) error {
+func (g *GDPRCompleteService) sendDeletionNotification(_ context.Context, record *DataDeletionRecord) error {
 	if g.sesClient == nil {
 		return nil // Email not configured
 	}
@@ -820,7 +819,7 @@ func (g *GDPRCompleteService) sendDeletionNotification(ctx context.Context, reco
 	return nil
 }
 
-func (g *GDPRCompleteService) sendExportNotification(ctx context.Context, record *DataExportRecord) error {
+func (g *GDPRCompleteService) sendExportNotification(_ context.Context, record *DataExportRecord) error {
 	if g.sesClient == nil {
 		return nil // Email not configured
 	}
@@ -830,7 +829,7 @@ func (g *GDPRCompleteService) sendExportNotification(ctx context.Context, record
 	return nil
 }
 
-func (g *GDPRCompleteService) sendBreachNotification(ctx context.Context, record *PrivacyBreachRecord) error {
+func (g *GDPRCompleteService) sendBreachNotification(_ context.Context, record *PrivacyBreachRecord) error {
 	if g.snsClient == nil {
 		return nil // SNS not configured
 	}
@@ -880,53 +879,53 @@ type PrivacyBreachRecord struct {
 
 // Audit Logger Implementation
 
-func (al *GDPRAuditLogger) StartOperation(ctx context.Context, operation, dataSubjectID string) string {
+func (al *GDPRAuditLogger) StartOperation(_ context.Context, operation, dataSubjectID string) string {
 	auditID := uuid.New().String()
 	// Implementation would create audit trail entry
 	log.Printf("Started %s operation for %s (audit ID: %s)", operation, dataSubjectID, auditID)
 	return auditID
 }
 
-func (al *GDPRAuditLogger) CompleteOperation(ctx context.Context, auditID string) {
+func (al *GDPRAuditLogger) CompleteOperation(_ context.Context, auditID string) {
 	// Implementation would complete audit trail entry
 	log.Printf("Completed operation (audit ID: %s)", auditID)
 }
 
-func (al *GDPRAuditLogger) LogError(ctx context.Context, auditID, message string, metadata map[string]interface{}) {
+func (al *GDPRAuditLogger) LogError(_ context.Context, auditID, message string, metadata map[string]interface{}) {
 	// Implementation would log error to audit trail
 	log.Printf("Error in operation %s: %s %v", auditID, message, metadata)
 }
 
-func (al *GDPRAuditLogger) LogSuccess(ctx context.Context, auditID, message string, metadata map[string]interface{}) {
+func (al *GDPRAuditLogger) LogSuccess(_ context.Context, auditID, message string, metadata map[string]interface{}) {
 	// Implementation would log success to audit trail
 	log.Printf("Success in operation %s: %s %v", auditID, message, metadata)
 }
 
-func (al *GDPRAuditLogger) LogConsentEvent(ctx context.Context, event *security.ConsentEvent) error {
+func (al *GDPRAuditLogger) LogConsentEvent(_ context.Context, event *security.ConsentEvent) error {
 	// Implementation would store consent event
 	log.Printf("Consent event: %s for %s", event.EventType, event.DataSubjectID)
 	return nil
 }
 
-func (al *GDPRAuditLogger) LogDataSubjectRequest(ctx context.Context, request *security.DataSubjectRequestLog) error {
+func (al *GDPRAuditLogger) LogDataSubjectRequest(_ context.Context, request *security.DataSubjectRequestLog) error {
 	// Implementation would store data subject request log
 	log.Printf("Data subject request: %s for %s", request.RequestType, request.DataSubjectID)
 	return nil
 }
 
-func (al *GDPRAuditLogger) LogDataProcessingActivity(ctx context.Context, activity *security.DataProcessingLog) error {
+func (al *GDPRAuditLogger) LogDataProcessingActivity(_ context.Context, activity *security.DataProcessingLog) error {
 	// Implementation would store data processing activity log
 	log.Printf("Data processing activity logged")
 	return nil
 }
 
-func (al *GDPRAuditLogger) LogCrossBorderTransfer(ctx context.Context, transfer *security.CrossBorderTransferLog) error {
+func (al *GDPRAuditLogger) LogCrossBorderTransfer(_ context.Context, transfer *security.CrossBorderTransferLog) error {
 	// Implementation would store cross-border transfer log
 	log.Printf("Cross-border transfer: %s to %s", transfer.SourceCountry, transfer.DestinationCountry)
 	return nil
 }
 
-func (al *GDPRAuditLogger) LogPrivacyBreach(ctx context.Context, breach *security.PrivacyBreachLog) error {
+func (al *GDPRAuditLogger) LogPrivacyBreach(_ context.Context, breach *security.PrivacyBreachLog) error {
 	// Implementation would store privacy breach log
 	log.Printf("Privacy breach: %s (severity: %s)", breach.BreachType, breach.Severity)
 	return nil

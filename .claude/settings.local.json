@@ -71,7 +71,8 @@
       "Bash(go vet:*)",
       "Bash(go install:*)",
       "Bash(fieldalignment:*)",
-      "Bash(./fix-fieldalignment.sh:*)"
+      "Bash(./fix-fieldalignment.sh:*)",
+      "Bash(revive:*)"
     ],
     "deny": []
   }

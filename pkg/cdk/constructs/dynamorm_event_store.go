@@ -358,12 +358,10 @@ func (e *DynamORMEventStore) createSnapshotTable() {
 	e.addSnapshotTableGSIs()
 
 	// Only configure if it's a separate table (not AGGREGATE_TABLE pattern)
-	if e.props.Pattern != EventStorePattern_AGGREGATE_TABLE {
-		// DynamORM configuration is now handled through model struct tags
-		// Multi-tenant GSIs are defined in DynamORM models using tags like:
-		// TenantID string `dynamorm:"index:tenant-entity,pk"`
-		// Future table-specific configuration can be added here
-	}
+	// DynamORM configuration is now handled through model struct tags
+	// Multi-tenant GSIs are defined in DynamORM models using tags like:
+	// TenantID string `dynamorm:"index:tenant-entity,pk"`
+	// Future table-specific configuration can be added here for non-aggregate patterns
 }
 
 // addSnapshotTableGSIs adds Global Secondary Indexes to the snapshot table

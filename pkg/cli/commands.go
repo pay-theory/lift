@@ -697,7 +697,7 @@ func (c *VersionCommand) Name() string        { return "version" }
 func (c *VersionCommand) Description() string { return "Display version information" }
 func (c *VersionCommand) Usage() string       { return "lift version" }
 
-func (c *VersionCommand) Execute(_ context.Context, args []string) error {
+func (c *VersionCommand) Execute(_ context.Context, _ []string) error {
 	fmt.Printf("🚀 Lift Framework\n")
 	fmt.Printf("Version: %s\n", c.version)
 	fmt.Printf("Built with Go: %s\n", "1.21")

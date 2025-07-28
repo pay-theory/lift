@@ -442,10 +442,7 @@ func (m *EnhancedMonitoring) createAlarms(props *EnhancedMonitoringProps) {
 			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 
-		if props.AlertTopic != nil {
-			// AddAlarmAction not available on IAlarm interface
-			// Alert topic integration can be added here when interface is available
-		}
+		// NOTE: Alert topic integration available when AddAlarmAction interface is available
 	}
 
 	// Throttling alarm
@@ -459,10 +456,7 @@ func (m *EnhancedMonitoring) createAlarms(props *EnhancedMonitoringProps) {
 			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 
-		if props.AlertTopic != nil {
-			// AddAlarmAction not available on IAlarm interface
-			// Alert topic integration can be added here when interface is available
-		}
+		// NOTE: Alert topic integration available when AddAlarmAction interface is available
 	}
 
 	// Concurrent executions alarm
@@ -476,10 +470,7 @@ func (m *EnhancedMonitoring) createAlarms(props *EnhancedMonitoringProps) {
 			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
 
-		if props.AlertTopic != nil {
-			// AddAlarmAction not available on IAlarm interface
-			// Alert topic integration can be added here when interface is available
-		}
+		// NOTE: Alert topic integration available when AddAlarmAction interface is available
 	}
 }
 
@@ -579,7 +570,7 @@ func (m *EnhancedMonitoring) createDashboard(props *EnhancedMonitoringProps) {
 	})
 }
 
-func (m *EnhancedMonitoring) createMetricStreams(props *EnhancedMonitoringProps) {
+func (m *EnhancedMonitoring) createMetricStreams(_ *EnhancedMonitoringProps) {
 	// Implementation for real-time metric streaming would go here
 	// This would typically involve setting up Kinesis Data Firehose
 	// and CloudWatch Metric Streams for real-time processing

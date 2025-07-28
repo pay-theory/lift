@@ -392,7 +392,7 @@ func (e *EventBridgeHandler) GetRuleArn() *string {
 // AddEventPattern adds an event pattern to the rule
 // Note: This method is deprecated as EventBridge patterns cannot be modified after rule creation.
 // Create a new EventBridgeHandler with the desired pattern instead.
-func (e *EventBridgeHandler) AddEventPattern(eventPattern *awsevents.EventPattern) error {
+func (e *EventBridgeHandler) AddEventPattern(_ *awsevents.EventPattern) error {
 	// For existing rules, we need to recreate or update the pattern
 	// This is a limitation of EventBridge - patterns cannot be modified after creation
 	// Users should create a new rule with the desired pattern

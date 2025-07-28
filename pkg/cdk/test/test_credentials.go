@@ -36,7 +36,7 @@ func GetTestCredentials(isLocal bool) aws.CredentialsProvider {
 		secretKey = DefaultTestSecretAccessKey
 	}
 
-	return aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+	return aws.CredentialsProviderFunc(func(_ context.Context) (aws.Credentials, error) {
 		return aws.Credentials{
 			AccessKeyID:     accessKey,
 			SecretAccessKey: secretKey,
