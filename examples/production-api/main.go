@@ -103,7 +103,11 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*U
 			Details: err.Error(),
 		}
 	}
-	defer s.pool.Put(resource)
+	defer func() {
+		if err := s.pool.Put(resource); err != nil {
+			log.Printf("Error returning resource to pool: %v", err)
+		}
+	}()
 
 	// Create user
 	user := &User{
@@ -131,7 +135,11 @@ func (s *UserService) GetUser(ctx context.Context, id int) (*User, error) {
 			Details: err.Error(),
 		}
 	}
-	defer s.pool.Put(resource)
+	defer func() {
+		if err := s.pool.Put(resource); err != nil {
+			log.Printf("Error returning resource to pool: %v", err)
+		}
+	}()
 
 	user, exists := s.users[id]
 	if !exists {
@@ -156,7 +164,11 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, req UpdateUserRequ
 			Details: err.Error(),
 		}
 	}
-	defer s.pool.Put(resource)
+	defer func() {
+		if err := s.pool.Put(resource); err != nil {
+			log.Printf("Error returning resource to pool: %v", err)
+		}
+	}()
 
 	user, exists := s.users[id]
 	if !exists {
@@ -203,7 +215,11 @@ func (s *UserService) DeleteUser(ctx context.Context, id int) error {
 			Details: err.Error(),
 		}
 	}
-	defer s.pool.Put(resource)
+	defer func() {
+		if err := s.pool.Put(resource); err != nil {
+			log.Printf("Error returning resource to pool: %v", err)
+		}
+	}()
 
 	_, exists := s.users[id]
 	if !exists {
@@ -229,7 +245,11 @@ func (s *UserService) ListUsers(ctx context.Context) ([]*User, error) {
 			Details: err.Error(),
 		}
 	}
-	defer s.pool.Put(resource)
+	defer func() {
+		if err := s.pool.Put(resource); err != nil {
+			log.Printf("Error returning resource to pool: %v", err)
+		}
+	}()
 
 	users := make([]*User, 0, len(s.users))
 	for _, user := range s.users {
@@ -315,12 +335,18 @@ func NewProductionAPI() *ProductionAPI {
 
 	resourceManagerConfig := resources.DefaultResourceManagerConfig()
 	resourceManager := resources.NewResourceManager(resourceManagerConfig)
-	resourceManager.RegisterPool("database", pool)
+	if err := resourceManager.RegisterPool("database", pool); err != nil {
+		log.Printf("Error registering database pool: %v", err)
+	}
 
 	// Pre-warm the pool
 	preWarmer := resources.NewDefaultPreWarmer("database", 5, 10*time.Second)
-	resourceManager.RegisterPreWarmer("database", preWarmer)
-	resourceManager.PreWarmAll(context.Background())
+	if err := resourceManager.RegisterPreWarmer("database", preWarmer); err != nil {
+		log.Printf("Error registering pre-warmer: %v", err)
+	}
+	if err := resourceManager.PreWarmAll(context.Background()); err != nil {
+		log.Printf("Error pre-warming resources: %v", err)
+	}
 
 	// 2. Setup Health Monitoring
 	healthConfig := health.DefaultHealthManagerConfig()
@@ -330,8 +356,12 @@ func NewProductionAPI() *ProductionAPI {
 	healthManager := health.NewHealthManager(healthConfig)
 
 	// Register health checkers
-	healthManager.RegisterChecker("memory", health.NewMemoryHealthChecker("memory"))
-	healthManager.RegisterChecker("database-pool", health.NewPoolHealthChecker("database-pool", pool))
+	if err := healthManager.RegisterChecker("memory", health.NewMemoryHealthChecker("memory")); err != nil {
+		log.Printf("Error registering memory health checker: %v", err)
+	}
+	if err := healthManager.RegisterChecker("database-pool", health.NewPoolHealthChecker("database-pool", pool)); err != nil {
+		log.Printf("Error registering database pool health checker: %v", err)
+	}
 
 	// Custom business logic health checker
 	businessChecker := health.NewCustomHealthChecker("business-logic", func(ctx context.Context) health.HealthStatus {
@@ -360,11 +390,15 @@ func NewProductionAPI() *ProductionAPI {
 			},
 		}
 	})
-	healthManager.RegisterChecker("business-logic", businessChecker)
+	if err := healthManager.RegisterChecker("business-logic", businessChecker); err != nil {
+		log.Printf("Error registering business logic health checker: %v", err)
+	}
 
 	// HTTP service health checker (external dependency)
 	httpChecker := health.NewHTTPHealthChecker("external-api", "https://httpbin.org/status/200")
-	healthManager.RegisterChecker("external-api", httpChecker)
+	if err := healthManager.RegisterChecker("external-api", httpChecker); err != nil {
+		log.Printf("Error registering external API health checker: %v", err)
+	}
 
 	// 3. Setup Health Endpoints
 	endpointsConfig := health.DefaultHealthEndpointsConfig()
@@ -561,7 +595,9 @@ func (api *ProductionAPI) statusHandler(w http.ResponseWriter, r *http.Request) 
 func (api *ProductionAPI) writeJSONResponse(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("Error encoding JSON response: %v", err)
+	}
 }
 
 func (api *ProductionAPI) writeErrorResponse(w http.ResponseWriter, err error) {
@@ -582,15 +618,19 @@ func (api *ProductionAPI) writeErrorResponse(w http.ResponseWriter, err error) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(apiErr)
+		if err := json.NewEncoder(w).Encode(apiErr); err != nil {
+			log.Printf("Error encoding JSON error response: %v", err)
+		}
 	} else {
 		// Generic error
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(APIError{
+		if encErr := json.NewEncoder(w).Encode(APIError{
 			Type:    "internal",
 			Message: err.Error(),
-		})
+		}); encErr != nil {
+			log.Printf("Error encoding JSON error response: %v", encErr)
+		}
 	}
 }
 
@@ -639,7 +679,7 @@ func (api *ProductionAPI) setupRoutes() *http.ServeMux {
 		}
 
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `
+		_, _ = fmt.Fprintf(w, `
 <!DOCTYPE html>
 <html>
 <head>

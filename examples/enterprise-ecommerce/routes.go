@@ -5,49 +5,97 @@ import (
 )
 
 // setupRoutes configures all the API routes for the e-commerce platform
-func setupRoutes(app *lift.App) {
+func setupRoutes(app *lift.App) error {
 	// API versioning
 	api := app.Group("/api/v1")
 
 	// Health check endpoint
-	api.GET("/health", healthCheck)
+	if err := api.GET("/health", healthCheck); err != nil {
+		return err
+	}
 
 	// Tenant management endpoints (admin only)
 	tenants := api.Group("/tenants")
-	tenants.POST("", createTenantHandler)
-	tenants.GET("", listTenantsHandler)
-	tenants.GET("/:id", getTenantHandler)
+	if err := tenants.POST("", createTenantHandler); err != nil {
+		return err
+	}
+	if err := tenants.GET("", listTenantsHandler); err != nil {
+		return err
+	}
+	if err := tenants.GET("/:id", getTenantHandler); err != nil {
+		return err
+	}
 
 	// Product management endpoints (tenant-scoped)
 	products := api.Group("/products")
-	products.POST("", createProductHandler)
-	products.GET("", listProductsHandler)
-	products.GET("/search", searchProductsHandler)
-	products.GET("/:id", getProductHandler)
-	products.PUT("/:id/inventory", updateInventoryHandler)
+	if err := products.POST("", createProductHandler); err != nil {
+		return err
+	}
+	if err := products.GET("", listProductsHandler); err != nil {
+		return err
+	}
+	if err := products.GET("/search", searchProductsHandler); err != nil {
+		return err
+	}
+	if err := products.GET("/:id", getProductHandler); err != nil {
+		return err
+	}
+	if err := products.PUT("/:id/inventory", updateInventoryHandler); err != nil {
+		return err
+	}
 
 	// Customer management endpoints (tenant-scoped)
 	customers := api.Group("/customers")
-	customers.POST("", createCustomerHandler)
-	customers.GET("", listCustomersHandler)
-	customers.GET("/:id", getCustomerHandler)
-	customers.POST("/auth", authenticateCustomerHandler)
-	customers.GET("/:id/orders", getCustomerOrdersHandler)
+	if err := customers.POST("", createCustomerHandler); err != nil {
+		return err
+	}
+	if err := customers.GET("", listCustomersHandler); err != nil {
+		return err
+	}
+	if err := customers.GET("/:id", getCustomerHandler); err != nil {
+		return err
+	}
+	if err := customers.POST("/auth", authenticateCustomerHandler); err != nil {
+		return err
+	}
+	if err := customers.GET("/:id/orders", getCustomerOrdersHandler); err != nil {
+		return err
+	}
 
 	// Order management endpoints (tenant-scoped)
 	orders := api.Group("/orders")
-	orders.POST("", createOrderHandler)
-	orders.GET("", listOrdersHandler)
-	orders.GET("/:id", getOrderHandler)
-	orders.PUT("/:id/status", updateOrderStatusHandler)
+	if err := orders.POST("", createOrderHandler); err != nil {
+		return err
+	}
+	if err := orders.GET("", listOrdersHandler); err != nil {
+		return err
+	}
+	if err := orders.GET("/:id", getOrderHandler); err != nil {
+		return err
+	}
+	if err := orders.PUT("/:id/status", updateOrderStatusHandler); err != nil {
+		return err
+	}
 
 	// Shopping cart endpoints (customer-scoped)
 	cart := api.Group("/cart")
-	cart.GET("", getCartHandler)
-	cart.POST("/items", addToCartHandler)
-	cart.PUT("/:cartId/items/:itemId", updateCartItemHandler)
-	cart.DELETE("/:cartId/items/:itemId", removeFromCartHandler)
-	cart.POST("/:cartId/checkout", checkoutHandler)
+	if err := cart.GET("", getCartHandler); err != nil {
+		return err
+	}
+	if err := cart.POST("/items", addToCartHandler); err != nil {
+		return err
+	}
+	if err := cart.PUT("/:cartId/items/:itemId", updateCartItemHandler); err != nil {
+		return err
+	}
+	if err := cart.DELETE("/:cartId/items/:itemId", removeFromCartHandler); err != nil {
+		return err
+	}
+	if err := cart.POST("/:cartId/checkout", checkoutHandler); err != nil {
+		return err
+	}
+	
+	return nil
 }
 
 // Simplified handler functions

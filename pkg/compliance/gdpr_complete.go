@@ -322,14 +322,18 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 	jsonData, err := json.MarshalIndent(exportData, "", "  ")
 	if err != nil {
 		exportRecord.Status = "failed"
-		g.db.Put(ctx, exportRecord)
+		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
+			log.Printf("Failed to update export record: %v", putErr)
+		}
 		return nil, fmt.Errorf("failed to marshal export data: %w", err)
 	}
 
 	// Check size limits
 	if len(jsonData) > g.config.MaxExportSizeMB*1024*1024 {
 		exportRecord.Status = "failed"
-		g.db.Put(ctx, exportRecord)
+		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
+			log.Printf("Failed to update export record: %v", putErr)
+		}
 		return nil, fmt.Errorf("export data exceeds maximum size limit")
 	}
 
@@ -358,7 +362,9 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 
 	if err := g.uploadToS3(ctx, g.config.DataExportBucket, exportPath, finalData); err != nil {
 		exportRecord.Status = "failed"
-		g.db.Put(ctx, exportRecord)
+		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
+			log.Printf("Failed to update export record: %v", putErr)
+		}
 		return nil, fmt.Errorf("failed to upload export to S3: %w", err)
 	}
 
@@ -453,7 +459,7 @@ func (g *GDPRCompleteService) ProcessConsentUpdate(ctx context.Context, dataSubj
 	}
 
 	// Log consent event
-	g.auditLogger.LogConsentEvent(ctx, &security.ConsentEvent{
+	if err := g.auditLogger.LogConsentEvent(ctx, &security.ConsentEvent{
 		EventType:     "consent_updated",
 		ConsentID:     consentRecord.ID,
 		DataSubjectID: dataSubjectID,
@@ -470,7 +476,9 @@ func (g *GDPRCompleteService) ProcessConsentUpdate(ctx context.Context, dataSubj
 			"service":     "gdpr-complete",
 			"environment": g.config.Environment,
 		},
-	})
+	}); err != nil {
+		log.Printf("Failed to log consent event: %v", err)
+	}
 
 	return nil
 }
@@ -516,7 +524,7 @@ func (g *GDPRCompleteService) ProcessBreachNotification(ctx context.Context, bre
 	}
 
 	// Log breach event
-	g.auditLogger.LogPrivacyBreach(ctx, &security.PrivacyBreachLog{
+	if err := g.auditLogger.LogPrivacyBreach(ctx, &security.PrivacyBreachLog{
 		BreachID:          breachRecord.BreachID,
 		BreachType:        breach.Type,
 		Severity:          breach.Severity,
@@ -532,7 +540,9 @@ func (g *GDPRCompleteService) ProcessBreachNotification(ctx context.Context, bre
 			"breach_id":          breachRecord.BreachID,
 			"authority_deadline": authorityDeadline,
 		},
-	})
+	}); err != nil {
+		log.Printf("Failed to log privacy breach: %v", err)
+	}
 
 	return nil
 }
@@ -740,21 +750,27 @@ func (g *GDPRCompleteService) calculateDeletionHash(dataSubjectID string, tables
 func (g *GDPRCompleteService) getCurrentUser(ctx context.Context) string {
 	// Extract current user from context
 	if user := ctx.Value("user_id"); user != nil {
-		return user.(string)
+		if userStr, ok := user.(string); ok {
+			return userStr
+		}
 	}
 	return "system"
 }
 
 func (g *GDPRCompleteService) getClientIP(ctx context.Context) string {
 	if ip := ctx.Value("client_ip"); ip != nil {
-		return ip.(string)
+		if ipStr, ok := ip.(string); ok {
+			return ipStr
+		}
 	}
 	return "unknown"
 }
 
 func (g *GDPRCompleteService) getUserAgent(ctx context.Context) string {
 	if ua := ctx.Value("user_agent"); ua != nil {
-		return ua.(string)
+		if uaStr, ok := ua.(string); ok {
+			return uaStr
+		}
 	}
 	return "unknown"
 }

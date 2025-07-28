@@ -34,12 +34,12 @@ func BenchmarkRoutingWithPathParams(b *testing.B) {
 	// Add routes with path parameters
 	for i := 0; i < 100; i++ {
 		path := fmt.Sprintf("/api/v1/resource%d/:id", i)
-		app.GET(path, func(ctx *lift.Context) error {
+		_ = app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"id": ctx.Param("id")})
 		})
 
 		path = fmt.Sprintf("/api/v1/resource%d/:id/sub/:subid", i)
-		app.GET(path, func(ctx *lift.Context) error {
+		_ = app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{
 				"id":    ctx.Param("id"),
 				"subid": ctx.Param("subid"),
@@ -76,7 +76,7 @@ func BenchmarkRoutingComplexPaths(b *testing.B) {
 	for i := 0; i < 50; i++ {
 		for _, pattern := range patterns {
 			path := fmt.Sprintf("%s_%d", pattern, i)
-			app.GET(path, func(ctx *lift.Context) error {
+			_ = app.GET(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{"status": "ok"})
 			})
 		}
@@ -93,19 +93,19 @@ func BenchmarkRoutingMethodMatching(b *testing.B) {
 	for i := 0; i < 100; i++ {
 		path := fmt.Sprintf("/api/v1/resource%d", i)
 
-		app.GET(path, func(ctx *lift.Context) error {
+		_ = app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "GET"})
 		})
-		app.POST(path, func(ctx *lift.Context) error {
+		_ = app.POST(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "POST"})
 		})
-		app.PUT(path, func(ctx *lift.Context) error {
+		_ = app.PUT(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "PUT"})
 		})
-		app.DELETE(path, func(ctx *lift.Context) error {
+		_ = app.DELETE(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "DELETE"})
 		})
-		app.PATCH(path, func(ctx *lift.Context) error {
+		_ = app.PATCH(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "PATCH"})
 		})
 	}
@@ -120,7 +120,7 @@ func BenchmarkRoutingWorstCase(b *testing.B) {
 	// Create routes that would be checked last in a linear search
 	for i := 0; i < 1000; i++ {
 		path := fmt.Sprintf("/api/v1/resource%d", i)
-		app.GET(path, func(ctx *lift.Context) error {
+		_ = app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"id": fmt.Sprintf("%d", i)})
 		})
 	}
@@ -156,7 +156,7 @@ func BenchmarkRouteRegistration(b *testing.B) {
 		// Add 100 routes
 		for j := 0; j < 100; j++ {
 			path := fmt.Sprintf("/api/v1/resource%d", j)
-			app.GET(path, func(ctx *lift.Context) error {
+			_ = app.GET(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{"id": fmt.Sprintf("%d", j)})
 			})
 		}
@@ -175,7 +175,7 @@ func BenchmarkRouteRegistrationWithParams(b *testing.B) {
 		// Add 100 routes with parameters
 		for j := 0; j < 100; j++ {
 			path := fmt.Sprintf("/api/v1/resource%d/:id/sub/:subid", j)
-			app.GET(path, func(ctx *lift.Context) error {
+			_ = app.GET(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{
 					"id":    ctx.Param("id"),
 					"subid": ctx.Param("subid"),
@@ -215,7 +215,7 @@ func setupAppWithRoutes(numRoutes int) *lift.App {
 
 	for i := 0; i < numRoutes; i++ {
 		path := fmt.Sprintf("/api/v1/resource%d", i)
-		app.GET(path, func(ctx *lift.Context) error {
+		_ = app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"id": fmt.Sprintf("%d", i)})
 		})
 	}

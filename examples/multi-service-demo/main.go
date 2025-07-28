@@ -503,7 +503,7 @@ func createLiftContext(r *http.Request) *lift.Context {
 
 	// Read body if present
 	if r.Body != nil {
-		defer r.Body.Close()
+		defer func() { _ = r.Body.Close() }()
 		if bodyBytes, err := json.Marshal(r.Body); err == nil {
 			request.Body = bodyBytes
 		}

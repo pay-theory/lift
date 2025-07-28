@@ -42,7 +42,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
-	defer logger1.Close()
+	defer func() {
+		if err := logger1.Close(); err != nil {
+			log.Printf("Error closing logger1: %v", err)
+		}
+	}()
 
 	// Example 2: Using the helper function with custom SNS topic
 	customTopicARN := "arn:aws:sns:us-west-2:123456789012:my-custom-alerts"
@@ -51,7 +55,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
-	defer logger2.Close()
+	defer func() {
+		if err := logger2.Close(); err != nil {
+			log.Printf("Error closing logger2: %v", err)
+		}
+	}()
 
 	// Example 3: Creating SNS notifier separately for more control
 	defaultTopicARN := fmt.Sprintf("arn:aws:sns:%s:%s:cns-%s-%s",
@@ -72,14 +80,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
-	defer logger3.Close()
+	defer func() {
+		if err := logger3.Close(); err != nil {
+			log.Printf("Error closing logger3: %v", err)
+		}
+	}()
 
 	// Example 4: CloudWatch logger without SNS notifications
 	loggerNoSNS, err := cloudwatch.NewCloudWatchLogger(loggerConfig, cwClient)
 	if err != nil {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
-	defer loggerNoSNS.Close()
+	defer func() {
+		if err := loggerNoSNS.Close(); err != nil {
+			log.Printf("Error closing loggerNoSNS: %v", err)
+		}
+	}()
 
 	// Use the logger
 	logger := logger1 // Use any of the configured loggers

@@ -217,7 +217,8 @@ func BenchmarkLargeEventParsing(b *testing.B) {
 	}
 
 	for i := 0; i < 100; i++ {
-		largeEvent["Records"].([]any)[i] = map[string]any{
+		records, _ := largeEvent["Records"].([]any)
+		records[i] = map[string]any{
 			"messageId":     "test-message-" + string(rune(i)),
 			"receiptHandle": "test-receipt-" + string(rune(i)),
 			"body":          `{"type": "large_event", "data": {"id": "` + string(rune(i)) + `", "payload": "` + string(make([]byte, 1024)) + `"}}`,

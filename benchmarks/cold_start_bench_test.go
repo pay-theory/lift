@@ -81,7 +81,7 @@ func BenchmarkColdStartWithBasicRoute(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		app := lift.New()
-		app.GET("/health", func(ctx *lift.Context) error {
+		_ = app.GET("/health", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
 		_ = app
@@ -97,7 +97,7 @@ func BenchmarkColdStartWithMiddleware(b *testing.B) {
 		app.Use(loggerMiddleware())
 		app.Use(recoverMiddleware())
 		app.Use(corsMiddleware())
-		app.GET("/health", func(ctx *lift.Context) error {
+		_ = app.GET("/health", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
 		_ = app
@@ -114,7 +114,7 @@ func BenchmarkColdStartWithEventAdapters(b *testing.B) {
 		// Event adapters are automatically registered in the adapter registry
 		// No explicit registration needed - they're available by default
 
-		app.GET("/health", func(ctx *lift.Context) error {
+		_ = app.GET("/health", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
 		_ = app
@@ -138,16 +138,16 @@ func BenchmarkFrameworkInitializationTime(b *testing.B) {
 		app.Use(timeoutMiddleware())
 
 		// Add multiple routes
-		app.GET("/health", func(ctx *lift.Context) error {
+		_ = app.GET("/health", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
-		app.POST("/users", func(ctx *lift.Context) error {
+		_ = app.POST("/users", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"message": "created"})
 		})
-		app.PUT("/users/:id", func(ctx *lift.Context) error {
+		_ = app.PUT("/users/:id", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"message": "updated"})
 		})
-		app.DELETE("/users/:id", func(ctx *lift.Context) error {
+		_ = app.DELETE("/users/:id", func(ctx *lift.Context) error {
 			return ctx.JSON(nil)
 		})
 
@@ -180,10 +180,10 @@ func BenchmarkMemoryAllocationDuringInit(b *testing.B) {
 		// Add routes
 		for j := 0; j < 10; j++ {
 			path := fmt.Sprintf("/api/v1/resource%d", j)
-			app.GET(path, func(ctx *lift.Context) error {
+			_ = app.GET(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{"id": ctx.Param("id")})
 			})
-			app.POST(path, func(ctx *lift.Context) error {
+			_ = app.POST(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{"message": "created"})
 			})
 		}
@@ -208,7 +208,7 @@ func BenchmarkGarbageCollectionImpact(b *testing.B) {
 		// Heavy initialization to trigger potential GC
 		for j := 0; j < 100; j++ {
 			path := fmt.Sprintf("/api/v1/resource%d/:id", j)
-			app.GET(path, func(ctx *lift.Context) error {
+			_ = app.GET(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]any{
 					"id":   ctx.Param("id"),
 					"data": make([]byte, 1024), // Allocate some memory

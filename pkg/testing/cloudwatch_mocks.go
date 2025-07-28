@@ -32,7 +32,10 @@ func (m *MockCloudWatchClient) PutMetricData(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.PutMetricDataOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.PutMetricDataOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.PutMetricDataOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // GetMetricStatistics retrieves statistics for a metric
@@ -42,7 +45,10 @@ func (m *MockCloudWatchClient) GetMetricStatistics(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.GetMetricStatisticsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.GetMetricStatisticsOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.GetMetricStatisticsOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // PutMetricAlarm creates or updates an alarm
@@ -52,7 +58,10 @@ func (m *MockCloudWatchClient) PutMetricAlarm(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.PutMetricAlarmOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.PutMetricAlarmOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.PutMetricAlarmOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // DescribeAlarms retrieves alarm information
@@ -62,7 +71,10 @@ func (m *MockCloudWatchClient) DescribeAlarms(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.DescribeAlarmsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.DescribeAlarmsOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.DescribeAlarmsOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // DeleteAlarms deletes one or more alarms
@@ -72,7 +84,10 @@ func (m *MockCloudWatchClient) DeleteAlarms(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.DeleteAlarmsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.DeleteAlarmsOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.DeleteAlarmsOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // ListMetrics lists available metrics
@@ -82,7 +97,10 @@ func (m *MockCloudWatchClient) ListMetrics(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.ListMetricsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.ListMetricsOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.ListMetricsOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // GetMetricData retrieves metric data using metric queries
@@ -92,7 +110,10 @@ func (m *MockCloudWatchClient) GetMetricData(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.GetMetricDataOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.GetMetricDataOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.GetMetricDataOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // PutAnomalyDetector creates or updates an anomaly detector
@@ -102,7 +123,10 @@ func (m *MockCloudWatchClient) PutAnomalyDetector(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.PutAnomalyDetectorOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.PutAnomalyDetectorOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.PutAnomalyDetectorOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // DescribeAnomalyDetectors retrieves anomaly detector information
@@ -112,7 +136,10 @@ func (m *MockCloudWatchClient) DescribeAnomalyDetectors(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.DescribeAnomalyDetectorsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.DescribeAnomalyDetectorsOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.DescribeAnomalyDetectorsOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // DeleteAnomalyDetector deletes an anomaly detector
@@ -122,7 +149,10 @@ func (m *MockCloudWatchClient) DeleteAnomalyDetector(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.DeleteAnomalyDetectorOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.DeleteAnomalyDetectorOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.DeleteAnomalyDetectorOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // TagResource adds tags to a CloudWatch resource
@@ -132,7 +162,10 @@ func (m *MockCloudWatchClient) TagResource(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.TagResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.TagResourceOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.TagResourceOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // UntagResource removes tags from a CloudWatch resource
@@ -142,7 +175,10 @@ func (m *MockCloudWatchClient) UntagResource(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.UntagResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.UntagResourceOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.UntagResourceOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // ListTagsForResource lists tags for a CloudWatch resource
@@ -152,7 +188,10 @@ func (m *MockCloudWatchClient) ListTagsForResource(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.ListTagsForResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	return args.Get(0).(*cloudwatch.ListTagsForResourceOutput), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*cloudwatch.ListTagsForResourceOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // =============================================================================

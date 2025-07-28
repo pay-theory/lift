@@ -25,7 +25,7 @@ func TestCloudWatchLogger_BasicLogging(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Test basic logging
 	logger.Info("test message", map[string]any{
@@ -69,7 +69,7 @@ func TestCloudWatchLogger_ContextFields(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Test context methods
 	contextLogger := logger.
@@ -106,7 +106,7 @@ func TestCloudWatchLogger_Batching(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Send exactly batch size messages
 	for i := 0; i < 3; i++ {
@@ -145,7 +145,7 @@ func TestCloudWatchLogger_BufferOverflow(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Fill buffer beyond capacity rapidly to ensure dropping
 	// Send messages faster than they can be processed
@@ -180,7 +180,7 @@ func TestCloudWatchLogger_ErrorHandling(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Log a message
 	logger.Error("test error handling")
@@ -208,7 +208,7 @@ func TestCloudWatchLogger_FlushMethod(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Log some messages
 	for i := 0; i < 3; i++ {
@@ -253,7 +253,7 @@ func TestCloudWatchLogger_HealthCheck(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Initially healthy
 	assert.True(t, logger.IsHealthy())
@@ -314,7 +314,7 @@ func TestCloudWatchLogger_Stats(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Log some messages
 	logger.Info("message 1")
@@ -350,7 +350,7 @@ func TestCloudWatchLogger_SanitizationCardBin(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Test that card_bin is NOT redacted while other card fields ARE redacted
 	logger.Info("payment info", map[string]any{
@@ -390,7 +390,7 @@ func TestCloudWatchLogger_ConcurrentAccess(t *testing.T) {
 
 	logger, err := NewCloudWatchLogger(config, mockClient)
 	require.NoError(t, err)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Launch multiple goroutines to log concurrently
 	done := make(chan bool, 10)

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -457,13 +458,13 @@ func (h *UserHandlers) ListUsers(ctx *lift.Context) error {
 		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page"))
-	if page < 1 {
+	page, err := strconv.Atoi(ctx.Query("page"))
+	if err != nil || page < 1 {
 		page = 1
 	}
 
-	perPage, _ := strconv.Atoi(ctx.Query("per_page"))
-	if perPage < 1 || perPage > 100 {
+	perPage, err := strconv.Atoi(ctx.Query("per_page"))
+	if err != nil || perPage < 1 || perPage > 100 {
 		perPage = 10
 	}
 
@@ -548,13 +549,13 @@ func (h *ProjectHandlers) ListProjects(ctx *lift.Context) error {
 		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page"))
-	if page < 1 {
+	page, err := strconv.Atoi(ctx.Query("page"))
+	if err != nil || page < 1 {
 		page = 1
 	}
 
-	perPage, _ := strconv.Atoi(ctx.Query("per_page"))
-	if perPage < 1 || perPage > 100 {
+	perPage, err := strconv.Atoi(ctx.Query("per_page"))
+	if err != nil || perPage < 1 || perPage > 100 {
 		perPage = 10
 	}
 
@@ -675,13 +676,13 @@ func (h *TaskHandlers) ListTasks(ctx *lift.Context) error {
 		return lift.NewLiftError("BAD_REQUEST", "Project ID is required", 400)
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page"))
-	if page < 1 {
+	page, err := strconv.Atoi(ctx.Query("page"))
+	if err != nil || page < 1 {
 		page = 1
 	}
 
-	perPage, _ := strconv.Atoi(ctx.Query("per_page"))
-	if perPage < 1 || perPage > 100 {
+	perPage, err := strconv.Atoi(ctx.Query("per_page"))
+	if err != nil || perPage < 1 || perPage > 100 {
 		perPage = 10
 	}
 
@@ -774,24 +775,44 @@ func main() {
 	app := lift.New()
 
 	// Public routes (no authentication required)
-	app.POST("/api/tenants", tenantHandlers.CreateTenant)
-	app.GET("/api/health", func(ctx *lift.Context) error {
+	if err := app.POST("/api/tenants", tenantHandlers.CreateTenant); err != nil {
+		log.Fatalf("Failed to register POST /api/tenants: %v", err)
+	}
+	if err := app.GET("/api/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
 			"status":    "healthy",
 			"timestamp": time.Now().Format(time.RFC3339),
 			"version":   "1.0.0",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /api/health: %v", err)
+	}
 
 	// Protected routes (simplified for demo)
-	app.GET("/api/tenants/:id", tenantHandlers.GetTenant)
-	app.POST("/api/users", userHandlers.CreateUser)
-	app.GET("/api/users", userHandlers.ListUsers)
-	app.POST("/api/projects", projectHandlers.CreateProject)
-	app.GET("/api/projects", projectHandlers.ListProjects)
-	app.POST("/api/tasks", taskHandlers.CreateTask)
-	app.PUT("/api/tasks/:id", taskHandlers.UpdateTask)
-	app.GET("/api/tasks", taskHandlers.ListTasks)
+	if err := app.GET("/api/tenants/:id", tenantHandlers.GetTenant); err != nil {
+		log.Fatalf("Failed to register GET /api/tenants/:id: %v", err)
+	}
+	if err := app.POST("/api/users", userHandlers.CreateUser); err != nil {
+		log.Fatalf("Failed to register POST /api/users: %v", err)
+	}
+	if err := app.GET("/api/users", userHandlers.ListUsers); err != nil {
+		log.Fatalf("Failed to register GET /api/users: %v", err)
+	}
+	if err := app.POST("/api/projects", projectHandlers.CreateProject); err != nil {
+		log.Fatalf("Failed to register POST /api/projects: %v", err)
+	}
+	if err := app.GET("/api/projects", projectHandlers.ListProjects); err != nil {
+		log.Fatalf("Failed to register GET /api/projects: %v", err)
+	}
+	if err := app.POST("/api/tasks", taskHandlers.CreateTask); err != nil {
+		log.Fatalf("Failed to register POST /api/tasks: %v", err)
+	}
+	if err := app.PUT("/api/tasks/:id", taskHandlers.UpdateTask); err != nil {
+		log.Fatalf("Failed to register PUT /api/tasks/:id: %v", err)
+	}
+	if err := app.GET("/api/tasks", taskHandlers.ListTasks); err != nil {
+		log.Fatalf("Failed to register GET /api/tasks: %v", err)
+	}
 
 	// Metrics and monitoring endpoints
 	app.GET("/metrics", func(ctx *lift.Context) error {

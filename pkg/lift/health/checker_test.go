@@ -67,8 +67,8 @@ func TestHealthManager_CheckComponent(t *testing.T) {
 	healthyChecker := NewAlwaysHealthyChecker("healthy")
 	unhealthyChecker := NewAlwaysUnhealthyChecker("unhealthy")
 
-	manager.RegisterChecker("healthy", healthyChecker)
-	manager.RegisterChecker("unhealthy", unhealthyChecker)
+	_ = manager.RegisterChecker("healthy", healthyChecker)
+	_ = manager.RegisterChecker("unhealthy", unhealthyChecker)
 
 	ctx := context.Background()
 
@@ -105,9 +105,9 @@ func TestHealthManager_CheckAll(t *testing.T) {
 	manager := NewHealthManager(config)
 
 	// Register multiple checkers
-	manager.RegisterChecker("healthy1", NewAlwaysHealthyChecker("healthy1"))
-	manager.RegisterChecker("healthy2", NewAlwaysHealthyChecker("healthy2"))
-	manager.RegisterChecker("unhealthy1", NewAlwaysUnhealthyChecker("unhealthy1"))
+	_ = manager.RegisterChecker("healthy1", NewAlwaysHealthyChecker("healthy1"))
+	_ = manager.RegisterChecker("healthy2", NewAlwaysHealthyChecker("healthy2"))
+	_ = manager.RegisterChecker("unhealthy1", NewAlwaysUnhealthyChecker("unhealthy1"))
 
 	ctx := context.Background()
 	results := manager.CheckAll(ctx)
@@ -146,9 +146,9 @@ func TestHealthManager_CheckAllParallel(t *testing.T) {
 		}
 	})
 
-	manager.RegisterChecker("slow1", slowChecker)
-	manager.RegisterChecker("slow2", slowChecker)
-	manager.RegisterChecker("slow3", slowChecker)
+	_ = manager.RegisterChecker("slow1", slowChecker)
+	_ = manager.RegisterChecker("slow2", slowChecker)
+	_ = manager.RegisterChecker("slow3", slowChecker)
 
 	ctx := context.Background()
 	start := time.Now()
@@ -176,8 +176,8 @@ func TestHealthManager_OverallHealth(t *testing.T) {
 	}
 
 	// Test with all healthy
-	manager.RegisterChecker("healthy1", NewAlwaysHealthyChecker("healthy1"))
-	manager.RegisterChecker("healthy2", NewAlwaysHealthyChecker("healthy2"))
+	_ = manager.RegisterChecker("healthy1", NewAlwaysHealthyChecker("healthy1"))
+	_ = manager.RegisterChecker("healthy2", NewAlwaysHealthyChecker("healthy2"))
 
 	overall = manager.OverallHealth(ctx)
 	if overall.Status != StatusHealthy {
@@ -185,7 +185,7 @@ func TestHealthManager_OverallHealth(t *testing.T) {
 	}
 
 	// Test with one unhealthy
-	manager.RegisterChecker("unhealthy1", NewAlwaysUnhealthyChecker("unhealthy1"))
+	_ = manager.RegisterChecker("unhealthy1", NewAlwaysUnhealthyChecker("unhealthy1"))
 
 	overall = manager.OverallHealth(ctx)
 	if overall.Status != StatusUnhealthy {
@@ -202,7 +202,7 @@ func TestHealthManager_OverallHealth(t *testing.T) {
 			Message:   "Degraded service",
 		}
 	})
-	manager.RegisterChecker("degraded1", degradedChecker)
+	_ = manager.RegisterChecker("degraded1", degradedChecker)
 
 	overall = manager.OverallHealth(ctx)
 	if overall.Status != StatusDegraded {
@@ -226,7 +226,7 @@ func TestHealthManager_Timeout(t *testing.T) {
 		}
 	})
 
-	manager.RegisterChecker("slow", slowChecker)
+	_ = manager.RegisterChecker("slow", slowChecker)
 
 	ctx := context.Background()
 	status, err := manager.CheckComponent(ctx, "slow")
@@ -260,7 +260,7 @@ func TestHealthManager_Cache(t *testing.T) {
 		}
 	})
 
-	manager.RegisterChecker("counting", countingChecker)
+	_ = manager.RegisterChecker("counting", countingChecker)
 
 	ctx := context.Background()
 
@@ -293,7 +293,7 @@ func TestHealthManager_PanicRecovery(t *testing.T) {
 		panic("test panic")
 	})
 
-	manager.RegisterChecker("panic", panicChecker)
+	_ = manager.RegisterChecker("panic", panicChecker)
 
 	ctx := context.Background()
 	status, err := manager.CheckComponent(ctx, "panic")
@@ -389,7 +389,7 @@ func BenchmarkHealthManager_CheckAll(b *testing.B) {
 	// Register multiple fast checkers
 	for i := 0; i < 10; i++ {
 		name := fmt.Sprintf("checker-%d", i)
-		manager.RegisterChecker(name, NewAlwaysHealthyChecker(name))
+		_ = manager.RegisterChecker(name, NewAlwaysHealthyChecker(name))
 	}
 
 	ctx := context.Background()
@@ -402,7 +402,7 @@ func BenchmarkHealthManager_CheckAll(b *testing.B) {
 
 func BenchmarkHealthManager_CheckComponent(b *testing.B) {
 	manager := NewHealthManager(DefaultHealthManagerConfig())
-	manager.RegisterChecker("test", NewAlwaysHealthyChecker("test"))
+	_ = manager.RegisterChecker("test", NewAlwaysHealthyChecker("test"))
 
 	ctx := context.Background()
 
@@ -418,7 +418,7 @@ func BenchmarkHealthManager_OverallHealth(b *testing.B) {
 	// Register multiple checkers
 	for i := 0; i < 5; i++ {
 		name := fmt.Sprintf("checker-%d", i)
-		manager.RegisterChecker(name, NewAlwaysHealthyChecker(name))
+		_ = manager.RegisterChecker(name, NewAlwaysHealthyChecker(name))
 	}
 
 	ctx := context.Background()

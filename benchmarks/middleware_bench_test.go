@@ -67,7 +67,7 @@ func BenchmarkMiddlewareComposition(b *testing.B) {
 			app.Use(mw)
 		}
 
-		app.GET("/test", func(ctx *lift.Context) error {
+		_ = app.GET("/test", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
 
@@ -86,7 +86,7 @@ func BenchmarkMiddlewareWithComplexLogic(b *testing.B) {
 	app.Use(createMetricsMiddleware())
 	app.Use(createCacheMiddleware())
 
-	app.GET("/test", func(ctx *lift.Context) error {
+	_ = app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
 	})
 
@@ -102,7 +102,7 @@ func BenchmarkMiddlewareMemoryAllocation(b *testing.B) {
 		app.Use(createMemoryAllocatingMiddleware(i))
 	}
 
-	app.GET("/test", func(ctx *lift.Context) error {
+	_ = app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
 	})
 
@@ -117,7 +117,7 @@ func BenchmarkMiddlewareErrorHandling(b *testing.B) {
 	app.Use(createErrorProneMiddleware())
 	app.Use(createRecoveryMiddleware())
 
-	app.GET("/test", func(ctx *lift.Context) error {
+	_ = app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
 	})
 
@@ -154,7 +154,7 @@ func setupAppWithMiddleware(count int) *lift.App {
 		app.Use(createSimpleMiddleware(i))
 	}
 
-	app.GET("/test", func(ctx *lift.Context) error {
+	_ = app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
 	})
 

@@ -579,7 +579,9 @@ func main() {
 	app.Use(tenantIsolationMiddleware())
 
 	// Setup all API routes
-	setupAPIRoutes(app)
+	if err := setupAPIRoutes(app); err != nil {
+		log.Fatalf("Failed to setup API routes: %v", err)
+	}
 
 	log.Println("Starting Enterprise E-commerce Platform on port 8080...")
 	log.Println("Multi-Tenant E-commerce Features:")
@@ -615,45 +617,95 @@ func main() {
 	log.Println("  DELETE /api/v1/cart/:cartId/items/:itemId")
 	log.Println("  POST /api/v1/cart/:cartId/checkout")
 
-	app.Start()
+	if err := app.Start(); err != nil {
+		log.Fatalf("Failed to start app: %v", err)
+	}
 }
 
 // setupAPIRoutes configures all the API routes for the e-commerce platform
-func setupAPIRoutes(app *lift.App) {
+func setupAPIRoutes(app *lift.App) error {
 	// Health check endpoint
-	app.GET("/api/v1/health", healthCheck)
+	if err := app.GET("/api/v1/health", healthCheck); err != nil {
+		return err
+	}
 
 	// Tenant management endpoints (admin only)
-	app.POST("/api/v1/tenants", createTenantHandler)
-	app.GET("/api/v1/tenants", listTenantsHandler)
-	app.GET("/api/v1/tenants/:id", getTenantHandler)
+	if err := app.POST("/api/v1/tenants", createTenantHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/tenants", listTenantsHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/tenants/:id", getTenantHandler); err != nil {
+		return err
+	}
 
 	// Product management endpoints (tenant-scoped)
-	app.POST("/api/v1/products", createProductHandler)
-	app.GET("/api/v1/products", listProductsHandler)
-	app.GET("/api/v1/products/search", searchProductsHandler)
-	app.GET("/api/v1/products/:id", getProductHandler)
-	app.PUT("/api/v1/products/:id/inventory", updateInventoryHandler)
+	if err := app.POST("/api/v1/products", createProductHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/products", listProductsHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/products/search", searchProductsHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/products/:id", getProductHandler); err != nil {
+		return err
+	}
+	if err := app.PUT("/api/v1/products/:id/inventory", updateInventoryHandler); err != nil {
+		return err
+	}
 
 	// Customer management endpoints (tenant-scoped)
-	app.POST("/api/v1/customers", createCustomerHandler)
-	app.GET("/api/v1/customers", listCustomersHandler)
-	app.GET("/api/v1/customers/:id", getCustomerHandler)
-	app.POST("/api/v1/customers/auth", authenticateCustomerHandler)
-	app.GET("/api/v1/customers/:id/orders", getCustomerOrdersHandler)
+	if err := app.POST("/api/v1/customers", createCustomerHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/customers", listCustomersHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/customers/:id", getCustomerHandler); err != nil {
+		return err
+	}
+	if err := app.POST("/api/v1/customers/auth", authenticateCustomerHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/customers/:id/orders", getCustomerOrdersHandler); err != nil {
+		return err
+	}
 
 	// Order management endpoints (tenant-scoped)
-	app.POST("/api/v1/orders", createOrderHandler)
-	app.GET("/api/v1/orders", listOrdersHandler)
-	app.GET("/api/v1/orders/:id", getOrderHandler)
-	app.PUT("/api/v1/orders/:id/status", updateOrderStatusHandler)
+	if err := app.POST("/api/v1/orders", createOrderHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/orders", listOrdersHandler); err != nil {
+		return err
+	}
+	if err := app.GET("/api/v1/orders/:id", getOrderHandler); err != nil {
+		return err
+	}
+	if err := app.PUT("/api/v1/orders/:id/status", updateOrderStatusHandler); err != nil {
+		return err
+	}
 
 	// Shopping cart endpoints (customer-scoped)
-	app.GET("/api/v1/cart", getCartHandler)
-	app.POST("/api/v1/cart/items", addToCartHandler)
-	app.PUT("/api/v1/cart/:cartId/items/:itemId", updateCartItemHandler)
-	app.DELETE("/api/v1/cart/:cartId/items/:itemId", removeFromCartHandler)
-	app.POST("/api/v1/cart/:cartId/checkout", checkoutHandler)
+	if err := app.GET("/api/v1/cart", getCartHandler); err != nil {
+		return err
+	}
+	if err := app.POST("/api/v1/cart/items", addToCartHandler); err != nil {
+		return err
+	}
+	if err := app.PUT("/api/v1/cart/:cartId/items/:itemId", updateCartItemHandler); err != nil {
+		return err
+	}
+	if err := app.DELETE("/api/v1/cart/:cartId/items/:itemId", removeFromCartHandler); err != nil {
+		return err
+	}
+	if err := app.POST("/api/v1/cart/:cartId/checkout", checkoutHandler); err != nil {
+		return err
+	}
+	
+	return nil
 }
 
 func healthCheck(ctx *lift.Context) error {

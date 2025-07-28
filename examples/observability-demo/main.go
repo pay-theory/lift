@@ -53,7 +53,11 @@ func demoZapLogger() {
 	if err != nil {
 		log.Fatalf("Failed to create Zap logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Printf("Error closing logger: %v", err)
+		}
+	}()
 
 	// Basic logging with enhanced sanitization for security
 	logger.Debug("Debug message from Zap (sanitized)")
@@ -101,7 +105,11 @@ func demoCloudWatchLoggerMock() {
 	if err != nil {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Printf("Error closing logger: %v", err)
+		}
+	}()
 
 	// Log some messages
 	logger.Info("CloudWatch demo started", map[string]any{
@@ -175,7 +183,11 @@ func demoCloudWatchLoggerReal() {
 	if err != nil {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Printf("Error closing logger: %v", err)
+		}
+	}()
 
 	// Production logging example
 	logger.Info("Production system started", map[string]any{
@@ -203,7 +215,11 @@ func demoMultiTenantLogging() {
 	if err != nil {
 		log.Fatalf("Failed to create logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Printf("Error closing logger: %v", err)
+		}
+	}()
 
 	// Simulate multiple tenants
 	tenants := []struct {
@@ -264,7 +280,11 @@ func demoPerformanceAndStats() {
 	if err != nil {
 		log.Fatalf("Failed to create logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Printf("Error closing logger: %v", err)
+		}
+	}()
 
 	// Performance test: log many messages quickly
 	start := time.Now()

@@ -31,12 +31,18 @@ func (m *MockConsentStore) StoreConsent(ctx context.Context, consent *ConsentRec
 
 func (m *MockConsentStore) GetConsent(ctx context.Context, dataSubjectID, purpose string) (*ConsentRecord, error) {
 	args := m.Called(ctx, dataSubjectID, purpose)
-	return args.Get(0).(*ConsentRecord), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*ConsentRecord), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockConsentStore) GetAllConsents(ctx context.Context, dataSubjectID string) ([]*ConsentRecord, error) {
 	args := m.Called(ctx, dataSubjectID)
-	return args.Get(0).([]*ConsentRecord), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.([]*ConsentRecord), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockConsentStore) UpdateConsent(ctx context.Context, consentID string, updates *ConsentUpdates) error {
@@ -51,22 +57,34 @@ func (m *MockConsentStore) WithdrawConsent(ctx context.Context, consentID string
 
 func (m *MockConsentStore) GetExpiredConsents(ctx context.Context) ([]*ConsentRecord, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]*ConsentRecord), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.([]*ConsentRecord), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockConsentStore) GetConsentsForRenewal(ctx context.Context) ([]*ConsentRecord, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]*ConsentRecord), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.([]*ConsentRecord), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockConsentStore) ListConsents(ctx context.Context, dataSubjectID string) ([]*ConsentRecord, error) {
 	args := m.Called(ctx, dataSubjectID)
-	return args.Get(0).([]*ConsentRecord), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.([]*ConsentRecord), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockConsentStore) GetConsentHistory(ctx context.Context, consentID string) ([]*ConsentHistoryEntry, error) {
 	args := m.Called(ctx, consentID)
-	return args.Get(0).([]*ConsentHistoryEntry), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.([]*ConsentHistoryEntry), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockConsentStore) CleanupExpiredConsents(ctx context.Context) error {
@@ -81,32 +99,50 @@ type MockDataSubjectRightsHandler struct {
 
 func (m *MockDataSubjectRightsHandler) HandleAccessRequest(ctx context.Context, request *DataAccessRequest) (*DataAccessResponse, error) {
 	args := m.Called(ctx, request)
-	return args.Get(0).(*DataAccessResponse), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*DataAccessResponse), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockDataSubjectRightsHandler) HandlePortabilityRequest(ctx context.Context, request *DataPortabilityRequest) (*DataPortabilityResponse, error) {
 	args := m.Called(ctx, request)
-	return args.Get(0).(*DataPortabilityResponse), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*DataPortabilityResponse), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockDataSubjectRightsHandler) HandleErasureRequest(ctx context.Context, request *DataErasureRequest) (*DataErasureResponse, error) {
 	args := m.Called(ctx, request)
-	return args.Get(0).(*DataErasureResponse), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*DataErasureResponse), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockDataSubjectRightsHandler) HandleRectificationRequest(ctx context.Context, request *DataRectificationRequest) (*DataRectificationResponse, error) {
 	args := m.Called(ctx, request)
-	return args.Get(0).(*DataRectificationResponse), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*DataRectificationResponse), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockDataSubjectRightsHandler) HandleObjectionRequest(ctx context.Context, request *DataObjectionRequest) (*DataObjectionResponse, error) {
 	args := m.Called(ctx, request)
-	return args.Get(0).(*DataObjectionResponse), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*DataObjectionResponse), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockDataSubjectRightsHandler) GetRequestStatus(ctx context.Context, requestID string) (*RequestStatus, error) {
 	args := m.Called(ctx, requestID)
-	return args.Get(0).(*RequestStatus), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*RequestStatus), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // MockPrivacyImpactAssessment implements PrivacyImpactAssessment interface for testing
@@ -116,7 +152,10 @@ type MockPrivacyImpactAssessment struct {
 
 func (m *MockPrivacyImpactAssessment) ConductPIA(ctx context.Context, request *PIARequest) (*PIAResult, error) {
 	args := m.Called(ctx, request)
-	return args.Get(0).(*PIAResult), args.Error(1)
+	if v := args.Get(0); v != nil {
+		return v.(*PIAResult), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockPrivacyImpactAssessment) UpdatePIA(ctx context.Context, piaID string, updates *PIAUpdate) error {
