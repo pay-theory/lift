@@ -125,7 +125,9 @@ func TestSlowlorisAttackPrevention(t *testing.T) {
 		resp, err := client.Get(server.URL)
 		require.NoError(t, err, "Normal request should succeed")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
-		resp.Body.Close()
+		if err := resp.Body.Close(); err != nil {
+			t.Logf("Warning: failed to close response body: %v", err)
+		}
 
 		// Verify our timeout configuration is applied
 		assert.Equal(t, 5*time.Second, server.Config.ReadHeaderTimeout, "ReadHeaderTimeout should prevent slow header attacks")

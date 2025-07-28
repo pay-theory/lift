@@ -255,7 +255,12 @@ func (h *HTTPHealthChecker) Check(ctx context.Context) HealthStatus {
 			Error:     err.Error(),
 		}
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			// Silently ignore response body close errors
+			_ = err
+		}
+	}()
 
 	status := HealthStatus{
 		Status:    StatusHealthy,

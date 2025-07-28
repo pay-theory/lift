@@ -187,7 +187,12 @@ func (ls *LogService) readExistingLogs() {
 	if err != nil {
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			// Silently ignore file close errors for read operations
+			_ = err
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -204,7 +209,12 @@ func (ls *LogService) readNewLogs(offset int64) {
 	if err != nil {
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			// Silently ignore file close errors for read operations
+			_ = err
+		}
+	}()
 
 	// Seek to offset
 	_, err = file.Seek(offset, 0)

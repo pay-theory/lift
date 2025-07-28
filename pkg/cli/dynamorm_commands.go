@@ -255,7 +255,11 @@ func (m *{{.ModelName}}) Update() {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	return t.Execute(file, config)
 }
@@ -375,7 +379,11 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	return t.Execute(file, config)
 }
@@ -596,7 +604,11 @@ func main() {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	return t.Execute(file, data)
 }
@@ -1255,7 +1267,11 @@ func (m *{{.ModelName}}) Update() {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	return t.Execute(file, data)
 }
@@ -1459,7 +1475,11 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	return t.Execute(file, data)
 }
@@ -1825,7 +1845,11 @@ func printMigrationSummary(stats *MigrationStats) {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	return t.Execute(file, data)
 }
@@ -2093,7 +2117,11 @@ func Benchmark{{.ModelName}}_CRUD(b *testing.B) {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	return t.Execute(file, data)
 }

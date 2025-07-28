@@ -87,7 +87,11 @@ func TestConnectionPool_BasicOperations(t *testing.T) {
 
 	factory := &mockFactory{}
 	pool := NewConnectionPool(config, factory)
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			t.Logf("Warning: failed to close pool: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -123,7 +127,11 @@ func TestConnectionPool_MaxActive(t *testing.T) {
 
 	factory := &mockFactory{}
 	pool := NewConnectionPool(config, factory)
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			t.Logf("Warning: failed to close pool: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -170,7 +178,11 @@ func TestConnectionPool_HealthCheck(t *testing.T) {
 
 	factory := &mockFactory{}
 	pool := NewConnectionPool(config, factory)
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			t.Logf("Warning: failed to close pool: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -202,7 +214,11 @@ func TestConnectionPool_ConcurrentAccess(t *testing.T) {
 
 	factory := &mockFactory{}
 	pool := NewConnectionPool(config, factory)
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			t.Logf("Warning: failed to close pool: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -252,7 +268,11 @@ func TestConnectionPool_ResourceValidation(t *testing.T) {
 
 	factory := &mockFactory{}
 	pool := NewConnectionPool(config, factory)
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			t.Logf("Warning: failed to close pool: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -280,7 +300,11 @@ func TestConnectionPool_ResourceValidation(t *testing.T) {
 func TestResourceManager_BasicOperations(t *testing.T) {
 	config := DefaultResourceManagerConfig()
 	manager := NewResourceManager(config)
-	defer manager.Close()
+	defer func() {
+		if err := manager.Close(); err != nil {
+			t.Logf("Warning: failed to close manager: %v", err)
+		}
+	}()
 
 	// Create and register a pool
 	poolConfig := PoolConfig{
@@ -325,7 +349,11 @@ func TestResourceManager_BasicOperations(t *testing.T) {
 func TestResourceManager_PreWarming(t *testing.T) {
 	config := DefaultResourceManagerConfig()
 	manager := NewResourceManager(config)
-	defer manager.Close()
+	defer func() {
+		if err := manager.Close(); err != nil {
+			t.Logf("Warning: failed to close manager: %v", err)
+		}
+	}()
 
 	// Create and register a pool
 	poolConfig := PoolConfig{
@@ -408,7 +436,11 @@ func BenchmarkConnectionPool_GetPut(b *testing.B) {
 
 	factory := &mockFactory{}
 	pool := NewConnectionPool(config, factory)
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			b.Logf("Warning: failed to close pool: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -431,7 +463,11 @@ func BenchmarkConnectionPool_GetPut(b *testing.B) {
 func BenchmarkResourceManager_HealthCheck(b *testing.B) {
 	config := DefaultResourceManagerConfig()
 	manager := NewResourceManager(config)
-	defer manager.Close()
+	defer func() {
+		if err := manager.Close(); err != nil {
+			b.Logf("Warning: failed to close manager: %v", err)
+		}
+	}()
 
 	// Register multiple pools
 	for i := 0; i < 5; i++ {

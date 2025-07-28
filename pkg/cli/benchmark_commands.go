@@ -568,7 +568,12 @@ type BenchmarkEnvironment struct {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			// Log file close error but don't fail the operation
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	return t.Execute(file, config)
 }

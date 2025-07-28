@@ -106,7 +106,10 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			// Add custom annotations from config
 			if config.Annotations != nil {
 				for key, value := range config.Annotations {
-					segment.AddAnnotation(key, value)
+					if err := segment.AddAnnotation(key, value); err != nil {
+						// Silently ignore XRay annotation errors
+						_ = err
+					}
 				}
 			}
 
@@ -114,7 +117,10 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			tracer.addStandardMetadata(segment, ctx)
 			if config.Metadata != nil {
 				for key, value := range config.Metadata {
-					segment.AddMetadata("custom", map[string]any{key: value})
+					if err := segment.AddMetadata("custom", map[string]any{key: value}); err != nil {
+						// Silently ignore XRay metadata errors
+						_ = err
+					}
 				}
 			}
 
@@ -139,9 +145,12 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 			duration := time.Since(start)
 
 			// Record timing
-			segment.AddMetadata("timing", map[string]any{
+			if err := segment.AddMetadata("timing", map[string]any{
 				"duration_ms": duration.Milliseconds(),
-			})
+			}); err != nil {
+				// Silently ignore XRay timing errors
+				_ = err
+			}
 
 			// Handle errors
 			if err != nil {
@@ -149,19 +158,34 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 					// Silently ignore XRay errors
 					_ = addErr
 				}
-				segment.AddAnnotation("error", "true")
-				segment.AddMetadata("error", map[string]any{
+				if annoErr := segment.AddAnnotation("error", "true"); annoErr != nil {
+					// Silently ignore XRay annotation errors
+					_ = annoErr
+				}
+				if metaErr := segment.AddMetadata("error", map[string]any{
 					"message": err.Error(),
-				})
+				}); metaErr != nil {
+					// Silently ignore XRay metadata errors
+					_ = metaErr
+				}
 			} else {
-				segment.AddAnnotation("error", "false")
+				if err := segment.AddAnnotation("error", "false"); err != nil {
+					// Silently ignore XRay annotation errors
+					_ = err
+				}
 			}
 
 			// Add response information
-			segment.AddAnnotation("http.status_code", ctx.Response.StatusCode)
-			segment.AddMetadata("response", map[string]any{
+			if err := segment.AddAnnotation("http.status_code", ctx.Response.StatusCode); err != nil {
+				// Silently ignore XRay annotation errors
+				_ = err
+			}
+			if err := segment.AddMetadata("response", map[string]any{
 				"status_code": ctx.Response.StatusCode,
-			})
+			}); err != nil {
+				// Silently ignore XRay metadata errors
+				_ = err
+			}
 
 			return err
 		})
@@ -172,30 +196,54 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 func (t *XRayTracer) addStandardAnnotations(segment *xray.Segment, ctx *lift.Context) {
 	// HTTP information (only if request is not nil)
 	if ctx.Request != nil {
-		segment.AddAnnotation("http.method", ctx.Request.Method)
-		segment.AddAnnotation("http.url", ctx.Request.Path)
+		if err := segment.AddAnnotation("http.method", ctx.Request.Method); err != nil {
+			// Silently ignore XRay annotation errors
+			_ = err
+		}
+		if err := segment.AddAnnotation("http.url", ctx.Request.Path); err != nil {
+			// Silently ignore XRay annotation errors
+			_ = err
+		}
 	}
 
 	// Multi-tenant information
 	if tenantID := ctx.TenantID(); tenantID != "" {
-		segment.AddAnnotation("tenant_id", tenantID)
+		if err := segment.AddAnnotation("tenant_id", tenantID); err != nil {
+			// Silently ignore XRay annotation errors
+			_ = err
+		}
 	}
 	if userID := ctx.UserID(); userID != "" {
-		segment.AddAnnotation("user_id", userID)
+		if err := segment.AddAnnotation("user_id", userID); err != nil {
+			// Silently ignore XRay annotation errors
+			_ = err
+		}
 	}
 
 	// Request information
 	if ctx.RequestID != "" {
-		segment.AddAnnotation("request_id", ctx.RequestID)
+		if err := segment.AddAnnotation("request_id", ctx.RequestID); err != nil {
+			// Silently ignore XRay annotation errors
+			_ = err
+		}
 	}
 
 	// Service information
-	segment.AddAnnotation("service.name", t.config.ServiceName)
+	if err := segment.AddAnnotation("service.name", t.config.ServiceName); err != nil {
+		// Silently ignore XRay annotation errors
+		_ = err
+	}
 	if t.config.ServiceVersion != "" {
-		segment.AddAnnotation("service.version", t.config.ServiceVersion)
+		if err := segment.AddAnnotation("service.version", t.config.ServiceVersion); err != nil {
+			// Silently ignore XRay annotation errors
+			_ = err
+		}
 	}
 	if t.config.Environment != "" {
-		segment.AddAnnotation("environment", t.config.Environment)
+		if err := segment.AddAnnotation("environment", t.config.Environment); err != nil {
+			// Silently ignore XRay annotation errors
+			_ = err
+		}
 	}
 }
 
@@ -221,7 +269,10 @@ func (t *XRayTracer) addStandardMetadata(segment *xray.Segment, ctx *lift.Contex
 		httpMetadata["headers"] = filterSensitiveHeaders(ctx.Request.Headers)
 	}
 
-	segment.AddMetadata("http", httpMetadata)
+	if err := segment.AddMetadata("http", httpMetadata); err != nil {
+		// Silently ignore XRay metadata errors
+		_ = err
+	}
 
 	// Request metadata
 	requestMetadata := map[string]any{
@@ -230,7 +281,10 @@ func (t *XRayTracer) addStandardMetadata(segment *xray.Segment, ctx *lift.Contex
 		"user_id":      ctx.UserID(),
 		"trigger_type": ctx.Request.TriggerType,
 	}
-	segment.AddMetadata("lift", requestMetadata)
+	if err := segment.AddMetadata("lift", requestMetadata); err != nil {
+		// Silently ignore XRay metadata errors
+		_ = err
+	}
 
 	// Service metadata
 	serviceMetadata := map[string]any{
@@ -238,7 +292,10 @@ func (t *XRayTracer) addStandardMetadata(segment *xray.Segment, ctx *lift.Contex
 		"version":     t.config.ServiceVersion,
 		"environment": t.config.Environment,
 	}
-	segment.AddMetadata("service", serviceMetadata)
+	if err := segment.AddMetadata("service", serviceMetadata); err != nil {
+		// Silently ignore XRay metadata errors
+		_ = err
+	}
 }
 
 // filterSensitiveHeaders removes sensitive headers from tracing
@@ -271,16 +328,28 @@ func TraceDynamoDBOperation(ctx context.Context, operation, tableName string) (c
 	}
 
 	// Add DynamoDB-specific annotations
-	subsegment.AddAnnotation("aws.operation", operation)
-	subsegment.AddAnnotation("aws.table_name", tableName)
-	subsegment.AddAnnotation("aws.service", "DynamoDB")
+	if err := subsegment.AddAnnotation("aws.operation", operation); err != nil {
+		// Silently ignore XRay annotation errors
+		_ = err
+	}
+	if err := subsegment.AddAnnotation("aws.table_name", tableName); err != nil {
+		// Silently ignore XRay annotation errors
+		_ = err
+	}
+	if err := subsegment.AddAnnotation("aws.service", "DynamoDB"); err != nil {
+		// Silently ignore XRay annotation errors
+		_ = err
+	}
 
 	// Add metadata
-	subsegment.AddMetadata("aws", map[string]any{
+	if err := subsegment.AddMetadata("aws", map[string]any{
 		"operation":  operation,
 		"table_name": tableName,
 		"service":    "DynamoDB",
-	})
+	}); err != nil {
+		// Silently ignore XRay metadata errors
+		_ = err
+	}
 
 	return newCtx, func() {
 		subsegment.Close(nil)
@@ -296,21 +365,36 @@ func TraceHTTPCall(ctx context.Context, method, url string) (context.Context, fu
 	}
 
 	// Add HTTP-specific annotations
-	subsegment.AddAnnotation("http.method", method)
-	subsegment.AddAnnotation("http.url", url)
+	if err := subsegment.AddAnnotation("http.method", method); err != nil {
+		// Silently ignore XRay annotation errors
+		_ = err
+	}
+	if err := subsegment.AddAnnotation("http.url", url); err != nil {
+		// Silently ignore XRay annotation errors
+		_ = err
+	}
 
 	// Add metadata
-	subsegment.AddMetadata("http", map[string]any{
+	if err := subsegment.AddMetadata("http", map[string]any{
 		"method": method,
 		"url":    url,
-	})
+	}); err != nil {
+		// Silently ignore XRay metadata errors
+		_ = err
+	}
 
 	return newCtx, func(statusCode int, err error) {
 		if statusCode > 0 {
-			subsegment.AddAnnotation("http.status_code", statusCode)
-			subsegment.AddMetadata("http", map[string]any{
+			if annoErr := subsegment.AddAnnotation("http.status_code", statusCode); annoErr != nil {
+				// Silently ignore XRay annotation errors
+				_ = annoErr
+			}
+			if metaErr := subsegment.AddMetadata("http", map[string]any{
 				"status_code": statusCode,
-			})
+			}); metaErr != nil {
+				// Silently ignore XRay metadata errors
+				_ = metaErr
+			}
 		}
 
 		if err != nil {
@@ -333,11 +417,17 @@ func TraceCustomOperation(ctx context.Context, operationName string, metadata ma
 	}
 
 	// Add operation name
-	subsegment.AddAnnotation("operation", operationName)
+	if err := subsegment.AddAnnotation("operation", operationName); err != nil {
+		// Silently ignore XRay annotation errors
+		_ = err
+	}
 
 	// Add custom metadata
 	if len(metadata) > 0 {
-		subsegment.AddMetadata("custom", metadata)
+		if err := subsegment.AddMetadata("custom", metadata); err != nil {
+			// Silently ignore XRay metadata errors
+			_ = err
+		}
 	}
 
 	return newCtx, func(err error) {
@@ -346,9 +436,15 @@ func TraceCustomOperation(ctx context.Context, operationName string, metadata ma
 				// Silently ignore XRay errors
 				_ = addErr
 			}
-			subsegment.AddAnnotation("error", "true")
+			if err := subsegment.AddAnnotation("error", "true"); err != nil {
+				// Silently ignore XRay annotation errors
+				_ = err
+			}
 		} else {
-			subsegment.AddAnnotation("error", "false")
+			if err := subsegment.AddAnnotation("error", "false"); err != nil {
+				// Silently ignore XRay annotation errors
+				_ = err
+			}
 		}
 
 		subsegment.Close(err)
@@ -374,14 +470,20 @@ func GetSegmentID(ctx context.Context) string {
 // AddAnnotation adds an annotation to the current segment
 func AddAnnotation(ctx context.Context, key string, value any) {
 	if segment := xray.GetSegment(ctx); segment != nil {
-		segment.AddAnnotation(key, value)
+		if err := segment.AddAnnotation(key, value); err != nil {
+			// Silently ignore XRay annotation errors
+			_ = err
+		}
 	}
 }
 
 // AddMetadata adds metadata to the current segment
 func AddMetadata(ctx context.Context, namespace, key string, value any) {
 	if segment := xray.GetSegment(ctx); segment != nil {
-		segment.AddMetadata(namespace, map[string]any{key: value})
+		if err := segment.AddMetadata(namespace, map[string]any{key: value}); err != nil {
+			// Silently ignore XRay metadata errors
+			_ = err
+		}
 	}
 }
 

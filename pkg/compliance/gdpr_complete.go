@@ -308,7 +308,10 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 				"error": err.Error(),
 			})
 			exportRecord.Status = "failed"
-			g.db.Put(ctx, exportRecord)
+			if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
+				// Log database error but continue with the original error
+				fmt.Printf("Warning: failed to update export record status: %v\n", putErr)
+			}
 			return nil, fmt.Errorf("failed to collect from table %s: %w", table, err)
 		}
 
