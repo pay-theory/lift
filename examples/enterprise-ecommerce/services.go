@@ -140,7 +140,7 @@ func (m *mockTenantService) ListTenants(_ context.Context, _, _ int) ([]Tenant, 
 	return tenants, nil
 }
 
-func (m *mockTenantService) DeactivateTenant(_ context.Context, _ string) error {
+func (m *mockTenantService) DeactivateTenant(_ context.Context, tenantID string) error {
 	return nil
 }
 
@@ -238,7 +238,7 @@ func (m *mockProductService) DeleteProduct(_ context.Context, tenantID, id strin
 	return nil
 }
 
-func (m *mockProductService) ListProducts(ctx context.Context, tenantID string, filters ProductFilters) ([]Product, error) {
+func (m *mockProductService) ListProducts(_ context.Context, tenantID string, filters ProductFilters) ([]Product, error) {
 	products := []Product{
 		{
 			ID:       "product_1",
@@ -304,7 +304,7 @@ func (m *mockProductService) SearchProducts(ctx context.Context, tenantID, query
 	return results, nil
 }
 
-func (m *mockProductService) UpdateInventory(ctx context.Context, tenantID, productID string, quantity int) error {
+func (m *mockProductService) UpdateInventory(_ context.Context, tenantID, productID string, quantity int) error {
 	// Simulate inventory update
 	return nil
 }
@@ -312,7 +312,7 @@ func (m *mockProductService) UpdateInventory(ctx context.Context, tenantID, prod
 // Mock Customer Service
 type mockCustomerService struct{}
 
-func (m *mockCustomerService) CreateCustomer(ctx context.Context, tenantID string, req CreateCustomerRequest) (*Customer, error) {
+func (m *mockCustomerService) CreateCustomer(_ context.Context, tenantID string, req CreateCustomerRequest) (*Customer, error) {
 	customer := &Customer{
 		ID:             generateID(),
 		TenantID:       tenantID,
@@ -332,7 +332,7 @@ func (m *mockCustomerService) CreateCustomer(ctx context.Context, tenantID strin
 	return customer, nil
 }
 
-func (m *mockCustomerService) GetCustomer(ctx context.Context, tenantID, id string) (*Customer, error) {
+func (m *mockCustomerService) GetCustomer(_ context.Context, tenantID, id string) (*Customer, error) {
 	return &Customer{
 		ID:       id,
 		TenantID: tenantID,
@@ -383,12 +383,12 @@ func (m *mockCustomerService) GetCustomer(ctx context.Context, tenantID, id stri
 	}, nil
 }
 
-func (m *mockCustomerService) UpdateCustomer(ctx context.Context, tenantID, id string, customer *Customer) error {
+func (m *mockCustomerService) UpdateCustomer(_ context.Context, tenantID, id string, customer *Customer) error {
 	customer.UpdatedAt = time.Now()
 	return nil
 }
 
-func (m *mockCustomerService) ListCustomers(ctx context.Context, tenantID string, limit, offset int) ([]Customer, error) {
+func (m *mockCustomerService) ListCustomers(_ context.Context, tenantID string, limit, offset int) ([]Customer, error) {
 	customers := []Customer{
 		{
 			ID:       "customer_1",
@@ -425,7 +425,7 @@ func (m *mockCustomerService) AuthenticateCustomer(ctx context.Context, tenantID
 // Mock Order Service
 type mockOrderService struct{}
 
-func (m *mockOrderService) CreateOrder(ctx context.Context, tenantID string, req CreateOrderRequest) (*Order, error) {
+func (m *mockOrderService) CreateOrder(_ context.Context, tenantID string, req CreateOrderRequest) (*Order, error) {
 	totals := calculateOrderTotals(req.Items)
 
 	order := &Order{
@@ -446,7 +446,7 @@ func (m *mockOrderService) CreateOrder(ctx context.Context, tenantID string, req
 	return order, nil
 }
 
-func (m *mockOrderService) GetOrder(ctx context.Context, tenantID, id string) (*Order, error) {
+func (m *mockOrderService) GetOrder(_ context.Context, tenantID, id string) (*Order, error) {
 	return &Order{
 		ID:          id,
 		TenantID:    tenantID,
@@ -499,11 +499,11 @@ func (m *mockOrderService) GetOrder(ctx context.Context, tenantID, id string) (*
 	}, nil
 }
 
-func (m *mockOrderService) UpdateOrderStatus(ctx context.Context, tenantID, id string, status OrderStatus) error {
+func (m *mockOrderService) UpdateOrderStatus(_ context.Context, tenantID, id string, status OrderStatus) error {
 	return nil
 }
 
-func (m *mockOrderService) ListOrders(ctx context.Context, tenantID string, filters OrderFilters) ([]Order, error) {
+func (m *mockOrderService) ListOrders(_ context.Context, tenantID string, filters OrderFilters) ([]Order, error) {
 	orders := []Order{
 		{
 			ID:          "order_1",
@@ -536,18 +536,18 @@ func (m *mockOrderService) GetCustomerOrders(ctx context.Context, tenantID, cust
 	return m.ListOrders(ctx, tenantID, OrderFilters{CustomerID: customerID})
 }
 
-func (m *mockOrderService) CancelOrder(ctx context.Context, tenantID, id string) error {
+func (m *mockOrderService) CancelOrder(_ context.Context, tenantID, id string) error {
 	return nil
 }
 
-func (m *mockOrderService) RefundOrder(ctx context.Context, tenantID, id string, amount Money) error {
+func (m *mockOrderService) RefundOrder(_ context.Context, tenantID, id string, amount Money) error {
 	return nil
 }
 
 // Mock Cart Service
 type mockCartService struct{}
 
-func (m *mockCartService) GetCart(ctx context.Context, tenantID, customerID string) (*ShoppingCart, error) {
+func (m *mockCartService) GetCart(_ context.Context, tenantID, customerID string) (*ShoppingCart, error) {
 	items := []CartItem{
 		{
 			ID:        "cart_item_1",
@@ -588,7 +588,7 @@ func (m *mockCartService) RemoveFromCart(ctx context.Context, tenantID, cartID, 
 	return m.GetCart(ctx, tenantID, "customer_from_cart")
 }
 
-func (m *mockCartService) ClearCart(ctx context.Context, tenantID, cartID string) error {
+func (m *mockCartService) ClearCart(_ context.Context, tenantID, cartID string) error {
 	return nil
 }
 

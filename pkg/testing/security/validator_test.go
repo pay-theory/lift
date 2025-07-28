@@ -456,10 +456,7 @@ func TestSecurityConfig(t *testing.T) {
 		MaxScanTime:       30 * time.Second,
 		ThreatThreshold:   SeverityMedium,
 		ComplianceLevel:   ComplianceLevelStandard,
-		EnablePenetration: true,
-		EnableCompliance:  true,
 		ReportFormat:      ReportFormatJSON,
-		AlertOnCritical:   true,
 	}
 
 	if config.MaxScanTime <= 0 {

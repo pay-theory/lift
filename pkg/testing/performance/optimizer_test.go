@@ -469,7 +469,6 @@ func (t *TestPerformanceAnalyzer) PredictScaling(trends []PerformanceMetrics) Sc
 
 func TestPerformanceMetrics(t *testing.T) {
 	metrics := PerformanceMetrics{
-		Timestamp:    time.Now(),
 		ResponseTime: 50 * time.Millisecond,
 		Throughput:   150.0,
 		ErrorRate:    0.02,
@@ -483,9 +482,6 @@ func TestPerformanceMetrics(t *testing.T) {
 			Usage: 25.0,
 			Cores: runtime.NumCPU(),
 		},
-		RequestCount: 1000,
-		ErrorCount:   20,
-		ActiveUsers:  50,
 	}
 
 	if metrics.ResponseTime <= 0 {
@@ -518,9 +514,6 @@ func TestPerformanceMetrics(t *testing.T) {
 
 func TestBenchmarkResult(t *testing.T) {
 	result := BenchmarkResult{
-		StartTime:      time.Now(),
-		EndTime:        time.Now().Add(5 * time.Minute),
-		Duration:       5 * time.Minute,
 		TotalRequests:  10000,
 		SuccessfulReqs: 9950,
 		FailedRequests: 50,
@@ -577,10 +570,7 @@ func TestPerformanceConfig(t *testing.T) {
 			MemoryUsage:  0.8,
 			CPUUsage:     0.8,
 		},
-		TrendAnalysisWindow: 5 * time.Minute,
 		OptimizationLevel:   OptimizationLevelStandard,
-		EnablePredictive:    true,
-		EnableAutoOptimize:  false,
 	}
 
 	if config.MonitoringInterval <= 0 {

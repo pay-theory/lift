@@ -81,33 +81,33 @@ type RefundPaymentRequest struct {
 
 // Service interfaces (would be implemented with actual business logic)
 type AccountService interface {
-	CreateAccount(ctx context.Context, req CreateAccountRequest) (*Account, error)
-	GetAccount(ctx context.Context, id string) (*Account, error)
-	GetBalance(ctx context.Context, accountID string) (float64, error)
-	UpdateBalance(ctx context.Context, accountID string, amount float64) error
+	CreateAccount(_ context.Context, req CreateAccountRequest) (*Account, error)
+	GetAccount(_ context.Context, id string) (*Account, error)
+	GetBalance(_ context.Context, accountID string) (float64, error)
+	UpdateBalance(_ context.Context, accountID string, amount float64) error
 }
 
 type TransactionService interface {
-	CreateTransaction(ctx context.Context, req CreateTransactionRequest) (*Transaction, error)
-	GetTransaction(ctx context.Context, id string) (*Transaction, error)
-	GetAccountTransactions(ctx context.Context, accountID string) ([]Transaction, error)
+	CreateTransaction(_ context.Context, req CreateTransactionRequest) (*Transaction, error)
+	GetTransaction(_ context.Context, id string) (*Transaction, error)
+	GetAccountTransactions(_ context.Context, accountID string) ([]Transaction, error)
 }
 
 type PaymentService interface {
-	ProcessPayment(ctx context.Context, req ProcessPaymentRequest) (*Payment, error)
-	GetPayment(ctx context.Context, id string) (*Payment, error)
-	RefundPayment(ctx context.Context, req RefundPaymentRequest) (*Payment, error)
+	ProcessPayment(_ context.Context, req ProcessPaymentRequest) (*Payment, error)
+	GetPayment(_ context.Context, id string) (*Payment, error)
+	RefundPayment(_ context.Context, req RefundPaymentRequest) (*Payment, error)
 }
 
 type ComplianceService interface {
-	ValidateTransaction(ctx context.Context, transaction *Transaction) error
-	AuditPayment(ctx context.Context, payment *Payment) error
-	GenerateReport(ctx context.Context, reportType string) (any, error)
+	ValidateTransaction(_ context.Context, transaction *Transaction) error
+	AuditPayment(_ context.Context, payment *Payment) error
+	GenerateReport(_ context.Context, reportType string) (any, error)
 }
 
 type FraudDetectionService interface {
-	AnalyzePayment(ctx context.Context, payment *Payment) (float64, error)
-	CheckRisk(ctx context.Context, accountID string, amount float64) (bool, error)
+	AnalyzePayment(_ context.Context, payment *Payment) (float64, error)
+	CheckRisk(_ context.Context, accountID string, amount float64) (bool, error)
 }
 
 // Mock implementations for demonstration
@@ -117,7 +117,7 @@ type mockPaymentService struct{}
 type mockComplianceService struct{}
 type mockFraudDetectionService struct{}
 
-func (m *mockAccountService) CreateAccount(ctx context.Context, req CreateAccountRequest) (*Account, error) {
+func (m *mockAccountService) CreateAccount(_ context.Context, req CreateAccountRequest) (*Account, error) {
 	return &Account{
 		ID:            generateID(),
 		CustomerID:    req.CustomerID,
@@ -131,7 +131,7 @@ func (m *mockAccountService) CreateAccount(ctx context.Context, req CreateAccoun
 	}, nil
 }
 
-func (m *mockAccountService) GetAccount(ctx context.Context, id string) (*Account, error) {
+func (m *mockAccountService) GetAccount(_ context.Context, id string) (*Account, error) {
 	return &Account{
 		ID:            id,
 		CustomerID:    "customer_123",
@@ -145,15 +145,15 @@ func (m *mockAccountService) GetAccount(ctx context.Context, id string) (*Accoun
 	}, nil
 }
 
-func (m *mockAccountService) GetBalance(ctx context.Context, accountID string) (float64, error) {
+func (m *mockAccountService) GetBalance(_ context.Context, _ string) (float64, error) {
 	return 1000.00, nil
 }
 
-func (m *mockAccountService) UpdateBalance(ctx context.Context, accountID string, amount float64) error {
+func (m *mockAccountService) UpdateBalance(_ context.Context, _ string, _ float64) error {
 	return nil
 }
 
-func (m *mockTransactionService) CreateTransaction(ctx context.Context, req CreateTransactionRequest) (*Transaction, error) {
+func (m *mockTransactionService) CreateTransaction(_ context.Context, req CreateTransactionRequest) (*Transaction, error) {
 	return &Transaction{
 		ID:            generateID(),
 		FromAccountID: req.FromAccountID,
@@ -172,7 +172,7 @@ func (m *mockTransactionService) CreateTransaction(ctx context.Context, req Crea
 	}, nil
 }
 
-func (m *mockTransactionService) GetTransaction(ctx context.Context, id string) (*Transaction, error) {
+func (m *mockTransactionService) GetTransaction(_ context.Context, id string) (*Transaction, error) {
 	return &Transaction{
 		ID:            id,
 		FromAccountID: "acc_123",
@@ -186,7 +186,7 @@ func (m *mockTransactionService) GetTransaction(ctx context.Context, id string) 
 	}, nil
 }
 
-func (m *mockTransactionService) GetAccountTransactions(ctx context.Context, accountID string) ([]Transaction, error) {
+func (m *mockTransactionService) GetAccountTransactions(_ context.Context, accountID string) ([]Transaction, error) {
 	return []Transaction{
 		{
 			ID:            "txn_1",
@@ -213,7 +213,7 @@ func (m *mockTransactionService) GetAccountTransactions(ctx context.Context, acc
 	}, nil
 }
 
-func (m *mockPaymentService) ProcessPayment(ctx context.Context, req ProcessPaymentRequest) (*Payment, error) {
+func (m *mockPaymentService) ProcessPayment(_ context.Context, req ProcessPaymentRequest) (*Payment, error) {
 	return &Payment{
 		ID:              generateID(),
 		PayerAccountID:  req.PayerAccountID,
@@ -228,7 +228,7 @@ func (m *mockPaymentService) ProcessPayment(ctx context.Context, req ProcessPaym
 	}, nil
 }
 
-func (m *mockPaymentService) GetPayment(ctx context.Context, id string) (*Payment, error) {
+func (m *mockPaymentService) GetPayment(_ context.Context, id string) (*Payment, error) {
 	return &Payment{
 		ID:             id,
 		PayerAccountID: "acc_123",
@@ -242,7 +242,7 @@ func (m *mockPaymentService) GetPayment(ctx context.Context, id string) (*Paymen
 	}, nil
 }
 
-func (m *mockPaymentService) RefundPayment(ctx context.Context, req RefundPaymentRequest) (*Payment, error) {
+func (m *mockPaymentService) RefundPayment(_ context.Context, req RefundPaymentRequest) (*Payment, error) {
 	return &Payment{
 		ID:             generateID(),
 		PayerAccountID: "system",
@@ -256,7 +256,7 @@ func (m *mockPaymentService) RefundPayment(ctx context.Context, req RefundPaymen
 	}, nil
 }
 
-func (m *mockComplianceService) ValidateTransaction(ctx context.Context, transaction *Transaction) error {
+func (m *mockComplianceService) ValidateTransaction(_ context.Context, transaction *Transaction) error {
 	// Simulate compliance validation
 	if transaction.Amount > 10000 {
 		return fmt.Errorf("transaction amount exceeds daily limit")
@@ -264,13 +264,13 @@ func (m *mockComplianceService) ValidateTransaction(ctx context.Context, transac
 	return nil
 }
 
-func (m *mockComplianceService) AuditPayment(ctx context.Context, payment *Payment) error {
+func (m *mockComplianceService) AuditPayment(_ context.Context, payment *Payment) error {
 	// Simulate audit logging
 	log.Printf("AUDIT: Payment %s processed for amount %f %s", payment.ID, payment.Amount, payment.Currency)
 	return nil
 }
 
-func (m *mockComplianceService) GenerateReport(ctx context.Context, reportType string) (any, error) {
+func (m *mockComplianceService) GenerateReport(_ context.Context, reportType string) (any, error) {
 	return map[string]any{
 		"reportType":  reportType,
 		"generatedAt": time.Now(),
@@ -282,7 +282,7 @@ func (m *mockComplianceService) GenerateReport(ctx context.Context, reportType s
 	}, nil
 }
 
-func (m *mockFraudDetectionService) AnalyzePayment(ctx context.Context, payment *Payment) (float64, error) {
+func (m *mockFraudDetectionService) AnalyzePayment(_ context.Context, payment *Payment) (float64, error) {
 	// Simple fraud scoring logic
 	score := 0.0
 
@@ -296,7 +296,7 @@ func (m *mockFraudDetectionService) AnalyzePayment(ctx context.Context, payment 
 	return score, nil
 }
 
-func (m *mockFraudDetectionService) CheckRisk(ctx context.Context, accountID string, amount float64) (bool, error) {
+func (m *mockFraudDetectionService) CheckRisk(_ context.Context, _ string, amount float64) (bool, error) {
 	// Simple risk check
 	return amount > 10000, nil
 }

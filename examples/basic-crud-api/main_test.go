@@ -277,7 +277,7 @@ func (m *MockDynamORMWrapper) Delete(_ context.Context, key any) error {
 	return m.mockDB.Model(&struct{}{}).Where("ID", "=", key).Delete()
 }
 
-func (m *MockDynamORMWrapper) Query(_ context.Context, query any) (any, error) {
+func (m *MockDynamORMWrapper) Query(_ context.Context, _ any) (any, error) {
 	// Simple implementation for testing
 	return []any{}, nil
 }

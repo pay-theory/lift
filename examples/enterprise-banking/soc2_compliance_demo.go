@@ -311,7 +311,7 @@ func generateSOC2ComplianceSummary(report *enterprise.ComplianceReport) {
 }
 
 // demonstrateSOC2ContinuousMonitoring shows continuous compliance monitoring
-func demonstrateSOC2ContinuousMonitoring(compliance *enterprise.SOC2TypeIICompliance, app *lift.App) {
+func demonstrateSOC2ContinuousMonitoring(_ *enterprise.SOC2TypeIICompliance, _ *lift.App) {
 	fmt.Printf("🔄 Continuous Compliance Monitoring\n")
 	fmt.Printf("   Monitoring Framework: SOC 2 Type II\n")
 	fmt.Printf("   Monitoring Frequency: Real-time\n")
