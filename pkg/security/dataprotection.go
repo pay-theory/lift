@@ -241,18 +241,49 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		return DataPublic
 	}
 
+	// Key fields should be public (not redacted) - check BEFORE other patterns
+	// Exact matches for key-related field names
+	keyExactMatches := []string{
+		"key", "keys", "apikey", "api_key", "access_key", "secret_key",
+		"encryption_key", "signing_key", "public_key", "private_key",
+		"key_id", "key_name", "key_type", "key_version", "key_arn",
+		"master_key", "data_key", "kms_key", "session_key",
+	}
+	
+	for _, keyPattern := range keyExactMatches {
+		if strings.EqualFold(fieldLower, keyPattern) {
+			// Most key fields should be DataInternal (shown but not highly restricted)
+			// except for actual secret/private keys which should be restricted
+			if strings.Contains(fieldLower, "secret") || strings.Contains(fieldLower, "private") {
+				return DataRestricted
+			}
+			return DataInternal
+		}
+	}
+	
+	// Check for key-related patterns with word boundaries
+	if fieldLower == "key" || strings.HasSuffix(fieldLower, "_key") || strings.HasPrefix(fieldLower, "key_") || 
+	   strings.HasSuffix(fieldLower, "_keys") || strings.HasPrefix(fieldLower, "keys_") {
+		// If it contains secret or private, it's restricted
+		if strings.Contains(fieldLower, "secret") || strings.Contains(fieldLower, "private") {
+			return DataRestricted
+		}
+		// Otherwise it's internal (visible but with some protections)
+		return DataInternal
+	}
+
 	// High sensitivity fields from sanitization logic
 	highSensitiveFields := []string{
 		"password", "token", "secret", "auth", "credential",
 		"email", "phone", "ssn", "card", "account", "routing",
-		"pin", "cvv", "security", "private", "confidential", "key",
+		"pin", "cvv", "security", "private", "confidential",
 	}
 
 	for _, sensitive := range highSensitiveFields {
 		if strings.Contains(fieldLower, sensitive) {
 			// Determine classification based on the type of sensitive field
 			switch sensitive {
-			case "ssn", "card", "account", "routing", "cvv", "pin", "key":
+			case "ssn", "card", "account", "routing", "cvv", "pin":
 				return DataRestricted
 			case "password", "token", "secret", "auth", "credential", "private":
 				return DataConfidential
@@ -612,8 +643,8 @@ func (dpm *DataProtectionManager) applyDefaultMasking(value any, classification 
 		return strValue[:2] + strings.Repeat("*", len(strValue)-4) + strValue[len(strValue)-2:]
 
 	case DataInternal:
-		// Internal data shows metadata only (e.g., length)
-		return fmt.Sprintf("[INTERNAL_%d_chars]", len(strValue))
+		// Internal data is not masked by default
+		return value
 
 	case DataPublic:
 		// Public data is not masked - this includes IP addresses

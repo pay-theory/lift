@@ -93,6 +93,58 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    "user@example.com",
 			expected: "user@example.com", // Email is classified as DataInternal by dataprotection
 		},
+		
+		// Key fields (DataInternal - should not be redacted)
+		{
+			name:     "key field",
+			key:      "key",
+			value:    "some-key-value",
+			expected: "some-key-value",
+		},
+		{
+			name:     "api_key field",
+			key:      "api_key",
+			value:    "abc123xyz",
+			expected: "abc123xyz",
+		},
+		{
+			name:     "access_key field",
+			key:      "access_key",
+			value:    "AKIAIOSFODNN7EXAMPLE",
+			expected: "AKIAIOSFODNN7EXAMPLE",
+		},
+		{
+			name:     "public_key field",
+			key:      "public_key",
+			value:    "ssh-rsa AAAAB3NzaC1yc2E",
+			expected: "ssh-rsa AAAAB3NzaC1yc2E",
+		},
+		{
+			name:     "key_id field",
+			key:      "key_id",
+			value:    "key-12345",
+			expected: "key-12345",
+		},
+		{
+			name:     "my_key suffix pattern",
+			key:      "my_key",
+			value:    "custom-key-value",
+			expected: "custom-key-value",
+		},
+		
+		// Key fields that should be redacted (contain secret/private)
+		{
+			name:     "secret_key field",
+			key:      "secret_key",
+			value:    "wJalrXUtnFEMI/K7MDENG",
+			expected: "[REDACTED]",
+		},
+		{
+			name:     "private_key field",
+			key:      "private_key",
+			value:    "-----BEGIN PRIVATE KEY-----",
+			expected: "[REDACTED]",
+		},
 		{
 			name:     "cvv field",
 			key:      "cvv",
