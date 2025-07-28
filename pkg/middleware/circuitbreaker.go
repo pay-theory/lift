@@ -235,8 +235,8 @@ func (m *circuitBreakerManager) getBreakerForContext(ctx *lift.Context) *circuit
 	defer m.mutex.Unlock()
 
 	// Double-check after acquiring write lock
-	if breaker, exists := m.breakers[key]; exists {
-		return breaker
+	if existingBreaker, exists := m.breakers[key]; exists {
+		return existingBreaker
 	}
 
 	breaker = newCircuitBreaker(key, m.config)

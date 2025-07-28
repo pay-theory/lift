@@ -258,7 +258,6 @@ func runResilienceMetricsDemo() {
 			"incident_frequency": "decreasing",
 		},
 		ExperimentCount: 15,
-		LastUpdated:     time.Now(),
 	}
 
 	// Create mock experiment results for score calculation

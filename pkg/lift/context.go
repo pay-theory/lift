@@ -15,34 +15,36 @@ type Validator interface {
 type Context struct {
 	context.Context
 
-	// Request/Response cycle
+	// Performance tracking (24 bytes)
+	startTime time.Time
+
+	// Lambda-specific (16 bytes)
+	RequestID string
+
+	// Request/Response cycle (8 bytes each)
 	Request  *Request
 	Response *Response
 
-	// Observability
+	// Observability (8 bytes each)
 	Logger  Logger
 	Metrics MetricsCollector
 
-	// Utilities
+	// Utilities (8 bytes each)
 	validator Validator
 	params    map[string]string
 	values    map[string]any
 
-	// Optional database connection
+	// Optional database connection (8 bytes)
 	DB any
 
-	// Lambda-specific
-	RequestID string
+	// Authentication (8 bytes)
+	claims map[string]any
 
-	// Performance tracking
-	startTime time.Time
+	// Response buffering (8 bytes)
+	responseBuffer *ResponseBuffer
 
-	// Authentication
-	claims          map[string]any
-	isAuthenticated bool
-
-	// Response buffering
-	responseBuffer   *ResponseBuffer
+	// Boolean flags (1 byte each)
+	isAuthenticated  bool
 	bufferingEnabled bool
 }
 

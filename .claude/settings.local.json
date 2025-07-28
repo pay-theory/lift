@@ -62,7 +62,13 @@
       "Bash(aws dynamodb describe-table:*)",
       "Bash(./setup-dynamorm-table.sh:*)",
       "Bash(gh pr list:*)",
-      "Bash(git describe:*)"
+      "Bash(git describe:*)",
+      "Bash(make lint:*)",
+      "Bash(golangci-lint help:*)",
+      "Bash(/agents)",
+      "Bash(golangci-lint run:*)",
+      "Bash(golangci-lint:*)",
+      "Bash(go vet:*)"
     ],
     "deny": []
   }

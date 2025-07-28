@@ -34,7 +34,7 @@ func ResponseLoggingMiddleware() lift.Middleware {
 					statusCode, time.Since(start))
 
 				// Log response body (be careful with sensitive data!)
-				if jsonData, err := json.Marshal(capturedData); err == nil {
+				if jsonData, marshalErr := json.Marshal(capturedData); marshalErr == nil {
 					log.Printf("Response body: %s", string(jsonData))
 				}
 

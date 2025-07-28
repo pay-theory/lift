@@ -16,8 +16,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
@@ -605,19 +603,21 @@ func (g *GDPRCompleteService) collectFromTable(ctx context.Context, tableName st
 func (g *GDPRCompleteService) queryUserData(ctx context.Context, tableName string, dataSubjectID string) ([]map[string]interface{}, error) {
 	// This is a simplified implementation - in practice, you'd need to know
 	// the specific query patterns for each table
-	input := &dynamodb.QueryInput{
-		TableName:              aws.String(tableName),
-		KeyConditionExpression: aws.String("data_subject_id = :subject_id"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":subject_id": &types.AttributeValueMemberS{Value: dataSubjectID},
-		},
-	}
-
 	// TODO: Implement using DynamORM Query methods
 	// The DynamORM wrapper doesn't expose direct DynamoDB client access
 	// This needs to be refactored to use DynamORM's query builder
+	
+	// Example query would look like:
+	// input := &dynamodb.QueryInput{
+	//     TableName:              aws.String(tableName),
+	//     KeyConditionExpression: aws.String("data_subject_id = :subject_id"),
+	//     ExpressionAttributeValues: map[string]types.AttributeValue{
+	//         ":subject_id": &types.AttributeValueMemberS{Value: dataSubjectID},
+	//     },
+	// }
+	
 	var items []map[string]interface{}
-	_ = input // Suppress unused variable warning
+	_ = dataSubjectID // Currently unused but will be used in DynamORM implementation
 
 	return items, nil
 }

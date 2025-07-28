@@ -404,10 +404,10 @@ func (s *DynamoDBConnectionStore) CreateTable(ctx context.Context) error {
 
 	// Wait for table to be active
 	waiter := dynamodb.NewTableExistsWaiter(s.client)
-	if err := waiter.Wait(ctx, &dynamodb.DescribeTableInput{
+	if waitErr := waiter.Wait(ctx, &dynamodb.DescribeTableInput{
 		TableName: aws.String(s.tableName),
-	}, 5*time.Minute); err != nil {
-		return fmt.Errorf("failed waiting for table to be active: %w", err)
+	}, 5*time.Minute); waitErr != nil {
+		return fmt.Errorf("failed waiting for table to be active: %w", waitErr)
 	}
 
 	// Enable TTL

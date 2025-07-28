@@ -449,11 +449,11 @@ func (api *ProductionAPI) updateUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req UpdateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if decodeErr := json.NewDecoder(r.Body).Decode(&req); decodeErr != nil {
 		api.writeErrorResponse(w, APIError{
 			Type:    "validation",
 			Message: "invalid JSON",
-			Details: err.Error(),
+			Details: decodeErr.Error(),
 		})
 		return
 	}

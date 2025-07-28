@@ -445,17 +445,10 @@ func TestSecurityComplianceIntegration(t *testing.T) {
 
 	t.Run("Consent Record Validation", func(t *testing.T) {
 		validConsent := &security.ConsentRecord{
-			ID:                 "consent-123",
-			DataSubjectID:      "user-456",
-			Purpose:            "analytics",
-			LegalBasis:         "consent",
-			ConsentGiven:       true,
-			Granular:           true,
-			Specific:           true,
-			Informed:           true,
-			Unambiguous:        true,
-			ProcessingPurposes: []string{"analytics", "marketing"},
-			ConsentMethod:      "explicit_opt_in",
+			ID:            "consent-123",
+			DataSubjectID: "user-456",
+			ConsentGiven:  true,
+			Granular:      true,
 			ConsentProof: &security.ConsentProof{
 				Type:      "digital_signature",
 				Evidence:  "user_clicked_consent",
@@ -465,8 +458,6 @@ func TestSecurityComplianceIntegration(t *testing.T) {
 				Method:    "web_form",
 				Verified:  true,
 			},
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
 		}
 
 		// This should pass validation

@@ -2,7 +2,6 @@ package dev
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -46,15 +45,9 @@ func TestHTTPTimeoutSecurity(t *testing.T) {
 	})
 
 	t.Run("ProfilerServer has proper timeout configurations", func(t *testing.T) {
-		profiler := NewProfilerServer(0) // Use port 0 for testing
-
 		// Test that the profiler creates secure server configuration
 		// We'll test by examining what would be created
-		mux := http.NewServeMux()
 		testServer := &http.Server{
-			Addr:    fmt.Sprintf(":%d", profiler.port),
-			Handler: mux,
-
 			// Security timeouts to prevent DoS attacks
 			ReadTimeout:       10 * time.Second, // Shorter timeout for profiler
 			ReadHeaderTimeout: 3 * time.Second,  // Prevent Slowloris attacks

@@ -54,30 +54,28 @@ type AppOption func(*App)
 
 // App represents the main application container
 type App struct {
-	// Core components
-	router      *Router      // HTTP router
-	eventRouter *EventRouter // Non-HTTP event router
-	middleware  []Middleware
-	config      *Config
+	// Slice (24 bytes)
+	middleware []Middleware
 
-	// Event handling
+	// Pointers and interfaces (8 bytes each)
+	router          *Router                       // HTTP router
+	eventRouter     *EventRouter                  // Non-HTTP event router
+	config          *Config
 	adapterRegistry *adapters.AdapterRegistry
+	wsOptions       *WebSocketOptions
+	db              any
+	logger          Logger
+	metrics         MetricsCollector
 
-	// WebSocket support
-	wsRoutes  map[string]WebSocketHandler
-	wsOptions *WebSocketOptions
-
-	// Optional integrations
-	db       any
-	logger   Logger
-	metrics  MetricsCollector
+	// Maps (8 bytes each) 
+	wsRoutes map[string]WebSocketHandler
 	features map[string]bool
 
-	// Runtime state
-	started bool
-	mu      sync.RWMutex
+	// Runtime state (24 bytes)
+	mu sync.RWMutex
 
-	// Response buffering
+	// Boolean flags (1 byte each)
+	started                   bool
 	hasInterceptingMiddleware bool
 }
 

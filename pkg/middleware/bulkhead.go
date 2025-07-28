@@ -256,8 +256,8 @@ func (bm *bulkheadManager) getTenantSemaphore(tenantID string) *semaphore {
 	defer bm.mutex.Unlock()
 
 	// Double-check after acquiring write lock
-	if sem, exists := bm.tenantSemaphores[tenantID]; exists {
-		return sem
+	if existingSem, exists := bm.tenantSemaphores[tenantID]; exists {
+		return existingSem
 	}
 
 	// Determine limit for this tenant
@@ -293,8 +293,8 @@ func (bm *bulkheadManager) getOperationSemaphore(operation string) *semaphore {
 	defer bm.mutex.Unlock()
 
 	// Double-check after acquiring write lock
-	if sem, exists := bm.operationSemaphores[operation]; exists {
-		return sem
+	if existingSem, exists := bm.operationSemaphores[operation]; exists {
+		return existingSem
 	}
 
 	// Determine limit for this operation
