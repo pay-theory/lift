@@ -14,8 +14,8 @@ import (
 
 // MockResource implements the resources.Resource interface for demonstration
 type MockResource struct {
-	id       string
 	lastUsed time.Time
+	id       string
 	valid    bool
 }
 

@@ -12,70 +12,53 @@ import (
 
 // RateLimitConfig holds configuration for rate limiting
 type RateLimitConfig struct {
-	// DynamORM configuration
-	DynamORM *dynamorm.DynamORMWrapper `json:"-"`
-
-	// Rate limiting settings
-	DefaultLimit  int           `json:"default_limit"`  // Requests per window
-	DefaultWindow time.Duration `json:"default_window"` // Time window
-	Window        time.Duration `json:"window"`         // Alias for DefaultWindow (backward compatibility)
-	BurstLimit    int           `json:"burst_limit"`    // Burst allowance
-
-	// Strategy settings
-	Strategy    string        `json:"strategy"`    // fixed_window, sliding_window, multi_window
-	Granularity time.Duration `json:"granularity"` // For sliding window strategy
-
-	// Multi-tenant settings
-	TenantLimits map[string]int `json:"tenant_limits"` // Per-tenant limits
-	UserLimits   map[string]int `json:"user_limits"`   // Per-user limits
-
-	// Key generation
-	KeyPrefix     string                            `json:"key_prefix"`
-	KeyFunc       func(*lift.Context) *RateLimitKey `json:"-"` // Custom key function
-	IncludePath   bool                              `json:"include_path"`
-	IncludeMethod bool                              `json:"include_method"`
-
-	// Error handling
-	ErrorHandler func(*lift.Context, *RateLimitResult) error `json:"-"` // Custom error handler
-
-	// Behavior settings
-	SkipSuccessful bool `json:"skip_successful"` // Only count failed requests
-	SkipOptions    bool `json:"skip_options"`    // Skip OPTIONS requests
-
-	// Headers
-	HeaderPrefix string `json:"header_prefix"` // X-RateLimit prefix
-
-	// Storage settings
-	TableName       string        `json:"table_name"`
-	TTL             time.Duration `json:"ttl"`              // How long to keep records
-	CleanupInterval time.Duration `json:"cleanup_interval"` // How often to cleanup
+	DynamORM        *dynamorm.DynamORMWrapper                   `json:"-"`
+	ErrorHandler    func(*lift.Context, *RateLimitResult) error `json:"-"`
+	KeyFunc         func(*lift.Context) *RateLimitKey           `json:"-"`
+	UserLimits      map[string]int                              `json:"user_limits"`
+	TenantLimits    map[string]int                              `json:"tenant_limits"`
+	Strategy        string                                      `json:"strategy"`
+	HeaderPrefix    string                                      `json:"header_prefix"`
+	KeyPrefix       string                                      `json:"key_prefix"`
+	TableName       string                                      `json:"table_name"`
+	BurstLimit      int                                         `json:"burst_limit"`
+	Window          time.Duration                               `json:"window"`
+	DefaultWindow   time.Duration                               `json:"default_window"`
+	CleanupInterval time.Duration                               `json:"cleanup_interval"`
+	Granularity     time.Duration                               `json:"granularity"`
+	DefaultLimit    int                                         `json:"default_limit"`
+	TTL             time.Duration                               `json:"ttl"`
+	IncludeMethod   bool                                        `json:"include_method"`
+	SkipOptions     bool                                        `json:"skip_options"`
+	SkipSuccessful  bool                                        `json:"skip_successful"`
+	IncludePath     bool                                        `json:"include_path"`
 }
 
 // RateLimitKey represents a rate limiting key with metadata
 type RateLimitKey struct {
-	Identifier string            `json:"identifier"` // Primary identifier (tenant:user, IP, etc.)
-	Resource   string            `json:"resource"`   // Resource being accessed (path)
-	Operation  string            `json:"operation"`  // Operation being performed (method)
-	Metadata   map[string]string `json:"metadata"`   // Additional metadata
+	Metadata   map[string]string `json:"metadata"`
+	Identifier string            `json:"identifier"`
+	Resource   string            `json:"resource"`
+	Operation  string            `json:"operation"`
 }
 
 // RateLimitEntry represents a rate limit record in DynamoDB
 type RateLimitEntry struct {
-	Key         string    `json:"key"`
-	Count       int       `json:"count"`
 	WindowStart time.Time `json:"window_start"`
 	LastRequest time.Time `json:"last_request"`
+	Key         string    `json:"key"`
+	Count       int       `json:"count"`
 	TTL         int64     `json:"ttl"`
 }
 
 // RateLimitResult contains the result of a rate limit check
 type RateLimitResult struct {
-	Allowed     bool          `json:"allowed"`
+	ResetAt     time.Time     `json:"reset_at"`
+	WindowStart time.Time     `json:"window_start"`
 	Limit       int           `json:"limit"`
 	Remaining   int           `json:"remaining"`
-	ResetAt     time.Time     `json:"reset_at"`
 	RetryAfter  time.Duration `json:"retry_after"`
-	WindowStart time.Time     `json:"window_start"`
+	Allowed     bool          `json:"allowed"`
 }
 
 // RateLimitMiddleware creates a rate limiting middleware with DynamORM backend

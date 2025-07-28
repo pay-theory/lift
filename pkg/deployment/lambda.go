@@ -21,14 +21,14 @@ import (
 type DeploymentConfig struct {
 	Environment     string        `json:"environment"`
 	LogLevel        string        `json:"log_level"`
-	MetricsEnabled  bool          `json:"metrics_enabled"`
-	TracingEnabled  bool          `json:"tracing_enabled"`
 	HealthChecks    []string      `json:"health_checks"`
 	PreWarmTargets  []string      `json:"pre_warm_targets"`
 	TimeoutSeconds  int           `json:"timeout_seconds"`
 	MemoryMB        int           `json:"memory_mb"`
-	ColdStartOptim  bool          `json:"cold_start_optimization"`
 	GracefulTimeout time.Duration `json:"graceful_timeout"`
+	MetricsEnabled  bool          `json:"metrics_enabled"`
+	TracingEnabled  bool          `json:"tracing_enabled"`
+	ColdStartOptim  bool          `json:"cold_start_optimization"`
 }
 
 // DefaultDeploymentConfig returns production-ready default configuration
@@ -49,21 +49,17 @@ func DefaultDeploymentConfig() *DeploymentConfig {
 
 // LambdaDeployment provides production-ready Lambda deployment infrastructure
 type LambdaDeployment struct {
-	app           *lift.App
-	config        *DeploymentConfig
-	healthManager health.HealthManager
-	metrics       lift.MetricsCollector
-	resourceMgr   *resources.ResourceManager
-
-	// Cold start detection
+	startTime      time.Time
+	lastRequest    time.Time
+	healthManager  health.HealthManager
+	metrics        lift.MetricsCollector
+	app            *lift.App
+	config         *DeploymentConfig
+	resourceMgr    *resources.ResourceManager
+	requestCount   int64
+	totalDuration  time.Duration
 	coldStartMutex sync.RWMutex
 	isColdStartVar bool
-	startTime      time.Time
-
-	// Performance tracking
-	requestCount  int64
-	totalDuration time.Duration
-	lastRequest   time.Time
 }
 
 // NewLambdaDeployment creates a new production-ready Lambda deployment
@@ -278,19 +274,19 @@ func (d *LambdaDeployment) Shutdown(ctx context.Context) error {
 
 // LambdaHealthStatus represents the overall health status for Lambda deployment
 type LambdaHealthStatus struct {
-	Status      string                 `json:"status"`
 	Timestamp   time.Time              `json:"timestamp"`
+	Checks      map[string]CheckResult `json:"checks"`
+	Status      string                 `json:"status"`
 	Environment string                 `json:"environment"`
 	Uptime      time.Duration          `json:"uptime"`
-	Checks      map[string]CheckResult `json:"checks"`
 }
 
 // CheckResult represents individual health check result
 type CheckResult struct {
 	Status   string        `json:"status"`
-	Duration time.Duration `json:"duration"`
 	Message  string        `json:"message,omitempty"`
 	Error    string        `json:"error,omitempty"`
+	Duration time.Duration `json:"duration"`
 }
 
 // Health checker implementations
@@ -332,8 +328,8 @@ type ResourceHealthChecker struct {
 	maxCPUPercent            float64
 	maxOpenFiles             int
 	maxGoroutines            int
-	checkDiskSpace           bool
 	minDiskSpaceMB           int64
+	checkDiskSpace           bool
 	checkNetworkConnectivity bool
 }
 

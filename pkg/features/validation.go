@@ -13,32 +13,32 @@ import (
 
 // ValidationRule defines a validation rule
 type ValidationRule struct {
-	Field      string                `json:"field"`
-	Type       string                `json:"type"`
-	Required   bool                  `json:"required"`
 	Min        any                   `json:"min,omitempty"`
 	Max        any                   `json:"max,omitempty"`
-	Pattern    string                `json:"pattern,omitempty"`
-	Enum       []any                 `json:"enum,omitempty"`
 	Custom     func(any) error       `json:"-"`
+	Field      string                `json:"field"`
+	Type       string                `json:"type"`
+	Pattern    string                `json:"pattern,omitempty"`
 	Message    string                `json:"message,omitempty"`
+	Enum       []any                 `json:"enum,omitempty"`
 	Conditions []ValidationCondition `json:"conditions,omitempty"`
+	Required   bool                  `json:"required"`
 }
 
 // ValidationCondition defines conditional validation
 type ValidationCondition struct {
-	Field    string `json:"field"`
-	Operator string `json:"operator"` // "eq", "ne", "gt", "lt", "in", "not_in"
 	Value    any    `json:"value"`
+	Field    string `json:"field"`
+	Operator string `json:"operator"`
 }
 
 // ValidationSchema defines a complete validation schema
 type ValidationSchema struct {
-	Type       string                    `json:"type"`
 	Properties map[string]ValidationRule `json:"properties"`
+	Custom     func(any) error           `json:"-"`
+	Type       string                    `json:"type"`
 	Required   []string                  `json:"required"`
 	Rules      []ValidationRule          `json:"rules"`
-	Custom     func(any) error           `json:"-"`
 }
 
 // ValidationError represents a validation error
@@ -51,19 +51,19 @@ type ValidationError struct {
 
 // ValidationResult contains validation results
 type ValidationResult struct {
-	Valid  bool              `json:"valid"`
 	Errors []ValidationError `json:"errors,omitempty"`
+	Valid  bool              `json:"valid"`
 }
 
 // ValidationConfig configures validation behavior
 type ValidationConfig struct {
 	RequestSchema    *ValidationSchema
 	ResponseSchema   *ValidationSchema
+	CustomValidators map[string]func(any) error
+	ErrorHandler     func(*lift.Context, []ValidationError) error
 	ValidateRequest  bool
 	ValidateResponse bool
 	StrictMode       bool
-	CustomValidators map[string]func(any) error
-	ErrorHandler     func(*lift.Context, []ValidationError) error
 }
 
 // ValidationMiddleware provides advanced validation

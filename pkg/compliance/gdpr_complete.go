@@ -27,90 +27,77 @@ import (
 
 // GDPRCompleteService provides comprehensive GDPR compliance implementation
 type GDPRCompleteService struct {
-	config        GDPRCompleteConfig
 	db            *dynamorm.DynamORMWrapper
 	s3Client      *s3.Client
 	sesClient     *ses.Client
 	snsClient     *sns.Client
-	encryptionKey []byte
 	auditLogger   *GDPRAuditLogger
+	config        GDPRCompleteConfig
+	encryptionKey []byte
 	mu            sync.RWMutex
 }
 
 // GDPRCompleteConfig defines complete GDPR configuration
 type GDPRCompleteConfig struct {
-	// Basic configuration
-	Enabled     bool   `json:"enabled"`
-	Region      string `json:"region"`
-	Environment string `json:"environment"`
-
-	// DynamoDB configuration
-	ConsentTableName string `json:"consent_table_name"`
-	RequestTableName string `json:"request_table_name"`
-	AuditTableName   string `json:"audit_table_name"`
-	PIATableName     string `json:"pia_table_name"`
-
-	// S3 configuration
-	DataExportBucket string `json:"data_export_bucket"`
-	AuditLogBucket   string `json:"audit_log_bucket"`
-
-	// Retention and expiry
-	ConsentExpiryDays     int `json:"consent_expiry_days"`
-	DataRetentionDays     int `json:"data_retention_days"`
-	RequestProcessingDays int `json:"request_processing_days"`
-	AuditRetentionDays    int `json:"audit_retention_days"`
-
-	// Processing configuration
-	MaxExportSizeMB        int  `json:"max_export_size_mb"`
-	EncryptionEnabled      bool `json:"encryption_enabled"`
-	AutoDataDeletion       bool `json:"auto_data_deletion"`
-	RequireExplicitConsent bool `json:"require_explicit_consent"`
-
-	// Notification configuration
-	NotificationTopicArn    string `json:"notification_topic_arn"`
-	FromEmailAddress        string `json:"from_email_address"`
-	ComplianceOfficerEmail  string `json:"compliance_officer_email"`
-	BreachNotificationHours int    `json:"breach_notification_hours"`
-
-	// Cross-border transfer
-	EnableCrossBorderRules bool     `json:"enable_cross_border_rules"`
-	DefaultSafeguards      []string `json:"default_safeguards"`
-	ProhibitedCountries    []string `json:"prohibited_countries"`
+	FromEmailAddress        string   `json:"from_email_address"`
+	Environment             string   `json:"environment"`
+	ConsentTableName        string   `json:"consent_table_name"`
+	RequestTableName        string   `json:"request_table_name"`
+	AuditTableName          string   `json:"audit_table_name"`
+	PIATableName            string   `json:"pia_table_name"`
+	DataExportBucket        string   `json:"data_export_bucket"`
+	AuditLogBucket          string   `json:"audit_log_bucket"`
+	ComplianceOfficerEmail  string   `json:"compliance_officer_email"`
+	Region                  string   `json:"region"`
+	NotificationTopicArn    string   `json:"notification_topic_arn"`
+	DefaultSafeguards       []string `json:"default_safeguards"`
+	ProhibitedCountries     []string `json:"prohibited_countries"`
+	ConsentExpiryDays       int      `json:"consent_expiry_days"`
+	AuditRetentionDays      int      `json:"audit_retention_days"`
+	MaxExportSizeMB         int      `json:"max_export_size_mb"`
+	RequestProcessingDays   int      `json:"request_processing_days"`
+	DataRetentionDays       int      `json:"data_retention_days"`
+	BreachNotificationHours int      `json:"breach_notification_hours"`
+	EnableCrossBorderRules  bool     `json:"enable_cross_border_rules"`
+	Enabled                 bool     `json:"enabled"`
+	RequireExplicitConsent  bool     `json:"require_explicit_consent"`
+	AutoDataDeletion        bool     `json:"auto_data_deletion"`
+	EncryptionEnabled       bool     `json:"encryption_enabled"`
 }
 
 // DataExportRecord represents a data export for GDPR compliance
 type DataExportRecord struct {
-	ExportID      string                 `json:"export_id" `
-	DataSubjectID string                 `json:"data_subject_id" `
-	RequestID     string                 `json:"request_id" `
-	RequestDate   time.Time              `json:"request_date" `
-	Status        string                 `json:"status" `
-	ExportPath    string                 `json:"export_path" `
 	ExpiresAt     time.Time              `json:"expires_at" `
-	EncryptionKey string                 `json:"encryption_key,omitempty" `
-	FileSizeBytes int64                  `json:"file_size_bytes" `
-	DataSources   []string               `json:"data_sources" `
-	Format        string                 `json:"format" `
 	CreatedAt     time.Time              `json:"created_at" `
-	CompletedAt   *time.Time             `json:"completed_at,omitempty" `
-	DownloadedAt  *time.Time             `json:"downloaded_at,omitempty" `
+	RequestDate   time.Time              `json:"request_date" `
 	Metadata      map[string]interface{} `json:"metadata" `
+	DownloadedAt  *time.Time             `json:"downloaded_at,omitempty" `
+	CompletedAt   *time.Time             `json:"completed_at,omitempty" `
+	Format        string                 `json:"format" `
+	ExportID      string                 `json:"export_id" `
+	EncryptionKey string                 `json:"encryption_key,omitempty" `
+	DataSubjectID string                 `json:"data_subject_id" `
+	ExportPath    string                 `json:"export_path" `
+	Status        string                 `json:"status" `
+	RequestID     string                 `json:"request_id" `
+	DataSources   []string               `json:"data_sources" `
+	FileSizeBytes int64                  `json:"file_size_bytes" `
 }
 
 // DataDeletionRecord represents a data deletion for GDPR compliance
 type DataDeletionRecord struct {
+	RequestDate      time.Time              `json:"request_date" `
+	DeletedAt        time.Time              `json:"deleted_at" `
+	Metadata         map[string]interface{} `json:"metadata" `
 	DeletionID       string                 `json:"deletion_id" `
 	DataSubjectID    string                 `json:"data_subject_id" `
 	RequestID        string                 `json:"request_id" `
-	RequestDate      time.Time              `json:"request_date" `
 	Status           string                 `json:"status" `
-	TablesCleared    []string               `json:"tables_cleared" `
-	RetainedData     []string               `json:"retained_data" `
 	RetentionReason  string                 `json:"retention_reason" `
 	DeletedBy        string                 `json:"deleted_by" `
-	DeletedAt        time.Time              `json:"deleted_at" `
 	VerificationHash string                 `json:"verification_hash" `
-	Metadata         map[string]interface{} `json:"metadata" `
+	TablesCleared    []string               `json:"tables_cleared" `
+	RetainedData     []string               `json:"retained_data" `
 }
 
 // ConsentRecordComplete extends security.ConsentRecord with DynamoDB integration
@@ -120,8 +107,8 @@ type ConsentRecordComplete struct {
 	SK         string `json:"sk" `
 	GSI1PK     string `json:"gsi1pk" `
 	GSI1SK     string `json:"gsi1sk" `
-	TTL        int64  `json:"ttl" `
 	EntityType string `json:"entity_type" `
+	TTL        int64  `json:"ttl" `
 }
 
 // PIARecordComplete extends security.PIAResult with DynamoDB integration
@@ -135,13 +122,13 @@ type PIARecordComplete struct {
 // DataSubjectRequestComplete represents a complete data subject request
 type DataSubjectRequestComplete struct {
 	security.DataAccessRequest
+	CompletedAt *time.Time `json:"completed_at,omitempty" `
 	PK          string     `json:"pk" `
 	SK          string     `json:"sk" `
 	GSI1PK      string     `json:"gsi1pk" `
 	GSI1SK      string     `json:"gsi1sk" `
 	EntityType  string     `json:"entity_type" `
 	ProcessedBy string     `json:"processed_by" `
-	CompletedAt *time.Time `json:"completed_at,omitempty" `
 }
 
 // GDPRAuditLogger provides comprehensive audit logging
@@ -609,7 +596,7 @@ func (g *GDPRCompleteService) queryUserData(ctx context.Context, tableName strin
 	// TODO: Implement using DynamORM Query methods
 	// The DynamORM wrapper doesn't expose direct DynamoDB client access
 	// This needs to be refactored to use DynamORM's query builder
-	
+
 	// Example query would look like:
 	// input := &dynamodb.QueryInput{
 	//     TableName:              aws.String(tableName),
@@ -618,7 +605,7 @@ func (g *GDPRCompleteService) queryUserData(ctx context.Context, tableName strin
 	//         ":subject_id": &types.AttributeValueMemberS{Value: dataSubjectID},
 	//     },
 	// }
-	
+
 	var items []map[string]interface{}
 	_ = dataSubjectID // Currently unused but will be used in DynamORM implementation
 
@@ -840,39 +827,39 @@ func (g *GDPRCompleteService) sendBreachNotification(ctx context.Context, record
 // Additional types for complete implementation
 
 type ConsentUpdate struct {
-	Categories []string               `json:"categories"`
+	Metadata   map[string]interface{} `json:"metadata"`
 	LegalBasis string                 `json:"legal_basis"`
 	Method     string                 `json:"method"`
 	Evidence   string                 `json:"evidence"`
-	Metadata   map[string]interface{} `json:"metadata"`
+	Categories []string               `json:"categories"`
 }
 
 type PrivacyBreach struct {
+	DetectedAt      time.Time `json:"detected_at"`
 	Type            string    `json:"type"`
 	Severity        string    `json:"severity"`
-	DetectedAt      time.Time `json:"detected_at"`
-	AffectedCount   int       `json:"affected_count"`
-	DataCategories  []string  `json:"data_categories"`
 	Cause           string    `json:"cause"`
+	DataCategories  []string  `json:"data_categories"`
 	MitigationSteps []string  `json:"mitigation_steps"`
+	AffectedCount   int       `json:"affected_count"`
 }
 
 type PrivacyBreachRecord struct {
-	BreachID          string                 `json:"breach_id" `
-	BreachType        string                 `json:"breach_type" `
-	Severity          string                 `json:"severity" `
+	AuthorityDeadline time.Time              `json:"authority_deadline" `
 	DetectedAt        time.Time              `json:"detected_at" `
 	ReportedAt        time.Time              `json:"reported_at" `
-	AffectedSubjects  int                    `json:"affected_subjects" `
-	DataCategories    []string               `json:"data_categories" `
-	Cause             string                 `json:"cause" `
-	Mitigation        []string               `json:"mitigation" `
-	AuthorityNotified bool                   `json:"authority_notified" `
-	SubjectsNotified  bool                   `json:"subjects_notified" `
-	AuthorityDeadline time.Time              `json:"authority_deadline" `
-	Status            string                 `json:"status" `
-	ReportedBy        string                 `json:"reported_by" `
 	Metadata          map[string]interface{} `json:"metadata" `
+	BreachType        string                 `json:"breach_type" `
+	Severity          string                 `json:"severity" `
+	BreachID          string                 `json:"breach_id" `
+	Cause             string                 `json:"cause" `
+	ReportedBy        string                 `json:"reported_by" `
+	Status            string                 `json:"status" `
+	DataCategories    []string               `json:"data_categories" `
+	Mitigation        []string               `json:"mitigation" `
+	AffectedSubjects  int                    `json:"affected_subjects" `
+	SubjectsNotified  bool                   `json:"subjects_notified" `
+	AuthorityNotified bool                   `json:"authority_notified" `
 }
 
 // Audit Logger Implementation

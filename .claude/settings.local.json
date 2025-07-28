@@ -68,7 +68,10 @@
       "Bash(/agents)",
       "Bash(golangci-lint run:*)",
       "Bash(golangci-lint:*)",
-      "Bash(go vet:*)"
+      "Bash(go vet:*)",
+      "Bash(go install:*)",
+      "Bash(fieldalignment:*)",
+      "Bash(./fix-fieldalignment.sh:*)"
     ],
     "deny": []
   }

@@ -17,15 +17,17 @@ import (
 
 // SecurityRule defines a network security rule
 type SecurityRule struct {
-	Port        float64
-	Protocol    awsec2.Protocol
 	Source      awsec2.IPeer
+	Protocol    awsec2.Protocol
 	Description string
-	RuleAction  string // "allow" or "deny"
+	RuleAction  string
+	Port        float64
 }
 
 // SecretConfig defines configuration for secrets
 type SecretConfig struct {
+	RotationLambda   awslambda.IFunction
+	RotationSchedule *awssecretsmanager.RotationScheduleOptions
 	Name             string
 	Description      string
 	Template         string
@@ -33,8 +35,6 @@ type SecretConfig struct {
 	ExcludeChars     string
 	Length           float64
 	EnableRotation   bool
-	RotationLambda   awslambda.IFunction
-	RotationSchedule *awssecretsmanager.RotationScheduleOptions
 }
 
 // WAFRuleConfig defines WAF rule configuration
@@ -53,37 +53,26 @@ type WAFRuleConfig struct {
 // WAFCustomRule defines a custom WAF rule
 type WAFCustomRule struct {
 	Name        string
-	Priority    float64
 	Statement   string
 	Action      string
 	Description string
+	Priority    float64
 }
 
 // EnhancedSecurityProps defines properties for enhanced security
 type EnhancedSecurityProps struct {
-	// VPC configuration
-	Vpc awsec2.IVpc
-	// Allowed ingress rules
-	IngressRules []SecurityRule
-	// Allowed egress rules
-	EgressRules []SecurityRule
-	// WAF configuration
-	EnableWAF *bool
-	WAFConfig *WAFRuleConfig
-	// Secrets to create
-	Secrets []SecretConfig
-	// Enable VPC Flow Logs
+	Vpc               awsec2.IVpc
+	EnableWAF         *bool
+	WAFConfig         *WAFRuleConfig
 	EnableVPCFlowLogs *bool
-	// Enable GuardDuty integration
-	EnableGuardDuty *bool
-	// Enable Security Hub integration
+	EnableGuardDuty   *bool
 	EnableSecurityHub *bool
-	// Enable Config rules
 	EnableConfigRules *bool
-	// Environment tag
-	Environment *string
-	// Application name
-	ApplicationName *string
+	Environment       *string
+	ApplicationName   *string
+	IngressRules      []SecurityRule
+	EgressRules       []SecurityRule
+	Secrets           []SecretConfig
 }
 
 // EnhancedSecurity provides comprehensive security features

@@ -10,32 +10,15 @@ import (
 
 // JWTConfig holds configuration for JWT middleware
 type JWTConfig struct {
-	// Secret key for HMAC algorithms
-	Secret string
-
-	// Public key for RSA/ECDSA algorithms
-	PublicKey any
-
-	// Algorithm to use (HS256, RS256, etc)
-	Algorithm string
-
-	// Token lookup string (e.g., "header:Authorization,query:token")
-	TokenLookup string
-
-	// Claims validator function
-	Validator func(claims jwt.MapClaims) error
-
-	// Error handler
+	PublicKey    any
+	Claims       jwt.Claims
+	Validator    func(claims jwt.MapClaims) error
 	ErrorHandler func(ctx *lift.Context, err error) error
-
-	// Skip authentication for these paths
-	SkipPaths []string
-
-	// Optional: custom claims type
-	Claims jwt.Claims
-
-	// Optional: custom token extractor
-	Extractor func(ctx *lift.Context) (string, error)
+	Extractor    func(ctx *lift.Context) (string, error)
+	Secret       string
+	Algorithm    string
+	TokenLookup  string
+	SkipPaths    []string
 }
 
 // DefaultJWTConfig returns a default JWT configuration
@@ -228,12 +211,12 @@ func extractJWTFromCookie(ctx *lift.Context, cookieName string) (string, error) 
 type CookieToken struct {
 	Name     string
 	Value    string
-	HttpOnly bool
-	Secure   bool
 	SameSite string
 	Path     string
 	Domain   string
 	MaxAge   int
+	HttpOnly bool
+	Secure   bool
 }
 
 // parseCookies parses the Cookie header value into individual cookies

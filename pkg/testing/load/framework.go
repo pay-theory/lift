@@ -14,97 +14,80 @@ import (
 
 // LoadTest represents a load testing configuration and execution
 type LoadTest struct {
+	App         *lift.App
+	results     *Results
 	Name        string
 	Description string
-	App         *lift.App
-	Scenarios   []Scenario
 	Config      LoadTestConfig
-	results     *Results
+	Scenarios   []Scenario
 	mu          sync.RWMutex
 }
 
 // LoadTestConfig holds configuration for load testing
 type LoadTestConfig struct {
-	Duration     time.Duration // How long to run the test
-	Concurrent   int           // Number of concurrent workers
-	RampUpTime   time.Duration // Time to ramp up to full concurrency
-	RampDownTime time.Duration // Time to ramp down
-	MaxRequests  int64         // Maximum number of requests (0 = unlimited)
-	ThinkTime    time.Duration // Delay between requests per worker
-	Timeout      time.Duration // Request timeout
-
-	// Rate limiting
-	RequestsPerSecond float64 // Target RPS (0 = unlimited)
-
-	// Reporting
-	ReportInterval time.Duration // How often to report progress
-	Percentiles    []float64     // Percentiles to calculate (default: 50, 95, 99)
+	Percentiles       []float64
+	Duration          time.Duration
+	Concurrent        int
+	RampUpTime        time.Duration
+	RampDownTime      time.Duration
+	MaxRequests       int64
+	ThinkTime         time.Duration
+	Timeout           time.Duration
+	RequestsPerSecond float64
+	ReportInterval    time.Duration
 }
 
 // Scenario represents a test scenario with weight
 type Scenario struct {
-	Name        string
-	Description string
-	Weight      int // Relative frequency (higher = more frequent)
 	Setup       func() (any, error)
 	Execute     func(context.Context, *lift.App, any) (*ScenarioResult, error)
 	Validate    func(*ScenarioResult) error
 	Cleanup     func(any) error
+	Name        string
+	Description string
+	Weight      int
 }
 
 // ScenarioResult contains the result of executing a scenario
 type ScenarioResult struct {
+	Error        error
+	Headers      map[string]string
+	Metadata     map[string]any
+	Body         []byte
 	StatusCode   int
 	ResponseTime time.Duration
 	BytesRead    int64
 	BytesWritten int64
-	Error        error
-	Headers      map[string]string
-	Body         []byte
-	Metadata     map[string]any
 }
 
 // Results contains the aggregated results of a load test
 type Results struct {
-	// Test metadata
-	TestName  string        `json:"test_name"`
-	StartTime time.Time     `json:"start_time"`
-	EndTime   time.Time     `json:"end_time"`
-	Duration  time.Duration `json:"duration"`
-
-	// Request statistics
-	TotalRequests  int64   `json:"total_requests"`
-	SuccessCount   int64   `json:"success_count"`
-	ErrorCount     int64   `json:"error_count"`
-	RequestsPerSec float64 `json:"requests_per_sec"`
-
-	// Response time statistics
-	MinLatency    time.Duration `json:"min_latency"`
-	MaxLatency    time.Duration `json:"max_latency"`
-	MeanLatency   time.Duration `json:"mean_latency"`
-	MedianLatency time.Duration `json:"median_latency"`
-
-	// Percentiles
-	Percentiles map[string]time.Duration `json:"percentiles"`
-
-	// Error breakdown
-	ErrorsByType   map[string]int64 `json:"errors_by_type"`
-	ErrorsByStatus map[int]int64    `json:"errors_by_status"`
-
-	// Scenario breakdown
-	ScenarioStats map[string]*ScenarioStats `json:"scenario_stats"`
-
-	// Throughput
-	BytesRead    int64   `json:"bytes_read"`
-	BytesWritten int64   `json:"bytes_written"`
-	Throughput   float64 `json:"throughput_mbps"`
-
-	// Raw data for analysis
-	Latencies []time.Duration `json:"-"` // Not serialized due to size
+	StartTime      time.Time                 `json:"start_time"`
+	EndTime        time.Time                 `json:"end_time"`
+	Percentiles    map[string]time.Duration  `json:"percentiles"`
+	ScenarioStats  map[string]*ScenarioStats `json:"scenario_stats"`
+	ErrorsByStatus map[int]int64             `json:"errors_by_status"`
+	ErrorsByType   map[string]int64          `json:"errors_by_type"`
+	TestName       string                    `json:"test_name"`
+	Latencies      []time.Duration           `json:"-"`
+	SuccessCount   int64                     `json:"success_count"`
+	MaxLatency     time.Duration             `json:"max_latency"`
+	MeanLatency    time.Duration             `json:"mean_latency"`
+	MedianLatency  time.Duration             `json:"median_latency"`
+	MinLatency     time.Duration             `json:"min_latency"`
+	RequestsPerSec float64                   `json:"requests_per_sec"`
+	ErrorCount     int64                     `json:"error_count"`
+	TotalRequests  int64                     `json:"total_requests"`
+	BytesRead      int64                     `json:"bytes_read"`
+	BytesWritten   int64                     `json:"bytes_written"`
+	Throughput     float64                   `json:"throughput_mbps"`
+	Duration       time.Duration             `json:"duration"`
 }
 
 // ScenarioStats contains statistics for a specific scenario
 type ScenarioStats struct {
+	ErrorsByType   map[string]int64 `json:"errors_by_type"`
+	ErrorsByStatus map[int]int64    `json:"errors_by_status"`
 	Name           string           `json:"name"`
 	Count          int64            `json:"count"`
 	SuccessCount   int64            `json:"success_count"`
@@ -112,8 +95,6 @@ type ScenarioStats struct {
 	MeanLatency    time.Duration    `json:"mean_latency"`
 	MinLatency     time.Duration    `json:"min_latency"`
 	MaxLatency     time.Duration    `json:"max_latency"`
-	ErrorsByType   map[string]int64 `json:"errors_by_type"`
-	ErrorsByStatus map[int]int64    `json:"errors_by_status"`
 }
 
 // NewLoadTest creates a new load test

@@ -9,29 +9,20 @@ import (
 
 // SecureHTTPClientConfig provides comprehensive HTTP client security configuration
 type SecureHTTPClientConfig struct {
-	// Connection timeouts
-	ConnectTimeout   time.Duration `json:"connect_timeout"`   // Time to establish connection
-	RequestTimeout   time.Duration `json:"request_timeout"`   // Total request timeout
-	ResponseTimeout  time.Duration `json:"response_timeout"`  // Time to read response headers
-	KeepAliveTimeout time.Duration `json:"keepalive_timeout"` // Keep-alive timeout
-
-	// TLS settings
-	TLSHandshakeTimeout time.Duration `json:"tls_handshake_timeout"` // TLS handshake timeout
-	InsecureSkipVerify  bool          `json:"insecure_skip_verify"`  // Skip TLS verification (dev only)
-
-	// Connection pooling
-	MaxIdleConns        int           `json:"max_idle_conns"`          // Maximum idle connections
-	MaxIdleConnsPerHost int           `json:"max_idle_conns_per_host"` // Maximum idle connections per host
-	MaxConnsPerHost     int           `json:"max_conns_per_host"`      // Maximum connections per host
-	IdleConnTimeout     time.Duration `json:"idle_conn_timeout"`       // Idle connection timeout
-
-	// Request limits
-	MaxResponseHeaderBytes int64 `json:"max_response_header_bytes"` // Maximum response header size
-	DisableCompression     bool  `json:"disable_compression"`       // Disable gzip compression
-	DisableKeepAlives      bool  `json:"disable_keep_alives"`       // Disable keep-alive connections
-
-	// Security
-	UserAgent string `json:"user_agent"` // User agent string
+	UserAgent              string        `json:"user_agent"`
+	MaxIdleConns           int           `json:"max_idle_conns"`
+	ResponseTimeout        time.Duration `json:"response_timeout"`
+	KeepAliveTimeout       time.Duration `json:"keepalive_timeout"`
+	TLSHandshakeTimeout    time.Duration `json:"tls_handshake_timeout"`
+	ConnectTimeout         time.Duration `json:"connect_timeout"`
+	MaxIdleConnsPerHost    int           `json:"max_idle_conns_per_host"`
+	MaxConnsPerHost        int           `json:"max_conns_per_host"`
+	IdleConnTimeout        time.Duration `json:"idle_conn_timeout"`
+	MaxResponseHeaderBytes int64         `json:"max_response_header_bytes"`
+	RequestTimeout         time.Duration `json:"request_timeout"`
+	InsecureSkipVerify     bool          `json:"insecure_skip_verify"`
+	DisableCompression     bool          `json:"disable_compression"`
+	DisableKeepAlives      bool          `json:"disable_keep_alives"`
 }
 
 // DefaultSecureHTTPClientConfig returns secure default configuration

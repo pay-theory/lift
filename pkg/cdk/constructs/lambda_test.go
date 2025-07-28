@@ -12,9 +12,9 @@ import (
 
 func TestLiftFunction(t *testing.T) {
 	tests := []struct {
-		name     string
 		props    *constructs.LiftFunctionProps
 		validate func(*test.LiftStackTester)
+		name     string
 	}{
 		{
 			name: "default configuration",

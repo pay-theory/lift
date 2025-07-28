@@ -7,27 +7,16 @@ import (
 
 // RateLimitRecord is compatible with both DynamORM and the Limited library
 type RateLimitRecord struct {
-	// Primary key: identifier (could be IP, UserID, TenantID+UserID, etc.)
-	Identifier string `dynamorm:"pk" json:"identifier"`
-
-	// Sort key: window timestamp (for sliding window rate limiting)
-	WindowTime string `dynamorm:"sk" json:"window_time"`
-
-	// GSI for querying by different dimensions
-	IPAddress string `dynamorm:"index:gsi-ip,pk" json:"ip_address,omitempty"`
-	UserID    string `dynamorm:"index:gsi-user,pk" json:"user_id,omitempty"`
-	TenantID  string `dynamorm:"index:gsi-tenant,pk" json:"tenant_id,omitempty"`
-
-	// Rate limit data
-	Count     int    `json:"count"`
-	BucketKey string `dynamorm:"index:gsi-bucket,pk" json:"bucket_key"`
-
-	// TTL for automatic cleanup (set to window end + buffer)
-	ExpiresAt time.Time `dynamorm:"ttl" json:"expires_at"`
-
-	// Metadata
-	CreatedAt time.Time `dynamorm:"created_at" json:"created_at"`
-	UpdatedAt time.Time `dynamorm:"updated_at" json:"updated_at"`
+	ExpiresAt  time.Time `dynamorm:"ttl" json:"expires_at"`
+	CreatedAt  time.Time `dynamorm:"created_at" json:"created_at"`
+	UpdatedAt  time.Time `dynamorm:"updated_at" json:"updated_at"`
+	Identifier string    `dynamorm:"pk" json:"identifier"`
+	WindowTime string    `dynamorm:"sk" json:"window_time"`
+	IPAddress  string    `dynamorm:"index:gsi-ip,pk" json:"ip_address,omitempty"`
+	UserID     string    `dynamorm:"index:gsi-user,pk" json:"user_id,omitempty"`
+	TenantID   string    `dynamorm:"index:gsi-tenant,pk" json:"tenant_id,omitempty"`
+	BucketKey  string    `dynamorm:"index:gsi-bucket,pk" json:"bucket_key"`
+	Count      int       `json:"count"`
 }
 
 // TableName returns the DynamoDB table name from environment

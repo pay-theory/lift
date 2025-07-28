@@ -7,18 +7,13 @@ import (
 
 // SlidingWindowEntry represents a single request in the sliding window
 type SlidingWindowEntry struct {
-	// Composite key: RateLimitKey#Timestamp
-	PK string `dynamorm:"pk" json:"-"`
-	SK string `dynamorm:"sk" json:"-"`
-
-	// Attributes
-	RateLimitKey string    `json:"rate_limit_key"`
 	Timestamp    time.Time `json:"timestamp"`
-	Weight       int       `json:"weight,omitempty"` // For weighted rate limiting
+	PK           string    `dynamorm:"pk" json:"-"`
+	SK           string    `dynamorm:"sk" json:"-"`
+	RateLimitKey string    `json:"rate_limit_key"`
 	RequestID    string    `json:"request_id"`
-
-	// TTL for automatic cleanup (set to window duration + buffer)
-	ExpiresAt int64 `dynamorm:"ttl" json:"-"`
+	Weight       int       `json:"weight,omitempty"`
+	ExpiresAt    int64     `dynamorm:"ttl" json:"-"`
 }
 
 // Key structure for efficient queries

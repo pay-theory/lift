@@ -7,50 +7,32 @@ import (
 
 // SecurityConfig defines the overall security configuration for the Lift framework
 type SecurityConfig struct {
-	// Authentication settings
-	JWTConfig    JWTConfig    `json:"jwt_config"`
-	APIKeyConfig APIKeyConfig `json:"api_key_config"`
-
-	// Authorization settings
-	RBACEnabled  bool     `json:"rbac_enabled"`
-	DefaultRoles []string `json:"default_roles"`
-
-	// Multi-tenant security
-	TenantValidation bool `json:"tenant_validation"`
-	CrossAccountAuth bool `json:"cross_account_auth"`
-
-	// Encryption settings
-	EncryptionAtRest bool   `json:"encryption_at_rest"`
-	KMSKeyID         string `json:"kms_key_id"`
-
-	// Request security
-	RequestSigning bool  `json:"request_signing"`
-	MaxRequestSize int64 `json:"max_request_size"`
-
-	// Secrets management
-	SecretsProvider SecretsProvider `json:"-"` // Don't serialize the provider
+	SecretsProvider  SecretsProvider `json:"-"`
+	KMSKeyID         string          `json:"kms_key_id"`
+	JWTConfig        JWTConfig       `json:"jwt_config"`
+	DefaultRoles     []string        `json:"default_roles"`
+	APIKeyConfig     APIKeyConfig    `json:"api_key_config"`
+	MaxRequestSize   int64           `json:"max_request_size"`
+	RBACEnabled      bool            `json:"rbac_enabled"`
+	TenantValidation bool            `json:"tenant_validation"`
+	CrossAccountAuth bool            `json:"cross_account_auth"`
+	EncryptionAtRest bool            `json:"encryption_at_rest"`
+	RequestSigning   bool            `json:"request_signing"`
 }
 
 // JWTConfig configures JWT authentication
 type JWTConfig struct {
-	// Signing configuration
-	SigningMethod  string `json:"signing_method"` // RS256, HS256
-	PublicKeyPath  string `json:"public_key_path"`
-	PrivateKeyPath string `json:"private_key_path"`
-	SecretKey      string `json:"secret_key,omitempty"` // For HS256
-
-	// Validation settings
-	Issuer   string        `json:"issuer"`
-	Audience []string      `json:"audience"`
-	MaxAge   time.Duration `json:"max_age"`
-
-	// Multi-tenant settings
+	ValidateTenant  func(tenantID string) error `json:"-"`
+	SigningMethod   string                      `json:"signing_method"`
+	PublicKeyPath   string                      `json:"public_key_path"`
+	PrivateKeyPath  string                      `json:"private_key_path"`
+	SecretKey       string                      `json:"secret_key,omitempty"`
+	Issuer          string                      `json:"issuer"`
+	Audience        []string                    `json:"audience"`
+	MaxAge          time.Duration               `json:"max_age"`
+	RotationPeriod  time.Duration               `json:"rotation_period"`
 	RequireTenantID bool                        `json:"require_tenant_id"`
-	ValidateTenant  func(tenantID string) error `json:"-"` // Custom validation function
-
-	// Key rotation
-	KeyRotation    bool          `json:"key_rotation"`
-	RotationPeriod time.Duration `json:"rotation_period"`
+	KeyRotation     bool                        `json:"key_rotation"`
 }
 
 // APIKeyConfig configures API key authentication
@@ -71,57 +53,41 @@ type APIKeyConfig struct {
 
 // RateLimitConfig defines rate limiting configuration
 type RateLimitConfig struct {
-	// Global limits
-	GlobalEnabled bool          `json:"global_enabled"`
-	GlobalLimit   int           `json:"global_limit"`
-	GlobalPeriod  time.Duration `json:"global_period"`
-
-	// Per-tenant limits
-	TenantEnabled bool          `json:"tenant_enabled"`
-	TenantLimit   int           `json:"tenant_limit"`
-	TenantPeriod  time.Duration `json:"tenant_period"`
-
-	// Per-user limits
-	UserEnabled bool          `json:"user_enabled"`
-	UserLimit   int           `json:"user_limit"`
-	UserPeriod  time.Duration `json:"user_period"`
-
-	// Storage backend for rate limiting
-	StorageType   string         `json:"storage_type"` // "memory", "redis", "dynamodb"
 	StorageConfig map[string]any `json:"storage_config"`
+	StorageType   string         `json:"storage_type"`
+	GlobalLimit   int            `json:"global_limit"`
+	GlobalPeriod  time.Duration  `json:"global_period"`
+	TenantLimit   int            `json:"tenant_limit"`
+	TenantPeriod  time.Duration  `json:"tenant_period"`
+	UserLimit     int            `json:"user_limit"`
+	UserPeriod    time.Duration  `json:"user_period"`
+	GlobalEnabled bool           `json:"global_enabled"`
+	TenantEnabled bool           `json:"tenant_enabled"`
+	UserEnabled   bool           `json:"user_enabled"`
 }
 
 // CORSConfig defines Cross-Origin Resource Sharing settings
 type CORSConfig struct {
-	AllowedOrigins   []string `json:"allowed_origins"`
-	AllowedMethods   []string `json:"allowed_methods"`
-	AllowedHeaders   []string `json:"allowed_headers"`
-	ExposedHeaders   []string `json:"exposed_headers"`
-	AllowCredentials bool     `json:"allow_credentials"`
-	MaxAge           int      `json:"max_age"`
-
-	// Dynamic origin validation
-	ValidateOrigin func(origin string) bool `json:"-"`
+	ValidateOrigin   func(origin string) bool `json:"-"`
+	AllowedOrigins   []string                 `json:"allowed_origins"`
+	AllowedMethods   []string                 `json:"allowed_methods"`
+	AllowedHeaders   []string                 `json:"allowed_headers"`
+	ExposedHeaders   []string                 `json:"exposed_headers"`
+	MaxAge           int                      `json:"max_age"`
+	AllowCredentials bool                     `json:"allow_credentials"`
 }
 
 // RequestValidationConfig defines request validation settings
 type RequestValidationConfig struct {
-	// Size limits
-	MaxBodySize   int64 `json:"max_body_size"`
-	MaxHeaderSize int   `json:"max_header_size"`
-
-	// Content validation
 	AllowedMethods []string `json:"allowed_methods"`
 	AllowedHeaders []string `json:"allowed_headers"`
-
-	// Security validation
-	ValidateJSON  bool `json:"validate_json"`
-	SanitizeInput bool `json:"sanitize_input"`
-
-	// IP filtering
-	EnableIPFilter bool     `json:"enable_ip_filter"`
 	AllowedCIDRs   []string `json:"allowed_cidrs"`
 	DeniedCIDRs    []string `json:"denied_cidrs"`
+	MaxBodySize    int64    `json:"max_body_size"`
+	MaxHeaderSize  int      `json:"max_header_size"`
+	ValidateJSON   bool     `json:"validate_json"`
+	SanitizeInput  bool     `json:"sanitize_input"`
+	EnableIPFilter bool     `json:"enable_ip_filter"`
 }
 
 // DefaultSecurityConfig returns a secure default configuration

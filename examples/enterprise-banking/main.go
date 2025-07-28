@@ -11,42 +11,42 @@ import (
 
 // Banking domain models
 type Account struct {
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 	ID            string    `json:"id"`
 	CustomerID    string    `json:"customerId"`
 	AccountNumber string    `json:"accountNumber"`
 	AccountType   string    `json:"accountType"`
-	Balance       float64   `json:"balance"`
 	Currency      string    `json:"currency"`
 	Status        string    `json:"status"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	Balance       float64   `json:"balance"`
 }
 
 type Transaction struct {
+	ProcessedAt    time.Time      `json:"processedAt"`
+	ComplianceData map[string]any `json:"complianceData,omitempty"`
 	ID             string         `json:"id"`
 	FromAccountID  string         `json:"fromAccountId"`
 	ToAccountID    string         `json:"toAccountId"`
-	Amount         float64        `json:"amount"`
 	Currency       string         `json:"currency"`
 	Type           string         `json:"type"`
 	Status         string         `json:"status"`
 	Description    string         `json:"description"`
 	Reference      string         `json:"reference"`
-	ProcessedAt    time.Time      `json:"processedAt"`
-	ComplianceData map[string]any `json:"complianceData,omitempty"`
+	Amount         float64        `json:"amount"`
 }
 
 type Payment struct {
+	ProcessedAt     time.Time `json:"processedAt"`
 	ID              string    `json:"id"`
 	PayerAccountID  string    `json:"payerAccountId"`
 	PayeeAccountID  string    `json:"payeeAccountId"`
-	Amount          float64   `json:"amount"`
 	Currency        string    `json:"currency"`
 	PaymentMethod   string    `json:"paymentMethod"`
 	Status          string    `json:"status"`
-	ProcessedAt     time.Time `json:"processedAt"`
-	FraudScore      float64   `json:"fraudScore"`
 	ComplianceFlags []string  `json:"complianceFlags,omitempty"`
+	Amount          float64   `json:"amount"`
+	FraudScore      float64   `json:"fraudScore"`
 }
 
 // Request/Response models
@@ -59,24 +59,24 @@ type CreateAccountRequest struct {
 type CreateTransactionRequest struct {
 	FromAccountID string  `json:"fromAccountId" validate:"required"`
 	ToAccountID   string  `json:"toAccountId" validate:"required"`
-	Amount        float64 `json:"amount" validate:"required,gt=0"`
 	Currency      string  `json:"currency" validate:"required,len=3"`
 	Description   string  `json:"description" validate:"required"`
 	Reference     string  `json:"reference"`
+	Amount        float64 `json:"amount" validate:"required,gt=0"`
 }
 
 type ProcessPaymentRequest struct {
 	PayerAccountID string  `json:"payerAccountId" validate:"required"`
 	PayeeAccountID string  `json:"payeeAccountId" validate:"required"`
-	Amount         float64 `json:"amount" validate:"required,gt=0"`
 	Currency       string  `json:"currency" validate:"required,len=3"`
 	PaymentMethod  string  `json:"paymentMethod" validate:"required"`
+	Amount         float64 `json:"amount" validate:"required,gt=0"`
 }
 
 type RefundPaymentRequest struct {
 	PaymentID string  `json:"paymentId" validate:"required"`
-	Amount    float64 `json:"amount" validate:"required,gt=0"`
 	Reason    string  `json:"reason" validate:"required"`
+	Amount    float64 `json:"amount" validate:"required,gt=0"`
 }
 
 // Service interfaces (would be implemented with actual business logic)
@@ -705,8 +705,8 @@ func RateLimit(_ RateLimitConfig) lift.Middleware {
 
 // Group represents a route group
 type Group struct {
-	prefix string
 	app    *lift.App
+	prefix string
 }
 
 // GET adds a GET route to the group

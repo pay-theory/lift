@@ -10,32 +10,15 @@ import (
 
 // SecurityHeadersConfig configures the security headers middleware
 type SecurityHeadersConfig struct {
-	// Content Security Policy
-	ContentSecurityPolicy string
-
-	// X-Frame-Options: DENY, SAMEORIGIN, or ALLOW-FROM uri
-	XFrameOptions string
-
-	// X-Content-Type-Options: nosniff
-	XContentTypeOptions bool
-
-	// X-XSS-Protection: 1; mode=block
-	XXSSProtection string
-
-	// Strict-Transport-Security
+	CustomHeaders           map[string]string
+	ContentSecurityPolicy   string
+	XFrameOptions           string
+	XXSSProtection          string
 	StrictTransportSecurity string
-
-	// Referrer-Policy
-	ReferrerPolicy string
-
-	// Permissions-Policy (formerly Feature-Policy)
-	PermissionsPolicy string
-
-	// Custom headers to add
-	CustomHeaders map[string]string
-
-	// Whether to include security headers in development
-	IncludeInDevelopment bool
+	ReferrerPolicy          string
+	PermissionsPolicy       string
+	XContentTypeOptions     bool
+	IncludeInDevelopment    bool
 }
 
 // DefaultSecurityHeadersConfig returns secure default configuration

@@ -10,39 +10,24 @@ import (
 
 // IdempotencyRecord stores idempotent request data
 type IdempotencyRecord struct {
-	// Primary key: idempotency key (from header or request)
-	IdempotencyKey string `dynamorm:"pk" json:"idempotency_key"`
-
-	// Sort key: constant value for single item per key
-	SK string `dynamorm:"sk" json:"sk" default:"IDEMPOTENCY"`
-
-	// GSIs for querying
-	FunctionName string    `dynamorm:"index:gsi-function,pk" json:"function_name"`
-	TenantID     string    `dynamorm:"index:gsi-tenant,pk" json:"tenant_id,omitempty"`
-	Status       string    `dynamorm:"index:gsi-status,pk" json:"status"`
-	Timestamp    time.Time `dynamorm:"index:gsi-timestamp,pk" json:"timestamp"`
-
-	// Request/Response data
-	RequestHash string `json:"request_hash"`
-	RequestBody string `dynamorm:"json" json:"request_body"` // Stored as JSON
-	Response    string `dynamorm:"json" json:"response"`     // Can be up to 400KB
-	StatusCode  int    `json:"status_code"`
-
-	// State management
-	LockToken   string    `json:"lock_token,omitempty"`
-	LockedUntil time.Time `json:"locked_until,omitempty"`
-
-	// TTL for automatic cleanup
-	ExpiresAt time.Time `dynamorm:"ttl" json:"expires_at"`
-
-	// Metadata
-	CreatedAt   time.Time `dynamorm:"created_at" json:"created_at"`
-	UpdatedAt   time.Time `dynamorm:"updated_at" json:"updated_at"`
-	CompletedAt time.Time `json:"completed_at,omitempty"`
-
-	// Error tracking
-	ErrorMessage string `json:"error_message,omitempty"`
-	RetryCount   int    `json:"retry_count,omitempty"`
+	LockedUntil    time.Time `json:"locked_until,omitempty"`
+	CompletedAt    time.Time `json:"completed_at,omitempty"`
+	UpdatedAt      time.Time `dynamorm:"updated_at" json:"updated_at"`
+	CreatedAt      time.Time `dynamorm:"created_at" json:"created_at"`
+	ExpiresAt      time.Time `dynamorm:"ttl" json:"expires_at"`
+	Timestamp      time.Time `dynamorm:"index:gsi-timestamp,pk" json:"timestamp"`
+	Status         string    `dynamorm:"index:gsi-status,pk" json:"status"`
+	RequestBody    string    `dynamorm:"json" json:"request_body"`
+	Response       string    `dynamorm:"json" json:"response"`
+	LockToken      string    `json:"lock_token,omitempty"`
+	RequestHash    string    `json:"request_hash"`
+	IdempotencyKey string    `dynamorm:"pk" json:"idempotency_key"`
+	TenantID       string    `dynamorm:"index:gsi-tenant,pk" json:"tenant_id,omitempty"`
+	FunctionName   string    `dynamorm:"index:gsi-function,pk" json:"function_name"`
+	SK             string    `dynamorm:"sk" json:"sk" default:"IDEMPOTENCY"`
+	ErrorMessage   string    `json:"error_message,omitempty"`
+	StatusCode     int       `json:"status_code"`
+	RetryCount     int       `json:"retry_count,omitempty"`
 }
 
 // TableName returns the DynamoDB table name from environment

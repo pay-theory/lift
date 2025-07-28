@@ -114,22 +114,16 @@ type PoolStats struct {
 
 // DefaultConnectionPool implements ConnectionPool
 type DefaultConnectionPool struct {
-	config  PoolConfig
-	factory ResourceFactory
-
-	// Pool state
-	idle   []Resource
-	active map[Resource]bool
-	stats  PoolStats
-	closed bool
-
-	// Synchronization
-	mu   sync.RWMutex
-	cond *sync.Cond
-
-	// Background tasks
+	factory       ResourceFactory
+	active        map[Resource]bool
+	cond          *sync.Cond
 	cleanupTicker *time.Ticker
 	stopCleanup   chan struct{}
+	idle          []Resource
+	stats         PoolStats
+	config        PoolConfig
+	mu            sync.RWMutex
+	closed        bool
 }
 
 // NewConnectionPool creates a new connection pool

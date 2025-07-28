@@ -8,8 +8,8 @@ import (
 
 // IPExtractionError represents an error during IP extraction
 type IPExtractionError struct {
-	Message string
 	Headers map[string]string
+	Message string
 }
 
 func (e *IPExtractionError) Error() string {

@@ -9,16 +9,16 @@ import (
 
 // AlertManager manages alerts with rules, channels, and escalation
 type AlertManager struct {
-	config       AlertManagerConfig
+	escalator    AlertEscalator
 	rules        map[string]*AlertRule
 	channels     map[string]AlertChannel
 	activeAlerts map[string]*Alert
+	stopCh       chan struct{}
 	alertHistory []Alert
 	processors   []AlertProcessor
-	escalator    AlertEscalator
+	config       AlertManagerConfig
 	mu           sync.RWMutex
 	running      bool
-	stopCh       chan struct{}
 }
 
 // AlertManagerConfig configures the alert manager
@@ -35,80 +35,80 @@ type AlertManagerConfig struct {
 
 // AlertRule defines conditions and actions for alerts
 type AlertRule struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Enabled     bool              `json:"enabled"`
-	Conditions  []AlertCondition  `json:"conditions"`
-	Actions     []AlertAction     `json:"actions"`
-	Severity    AlertSeverity     `json:"severity"`
-	Priority    AlertPriority     `json:"priority"`
-	Frequency   time.Duration     `json:"frequency"`
-	Suppression *SuppressionRule  `json:"suppression,omitempty"`
-	Labels      map[string]string `json:"labels"`
-	Annotations map[string]string `json:"annotations"`
-	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
+	CreatedAt   time.Time         `json:"created_at"`
+	Suppression *SuppressionRule  `json:"suppression,omitempty"`
+	Annotations map[string]string `json:"annotations"`
+	Labels      map[string]string `json:"labels"`
+	Severity    AlertSeverity     `json:"severity"`
+	ID          string            `json:"id"`
+	Priority    AlertPriority     `json:"priority"`
+	Description string            `json:"description"`
+	Name        string            `json:"name"`
 	CreatedBy   string            `json:"created_by"`
+	Actions     []AlertAction     `json:"actions"`
+	Conditions  []AlertCondition  `json:"conditions"`
+	Frequency   time.Duration     `json:"frequency"`
+	Enabled     bool              `json:"enabled"`
 }
 
 // AlertCondition defines a condition for triggering alerts
 type AlertCondition struct {
 	Metric      string        `json:"metric"`
 	Operator    Operator      `json:"operator"`
+	Aggregation string        `json:"aggregation"`
 	Threshold   float64       `json:"threshold"`
 	Duration    time.Duration `json:"duration"`
-	Aggregation string        `json:"aggregation"`
 }
 
 // AlertAction defines an action to take when an alert fires
 type AlertAction struct {
+	Parameters map[string]any `json:"parameters"`
 	Type       ActionType     `json:"type"`
 	Channel    string         `json:"channel"`
 	Template   string         `json:"template"`
-	Parameters map[string]any `json:"parameters"`
 	Enabled    bool           `json:"enabled"`
 }
 
 // Alert represents an active or historical alert
 type Alert struct {
-	ID          string            `json:"id"`
-	RuleID      string            `json:"rule_id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
+	StartTime   time.Time         `json:"start_time"`
+	Metadata    map[string]any    `json:"metadata"`
+	Annotations map[string]string `json:"annotations"`
+	Labels      map[string]string `json:"labels"`
+	EndTime     *time.Time        `json:"end_time,omitempty"`
 	Severity    AlertSeverity     `json:"severity"`
-	Priority    AlertPriority     `json:"priority"`
 	Status      AlertStatus       `json:"status"`
 	State       AlertState        `json:"state"`
-	StartTime   time.Time         `json:"start_time"`
-	EndTime     *time.Time        `json:"end_time,omitempty"`
+	Priority    AlertPriority     `json:"priority"`
+	ID          string            `json:"id"`
+	Description string            `json:"description"`
+	Name        string            `json:"name"`
+	RuleID      string            `json:"rule_id"`
+	Events      []AlertEvent      `json:"events"`
+	Escalations []AlertEscalation `json:"escalations"`
 	Duration    time.Duration     `json:"duration"`
 	Value       float64           `json:"value"`
 	Threshold   float64           `json:"threshold"`
-	Labels      map[string]string `json:"labels"`
-	Annotations map[string]string `json:"annotations"`
-	Events      []AlertEvent      `json:"events"`
-	Escalations []AlertEscalation `json:"escalations"`
-	Metadata    map[string]any    `json:"metadata"`
 }
 
 // AlertEvent represents an event in an alert's lifecycle
 type AlertEvent struct {
+	Timestamp time.Time      `json:"timestamp"`
+	Metadata  map[string]any `json:"metadata"`
 	ID        string         `json:"id"`
 	Type      AlertEventType `json:"type"`
-	Timestamp time.Time      `json:"timestamp"`
 	Message   string         `json:"message"`
 	User      string         `json:"user,omitempty"`
-	Metadata  map[string]any `json:"metadata"`
 }
 
 // AlertEscalation represents an escalation step
 type AlertEscalation struct {
-	Level     int           `json:"level"`
 	Timestamp time.Time     `json:"timestamp"`
 	Channels  []string      `json:"channels"`
-	Completed bool          `json:"completed"`
+	Level     int           `json:"level"`
 	Duration  time.Duration `json:"duration"`
+	Completed bool          `json:"completed"`
 }
 
 // AlertChannel defines how alerts are delivered
@@ -134,12 +134,12 @@ type AlertEscalator interface {
 
 // SuppressionRule defines when alerts should be suppressed
 type SuppressionRule struct {
-	Enabled     bool                   `json:"enabled"`
 	StartTime   string                 `json:"start_time"`
 	EndTime     string                 `json:"end_time"`
+	Description string                 `json:"description"`
 	Days        []string               `json:"days"`
 	Conditions  []SuppressionCondition `json:"conditions"`
-	Description string                 `json:"description"`
+	Enabled     bool                   `json:"enabled"`
 }
 
 // SuppressionCondition defines a condition for suppression
@@ -151,10 +151,10 @@ type SuppressionCondition struct {
 
 // EscalationLevel defines an escalation level
 type EscalationLevel struct {
-	Level    int           `json:"level"`
-	Duration time.Duration `json:"duration"`
 	Channels []string      `json:"channels"`
 	Actions  []string      `json:"actions"`
+	Level    int           `json:"level"`
+	Duration time.Duration `json:"duration"`
 }
 
 // Enums and constants

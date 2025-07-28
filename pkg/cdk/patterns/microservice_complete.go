@@ -24,8 +24,8 @@ type ServiceDiscoveryConfig struct {
 	HealthCheckTimeout      *awscdk.Duration
 	HealthyThresholdCount   *float64
 	UnhealthyThresholdCount *float64
-	DNSRecordType           awsservicediscovery.DnsRecordType
 	TTL                     *awscdk.Duration
+	DNSRecordType           awsservicediscovery.DnsRecordType
 }
 
 // LoadBalancerConfig defines load balancer configuration
@@ -62,12 +62,12 @@ type AutoScalingConfig struct {
 
 // ScheduledScalingAction defines a scheduled scaling action
 type ScheduledScalingAction struct {
-	Name            string
-	Schedule        string
 	MinCapacity     *float64
 	MaxCapacity     *float64
 	DesiredCapacity *float64
 	Timezone        *string
+	Name            string
+	Schedule        string
 }
 
 // HealthCheckConfig defines health check configuration
@@ -94,20 +94,20 @@ type NetworkConfig struct {
 
 // ContainerConfig defines container configuration
 type ContainerConfig struct {
-	ImageURI          *string
-	CodeAssetPath     *string
 	Platform          awsecs.CpuArchitecture
+	Secrets           *map[string]awsecs.Secret
+	CodeAssetPath     *string
 	CPU               *float64
 	Memory            *float64
 	Environment       *map[string]*string
-	Secrets           *map[string]awsecs.Secret
-	LogRetentionDays  awslogs.RetentionDays
+	ImageURI          *string
 	EnableXRayTracing *bool
 	EnableFirelens    *bool
 	Command           *[]*string
 	EntryPoint        *[]*string
 	WorkingDirectory  *string
 	User              *string
+	LogRetentionDays  awslogs.RetentionDays
 }
 
 // MicroserviceCompleteProps defines comprehensive microservice properties

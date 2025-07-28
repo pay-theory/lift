@@ -15,20 +15,20 @@ import (
 // LogEntry represents a single log entry
 type LogEntry struct {
 	Timestamp time.Time              `json:"timestamp"`
+	Fields    map[string]interface{} `json:"fields,omitempty"`
 	Level     string                 `json:"level"`
 	Message   string                 `json:"message"`
-	Fields    map[string]interface{} `json:"fields,omitempty"`
 }
 
 // LogService manages log collection and retrieval
 type LogService struct {
-	mu           sync.RWMutex
-	logs         []LogEntry
-	maxLogs      int
-	logFile      string
-	watching     bool
 	stopWatching chan struct{}
 	features     *features.FeatureFlags
+	logFile      string
+	logs         []LogEntry
+	maxLogs      int
+	mu           sync.RWMutex
+	watching     bool
 }
 
 // NewLogService creates a new log service
@@ -188,9 +188,9 @@ func (ls *LogService) readExistingLogs() {
 		return
 	}
 	defer func() {
-		if err := file.Close(); err != nil {
+		if closeErr := file.Close(); closeErr != nil {
 			// Silently ignore file close errors for read operations
-			_ = err
+			_ = closeErr
 		}
 	}()
 
@@ -210,9 +210,9 @@ func (ls *LogService) readNewLogs(offset int64) {
 		return
 	}
 	defer func() {
-		if err := file.Close(); err != nil {
+		if closeErr := file.Close(); closeErr != nil {
 			// Silently ignore file close errors for read operations
-			_ = err
+			_ = closeErr
 		}
 	}()
 

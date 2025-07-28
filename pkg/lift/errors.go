@@ -9,25 +9,18 @@ import (
 
 // LiftError represents a structured error in the Lift framework
 type LiftError struct {
-	// Strings (16 bytes each)
-	Code       string `json:"code"`
-	Message    string `json:"message"`
-	RequestID  string `json:"request_id,omitempty"`
-	TraceID    string `json:"trace_id,omitempty"`
-	Timestamp  string `json:"timestamp"`
-	StackTrace string `json:"stack_trace,omitempty"`
-
-	// Maps and interfaces (8 bytes each)
-	Details   map[string]any `json:"details,omitempty"`
-	ErrorData map[string]any `json:"errorData,omitempty"`
-	ErrorInfo map[string]any `json:"errorInfo,omitempty"`
-	Cause     error          `json:"-"`
-
-	// Integer (4 bytes)
-	StatusCode int `json:"-"`
-
-	// Boolean (1 byte)
-	LogError bool `json:"-"`
+	Cause      error          `json:"-"`
+	Details    map[string]any `json:"details,omitempty"`
+	ErrorData  map[string]any `json:"errorData,omitempty"`
+	ErrorInfo  map[string]any `json:"errorInfo,omitempty"`
+	Code       string         `json:"code"`
+	Message    string         `json:"message"`
+	RequestID  string         `json:"request_id,omitempty"`
+	TraceID    string         `json:"trace_id,omitempty"`
+	Timestamp  string         `json:"timestamp"`
+	StackTrace string         `json:"stack_trace,omitempty"`
+	StatusCode int            `json:"-"`
+	LogError   bool           `json:"-"`
 }
 
 // Error implements the error interface

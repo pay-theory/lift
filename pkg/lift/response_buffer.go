@@ -7,9 +7,9 @@ import (
 // ResponseBuffer stores response data for middleware interception
 type ResponseBuffer struct {
 	Body         any
-	StatusCode   int
-	Headers      map[string]string
 	CapturedData any
+	Headers      map[string]string
+	StatusCode   int
 	mu           sync.RWMutex
 }
 

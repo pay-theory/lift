@@ -21,30 +21,30 @@ const (
 
 // SOC2TestCase represents a SOC2 compliance test case
 type SOC2TestCase struct {
+	TestFunc    func(ctx context.Context, tester *SOC2ComplianceTester) error
 	Name        string
 	Criteria    SOC2Criteria
 	Description string
-	TestFunc    func(ctx context.Context, tester *SOC2ComplianceTester) error
 }
 
 // SOC2TestResult represents the result of a SOC2 test
 type SOC2TestResult struct {
 	TestCase  SOC2TestCase
-	Success   bool
-	Duration  time.Duration
 	Timestamp time.Time
 	Error     string
+	Duration  time.Duration
+	Success   bool
 }
 
 // SOC2ComplianceReport represents a SOC2 compliance report
 type SOC2ComplianceReport struct {
+	GeneratedAt       time.Time
+	Summary           string
+	Results           []SOC2TestResult
 	TotalTests        int
 	PassedTests       int
 	FailedTests       int
 	OverallCompliance bool
-	Summary           string
-	Results           []SOC2TestResult
-	GeneratedAt       time.Time
 }
 
 // ControlEvidence represents evidence for SOC2 controls
@@ -57,32 +57,32 @@ type ControlEvidence struct {
 
 // SecurityControl represents a security control
 type SecurityControl struct {
+	TestDate       time.Time
 	ControlID      string
 	Name           string
 	Description    string
 	Implementation string
 	Effectiveness  string
-	TestDate       time.Time
 }
 
 // AuditLog represents an audit log entry
 type AuditLog struct {
+	Timestamp time.Time
+	Details   map[string]any
 	LogID     string
 	Event     string
-	Timestamp time.Time
 	UserID    string
 	IPAddress string
-	Details   map[string]any
 }
 
 // AccessControl represents an access control
 type AccessControl struct {
+	LastAccessed time.Time
 	ControlType  string
 	UserID       string
 	Resource     string
-	Permissions  []string
-	LastAccessed time.Time
 	Status       string
+	Permissions  []string
 }
 
 // DataProtectionControl represents a data protection control

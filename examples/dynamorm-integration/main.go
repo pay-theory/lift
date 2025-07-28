@@ -10,13 +10,13 @@ import (
 
 // User represents a user model for DynamORM
 type User struct {
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	ID        string    `dynamorm:"pk" json:"id"`
 	TenantID  string    `dynamorm:"gsi1pk" json:"tenant_id"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
 	Active    bool      `json:"active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // CreateUserRequest represents the request to create a user

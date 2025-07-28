@@ -23,28 +23,28 @@ const (
 
 // InfrastructureTemplate represents a complete infrastructure template
 type InfrastructureTemplate struct {
-	Provider    InfrastructureProvider `json:"provider"`
-	Name        string                 `json:"name"`
-	Version     string                 `json:"version"`
-	Description string                 `json:"description"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
 	Resources   map[string]Resource    `json:"resources"`
 	Outputs     map[string]Output      `json:"outputs"`
 	Parameters  map[string]Parameter   `json:"parameters"`
 	Metadata    map[string]any         `json:"metadata"`
 	Tags        map[string]string      `json:"tags"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	Provider    InfrastructureProvider `json:"provider"`
+	Name        string                 `json:"name"`
+	Version     string                 `json:"version"`
+	Description string                 `json:"description"`
 }
 
 // Resource represents an infrastructure resource
 type Resource struct {
-	Type         string            `json:"type"`
-	Name         string            `json:"name"`
 	Properties   map[string]any    `json:"properties"`
-	Dependencies []string          `json:"dependencies,omitempty"`
-	Condition    string            `json:"condition,omitempty"`
 	Metadata     map[string]any    `json:"metadata,omitempty"`
 	Tags         map[string]string `json:"tags,omitempty"`
+	Type         string            `json:"type"`
+	Name         string            `json:"name"`
+	Condition    string            `json:"condition,omitempty"`
+	Dependencies []string          `json:"dependencies,omitempty"`
 }
 
 // Output represents a template output
@@ -56,87 +56,72 @@ type Output struct {
 
 // Parameter represents a template parameter
 type Parameter struct {
-	Type          string `json:"type"`
-	Description   string `json:"description"`
 	Default       any    `json:"default,omitempty"`
-	AllowedValues []any  `json:"allowed_values,omitempty"`
 	MinLength     *int   `json:"min_length,omitempty"`
 	MaxLength     *int   `json:"max_length,omitempty"`
+	Type          string `json:"type"`
+	Description   string `json:"description"`
 	Pattern       string `json:"pattern,omitempty"`
+	AllowedValues []any  `json:"allowed_values,omitempty"`
 }
 
 // InfrastructureConfig holds configuration for infrastructure generation
 type InfrastructureConfig struct {
-	// Application settings
-	ApplicationName string   `json:"application_name"`
-	Environment     string   `json:"environment"`
-	Region          string   `json:"region"`
-	MultiRegion     bool     `json:"multi_region"`
-	Regions         []string `json:"regions,omitempty"`
-
-	// Lambda configuration
-	Lambda LambdaConfig `json:"lambda"`
-
-	// API Gateway configuration
-	APIGateway APIGatewayConfig `json:"api_gateway"`
-
-	// Database configuration
-	Database DatabaseConfig `json:"database"`
-
-	// Monitoring configuration
-	Monitoring MonitoringConfig `json:"monitoring"`
-
-	// Security configuration
-	Security SecurityConfig `json:"security"`
-
-	// Networking configuration
-	Networking NetworkingConfig `json:"networking"`
-
-	// Tags and metadata
-	Tags     map[string]string `json:"tags"`
-	Metadata map[string]any    `json:"metadata"`
+	APIGateway      APIGatewayConfig  `json:"api_gateway"`
+	Lambda          LambdaConfig      `json:"lambda"`
+	Metadata        map[string]any    `json:"metadata"`
+	Tags            map[string]string `json:"tags"`
+	Environment     string            `json:"environment"`
+	Region          string            `json:"region"`
+	ApplicationName string            `json:"application_name"`
+	Monitoring      MonitoringConfig  `json:"monitoring"`
+	Security        SecurityConfig    `json:"security"`
+	Database        DatabaseConfig    `json:"database"`
+	Networking      NetworkingConfig  `json:"networking"`
+	Regions         []string          `json:"regions,omitempty"`
+	MultiRegion     bool              `json:"multi_region"`
 }
 
 // LambdaConfig holds Lambda function configuration
 type LambdaConfig struct {
-	Runtime             string            `json:"runtime"`
-	Handler             string            `json:"handler"`
-	Timeout             int               `json:"timeout"`
-	MemorySize          int               `json:"memory_size"`
 	ReservedConcurrency *int              `json:"reserved_concurrency,omitempty"`
 	Environment         map[string]string `json:"environment,omitempty"`
-	Layers              []string          `json:"layers,omitempty"`
-	DeadLetterQueue     bool              `json:"dead_letter_queue"`
 	VPCConfig           *VPCConfig        `json:"vpc_config,omitempty"`
+	Runtime             string            `json:"runtime"`
+	Handler             string            `json:"handler"`
+	Layers              []string          `json:"layers,omitempty"`
+	Timeout             int               `json:"timeout"`
+	MemorySize          int               `json:"memory_size"`
+	DeadLetterQueue     bool              `json:"dead_letter_queue"`
 }
 
 // APIGatewayConfig holds API Gateway configuration
 type APIGatewayConfig struct {
-	Type           string               `json:"type"` // REST, HTTP, WebSocket
-	StageName      string               `json:"stage_name"`
-	CORS           CORSConfig           `json:"cors"`
-	Authentication AuthenticationConfig `json:"authentication"`
-	Throttling     ThrottlingConfig     `json:"throttling"`
-	Caching        CachingConfig        `json:"caching"`
 	CustomDomain   *CustomDomainConfig  `json:"custom_domain,omitempty"`
+	Caching        CachingConfig        `json:"caching"`
+	Type           string               `json:"type"`
+	StageName      string               `json:"stage_name"`
+	Authentication AuthenticationConfig `json:"authentication"`
+	CORS           CORSConfig           `json:"cors"`
+	Throttling     ThrottlingConfig     `json:"throttling"`
 }
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	Type          string           `json:"type"` // DynamoDB, RDS, Aurora
+	Encryption    EncryptionConfig `json:"encryption"`
+	Type          string           `json:"type"`
 	Tables        []TableConfig    `json:"tables,omitempty"`
 	GlobalTables  bool             `json:"global_tables"`
 	BackupEnabled bool             `json:"backup_enabled"`
-	Encryption    EncryptionConfig `json:"encryption"`
 	StreamEnabled bool             `json:"stream_enabled"`
 }
 
 // MonitoringConfig holds monitoring configuration
 type MonitoringConfig struct {
-	CloudWatch CloudWatchConfig `json:"cloudwatch"`
 	XRay       XRayConfig       `json:"xray"`
-	Alarms     []AlarmConfig    `json:"alarms"`
 	Dashboard  DashboardConfig  `json:"dashboard"`
+	Alarms     []AlarmConfig    `json:"alarms"`
+	CloudWatch CloudWatchConfig `json:"cloudwatch"`
 }
 
 // SecurityConfig holds security configuration
@@ -153,16 +138,16 @@ type NetworkingConfig struct {
 	VPC            *VPCConfig            `json:"vpc,omitempty"`
 	Subnets        []SubnetConfig        `json:"subnets,omitempty"`
 	SecurityGroups []SecurityGroupConfig `json:"security_groups,omitempty"`
-	NATGateways    bool                  `json:"nat_gateways"`
 	VPCEndpoints   []VPCEndpointConfig   `json:"vpc_endpoints,omitempty"`
+	NATGateways    bool                  `json:"nat_gateways"`
 }
 
 // Supporting configuration types
 type VPCConfig struct {
 	CIDR               string   `json:"cidr"`
+	AvailabilityZones  []string `json:"availability_zones"`
 	EnableDNSSupport   bool     `json:"enable_dns_support"`
 	EnableDNSHostnames bool     `json:"enable_dns_hostnames"`
-	AvailabilityZones  []string `json:"availability_zones"`
 }
 
 type CORSConfig struct {
@@ -186,9 +171,9 @@ type ThrottlingConfig struct {
 }
 
 type CachingConfig struct {
-	Enabled    bool   `json:"enabled"`
-	TTL        int    `json:"ttl"`
 	KeyPattern string `json:"key_pattern,omitempty"`
+	TTL        int    `json:"ttl"`
+	Enabled    bool   `json:"enabled"`
 }
 
 type CustomDomainConfig struct {
@@ -210,9 +195,9 @@ type TableConfig struct {
 }
 
 type EncryptionConfig struct {
-	Enabled   bool   `json:"enabled"`
 	KMSKeyId  string `json:"kms_key_id,omitempty"`
 	Algorithm string `json:"algorithm,omitempty"`
+	Enabled   bool   `json:"enabled"`
 }
 
 type CloudWatchConfig struct {
@@ -222,9 +207,9 @@ type CloudWatchConfig struct {
 }
 
 type XRayConfig struct {
-	Enabled       bool    `json:"enabled"`
+	TracingConfig string  `json:"tracing_config"`
 	SamplingRate  float64 `json:"sampling_rate"`
-	TracingConfig string  `json:"tracing_config"` // Active, PassThrough
+	Enabled       bool    `json:"enabled"`
 }
 
 type AlarmConfig struct {
@@ -232,11 +217,11 @@ type AlarmConfig struct {
 	MetricName         string   `json:"metric_name"`
 	Namespace          string   `json:"namespace"`
 	Statistic          string   `json:"statistic"`
-	Threshold          float64  `json:"threshold"`
 	ComparisonOperator string   `json:"comparison_operator"`
+	Actions            []string `json:"actions"`
+	Threshold          float64  `json:"threshold"`
 	EvaluationPeriods  int      `json:"evaluation_periods"`
 	Period             int      `json:"period"`
-	Actions            []string `json:"actions"`
 }
 
 type DashboardConfig struct {
@@ -245,9 +230,9 @@ type DashboardConfig struct {
 }
 
 type DashboardWidget struct {
+	Properties map[string]any `json:"properties"`
 	Type       string         `json:"type"`
 	Title      string         `json:"title"`
-	Properties map[string]any `json:"properties"`
 }
 
 // Additional supporting types
@@ -259,9 +244,9 @@ type IAMRoleConfig struct {
 }
 
 type KMSKeyConfig struct {
+	Policy      map[string]any `json:"policy,omitempty"`
 	Alias       string         `json:"alias"`
 	Description string         `json:"description"`
-	Policy      map[string]any `json:"policy,omitempty"`
 }
 
 type SecretsConfig struct {
@@ -280,10 +265,10 @@ type WAFConfig struct {
 }
 
 type WAFRule struct {
-	Name      string         `json:"name"`
-	Priority  int            `json:"priority"`
-	Action    string         `json:"action"`
 	Statement map[string]any `json:"statement"`
+	Name      string         `json:"name"`
+	Action    string         `json:"action"`
+	Priority  int            `json:"priority"`
 }
 
 type VPCEndpointConfig struct {
@@ -308,10 +293,10 @@ type SecurityGroupConfig struct {
 
 type SecurityGroupRule struct {
 	Protocol   string   `json:"protocol"`
+	SourceSG   string   `json:"source_sg,omitempty"`
+	CIDRBlocks []string `json:"cidr_blocks,omitempty"`
 	FromPort   int      `json:"from_port"`
 	ToPort     int      `json:"to_port"`
-	CIDRBlocks []string `json:"cidr_blocks,omitempty"`
-	SourceSG   string   `json:"source_sg,omitempty"`
 }
 
 type AuthorizerConfig struct {
@@ -351,8 +336,8 @@ type ProjectionConfig struct {
 
 type LogGroupConfig struct {
 	Name          string `json:"name"`
-	RetentionDays int    `json:"retention_days"`
 	KMSKeyId      string `json:"kms_key_id,omitempty"`
+	RetentionDays int    `json:"retention_days"`
 }
 
 type MetricFilterConfig struct {
@@ -365,14 +350,14 @@ type MetricFilterConfig struct {
 }
 
 type InlinePolicyConfig struct {
-	Name   string         `json:"name"`
 	Policy map[string]any `json:"policy"`
+	Name   string         `json:"name"`
 }
 
 // InfrastructureGenerator generates infrastructure templates
 type InfrastructureGenerator struct {
-	provider InfrastructureProvider
 	config   InfrastructureConfig
+	provider InfrastructureProvider
 	mu       sync.RWMutex
 }
 

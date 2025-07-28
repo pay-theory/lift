@@ -12,14 +12,12 @@ import (
 
 // MockDynamORM provides a mock implementation of DynamORM for testing
 type MockDynamORM struct {
-	mu           sync.RWMutex
-	data         map[string]map[string]any   // table -> key -> item
-	transactions map[string]*MockTransaction // transaction ID -> transaction
-	config       *dynamorm.DynamORMConfig
-
-	// Behavior configuration
-	FailOnOperation map[string]error         // operation -> error to return
-	Delays          map[string]time.Duration // operation -> delay to add
+	data            map[string]map[string]any
+	transactions    map[string]*MockTransaction
+	config          *dynamorm.DynamORMConfig
+	FailOnOperation map[string]error
+	Delays          map[string]time.Duration
+	mu              sync.RWMutex
 }
 
 // NewMockDynamORM creates a new mock DynamORM instance
@@ -217,20 +215,20 @@ func (m *MockDynamORM) Reset() {
 
 // MockTransaction represents a mock DynamORM transaction
 type MockTransaction struct {
-	id         string
 	mock       *MockDynamORM
-	committed  bool
-	rolledBack bool
+	id         string
 	operations []TransactionOperation
 	mu         sync.RWMutex
+	committed  bool
+	rolledBack bool
 }
 
 // TransactionOperation represents an operation within a transaction
 type TransactionOperation struct {
-	Type  string // "put", "delete", etc.
+	Item  any
+	Type  string
 	Table string
 	Key   string
-	Item  any
 }
 
 // Put adds a put operation to the transaction
@@ -318,10 +316,10 @@ func (tx *MockTransaction) Rollback() error {
 
 // MockAWSService provides a generic mock for AWS services
 type MockAWSService struct {
+	responses map[string]any
+	errors    map[string]error
+	callCount map[string]int
 	mu        sync.RWMutex
-	responses map[string]any   // operation -> response
-	errors    map[string]error // operation -> error
-	callCount map[string]int   // operation -> call count
 }
 
 // NewMockAWSService creates a new mock AWS service
@@ -390,16 +388,16 @@ func (m *MockAWSService) Reset() {
 
 // MockHTTPClient provides a mock HTTP client for external API testing
 type MockHTTPClient struct {
+	responses map[string]*MockHTTPResponse
+	callCount map[string]int
 	mu        sync.RWMutex
-	responses map[string]*MockHTTPResponse // URL -> response
-	callCount map[string]int               // URL -> call count
 }
 
 // MockHTTPResponse represents a mock HTTP response
 type MockHTTPResponse struct {
-	StatusCode int
-	Body       string
 	Headers    map[string]string
+	Body       string
+	StatusCode int
 	Delay      time.Duration
 }
 
@@ -560,25 +558,21 @@ const (
 
 // MockConnection represents a WebSocket connection in the mock
 type MockConnection struct {
-	ID           string          `json:"id"`
-	State        ConnectionState `json:"state"`
 	CreatedAt    time.Time       `json:"created_at"`
 	LastActiveAt time.Time       `json:"last_active_at"`
+	Metadata     map[string]any  `json:"metadata,omitempty"`
+	ID           string          `json:"id"`
+	State        ConnectionState `json:"state"`
 	SourceIP     string          `json:"source_ip"`
 	UserAgent    string          `json:"user_agent"`
-	Metadata     map[string]any  `json:"metadata,omitempty"`
 }
 
 // MockAPIGatewayConfig configures the behavior of the API Gateway mock
 type MockAPIGatewayConfig struct {
-	// Connection TTL in seconds (default: 7200 = 2 hours)
-	ConnectionTTL int64
-	// Maximum message size in bytes (default: 128KB)
+	ErrorRates     map[string]float64
+	ConnectionTTL  int64
 	MaxMessageSize int64
-	// Simulate network delays
-	NetworkDelay time.Duration
-	// Error simulation rates (0.0 to 1.0)
-	ErrorRates map[string]float64
+	NetworkDelay   time.Duration
 }
 
 // DefaultMockAPIGatewayConfig returns default configuration
@@ -593,12 +587,12 @@ func DefaultMockAPIGatewayConfig() *MockAPIGatewayConfig {
 
 // MockAPIGatewayManagementClient provides a mock implementation of API Gateway Management API
 type MockAPIGatewayManagementClient struct {
-	mu          sync.RWMutex
 	connections map[string]*MockConnection
-	messages    map[string][][]byte // connectionID -> messages sent
-	errors      map[string]error    // connectionID -> error to return
-	callCount   map[string]int      // operation -> call count
+	messages    map[string][][]byte
+	errors      map[string]error
+	callCount   map[string]int
 	config      *MockAPIGatewayConfig
+	mu          sync.RWMutex
 }
 
 // NewMockAPIGatewayManagementClient creates a new mock API Gateway Management client
@@ -965,12 +959,12 @@ const (
 
 // MockMetricDatum represents a single metric data point
 type MockMetricDatum struct {
-	MetricName string            `json:"metric_name"`
-	Value      float64           `json:"value"`
-	Unit       MetricUnit        `json:"unit"`
 	Timestamp  time.Time         `json:"timestamp"`
 	Dimensions map[string]string `json:"dimensions,omitempty"`
 	Metadata   map[string]any    `json:"metadata,omitempty"`
+	MetricName string            `json:"metric_name"`
+	Unit       MetricUnit        `json:"unit"`
+	Value      float64           `json:"value"`
 }
 
 // AlarmState represents the state of a CloudWatch alarm
@@ -1008,22 +1002,22 @@ const (
 
 // MockAlarmDefinition represents a CloudWatch alarm
 type MockAlarmDefinition struct {
-	AlarmName          string             `json:"alarm_name"`
-	AlarmDescription   string             `json:"alarm_description"`
-	MetricName         string             `json:"metric_name"`
-	Namespace          string             `json:"namespace"`
-	Statistic          Statistic          `json:"statistic"`
+	UpdatedAt          time.Time          `json:"updated_at"`
+	CreatedAt          time.Time          `json:"created_at"`
+	StateUpdatedAt     time.Time          `json:"state_updated_at"`
 	Dimensions         map[string]string  `json:"dimensions,omitempty"`
-	Period             int32              `json:"period"`
-	EvaluationPeriods  int32              `json:"evaluation_periods"`
-	Threshold          float64            `json:"threshold"`
+	StateReason        string             `json:"state_reason"`
+	Statistic          Statistic          `json:"statistic"`
 	ComparisonOperator ComparisonOperator `json:"comparison_operator"`
 	TreatMissingData   string             `json:"treat_missing_data"`
 	State              AlarmState         `json:"state"`
-	StateReason        string             `json:"state_reason"`
-	StateUpdatedAt     time.Time          `json:"state_updated_at"`
-	CreatedAt          time.Time          `json:"created_at"`
-	UpdatedAt          time.Time          `json:"updated_at"`
+	AlarmName          string             `json:"alarm_name"`
+	Namespace          string             `json:"namespace"`
+	MetricName         string             `json:"metric_name"`
+	AlarmDescription   string             `json:"alarm_description"`
+	Threshold          float64            `json:"threshold"`
+	Period             int32              `json:"period"`
+	EvaluationPeriods  int32              `json:"evaluation_periods"`
 }
 
 // MockCloudWatchConfig configures the behavior of CloudWatch mocks
@@ -1050,11 +1044,11 @@ func DefaultMockCloudWatchConfig() *MockCloudWatchConfig {
 
 // MockCloudWatchMetricsClient provides a mock implementation of CloudWatch Metrics
 type MockCloudWatchMetricsClient struct {
-	mu        sync.RWMutex
-	metrics   map[string][]*MockMetricDatum // namespace -> metrics
-	callCount map[string]int                // operation -> call count
-	errors    map[string]error              // operation -> error to return
+	metrics   map[string][]*MockMetricDatum
+	callCount map[string]int
+	errors    map[string]error
 	config    *MockCloudWatchConfig
+	mu        sync.RWMutex
 }
 
 // NewMockCloudWatchMetricsClient creates a new mock CloudWatch Metrics client
@@ -1249,12 +1243,12 @@ func (m *MockCloudWatchMetricsClient) GetMetricStatistics(ctx context.Context, n
 
 // MockCloudWatchAlarmsClient provides a mock implementation of CloudWatch Alarms
 type MockCloudWatchAlarmsClient struct {
-	mu            sync.RWMutex
-	alarms        map[string]*MockAlarmDefinition // alarmName -> alarm
-	callCount     map[string]int                  // operation -> call count
-	errors        map[string]error                // operation -> error to return
+	alarms        map[string]*MockAlarmDefinition
+	callCount     map[string]int
+	errors        map[string]error
 	config        *MockCloudWatchConfig
-	metricsClient *MockCloudWatchMetricsClient // For alarm evaluation
+	metricsClient *MockCloudWatchMetricsClient
+	mu            sync.RWMutex
 }
 
 // NewMockCloudWatchAlarmsClient creates a new mock CloudWatch Alarms client

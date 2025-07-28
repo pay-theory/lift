@@ -10,9 +10,9 @@ import (
 
 func TestLiftApp(t *testing.T) {
 	tests := []struct {
-		name     string
 		props    *patterns.LiftAppProps
 		validate func(*test.LiftStackTester)
+		name     string
 	}{
 		{
 			name: "basic app with database",

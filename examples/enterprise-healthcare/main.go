@@ -151,14 +151,14 @@ func RateLimit(_ RateLimitConfig) lift.Middleware {
 
 // Patient represents a patient with privacy controls
 type Patient struct {
-	ID              string          `json:"id"`
-	MRN             string          `json:"mrn"` // Medical Record Number
-	Demographics    Demographics    `json:"demographics"`
-	PrivacySettings PrivacySettings `json:"privacySettings"`
 	ConsentStatus   ConsentStatus   `json:"consentStatus"`
 	CreatedAt       time.Time       `json:"createdAt"`
 	UpdatedAt       time.Time       `json:"updatedAt"`
 	LastAccessedAt  time.Time       `json:"lastAccessedAt"`
+	Demographics    Demographics    `json:"demographics"`
+	ID              string          `json:"id"`
+	MRN             string          `json:"mrn"`
+	PrivacySettings PrivacySettings `json:"privacySettings"`
 	AccessCount     int             `json:"accessCount"`
 }
 
@@ -186,73 +186,73 @@ type Address struct {
 
 // PrivacySettings controls patient privacy preferences
 type PrivacySettings struct {
+	RestrictedProviders []string `json:"restrictedProviders"`
+	DataRetentionYears  int      `json:"dataRetentionYears"`
 	AllowResearch       bool     `json:"allowResearch"`
 	AllowMarketing      bool     `json:"allowMarketing"`
-	RestrictedProviders []string `json:"restrictedProviders"`
 	MinimumNecessary    bool     `json:"minimumNecessary"`
-	DataRetentionYears  int      `json:"dataRetentionYears"`
 }
 
 // ConsentStatus tracks patient consent
 type ConsentStatus struct {
+	ConsentDate      time.Time  `json:"consentDate"`
+	WithdrawalDate   *time.Time `json:"withdrawalDate,omitempty"`
+	ConsentVersion   string     `json:"consentVersion"`
 	GeneralConsent   bool       `json:"generalConsent"`
 	ResearchConsent  bool       `json:"researchConsent"`
 	MarketingConsent bool       `json:"marketingConsent"`
-	ConsentDate      time.Time  `json:"consentDate"`
-	ConsentVersion   string     `json:"consentVersion"`
-	WithdrawalDate   *time.Time `json:"withdrawalDate,omitempty"`
 }
 
 // MedicalRecord represents an encrypted medical record
 type MedicalRecord struct {
+	CreatedAt       time.Time     `json:"createdAt"`
+	UpdatedAt       time.Time     `json:"updatedAt"`
+	ExpiresAt       *time.Time    `json:"expiresAt,omitempty"`
 	ID              string        `json:"id"`
 	PatientID       string        `json:"patientId"`
 	ProviderID      string        `json:"providerId"`
 	RecordType      string        `json:"recordType"`
 	Title           string        `json:"title"`
-	EncryptedData   string        `json:"-"` // Never expose in JSON
-	AccessLog       []AccessEntry `json:"-"` // Never expose in JSON
+	EncryptedData   string        `json:"-"`
+	AccessLog       []AccessEntry `json:"-"`
 	ComplianceFlags []string      `json:"complianceFlags"`
-	CreatedAt       time.Time     `json:"createdAt"`
-	UpdatedAt       time.Time     `json:"updatedAt"`
-	ExpiresAt       *time.Time    `json:"expiresAt,omitempty"`
 }
 
 // AccessEntry logs access to medical records
 type AccessEntry struct {
+	Timestamp  time.Time `json:"timestamp"`
 	UserID     string    `json:"userId"`
 	UserRole   string    `json:"userRole"`
-	AccessType string    `json:"accessType"` // read, write, delete
+	AccessType string    `json:"accessType"`
 	IPAddress  string    `json:"ipAddress"`
 	UserAgent  string    `json:"userAgent"`
 	Purpose    string    `json:"purpose"`
-	Authorized bool      `json:"authorized"`
-	Timestamp  time.Time `json:"timestamp"`
 	SessionID  string    `json:"sessionId"`
+	Authorized bool      `json:"authorized"`
 }
 
 // Provider represents a healthcare provider
 type Provider struct {
+	CreatedAt     time.Time     `json:"createdAt"`
+	UpdatedAt     time.Time     `json:"updatedAt"`
+	Credentials   Credentials   `json:"credentials"`
 	ID            string        `json:"id"`
-	NPI           string        `json:"npi"` // National Provider Identifier
+	NPI           string        `json:"npi"`
 	FirstName     string        `json:"firstName"`
 	LastName      string        `json:"lastName"`
-	Credentials   Credentials   `json:"credentials"`
 	AccessLevel   AccessLevel   `json:"accessLevel"`
 	AuditSettings AuditSettings `json:"auditSettings"`
 	IsActive      bool          `json:"isActive"`
-	CreatedAt     time.Time     `json:"createdAt"`
-	UpdatedAt     time.Time     `json:"updatedAt"`
 }
 
 // Credentials represents provider credentials
 type Credentials struct {
+	LicenseExpiry  time.Time `json:"licenseExpiry"`
 	LicenseNumber  string    `json:"licenseNumber"`
 	LicenseState   string    `json:"licenseState"`
-	LicenseExpiry  time.Time `json:"licenseExpiry"`
+	DEANumber      string    `json:"deaNumber,omitempty"`
 	Specialties    []string  `json:"specialties"`
 	BoardCertified bool      `json:"boardCertified"`
-	DEANumber      string    `json:"deaNumber,omitempty"`
 }
 
 // AccessLevel defines provider access permissions
@@ -274,9 +274,9 @@ type AuditSettings struct {
 
 // Request/Response models
 type CreatePatientRequest struct {
+	ConsentStatus   ConsentStatus   `json:"consentStatus" validate:"required"`
 	Demographics    Demographics    `json:"demographics" validate:"required"`
 	PrivacySettings PrivacySettings `json:"privacySettings"`
-	ConsentStatus   ConsentStatus   `json:"consentStatus" validate:"required"`
 }
 
 type CreateMedicalRecordRequest struct {

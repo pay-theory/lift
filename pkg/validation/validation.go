@@ -10,10 +10,10 @@ import (
 
 // ValidationError represents a validation error
 type ValidationError struct {
+	Value   any    `json:"value"`
 	Field   string `json:"field"`
 	Message string `json:"message"`
 	Tag     string `json:"tag"`
-	Value   any    `json:"value"`
 }
 
 func (e ValidationError) Error() string {

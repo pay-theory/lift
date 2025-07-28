@@ -140,7 +140,7 @@ func ObservabilityMiddleware(config ObservabilityConfig) lift.Middleware {
 							size = len(v)
 						default:
 							// For other types, marshal to JSON to get size estimate
-							if data, err := json.Marshal(v); err == nil {
+							if data, marshalErr := json.Marshal(v); marshalErr == nil {
 								size = len(data)
 							}
 						}

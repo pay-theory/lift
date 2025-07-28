@@ -32,83 +32,59 @@ const (
 
 // LoadSheddingConfig holds configuration for load shedding
 type LoadSheddingConfig struct {
-	// Basic settings
-	Strategy LoadSheddingStrategy `json:"strategy"` // Load shedding strategy
-	Enabled  bool                 `json:"enabled"`  // Enable/disable load shedding
-
-	// Threshold settings
-	CPUThreshold       float64       `json:"cpu_threshold"`        // CPU usage threshold (0.0-1.0)
-	MemoryThreshold    float64       `json:"memory_threshold"`     // Memory usage threshold (0.0-1.0)
-	LatencyThreshold   time.Duration `json:"latency_threshold"`    // Response time threshold
-	ErrorRateThreshold float64       `json:"error_rate_threshold"` // Error rate threshold (0.0-1.0)
-
-	// Adaptive settings
-	TargetLatency   time.Duration `json:"target_latency"`    // Target response time
-	MaxSheddingRate float64       `json:"max_shedding_rate"` // Maximum shedding rate (0.0-1.0)
-	MinSheddingRate float64       `json:"min_shedding_rate"` // Minimum shedding rate (0.0-1.0)
-	SheddingRate    float64       `json:"shedding_rate"`     // Fixed shedding rate (for simple strategies)
-	AdaptationRate  float64       `json:"adaptation_rate"`   // How quickly to adapt (0.0-1.0)
-
-	// Priority settings
-	PriorityExtractor  func(*lift.Context) int `json:"-"`                   // Extract priority from request
-	PriorityThresholds map[int]float64         `json:"priority_thresholds"` // Shedding rates by priority
-
-	// Custom algorithm
-	CustomShedder func(*lift.Context, *LoadMetrics) bool `json:"-"` // Custom shedding function
-
-	// Monitoring settings
-	MetricsWindow time.Duration `json:"metrics_window"` // Window for metrics calculation
-	SamplingRate  float64       `json:"sampling_rate"`  // Rate of requests to sample for metrics
-
-	// Response settings
-	SheddingHandler    func(*lift.Context) error `json:"-"`                    // Custom shedding response
-	SheddingStatusCode int                       `json:"shedding_status_code"` // HTTP status for shed requests
-	SheddingMessage    string                    `json:"shedding_message"`     // Message for shed requests
-
-	// Observability
-	Logger        observability.StructuredLogger `json:"-"`
-	Metrics       observability.MetricsCollector `json:"-"`
-	EnableMetrics bool                           `json:"enable_metrics"`
-
-	// Naming
-	Name string `json:"name"` // Load shedding name for metrics
+	Metrics            observability.MetricsCollector         `json:"-"`
+	Logger             observability.StructuredLogger         `json:"-"`
+	SheddingHandler    func(*lift.Context) error              `json:"-"`
+	CustomShedder      func(*lift.Context, *LoadMetrics) bool `json:"-"`
+	PriorityThresholds map[int]float64                        `json:"priority_thresholds"`
+	PriorityExtractor  func(*lift.Context) int                `json:"-"`
+	Strategy           LoadSheddingStrategy                   `json:"strategy"`
+	Name               string                                 `json:"name"`
+	SheddingMessage    string                                 `json:"shedding_message"`
+	AdaptationRate     float64                                `json:"adaptation_rate"`
+	ErrorRateThreshold float64                                `json:"error_rate_threshold"`
+	MinSheddingRate    float64                                `json:"min_shedding_rate"`
+	MaxSheddingRate    float64                                `json:"max_shedding_rate"`
+	TargetLatency      time.Duration                          `json:"target_latency"`
+	MetricsWindow      time.Duration                          `json:"metrics_window"`
+	SamplingRate       float64                                `json:"sampling_rate"`
+	SheddingRate       float64                                `json:"shedding_rate"`
+	SheddingStatusCode int                                    `json:"shedding_status_code"`
+	LatencyThreshold   time.Duration                          `json:"latency_threshold"`
+	MemoryThreshold    float64                                `json:"memory_threshold"`
+	CPUThreshold       float64                                `json:"cpu_threshold"`
+	EnableMetrics      bool                                   `json:"enable_metrics"`
+	Enabled            bool                                   `json:"enabled"`
 }
 
 // LoadMetrics provides real-time system and application metrics
 type LoadMetrics struct {
-	// System metrics
-	CPUUsage    float64 `json:"cpu_usage"`
-	MemoryUsage float64 `json:"memory_usage"`
-
-	// Application metrics
-	ActiveRequests int64         `json:"active_requests"`
-	RequestRate    float64       `json:"request_rate"`
-	AverageLatency time.Duration `json:"average_latency"`
-	P95Latency     time.Duration `json:"p95_latency"`
-	P99Latency     time.Duration `json:"p99_latency"`
-	ErrorRate      float64       `json:"error_rate"`
-
-	// Load shedding metrics
-	CurrentSheddingRate float64 `json:"current_shedding_rate"`
-	TotalRequests       int64   `json:"total_requests"`
-	ShedRequests        int64   `json:"shed_requests"`
-
-	// Timestamps
-	LastUpdated time.Time `json:"last_updated"`
-	WindowStart time.Time `json:"window_start"`
+	LastUpdated         time.Time     `json:"last_updated"`
+	WindowStart         time.Time     `json:"window_start"`
+	P99Latency          time.Duration `json:"p99_latency"`
+	RequestRate         float64       `json:"request_rate"`
+	AverageLatency      time.Duration `json:"average_latency"`
+	P95Latency          time.Duration `json:"p95_latency"`
+	CPUUsage            float64       `json:"cpu_usage"`
+	ErrorRate           float64       `json:"error_rate"`
+	CurrentSheddingRate float64       `json:"current_shedding_rate"`
+	TotalRequests       int64         `json:"total_requests"`
+	ShedRequests        int64         `json:"shed_requests"`
+	ActiveRequests      int64         `json:"active_requests"`
+	MemoryUsage         float64       `json:"memory_usage"`
 }
 
 // LoadSheddingStats provides statistics about load shedding performance
 type LoadSheddingStats struct {
+	SystemMetrics       LoadMetrics          `json:"system_metrics"`
 	Name                string               `json:"name"`
 	Strategy            LoadSheddingStrategy `json:"strategy"`
-	Enabled             bool                 `json:"enabled"`
 	CurrentSheddingRate float64              `json:"current_shedding_rate"`
 	TotalRequests       int64                `json:"total_requests"`
 	ShedRequests        int64                `json:"shed_requests"`
 	SheddingRatio       float64              `json:"shedding_ratio"`
 	AverageLatency      time.Duration        `json:"average_latency"`
-	SystemMetrics       LoadMetrics          `json:"system_metrics"`
+	Enabled             bool                 `json:"enabled"`
 }
 
 // LoadSheddingMiddleware creates a load shedding middleware
@@ -238,13 +214,13 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 
 // loadSheddingManager manages load shedding logic and metrics
 type loadSheddingManager struct {
-	config         LoadSheddingConfig
 	metrics        *LoadMetrics
+	stats          *LoadSheddingStats
+	config         LoadSheddingConfig
 	latencyHistory []time.Duration
 	requestHistory []loadRequestRecord
 	errorCount     int64
 	mutex          sync.RWMutex
-	stats          *LoadSheddingStats
 }
 
 // loadRequestRecord tracks individual request metrics for load shedding

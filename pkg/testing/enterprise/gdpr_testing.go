@@ -22,30 +22,30 @@ const (
 
 // GDPRTestCase represents a GDPR compliance test case
 type GDPRTestCase struct {
+	TestFunc    func(ctx context.Context, tester *GDPRComplianceTester) error
 	Name        string
 	Type        GDPRRightType
 	Description string
-	TestFunc    func(ctx context.Context, tester *GDPRComplianceTester) error
 }
 
 // GDPRTestResult represents the result of a GDPR test
 type GDPRTestResult struct {
 	TestCase  GDPRTestCase
-	Success   bool
-	Duration  time.Duration
 	Timestamp time.Time
 	Error     string
+	Duration  time.Duration
+	Success   bool
 }
 
 // GDPRComplianceReport represents a GDPR compliance report
 type GDPRComplianceReport struct {
+	GeneratedAt       time.Time
+	Summary           string
+	Results           []GDPRTestResult
 	TotalTests        int
 	PassedTests       int
 	FailedTests       int
 	OverallCompliance bool
-	Summary           string
-	Results           []GDPRTestResult
-	GeneratedAt       time.Time
 }
 
 // AuditTrail represents GDPR audit trail
@@ -56,19 +56,19 @@ type AuditTrail struct {
 
 // AuditEvent represents a single audit event
 type AuditEvent struct {
+	Timestamp   time.Time
+	Metadata    map[string]any
 	EventID     string
 	EventType   string
-	Timestamp   time.Time
 	UserID      string
 	Description string
-	Metadata    map[string]any
 }
 
 // GDPRComplianceTester provides GDPR compliance testing capabilities
 type GDPRComplianceTester struct {
-	app          any // Enterprise app
+	app          any
+	dataStore    map[string]any
 	auditEnabled bool
-	dataStore    map[string]any // Mock data store for testing
 }
 
 // NewGDPRComplianceTester creates a new GDPR compliance tester

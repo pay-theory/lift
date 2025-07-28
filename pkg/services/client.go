@@ -153,13 +153,13 @@ func (c *ServiceClient) Call(ctx context.Context, request *ServiceRequest) (*Ser
 
 	// Execute with circuit breaker if enabled
 	if c.config.EnableCircuitBreaker && c.circuitBreaker != nil {
-		result, err := c.circuitBreaker.Execute(func() (any, error) {
+		result, cbErr := c.circuitBreaker.Execute(func() (any, error) {
 			return c.executeRequest(ctx, instance, request)
 		})
 
-		if err != nil {
-			c.recordMetrics(request.ServiceName, "circuit_breaker_failed", time.Since(start), err)
-			return nil, err
+		if cbErr != nil {
+			c.recordMetrics(request.ServiceName, "circuit_breaker_failed", time.Since(start), cbErr)
+			return nil, cbErr
 		}
 
 		response := result.(*ServiceResponse)

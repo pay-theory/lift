@@ -20,12 +20,12 @@ type SecurityValidator struct {
 
 // SecurityConfig configures security validation behavior
 type SecurityConfig struct {
-	MaxScanTime       time.Duration
 	ThreatThreshold   Severity
 	ComplianceLevel   ComplianceLevel
+	ReportFormat      ReportFormat
+	MaxScanTime       time.Duration
 	EnablePenetration bool
 	EnableCompliance  bool
-	ReportFormat      ReportFormat
 	AlertOnCritical   bool
 }
 
@@ -153,11 +153,11 @@ type DataProtectionTest interface {
 
 // Supporting types
 type SecurityCredentials struct {
+	Headers  map[string]string
 	Username string
 	Password string
 	Token    string
 	APIKey   string
-	Headers  map[string]string
 }
 
 type SecurityContext struct {
@@ -350,15 +350,15 @@ func (sv *SecurityValidator) calculateRiskScore(result *SecurityValidationResult
 
 // SecurityValidationResult contains comprehensive security validation results
 type SecurityValidationResult struct {
-	Target     SecurityTarget
 	StartTime  time.Time
 	EndTime    time.Time
-	Duration   time.Duration
 	Scanners   map[string][]Vulnerability
 	PenTests   map[string][]SecurityFinding
 	Compliance map[string]ComplianceResult
-	Summary    SecuritySummary
+	Target     SecurityTarget
 	Errors     []string
+	Summary    SecuritySummary
+	Duration   time.Duration
 }
 
 type SecuritySummary struct {
@@ -609,14 +609,14 @@ type SecurityReportSummary struct {
 }
 
 type SecurityFinding struct {
+	FoundAt     time.Time
 	ID          string
 	Type        string
 	RiskLevel   RiskLevel
 	Title       string
 	Description string
-	Evidence    []Evidence
 	Remediation string
-	FoundAt     time.Time
+	Evidence    []Evidence
 }
 
 type RiskLevel string
@@ -629,29 +629,29 @@ const (
 )
 
 type Evidence struct {
+	Timestamp   time.Time
 	Type        string
 	Description string
 	Data        string
 	Screenshot  string
-	Timestamp   time.Time
 }
 
 type ComplianceResult struct {
+	Timestamp       time.Time
 	Standard        string
-	Compliant       bool
-	Score           float64
 	Requirements    []RequirementResult
 	Violations      []ComplianceViolation
 	Recommendations []string
-	Timestamp       time.Time
+	Score           float64
+	Compliant       bool
 }
 
 type RequirementResult struct {
 	ID          string
 	Description string
 	Status      ComplianceStatus
-	Evidence    []Evidence
 	Notes       string
+	Evidence    []Evidence
 }
 
 type ComplianceStatus string
@@ -673,8 +673,8 @@ type Requirement struct {
 	ID          string
 	Description string
 	Category    string
-	Mandatory   bool
 	TestMethod  string
+	Mandatory   bool
 }
 
 type ComplianceReport struct {
@@ -702,10 +702,10 @@ type SystemInfo struct {
 }
 
 type SystemComponent struct {
+	Config  map[string]any
 	Name    string
 	Version string
 	Type    string
-	Config  map[string]any
 }
 
 type ThreatModel struct {
@@ -785,9 +785,9 @@ type Mitigation struct {
 	Name          string
 	Description   string
 	Type          MitigationType
-	Effectiveness float64
 	Cost          Cost
-	Threats       []string // Threat IDs this mitigation addresses
+	Threats       []string
+	Effectiveness float64
 }
 
 type MitigationType string
@@ -819,8 +819,8 @@ type Risk struct {
 	Likelihood   Likelihood
 	Impact       Impact
 	RiskLevel    RiskLevel
-	Mitigations  []string
 	ResidualRisk RiskLevel
+	Mitigations  []string
 }
 
 type ImpactAssessment struct {
@@ -833,11 +833,11 @@ type ImpactAssessment struct {
 }
 
 type RemediationPlan struct {
-	Steps     []RemediationStep
 	Priority  Priority
 	Effort    Effort
-	Timeline  time.Duration
+	Steps     []RemediationStep
 	Resources []string
+	Timeline  time.Duration
 }
 
 type RemediationStep struct {
@@ -880,17 +880,17 @@ const (
 type CVSSScore struct {
 	Version  string
 	Vector   string
-	Score    float64
 	Severity Severity
+	Score    float64
 }
 
 type AuthFinding struct {
+	FoundAt     time.Time
 	Type        AuthFindingType
 	Severity    Severity
 	Description string
-	Evidence    []Evidence
 	Location    string
-	FoundAt     time.Time
+	Evidence    []Evidence
 }
 
 type AuthFindingType string
@@ -904,13 +904,13 @@ const (
 )
 
 type DataFinding struct {
+	FoundAt     time.Time
 	Type        DataFindingType
 	Severity    Severity
 	Description string
 	DataType    DataType
 	Location    string
 	Evidence    []Evidence
-	FoundAt     time.Time
 }
 
 type DataFindingType string

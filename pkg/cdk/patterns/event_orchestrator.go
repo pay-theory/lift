@@ -17,53 +17,35 @@ import (
 
 // EventOrchestratorProps defines properties for an event orchestrator pattern
 type EventOrchestratorProps struct {
-	// Application name
-	AppName *string
-
-	// Event routing configuration
+	DefaultFunctionProps   awslambda.FunctionProps
+	EnableEventArchive     *bool
+	EnableDeadLetterQueue  *bool
+	EventBusName           *string
+	AppName                *string
 	EventRoutingTableProps *liftconstructs.EventRoutingTableProps
-	EnableEventRouting     *bool
+	DefaultMemorySize      *float64
+	DefaultTimeout         *float64
+	DefaultEnvironment     *map[string]*string
 	EventRetentionDays     *float64
-
-	// Event source configurations
-	EventSources []EventSourceConfig
-
-	// Lambda function defaults
-	DefaultFunctionProps awslambda.FunctionProps
-	DefaultMemorySize    *float64
-	DefaultTimeout       *float64
-	DefaultEnvironment   *map[string]*string
-
-	// EventBridge configuration
-	EventBusName         *string
-	EnableEventArchive   *bool
-	ArchiveRetentionDays *float64
-
-	// Orchestration settings
+	EnableEventRouting     *bool
 	EnableSagaPattern      *bool
+	ArchiveRetentionDays   *float64
 	EnableEventCorrelation *bool
 	MaxRetryAttempts       *float64
 	RetryBackoffRate       *float64
-
-	// Lift-specific settings
-	EnableTracing         *bool
-	EnableMultiTenant     *bool
-	EnableMonitoring      *bool
-	EnableDeadLetterQueue *bool
+	EnableTracing          *bool
+	EnableMultiTenant      *bool
+	EnableMonitoring       *bool
+	EventSources           []EventSourceConfig
 }
 
 // EventSourceConfig defines configuration for an event source
 type EventSourceConfig struct {
-	// Source name (e.g., "orders", "payments", "inventory")
-	SourceName *string
-	// Event types this source produces
-	EventTypes []*string
-	// Handler function for this source
-	HandlerProps *awslambda.FunctionProps
-	// Custom processing logic
-	ProcessingMode *string // "sequential", "parallel", "batch"
-	// Filtering rules
-	EventFilters map[string]interface{}
+	SourceName     *string
+	HandlerProps   *awslambda.FunctionProps
+	ProcessingMode *string
+	EventFilters   map[string]interface{}
+	EventTypes     []*string
 }
 
 // EventOrchestrator represents a multi-source event orchestration pattern

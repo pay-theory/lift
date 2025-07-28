@@ -13,11 +13,11 @@ import (
 
 // TestResponse provides enhanced assertion capabilities for HTTP responses
 type TestResponse struct {
+	err        error
 	t          *testing.T
-	StatusCode int
 	Headers    map[string]string
 	Body       string
-	err        error
+	StatusCode int
 }
 
 // NewTestResponse creates a new TestResponse for testing

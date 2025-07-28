@@ -20,29 +20,20 @@ var tracingStats struct {
 
 // EnhancedObservabilityConfig holds configuration for the complete observability stack
 type EnhancedObservabilityConfig struct {
-	// Core components
-	Logger  observability.StructuredLogger
-	Metrics observability.MetricsCollector
-	Tracer  *xray.XRayTracer
-
-	// Feature flags
-	EnableLogging bool `json:"enable_logging"`
-	EnableMetrics bool `json:"enable_metrics"`
-	EnableTracing bool `json:"enable_tracing"`
-
-	// Custom extractors
+	Metrics           observability.MetricsCollector
+	Logger            observability.StructuredLogger
+	Tracer            *xray.XRayTracer
+	DefaultTags       map[string]string `json:"default_tags"`
 	OperationNameFunc func(*lift.Context) string
 	TenantIDFunc      func(*lift.Context) string
 	UserIDFunc        func(*lift.Context) string
-
-	// Performance settings
-	LogRequestBody  bool    `json:"log_request_body"`
-	LogResponseBody bool    `json:"log_response_body"`
-	MaxBodyLogSize  int     `json:"max_body_log_size"`
-	SampleRate      float64 `json:"sample_rate"` // 0.0 to 1.0
-
-	// Custom dimensions/tags
-	DefaultTags map[string]string `json:"default_tags"`
+	MaxBodyLogSize    int     `json:"max_body_log_size"`
+	SampleRate        float64 `json:"sample_rate"`
+	EnableLogging     bool    `json:"enable_logging"`
+	LogResponseBody   bool    `json:"log_response_body"`
+	LogRequestBody    bool    `json:"log_request_body"`
+	EnableTracing     bool    `json:"enable_tracing"`
+	EnableMetrics     bool    `json:"enable_metrics"`
 }
 
 // EnhancedObservabilityMiddleware provides comprehensive observability with logging, metrics, and tracing
@@ -316,8 +307,8 @@ type ObservabilityStats struct {
 
 // TracingStats provides statistics about tracing performance
 type TracingStats struct {
-	TracesGenerated int64     `json:"traces_generated"`
 	LastTrace       time.Time `json:"last_trace"`
+	TracesGenerated int64     `json:"traces_generated"`
 	ErrorCount      int64     `json:"error_count"`
 }
 

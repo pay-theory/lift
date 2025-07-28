@@ -14,27 +14,27 @@ import (
 
 // Tenant represents a multi-tenant e-commerce store
 type Tenant struct {
+	Configuration TenantConfig `json:"configuration"`
+	Subscription  Subscription `json:"subscription"`
+	Owner         TenantOwner  `json:"owner"`
+	CreatedAt     time.Time    `json:"createdAt"`
+	UpdatedAt     time.Time    `json:"updatedAt"`
 	ID            string       `json:"id"`
 	Name          string       `json:"name"`
 	Domain        string       `json:"domain"`
-	Configuration TenantConfig `json:"configuration"`
-	Subscription  Subscription `json:"subscription"`
-	CreatedAt     time.Time    `json:"createdAt"`
-	UpdatedAt     time.Time    `json:"updatedAt"`
 	IsActive      bool         `json:"isActive"`
-	Owner         TenantOwner  `json:"owner"`
 }
 
 // TenantConfig holds tenant-specific configuration
 type TenantConfig struct {
-	Theme           ThemeConfig    `json:"theme"`
+	CustomSettings  map[string]any `json:"customSettings"`
 	PaymentMethods  []string       `json:"paymentMethods"`
 	ShippingMethods []string       `json:"shippingMethods"`
-	Currency        string         `json:"currency"`
-	Locale          string         `json:"locale"`
+	Theme           ThemeConfig    `json:"theme"`
 	Features        FeatureFlags   `json:"features"`
 	Limits          TenantLimits   `json:"limits"`
-	CustomSettings  map[string]any `json:"customSettings"`
+	Currency        string         `json:"currency"`
+	Locale          string         `json:"locale"`
 }
 
 // ThemeConfig defines the visual appearance
@@ -109,8 +109,8 @@ type Product struct {
 
 // Money represents monetary values
 type Money struct {
-	Amount   float64 `json:"amount"`
 	Currency string  `json:"currency"`
+	Amount   float64 `json:"amount"`
 }
 
 // Inventory tracks product availability

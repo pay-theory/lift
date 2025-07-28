@@ -10,26 +10,16 @@ import (
 
 // LiftTableProps extends DynamoDB table properties with Lift-specific configuration
 type LiftTableProps struct {
-	// Table name
-	TableName *string
-	// Partition key attribute name (defaults to field name from DynamORM model)
-	PartitionKeyName *string
-	// Sort key attribute name (optional, defaults to field name from DynamORM model)
-	SortKeyName *string
-	// Enable point-in-time recovery
+	TableName                 *string
+	PartitionKeyName          *string
+	SortKeyName               *string
 	EnablePointInTimeRecovery *bool
-	// Enable DynamoDB Streams
-	EnableStreams *bool
-	// Stream view type
-	StreamViewType awsdynamodb.StreamViewType
-	// Time to live attribute name
-	TimeToLiveAttribute *string
-	// Enable auto-scaling
-	EnableAutoScaling *bool
-	// Read capacity (for provisioned mode)
-	ReadCapacity *float64
-	// Write capacity (for provisioned mode)
-	WriteCapacity *float64
+	EnableStreams             *bool
+	TimeToLiveAttribute       *string
+	EnableAutoScaling         *bool
+	ReadCapacity              *float64
+	WriteCapacity             *float64
+	StreamViewType            awsdynamodb.StreamViewType
 }
 
 // LiftTable is a DynamoDB table construct optimized for Lift applications

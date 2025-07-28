@@ -22,31 +22,32 @@ func (c *DynamORMBenchmarkCommand) Usage() string {
 // BenchmarkConfig holds benchmarking configuration
 type BenchmarkConfig struct {
 	TableName   string
+	OutputDir   string
+	Region      string
 	Operations  []string
 	Concurrency int
 	Duration    time.Duration
 	ItemSize    int
-	OutputDir   string
-	Region      string
 	Warmup      time.Duration
 }
 
 // BenchmarkResults holds benchmark results
 type BenchmarkResults struct {
-	TableName        string                      `json:"table_name"`
 	StartTime        time.Time                   `json:"start_time"`
 	EndTime          time.Time                   `json:"end_time"`
+	OperationResults map[string]*OperationResult `json:"operation_results"`
+	Environment      BenchmarkEnvironment        `json:"environment"`
+	TableName        string                      `json:"table_name"`
 	Duration         time.Duration               `json:"duration"`
 	Concurrency      int                         `json:"concurrency"`
-	OperationResults map[string]*OperationResult `json:"operation_results"`
 	ColdStartTime    time.Duration               `json:"cold_start_time"`
 	WarmupTime       time.Duration               `json:"warmup_time"`
-	Environment      BenchmarkEnvironment        `json:"environment"`
 }
 
 // OperationResult holds results for a specific operation
 type OperationResult struct {
 	Operation       string          `json:"operation"`
+	Latencies       []time.Duration `json:"-"`
 	TotalRequests   int64           `json:"total_requests"`
 	SuccessRequests int64           `json:"success_requests"`
 	FailedRequests  int64           `json:"failed_requests"`
@@ -55,9 +56,8 @@ type OperationResult struct {
 	MaxLatency      time.Duration   `json:"max_latency"`
 	P95Latency      time.Duration   `json:"p95_latency"`
 	P99Latency      time.Duration   `json:"p99_latency"`
-	Throughput      float64         `json:"throughput"` // requests per second
+	Throughput      float64         `json:"throughput"`
 	ErrorRate       float64         `json:"error_rate"`
-	Latencies       []time.Duration `json:"-"` // Raw latencies for percentile calculation
 }
 
 // BenchmarkEnvironment captures environment information

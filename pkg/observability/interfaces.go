@@ -80,40 +80,33 @@ type StructuredLogger interface {
 
 // LoggerStats provides metrics about logger performance
 type LoggerStats struct {
+	LastFlush        time.Time     `json:"last_flush"`
+	LastError        string        `json:"last_error,omitempty"`
 	EntriesLogged    int64         `json:"entries_logged"`
 	EntriesDropped   int64         `json:"entries_dropped"`
 	FlushCount       int64         `json:"flush_count"`
-	LastFlush        time.Time     `json:"last_flush"`
 	BufferSize       int           `json:"buffer_size"`
 	BufferCapacity   int           `json:"buffer_capacity"`
 	AverageFlushTime time.Duration `json:"average_flush_time"`
 	ErrorCount       int64         `json:"error_count"`
-	LastError        string        `json:"last_error,omitempty"`
 }
 
 // LoggerConfig holds configuration for logger implementations
 type LoggerConfig struct {
-	// Basic configuration
-	Level        string `json:"level"`
-	Format       string `json:"format"` // "json" or "console"
-	EnableCaller bool   `json:"enable_caller"`
-	EnableStack  bool   `json:"enable_stack"`
-
-	// CloudWatch specific
-	LogGroup      string        `json:"log_group"`
-	LogStream     string        `json:"log_stream"`
-	BatchSize     int           `json:"batch_size"`
-	FlushInterval time.Duration `json:"flush_interval"`
-	BufferSize    int           `json:"buffer_size"`
-
-	// Performance tuning
-	AsyncLogging bool          `json:"async_logging"`
-	MaxRetries   int           `json:"max_retries"`
-	RetryDelay   time.Duration `json:"retry_delay"`
-
-	// Multi-tenant context
-	DefaultTenantID string `json:"default_tenant_id"`
-	DefaultUserID   string `json:"default_user_id"`
+	Format          string        `json:"format"`
+	DefaultUserID   string        `json:"default_user_id"`
+	Level           string        `json:"level"`
+	LogGroup        string        `json:"log_group"`
+	LogStream       string        `json:"log_stream"`
+	DefaultTenantID string        `json:"default_tenant_id"`
+	RetryDelay      time.Duration `json:"retry_delay"`
+	BatchSize       int           `json:"batch_size"`
+	FlushInterval   time.Duration `json:"flush_interval"`
+	BufferSize      int           `json:"buffer_size"`
+	MaxRetries      int           `json:"max_retries"`
+	EnableStack     bool          `json:"enable_stack"`
+	AsyncLogging    bool          `json:"async_logging"`
+	EnableCaller    bool          `json:"enable_caller"`
 }
 
 // LoggerFactory creates logger instances with different configurations
@@ -126,12 +119,12 @@ type LoggerFactory interface {
 
 // MetricEntry represents a metric data point
 type MetricEntry struct {
-	Name      string            `json:"name"`
-	Value     float64           `json:"value"`
-	Unit      string            `json:"unit"`
 	Timestamp time.Time         `json:"timestamp"`
 	Tags      map[string]string `json:"tags,omitempty"`
 	Fields    map[string]any    `json:"fields,omitempty"`
+	Name      string            `json:"name"`
+	Unit      string            `json:"unit"`
+	Value     float64           `json:"value"`
 }
 
 // MetricsCollector extends the basic lift.MetricsCollector with additional functionality
@@ -161,11 +154,11 @@ type MetricsCollector interface {
 
 // MetricsStats provides information about metrics collection
 type MetricsStats struct {
+	LastFlush       time.Time `json:"last_flush"`
+	LastError       string    `json:"last_error,omitempty"`
 	MetricsRecorded int64     `json:"metrics_recorded"`
 	MetricsDropped  int64     `json:"metrics_dropped"`
-	LastFlush       time.Time `json:"last_flush"`
 	ErrorCount      int64     `json:"error_count"`
-	LastError       string    `json:"last_error,omitempty"`
 }
 
 // HealthChecker defines the interface for health checking
@@ -177,18 +170,18 @@ type HealthChecker interface {
 
 // HealthStatus represents the overall health status
 type HealthStatus struct {
-	Healthy   bool                   `json:"healthy"`
-	Checks    map[string]CheckResult `json:"checks"`
 	Timestamp time.Time              `json:"timestamp"`
+	Checks    map[string]CheckResult `json:"checks"`
 	Version   string                 `json:"version,omitempty"`
+	Healthy   bool                   `json:"healthy"`
 }
 
 // CheckResult represents the result of a single health check
 type CheckResult struct {
-	Healthy  bool          `json:"healthy"`
 	Message  string        `json:"message,omitempty"`
-	Duration time.Duration `json:"duration"`
 	Error    string        `json:"error,omitempty"`
+	Duration time.Duration `json:"duration"`
+	Healthy  bool          `json:"healthy"`
 	Critical bool          `json:"critical"`
 }
 

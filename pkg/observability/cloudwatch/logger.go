@@ -33,26 +33,24 @@ type sharedLoggerState struct {
 // CloudWatchLogger implements the StructuredLogger interface with CloudWatch Logs backend
 type CloudWatchLogger struct {
 	client        observability.CloudWatchLogsClient
+	contextFields map[string]any
+	snsNotifier   *observability.SNSNotifier
+	shared        *sharedLoggerState
 	logGroup      string
 	logStream     string
 	batchSize     int
 	flushInterval time.Duration
-	contextFields map[string]any
-	snsNotifier   *observability.SNSNotifier
-
-	// Shared state between logger instances
-	shared *sharedLoggerState
 }
 
 // loggerStats tracks performance metrics
 type loggerStats struct {
+	lastError        string
 	entriesLogged    int64
 	entriesDropped   int64
 	flushCount       int64
-	lastFlush        int64 // Unix timestamp
+	lastFlush        int64
 	errorCount       int64
-	lastError        string
-	averageFlushTime int64 // Nanoseconds
+	averageFlushTime int64
 }
 
 // CloudWatchLoggerOptions contains optional parameters for NewCloudWatchLogger

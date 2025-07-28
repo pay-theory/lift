@@ -12,10 +12,10 @@ import (
 
 // ChaosEngineeringTester provides chaos engineering testing capabilities
 type ChaosEngineeringTester struct {
-	app               any // Enterprise app
+	app               any
+	metrics           map[string]any
 	safetyChecks      bool
 	monitoringEnabled bool
-	metrics           map[string]any
 }
 
 // NewChaosEngineeringTester creates a new chaos engineering tester

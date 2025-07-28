@@ -17,37 +17,22 @@ import (
 
 // SecureAPIProps defines properties for creating a secure API pattern
 type SecureAPIProps struct {
-	// API name
-	ApiName *string
-	// Lambda function code
-	Code awslambda.Code
-	// Handler (defaults to "bootstrap" for Go)
-	Handler *string
-	// VPC to deploy into (optional - will create if not provided)
-	Vpc awsec2.IVpc
-	// Enable rate limiting
+	Vpc                awsec2.IVpc
+	Code               awslambda.Code
+	AlarmTopic         awssns.ITopic
+	EnableWAF          *bool
 	EnableRateLimiting *bool
-	// Rate limit type (IP, User, or Tenant)
-	RateLimitType liftconstructs.RateLimitType
-	// Rate limit window in seconds
-	RateLimitWindow *float64
-	// Rate limit max requests
-	RateLimitMax *float64
-	// Enable WAF protection
-	EnableWAF *bool
-	// Custom domain configuration
-	DomainName     *string
-	CertificateArn *string
-	// SNS topic for alarms
-	AlarmTopic awssns.ITopic
-	// Memory size in MB (default: 1024)
-	MemorySize *float64
-	// Timeout in seconds (default: 30)
-	Timeout *float64
-	// Environment variables
-	Environment *map[string]*string
-	// Additional security policies
+	RateLimitWindow    *float64
+	RateLimitMax       *float64
+	ApiName            *string
+	DomainName         *string
+	CertificateArn     *string
+	Handler            *string
+	MemorySize         *float64
+	Timeout            *float64
+	Environment        *map[string]*string
 	AdditionalPolicies *[]awsiam.PolicyStatement
+	RateLimitType      liftconstructs.RateLimitType
 }
 
 // SecureAPI is a pattern that creates a secure API with WAF, rate limiting, and VPC

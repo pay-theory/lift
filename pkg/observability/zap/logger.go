@@ -18,20 +18,20 @@ import (
 type ZapLogger struct {
 	logger        *zap.Logger
 	sugar         *zap.SugaredLogger
-	config        observability.LoggerConfig
 	stats         *loggerStats
 	contextFields map[string]any
 	snsNotifier   *observability.SNSNotifier
+	config        observability.LoggerConfig
 }
 
 // loggerStats tracks logger performance metrics
 type loggerStats struct {
+	lastError      string
 	entriesLogged  int64
 	entriesDropped int64
 	flushCount     int64
-	lastFlush      int64 // Unix timestamp
+	lastFlush      int64
 	errorCount     int64
-	lastError      string
 }
 
 // ZapLoggerOptions contains optional parameters for NewZapLogger

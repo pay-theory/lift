@@ -13,18 +13,18 @@ import (
 
 // EncryptedSecretCache provides encrypted in-memory caching for secrets with TTL
 type EncryptedSecretCache struct {
-	secrets map[string]*EncryptedCachedSecret
-	mu      sync.RWMutex
-	ttl     time.Duration
 	gcm     cipher.AEAD
+	secrets map[string]*EncryptedCachedSecret
 	key     []byte
+	ttl     time.Duration
+	mu      sync.RWMutex
 }
 
 // EncryptedCachedSecret represents an encrypted cached secret with expiration
 type EncryptedCachedSecret struct {
-	EncryptedValue []byte // AES-256-GCM encrypted value
-	Nonce          []byte // GCM nonce
 	ExpiresAt      time.Time
+	EncryptedValue []byte
+	Nonce          []byte
 }
 
 // NewEncryptedSecretCache creates a new encrypted secret cache with the specified TTL

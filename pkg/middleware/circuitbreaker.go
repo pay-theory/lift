@@ -20,50 +20,37 @@ const (
 
 // CircuitBreakerConfig holds configuration for the circuit breaker
 type CircuitBreakerConfig struct {
-	// Failure detection
-	FailureThreshold int           `json:"failure_threshold"` // Failures before opening
-	SuccessThreshold int           `json:"success_threshold"` // Successes to close from half-open
-	Timeout          time.Duration `json:"timeout"`           // How long to stay open
-
-	// Advanced failure detection
-	ErrorRateThreshold  float64       `json:"error_rate_threshold"`  // Error rate (0.0-1.0) to trigger
-	MinRequestThreshold int           `json:"min_request_threshold"` // Minimum requests before rate calculation
-	SlidingWindowSize   time.Duration `json:"sliding_window_size"`   // Window for error rate calculation
-
-	// Recovery settings
-	MaxRetryAttempts int           `json:"max_retry_attempts"` // Max attempts in half-open
-	RetryBackoff     time.Duration `json:"retry_backoff"`      // Backoff between retry attempts
-
-	// Customization
-	ShouldTrip      func(error) bool                               `json:"-"` // Custom failure detection
-	FallbackHandler func(*lift.Context) error                      `json:"-"` // Custom fallback
-	OnStateChange   func(CircuitBreakerState, CircuitBreakerState) `json:"-"` // State change callback
-
-	// Multi-tenant settings
-	PerTenant             bool `json:"per_tenant"`              // Separate circuit breakers per tenant
-	PerOperation          bool `json:"per_operation"`           // Separate circuit breakers per operation
-	EnableTenantIsolation bool `json:"enable_tenant_isolation"` // Enable tenant isolation (alias for PerTenant)
-
-	// Observability
-	Logger        observability.StructuredLogger `json:"-"`
-	Metrics       observability.MetricsCollector `json:"-"`
-	EnableMetrics bool                           `json:"enable_metrics"`
-
-	// Naming
-	Name string `json:"name"` // Circuit breaker name for metrics
+	Metrics               observability.MetricsCollector                 `json:"-"`
+	Logger                observability.StructuredLogger                 `json:"-"`
+	ShouldTrip            func(error) bool                               `json:"-"`
+	OnStateChange         func(CircuitBreakerState, CircuitBreakerState) `json:"-"`
+	FallbackHandler       func(*lift.Context) error                      `json:"-"`
+	Name                  string                                         `json:"name"`
+	MinRequestThreshold   int                                            `json:"min_request_threshold"`
+	RetryBackoff          time.Duration                                  `json:"retry_backoff"`
+	MaxRetryAttempts      int                                            `json:"max_retry_attempts"`
+	SlidingWindowSize     time.Duration                                  `json:"sliding_window_size"`
+	FailureThreshold      int                                            `json:"failure_threshold"`
+	ErrorRateThreshold    float64                                        `json:"error_rate_threshold"`
+	Timeout               time.Duration                                  `json:"timeout"`
+	SuccessThreshold      int                                            `json:"success_threshold"`
+	PerTenant             bool                                           `json:"per_tenant"`
+	PerOperation          bool                                           `json:"per_operation"`
+	EnableTenantIsolation bool                                           `json:"enable_tenant_isolation"`
+	EnableMetrics         bool                                           `json:"enable_metrics"`
 }
 
 // CircuitBreakerStats provides statistics about circuit breaker performance
 type CircuitBreakerStats struct {
+	LastFailure          time.Time           `json:"last_failure"`
+	LastSuccess          time.Time           `json:"last_success"`
+	StateChangedAt       time.Time           `json:"state_changed_at"`
+	NextRetryAt          time.Time           `json:"next_retry_at,omitempty"`
 	State                CircuitBreakerState `json:"state"`
 	FailureCount         int64               `json:"failure_count"`
 	SuccessCount         int64               `json:"success_count"`
 	TotalRequests        int64               `json:"total_requests"`
 	ErrorRate            float64             `json:"error_rate"`
-	LastFailure          time.Time           `json:"last_failure"`
-	LastSuccess          time.Time           `json:"last_success"`
-	StateChangedAt       time.Time           `json:"state_changed_at"`
-	NextRetryAt          time.Time           `json:"next_retry_at,omitempty"`
 	ConsecutiveFailures  int                 `json:"consecutive_failures"`
 	ConsecutiveSuccesses int                 `json:"consecutive_successes"`
 }
@@ -213,8 +200,8 @@ func CircuitBreakerMiddleware(config CircuitBreakerConfig) lift.Middleware {
 
 // circuitBreakerManager manages multiple circuit breakers
 type circuitBreakerManager struct {
-	config   CircuitBreakerConfig
 	breakers map[string]*circuitBreaker
+	config   CircuitBreakerConfig
 	mutex    sync.RWMutex
 }
 
@@ -270,18 +257,18 @@ func (m *circuitBreakerManager) generateBreakerKey(ctx *lift.Context) string {
 
 // circuitBreaker implements the circuit breaker logic
 type circuitBreaker struct {
-	name                 string
+	lastSuccessTime      time.Time
+	nextRetryAt          time.Time
+	stateChangedAt       time.Time
+	lastFailureTime      time.Time
 	config               CircuitBreakerConfig
 	state                CircuitBreakerState
-	failureCount         int64
-	successCount         int64
-	consecutiveFailures  int
-	consecutiveSuccesses int
-	lastFailureTime      time.Time
-	lastSuccessTime      time.Time
-	stateChangedAt       time.Time
-	nextRetryAt          time.Time
+	name                 string
 	requestHistory       []requestRecord
+	failureCount         int64
+	consecutiveSuccesses int
+	consecutiveFailures  int
+	successCount         int64
 	mutex                sync.RWMutex
 }
 

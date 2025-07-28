@@ -13,23 +13,13 @@ import (
 
 // MockCloudWatchLogsClient provides a mock implementation for testing
 type MockCloudWatchLogsClient struct {
-	mu sync.RWMutex
-
-	// Call tracking
-	calls map[string]int64
-
-	// Error simulation
-	errors map[string]error
-
-	// State tracking
-	logGroups  map[string]*types.LogGroup
-	logStreams map[string]map[string]*types.LogStream
-	logEvents  []types.InputLogEvent
-
-	// Sequence token tracking
-	sequenceTokens map[string]string
-
-	// Configuration
+	calls                     map[string]int64
+	errors                    map[string]error
+	logGroups                 map[string]*types.LogGroup
+	logStreams                map[string]map[string]*types.LogStream
+	sequenceTokens            map[string]string
+	logEvents                 []types.InputLogEvent
+	mu                        sync.RWMutex
 	shouldFailCreateLogGroup  bool
 	shouldFailCreateLogStream bool
 	shouldFailPutLogEvents    bool

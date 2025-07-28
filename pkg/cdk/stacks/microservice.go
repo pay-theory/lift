@@ -10,18 +10,12 @@ import (
 // MicroserviceStackProps defines properties for a microservice stack
 type MicroserviceStackProps struct {
 	awscdk.StackProps
-	// Service name
-	ServiceName string
-	// Path to compiled Lambda binary
-	CodePath string
-	// Enable database
+	Environment    map[string]string
+	ServiceName    string
+	CodePath       string
+	MemorySize     float64
 	EnableDatabase bool
-	// Enable caching
-	EnableCache bool
-	// Environment variables
-	Environment map[string]string
-	// Memory size in MB
-	MemorySize float64
+	EnableCache    bool
 }
 
 // NewMicroserviceStack creates a stack for a single microservice

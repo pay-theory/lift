@@ -52,15 +52,15 @@ type (
 
 	StreamerPayloadTooLargeError struct {
 		ConnectionID string
+		Message      string
 		PayloadSize  int
 		MaxSize      int
-		Message      string
 	}
 
 	StreamerThrottlingError struct {
 		ConnectionID string
-		RetryAfter   int
 		Message      string
+		RetryAfter   int
 	}
 
 	StreamerInternalServerError struct {
@@ -96,24 +96,24 @@ func (e StreamerInternalServerError) IsRetryable() bool   { return true }
 
 // StreamerAPIGatewayClientMock implements the StreamerAPIGatewayClient interface
 type StreamerAPIGatewayClientMock struct {
-	mu          sync.RWMutex
 	connections map[string]*StreamerMockConnection
-	messages    map[string][][]byte // connectionID -> messages sent
-	errors      map[string]error    // connectionID -> error to return
-	callCount   map[string]int      // operation -> call count
+	messages    map[string][][]byte
+	errors      map[string]error
+	callCount   map[string]int
 	config      *StreamerMockConfig
+	mu          sync.RWMutex
 }
 
 // StreamerMockConnection represents a WebSocket connection in the streamer-compatible mock
 type StreamerMockConnection struct {
+	CreatedTime  time.Time
+	Metadata     map[string]any
 	ConnectionID string
 	ConnectedAt  string
 	LastActiveAt string
 	SourceIP     string
 	UserAgent    string
 	State        StreamerConnectionState
-	CreatedTime  time.Time
-	Metadata     map[string]any
 }
 
 // StreamerConnectionState represents the state of a connection
@@ -127,11 +127,11 @@ const (
 
 // StreamerMockConfig configures the behavior of the streamer-compatible mock
 type StreamerMockConfig struct {
-	ConnectionTTL    int64         // Connection TTL in seconds (default: 7200 = 2 hours)
-	MaxMessageSize   int64         // Maximum message size in bytes (default: 128KB)
-	NetworkDelay     time.Duration // Simulate network delays
-	DefaultSourceIP  string        // Default connection source IP
-	DefaultUserAgent string        // Default connection user agent
+	DefaultSourceIP  string
+	DefaultUserAgent string
+	ConnectionTTL    int64
+	MaxMessageSize   int64
+	NetworkDelay     time.Duration
 }
 
 // DefaultStreamerMockConfig returns default configuration for streamer mocks

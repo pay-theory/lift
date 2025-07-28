@@ -10,21 +10,21 @@ import (
 
 // SLAMonitor manages Service Level Agreement monitoring
 type SLAMonitor struct {
-	config     SLAConfig
 	metrics    map[string]*SLAMetrics
 	alerts     *AlertManager
 	reports    *ReportGenerator
-	mu         sync.RWMutex
 	collectors map[string]MetricCollector
+	config     SLAConfig
+	mu         sync.RWMutex
 }
 
 // SLAConfig holds SLA configuration
 type SLAConfig struct {
+	Reporting       ReportConfig    `json:"reporting"`
 	ApplicationName string          `json:"application_name"`
 	Environment     string          `json:"environment"`
 	SLOs            []SLO           `json:"slos"`
 	AlertRules      []AlertRule     `json:"alert_rules"`
-	Reporting       ReportConfig    `json:"reporting"`
 	Thresholds      ThresholdConfig `json:"thresholds"`
 }
 
@@ -32,9 +32,9 @@ type SLAConfig struct {
 type SLO struct {
 	Name        string        `json:"name"`
 	Type        SLOType       `json:"type"`
+	Description string        `json:"description"`
 	Target      float64       `json:"target"`
 	Window      time.Duration `json:"window"`
-	Description string        `json:"description"`
 	Critical    bool          `json:"critical"`
 	Enabled     bool          `json:"enabled"`
 }
@@ -51,15 +51,15 @@ const (
 
 // SLAMetrics holds SLA metrics
 type SLAMetrics struct {
-	SLOName      string            `json:"slo_name"`
-	CurrentValue float64           `json:"current_value"`
-	Target       float64           `json:"target"`
-	Status       SLAStatus         `json:"status"`
-	ErrorBudget  float64           `json:"error_budget"`
-	BurnRate     float64           `json:"burn_rate"`
 	LastUpdated  time.Time         `json:"last_updated"`
+	SLOName      string            `json:"slo_name"`
+	Status       SLAStatus         `json:"status"`
 	History      []MetricDataPoint `json:"history"`
 	Violations   []SLAViolation    `json:"violations"`
+	CurrentValue float64           `json:"current_value"`
+	Target       float64           `json:"target"`
+	ErrorBudget  float64           `json:"error_budget"`
+	BurnRate     float64           `json:"burn_rate"`
 }
 
 // SLAStatus represents SLA status
@@ -75,22 +75,22 @@ const (
 // MetricDataPoint represents a metric data point
 type MetricDataPoint struct {
 	Timestamp time.Time         `json:"timestamp"`
-	Value     float64           `json:"value"`
 	Tags      map[string]string `json:"tags,omitempty"`
+	Value     float64           `json:"value"`
 }
 
 // SLAViolation represents an SLA violation
 type SLAViolation struct {
+	Timestamp   time.Time     `json:"timestamp"`
+	ResolvedAt  *time.Time    `json:"resolved_at,omitempty"`
 	ID          string        `json:"id"`
 	SLOName     string        `json:"slo_name"`
-	Timestamp   time.Time     `json:"timestamp"`
-	Duration    time.Duration `json:"duration"`
 	Severity    Severity      `json:"severity"`
+	Description string        `json:"description"`
+	Duration    time.Duration `json:"duration"`
 	ActualValue float64       `json:"actual_value"`
 	TargetValue float64       `json:"target_value"`
-	Description string        `json:"description"`
 	Resolved    bool          `json:"resolved"`
-	ResolvedAt  *time.Time    `json:"resolved_at,omitempty"`
 }
 
 // AlertRule defines alerting rules
@@ -98,11 +98,11 @@ type AlertRule struct {
 	Name      string        `json:"name"`
 	SLOName   string        `json:"slo_name"`
 	Condition string        `json:"condition"`
+	Severity  Severity      `json:"severity"`
+	Actions   []AlertAction `json:"actions"`
 	Threshold float64       `json:"threshold"`
 	Duration  time.Duration `json:"duration"`
-	Severity  Severity      `json:"severity"`
 	Enabled   bool          `json:"enabled"`
-	Actions   []AlertAction `json:"actions"`
 }
 
 // Severity levels
@@ -116,17 +116,17 @@ const (
 
 // AlertAction defines alert actions
 type AlertAction struct {
-	Type   string         `json:"type"`
 	Config map[string]any `json:"config"`
+	Type   string         `json:"type"`
 }
 
 // ReportConfig defines reporting configuration
 type ReportConfig struct {
-	Enabled    bool          `json:"enabled"`
-	Frequency  time.Duration `json:"frequency"`
-	Recipients []string      `json:"recipients"`
 	Format     string        `json:"format"`
 	Template   string        `json:"template"`
+	Recipients []string      `json:"recipients"`
+	Frequency  time.Duration `json:"frequency"`
+	Enabled    bool          `json:"enabled"`
 }
 
 // ThresholdConfig defines threshold configuration
@@ -588,12 +588,12 @@ func (sm *SLAMonitor) GetSLOStatus(sloName string) (*SLAMetrics, error) {
 
 // Alert represents an alert
 type Alert struct {
+	Timestamp time.Time      `json:"timestamp"`
+	Metadata  map[string]any `json:"metadata"`
 	ID        string         `json:"id"`
 	Type      string         `json:"type"`
 	Severity  Severity       `json:"severity"`
 	Message   string         `json:"message"`
-	Timestamp time.Time      `json:"timestamp"`
-	Metadata  map[string]any `json:"metadata"`
 }
 
 // AlertManager manages alerts

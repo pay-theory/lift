@@ -14,20 +14,13 @@ import (
 
 // LimitedConfig holds configuration for the limited-based rate limiter
 type LimitedConfig struct {
-	// DynamoDB configuration
+	Logger    *zap.Logger
 	Region    string
 	TableName string
-	Endpoint  string // Optional, for local testing
-
-	// Rate limiting parameters
-	Window time.Duration
-	Limit  int
-
-	// Strategy type
-	Strategy string // "fixed", "sliding", "token", "leaky"
-
-	// Logger
-	Logger *zap.Logger
+	Endpoint  string
+	Strategy  string
+	Window    time.Duration
+	Limit     int
 }
 
 // LimitedRateLimit creates a rate limiting middleware using the limited library

@@ -21,10 +21,10 @@ type CloudWatchMetricsClient interface {
 
 // MetricsBuffer manages buffering of metric data points
 type MetricsBuffer struct {
-	mu        sync.Mutex
 	data      []types.MetricDatum
 	maxSize   int
 	flushSize int
+	mu        sync.Mutex
 }
 
 // NewMetricsBuffer creates a new metrics buffer
@@ -76,34 +76,30 @@ func (b *MetricsBuffer) Size() int {
 
 // CloudWatchMetrics implements metrics collection for CloudWatch
 type CloudWatchMetrics struct {
-	client        CloudWatchMetricsClient
-	namespace     string
-	buffer        *MetricsBuffer
-	flushInterval time.Duration
-	dimensions    []types.Dimension
-
-	// Performance tracking
-	metricsRecorded int64
-	metricsDropped  int64
-	flushCount      int64
-	errorCount      int64
 	lastError       atomic.Value
+	client          CloudWatchMetricsClient
 	lastFlush       atomic.Value
-
-	// Control
-	stopCh   chan struct{}
-	doneCh   chan struct{}
-	flushNow chan struct{}
-	mu       sync.RWMutex
+	buffer          *MetricsBuffer
+	flushNow        chan struct{}
+	doneCh          chan struct{}
+	stopCh          chan struct{}
+	namespace       string
+	dimensions      []types.Dimension
+	flushInterval   time.Duration
+	errorCount      int64
+	flushCount      int64
+	metricsDropped  int64
+	metricsRecorded int64
+	mu              sync.RWMutex
 }
 
 // CloudWatchMetricsConfig holds configuration for CloudWatch metrics
 type CloudWatchMetricsConfig struct {
+	Dimensions    map[string]string
 	Namespace     string
 	BufferSize    int
 	FlushSize     int
 	FlushInterval time.Duration
-	Dimensions    map[string]string
 }
 
 // NewCloudWatchMetrics creates a new CloudWatch metrics collector

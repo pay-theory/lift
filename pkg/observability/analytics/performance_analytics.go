@@ -11,63 +11,66 @@ import (
 
 // PerformanceAnalyticsEngine provides advanced performance analytics
 type PerformanceAnalyticsEngine struct {
-	config          PerformanceAnalyticsConfig
 	dataStore       AnalyticsDataStore
 	thresholdMgr    ThresholdManager
 	anomalyDetector AnomalyDetector
 	trendAnalyzer   TrendAnalyzer
 	alertManager    AlertManager
+	stopCh          chan struct{}
+	config          PerformanceAnalyticsConfig
 	mu              sync.RWMutex
 	running         bool
-	stopCh          chan struct{}
 }
 
 // PerformanceAnalyticsConfig configures the performance analytics engine
 type PerformanceAnalyticsConfig struct {
-	Enabled                bool          `json:"enabled"`
 	DataRetentionDays      int           `json:"data_retention_days"`
 	AnalysisInterval       time.Duration `json:"analysis_interval"`
 	AnomalyDetectionWindow time.Duration `json:"anomaly_detection_window"`
 	TrendAnalysisWindow    time.Duration `json:"trend_analysis_window"`
 	MetricSamplingRate     float64       `json:"metric_sampling_rate"`
-	AlertingEnabled        bool          `json:"alerting_enabled"`
 	MaxConcurrentAnalysis  int           `json:"max_concurrent_analysis"`
+	Enabled                bool          `json:"enabled"`
+	AlertingEnabled        bool          `json:"alerting_enabled"`
 	EnablePredictive       bool          `json:"enable_predictive"`
 	EnableMachineLearning  bool          `json:"enable_machine_learning"`
 }
 
 // PerformanceMetric represents a performance metric data point
 type PerformanceMetric struct {
-	ID            string            `json:"id"`
-	Name          string            `json:"name"`
-	Value         float64           `json:"value"`
-	Unit          string            `json:"unit"`
 	Timestamp     time.Time         `json:"timestamp"`
-	Source        string            `json:"source"`
 	Tags          map[string]string `json:"tags"`
 	Dimensions    map[string]string `json:"dimensions"`
 	Metadata      map[string]any    `json:"metadata"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	Unit          string            `json:"unit"`
+	Source        string            `json:"source"`
 	AggregateType AggregateType     `json:"aggregate_type"`
+	Value         float64           `json:"value"`
 }
 
 // PerformanceAnalysis represents the result of performance analysis
 type PerformanceAnalysis struct {
-	ID              string                      `json:"id"`
 	TimeRange       TimeRange                   `json:"time_range"`
-	Metrics         []PerformanceMetric         `json:"metrics"`
+	GeneratedAt     time.Time                   `json:"generated_at"`
+	ID              string                      `json:"id"`
 	Statistics      PerformanceStatistics       `json:"statistics"`
+	Metrics         []PerformanceMetric         `json:"metrics"`
 	Trends          []PerformanceTrend          `json:"trends"`
 	Anomalies       []PerformanceAnomaly        `json:"anomalies"`
 	Predictions     []PerformancePrediction     `json:"predictions"`
-	HealthScore     float64                     `json:"health_score"`
 	Recommendations []PerformanceRecommendation `json:"recommendations"`
 	Alerts          []PerformanceAlert          `json:"alerts"`
-	GeneratedAt     time.Time                   `json:"generated_at"`
+	HealthScore     float64                     `json:"health_score"`
 	Duration        time.Duration               `json:"duration"`
 }
 
 // PerformanceStatistics provides statistical analysis of metrics
 type PerformanceStatistics struct {
+	Percentiles  map[string]float64   `json:"percentiles"`
+	Outliers     []OutlierPoint       `json:"outliers"`
+	Distribution DistributionAnalysis `json:"distribution"`
 	Count        int64                `json:"count"`
 	Mean         float64              `json:"mean"`
 	Median       float64              `json:"median"`
@@ -77,16 +80,15 @@ type PerformanceStatistics struct {
 	Min          float64              `json:"min"`
 	Max          float64              `json:"max"`
 	Range        float64              `json:"range"`
-	Percentiles  map[string]float64   `json:"percentiles"`
-	Distribution DistributionAnalysis `json:"distribution"`
-	Outliers     []OutlierPoint       `json:"outliers"`
 }
 
 // PerformanceTrend represents a trend in performance metrics
 type PerformanceTrend struct {
+	Forecast    TrendForecast      `json:"forecast"`
 	ID          string             `json:"id"`
 	MetricName  string             `json:"metric_name"`
 	Direction   TrendDirection     `json:"direction"`
+	Seasonality SeasonalityPattern `json:"seasonality"`
 	Strength    float64            `json:"strength"`
 	Confidence  float64            `json:"confidence"`
 	Duration    time.Duration      `json:"duration"`
@@ -94,75 +96,73 @@ type PerformanceTrend struct {
 	StartValue  float64            `json:"start_value"`
 	EndValue    float64            `json:"end_value"`
 	ChangeRate  float64            `json:"change_rate"`
-	Seasonality SeasonalityPattern `json:"seasonality"`
-	Forecast    TrendForecast      `json:"forecast"`
 }
 
 // PerformanceAnomaly represents an anomaly in performance metrics
 type PerformanceAnomaly struct {
-	ID              string          `json:"id"`
-	MetricName      string          `json:"metric_name"`
-	Timestamp       time.Time       `json:"timestamp"`
-	Value           float64         `json:"value"`
-	ExpectedValue   float64         `json:"expected_value"`
-	Deviation       float64         `json:"deviation"`
-	Severity        AnomalySeverity `json:"severity"`
-	Type            AnomalyType     `json:"type"`
-	Confidence      float64         `json:"confidence"`
 	Context         AnomalyContext  `json:"context"`
+	Timestamp       time.Time       `json:"timestamp"`
 	Impact          AnomalyImpact   `json:"impact"`
+	Severity        AnomalySeverity `json:"severity"`
+	ID              string          `json:"id"`
+	Type            AnomalyType     `json:"type"`
+	MetricName      string          `json:"metric_name"`
 	Explanation     string          `json:"explanation"`
 	Recommendations []string        `json:"recommendations"`
 	RelatedMetrics  []string        `json:"related_metrics"`
+	ExpectedValue   float64         `json:"expected_value"`
+	Deviation       float64         `json:"deviation"`
+	Confidence      float64         `json:"confidence"`
+	Value           float64         `json:"value"`
 }
 
 // PerformancePrediction represents a prediction of future performance
 type PerformancePrediction struct {
+	GeneratedAt     time.Time            `json:"generated_at"`
 	ID              string               `json:"id"`
 	MetricName      string               `json:"metric_name"`
 	PredictionType  PredictionType       `json:"prediction_type"`
-	TimeHorizon     time.Duration        `json:"time_horizon"`
-	PredictedValue  float64              `json:"predicted_value"`
-	ConfidenceLevel float64              `json:"confidence_level"`
-	PredictionBands PredictionBands      `json:"prediction_bands"`
 	Methodology     string               `json:"methodology"`
 	Assumptions     []string             `json:"assumptions"`
 	RiskFactors     []RiskFactor         `json:"risk_factors"`
 	Scenarios       []PredictionScenario `json:"scenarios"`
-	GeneratedAt     time.Time            `json:"generated_at"`
+	PredictionBands PredictionBands      `json:"prediction_bands"`
+	TimeHorizon     time.Duration        `json:"time_horizon"`
+	PredictedValue  float64              `json:"predicted_value"`
+	ConfidenceLevel float64              `json:"confidence_level"`
 }
 
 // PerformanceRecommendation represents an actionable recommendation
 type PerformanceRecommendation struct {
-	ID          string                 `json:"id"`
-	Title       string                 `json:"title"`
+	Cost        CostEstimate           `json:"cost"`
+	Effort      EffortLevel            `json:"effort"`
 	Description string                 `json:"description"`
 	Priority    Priority               `json:"priority"`
 	Category    RecommendationCategory `json:"category"`
 	Impact      ImpactLevel            `json:"impact"`
-	Effort      EffortLevel            `json:"effort"`
+	ID          string                 `json:"id"`
+	Title       string                 `json:"title"`
 	Actions     []RecommendedAction    `json:"actions"`
 	Benefits    []string               `json:"benefits"`
 	Risks       []string               `json:"risks"`
 	Metrics     []string               `json:"metrics"`
 	Timeline    time.Duration          `json:"timeline"`
-	Cost        CostEstimate           `json:"cost"`
 }
 
 // PerformanceAlert represents a performance-related alert
 type PerformanceAlert struct {
-	ID           string           `json:"id"`
-	Title        string           `json:"title"`
-	Description  string           `json:"description"`
-	Severity     AlertSeverity    `json:"severity"`
-	Priority     AlertPriority    `json:"priority"`
+	Context      AlertContext     `json:"context"`
 	Timestamp    time.Time        `json:"timestamp"`
 	MetricName   string           `json:"metric_name"`
+	Severity     AlertSeverity    `json:"severity"`
+	Priority     AlertPriority    `json:"priority"`
+	Description  string           `json:"description"`
+	ID           string           `json:"id"`
+	TriggerType  AlertTriggerType `json:"trigger_type"`
+	Title        string           `json:"title"`
+	Actions      []AlertAction    `json:"actions"`
 	Threshold    Threshold        `json:"threshold"`
 	ActualValue  float64          `json:"actual_value"`
-	TriggerType  AlertTriggerType `json:"trigger_type"`
-	Context      AlertContext     `json:"context"`
-	Actions      []AlertAction    `json:"actions"`
 	Suppressed   bool             `json:"suppressed"`
 	Acknowledged bool             `json:"acknowledged"`
 }
@@ -337,32 +337,32 @@ type DistributionAnalysis struct {
 
 type OutlierPoint struct {
 	Timestamp time.Time `json:"timestamp"`
+	Severity  string    `json:"severity"`
 	Value     float64   `json:"value"`
 	ZScore    float64   `json:"z_score"`
-	Severity  string    `json:"severity"`
 }
 
 type SeasonalityPattern struct {
-	Detected   bool          `json:"detected"`
+	Patterns   []Pattern     `json:"patterns"`
 	Cycle      time.Duration `json:"cycle"`
 	Strength   float64       `json:"strength"`
 	Confidence float64       `json:"confidence"`
-	Patterns   []Pattern     `json:"patterns"`
+	Detected   bool          `json:"detected"`
 }
 
 type Pattern struct {
-	Name       string    `json:"name"`
 	StartTime  time.Time `json:"start_time"`
 	EndTime    time.Time `json:"end_time"`
+	Name       string    `json:"name"`
 	Amplitude  float64   `json:"amplitude"`
 	Frequency  float64   `json:"frequency"`
 	Confidence float64   `json:"confidence"`
 }
 
 type TrendForecast struct {
+	Methodology string          `json:"methodology"`
 	Points      []ForecastPoint `json:"points"`
 	Confidence  float64         `json:"confidence"`
-	Methodology string          `json:"methodology"`
 }
 
 type ForecastPoint struct {
@@ -373,24 +373,24 @@ type ForecastPoint struct {
 }
 
 type AnomalyContext struct {
+	SystemState      map[string]any    `json:"system_state"`
 	PrecedingTrend   string            `json:"preceding_trend"`
 	ConcurrentEvents []ConcurrentEvent `json:"concurrent_events"`
 	RelatedMetrics   []RelatedMetric   `json:"related_metrics"`
-	SystemState      map[string]any    `json:"system_state"`
 }
 
 type ConcurrentEvent struct {
+	Timestamp   time.Time `json:"timestamp"`
 	Type        string    `json:"type"`
 	Description string    `json:"description"`
-	Timestamp   time.Time `json:"timestamp"`
 	Correlation float64   `json:"correlation"`
 }
 
 type RelatedMetric struct {
 	Name        string  `json:"name"`
+	Impact      string  `json:"impact"`
 	Value       float64 `json:"value"`
 	Correlation float64 `json:"correlation"`
-	Impact      string  `json:"impact"`
 }
 
 type AnomalyImpact struct {
@@ -411,17 +411,17 @@ type PredictionBands struct {
 
 type RiskFactor struct {
 	Name        string  `json:"name"`
-	Probability float64 `json:"probability"`
 	Impact      string  `json:"impact"`
 	Mitigation  string  `json:"mitigation"`
+	Probability float64 `json:"probability"`
 }
 
 type PredictionScenario struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
+	Conditions  []string `json:"conditions"`
 	Probability float64  `json:"probability"`
 	Value       float64  `json:"value"`
-	Conditions  []string `json:"conditions"`
 }
 
 type RecommendedAction struct {
@@ -434,17 +434,17 @@ type RecommendedAction struct {
 }
 
 type CostEstimate struct {
-	Initial   float64 `json:"initial"`
-	Recurring float64 `json:"recurring"`
 	Currency  string  `json:"currency"`
 	Period    string  `json:"period"`
+	Initial   float64 `json:"initial"`
+	Recurring float64 `json:"recurring"`
 }
 
 type Threshold struct {
 	Name     string            `json:"name"`
 	Operator ThresholdOperator `json:"operator"`
-	Value    float64           `json:"value"`
 	Severity AlertSeverity     `json:"severity"`
+	Value    float64           `json:"value"`
 	Duration time.Duration     `json:"duration"`
 	Dynamic  bool              `json:"dynamic"`
 }
@@ -461,32 +461,32 @@ const (
 )
 
 type ThresholdViolation struct {
+	Timestamp   time.Time     `json:"timestamp"`
 	Threshold   Threshold     `json:"threshold"`
 	ActualValue float64       `json:"actual_value"`
-	Timestamp   time.Time     `json:"timestamp"`
 	Duration    time.Duration `json:"duration"`
 }
 
 type AlertContext struct {
-	TriggerMetric   string         `json:"trigger_metric"`
-	RelatedMetrics  []string       `json:"related_metrics"`
 	SystemContext   map[string]any `json:"system_context"`
 	UserContext     map[string]any `json:"user_context"`
 	BusinessContext map[string]any `json:"business_context"`
+	TriggerMetric   string         `json:"trigger_metric"`
+	RelatedMetrics  []string       `json:"related_metrics"`
 }
 
 type AlertAction struct {
+	Parameters  map[string]any `json:"parameters"`
 	Type        string         `json:"type"`
 	Description string         `json:"description"`
 	Target      string         `json:"target"`
-	Parameters  map[string]any `json:"parameters"`
 	Automated   bool           `json:"automated"`
 }
 
 type MetricQuery struct {
-	MetricNames []string          `json:"metric_names"`
 	TimeRange   TimeRange         `json:"time_range"`
 	Tags        map[string]string `json:"tags"`
+	MetricNames []string          `json:"metric_names"`
 	Limit       int               `json:"limit"`
 	Offset      int               `json:"offset"`
 }
@@ -499,17 +499,17 @@ type AggregateQuery struct {
 }
 
 type AggregatedMetric struct {
-	Name      string            `json:"name"`
-	Value     float64           `json:"value"`
 	Timestamp time.Time         `json:"timestamp"`
 	Tags      map[string]string `json:"tags"`
+	Name      string            `json:"name"`
+	Value     float64           `json:"value"`
 }
 
 type CorrelationMatrix struct {
+	CalculatedAt time.Time   `json:"calculated_at"`
 	Metrics      []string    `json:"metrics"`
 	Correlations [][]float64 `json:"correlations"`
 	Significance [][]float64 `json:"significance"`
-	CalculatedAt time.Time   `json:"calculated_at"`
 }
 
 // NewPerformanceAnalyticsEngine creates a new performance analytics engine

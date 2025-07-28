@@ -16,11 +16,11 @@ import (
 
 // User represents a user in our system
 type User struct {
-	ID        int       `json:"id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	ID        int       `json:"id"`
 }
 
 // CreateUserRequest represents the request to create a user
@@ -37,9 +37,9 @@ type UpdateUserRequest struct {
 
 // APIError represents an API error
 type APIError struct {
+	Details any    `json:"details,omitempty"`
 	Type    string `json:"type"`
 	Message string `json:"message"`
-	Details any    `json:"details,omitempty"`
 }
 
 func (e APIError) Error() string {
@@ -48,10 +48,10 @@ func (e APIError) Error() string {
 
 // UserService handles user operations
 type UserService struct {
-	users  map[int]*User
-	nextID int
 	pool   resources.ConnectionPool
 	health health.HealthManager
+	users  map[int]*User
+	nextID int
 }
 
 // NewUserService creates a new user service
@@ -250,8 +250,8 @@ type ProductionAPI struct {
 
 // MockResource implements the resources.Resource interface for demonstration
 type MockResource struct {
-	id       string
 	lastUsed time.Time
+	id       string
 	valid    bool
 }
 

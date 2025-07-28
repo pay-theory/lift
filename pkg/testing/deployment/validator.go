@@ -10,23 +10,23 @@ import (
 
 // DeploymentValidator validates deployment strategies
 type DeploymentValidator struct {
-	environments []*Environment
-	healthChecks []HealthCheck
 	rollback     RollbackStrategy
 	monitoring   DeploymentMonitoring
+	environments []*Environment
+	healthChecks []HealthCheck
 	config       DeploymentConfig
 	mutex        sync.RWMutex
 }
 
 // Environment represents a deployment environment
 type Environment struct {
+	LastChecked time.Time
 	Name        string
 	URL         string
 	Version     string
 	Status      EnvironmentStatus
 	Config      EnvironmentConfig
 	Metrics     EnvironmentMetrics
-	LastChecked time.Time
 	mutex       sync.RWMutex
 }
 
@@ -43,10 +43,10 @@ const (
 
 // EnvironmentConfig holds environment configuration
 type EnvironmentConfig struct {
+	RequiredHeaders    map[string]string
 	HealthCheckPath    string
 	HealthCheckTimeout time.Duration
 	ExpectedStatusCode int
-	RequiredHeaders    map[string]string
 	MaxResponseTime    time.Duration
 	MinSuccessRate     float64
 	TrafficWeight      float64
@@ -54,12 +54,12 @@ type EnvironmentConfig struct {
 
 // EnvironmentMetrics tracks environment performance
 type EnvironmentMetrics struct {
+	LastErrorTime     time.Time
+	LastError         string
 	ResponseTime      time.Duration
 	SuccessRate       float64
 	ErrorRate         float64
 	RequestCount      int64
-	LastError         string
-	LastErrorTime     time.Time
 	Uptime            time.Duration
 	CPUUsage          float64
 	MemoryUsage       float64
@@ -298,18 +298,19 @@ func (bg *BlueGreenDeployment) getActiveEnvironment() *Environment {
 
 // CanaryDeployment manages canary deployments
 type CanaryDeployment struct {
+	trafficSplitter       TrafficSplitter
 	productionEnvironment *Environment
 	canaryEnvironment     *Environment
-	trafficSplitter       TrafficSplitter
 	validator             *DeploymentValidator
-	trafficPercentage     float64
 	metrics               CanaryMetrics
 	config                CanaryConfig
+	trafficPercentage     float64
 	mutex                 sync.RWMutex
 }
 
 // CanaryMetrics tracks canary deployment metrics
 type CanaryMetrics struct {
+	StartTime              time.Time
 	CanarySuccessRate      float64
 	ProductionSuccessRate  float64
 	CanaryErrorRate        float64
@@ -317,7 +318,6 @@ type CanaryMetrics struct {
 	CanaryResponseTime     time.Duration
 	ProductionResponseTime time.Duration
 	TrafficPercentage      float64
-	StartTime              time.Time
 	Duration               time.Duration
 }
 
@@ -587,9 +587,9 @@ func (d *DefaultTrafficSplitter) SwitchTraffic(ctx context.Context, fromEnv, toE
 
 // HTTPHealthCheck performs HTTP health checks
 type HTTPHealthCheck struct {
+	client  *http.Client
 	name    string
 	timeout time.Duration
-	client  *http.Client
 }
 
 // NewHTTPHealthCheck creates a new HTTP health check

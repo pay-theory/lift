@@ -15,45 +15,46 @@ import (
 
 // Tenant represents a tenant in the multi-tenant system
 type Tenant struct {
-	ID        string    `json:"id" `
-	Name      string    `json:"name" `
-	Email     string    `json:"email" `
-	Plan      string    `json:"plan" `
-	Status    string    `json:"status" `
-	CreatedAt time.Time `json:"created_at" `
-	UpdatedAt time.Time `json:"updated_at" `
-
-	// Rate limiting configuration
-	RateLimit  int `json:"rate_limit" `
-	BurstLimit int `json:"burst_limit" `
+	CreatedAt  time.Time `json:"created_at" `
+	UpdatedAt  time.Time `json:"updated_at" `
+	ID         string    `json:"id" `
+	Name       string    `json:"name" `
+	Email      string    `json:"email" `
+	Plan       string    `json:"plan" `
+	Status     string    `json:"status" `
+	RateLimit  int       `json:"rate_limit" `
+	BurstLimit int       `json:"burst_limit" `
 }
 
 // User represents a user within a tenant
 type User struct {
+	CreatedAt time.Time `json:"created_at" `
+	UpdatedAt time.Time `json:"updated_at" `
 	ID        string    `json:"id" `
 	TenantID  string    `json:"tenant_id" `
 	Email     string    `json:"email" `
 	Name      string    `json:"name" `
 	Role      string    `json:"role" `
 	Status    string    `json:"status" `
-	CreatedAt time.Time `json:"created_at" `
-	UpdatedAt time.Time `json:"updated_at" `
 }
 
 // Project represents a project within a tenant
 type Project struct {
+	CreatedAt   time.Time `json:"created_at" `
+	UpdatedAt   time.Time `json:"updated_at" `
 	ID          string    `json:"id" `
 	TenantID    string    `json:"tenant_id" `
 	Name        string    `json:"name" `
 	Description string    `json:"description" `
 	Status      string    `json:"status" `
 	OwnerID     string    `json:"owner_id" `
-	CreatedAt   time.Time `json:"created_at" `
-	UpdatedAt   time.Time `json:"updated_at" `
 }
 
 // Task represents a task within a project
 type Task struct {
+	CreatedAt   time.Time  `json:"created_at" `
+	UpdatedAt   time.Time  `json:"updated_at" `
+	DueDate     *time.Time `json:"due_date,omitempty" `
 	ID          string     `json:"id" `
 	TenantID    string     `json:"tenant_id" `
 	ProjectID   string     `json:"project_id" `
@@ -62,9 +63,6 @@ type Task struct {
 	Status      string     `json:"status" `
 	Priority    string     `json:"priority" `
 	AssigneeID  string     `json:"assignee_id" `
-	DueDate     *time.Time `json:"due_date,omitempty" `
-	CreatedAt   time.Time  `json:"created_at" `
-	UpdatedAt   time.Time  `json:"updated_at" `
 }
 
 // Request/Response DTOs
@@ -91,12 +89,12 @@ type CreateProjectRequest struct {
 
 // CreateTaskRequest represents a request to create a task
 type CreateTaskRequest struct {
+	DueDate     *time.Time `json:"due_date,omitempty"`
 	ProjectID   string     `json:"project_id" validate:"required"`
 	Title       string     `json:"title" validate:"required,min=2,max=200"`
 	Description string     `json:"description" validate:"max=1000"`
 	Priority    string     `json:"priority" validate:"required,oneof=low medium high critical"`
 	AssigneeID  string     `json:"assignee_id,omitempty"`
-	DueDate     *time.Time `json:"due_date,omitempty"`
 }
 
 // UpdateTaskRequest represents a request to update a task
@@ -117,12 +115,12 @@ type PaginatedResponse struct {
 
 // Pagination represents pagination metadata
 type Pagination struct {
+	NextPage   *int  `json:"next_page,omitempty"`
+	PrevPage   *int  `json:"prev_page,omitempty"`
 	Page       int   `json:"page"`
 	PerPage    int   `json:"per_page"`
 	Total      int64 `json:"total"`
 	TotalPages int   `json:"total_pages"`
-	NextPage   *int  `json:"next_page,omitempty"`
-	PrevPage   *int  `json:"prev_page,omitempty"`
 }
 
 // Mock database interface for demonstration

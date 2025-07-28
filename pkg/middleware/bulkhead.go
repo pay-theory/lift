@@ -12,39 +12,28 @@ import (
 
 // BulkheadConfig holds configuration for the bulkhead pattern
 type BulkheadConfig struct {
-	// Resource limits
-	MaxConcurrentRequests int           `json:"max_concurrent_requests"` // Global concurrent request limit
-	MaxWaitTime           time.Duration `json:"max_wait_time"`           // Max time to wait for resource
-
-	// Tenant isolation
-	PerTenantLimits       map[string]int `json:"per_tenant_limits"`       // Per-tenant concurrent limits
-	DefaultTenantLimit    int            `json:"default_tenant_limit"`    // Default limit for unlisted tenants
-	EnableTenantIsolation bool           `json:"enable_tenant_isolation"` // Enable per-tenant bulkheads
-
-	// Operation isolation
-	PerOperationLimits       map[string]int `json:"per_operation_limits"`       // Per-operation concurrent limits
-	DefaultOperationLimit    int            `json:"default_operation_limit"`    // Default limit for unlisted operations
-	EnableOperationIsolation bool           `json:"enable_operation_isolation"` // Enable per-operation bulkheads
-
-	// Priority handling
-	EnablePriority        bool                    `json:"enable_priority"`         // Enable priority-based queuing
-	PriorityExtractor     func(*lift.Context) int `json:"-"`                       // Extract priority from context
-	HighPriorityThreshold int                     `json:"high_priority_threshold"` // Threshold for high priority
-
-	// Rejection handling
-	RejectionHandler func(*lift.Context, string) error `json:"-"` // Custom rejection handler
-
-	// Observability
-	Logger        observability.StructuredLogger `json:"-"`
-	Metrics       observability.MetricsCollector `json:"-"`
-	EnableMetrics bool                           `json:"enable_metrics"`
-
-	// Naming
-	Name string `json:"name"` // Bulkhead name for metrics
+	Logger                   observability.StructuredLogger    `json:"-"`
+	Metrics                  observability.MetricsCollector    `json:"-"`
+	PerTenantLimits          map[string]int                    `json:"per_tenant_limits"`
+	PerOperationLimits       map[string]int                    `json:"per_operation_limits"`
+	PriorityExtractor        func(*lift.Context) int           `json:"-"`
+	RejectionHandler         func(*lift.Context, string) error `json:"-"`
+	Name                     string                            `json:"name"`
+	MaxWaitTime              time.Duration                     `json:"max_wait_time"`
+	DefaultTenantLimit       int                               `json:"default_tenant_limit"`
+	MaxConcurrentRequests    int                               `json:"max_concurrent_requests"`
+	DefaultOperationLimit    int                               `json:"default_operation_limit"`
+	HighPriorityThreshold    int                               `json:"high_priority_threshold"`
+	EnableTenantIsolation    bool                              `json:"enable_tenant_isolation"`
+	EnablePriority           bool                              `json:"enable_priority"`
+	EnableMetrics            bool                              `json:"enable_metrics"`
+	EnableOperationIsolation bool                              `json:"enable_operation_isolation"`
 }
 
 // BulkheadStats provides statistics about bulkhead performance
 type BulkheadStats struct {
+	TenantStats         map[string]*ResourceStats `json:"tenant_stats,omitempty"`
+	OperationStats      map[string]*ResourceStats `json:"operation_stats,omitempty"`
 	Name                string                    `json:"name"`
 	ActiveRequests      int                       `json:"active_requests"`
 	QueuedRequests      int                       `json:"queued_requests"`
@@ -54,8 +43,6 @@ type BulkheadStats struct {
 	AverageWaitTime     time.Duration             `json:"average_wait_time"`
 	MaxWaitTime         time.Duration             `json:"max_wait_time"`
 	ResourceUtilization float64                   `json:"resource_utilization"`
-	TenantStats         map[string]*ResourceStats `json:"tenant_stats,omitempty"`
-	OperationStats      map[string]*ResourceStats `json:"operation_stats,omitempty"`
 }
 
 // ResourceStats provides statistics for a specific resource pool
@@ -172,12 +159,12 @@ func BulkheadMiddleware(config BulkheadConfig) lift.Middleware {
 
 // bulkheadManager manages resource allocation and isolation
 type bulkheadManager struct {
-	config              BulkheadConfig
 	globalSemaphore     *semaphore
 	tenantSemaphores    map[string]*semaphore
 	operationSemaphores map[string]*semaphore
-	mutex               sync.RWMutex
 	stats               *BulkheadStats
+	config              BulkheadConfig
+	mutex               sync.RWMutex
 	statsMutex          sync.RWMutex
 }
 
@@ -428,17 +415,17 @@ func (bm *bulkheadManager) GetStats() BulkheadStats {
 
 // semaphore implements a priority-aware semaphore
 type semaphore struct {
+	waitQueue   []*waiter
 	maxCapacity int
 	activeCount int
-	waitQueue   []*waiter
 	mutex       sync.Mutex
 }
 
 // waiter represents a waiting request
 type waiter struct {
-	priority int
-	ch       chan bool
 	ctx      context.Context
+	ch       chan bool
+	priority int
 }
 
 // newSemaphore creates a new semaphore with the given capacity

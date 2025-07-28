@@ -14,20 +14,20 @@ import (
 
 // PaymentRequest represents an incoming payment request
 type PaymentRequest struct {
-	Amount      float64 `json:"amount" validate:"required,min=0.01"`
 	Currency    string  `json:"currency" validate:"required,len=3"`
 	CustomerID  string  `json:"customer_id" validate:"required"`
 	Description string  `json:"description"`
+	Amount      float64 `json:"amount" validate:"required,min=0.01"`
 }
 
 // PaymentResponse represents the payment result
 type PaymentResponse struct {
+	ProcessedAt    time.Time `json:"processed_at"`
 	TransactionID  string    `json:"transaction_id"`
 	Status         string    `json:"status"`
-	Amount         float64   `json:"amount"`
 	Currency       string    `json:"currency"`
-	ProcessedAt    time.Time `json:"processed_at"`
 	IdempotencyKey string    `json:"idempotency_key,omitempty"`
+	Amount         float64   `json:"amount"`
 }
 
 // MockeryPaymentProcessor simulates payment processing

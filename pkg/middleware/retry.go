@@ -24,44 +24,27 @@ const (
 
 // RetryConfig holds configuration for the retry middleware
 type RetryConfig struct {
-	// Basic retry settings
-	MaxAttempts  int           `json:"max_attempts"`  // Maximum number of retry attempts
-	InitialDelay time.Duration `json:"initial_delay"` // Initial delay before first retry
-	MaxDelay     time.Duration `json:"max_delay"`     // Maximum delay between retries
-	Strategy     RetryStrategy `json:"strategy"`      // Retry strategy to use
-
-	// Backoff configuration
-	BackoffMultiplier float64 `json:"backoff_multiplier"` // Multiplier for exponential backoff
-	Jitter            bool    `json:"jitter"`             // Add random jitter to delays
-	JitterRange       float64 `json:"jitter_range"`       // Jitter range (0.0-1.0)
-
-	// Custom strategy
-	CustomBackoff func(attempt int, lastDelay time.Duration) time.Duration `json:"-"` // Custom backoff function
-
-	// Retry conditions
-	RetryableErrors    []string         `json:"retryable_errors"`     // Specific error types to retry
-	RetryCondition     func(error) bool `json:"-"`                    // Custom retry condition
-	NonRetryableErrors []string         `json:"non_retryable_errors"` // Errors that should never be retried
-
-	// HTTP-specific settings
-	RetryableStatusCodes    []int `json:"retryable_status_codes"`     // HTTP status codes to retry
-	NonRetryableStatusCodes []int `json:"non_retryable_status_codes"` // HTTP status codes to never retry
-
-	// Context and timeouts
-	PerAttemptTimeout time.Duration `json:"per_attempt_timeout"` // Timeout per individual attempt
-	TotalTimeout      time.Duration `json:"total_timeout"`       // Total timeout for all attempts
-
-	// Observability
-	Logger        observability.StructuredLogger `json:"-"`
-	Metrics       observability.MetricsCollector `json:"-"`
-	EnableMetrics bool                           `json:"enable_metrics"`
-
-	// Callbacks
-	OnRetry  func(attempt int, err error, delay time.Duration) `json:"-"` // Called before each retry
-	OnGiveUp func(attempts int, lastErr error)                 `json:"-"` // Called when giving up
-
-	// Naming
-	Name string `json:"name"` // Retry middleware name for metrics
+	Metrics                 observability.MetricsCollector                           `json:"-"`
+	Logger                  observability.StructuredLogger                           `json:"-"`
+	RetryCondition          func(error) bool                                         `json:"-"`
+	OnGiveUp                func(attempts int, lastErr error)                        `json:"-"`
+	OnRetry                 func(attempt int, err error, delay time.Duration)        `json:"-"`
+	CustomBackoff           func(attempt int, lastDelay time.Duration) time.Duration `json:"-"`
+	Name                    string                                                   `json:"name"`
+	Strategy                RetryStrategy                                            `json:"strategy"`
+	NonRetryableErrors      []string                                                 `json:"non_retryable_errors"`
+	RetryableErrors         []string                                                 `json:"retryable_errors"`
+	RetryableStatusCodes    []int                                                    `json:"retryable_status_codes"`
+	NonRetryableStatusCodes []int                                                    `json:"non_retryable_status_codes"`
+	MaxAttempts             int                                                      `json:"max_attempts"`
+	PerAttemptTimeout       time.Duration                                            `json:"per_attempt_timeout"`
+	TotalTimeout            time.Duration                                            `json:"total_timeout"`
+	JitterRange             float64                                                  `json:"jitter_range"`
+	BackoffMultiplier       float64                                                  `json:"backoff_multiplier"`
+	MaxDelay                time.Duration                                            `json:"max_delay"`
+	InitialDelay            time.Duration                                            `json:"initial_delay"`
+	Jitter                  bool                                                     `json:"jitter"`
+	EnableMetrics           bool                                                     `json:"enable_metrics"`
 }
 
 // RetryStats provides statistics about retry performance
@@ -139,9 +122,9 @@ func RetryMiddleware(config RetryConfig) lift.Middleware {
 
 // retryManager manages retry logic and statistics
 type retryManager struct {
-	config RetryConfig
 	stats  *RetryStats
-	mu     sync.RWMutex // Protects stats from concurrent access
+	config RetryConfig
+	mu     sync.RWMutex
 }
 
 // executeWithRetry executes the handler with retry logic

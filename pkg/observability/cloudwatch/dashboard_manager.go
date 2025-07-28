@@ -24,56 +24,56 @@ type CloudWatchDashboardClient interface {
 // DashboardManager manages CloudWatch dashboards with templates and automation
 type DashboardManager struct {
 	client             CloudWatchDashboardClient
-	config             DashboardManagerConfig
 	templates          map[string]*DashboardTemplate
 	deployedDashboards map[string]*DeployedDashboard
+	config             DashboardManagerConfig
 	mu                 sync.RWMutex
 }
 
 // DashboardManagerConfig configures the dashboard manager
 type DashboardManagerConfig struct {
+	DefaultTags    map[string]string `json:"default_tags"`
 	Namespace      string            `json:"namespace"`
 	Environment    string            `json:"environment"`
 	Region         string            `json:"region"`
-	DefaultTags    map[string]string `json:"default_tags"`
-	AutoUpdate     bool              `json:"auto_update"`
 	UpdateInterval time.Duration     `json:"update_interval"`
+	AutoUpdate     bool              `json:"auto_update"`
 	VersionControl bool              `json:"version_control"`
 	BackupEnabled  bool              `json:"backup_enabled"`
 }
 
 // DashboardTemplate defines a dashboard template
 type DashboardTemplate struct {
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+	Variables   map[string]any   `json:"variables"`
 	ID          string           `json:"id"`
 	Name        string           `json:"name"`
 	Description string           `json:"description"`
 	Category    string           `json:"category"`
 	Version     string           `json:"version"`
 	Widgets     []WidgetTemplate `json:"widgets"`
-	Variables   map[string]any   `json:"variables"`
 	Layout      DashboardLayout  `json:"layout"`
-	CreatedAt   time.Time        `json:"created_at"`
-	UpdatedAt   time.Time        `json:"updated_at"`
 }
 
 // WidgetTemplate defines a widget template
 type WidgetTemplate struct {
+	Properties map[string]any     `json:"properties"`
 	Type       string             `json:"type"`
 	Title      string             `json:"title"`
+	Metrics    []MetricDefinition `json:"metrics"`
 	Position   WidgetPosition     `json:"position"`
 	Size       WidgetSize         `json:"size"`
-	Properties map[string]any     `json:"properties"`
-	Metrics    []MetricDefinition `json:"metrics"`
 }
 
 // MetricDefinition defines a metric for dashboard widgets
 type MetricDefinition struct {
+	Dimensions map[string]string `json:"dimensions"`
 	Namespace  string            `json:"namespace"`
 	MetricName string            `json:"metric_name"`
-	Dimensions map[string]string `json:"dimensions"`
 	Statistic  string            `json:"statistic"`
-	Period     int32             `json:"period"`
 	Label      string            `json:"label,omitempty"`
+	Period     int32             `json:"period"`
 }
 
 // WidgetPosition defines widget position

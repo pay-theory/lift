@@ -34,10 +34,10 @@ func (c *DynamORMScaffoldCommand) Usage() string {
 type ScaffoldConfig struct {
 	ModelName     string
 	TableName     string
+	GSIs          []GSIConfig
 	MultiTenant   bool
 	EnableTTL     bool
 	EnableStreams bool
-	GSIs          []GSIConfig
 }
 
 // GSIConfig holds GSI configuration
@@ -624,23 +624,23 @@ func (c *DynamORMMigrateCommand) Usage() string {
 
 // TableAnalysis contains the analysis results of a DynamoDB table
 type TableAnalysis struct {
-	TableName              string                   `json:"table_name"`
-	PartitionKey           AttributeSpec            `json:"partition_key"`
+	CreatedAt              time.Time                `json:"created_at"`
 	SortKey                *AttributeSpec           `json:"sort_key,omitempty"`
-	GlobalSecondaryIndexes []GSIAnalysis            `json:"global_secondary_indexes,omitempty"`
-	LocalSecondaryIndexes  []LSIAnalysis            `json:"local_secondary_indexes,omitempty"`
 	TimeToLiveSpec         *TTLSpec                 `json:"time_to_live,omitempty"`
 	StreamSpec             *StreamSpec              `json:"stream,omitempty"`
-	BillingMode            string                   `json:"billing_mode"`
-	ItemCount              int64                    `json:"item_count"`
-	TableSizeBytes         int64                    `json:"table_size_bytes"`
-	RecommendedModel       string                   `json:"recommended_model"`
-	MultiTenantCandidate   bool                     `json:"multi_tenant_candidate"`
 	Attributes             map[string]AttributeSpec `json:"attributes"`
-	SampleItems            []map[string]interface{} `json:"sample_items,omitempty"`
+	RecommendedModel       string                   `json:"recommended_model"`
+	TableName              string                   `json:"table_name"`
+	BillingMode            string                   `json:"billing_mode"`
 	MigrationComplexity    string                   `json:"migration_complexity"`
+	PartitionKey           AttributeSpec            `json:"partition_key"`
+	LocalSecondaryIndexes  []LSIAnalysis            `json:"local_secondary_indexes,omitempty"`
+	SampleItems            []map[string]interface{} `json:"sample_items,omitempty"`
 	Warnings               []string                 `json:"warnings,omitempty"`
-	CreatedAt              time.Time                `json:"created_at"`
+	GlobalSecondaryIndexes []GSIAnalysis            `json:"global_secondary_indexes,omitempty"`
+	TableSizeBytes         int64                    `json:"table_size_bytes"`
+	ItemCount              int64                    `json:"item_count"`
+	MultiTenantCandidate   bool                     `json:"multi_tenant_candidate"`
 }
 
 // AttributeSpec defines an attribute specification
@@ -652,19 +652,19 @@ type AttributeSpec struct {
 
 // GSIAnalysis contains GSI analysis
 type GSIAnalysis struct {
-	IndexName      string                   `json:"index_name"`
-	PartitionKey   AttributeSpec            `json:"partition_key"`
 	SortKey        *AttributeSpec           `json:"sort_key,omitempty"`
+	IndexName      string                   `json:"index_name"`
 	ProjectionType string                   `json:"projection_type"`
-	ItemCount      int64                    `json:"item_count"`
+	PartitionKey   AttributeSpec            `json:"partition_key"`
 	KeySchema      []types.KeySchemaElement `json:"key_schema"`
+	ItemCount      int64                    `json:"item_count"`
 }
 
 // LSIAnalysis contains LSI analysis
 type LSIAnalysis struct {
 	IndexName      string        `json:"index_name"`
-	SortKey        AttributeSpec `json:"sort_key"`
 	ProjectionType string        `json:"projection_type"`
+	SortKey        AttributeSpec `json:"sort_key"`
 	ItemCount      int64         `json:"item_count"`
 }
 
@@ -676,9 +676,9 @@ type TTLSpec struct {
 
 // StreamSpec defines stream specification
 type StreamSpec struct {
-	Enabled   bool   `json:"enabled"`
 	ViewType  string `json:"view_type"`
 	StreamArn string `json:"stream_arn"`
+	Enabled   bool   `json:"enabled"`
 }
 
 // MigrationConfig holds migration configuration
@@ -686,8 +686,8 @@ type MigrationConfig struct {
 	TableName     string `json:"table_name"`
 	Region        string `json:"region"`
 	OutputDir     string `json:"output_dir"`
-	AnalyzeOnly   bool   `json:"analyze_only"`
 	ModelName     string `json:"model_name"`
+	AnalyzeOnly   bool   `json:"analyze_only"`
 	MultiTenant   bool   `json:"multi_tenant"`
 	GenerateTests bool   `json:"generate_tests"`
 }

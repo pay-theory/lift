@@ -27,66 +27,66 @@ func (e BaseEvent) GetEventID() string      { return e.EventID }
 
 // SQSLiftEvent wraps an SQS event with Lift functionality
 type SQSLiftEvent struct {
+	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 	BaseEvent
 	events.SQSEvent
-	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 }
 
 // EventBridgeLiftEvent wraps an EventBridge event with Lift functionality
 type EventBridgeLiftEvent struct {
+	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 	BaseEvent
-	CloudWatchEvent    events.CloudWatchEvent `json:"cloudWatchEvent"`
-	ProcessingMetadata ProcessingMetadata     `json:"processingMetadata,omitempty"`
+	CloudWatchEvent events.CloudWatchEvent `json:"cloudWatchEvent"`
 }
 
 // S3LiftEvent wraps an S3 event with Lift functionality
 type S3LiftEvent struct {
+	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 	BaseEvent
 	events.S3Event
-	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 }
 
 // DynamoDBLiftEvent wraps a DynamoDB stream event with Lift functionality
 type DynamoDBLiftEvent struct {
+	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 	BaseEvent
 	events.DynamoDBEvent
-	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 }
 
 // SNSLiftEvent wraps an SNS event with Lift functionality
 type SNSLiftEvent struct {
+	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 	BaseEvent
 	events.SNSEvent
-	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 }
 
 // KinesisLiftEvent wraps a Kinesis event with Lift functionality
 type KinesisLiftEvent struct {
+	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 	BaseEvent
 	events.KinesisEvent
-	ProcessingMetadata ProcessingMetadata `json:"processingMetadata,omitempty"`
 }
 
 // ProcessingMetadata contains metadata about event processing
 type ProcessingMetadata struct {
+	Tags          map[string]string `json:"tags,omitempty"`
 	CorrelationID string            `json:"correlationId,omitempty"`
 	UserID        string            `json:"userId,omitempty"`
 	TenantID      string            `json:"tenantId,omitempty"`
 	TraceID       string            `json:"traceId,omitempty"`
 	SpanID        string            `json:"spanId,omitempty"`
 	RetryCount    int               `json:"retryCount,omitempty"`
-	Tags          map[string]string `json:"tags,omitempty"`
 }
 
 // EventEnvelope wraps any event with metadata
 type EventEnvelope struct {
+	Metadata ProcessingMetadata `json:"metadata"`
+	Time     time.Time          `json:"time"`
 	Version  string             `json:"version"`
 	ID       string             `json:"id"`
 	Source   string             `json:"source"`
 	Type     string             `json:"type"`
-	Time     time.Time          `json:"time"`
 	Data     json.RawMessage    `json:"data"`
-	Metadata ProcessingMetadata `json:"metadata"`
 }
 
 // NewEventEnvelope creates a new event envelope
@@ -113,19 +113,19 @@ func (e *EventEnvelope) UnmarshalData(v interface{}) error {
 
 // EventResponse represents a standard response from event processing
 type EventResponse struct {
-	Success           bool                         `json:"success"`
-	ProcessedCount    int                          `json:"processedCount"`
-	FailedCount       int                          `json:"failedCount"`
 	Errors            []EventError                 `json:"errors,omitempty"`
 	BatchItemFailures []events.SQSBatchItemFailure `json:"batchItemFailures,omitempty"`
+	ProcessedCount    int                          `json:"processedCount"`
+	FailedCount       int                          `json:"failedCount"`
+	Success           bool                         `json:"success"`
 }
 
 // EventError represents an error during event processing
 type EventError struct {
+	Timestamp time.Time `json:"timestamp"`
 	EventID   string    `json:"eventId"`
 	Error     string    `json:"error"`
 	ErrorType string    `json:"errorType"`
-	Timestamp time.Time `json:"timestamp"`
 	Retryable bool      `json:"retryable"`
 }
 
@@ -134,11 +134,11 @@ type EventError struct {
 // OrchestratedEvent represents an event in an orchestration flow
 type OrchestratedEvent struct {
 	EventEnvelope
+	Context       map[string]interface{} `json:"context"`
 	CorrelationID string                 `json:"correlationId"`
+	Status        OrchestrationStatus    `json:"status"`
 	SequenceID    int                    `json:"sequenceId"`
 	TotalSteps    int                    `json:"totalSteps"`
-	Status        OrchestrationStatus    `json:"status"`
-	Context       map[string]interface{} `json:"context"`
 }
 
 // OrchestrationStatus represents the status of an orchestrated flow
@@ -154,14 +154,14 @@ const (
 
 // SagaEvent represents an event in a saga pattern
 type SagaEvent struct {
+	Error         *SagaError             `json:"error,omitempty"`
+	Context       map[string]interface{} `json:"context"`
 	SagaID        string                 `json:"sagaId"`
 	TransactionID string                 `json:"transactionId"`
 	Step          string                 `json:"step"`
 	Action        SagaAction             `json:"action"`
 	Status        SagaStatus             `json:"status"`
 	Payload       json.RawMessage        `json:"payload"`
-	Error         *SagaError             `json:"error,omitempty"`
-	Context       map[string]interface{} `json:"context"`
 }
 
 // SagaAction represents the action type in a saga
@@ -185,32 +185,32 @@ const (
 
 // SagaError represents an error in saga processing
 type SagaError struct {
+	Details map[string]interface{} `json:"details,omitempty"`
 	Code    string                 `json:"code"`
 	Message string                 `json:"message"`
-	Details map[string]interface{} `json:"details,omitempty"`
 }
 
 // AsyncAPIRequest represents a request in the event-driven API pattern
 type AsyncAPIRequest struct {
+	Headers     map[string]string      `json:"headers"`
+	Metadata    map[string]interface{} `json:"metadata"`
 	RequestID   string                 `json:"requestId"`
 	Method      string                 `json:"method"`
 	Path        string                 `json:"path"`
-	Headers     map[string]string      `json:"headers"`
-	Body        json.RawMessage        `json:"body"`
 	CallbackURL string                 `json:"callbackUrl,omitempty"`
 	WebhookURL  string                 `json:"webhookUrl,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Body        json.RawMessage        `json:"body"`
 }
 
 // AsyncAPIResponse represents a response in the event-driven API pattern
 type AsyncAPIResponse struct {
-	RequestID  string                 `json:"requestId"`
-	Status     AsyncAPIStatus         `json:"status"`
-	StatusCode int                    `json:"statusCode"`
 	Headers    map[string]string      `json:"headers,omitempty"`
-	Body       json.RawMessage        `json:"body,omitempty"`
 	Error      *AsyncAPIError         `json:"error,omitempty"`
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	RequestID  string                 `json:"requestId"`
+	Status     AsyncAPIStatus         `json:"status"`
+	Body       json.RawMessage        `json:"body,omitempty"`
+	StatusCode int                    `json:"statusCode"`
 }
 
 // AsyncAPIStatus represents the status of an async API request
@@ -225,17 +225,17 @@ const (
 
 // AsyncAPIError represents an error in async API processing
 type AsyncAPIError struct {
+	Details map[string]interface{} `json:"details,omitempty"`
 	Code    string                 `json:"code"`
 	Message string                 `json:"message"`
-	Details map[string]interface{} `json:"details,omitempty"`
 }
 
 // WebSocketMessage represents a WebSocket message
 type WebSocketMessage struct {
+	Metadata     ProcessingMetadata `json:"metadata"`
 	ConnectionID string             `json:"connectionId"`
 	Action       string             `json:"action"`
 	Data         json.RawMessage    `json:"data"`
-	Metadata     ProcessingMetadata `json:"metadata"`
 }
 
 // WebSocketResponse represents a response to send via WebSocket

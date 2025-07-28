@@ -17,16 +17,11 @@ import (
 // EventDrivenStackProps defines properties for an event-driven stack
 type EventDrivenStackProps struct {
 	awscdk.StackProps
-	// Application name
-	AppName string
-	// Path to API handler binary
-	ApiCodePath string
-	// Path to event processor binary
+	AppName                string
+	ApiCodePath            string
 	EventProcessorCodePath string
-	// Enable dead letter queue
-	EnableDLQ bool
-	// Event bus name (default: "default")
-	EventBusName string
+	EventBusName           string
+	EnableDLQ              bool
 }
 
 // NewEventDrivenStack creates an event-driven architecture stack

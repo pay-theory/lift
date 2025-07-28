@@ -15,13 +15,13 @@ import (
 
 // FeatureFlags manages feature toggles for the application
 type FeatureFlags struct {
-	mu          sync.RWMutex
 	flags       map[string]bool
 	client      *appconfig.Client
+	stopRefresh chan struct{}
 	environment string
 	application string
 	clientId    string
-	stopRefresh chan struct{}
+	mu          sync.RWMutex
 }
 
 // Feature flag keys

@@ -14,13 +14,13 @@ import (
 
 // ValidationConfig configures input validation middleware
 type ValidationConfig struct {
-	MaxBodySize              int64                         `json:"max_body_size"`         // Maximum request body size in bytes
-	MaxHeaderSize            int                           `json:"max_header_size"`       // Maximum header value size
-	MaxQueryParamSize        int                           `json:"max_query_param_size"`  // Maximum query parameter size
-	MaxPathParamSize         int                           `json:"max_path_param_size"`   // Maximum path parameter size
-	AllowedContentTypes      []string                      `json:"allowed_content_types"` // Allowed content types
-	BlockedUserAgents        []string                      `json:"blocked_user_agents"`   // Blocked user agent patterns
-	CustomValidators         map[string]func(string) error `json:"-"`                     // Custom field validators
+	CustomValidators         map[string]func(string) error `json:"-"`
+	AllowedContentTypes      []string                      `json:"allowed_content_types"`
+	BlockedUserAgents        []string                      `json:"blocked_user_agents"`
+	MaxBodySize              int64                         `json:"max_body_size"`
+	MaxHeaderSize            int                           `json:"max_header_size"`
+	MaxQueryParamSize        int                           `json:"max_query_param_size"`
+	MaxPathParamSize         int                           `json:"max_path_param_size"`
 	EnableSQLInjectionCheck  bool                          `json:"enable_sql_injection_check"`
 	EnableXSSCheck           bool                          `json:"enable_xss_check"`
 	EnablePathTraversalCheck bool                          `json:"enable_path_traversal_check"`

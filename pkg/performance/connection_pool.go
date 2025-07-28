@@ -13,27 +13,18 @@ import (
 
 // ConnectionPoolConfig holds configuration for DynamoDB connection pooling
 type ConnectionPoolConfig struct {
-	// Pool size configuration
-	MaxConnections    int           `json:"max_connections"`
-	MinConnections    int           `json:"min_connections"`
-	MaxIdleTime       time.Duration `json:"max_idle_time"`
-	ConnectionTimeout time.Duration `json:"connection_timeout"`
-
-	// Retry configuration
-	MaxRetries        int           `json:"max_retries"`
-	RetryDelay        time.Duration `json:"retry_delay"`
-	BackoffMultiplier float64       `json:"backoff_multiplier"`
-
-	// Health check configuration
+	Region              string        `json:"region"`
+	Endpoint            string        `json:"endpoint,omitempty"`
+	MaxConnections      int           `json:"max_connections"`
+	MinConnections      int           `json:"min_connections"`
+	MaxIdleTime         time.Duration `json:"max_idle_time"`
+	ConnectionTimeout   time.Duration `json:"connection_timeout"`
+	MaxRetries          int           `json:"max_retries"`
+	RetryDelay          time.Duration `json:"retry_delay"`
+	BackoffMultiplier   float64       `json:"backoff_multiplier"`
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
 	HealthCheckTimeout  time.Duration `json:"health_check_timeout"`
-
-	// Region and endpoint configuration
-	Region   string `json:"region"`
-	Endpoint string `json:"endpoint,omitempty"`
-
-	// Metrics
-	EnableMetrics bool `json:"enable_metrics"`
+	EnableMetrics       bool          `json:"enable_metrics"`
 }
 
 // DefaultConnectionPoolConfig returns a default configuration optimized for DynamORM
@@ -90,18 +81,19 @@ func LowLatencyConnectionPoolConfig() *ConnectionPoolConfig {
 
 // ConnectionPool manages a pool of DynamoDB connections
 type ConnectionPool struct {
+	ctx       context.Context
 	config    *ConnectionPoolConfig
 	clients   chan *dynamodb.Client
 	metrics   *PoolMetrics
-	mu        sync.RWMutex
-	closed    bool
-	ctx       context.Context
 	cancel    context.CancelFunc
 	awsConfig aws.Config
+	mu        sync.RWMutex
+	closed    bool
 }
 
 // PoolMetrics tracks connection pool performance
 type PoolMetrics struct {
+	LastHealthCheck      time.Time     `json:"last_health_check"`
 	ActiveConnections    int64         `json:"active_connections"`
 	IdleConnections      int64         `json:"idle_connections"`
 	TotalRequests        int64         `json:"total_requests"`
@@ -111,9 +103,7 @@ type PoolMetrics struct {
 	ConnectionsDestroyed int64         `json:"connections_destroyed"`
 	HealthChecksPassed   int64         `json:"health_checks_passed"`
 	HealthChecksFailed   int64         `json:"health_checks_failed"`
-	LastHealthCheck      time.Time     `json:"last_health_check"`
-
-	mu sync.RWMutex
+	mu                   sync.RWMutex
 }
 
 // NewConnectionPool creates a new connection pool with the given configuration

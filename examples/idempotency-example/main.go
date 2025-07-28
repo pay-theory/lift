@@ -13,18 +13,18 @@ import (
 
 // PaymentIntentRequest represents a payment creation request
 type PaymentIntentRequest struct {
-	Amount      int64  `json:"amount" validate:"required,min=1"`
 	Currency    string `json:"currency" validate:"required,len=3"`
 	Description string `json:"description,omitempty"`
+	Amount      int64  `json:"amount" validate:"required,min=1"`
 }
 
 // PaymentIntentResponse represents a payment intent
 type PaymentIntentResponse struct {
 	ID          string `json:"id"`
-	Amount      int64  `json:"amount"`
 	Currency    string `json:"currency"`
 	Status      string `json:"status"`
 	Description string `json:"description,omitempty"`
+	Amount      int64  `json:"amount"`
 	CreatedAt   int64  `json:"created_at"`
 }
 

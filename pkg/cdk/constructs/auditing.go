@@ -35,101 +35,50 @@ const (
 
 // AuditingProps defines properties for the Auditing construct
 type AuditingProps struct {
-	// Application name for resource naming
-	AppName *string
-
-	// Audit level - determines the scope of audit logging
-	AuditLevel AuditLevel
-
-	// Enable CloudTrail for API audit logging
-	EnableCloudTrail *bool
-
-	// Enable application-level audit logging
-	EnableApplicationLogs *bool
-
-	// Enable database audit logging
-	EnableDatabaseLogs *bool
-
-	// Enable real-time log processing
-	EnableRealTimeProcessing *bool
-
-	// Enable tamper protection for logs
-	EnableTamperProtection *bool
-
-	// Enable log aggregation across multiple regions
-	EnableLogAggregation *bool
-
-	// Log retention period in days
-	LogRetentionDays *float64
-
-	// Enable SIEM integration
-	EnableSIEMIntegration *bool
-
-	// SIEM endpoint URL for log forwarding
-	SIEMEndpoint *string
-
-	// Enable log analysis and anomaly detection
-	EnableLogAnalysis *bool
-
-	// Enable compliance reporting
-	EnableComplianceReporting *bool
-
-	// Environment for audit logging (dev, staging, prod)
-	Environment *string
-
-	// Enable log encryption
-	EnableEncryption *bool
-
-	// Custom KMS key for encryption
-	EncryptionKey awskms.IKey
-
-	// Custom S3 bucket for audit logs
-	AuditBucket awss3.IBucket
-
-	// Enable cross-account log sharing
-	EnableCrossAccountAccess *bool
-
-	// Cross-account role ARNs for log access
-	CrossAccountRoleArns *[]*string
-
-	// Enable audit trail integrity checking
-	EnableIntegrityChecking *bool
-
-	// Enable audit dashboard
-	EnableDashboard *bool
-
-	// Enable audit alerting
-	EnableAlerting *bool
-
-	// SNS topic ARN for audit alerts
-	AlertTopicArn *string
-
-	// Enable immutable audit logs
-	EnableImmutableLogs *bool
-
-	// Enable regulatory compliance features
+	EncryptionKey              awskms.IKey
+	AuditBucket                awss3.IBucket
+	EnableComplianceReporting  *bool
+	EnableImmutableLogs        *bool
+	EnableDatabaseLogs         *bool
+	EnableRealTimeProcessing   *bool
+	EnableTamperProtection     *bool
+	EnableLogAggregation       *bool
+	LogRetentionDays           *float64
+	EnableSIEMIntegration      *bool
+	SIEMEndpoint               *string
+	EnableLogAnalysis          *bool
+	ComplianceFrameworks       *[]string
+	EnableApplicationLogs      *bool
+	AppName                    *string
+	EnableCloudTrail           *bool
+	EnableEncryption           *bool
+	EnableCrossAccountAccess   *bool
+	CrossAccountRoleArns       *[]*string
+	EnableIntegrityChecking    *bool
+	EnableDashboard            *bool
+	EnableAlerting             *bool
+	AlertTopicArn              *string
+	Environment                *string
 	EnableRegulatoryCompliance *bool
-
-	// Compliance frameworks to support
-	ComplianceFrameworks *[]string
+	AuditLevel                 AuditLevel
 }
 
 // AuditingConstruct creates comprehensive audit logging infrastructure
 type AuditingConstruct struct {
+	AuditLogGroup awslogs.LogGroup
 	constructs.Construct
-	AuditBucket            awss3.Bucket
 	EncryptionKey          awskms.Key
 	CloudTrail             awscloudtrail.Trail
 	ApplicationLogGroup    awslogs.LogGroup
 	DatabaseLogGroup       awslogs.LogGroup
-	AuditLogGroup          awslogs.LogGroup
+	AuditBucket            awss3.Bucket
 	LogProcessingFunction  awslambda.Function
-	LogStream              awskinesis.Stream
-	FirehoseDeliveryStream awskinesisfirehose.CfnDeliveryStream
 	AuditDashboard         awscloudwatch.Dashboard
-	AuditAlarms            []awscloudwatch.Alarm
-	IntegrityFunction      awslambda.Function
+	FirehoseDeliveryStream awskinesisfirehose.CfnDeliveryStream
+	LogStream              awskinesis.Stream
 	ComplianceFunction     awslambda.Function
+	IntegrityFunction      awslambda.Function
+	AuditAlarms            []awscloudwatch.Alarm
 }
 
 // NewAuditingConstruct creates a new auditing construct

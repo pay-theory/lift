@@ -14,17 +14,17 @@ import (
 
 // Message represents a WebSocket message
 type Message struct {
-	Type    string         `json:"type"`
 	Payload map[string]any `json:"payload"`
+	Type    string         `json:"type"`
 }
 
 // Connection represents a WebSocket connection in DynamoDB
 type Connection struct {
+	Metadata  map[string]any `json:"metadata"`
 	ID        string         `json:"id"`
 	UserID    string         `json:"user_id"`
 	TenantID  string         `json:"tenant_id"`
 	CreatedAt string         `json:"created_at"`
-	Metadata  map[string]any `json:"metadata"`
 }
 
 // DynamoDBConnectionStore implements the ConnectionStore interface

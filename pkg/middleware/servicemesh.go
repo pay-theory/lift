@@ -18,34 +18,25 @@ import (
 
 // ServiceMeshConfig holds configuration for service mesh integration
 type ServiceMeshConfig struct {
-	// AWS App Mesh configuration
-	MeshName    string `json:"mesh_name"`
-	VirtualNode string `json:"virtual_node"`
-
-	// Service Discovery configuration
-	ServiceName string `json:"service_name"`
-	Namespace   string `json:"namespace"`
-
-	// Health check configuration
+	MeshName            string        `json:"mesh_name"`
+	VirtualNode         string        `json:"virtual_node"`
+	ServiceName         string        `json:"service_name"`
+	Namespace           string        `json:"namespace"`
 	HealthCheckPath     string        `json:"health_check_path"`
+	Port                string        `json:"port"`
+	Region              string        `json:"region"`
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
 	HealthCheckTimeout  time.Duration `json:"health_check_timeout"`
-
-	// Port configuration
-	Port string `json:"port"`
-
-	// AWS Region
-	Region string `json:"region"`
 }
 
 // ServiceMeshAdapter provides AWS App Mesh integration
 type ServiceMeshAdapter struct {
-	config            ServiceMeshConfig
+	registrationError error
 	appMeshClient     *appmesh.Client
 	sdClient          *servicediscovery.Client
+	config            ServiceMeshConfig
 	instanceID        string
 	serviceID         string
-	registrationError error
 	loggedError       bool
 }
 
@@ -206,11 +197,11 @@ func (s *ServiceMeshAdapter) handleHealthCheck(ctx *lift.Context) error {
 
 // ServiceMeshHealthStatus represents the health check response for service mesh
 type ServiceMeshHealthStatus struct {
-	Healthy      bool                   `json:"healthy"`
-	Service      string                 `json:"service"`
-	VirtualNode  string                 `json:"virtual_node"`
 	Dependencies map[string]bool        `json:"dependencies,omitempty"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Service      string                 `json:"service"`
+	VirtualNode  string                 `json:"virtual_node"`
+	Healthy      bool                   `json:"healthy"`
 }
 
 // checkHealth performs health checks

@@ -12,32 +12,21 @@ import (
 
 // HealthCheckConfig holds configuration for health checks
 type HealthCheckConfig struct {
-	// Endpoint configuration
-	Path       string `json:"path"`        // Health check endpoint path (default: /health)
-	DetailPath string `json:"detail_path"` // Detailed health check path (default: /health/detail)
-	ReadyPath  string `json:"ready_path"`  // Readiness check path (default: /ready)
-	LivePath   string `json:"live_path"`   // Liveness check path (default: /live)
-
-	// Check configuration
-	Timeout     time.Duration `json:"timeout"`      // Timeout for individual checks
-	Interval    time.Duration `json:"interval"`     // How often to run background checks
-	GracePeriod time.Duration `json:"grace_period"` // Grace period during startup
-
-	// Circuit breaker settings
-	FailureThreshold int           `json:"failure_threshold"` // Failures before marking unhealthy
-	RecoveryTime     time.Duration `json:"recovery_time"`     // Time to wait before retry
-
-	// Dependencies
-	Dependencies []HealthChecker `json:"-"` // External dependencies to check
-
-	// Observability
-	Logger  observability.StructuredLogger `json:"-"`
-	Metrics observability.MetricsCollector `json:"-"`
-
-	// Feature flags
-	EnableDetailedChecks bool `json:"enable_detailed_checks"`
-	EnableMetrics        bool `json:"enable_metrics"`
-	EnableBackgroundRuns bool `json:"enable_background_runs"`
+	Metrics              observability.MetricsCollector `json:"-"`
+	Logger               observability.StructuredLogger `json:"-"`
+	Path                 string                         `json:"path"`
+	DetailPath           string                         `json:"detail_path"`
+	ReadyPath            string                         `json:"ready_path"`
+	LivePath             string                         `json:"live_path"`
+	Dependencies         []HealthChecker                `json:"-"`
+	FailureThreshold     int                            `json:"failure_threshold"`
+	RecoveryTime         time.Duration                  `json:"recovery_time"`
+	GracePeriod          time.Duration                  `json:"grace_period"`
+	Interval             time.Duration                  `json:"interval"`
+	Timeout              time.Duration                  `json:"timeout"`
+	EnableDetailedChecks bool                           `json:"enable_detailed_checks"`
+	EnableMetrics        bool                           `json:"enable_metrics"`
+	EnableBackgroundRuns bool                           `json:"enable_background_runs"`
 }
 
 // HealthChecker interface for dependency health checks
@@ -59,24 +48,24 @@ const (
 
 // HealthCheckResult represents the result of a health check
 type HealthCheckResult struct {
+	Timestamp time.Time      `json:"timestamp"`
+	Details   map[string]any `json:"details,omitempty"`
 	Name      string         `json:"name"`
 	Status    HealthStatus   `json:"status"`
 	Message   string         `json:"message,omitempty"`
 	Duration  time.Duration  `json:"duration"`
-	Timestamp time.Time      `json:"timestamp"`
-	Details   map[string]any `json:"details,omitempty"`
 	Required  bool           `json:"required"`
 }
 
 // OverallHealthResult represents the overall system health
 type OverallHealthResult struct {
-	Status      HealthStatus                  `json:"status"`
 	Timestamp   time.Time                     `json:"timestamp"`
-	Duration    time.Duration                 `json:"duration"`
-	Version     string                        `json:"version,omitempty"`
-	Environment string                        `json:"environment,omitempty"`
 	Checks      map[string]*HealthCheckResult `json:"checks,omitempty"`
 	Summary     *HealthSummary                `json:"summary,omitempty"`
+	Status      HealthStatus                  `json:"status"`
+	Version     string                        `json:"version,omitempty"`
+	Environment string                        `json:"environment,omitempty"`
+	Duration    time.Duration                 `json:"duration"`
 }
 
 // HealthSummary provides a summary of health check results
@@ -154,12 +143,12 @@ func HealthCheckMiddleware(config HealthCheckConfig) lift.Middleware {
 
 // healthMonitor manages health check state and execution
 type healthMonitor struct {
-	config        HealthCheckConfig
-	results       map[string]*HealthCheckResult
-	resultsMutex  sync.RWMutex
 	startTime     time.Time
 	lastCheck     time.Time
+	results       map[string]*HealthCheckResult
 	failureCounts map[string]int
+	config        HealthCheckConfig
+	resultsMutex  sync.RWMutex
 	failureMutex  sync.RWMutex
 }
 
@@ -461,9 +450,9 @@ func (h *healthMonitor) GetHealthStatus() *OverallHealthResult {
 
 // DatabaseHealthChecker checks database connectivity
 type DatabaseHealthChecker struct {
+	testFunc func(context.Context) error
 	name     string
 	required bool
-	testFunc func(context.Context) error
 }
 
 func NewDatabaseHealthChecker(name string, required bool, testFunc func(context.Context) error) *DatabaseHealthChecker {

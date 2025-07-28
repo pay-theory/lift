@@ -9,13 +9,13 @@ import (
 
 // User represents a user entity
 type User struct {
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	ID        string    `json:"id" dynamodb:"id,hash"`
 	TenantID  string    `json:"tenant_id" dynamodb:"tenant_id"`
 	Email     string    `json:"email" validate:"required,email"`
 	Name      string    `json:"name" validate:"required,min=1,max=100"`
 	Active    bool      `json:"active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // CreateUserRequest represents the request to create a user
@@ -39,9 +39,9 @@ type UserResponse struct {
 
 // UsersResponse represents the response for listing users
 type UsersResponse struct {
+	NextKey string `json:"next_key,omitempty"`
 	Users   []User `json:"users"`
 	Count   int    `json:"count"`
-	NextKey string `json:"next_key,omitempty"`
 }
 
 func main() {

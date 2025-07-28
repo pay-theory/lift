@@ -24,12 +24,12 @@ type PerformanceOptimizer struct {
 
 // PerformanceConfig configures performance optimization behavior
 type PerformanceConfig struct {
+	OptimizationLevel   OptimizationLevel
+	AlertThresholds     AlertThresholds
 	MonitoringInterval  time.Duration
 	BenchmarkTimeout    time.Duration
 	RegressionThreshold float64
-	AlertThresholds     AlertThresholds
 	TrendAnalysisWindow time.Duration
-	OptimizationLevel   OptimizationLevel
 	EnablePredictive    bool
 	EnableAutoOptimize  bool
 }
@@ -56,32 +56,32 @@ type AlertThresholds struct {
 // Core performance types
 type PerformanceMetrics struct {
 	Timestamp      time.Time
-	ResponseTime   time.Duration
-	Throughput     float64
-	ErrorRate      float64
+	CustomMetrics  map[string]float64
 	MemoryUsage    MemoryMetrics
 	CPUUsage       CPUMetrics
 	DiskUsage      DiskMetrics
 	NetworkMetrics NetworkMetrics
-	CustomMetrics  map[string]float64
+	ResponseTime   time.Duration
+	Throughput     float64
+	ErrorRate      float64
 	RequestCount   int64
 	ErrorCount     int64
 	ActiveUsers    int64
 }
 
 type MemoryMetrics struct {
+	GCPauses    []time.Duration
 	Used        uint64
 	Available   uint64
 	Total       uint64
 	Percentage  float64
-	GCPauses    []time.Duration
 	Allocations uint64
 	Frees       uint64
 }
 
 type CPUMetrics struct {
-	Usage       float64
 	LoadAverage []float64
+	Usage       float64
 	Cores       int
 	Frequency   float64
 	Temperature float64
@@ -136,28 +136,28 @@ type Benchmark interface {
 }
 
 type BenchmarkConfig struct {
+	Scenarios        []BenchmarkScenario
+	Targets          []string
 	Duration         time.Duration
 	Concurrency      int
 	RequestRate      float64
 	PayloadSize      int
 	WarmupDuration   time.Duration
 	CooldownDuration time.Duration
-	Scenarios        []BenchmarkScenario
-	Targets          []string
 }
 
 type BenchmarkScenario struct {
 	Name        string
-	Weight      float64
 	Operations  []Operation
 	Constraints []Constraint
+	Weight      float64
 }
 
 type Operation struct {
+	Headers map[string]string
 	Type    OperationType
 	Target  string
 	Payload []byte
-	Headers map[string]string
 	Timeout time.Duration
 	Retries int
 }
@@ -176,9 +176,9 @@ const (
 
 type Constraint struct {
 	Type     ConstraintType
-	Value    float64
 	Operator ConstraintOperator
 	Metric   string
+	Value    float64
 }
 
 type ConstraintType string
@@ -202,19 +202,19 @@ const (
 )
 
 type BenchmarkResult struct {
-	Config         BenchmarkConfig
 	StartTime      time.Time
 	EndTime        time.Time
-	Duration       time.Duration
-	TotalRequests  int64
-	SuccessfulReqs int64
-	FailedRequests int64
-	ResponseTimes  ResponseTimeStats
-	Throughput     ThroughputStats
+	CustomMetrics  map[string]any
+	Config         BenchmarkConfig
 	ErrorStats     ErrorStats
 	ResourceUsage  ResourceUsageStats
+	ResponseTimes  ResponseTimeStats
 	Percentiles    PercentileStats
-	CustomMetrics  map[string]any
+	Throughput     ThroughputStats
+	Duration       time.Duration
+	FailedRequests int64
+	SuccessfulReqs int64
+	TotalRequests  int64
 }
 
 type ResponseTimeStats struct {
@@ -237,9 +237,9 @@ type ThroughputStats struct {
 }
 
 type ErrorStats struct {
+	ErrorTypes    map[string]int64
 	TotalErrors   int64
 	ErrorRate     float64
-	ErrorTypes    map[string]int64
 	TimeoutErrors int64
 	NetworkErrors int64
 	ServerErrors  int64
@@ -313,11 +313,11 @@ type Improvement struct {
 
 type Regression struct {
 	Metric     string
+	Severity   RegressionSeverity
 	OldValue   float64
 	NewValue   float64
 	Change     float64
 	Percentage float64
-	Severity   RegressionSeverity
 }
 
 type RegressionSeverity string
@@ -339,19 +339,19 @@ const (
 )
 
 type StatisticalSignificance struct {
+	TestType    string
 	PValue      float64
 	Confidence  float64
 	Significant bool
-	TestType    string
 }
 
 type BenchmarkReport struct {
-	Summary     BenchmarkSummary
-	Results     []BenchmarkResult
-	Comparisons []ComparisonResult
 	Trends      TrendAnalysis
 	Timestamp   time.Time
 	Version     string
+	Results     []BenchmarkResult
+	Comparisons []ComparisonResult
+	Summary     BenchmarkSummary
 }
 
 type BenchmarkSummary struct {
@@ -435,10 +435,10 @@ const (
 type PerformancePattern struct {
 	Type        PatternType
 	Description string
-	Frequency   time.Duration
-	Confidence  float64
 	Impact      ImpactLevel
 	Examples    []PatternExample
+	Frequency   time.Duration
+	Confidence  float64
 }
 
 type PatternType string
@@ -454,20 +454,20 @@ const (
 
 type PatternExample struct {
 	Timestamp time.Time
-	Value     float64
 	Context   string
+	Value     float64
 }
 
 type Anomaly struct {
-	Type        AnomalyType
 	Timestamp   time.Time
+	Type        AnomalyType
 	Metric      string
-	Expected    float64
-	Actual      float64
-	Deviation   float64
 	Severity    AnomalySeverity
 	Description string
 	Causes      []string
+	Expected    float64
+	Actual      float64
+	Deviation   float64
 }
 
 type AnomalyType string
@@ -492,10 +492,10 @@ const (
 type Trend struct {
 	Metric     string
 	Direction  TrendDirection
+	Projection TrendProjection
 	Slope      float64
 	Confidence float64
 	Duration   time.Duration
-	Projection TrendProjection
 }
 
 type TrendDirection string
@@ -508,8 +508,8 @@ const (
 )
 
 type TrendProjection struct {
-	TimeHorizon time.Duration
 	Values      []ProjectedValue
+	TimeHorizon time.Duration
 	Confidence  float64
 }
 
@@ -523,11 +523,11 @@ type ProjectedValue struct {
 type Prediction struct {
 	Type        PredictionType
 	Metric      string
+	Scenario    PredictionScenario
+	Assumptions []string
 	TimeHorizon time.Duration
 	Value       float64
 	Confidence  float64
-	Scenario    PredictionScenario
-	Assumptions []string
 }
 
 type PredictionType string
@@ -548,13 +548,13 @@ const (
 )
 
 type PerformanceScore struct {
+	Breakdown    map[string]float64
 	Overall      float64
 	ResponseTime float64
 	Throughput   float64
 	Reliability  float64
 	Efficiency   float64
 	Scalability  float64
-	Breakdown    map[string]float64
 }
 
 type Recommendation struct {
@@ -563,11 +563,11 @@ type Recommendation struct {
 	Priority    RecommendationPriority
 	Title       string
 	Description string
-	Impact      ImpactEstimate
 	Effort      EffortEstimate
 	Steps       []RecommendationStep
 	References  []string
 	Tags        []string
+	Impact      ImpactEstimate
 }
 
 type RecommendationType string
@@ -598,11 +598,11 @@ type ImpactEstimate struct {
 }
 
 type EffortEstimate struct {
-	Hours        float64
 	Complexity   ComplexityLevel
 	Skills       []string
 	Resources    []string
 	Dependencies []string
+	Hours        float64
 }
 
 type ComplexityLevel string
@@ -615,11 +615,11 @@ const (
 )
 
 type RecommendationStep struct {
-	Order       int
 	Description string
 	Action      string
 	Validation  string
 	Rollback    string
+	Order       int
 }
 
 type ScalingPrediction struct {
@@ -639,31 +639,31 @@ type CapacityMetrics struct {
 }
 
 type CapacityInfo struct {
+	Unit        string
 	Current     float64
 	Maximum     float64
 	Utilization float64
 	Available   float64
-	Unit        string
 }
 
 type DemandForecast struct {
-	TimeHorizon time.Duration
-	Scenarios   []DemandScenario
-	Confidence  float64
 	Methodology string
+	Scenarios   []DemandScenario
+	TimeHorizon time.Duration
+	Confidence  float64
 }
 
 type DemandScenario struct {
 	Name        string
-	Probability float64
 	Growth      GrowthPattern
 	Peak        PeakDemand
+	Probability float64
 }
 
 type GrowthPattern struct {
 	Type        GrowthType
-	Rate        float64
 	Seasonality []SeasonalPattern
+	Rate        float64
 }
 
 type GrowthType string
@@ -682,8 +682,8 @@ type SeasonalPattern struct {
 }
 
 type PeakDemand struct {
-	Value     float64
 	Timestamp time.Time
+	Value     float64
 	Duration  time.Duration
 	Frequency time.Duration
 }
@@ -696,11 +696,11 @@ type ScalingRequirements struct {
 }
 
 type ScalingRequirement struct {
+	Priority ScalingPriority
 	Current  float64
 	Required float64
 	Increase float64
 	Timeline time.Duration
-	Priority ScalingPriority
 }
 
 type ScalingPriority string
@@ -715,11 +715,11 @@ const (
 type ScalingRecommendation struct {
 	Type        ScalingType
 	Description string
+	Risk        RiskLevel
 	Resources   []ResourceRecommendation
+	Benefits    []string
 	Timeline    time.Duration
 	Cost        float64
-	Risk        RiskLevel
-	Benefits    []string
 }
 
 type ScalingType string
@@ -749,9 +749,9 @@ const (
 )
 
 type ResourceSpec struct {
-	Value float64
 	Unit  string
 	Type  string
+	Value float64
 }
 
 type RiskLevel string
@@ -770,10 +770,10 @@ type ScalingTimeline struct {
 
 type ScalingPhase struct {
 	Name         string
-	Duration     time.Duration
 	Actions      []string
 	Milestones   []string
 	Dependencies []string
+	Duration     time.Duration
 }
 
 type CostEstimate struct {
@@ -811,9 +811,9 @@ type Optimizer interface {
 type OptimizationTarget struct {
 	Type        TargetType
 	Component   string
-	Metrics     PerformanceMetrics
 	Constraints []OptimizationConstraint
 	Objectives  []OptimizationObjective
+	Metrics     PerformanceMetrics
 }
 
 type TargetType string
@@ -828,8 +828,8 @@ const (
 
 type OptimizationConstraint struct {
 	Type     ConstraintType
-	Value    float64
 	Operator ConstraintOperator
+	Value    float64
 	Priority int
 }
 
@@ -852,24 +852,24 @@ const (
 )
 
 type OptimizationResult struct {
+	Timestamp     time.Time
 	Target        OptimizationTarget
 	Optimizations []AppliedOptimization
+	Errors        []string
 	BeforeMetrics PerformanceMetrics
 	AfterMetrics  PerformanceMetrics
 	Improvement   ImprovementMetrics
-	Timestamp     time.Time
 	Duration      time.Duration
 	Success       bool
-	Errors        []string
 }
 
 type AppliedOptimization struct {
+	Parameters   map[string]any
 	Type         OptimizationType
 	Description  string
-	Parameters   map[string]any
+	RollbackInfo string
 	Impact       ImpactMetrics
 	Reversible   bool
-	RollbackInfo string
 }
 
 type ImpactMetrics struct {
@@ -917,11 +917,11 @@ type ImprovementMetrics struct {
 }
 
 type ValidationResult struct {
-	Valid       bool
-	Score       float64
 	Issues      []ValidationIssue
 	Warnings    []string
 	Suggestions []string
+	Score       float64
+	Valid       bool
 }
 
 type ValidationIssue struct {
@@ -965,10 +965,10 @@ type AlertRule struct {
 	Description string
 	Metric      string
 	Condition   AlertCondition
-	Threshold   float64
-	Duration    time.Duration
 	Severity    AlertSeverity
 	Actions     []AlertAction
+	Threshold   float64
+	Duration    time.Duration
 	Enabled     bool
 }
 
@@ -991,9 +991,9 @@ const (
 )
 
 type AlertAction struct {
+	Parameters map[string]any
 	Type       ActionType
 	Target     string
-	Parameters map[string]any
 }
 
 type ActionType string
@@ -1008,16 +1008,16 @@ const (
 )
 
 type Alert struct {
+	Timestamp   time.Time
+	Context     map[string]any
 	ID          string
 	RuleID      string
-	Timestamp   time.Time
 	Metric      string
-	Value       float64
-	Threshold   float64
 	Severity    AlertSeverity
 	Status      AlertStatus
 	Description string
-	Context     map[string]any
+	Value       float64
+	Threshold   float64
 }
 
 type AlertStatus string
@@ -1038,47 +1038,47 @@ type TrendAnalyzer interface {
 }
 
 type TrendAnalysis struct {
-	Period     time.Duration
+	Timestamp  time.Time
+	Summary    TrendSummary
 	Trends     []Trend
 	Patterns   []PerformancePattern
 	Anomalies  []Anomaly
-	Summary    TrendSummary
+	Period     time.Duration
 	Confidence float64
-	Timestamp  time.Time
 }
 
 type TrendSummary struct {
 	OverallDirection TrendDirection
-	Stability        float64
-	Volatility       float64
 	Seasonality      []SeasonalPattern
 	KeyInsights      []string
+	Stability        float64
+	Volatility       float64
 }
 
 type TrendPrediction struct {
-	TimeHorizon time.Duration
+	Methodology string
 	Predictions []Prediction
 	Scenarios   []PredictionScenario
-	Confidence  float64
-	Methodology string
 	Assumptions []string
+	TimeHorizon time.Duration
+	Confidence  float64
 }
 
 type TrendReport struct {
 	Analysis        TrendAnalysis
+	Timestamp       time.Time
 	Predictions     TrendPrediction
 	Insights        []TrendInsight
 	Recommendations []Recommendation
-	Timestamp       time.Time
 }
 
 type TrendInsight struct {
 	Type        InsightType
 	Description string
 	Impact      ImpactLevel
-	Confidence  float64
 	Evidence    []string
 	Actions     []string
+	Confidence  float64
 }
 
 type InsightType string
@@ -1270,14 +1270,14 @@ func (po *PerformanceOptimizer) calculatePerformanceScore(result *PerformanceOpt
 
 // PerformanceOptimizationResult contains comprehensive optimization results
 type PerformanceOptimizationResult struct {
-	Target           string
+	PerformanceScore PerformanceScore
 	StartTime        time.Time
 	EndTime          time.Time
-	Duration         time.Duration
 	Monitoring       map[string]PerformanceMetrics
 	Benchmarks       map[string]BenchmarkResult
 	Analysis         map[string]AnalysisResult
 	Optimizations    map[string]OptimizationResult
-	PerformanceScore PerformanceScore
+	Target           string
 	Errors           []string
+	Duration         time.Duration
 }

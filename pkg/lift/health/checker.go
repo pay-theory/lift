@@ -26,23 +26,12 @@ type HealthChecker interface {
 
 // HealthStatus represents the result of a health check
 type HealthStatus struct {
-	// Status is the health status (healthy, degraded, unhealthy, unknown)
-	Status string `json:"status"`
-
-	// Timestamp when the check was performed
-	Timestamp time.Time `json:"timestamp"`
-
-	// Duration how long the check took
-	Duration time.Duration `json:"duration"`
-
-	// Message optional human-readable message
-	Message string `json:"message,omitempty"`
-
-	// Details additional details about the health status
-	Details map[string]any `json:"details,omitempty"`
-
-	// Error if the health check failed
-	Error string `json:"error,omitempty"`
+	Timestamp time.Time      `json:"timestamp"`
+	Details   map[string]any `json:"details,omitempty"`
+	Status    string         `json:"status"`
+	Message   string         `json:"message,omitempty"`
+	Error     string         `json:"error,omitempty"`
+	Duration  time.Duration  `json:"duration"`
 }
 
 // HealthManager coordinates multiple health checkers
@@ -68,24 +57,20 @@ type HealthManager interface {
 
 // DefaultHealthManager implements HealthManager
 type DefaultHealthManager struct {
-	checkers map[string]HealthChecker
-	mu       sync.RWMutex
-
-	// Configuration
+	checkers       map[string]HealthChecker
+	cache          map[string]cachedResult
 	timeout        time.Duration
+	cacheDuration  time.Duration
+	mu             sync.RWMutex
+	cacheMu        sync.RWMutex
 	parallelChecks bool
 	cacheEnabled   bool
-	cacheDuration  time.Duration
-
-	// Cache
-	cache   map[string]cachedResult
-	cacheMu sync.RWMutex
 }
 
 // cachedResult stores cached health check results
 type cachedResult struct {
-	status    HealthStatus
 	timestamp time.Time
+	status    HealthStatus
 }
 
 // HealthManagerConfig configures the health manager

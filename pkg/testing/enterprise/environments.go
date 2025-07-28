@@ -232,8 +232,8 @@ func (e *EnterpriseTestSuite) runTestInEnvironment(testCase TestCase, envName st
 	env.mutex.Unlock()
 
 	// Validate environment state after test
-	if err := e.validateEnvironment(env); err != nil {
-		return fmt.Errorf("environment validation failed: %w", err)
+	if validationErr := e.validateEnvironment(env); validationErr != nil {
+		return fmt.Errorf("environment validation failed: %w", validationErr)
 	}
 
 	return err
