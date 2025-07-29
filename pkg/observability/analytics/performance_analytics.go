@@ -668,7 +668,8 @@ func (pae *PerformanceAnalyticsEngine) calculateStatistics(metrics []Performance
 	// Calculate variance and standard deviation
 	var variance float64
 	for _, value := range values {
-		variance += math.Pow(value-stats.Mean, 2)
+		diff := value - stats.Mean
+		variance += diff * diff
 	}
 	stats.Variance = variance / float64(len(values))
 	stats.StdDev = math.Sqrt(stats.Variance)
@@ -738,7 +739,8 @@ func analyzeDistribution(values []float64, stats PerformanceStatistics) Distribu
 	// Calculate skewness
 	var skewness float64
 	for _, value := range values {
-		skewness += math.Pow((value-stats.Mean)/stats.StdDev, 3)
+		normalized := (value - stats.Mean) / stats.StdDev
+		skewness += normalized * normalized * normalized
 	}
 	skewness /= float64(len(values))
 

@@ -333,6 +333,8 @@ func (c *CacheMiddleware) invalidateCache(ctx *lift.Context) {
 	if c.config.TenantIsolation {
 		// TODO: Invalidate tenant-specific entries
 		// This would require a more sophisticated cache store
+		// For now, this is a no-op as tenant isolation isn't fully implemented
+		return
 	}
 }
 

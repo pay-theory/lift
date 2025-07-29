@@ -416,9 +416,9 @@ func (dm *DashboardManager) substituteVariables(value any, variables map[string]
 		for varName, varValue := range variables {
 			placeholder := fmt.Sprintf("${%s}", varName)
 			if strValue, ok := varValue.(string); ok {
-				str = strings.Replace(str, placeholder, strValue, -1)
+				str = strings.ReplaceAll(str, placeholder, strValue)
 			} else {
-				str = strings.Replace(str, placeholder, fmt.Sprintf("%v", varValue), -1)
+				str = strings.ReplaceAll(str, placeholder, fmt.Sprintf("%v", varValue))
 			}
 		}
 		return str

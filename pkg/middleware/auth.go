@@ -117,18 +117,18 @@ func (v *JWTValidator) validateStandardClaims(claims *JWTClaims) error {
 	now := time.Now()
 
 	// Check expiration
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(now) {
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(now) {
 		return fmt.Errorf("token has expired")
 	}
 
 	// Check not before
-	if claims.NotBefore != nil && claims.NotBefore.Time.After(now) {
+	if claims.NotBefore != nil && claims.NotBefore.After(now) {
 		return fmt.Errorf("token not valid yet")
 	}
 
 	// Check issued at (with max age)
 	if claims.IssuedAt != nil && v.config.MaxAge > 0 {
-		maxAge := claims.IssuedAt.Time.Add(v.config.MaxAge)
+		maxAge := claims.IssuedAt.Add(v.config.MaxAge)
 		if now.After(maxAge) {
 			return fmt.Errorf("token exceeds maximum age")
 		}

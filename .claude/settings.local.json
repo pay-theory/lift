@@ -75,7 +75,9 @@
       "Bash(revive:*)",
       "Bash(python3:*)",
       "Bash(gosec:*)",
-      "Bash(dupl:*)"
+      "Bash(dupl:*)",
+      "Bash(staticcheck:*)",
+      "Bash(go:*)"
     ],
     "deny": []
   }

@@ -123,12 +123,7 @@ func NewConnectionPool(ctx context.Context, cfg *ConnectionPoolConfig) (*Connect
 
 	// Override endpoint if specified
 	if cfg.Endpoint != "" {
-		awsConfig.EndpointResolverWithOptions = aws.EndpointResolverWithOptionsFunc(
-			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-				return aws.Endpoint{
-					URL: cfg.Endpoint,
-				}, nil
-			})
+		awsConfig.BaseEndpoint = aws.String(cfg.Endpoint)
 	}
 
 	poolCtx, cancel := context.WithCancel(ctx)
@@ -313,6 +308,7 @@ func (p *ConnectionPool) performHealthCheck() {
 	totalChecked := 0
 	maxCheck := 5 // Check up to 5 connections
 
+healthLoop:
 	for i := 0; i < maxCheck && len(p.clients) > 0; i++ {
 		select {
 		case client := <-p.clients:
@@ -333,7 +329,7 @@ func (p *ConnectionPool) performHealthCheck() {
 				p.metrics.mu.Unlock()
 			}
 		default:
-			break
+			break healthLoop
 		}
 	}
 

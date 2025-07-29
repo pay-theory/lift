@@ -32,7 +32,7 @@ func handleUpdateOperation[T any](ctx *lift.Context,
 		return ctx.BadRequest("Tenant ID is required", nil)
 	}
 	if resourceID == "" {
-		return ctx.BadRequest(strings.Title(idParamName) + " ID is required", nil)
+		return ctx.BadRequest(strings.ToUpper(string(idParamName[0])) + idParamName[1:] + " ID is required", nil)
 	}
 
 	var req T

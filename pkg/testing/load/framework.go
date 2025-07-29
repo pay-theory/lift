@@ -186,11 +186,12 @@ func (lt *LoadTest) Run(ctx context.Context) (*Results, error) {
 		lt.rampUp(testCtx, workerChan)
 	} else {
 		// Start all workers immediately
+	startLoop:
 		for i := 0; i < lt.Config.Concurrent; i++ {
 			select {
 			case workerChan <- struct{}{}:
 			case <-testCtx.Done():
-				break
+				break startLoop
 			}
 		}
 	}

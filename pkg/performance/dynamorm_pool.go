@@ -162,13 +162,9 @@ func (p *DynamORMPool) ExecuteWithClient(ctx context.Context, tableName string, 
 	}
 	defer p.ReturnSession(session)
 
-	// Add timeout if configured
-	if p.config.DefaultTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, p.config.DefaultTimeout)
-		defer cancel()
-	}
-
+	// Execute the function with the client
+	// Note: DefaultTimeout is not used here as the function doesn't accept context
+	// Timeout should be handled by the caller or the function signature should be updated
 	return fn(session.client)
 }
 

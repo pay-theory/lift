@@ -235,6 +235,7 @@ func TestMockCloudWatchAlarmsClient(t *testing.T) {
 	storedAlarm := alarmsMock.GetAlarm("HighRequestCount")
 	if storedAlarm == nil {
 		t.Error("Alarm was not stored")
+		return
 	}
 	if storedAlarm.State != AlarmStateInsufficientData {
 		t.Errorf("Expected initial state %s, got %s", AlarmStateInsufficientData, storedAlarm.State)

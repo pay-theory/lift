@@ -666,7 +666,8 @@ func (drm *DisasterRecoveryManager) rollbackFailover(ctx context.Context, event 
 		"event": event,
 	}); err != nil {
 		// Log notification error but don't fail rollback operation
-		// TODO: Add proper logging once logger is available
+		// Silently ignore notification errors to not impact rollback
+		_ = err
 	}
 
 	return event, nil

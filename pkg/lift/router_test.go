@@ -160,7 +160,7 @@ func TestRouterFindHandler(t *testing.T) {
 	if handler == nil {
 		t.Error("Should find exact handler")
 	}
-	if params != nil && len(params) > 0 {
+	if len(params) > 0 {
 		t.Error("Exact match should not have parameters")
 	}
 
@@ -174,7 +174,7 @@ func TestRouterFindHandler(t *testing.T) {
 	}
 
 	// Test no match
-	handler, params = router.findHandler("GET", "/nonexistent")
+	handler, _ = router.findHandler("GET", "/nonexistent")
 	if handler != nil {
 		t.Error("Should not find handler for nonexistent route")
 	}

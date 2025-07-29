@@ -254,11 +254,14 @@ func main() {
 			continue
 		}
 
-		emoji := "✅"
-		if status.Status == health.StatusDegraded {
+		var emoji string
+		switch status.Status {
+		case health.StatusDegraded:
 			emoji = "⚠️"
-		} else if status.Status == health.StatusUnhealthy {
+		case health.StatusUnhealthy:
 			emoji = "❌"
+		default:
+			emoji = "✅"
 		}
 
 		fmt.Printf("%s %s: %s (%v) - %s\n",
@@ -268,11 +271,14 @@ func main() {
 	// Check overall health
 	fmt.Println("\n📋 Overall Health Status:")
 	overall := healthManager.OverallHealth(ctx)
-	overallEmoji := "✅"
-	if overall.Status == health.StatusDegraded {
+	var overallEmoji string
+	switch overall.Status {
+	case health.StatusDegraded:
 		overallEmoji = "⚠️"
-	} else if overall.Status == health.StatusUnhealthy {
+	case health.StatusUnhealthy:
 		overallEmoji = "❌"
+	default:
+		overallEmoji = "✅"
 	}
 
 	fmt.Printf("%s Overall: %s (%v) - %s\n",
