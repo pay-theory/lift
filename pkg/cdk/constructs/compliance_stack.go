@@ -437,54 +437,37 @@ func enableComplianceStandard(scope constructs.Construct, framework ComplianceFr
 
 // createComplianceFunction creates a Lambda function for compliance automation
 func createComplianceFunction(scope constructs.Construct, props *ComplianceStackProps, bucket awss3.Bucket, key awskms.Key) awslambda.Function {
-	// Create IAM role for compliance function
-	role := awsiam.NewRole(scope, jsii.String("ComplianceFunctionRole"), &awsiam.RoleProps{
-		AssumedBy: awsiam.NewServicePrincipal(jsii.String("lambda.amazonaws.com"), nil),
-		ManagedPolicies: &[]awsiam.IManagedPolicy{
-			awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/AWSLambdaBasicExecutionRole")),
-		},
-		InlinePolicies: &map[string]awsiam.PolicyDocument{
-			"CompliancePolicy": awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
-				Statements: &[]awsiam.PolicyStatement{
-					awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-						Effect: awsiam.Effect_ALLOW,
-						Actions: &[]*string{
-							jsii.String("config:GetComplianceDetailsByConfigRule"),
-							jsii.String("config:GetComplianceDetailsByResource"),
-							jsii.String("config:DescribeConfigRules"),
-							jsii.String("config:DescribeComplianceByConfigRule"),
-							jsii.String("securityhub:GetFindings"),
-							jsii.String("securityhub:BatchImportFindings"),
-							jsii.String("guardduty:GetFindings"),
-							jsii.String("cloudtrail:LookupEvents"),
-						},
-						Resources: &[]*string{jsii.String("*")},
-					}),
-				},
-			}),
-		},
-	})
 
-	// Grant permissions to S3 bucket and KMS key
-	bucket.GrantReadWrite(role, nil)
-	if key != nil {
-		key.GrantEncryptDecrypt(role)
-	}
-
-	return awslambda.NewFunction(scope, jsii.String("ComplianceFunction"), &awslambda.FunctionProps{
-		FunctionName: jsii.String(fmt.Sprintf("%s-compliance-automation", *props.AppName)),
-		Runtime:      awslambda.Runtime_PROVIDED_AL2(),
-		Handler:      jsii.String("bootstrap"),
-		Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
-		Role:         role,
-		Description:  jsii.String("Compliance automation and reporting function"),
+	function := CreateStandardLambdaFunction(scope, "ComplianceFunction", bucket, key, LambdaFunctionConfig{
+		FunctionName: fmt.Sprintf("%s-compliance-automation", *props.AppName),
+		Description:  "Compliance automation and reporting function",
 		Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
-		Environment: &map[string]*string{
+		Permissions:  "readwrite",
+		Environment: map[string]*string{
 			"COMPLIANCE_BUCKET": bucket.BucketName(),
 			"APP_NAME":          props.AppName,
 			"ENVIRONMENT":       props.Environment,
 		},
 	})
+
+	// Add additional compliance-specific permissions
+	functionRole := function.Role().(awsiam.Role)
+	functionRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect: awsiam.Effect_ALLOW,
+		Actions: &[]*string{
+			jsii.String("config:GetComplianceDetailsByConfigRule"),
+			jsii.String("config:GetComplianceDetailsByResource"),
+			jsii.String("config:DescribeConfigRules"),
+			jsii.String("config:DescribeComplianceByConfigRule"),
+			jsii.String("securityhub:GetFindings"),
+			jsii.String("securityhub:BatchImportFindings"),
+			jsii.String("guardduty:GetFindings"),
+			jsii.String("cloudtrail:LookupEvents"),
+		},
+		Resources: &[]*string{jsii.String("*")},
+	}))
+
+	return function
 }
 
 // createComplianceReports creates compliance reporting automation

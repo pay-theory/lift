@@ -210,26 +210,7 @@ func (tm *timeoutManager) recordSuccess(ctx *lift.Context, timeout, duration tim
 	tm.stats.TotalRequests++
 
 	// Update timeout statistics
-	if timeout < tm.stats.MinTimeout {
-		tm.stats.MinTimeout = timeout
-	}
-	if timeout > tm.stats.MaxTimeout {
-		tm.stats.MaxTimeout = timeout
-	}
-
-	// Update average timeout
-	if tm.stats.TotalRequests == 1 {
-		tm.stats.AverageTimeout = timeout
-		tm.stats.AverageDuration = duration
-	} else {
-		// Running average
-		tm.stats.AverageTimeout = time.Duration(
-			(int64(tm.stats.AverageTimeout)*int64(tm.stats.TotalRequests-1) + int64(timeout)) / int64(tm.stats.TotalRequests),
-		)
-		tm.stats.AverageDuration = time.Duration(
-			(int64(tm.stats.AverageDuration)*int64(tm.stats.TotalRequests-1) + int64(duration)) / int64(tm.stats.TotalRequests),
-		)
-	}
+	tm.updateTimeoutStats(timeout, duration)
 
 	// Update timeout ratio
 	tm.stats.TimeoutRatio = float64(tm.stats.TimeoutRequests) / float64(tm.stats.TotalRequests)
@@ -249,6 +230,19 @@ func (tm *timeoutManager) recordTimeout(ctx *lift.Context, timeout, duration tim
 	tm.stats.TimeoutRequests++
 
 	// Update timeout statistics
+	tm.updateTimeoutStats(timeout, duration)
+
+	// Update timeout ratio
+	tm.stats.TimeoutRatio = float64(tm.stats.TimeoutRequests) / float64(tm.stats.TotalRequests)
+
+	// Record metrics
+	if tm.config.EnableMetrics && tm.config.Metrics != nil {
+		tm.recordMetrics(ctx, "timeout", timeout, duration)
+	}
+}
+
+// updateTimeoutStats updates min, max, and average timeout statistics
+func (tm *timeoutManager) updateTimeoutStats(timeout, duration time.Duration) {
 	if timeout < tm.stats.MinTimeout {
 		tm.stats.MinTimeout = timeout
 	}
@@ -268,14 +262,6 @@ func (tm *timeoutManager) recordTimeout(ctx *lift.Context, timeout, duration tim
 		tm.stats.AverageDuration = time.Duration(
 			(int64(tm.stats.AverageDuration)*int64(tm.stats.TotalRequests-1) + int64(duration)) / int64(tm.stats.TotalRequests),
 		)
-	}
-
-	// Update timeout ratio
-	tm.stats.TimeoutRatio = float64(tm.stats.TimeoutRequests) / float64(tm.stats.TotalRequests)
-
-	// Record metrics
-	if tm.config.EnableMetrics && tm.config.Metrics != nil {
-		tm.recordMetrics(ctx, "timeout", timeout, duration)
 	}
 }
 

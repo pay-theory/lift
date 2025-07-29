@@ -195,37 +195,7 @@ func (s *DynamoDBConnectionStore) ListByUser(ctx context.Context, userID string)
 		return nil, fmt.Errorf("user ID is required")
 	}
 
-	// Query GSI1 for user connections
-	result, err := s.client.Query(ctx, &dynamodb.QueryInput{
-		TableName:              aws.String(s.tableName),
-		IndexName:              aws.String("gsi1"),
-		KeyConditionExpression: aws.String("gsi1pk = :pk"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("USER#%s", userID)},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to query connections by user: %w", err)
-	}
-
-	// Convert results
-	connections := make([]*Connection, 0, len(result.Items))
-	for _, item := range result.Items {
-		var dbConn DynamoDBConnection
-		if err := attributevalue.UnmarshalMap(item, &dbConn); err != nil {
-			continue // Skip invalid items
-		}
-
-		connections = append(connections, &Connection{
-			ID:        dbConn.ID,
-			UserID:    dbConn.UserID,
-			TenantID:  dbConn.TenantID,
-			CreatedAt: dbConn.CreatedAt,
-			Metadata:  dbConn.Metadata,
-		})
-	}
-
-	return connections, nil
+	return s.queryConnectionsByIndex(ctx, "gsi1", "gsi1pk", fmt.Sprintf("USER#%s", userID), "failed to query connections by user")
 }
 
 // ListByTenant retrieves all connections for a tenant
@@ -234,17 +204,21 @@ func (s *DynamoDBConnectionStore) ListByTenant(ctx context.Context, tenantID str
 		return nil, fmt.Errorf("tenant ID is required")
 	}
 
-	// Query GSI2 for tenant connections
+	return s.queryConnectionsByIndex(ctx, "gsi2", "gsi2pk", fmt.Sprintf("TENANT#%s", tenantID), "failed to query connections by tenant")
+}
+
+// queryConnectionsByIndex is a helper function to query connections by a GSI
+func (s *DynamoDBConnectionStore) queryConnectionsByIndex(ctx context.Context, indexName, keyAttribute, keyValue, errorMessage string) ([]*Connection, error) {
 	result, err := s.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(s.tableName),
-		IndexName:              aws.String("gsi2"),
-		KeyConditionExpression: aws.String("gsi2pk = :pk"),
+		IndexName:              aws.String(indexName),
+		KeyConditionExpression: aws.String(fmt.Sprintf("%s = :pk", keyAttribute)),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("TENANT#%s", tenantID)},
+			":pk": &types.AttributeValueMemberS{Value: keyValue},
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to query connections by tenant: %w", err)
+		return nil, fmt.Errorf("%s: %w", errorMessage, err)
 	}
 
 	// Convert results

@@ -10,6 +10,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// createComplianceFrameworkTestStack creates a test stack for compliance framework testing
+func createComplianceFrameworkTestStack(appName string, frameworks []ComplianceFramework) (awscdk.Stack, assertions.Template) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
+
+	NewComplianceStack(stack, "TestComplianceStack", &ComplianceStackProps{
+		AppName: jsii.String(appName),
+		ComplianceFrameworks: &frameworks,
+		EnableConfig:      jsii.Bool(true),
+		EnableSecurityHub: jsii.Bool(true),
+	})
+
+	template := assertions.Template_FromStack(stack, nil)
+	return stack, template
+}
+
 func TestComplianceStack_Creation(t *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
@@ -213,23 +229,10 @@ func TestComplianceStack_SOC2Framework(_ *testing.T) {
 }
 
 func TestComplianceStack_HIPAAFramework(t *testing.T) {
-	// GIVEN
-	app := awscdk.NewApp(nil)
-	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-
-	// WHEN
-	NewComplianceStack(stack, "TestComplianceStack", &ComplianceStackProps{
-		AppName: jsii.String("hipaa-app"),
-		ComplianceFrameworks: &[]ComplianceFramework{
-			HIPAA,
-		},
-		EnableConfig:      jsii.Bool(true),
-		EnableSecurityHub: jsii.Bool(true),
-	})
+	// GIVEN, WHEN
+	_, template := createComplianceFrameworkTestStack("hipaa-app", []ComplianceFramework{HIPAA})
 
 	// THEN
-	template := assertions.Template_FromStack(stack, nil)
-
 	// Verify HIPAA-specific Config rules are created
 	template.HasResourceProperties(jsii.String("AWS::Config::ConfigRule"), map[string]interface{}{
 		"Source": map[string]interface{}{
@@ -244,23 +247,10 @@ func TestComplianceStack_HIPAAFramework(t *testing.T) {
 }
 
 func TestComplianceStack_PCIDSSFramework(t *testing.T) {
-	// GIVEN
-	app := awscdk.NewApp(nil)
-	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
-
-	// WHEN
-	NewComplianceStack(stack, "TestComplianceStack", &ComplianceStackProps{
-		AppName: jsii.String("pci-app"),
-		ComplianceFrameworks: &[]ComplianceFramework{
-			PCI_DSS,
-		},
-		EnableConfig:      jsii.Bool(true),
-		EnableSecurityHub: jsii.Bool(true),
-	})
+	// GIVEN, WHEN
+	_, template := createComplianceFrameworkTestStack("pci-app", []ComplianceFramework{PCI_DSS})
 
 	// THEN
-	template := assertions.Template_FromStack(stack, nil)
-
 	// Verify PCI DSS-specific Config rules are created
 	template.HasResourceProperties(jsii.String("AWS::Config::ConfigRule"), map[string]interface{}{
 		"Source": map[string]interface{}{

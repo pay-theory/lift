@@ -519,30 +519,7 @@ func (bct *BankingComplianceTemplate) ValidateCompliance(ctx LiftContext) (*Comp
 
 // GenerateComplianceReport generates a banking compliance report
 func (bct *BankingComplianceTemplate) GenerateComplianceReport() (*IndustryComplianceReport, error) {
-	report := &IndustryComplianceReport{
-		Industry:         "banking",
-		Regulations:      []RegulationCompliance{},
-		OverallScore:     95.0,
-		ComplianceStatus: "compliant",
-		GeneratedAt:      time.Now(),
-	}
-
-	// Add regulation compliance details
-	regulations := bct.GetRegulations()
-	for _, reg := range regulations {
-		regCompliance := RegulationCompliance{
-			Regulation:          reg,
-			Status:              "compliant",
-			Score:               95.0,
-			RequiredControls:    10,
-			ImplementedControls: 10,
-			LastAssessment:      time.Now().AddDate(0, -1, 0),
-			NextAssessment:      time.Now().AddDate(0, 11, 0),
-		}
-		report.Regulations = append(report.Regulations, regCompliance)
-	}
-
-	return report, nil
+	return generateStandardComplianceReport("banking", 95.0, 10, 10, bct.GetRegulations())
 }
 
 // NewHealthcareComplianceTemplate creates a new healthcare compliance template
@@ -689,30 +666,7 @@ func (hct *HealthcareComplianceTemplate) ValidateCompliance(ctx LiftContext) (*C
 
 // GenerateComplianceReport generates a healthcare compliance report
 func (hct *HealthcareComplianceTemplate) GenerateComplianceReport() (*IndustryComplianceReport, error) {
-	report := &IndustryComplianceReport{
-		Industry:         "healthcare",
-		Regulations:      []RegulationCompliance{},
-		OverallScore:     92.0,
-		ComplianceStatus: "compliant",
-		GeneratedAt:      time.Now(),
-	}
-
-	// Add regulation compliance details
-	regulations := hct.GetRegulations()
-	for _, reg := range regulations {
-		regCompliance := RegulationCompliance{
-			Regulation:          reg,
-			Status:              "compliant",
-			Score:               92.0,
-			RequiredControls:    8,
-			ImplementedControls: 8,
-			LastAssessment:      time.Now().AddDate(0, -1, 0),
-			NextAssessment:      time.Now().AddDate(0, 11, 0),
-		}
-		report.Regulations = append(report.Regulations, regCompliance)
-	}
-
-	return report, nil
+	return generateStandardComplianceReport("healthcare", 92.0, 8, 8, hct.GetRegulations())
 }
 
 // NewEcommerceComplianceTemplate creates a new e-commerce compliance template
@@ -848,30 +802,7 @@ func (ect *EcommerceComplianceTemplate) ValidateCompliance(ctx LiftContext) (*Co
 
 // GenerateComplianceReport generates an e-commerce compliance report
 func (ect *EcommerceComplianceTemplate) GenerateComplianceReport() (*IndustryComplianceReport, error) {
-	report := &IndustryComplianceReport{
-		Industry:         "ecommerce",
-		Regulations:      []RegulationCompliance{},
-		OverallScore:     88.0,
-		ComplianceStatus: "compliant",
-		GeneratedAt:      time.Now(),
-	}
-
-	// Add regulation compliance details
-	regulations := ect.GetRegulations()
-	for _, reg := range regulations {
-		regCompliance := RegulationCompliance{
-			Regulation:          reg,
-			Status:              "compliant",
-			Score:               88.0,
-			RequiredControls:    12,
-			ImplementedControls: 11,
-			LastAssessment:      time.Now().AddDate(0, -1, 0),
-			NextAssessment:      time.Now().AddDate(0, 11, 0),
-		}
-		report.Regulations = append(report.Regulations, regCompliance)
-	}
-
-	return report, nil
+	return generateStandardComplianceReport("ecommerce", 88.0, 12, 11, ect.GetRegulations())
 }
 
 // NewGovernmentComplianceTemplate creates a new government compliance template
@@ -1032,23 +963,27 @@ func (gct *GovernmentComplianceTemplate) ValidateCompliance(ctx LiftContext) (*C
 
 // GenerateComplianceReport generates a government compliance report
 func (gct *GovernmentComplianceTemplate) GenerateComplianceReport() (*IndustryComplianceReport, error) {
+	return generateStandardComplianceReport("government", 96.0, 15, 15, gct.GetRegulations())
+}
+
+// generateStandardComplianceReport creates a standard compliance report with common patterns
+func generateStandardComplianceReport(industry string, overallScore float64, requiredControls, implementedControls int, regulations []string) (*IndustryComplianceReport, error) {
 	report := &IndustryComplianceReport{
-		Industry:         "government",
+		Industry:         industry,
 		Regulations:      []RegulationCompliance{},
-		OverallScore:     96.0,
+		OverallScore:     overallScore,
 		ComplianceStatus: "compliant",
 		GeneratedAt:      time.Now(),
 	}
 
 	// Add regulation compliance details
-	regulations := gct.GetRegulations()
 	for _, reg := range regulations {
 		regCompliance := RegulationCompliance{
 			Regulation:          reg,
 			Status:              "compliant",
-			Score:               96.0,
-			RequiredControls:    15,
-			ImplementedControls: 15,
+			Score:               overallScore,
+			RequiredControls:    requiredControls,
+			ImplementedControls: implementedControls,
 			LastAssessment:      time.Now().AddDate(0, -1, 0),
 			NextAssessment:      time.Now().AddDate(0, 11, 0),
 		}

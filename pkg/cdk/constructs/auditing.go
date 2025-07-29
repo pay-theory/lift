@@ -488,31 +488,12 @@ func createAuditLambdaFunction(scope constructs.Construct, id string, props *Aud
 	Timeout      awscdk.Duration
 	Permissions  string // "read" or "readwrite"
 }) awslambda.Function {
-	// Create IAM role
-	role := awsiam.NewRole(scope, jsii.String(fmt.Sprintf("%sRole", id)), &awsiam.RoleProps{
-		AssumedBy: awsiam.NewServicePrincipal(jsii.String("lambda.amazonaws.com"), nil),
-		ManagedPolicies: &[]awsiam.IManagedPolicy{
-			awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/AWSLambdaBasicExecutionRole")),
-		},
-	})
-
-	// Grant permissions
-	if config.Permissions == "readwrite" {
-		bucket.GrantReadWrite(role, nil)
-	} else {
-		bucket.GrantRead(role, nil)
-	}
-	encryptionKey.GrantEncryptDecrypt(role)
-
-	return awslambda.NewFunction(scope, jsii.String(id), &awslambda.FunctionProps{
-		FunctionName: jsii.String(config.FunctionName),
-		Runtime:      awslambda.Runtime_PROVIDED_AL2(),
-		Handler:      jsii.String("bootstrap"),
-		Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
-		Role:         role,
-		Description:  jsii.String(config.Description),
+	return CreateStandardLambdaFunction(scope, id, bucket, encryptionKey, LambdaFunctionConfig{
+		FunctionName: config.FunctionName,
+		Description:  config.Description,
 		Timeout:      config.Timeout,
-		Environment: &map[string]*string{
+		Permissions:  config.Permissions,
+		Environment: map[string]*string{
 			"AUDIT_BUCKET": bucket.BucketName(),
 			"APP_NAME":     props.AppName,
 			"ENVIRONMENT":  props.Environment,
@@ -522,56 +503,39 @@ func createAuditLambdaFunction(scope constructs.Construct, id string, props *Aud
 
 // createLogProcessingFunction creates a Lambda function for log processing
 func createLogProcessingFunction(scope constructs.Construct, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key, stream awskinesis.Stream) awslambda.Function {
-	// Create IAM role for log processing function
-	role := awsiam.NewRole(scope, jsii.String("LogProcessingRole"), &awsiam.RoleProps{
-		AssumedBy: awsiam.NewServicePrincipal(jsii.String("lambda.amazonaws.com"), nil),
-		ManagedPolicies: &[]awsiam.IManagedPolicy{
-			awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/AWSLambdaBasicExecutionRole")),
-		},
-		InlinePolicies: &map[string]awsiam.PolicyDocument{
-			"LogProcessingPolicy": awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
-				Statements: &[]awsiam.PolicyStatement{
-					awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-						Effect: awsiam.Effect_ALLOW,
-						Actions: &[]*string{
-							jsii.String("kinesis:DescribeStream"),
-							jsii.String("kinesis:GetShardIterator"),
-							jsii.String("kinesis:GetRecords"),
-							jsii.String("kinesis:ListShards"),
-						},
-						Resources: &[]*string{stream.StreamArn()},
-					}),
-					awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-						Effect: awsiam.Effect_ALLOW,
-						Actions: &[]*string{
-							jsii.String("logs:CreateLogStream"),
-							jsii.String("logs:PutLogEvents"),
-						},
-						Resources: &[]*string{jsii.String("*")},
-					}),
-				},
-			}),
-		},
-	})
-
-	// Grant permissions
-	bucket.GrantReadWrite(role, nil)
-	encryptionKey.GrantEncryptDecrypt(role)
-
-	function := awslambda.NewFunction(scope, jsii.String("LogProcessingFunction"), &awslambda.FunctionProps{
-		FunctionName: jsii.String(fmt.Sprintf("%s-log-processing", *props.AppName)),
-		Runtime:      awslambda.Runtime_PROVIDED_AL2(),
-		Handler:      jsii.String("bootstrap"),
-		Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
-		Role:         role,
-		Description:  jsii.String("Real-time audit log processing function"),
+	function := createAuditLambdaFunction(scope, "LogProcessingFunction", props, bucket, encryptionKey, struct {
+		FunctionName string
+		Description  string
+		Timeout      awscdk.Duration
+		Permissions  string
+	}{
+		FunctionName: fmt.Sprintf("%s-log-processing", *props.AppName),
+		Description:  "Real-time audit log processing function",
 		Timeout:      awscdk.Duration_Minutes(jsii.Number(5)),
-		Environment: &map[string]*string{
-			"AUDIT_BUCKET": bucket.BucketName(),
-			"APP_NAME":     props.AppName,
-			"ENVIRONMENT":  props.Environment,
-		},
+		Permissions:  "readwrite",
 	})
+
+	// Add additional Kinesis permissions to the role
+	role := function.Role().(awsiam.Role)
+	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect: awsiam.Effect_ALLOW,
+		Actions: &[]*string{
+			jsii.String("kinesis:DescribeStream"),
+			jsii.String("kinesis:GetShardIterator"),
+			jsii.String("kinesis:GetRecords"),
+			jsii.String("kinesis:ListShards"),
+		},
+		Resources: &[]*string{stream.StreamArn()},
+	}))
+
+	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect: awsiam.Effect_ALLOW,
+		Actions: &[]*string{
+			jsii.String("logs:CreateLogStream"),
+			jsii.String("logs:PutLogEvents"),
+		},
+		Resources: &[]*string{jsii.String("*")},
+	}))
 
 	// Add Kinesis event source using higher-level construct
 	eventSource := awslambdaeventsources.NewKinesisEventSource(stream, &awslambdaeventsources.KinesisEventSourceProps{
@@ -591,31 +555,16 @@ func createLogProcessingFunction(scope constructs.Construct, props *AuditingProp
 
 // createIntegrityCheckingFunction creates a Lambda function for log integrity checking
 func createIntegrityCheckingFunction(scope constructs.Construct, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key) awslambda.Function {
-	// Create IAM role
-	role := awsiam.NewRole(scope, jsii.String("IntegrityCheckingRole"), &awsiam.RoleProps{
-		AssumedBy: awsiam.NewServicePrincipal(jsii.String("lambda.amazonaws.com"), nil),
-		ManagedPolicies: &[]awsiam.IManagedPolicy{
-			awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/AWSLambdaBasicExecutionRole")),
-		},
-	})
-
-	// Grant permissions
-	bucket.GrantRead(role, nil)
-	encryptionKey.GrantEncryptDecrypt(role)
-
-	function := awslambda.NewFunction(scope, jsii.String("IntegrityCheckingFunction"), &awslambda.FunctionProps{
-		FunctionName: jsii.String(fmt.Sprintf("%s-integrity-checking", *props.AppName)),
-		Runtime:      awslambda.Runtime_PROVIDED_AL2(),
-		Handler:      jsii.String("bootstrap"),
-		Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
-		Role:         role,
-		Description:  jsii.String("Audit log integrity checking function"),
+	function := createAuditLambdaFunction(scope, "IntegrityCheckingFunction", props, bucket, encryptionKey, struct {
+		FunctionName string
+		Description  string
+		Timeout      awscdk.Duration
+		Permissions  string
+	}{
+		FunctionName: fmt.Sprintf("%s-integrity-checking", *props.AppName),
+		Description:  "Audit log integrity checking function",
 		Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
-		Environment: &map[string]*string{
-			"AUDIT_BUCKET": bucket.BucketName(),
-			"APP_NAME":     props.AppName,
-			"ENVIRONMENT":  props.Environment,
-		},
+		Permissions:  "read",
 	})
 
 	// Schedule integrity checks
@@ -629,31 +578,16 @@ func createIntegrityCheckingFunction(scope constructs.Construct, props *Auditing
 
 // createAuditComplianceFunction creates a Lambda function for compliance reporting
 func createAuditComplianceFunction(scope constructs.Construct, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key) awslambda.Function {
-	// Create IAM role
-	role := awsiam.NewRole(scope, jsii.String("ComplianceRole"), &awsiam.RoleProps{
-		AssumedBy: awsiam.NewServicePrincipal(jsii.String("lambda.amazonaws.com"), nil),
-		ManagedPolicies: &[]awsiam.IManagedPolicy{
-			awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/AWSLambdaBasicExecutionRole")),
-		},
-	})
-
-	// Grant permissions
-	bucket.GrantReadWrite(role, nil)
-	encryptionKey.GrantEncryptDecrypt(role)
-
-	function := awslambda.NewFunction(scope, jsii.String("ComplianceFunction"), &awslambda.FunctionProps{
-		FunctionName: jsii.String(fmt.Sprintf("%s-compliance-reporting", *props.AppName)),
-		Runtime:      awslambda.Runtime_PROVIDED_AL2(),
-		Handler:      jsii.String("bootstrap"),
-		Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
-		Role:         role,
-		Description:  jsii.String("Audit compliance reporting function"),
+	function := createAuditLambdaFunction(scope, "ComplianceFunction", props, bucket, encryptionKey, struct {
+		FunctionName string
+		Description  string
+		Timeout      awscdk.Duration
+		Permissions  string
+	}{
+		FunctionName: fmt.Sprintf("%s-compliance-reporting", *props.AppName),
+		Description:  "Audit compliance reporting function",
 		Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
-		Environment: &map[string]*string{
-			"AUDIT_BUCKET": bucket.BucketName(),
-			"APP_NAME":     props.AppName,
-			"ENVIRONMENT":  props.Environment,
-		},
+		Permissions:  "readwrite",
 	})
 
 	// Schedule compliance reports
@@ -695,45 +629,70 @@ func createAuditDashboard(scope constructs.Construct, props *AuditingProps, appL
 	})
 }
 
+// createLogMetricAlarm creates a CloudWatch alarm for log metrics
+func createLogMetricAlarm(scope constructs.Construct, id string, props *AuditingProps, config struct {
+	AlarmName       string
+	LogGroupName    *string
+	PeriodMinutes   int
+	Threshold       float64
+	EvaluationPeriods int
+	DatapointsToAlarm int
+}) awscloudwatch.Alarm {
+	return awscloudwatch.NewAlarm(scope, jsii.String(id), &awscloudwatch.AlarmProps{
+		AlarmName: jsii.String(config.AlarmName),
+		Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
+			Namespace:  jsii.String("AWS/Logs"),
+			MetricName: jsii.String("IncomingLogEvents"),
+			DimensionsMap: &map[string]*string{
+				"LogGroupName": config.LogGroupName,
+			},
+			Statistic: jsii.String("Sum"),
+			Period:    awscdk.Duration_Minutes(jsii.Number(config.PeriodMinutes)),
+		}),
+		Threshold:         jsii.Number(config.Threshold),
+		EvaluationPeriods: jsii.Number(config.EvaluationPeriods),
+		DatapointsToAlarm: jsii.Number(config.DatapointsToAlarm),
+		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+	})
+}
+
 // createAuditAlarms creates CloudWatch alarms for audit monitoring
 func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogGroup awslogs.LogGroup, _ awslogs.LogGroup, auditLogGroup awslogs.LogGroup) []awscloudwatch.Alarm {
 	var alarms []awscloudwatch.Alarm
 
 	// Failed login attempts alarm
-	failedLoginAlarm := awscloudwatch.NewAlarm(scope, jsii.String("FailedLoginAlarm"), &awscloudwatch.AlarmProps{
-		AlarmName: jsii.String(fmt.Sprintf("%s-failed-login-attempts", *props.AppName)),
-		Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:  jsii.String("AWS/Logs"),
-			MetricName: jsii.String("IncomingLogEvents"),
-			DimensionsMap: &map[string]*string{
-				"LogGroupName": appLogGroup.LogGroupName(),
-			},
-			Statistic: jsii.String("Sum"),
-			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-		}),
-		Threshold:         jsii.Number(10),
-		EvaluationPeriods: jsii.Number(1),
-		DatapointsToAlarm: jsii.Number(1),
-		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+	failedLoginAlarm := createLogMetricAlarm(scope, "FailedLoginAlarm", props, struct {
+		AlarmName       string
+		LogGroupName    *string
+		PeriodMinutes   int
+		Threshold       float64
+		EvaluationPeriods int
+		DatapointsToAlarm int
+	}{
+		AlarmName:       fmt.Sprintf("%s-failed-login-attempts", *props.AppName),
+		LogGroupName:    appLogGroup.LogGroupName(),
+		PeriodMinutes:   5,
+		Threshold:       10,
+		EvaluationPeriods: 1,
+		DatapointsToAlarm: 1,
 	})
 	alarms = append(alarms, failedLoginAlarm)
 
 	// Suspicious activity alarm
-	suspiciousActivityAlarm := awscloudwatch.NewAlarm(scope, jsii.String("SuspiciousActivityAlarm"), &awscloudwatch.AlarmProps{
-		AlarmName: jsii.String(fmt.Sprintf("%s-suspicious-activity", *props.AppName)),
-		Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:  jsii.String("AWS/Logs"),
-			MetricName: jsii.String("IncomingLogEvents"),
-			DimensionsMap: &map[string]*string{
-				"LogGroupName": auditLogGroup.LogGroupName(),
-			},
-			Statistic: jsii.String("Sum"),
-			Period:    awscdk.Duration_Minutes(jsii.Number(15)),
-		}),
-		Threshold:         jsii.Number(100),
-		EvaluationPeriods: jsii.Number(2),
-		DatapointsToAlarm: jsii.Number(2),
-		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+	suspiciousActivityAlarm := createLogMetricAlarm(scope, "SuspiciousActivityAlarm", props, struct {
+		AlarmName       string
+		LogGroupName    *string
+		PeriodMinutes   int
+		Threshold       float64
+		EvaluationPeriods int
+		DatapointsToAlarm int
+	}{
+		AlarmName:       fmt.Sprintf("%s-suspicious-activity", *props.AppName),
+		LogGroupName:    auditLogGroup.LogGroupName(),
+		PeriodMinutes:   15,
+		Threshold:       100,
+		EvaluationPeriods: 2,
+		DatapointsToAlarm: 2,
 	})
 	alarms = append(alarms, suspiciousActivityAlarm)
 

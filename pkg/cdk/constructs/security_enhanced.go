@@ -263,70 +263,22 @@ func (s *EnhancedSecurity) configureWAF(props *EnhancedSecurityProps) {
 
 	// SQL injection protection
 	if props.WAFConfig.EnableSQLiProtection != nil && *props.WAFConfig.EnableSQLiProtection {
-		rules = append(rules, awswafv2.CfnWebACL_RuleProperty{
-			Name:     jsii.String("SQLiProtection"),
-			Priority: jsii.Number(priority),
-			Statement: &awswafv2.CfnWebACL_StatementProperty{
-				ManagedRuleGroupStatement: &awswafv2.CfnWebACL_ManagedRuleGroupStatementProperty{
-					VendorName: jsii.String("AWS"),
-					Name:       jsii.String("AWSManagedRulesSQLiRuleSet"),
-				},
-			},
-			OverrideAction: &awswafv2.CfnWebACL_OverrideActionProperty{
-				None: &map[string]interface{}{},
-			},
-			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
-				SampledRequestsEnabled:   jsii.Bool(true),
-				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:               jsii.String("SQLiProtection"),
-			},
-		})
+		rule := createManagedWAFRule("SQLiProtection", "AWSManagedRulesSQLiRuleSet", int(priority))
+		rules = append(rules, rule)
 		priority++
 	}
 
 	// XSS protection
 	if props.WAFConfig.EnableXSSProtection != nil && *props.WAFConfig.EnableXSSProtection {
-		rules = append(rules, awswafv2.CfnWebACL_RuleProperty{
-			Name:     jsii.String("XSSProtection"),
-			Priority: jsii.Number(priority),
-			Statement: &awswafv2.CfnWebACL_StatementProperty{
-				ManagedRuleGroupStatement: &awswafv2.CfnWebACL_ManagedRuleGroupStatementProperty{
-					VendorName: jsii.String("AWS"),
-					Name:       jsii.String("AWSManagedRulesCommonRuleSet"),
-				},
-			},
-			OverrideAction: &awswafv2.CfnWebACL_OverrideActionProperty{
-				None: &map[string]interface{}{},
-			},
-			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
-				SampledRequestsEnabled:   jsii.Bool(true),
-				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:               jsii.String("XSSProtection"),
-			},
-		})
+		rule := createManagedWAFRule("XSSProtection", "AWSManagedRulesCommonRuleSet", int(priority))
+		rules = append(rules, rule)
 		priority++
 	}
 
 	// Known bad inputs
 	if props.WAFConfig.EnableKnownBadInputs != nil && *props.WAFConfig.EnableKnownBadInputs {
-		rules = append(rules, awswafv2.CfnWebACL_RuleProperty{
-			Name:     jsii.String("KnownBadInputs"),
-			Priority: jsii.Number(priority),
-			Statement: &awswafv2.CfnWebACL_StatementProperty{
-				ManagedRuleGroupStatement: &awswafv2.CfnWebACL_ManagedRuleGroupStatementProperty{
-					VendorName: jsii.String("AWS"),
-					Name:       jsii.String("AWSManagedRulesKnownBadInputsRuleSet"),
-				},
-			},
-			OverrideAction: &awswafv2.CfnWebACL_OverrideActionProperty{
-				None: &map[string]interface{}{},
-			},
-			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
-				SampledRequestsEnabled:   jsii.Bool(true),
-				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:               jsii.String("KnownBadInputs"),
-			},
-		})
+		rule := createManagedWAFRule("KnownBadInputs", "AWSManagedRulesKnownBadInputsRuleSet", int(priority))
+		rules = append(rules, rule)
 		priority++
 	}
 
@@ -452,6 +404,28 @@ func (s *EnhancedSecurity) createIPSet(name string, ips *[]*string) *string {
 		},
 	})
 	return ipSet.AttrArn()
+}
+
+// createManagedWAFRule creates a managed WAF rule with common configuration
+func createManagedWAFRule(ruleName string, managedRuleGroupName string, priority int) awswafv2.CfnWebACL_RuleProperty {
+	return awswafv2.CfnWebACL_RuleProperty{
+		Name:     jsii.String(ruleName),
+		Priority: jsii.Number(priority),
+		Statement: &awswafv2.CfnWebACL_StatementProperty{
+			ManagedRuleGroupStatement: &awswafv2.CfnWebACL_ManagedRuleGroupStatementProperty{
+				VendorName: jsii.String("AWS"),
+				Name:       jsii.String(managedRuleGroupName),
+			},
+		},
+		OverrideAction: &awswafv2.CfnWebACL_OverrideActionProperty{
+			None: &map[string]interface{}{},
+		},
+		VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
+			SampledRequestsEnabled:   jsii.Bool(true),
+			CloudWatchMetricsEnabled: jsii.Bool(true),
+			MetricName:               jsii.String(ruleName),
+		},
+	}
 }
 
 func (s *EnhancedSecurity) createWAFLogging(props *EnhancedSecurityProps) {

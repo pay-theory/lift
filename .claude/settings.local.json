@@ -74,7 +74,8 @@
       "Bash(./fix-fieldalignment.sh:*)",
       "Bash(revive:*)",
       "Bash(python3:*)",
-      "Bash(gosec:*)"
+      "Bash(gosec:*)",
+      "Bash(dupl:*)"
     ],
     "deny": []
   }
