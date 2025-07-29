@@ -25,7 +25,7 @@ func TestAllConstructsSynthesize(t *testing.T) {
 	stack := awscdk.NewStack(app, jsii.String("IntegrationTestStack"), nil)
 
 	// Basic constructs
-	t.Run("LiftFunction", func(t *testing.T) {
+	t.Run("LiftFunction", func(_ *testing.T) {
 		constructs.NewLiftFunction(stack, jsii.String("LiftFn"), &constructs.LiftFunctionProps{
 			FunctionProps: awslambda.FunctionProps{
 				Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
@@ -35,7 +35,7 @@ func TestAllConstructsSynthesize(t *testing.T) {
 		})
 	})
 
-	t.Run("RateLimitedFunction", func(t *testing.T) {
+	t.Run("RateLimitedFunction", func(_ *testing.T) {
 		constructs.NewRateLimitedFunction(stack, jsii.String("RateLimitedFn"), &constructs.RateLimitedFunctionProps{
 			LiftFunctionProps: constructs.LiftFunctionProps{
 				FunctionProps: awslambda.FunctionProps{
@@ -47,7 +47,7 @@ func TestAllConstructsSynthesize(t *testing.T) {
 		})
 	})
 
-	t.Run("IdempotentFunction", func(t *testing.T) {
+	t.Run("IdempotentFunction", func(_ *testing.T) {
 		constructs.NewIdempotentFunction(stack, jsii.String("IdempotentFn"), &constructs.IdempotentFunctionProps{
 			LiftFunctionProps: constructs.LiftFunctionProps{
 				FunctionProps: awslambda.FunctionProps{
@@ -60,7 +60,7 @@ func TestAllConstructsSynthesize(t *testing.T) {
 		})
 	})
 
-	t.Run("SecureFunction", func(t *testing.T) {
+	t.Run("SecureFunction", func(_ *testing.T) {
 		constructs.NewSecureFunction(stack, jsii.String("SecureFn"), &constructs.SecureFunctionProps{
 			LiftFunctionProps: constructs.LiftFunctionProps{
 				FunctionProps: awslambda.FunctionProps{
@@ -72,7 +72,7 @@ func TestAllConstructsSynthesize(t *testing.T) {
 		})
 	})
 
-	t.Run("MonitoredFunction", func(t *testing.T) {
+	t.Run("MonitoredFunction", func(_ *testing.T) {
 		constructs.NewMonitoredFunction(stack, jsii.String("MonitoredFn"), &constructs.MonitoredFunctionProps{
 			LiftFunctionProps: constructs.LiftFunctionProps{
 				FunctionProps: awslambda.FunctionProps{
@@ -94,14 +94,14 @@ func TestAllPatternsSynthesize(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("PatternTestStack"), nil)
 
-	t.Run("BasicAPI", func(t *testing.T) {
+	t.Run("BasicAPI", func(_ *testing.T) {
 		patterns.NewBasicAPI(stack, jsii.String("BasicAPI"), &patterns.BasicAPIProps{
 			ApiName: jsii.String("basic-api"),
 			Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
 		})
 	})
 
-	t.Run("SecureAPI", func(t *testing.T) {
+	t.Run("SecureAPI", func(_ *testing.T) {
 		patterns.NewSecureAPI(stack, jsii.String("SecureAPI"), &patterns.SecureAPIProps{
 			ApiName:            jsii.String("secure-api"),
 			Code:               awslambda.Code_FromAsset(jsii.String("."), nil),
@@ -110,7 +110,7 @@ func TestAllPatternsSynthesize(t *testing.T) {
 		})
 	})
 
-	t.Run("LiftApp", func(t *testing.T) {
+	t.Run("LiftApp", func(_ *testing.T) {
 		patterns.NewLiftApp(stack, jsii.String("LiftApp"), &patterns.LiftAppProps{
 			AppName:            jsii.String("full-app"),
 			CodeAssetPath:      jsii.String("."),
@@ -128,7 +128,7 @@ func TestAllPatternsSynthesize(t *testing.T) {
 func TestAllStacksSynthesize(t *testing.T) {
 	app := awscdk.NewApp(nil)
 
-	t.Run("MicroserviceStack", func(t *testing.T) {
+	t.Run("MicroserviceStack", func(_ *testing.T) {
 		stack := stacks.NewMicroserviceStack(app, "MicroserviceStack", &stacks.MicroserviceStackProps{
 			ServiceName:    "test-service",
 			CodePath:       ".",
@@ -137,7 +137,7 @@ func TestAllStacksSynthesize(t *testing.T) {
 		assert.NotNil(t, stack)
 	})
 
-	t.Run("MultiTenantSaaSStack", func(t *testing.T) {
+	t.Run("MultiTenantSaaSStack", func(_ *testing.T) {
 		stack := stacks.NewMultiTenantSaaSStack(app, "SaaSStack", &stacks.MultiTenantSaaSStackProps{
 			AppName:           "test-saas",
 			CodePath:          ".",
@@ -147,7 +147,7 @@ func TestAllStacksSynthesize(t *testing.T) {
 		assert.NotNil(t, stack)
 	})
 
-	t.Run("EventDrivenStack", func(t *testing.T) {
+	t.Run("EventDrivenStack", func(_ *testing.T) {
 		stack := stacks.NewEventDrivenStack(app, "EventStack", &stacks.EventDrivenStackProps{
 			AppName:                "test-events",
 			ApiCodePath:            ".",
@@ -161,7 +161,7 @@ func TestAllStacksSynthesize(t *testing.T) {
 	require.NotNil(t, synth)
 }
 
-func TestComplexStackIntegration(t *testing.T) {
+func TestComplexStackIntegration(_ *testing.T) {
 	// Test a complex stack with multiple constructs working together
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("ComplexStack"), nil)
@@ -236,7 +236,7 @@ func TestComplexStackIntegration(t *testing.T) {
 	})
 }
 
-func TestCrossConstructIntegration(t *testing.T) {
+func TestCrossConstructIntegration(_ *testing.T) {
 	// Test that constructs can reference and work with each other
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("CrossConstructStack"), nil)

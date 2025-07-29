@@ -305,7 +305,7 @@ func TestLiftAPI_GetArn(t *testing.T) {
 	require.NotNil(t, arn)
 }
 
-func TestLiftAPI_Integration(t *testing.T) {
+func TestLiftAPI_Integration(_ *testing.T) {
 	// Create test stack
 	stack := test.NewTestStack()
 

@@ -479,6 +479,7 @@ func (am *AlertManager) executeActions(ctx context.Context, alert *Alert, rule *
 		go func(ch AlertChannel, a *Alert) {
 			if err := ch.Send(ctx, a); err != nil {
 				// TODO: Log error but don't fail the alert
+				_ = err // Intentionally ignored
 			}
 		}(channel, alert)
 	}

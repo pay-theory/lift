@@ -49,12 +49,12 @@ func (s *DynamoDBConnectionStore) Delete(_ context.Context, connectionID string)
 	return nil
 }
 
-func (s *DynamoDBConnectionStore) ListByUser(_ context.Context, userID string) ([]*lift.Connection, error) {
+func (s *DynamoDBConnectionStore) ListByUser(_ context.Context, _ string) ([]*lift.Connection, error) {
 	// Query DynamoDB by user
 	return []*lift.Connection{}, nil
 }
 
-func (s *DynamoDBConnectionStore) ListByTenant(_ context.Context, tenantID string) ([]*lift.Connection, error) {
+func (s *DynamoDBConnectionStore) ListByTenant(_ context.Context, _ string) ([]*lift.Connection, error) {
 	// Query DynamoDB by tenant
 	return []*lift.Connection{}, nil
 }

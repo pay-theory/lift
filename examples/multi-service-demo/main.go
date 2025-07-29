@@ -46,7 +46,7 @@ func (d *DemoServiceRegistry) Register(_ context.Context, config *services.Servi
 	return nil
 }
 
-func (d *DemoServiceRegistry) Deregister(_ context.Context, serviceID string) error {
+func (d *DemoServiceRegistry) Deregister(_ context.Context, _ string) error {
 	// Simple implementation - remove all instances for now
 	for serviceName := range d.services {
 		delete(d.services, serviceName)
@@ -78,7 +78,7 @@ func (d *DemoServiceRegistry) Watch(ctx context.Context, serviceName string) (<-
 	return ch, nil
 }
 
-func (d *DemoServiceRegistry) HealthCheck(_ context.Context, instance *services.ServiceInstance) (*services.HealthStatus, error) {
+func (d *DemoServiceRegistry) HealthCheck(_ context.Context, _ *services.ServiceInstance) (*services.HealthStatus, error) {
 	return &services.HealthStatus{
 		Status:    "healthy",
 		Message:   "Health check passed",

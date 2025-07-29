@@ -188,8 +188,8 @@ func JWT(config security.JWTConfig) lift.Middleware {
 	validator, err := NewJWTValidator(config)
 	if err != nil {
 		// Return a middleware that always returns an error
-		return func(next lift.Handler) lift.Handler {
-			return lift.HandlerFunc(func(ctx *lift.Context) error {
+		return func(_ lift.Handler) lift.Handler {
+			return lift.HandlerFunc(func(_ *lift.Context) error {
 				return lift.SystemError("JWT middleware configuration error").
 					WithDetail("error", "Failed to initialize JWT validator").
 					WithDetail("cause", err.Error()).
@@ -251,8 +251,8 @@ func JWTOptional(config security.JWTConfig) lift.Middleware {
 	validator, err := NewJWTValidator(config)
 	if err != nil {
 		// Return a middleware that always returns an error
-		return func(next lift.Handler) lift.Handler {
-			return lift.HandlerFunc(func(ctx *lift.Context) error {
+		return func(_ lift.Handler) lift.Handler {
+			return lift.HandlerFunc(func(_ *lift.Context) error {
 				return lift.SystemError("JWT optional middleware configuration error").
 					WithDetail("error", "Failed to initialize JWT validator").
 					WithDetail("cause", err.Error()).

@@ -517,11 +517,11 @@ func (c *CanaryDeployment) GetMetrics() CanaryMetrics {
 // DefaultRollbackStrategy provides default rollback behavior
 type DefaultRollbackStrategy struct{}
 
-func (d *DefaultRollbackStrategy) ShouldRollback(ctx context.Context, metrics EnvironmentMetrics) bool {
+func (d *DefaultRollbackStrategy) ShouldRollback(_ context.Context, metrics EnvironmentMetrics) bool {
 	return metrics.ErrorRate > 0.1 || metrics.SuccessRate < 0.9
 }
 
-func (d *DefaultRollbackStrategy) Execute(ctx context.Context, env *Environment) error {
+func (d *DefaultRollbackStrategy) Execute(_ context.Context, env *Environment) error {
 	// Simulate rollback execution
 	env.Status = EnvironmentStatusRollingBack
 	time.Sleep(2 * time.Second)
@@ -536,7 +536,7 @@ func (d *DefaultRollbackStrategy) Name() string {
 // DefaultDeploymentMonitoring provides default monitoring
 type DefaultDeploymentMonitoring struct{}
 
-func (d *DefaultDeploymentMonitoring) StartMonitoring(ctx context.Context, env *Environment) error {
+func (d *DefaultDeploymentMonitoring) StartMonitoring(_ context.Context, env *Environment) error {
 	return nil
 }
 

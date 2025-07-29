@@ -612,7 +612,7 @@ func (drm *DisasterRecoveryManager) stopTrafficToPrimary(ctx context.Context, st
 }
 
 // synchronizeData synchronizes data to the target region
-func (drm *DisasterRecoveryManager) synchronizeData(ctx context.Context, step *FailoverStep) error {
+func (drm *DisasterRecoveryManager) synchronizeData(ctx context.Context, _ *FailoverStep) error {
 	// Implementation would ensure data synchronization
 	return drm.dataSync.ForceSynchronization(ctx)
 }
@@ -639,13 +639,13 @@ func (drm *DisasterRecoveryManager) startTrafficToNewPrimary(ctx context.Context
 }
 
 // verifyHealth verifies the health of the new primary
-func (drm *DisasterRecoveryManager) verifyHealth(ctx context.Context, step *FailoverStep) error {
+func (drm *DisasterRecoveryManager) verifyHealth(ctx context.Context, _ *FailoverStep) error {
 	// Implementation would verify health
 	return drm.healthMonitor.VerifyRegionHealth(ctx, drm.currentState.ActiveRegion)
 }
 
 // shouldRollback determines if a rollback should be performed
-func (drm *DisasterRecoveryManager) shouldRollback(event *FailoverEvent, failedStep *FailoverStep) bool {
+func (drm *DisasterRecoveryManager) shouldRollback(_ *FailoverEvent, failedStep *FailoverStep) bool {
 	// Critical steps that should trigger rollback
 	criticalSteps := map[string]bool{
 		"activate_standby": true,

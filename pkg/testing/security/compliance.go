@@ -138,7 +138,7 @@ func (h *HIPAAComplianceChecker) checkAdministrativeSafeguards(ctx context.Conte
 	return resp.StatusCode == 401 || resp.StatusCode == 403
 }
 
-func (h *HIPAAComplianceChecker) checkPhysicalSafeguards(ctx context.Context, system SystemInfo) bool {
+func (h *HIPAAComplianceChecker) checkPhysicalSafeguards(_ context.Context, system SystemInfo) bool {
 	// For cloud applications, this is typically handled by the cloud provider
 	// Check for proper infrastructure security
 	return true // Assume cloud provider compliance

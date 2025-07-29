@@ -574,7 +574,7 @@ func (api *ProductionAPI) metricsHandler(w http.ResponseWriter, r *http.Request)
 	api.writeJSONResponse(w, http.StatusOK, metrics)
 }
 
-func (api *ProductionAPI) statusHandler(w http.ResponseWriter, r *http.Request) {
+func (api *ProductionAPI) statusHandler(w http.ResponseWriter, _ *http.Request) {
 	status := map[string]any{
 		"service":   "production-api",
 		"version":   "1.0.0",

@@ -135,7 +135,7 @@ func (d *LambdaDeployment) Handler() lambda.Handler {
 }
 
 // handleLambdaEvent processes Lambda events through the Lift framework
-func (d *LambdaDeployment) handleLambdaEvent(ctx context.Context, event json.RawMessage) (any, error) {
+func (d *LambdaDeployment) handleLambdaEvent(ctx context.Context, _ json.RawMessage) (any, error) {
 	startTime := time.Now()
 
 	// Check if this is a cold start
@@ -206,7 +206,7 @@ func (d *LambdaDeployment) enrichContext(ctx context.Context, isColdStart bool) 
 }
 
 // recordMetrics records performance and operational metrics
-func (d *LambdaDeployment) recordMetrics(ctx context.Context, duration time.Duration, err error, isColdStart bool) {
+func (d *LambdaDeployment) recordMetrics(_ context.Context, duration time.Duration, err error, isColdStart bool) {
 	if d.metrics == nil {
 		return
 	}
@@ -263,7 +263,7 @@ func (d *LambdaDeployment) HealthCheck(ctx context.Context) (*LambdaHealthStatus
 }
 
 // Shutdown performs graceful shutdown
-func (d *LambdaDeployment) Shutdown(ctx context.Context) error {
+func (d *LambdaDeployment) Shutdown(_ context.Context) error {
 	// Shutdown components in order
 	var shutdownErrors []error
 
@@ -318,7 +318,7 @@ func (c *AppHealthChecker) Name() string {
 	return "app"
 }
 
-func (c *AppHealthChecker) Check(ctx context.Context) health.HealthStatus {
+func (c *AppHealthChecker) Check(_ context.Context) health.HealthStatus {
 	start := time.Now()
 
 	// Check if app is responsive
@@ -482,7 +482,7 @@ func (c *ResourceHealthChecker) getDiskSpaceMB() (int64, error) {
 }
 
 // checkNetwork performs basic network connectivity check
-func (c *ResourceHealthChecker) checkNetwork(ctx context.Context) error {
+func (c *ResourceHealthChecker) checkNetwork(_ context.Context) error {
 	// This is a simplified network check
 	// In production, you might ping specific endpoints or check DNS resolution
 

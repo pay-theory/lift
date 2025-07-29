@@ -140,12 +140,12 @@ func newMockDB() MockDB {
 	}
 }
 
-func (db *mockDB) Put(_ context.Context, item any) error {
+func (db *mockDB) Put(_ context.Context, _ any) error {
 	// Mock implementation
 	return nil
 }
 
-func (db *mockDB) Get(_ context.Context, id string, item any) error {
+func (db *mockDB) Get(_ context.Context, _ string, _ any) error {
 	// Mock implementation
 	return nil
 }
@@ -217,7 +217,7 @@ func (s *UserService) CreateUser(ctx context.Context, tenantID string, req Creat
 	return user, nil
 }
 
-func (s *UserService) GetUsersByTenant(_ context.Context, tenantID string, page, perPage int) ([]*User, int64, error) {
+func (s *UserService) GetUsersByTenant(_ context.Context, tenantID string, _, _ int) ([]*User, int64, error) {
 	// This would use DynamORM's query capabilities
 	// For now, return mock data
 	users := []*User{
@@ -262,7 +262,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, tenantID, userID str
 	return project, nil
 }
 
-func (s *ProjectService) GetProjectsByTenant(_ context.Context, tenantID string, page, perPage int) ([]*Project, int64, error) {
+func (s *ProjectService) GetProjectsByTenant(_ context.Context, tenantID string, _, _ int) ([]*Project, int64, error) {
 	// This would use DynamORM's query capabilities
 	// For now, return mock data
 	projects := []*Project{
@@ -350,7 +350,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, tenantID, taskID string, r
 	return task, nil
 }
 
-func (s *TaskService) GetTasksByProject(_ context.Context, tenantID, projectID string, page, perPage int) ([]*Task, int64, error) {
+func (s *TaskService) GetTasksByProject(_ context.Context, tenantID, projectID string, _, _ int) ([]*Task, int64, error) {
 	// This would use DynamORM's query capabilities
 	// For now, return mock data
 	tasks := []*Task{

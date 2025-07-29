@@ -449,7 +449,7 @@ func (o *OWASPScanner) scanAccessControl(ctx context.Context, target SecurityTar
 	return vulns
 }
 
-func (o *OWASPScanner) scanCryptographic(ctx context.Context, target SecurityTarget) []Vulnerability {
+func (o *OWASPScanner) scanCryptographic(_ context.Context, target SecurityTarget) []Vulnerability {
 	var vulns []Vulnerability
 
 	// Check if HTTPS is enforced
@@ -508,7 +508,7 @@ func (o *OWASPScanner) scanInjection(ctx context.Context, target SecurityTarget)
 	return vulns
 }
 
-func (o *OWASPScanner) scanInsecureDesign(ctx context.Context, target SecurityTarget) []Vulnerability {
+func (o *OWASPScanner) scanInsecureDesign(_ context.Context, target SecurityTarget) []Vulnerability {
 	var vulns []Vulnerability
 
 	// Check for common insecure design patterns

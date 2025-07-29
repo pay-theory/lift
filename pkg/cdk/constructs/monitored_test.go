@@ -194,7 +194,7 @@ func TestNewMonitoredFunction_DisableLambdaInsights(t *testing.T) {
 	assert.False(t, hasInsights, "Lambda Insights should not be enabled")
 }
 
-func TestNewMonitoredFunction_CustomLogRetention(t *testing.T) {
+func TestNewMonitoredFunction_CustomLogRetention(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -214,7 +214,7 @@ func TestNewMonitoredFunction_CustomLogRetention(t *testing.T) {
 	_ = assertions.Template_FromStack(stack, nil)
 }
 
-func TestNewMonitoredFunction_CustomMetricsNamespace(t *testing.T) {
+func TestNewMonitoredFunction_CustomMetricsNamespace(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -336,7 +336,7 @@ func TestNewMonitoredFunction_WithLogInsightsQueries(t *testing.T) {
 	assert.NotNil(t, mf.GetDashboard())
 }
 
-func TestMonitoredFunction_AddLogInsightsQuery(t *testing.T) {
+func TestMonitoredFunction_AddLogInsightsQuery(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)

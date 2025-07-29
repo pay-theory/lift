@@ -109,7 +109,7 @@ func TestNewBasicAPI_DisableCORS(t *testing.T) {
 	assert.False(t, hasCORS, "CORS should not be configured")
 }
 
-func TestNewBasicAPI_DisableMonitoring(t *testing.T) {
+func TestNewBasicAPI_DisableMonitoring(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -128,7 +128,7 @@ func TestNewBasicAPI_DisableMonitoring(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::CloudWatch::Dashboard"), jsii.Number(0))
 }
 
-func TestNewBasicAPI_CustomConfiguration(t *testing.T) {
+func TestNewBasicAPI_CustomConfiguration(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -172,7 +172,7 @@ func TestNewBasicAPI_CustomConfiguration(t *testing.T) {
 	})
 }
 
-func TestBasicAPI_AddRoute(t *testing.T) {
+func TestBasicAPI_AddRoute(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)

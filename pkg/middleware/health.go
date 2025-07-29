@@ -496,7 +496,7 @@ func (h *HTTPHealthChecker) Name() string {
 	return h.name
 }
 
-func (h *HTTPHealthChecker) Check(ctx context.Context) error {
+func (h *HTTPHealthChecker) Check(_ context.Context) error {
 	// This would implement an HTTP health check
 	// For now, return success
 	return nil

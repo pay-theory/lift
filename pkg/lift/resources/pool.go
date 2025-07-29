@@ -175,6 +175,7 @@ func (p *DefaultConnectionPool) Get(ctx context.Context) (any, error) {
 		if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 	}
 
@@ -203,6 +204,7 @@ func (p *DefaultConnectionPool) Get(ctx context.Context) (any, error) {
 		if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 		return nil, err
 	}
@@ -241,6 +243,7 @@ func (p *DefaultConnectionPool) Put(resource any) error {
 		if err := res.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 		p.cond.Signal()
 		return nil
@@ -254,6 +257,7 @@ func (p *DefaultConnectionPool) Put(resource any) error {
 		if err := res.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 	}
 
@@ -283,6 +287,7 @@ func (p *DefaultConnectionPool) Close() error {
 		if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 	}
 	p.idle = nil
@@ -292,6 +297,7 @@ func (p *DefaultConnectionPool) Close() error {
 		if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 	}
 	p.active = nil
@@ -363,6 +369,7 @@ func (p *DefaultConnectionPool) cleanup() {
 			if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 			continue
 		}
@@ -372,6 +379,7 @@ func (p *DefaultConnectionPool) cleanup() {
 			if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 			continue
 		}
@@ -383,6 +391,7 @@ func (p *DefaultConnectionPool) cleanup() {
 			if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
+			_ = err // Intentionally ignored
 		}
 			continue
 		}

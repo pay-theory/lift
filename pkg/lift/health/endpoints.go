@@ -216,6 +216,7 @@ func (he *HealthEndpoints) ComponentsHandler(w http.ResponseWriter, r *http.Requ
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		// Log error but can't change status code at this point
 		// TODO: Add proper logging once logger is available
+		_ = err // Intentionally ignored
 	}
 }
 
@@ -266,6 +267,7 @@ func (he *HealthEndpoints) writeJSONResponse(w http.ResponseWriter, statusCode i
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		// Log error but can't change status code at this point
 		// TODO: Add proper logging once logger is available
+		_ = err // Intentionally ignored
 	}
 }
 
@@ -282,6 +284,7 @@ func (he *HealthEndpoints) writePlainTextResponse(w http.ResponseWriter, statusC
 	if _, err := fmt.Fprint(w, message); err != nil {
 		// Log error but can't change status code at this point
 		// TODO: Add proper logging once logger is available
+		_ = err // Intentionally ignored
 	}
 }
 
@@ -299,6 +302,7 @@ func (he *HealthEndpoints) writeError(w http.ResponseWriter, statusCode int, mes
 	if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
 		// Log error but can't change status code at this point
 		// TODO: Add proper logging once logger is available
+		_ = err // Intentionally ignored
 	}
 }
 

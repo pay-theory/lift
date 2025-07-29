@@ -184,7 +184,7 @@ func TestComplianceStack_WithExistingResources(t *testing.T) {
 	assert.Equal(t, existingBucket, complianceStack.ComplianceBucket)
 }
 
-func TestComplianceStack_SOC2Framework(t *testing.T) {
+func TestComplianceStack_SOC2Framework(_ *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -274,7 +274,7 @@ func TestComplianceStack_PCIDSSFramework(t *testing.T) {
 	})
 }
 
-func TestComplianceStack_DataRetentionPolicy(t *testing.T) {
+func TestComplianceStack_DataRetentionPolicy(_ *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -380,7 +380,7 @@ func TestComplianceStack_ComplianceStatus(t *testing.T) {
 	assert.True(t, status["function_enabled"].(bool))
 }
 
-func TestComplianceStack_AddComplianceRule(t *testing.T) {
+func TestComplianceStack_AddComplianceRule(_ *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -405,7 +405,7 @@ func TestComplianceStack_AddComplianceRule(t *testing.T) {
 	})
 }
 
-func TestComplianceStack_MultipleFrameworks(t *testing.T) {
+func TestComplianceStack_MultipleFrameworks(_ *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -433,7 +433,7 @@ func TestComplianceStack_MultipleFrameworks(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::Config::ConfigurationRecorder"), jsii.Number(1))
 }
 
-func TestComplianceStack_OrganizationSettings(t *testing.T) {
+func TestComplianceStack_OrganizationSettings(_ *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)

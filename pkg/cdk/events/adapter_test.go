@@ -17,7 +17,7 @@ type mockProcessor struct {
 	shouldError     bool
 }
 
-func (m *mockProcessor) ProcessEvent(ctx context.Context, event LiftEvent) error {
+func (m *mockProcessor) ProcessEvent(_ context.Context, event LiftEvent) error {
 	if m.shouldError {
 		return assert.AnError
 	}

@@ -78,7 +78,7 @@ func TestNewSecureFunction_BasicConfiguration(t *testing.T) {
 	assert.NotNil(t, sf)
 }
 
-func TestNewSecureFunction_WithExistingVPC(t *testing.T) {
+func TestNewSecureFunction_WithExistingVPC(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -105,7 +105,7 @@ func TestNewSecureFunction_WithExistingVPC(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::EC2::VPC"), jsii.Number(1))
 }
 
-func TestNewSecureFunction_PrivateOnly(t *testing.T) {
+func TestNewSecureFunction_PrivateOnly(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -138,7 +138,7 @@ func TestNewSecureFunction_PrivateOnly(t *testing.T) {
 	})
 }
 
-func TestNewSecureFunction_WithSecrets(t *testing.T) {
+func TestNewSecureFunction_WithSecrets(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -168,7 +168,7 @@ func TestNewSecureFunction_WithSecrets(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::IAM::Policy"), jsii.Number(1))
 }
 
-func TestNewSecureFunction_DisableKMSEncryption(t *testing.T) {
+func TestNewSecureFunction_DisableKMSEncryption(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -191,7 +191,7 @@ func TestNewSecureFunction_DisableKMSEncryption(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::KMS::Key"), jsii.Number(0))
 }
 
-func TestNewSecureFunction_WithCustomKMSKey(t *testing.T) {
+func TestNewSecureFunction_WithCustomKMSKey(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -221,7 +221,7 @@ func TestNewSecureFunction_WithCustomKMSKey(t *testing.T) {
 	})
 }
 
-func TestNewSecureFunction_WithAdditionalPolicies(t *testing.T) {
+func TestNewSecureFunction_WithAdditionalPolicies(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -253,7 +253,7 @@ func TestNewSecureFunction_WithAdditionalPolicies(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::IAM::Policy"), jsii.Number(1))
 }
 
-func TestSecureFunction_EnableSecretsManagerAccess(t *testing.T) {
+func TestSecureFunction_EnableSecretsManagerAccess(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)

@@ -1,3 +1,5 @@
+// Package resources provides resource management utilities for Lift applications,
+// including resource pooling, lifecycle management, and cleanup coordination.
 package resources
 
 import (

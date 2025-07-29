@@ -423,7 +423,7 @@ func TestAuditingConstructLogGroupRetention(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(_ *testing.T) {
 			// Create a new app and stack for each test case
 			app := awscdk.NewApp(nil)
 			stack := awscdk.NewStack(app, jsii.String(fmt.Sprintf("TestStack%s", tc.name)), nil)
@@ -454,7 +454,7 @@ func TestAuditingConstructLogGroupRetention(t *testing.T) {
 	}
 }
 
-func TestAuditingConstructResourceCount(t *testing.T) {
+func TestAuditingConstructResourceCount(_ *testing.T) {
 	// Create a test app and stack
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestResourceCountStack"), nil)

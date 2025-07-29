@@ -698,10 +698,7 @@ func setupAPIRoutes(app *lift.App) error {
 	if err := app.DELETE("/api/v1/cart/:cartId/items/:itemId", removeFromCart); err != nil {
 		return err
 	}
-	if err := app.POST("/api/v1/cart/:cartId/checkout", checkout); err != nil {
-		return err
-	}
-	return nil
+	return app.POST("/api/v1/cart/:cartId/checkout", checkout)
 }
 
 func healthCheck(ctx *lift.Context) error {

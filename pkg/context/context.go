@@ -88,7 +88,7 @@ func (l *noOpLogger) WithUserID(_ string) observability.StructuredLogger       {
 func (l *noOpLogger) WithTraceID(_ string) observability.StructuredLogger     { return l }
 func (l *noOpLogger) WithSpanID(_ string) observability.StructuredLogger       { return l }
 
-func (l *noOpLogger) Flush(ctx context.Context) error     { return nil }
+func (l *noOpLogger) Flush(_ context.Context) error     { return nil }
 func (l *noOpLogger) Close() error                        { return nil }
 func (l *noOpLogger) IsHealthy() bool                     { return true }
 func (l *noOpLogger) GetStats() observability.LoggerStats { return observability.LoggerStats{} }
