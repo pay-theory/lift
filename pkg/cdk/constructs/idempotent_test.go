@@ -14,9 +14,9 @@ import (
 
 func TestNewIdempotentFunction(t *testing.T) {
 	tests := []struct {
-		name       string
 		props      *IdempotentFunctionProps
 		assertions func(t *testing.T, template assertions.Template, fn *IdempotentFunction)
+		name       string
 	}{
 		{
 			name: "creates function with default idempotency settings",

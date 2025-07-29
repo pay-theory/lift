@@ -22,22 +22,20 @@ type StreamProcessorProps struct {
 	// Dead letter queue properties (optional)
 	DeadLetterQueueProps *awssqs.QueueProps
 
-	// Enable dead letter queue (default: true)
-	EnableDeadLetterQueue *bool
-
 	// DynamoDB Streams event source configuration
 	EventSourceProps *awslambdaeventsources.DynamoEventSourceProps
 
 	// Additional stream processor settings
-	BatchSize               *float64                   // Default: 10
 	MaxBatchingWindow       awscdk.Duration            // Default: 5 seconds
-	StartingPosition        awslambda.StartingPosition // Default: LATEST
 	MaxRecordAge            awscdk.Duration            // Default: 24 hours
-	BisectBatchOnError      *bool                      // Default: false
-	RetryAttempts           *float64                   // Default: 10000
-	ReportBatchItemFailures *bool                      // Default: true
 	TumblingWindow          awscdk.Duration            // For tumbling window processing
+	StartingPosition        awslambda.StartingPosition // Default: LATEST
+	BatchSize               *float64                   // Default: 10
+	RetryAttempts           *float64                   // Default: 10000
 	ParallelizationFactor   *float64                   // Default: 1
+	EnableDeadLetterQueue *bool
+	BisectBatchOnError      *bool                      // Default: false
+	ReportBatchItemFailures *bool                      // Default: true
 }
 
 // StreamProcessor processes DynamoDB streams with Lambda

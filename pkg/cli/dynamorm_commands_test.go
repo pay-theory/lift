@@ -19,14 +19,14 @@ func TestDynamORMScaffoldCommand(t *testing.T) {
 		t.Fatalf("Failed to get current directory: %v", err)
 	}
 	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Errorf("Failed to restore directory: %v", err)
+		if chdirErr := os.Chdir(originalDir); chdirErr != nil {
+			t.Errorf("Failed to restore directory: %v", chdirErr)
 		}
 	}()
 
 	// Change to temp directory
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatalf("Failed to change to temp directory: %v", err)
+	if chdirErr := os.Chdir(tempDir); chdirErr != nil {
+		t.Fatalf("Failed to change to temp directory: %v", chdirErr)
 	}
 
 	// Create a mock go.mod file to simulate being in a Lift project

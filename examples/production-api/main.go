@@ -618,8 +618,8 @@ func (api *ProductionAPI) writeErrorResponse(w http.ResponseWriter, err error) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
-		if err := json.NewEncoder(w).Encode(apiErr); err != nil {
-			log.Printf("Error encoding JSON error response: %v", err)
+		if encErr := json.NewEncoder(w).Encode(apiErr); encErr != nil {
+			log.Printf("Error encoding JSON error response: %v", encErr)
 		}
 	} else {
 		// Generic error

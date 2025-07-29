@@ -28,21 +28,11 @@ type WebSocketRouteConfig struct {
 
 // WebSocketAPIProps defines properties for a WebSocket API
 type WebSocketAPIProps struct {
-	// API name
-	ApiName *string
-	// API description
-	Description *string
-	// Route selection expression (default: "$request.body.action")
-	RouteSelectionExpression *string
-
+	// WebSocket route configurations
+	Routes []*WebSocketRouteConfig
 
 	// Connection management table properties (uses DynamORM)
 	ConnectionTableProps *ConnectionTableProps
-	// Enable automatic connection management
-	EnableConnectionManagement *bool
-
-	// WebSocket route configurations
-	Routes []*WebSocketRouteConfig
 
 	// Default route function (for unmatched routes) - REQUIRED
 	DefaultRouteFunction awslambda.IFunction
@@ -53,22 +43,31 @@ type WebSocketAPIProps struct {
 	// Disconnect route function ($disconnect) - REQUIRED
 	DisconnectRouteFunction awslambda.IFunction
 
+	// Access logging
+	AccessLogGroup      awslogs.ILogGroup
+
+	// Default authorizer for all routes
+	DefaultAuthorizer awsapigatewayv2.IWebSocketRouteAuthorizer
+
+	// API name
+	ApiName *string
+	// API description
+	Description *string
+	// Route selection expression (default: "$request.body.action")
+	RouteSelectionExpression *string
 	// Stage configuration
 	StageName *string
-	// Auto deploy stage
-	AutoDeploy *bool
-
-	// Access logging
-	EnableAccessLogging *bool
-	AccessLogGroup      awslogs.ILogGroup
 
 	// Throttling
 	ThrottleRateLimit  *float64
 	ThrottleBurstLimit *float64
 
-	// Default authorizer for all routes
-	DefaultAuthorizer awsapigatewayv2.IWebSocketRouteAuthorizer
-
+	// Enable automatic connection management
+	EnableConnectionManagement *bool
+	// Auto deploy stage
+	AutoDeploy *bool
+	// Access logging
+	EnableAccessLogging *bool
 	// Lift-specific settings
 	EnableTracing         *bool
 	EnableMultiTenant     *bool

@@ -14,9 +14,9 @@ import (
 
 func TestNewLiftAPI(t *testing.T) {
 	tests := []struct {
-		name       string
 		props      *LiftAPIProps
 		assertions func(t *testing.T, template assertions.Template)
+		name       string
 	}{
 		{
 			name: "creates basic API",

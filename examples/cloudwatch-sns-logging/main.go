@@ -43,8 +43,8 @@ func main() {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
 	defer func() {
-		if err := logger1.Close(); err != nil {
-			log.Printf("Error closing logger1: %v", err)
+		if closeErr := logger1.Close(); closeErr != nil {
+			log.Printf("Error closing logger1: %v", closeErr)
 		}
 	}()
 
@@ -56,8 +56,8 @@ func main() {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
 	defer func() {
-		if err := logger2.Close(); err != nil {
-			log.Printf("Error closing logger2: %v", err)
+		if closeErr := logger2.Close(); closeErr != nil {
+			log.Printf("Error closing logger2: %v", closeErr)
 		}
 	}()
 
@@ -81,8 +81,8 @@ func main() {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}
 	defer func() {
-		if err := logger3.Close(); err != nil {
-			log.Printf("Error closing logger3: %v", err)
+		if closeErr := logger3.Close(); closeErr != nil {
+			log.Printf("Error closing logger3: %v", closeErr)
 		}
 	}()
 

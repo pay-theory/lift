@@ -408,18 +408,18 @@ func TestAuditingConstructMethods(t *testing.T) {
 func TestAuditingConstructLogGroupRetention(t *testing.T) {
 	// Test different retention periods
 	testCases := []struct {
+		expectedResult awslogs.RetentionDays
 		name           string
 		retentionDays  float64
-		expectedResult awslogs.RetentionDays
 	}{
-		{"OneDay", 1, awslogs.RetentionDays_ONE_DAY},
-		{"ThreeDays", 3, awslogs.RetentionDays_THREE_DAYS},
-		{"OneWeek", 7, awslogs.RetentionDays_ONE_WEEK},
-		{"OneMonth", 30, awslogs.RetentionDays_ONE_MONTH},
-		{"OneYear", 365, awslogs.RetentionDays_ONE_YEAR},
-		{"FiveYears", 1827, awslogs.RetentionDays_FIVE_YEARS},
-		{"TenYears", 3653, awslogs.RetentionDays_TEN_YEARS},
-		{"Infinite", 10000, awslogs.RetentionDays_INFINITE},
+		{awslogs.RetentionDays_ONE_DAY, "OneDay", 1},
+		{awslogs.RetentionDays_THREE_DAYS, "ThreeDays", 3},
+		{awslogs.RetentionDays_ONE_WEEK, "OneWeek", 7},
+		{awslogs.RetentionDays_ONE_MONTH, "OneMonth", 30},
+		{awslogs.RetentionDays_ONE_YEAR, "OneYear", 365},
+		{awslogs.RetentionDays_FIVE_YEARS, "FiveYears", 1827},
+		{awslogs.RetentionDays_TEN_YEARS, "TenYears", 3653},
+		{awslogs.RetentionDays_INFINITE, "Infinite", 10000},
 	}
 
 	for _, tc := range testCases {

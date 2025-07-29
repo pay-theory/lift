@@ -14,11 +14,11 @@ import (
 
 // Tenant represents a multi-tenant e-commerce store
 type Tenant struct {
+	CreatedAt     time.Time    `json:"createdAt"`
+	UpdatedAt     time.Time    `json:"updatedAt"`
 	Configuration TenantConfig `json:"configuration"`
 	Subscription  Subscription `json:"subscription"`
 	Owner         TenantOwner  `json:"owner"`
-	CreatedAt     time.Time    `json:"createdAt"`
-	UpdatedAt     time.Time    `json:"updatedAt"`
 	ID            string       `json:"id"`
 	Name          string       `json:"name"`
 	Domain        string       `json:"domain"`
@@ -30,11 +30,11 @@ type TenantConfig struct {
 	CustomSettings  map[string]any `json:"customSettings"`
 	PaymentMethods  []string       `json:"paymentMethods"`
 	ShippingMethods []string       `json:"shippingMethods"`
+	Currency        string         `json:"currency"`
+	Locale          string         `json:"locale"`
 	Theme           ThemeConfig    `json:"theme"`
 	Features        FeatureFlags   `json:"features"`
 	Limits          TenantLimits   `json:"limits"`
-	Currency        string         `json:"currency"`
-	Locale          string         `json:"locale"`
 }
 
 // ThemeConfig defines the visual appearance
@@ -88,23 +88,23 @@ type TenantOwner struct {
 
 // Product represents a product in the catalog
 type Product struct {
+	Attributes   map[string]any   `json:"attributes"`
+	Images       []ProductImage   `json:"images"`
+	Variants     []ProductVariant `json:"variants,omitempty"`
+	Categories   []string         `json:"categories"`
+	Tags         []string         `json:"tags"`
+	ComparePrice *Money           `json:"comparePrice,omitempty"`
+	CreatedAt    time.Time        `json:"createdAt"`
+	UpdatedAt    time.Time        `json:"updatedAt"`
 	ID           string           `json:"id"`
 	TenantID     string           `json:"tenantId"`
 	SKU          string           `json:"sku"`
 	Name         string           `json:"name"`
 	Description  string           `json:"description"`
 	Price        Money            `json:"price"`
-	ComparePrice *Money           `json:"comparePrice,omitempty"`
 	Inventory    Inventory        `json:"inventory"`
-	Categories   []string         `json:"categories"`
-	Tags         []string         `json:"tags"`
-	Attributes   map[string]any   `json:"attributes"`
-	Images       []ProductImage   `json:"images"`
 	SEO          SEOData          `json:"seo"`
 	Status       ProductStatus    `json:"status"`
-	CreatedAt    time.Time        `json:"createdAt"`
-	UpdatedAt    time.Time        `json:"updatedAt"`
-	Variants     []ProductVariant `json:"variants,omitempty"`
 }
 
 // Money represents monetary values
@@ -134,9 +134,9 @@ type ProductImage struct {
 
 // SEOData for search engine optimization
 type SEOData struct {
+	Keywords    []string `json:"keywords"`
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
-	Keywords    []string `json:"keywords"`
 	Slug        string   `json:"slug"`
 }
 
@@ -152,29 +152,29 @@ const (
 
 // ProductVariant represents product variations
 type ProductVariant struct {
+	Attributes map[string]string `json:"attributes"`
 	ID         string            `json:"id"`
 	SKU        string            `json:"sku"`
 	Name       string            `json:"name"`
 	Price      Money             `json:"price"`
 	Inventory  Inventory         `json:"inventory"`
-	Attributes map[string]string `json:"attributes"`
 }
 
 // Customer represents a customer
 type Customer struct {
-	ID             string              `json:"id"`
-	TenantID       string              `json:"tenantId"`
-	Email          string              `json:"email"`
-	Profile        CustomerProfile     `json:"profile"`
 	Addresses      []Address           `json:"addresses"`
 	PaymentMethods []PaymentMethod     `json:"paymentMethods"`
 	OrderHistory   []string            `json:"orderHistory"`
+	Tags           []string            `json:"tags"`
+	Profile        CustomerProfile     `json:"profile"`
 	Preferences    CustomerPreferences `json:"preferences"`
 	CreatedAt      time.Time           `json:"createdAt"`
 	UpdatedAt      time.Time           `json:"updatedAt"`
 	LastLoginAt    time.Time           `json:"lastLoginAt"`
+	ID             string              `json:"id"`
+	TenantID       string              `json:"tenantId"`
+	Email          string              `json:"email"`
 	IsActive       bool                `json:"isActive"`
-	Tags           []string            `json:"tags"`
 }
 
 // CustomerProfile contains customer personal information
@@ -206,6 +206,7 @@ type Address struct {
 
 // PaymentMethod represents customer payment methods
 type PaymentMethod struct {
+	CreatedAt   time.Time `json:"createdAt"`
 	ID          string    `json:"id"`
 	Type        string    `json:"type"` // card, bank, wallet
 	Provider    string    `json:"provider"`
@@ -213,48 +214,47 @@ type PaymentMethod struct {
 	ExpiryMonth int       `json:"expiryMonth,omitempty"`
 	ExpiryYear  int       `json:"expiryYear,omitempty"`
 	IsDefault   bool      `json:"isDefault"`
-	CreatedAt   time.Time `json:"createdAt"`
 }
 
 // CustomerPreferences stores customer preferences
 type CustomerPreferences struct {
+	FavoriteCategories []string `json:"favoriteCategories"`
 	Language           string   `json:"language"`
 	Currency           string   `json:"currency"`
 	EmailMarketing     bool     `json:"emailMarketing"`
 	SMSMarketing       bool     `json:"smsMarketing"`
 	PushNotifications  bool     `json:"pushNotifications"`
-	FavoriteCategories []string `json:"favoriteCategories"`
 }
 
 // Order represents a customer order
 type Order struct {
+	Items       []OrderItem  `json:"items"`
+	CompletedAt *time.Time   `json:"completedAt,omitempty"`
+	CancelledAt *time.Time   `json:"cancelledAt,omitempty"`
+	Totals      OrderTotals  `json:"totals"`
+	Payment     PaymentInfo  `json:"payment"`
+	Shipping    ShippingInfo `json:"shipping"`
+	CreatedAt   time.Time    `json:"createdAt"`
+	UpdatedAt   time.Time    `json:"updatedAt"`
 	ID          string       `json:"id"`
 	TenantID    string       `json:"tenantId"`
 	CustomerID  string       `json:"customerId"`
 	OrderNumber string       `json:"orderNumber"`
-	Items       []OrderItem  `json:"items"`
-	Totals      OrderTotals  `json:"totals"`
-	Payment     PaymentInfo  `json:"payment"`
-	Shipping    ShippingInfo `json:"shipping"`
-	Status      OrderStatus  `json:"status"`
 	Notes       string       `json:"notes,omitempty"`
-	CreatedAt   time.Time    `json:"createdAt"`
-	UpdatedAt   time.Time    `json:"updatedAt"`
-	CompletedAt *time.Time   `json:"completedAt,omitempty"`
-	CancelledAt *time.Time   `json:"cancelledAt,omitempty"`
+	Status      OrderStatus  `json:"status"`
 }
 
 // OrderItem represents items in an order
 type OrderItem struct {
+	Attributes map[string]string `json:"attributes,omitempty"`
 	ID         string            `json:"id"`
 	ProductID  string            `json:"productId"`
 	VariantID  string            `json:"variantId,omitempty"`
 	SKU        string            `json:"sku"`
 	Name       string            `json:"name"`
-	Quantity   int               `json:"quantity"`
 	Price      Money             `json:"price"`
 	Total      Money             `json:"total"`
-	Attributes map[string]string `json:"attributes,omitempty"`
+	Quantity   int               `json:"quantity"`
 }
 
 // OrderTotals represents order financial totals
@@ -269,25 +269,25 @@ type OrderTotals struct {
 
 // PaymentInfo represents payment information
 type PaymentInfo struct {
+	RefundedAt    *time.Time `json:"refundedAt,omitempty"`
+	RefundAmount  *Money     `json:"refundAmount,omitempty"`
+	ProcessedAt   time.Time  `json:"processedAt"`
 	Method        string     `json:"method"`
 	Provider      string     `json:"provider"`
 	TransactionID string     `json:"transactionId"`
 	Status        string     `json:"status"`
 	Amount        Money      `json:"amount"`
-	ProcessedAt   time.Time  `json:"processedAt"`
-	RefundedAt    *time.Time `json:"refundedAt,omitempty"`
-	RefundAmount  *Money     `json:"refundAmount,omitempty"`
 }
 
 // ShippingInfo represents shipping information
 type ShippingInfo struct {
+	ShippedAt         *time.Time `json:"shippedAt,omitempty"`
+	DeliveredAt       *time.Time `json:"deliveredAt,omitempty"`
+	Address           Address    `json:"address"`
+	EstimatedDelivery time.Time  `json:"estimatedDelivery"`
 	Method            string     `json:"method"`
 	Provider          string     `json:"provider"`
 	TrackingNumber    string     `json:"trackingNumber,omitempty"`
-	Address           Address    `json:"address"`
-	EstimatedDelivery time.Time  `json:"estimatedDelivery"`
-	ShippedAt         *time.Time `json:"shippedAt,omitempty"`
-	DeliveredAt       *time.Time `json:"deliveredAt,omitempty"`
 }
 
 // OrderStatus represents order status
@@ -305,25 +305,25 @@ const (
 
 // ShoppingCart represents a customer's shopping cart
 type ShoppingCart struct {
-	ID         string     `json:"id"`
-	TenantID   string     `json:"tenantId"`
-	CustomerID string     `json:"customerId"`
 	Items      []CartItem `json:"items"`
 	Totals     CartTotals `json:"totals"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`
 	ExpiresAt  time.Time  `json:"expiresAt"`
+	ID         string     `json:"id"`
+	TenantID   string     `json:"tenantId"`
+	CustomerID string     `json:"customerId"`
 }
 
 // CartItem represents items in shopping cart
 type CartItem struct {
+	AddedAt   time.Time `json:"addedAt"`
 	ID        string    `json:"id"`
 	ProductID string    `json:"productId"`
 	VariantID string    `json:"variantId,omitempty"`
-	Quantity  int       `json:"quantity"`
 	Price     Money     `json:"price"`
 	Total     Money     `json:"total"`
-	AddedAt   time.Time `json:"addedAt"`
+	Quantity  int       `json:"quantity"`
 }
 
 // CartTotals represents cart totals
@@ -345,15 +345,15 @@ type CreateTenantRequest struct {
 }
 
 type CreateProductRequest struct {
+	Attributes  map[string]any `json:"attributes"`
+	Images      []ProductImage `json:"images"`
+	Categories  []string       `json:"categories"`
+	Tags        []string       `json:"tags"`
 	SKU         string         `json:"sku" validate:"required"`
 	Name        string         `json:"name" validate:"required"`
 	Description string         `json:"description"`
 	Price       Money          `json:"price" validate:"required"`
 	Inventory   Inventory      `json:"inventory"`
-	Categories  []string       `json:"categories"`
-	Tags        []string       `json:"tags"`
-	Attributes  map[string]any `json:"attributes"`
-	Images      []ProductImage `json:"images"`
 	SEO         SEOData        `json:"seo"`
 }
 
@@ -365,10 +365,10 @@ type CreateCustomerRequest struct {
 }
 
 type CreateOrderRequest struct {
-	CustomerID string       `json:"customerId" validate:"required"`
 	Items      []OrderItem  `json:"items" validate:"required,min=1"`
 	Shipping   ShippingInfo `json:"shipping" validate:"required"`
 	Payment    PaymentInfo  `json:"payment" validate:"required"`
+	CustomerID string       `json:"customerId" validate:"required"`
 	Notes      string       `json:"notes"`
 }
 
@@ -435,23 +435,23 @@ type ProductFilters struct {
 	Tags       []string      `json:"tags"`
 	PriceMin   *float64      `json:"priceMin"`
 	PriceMax   *float64      `json:"priceMax"`
-	Status     ProductStatus `json:"status"`
 	InStock    *bool         `json:"inStock"`
-	Limit      int           `json:"limit"`
-	Offset     int           `json:"offset"`
 	SortBy     string        `json:"sortBy"`
 	SortOrder  string        `json:"sortOrder"`
+	Status     ProductStatus `json:"status"`
+	Limit      int           `json:"limit"`
+	Offset     int           `json:"offset"`
 }
 
 type OrderFilters struct {
-	Status     OrderStatus `json:"status"`
-	CustomerID string      `json:"customerId"`
 	DateFrom   *time.Time  `json:"dateFrom"`
 	DateTo     *time.Time  `json:"dateTo"`
-	Limit      int         `json:"limit"`
-	Offset     int         `json:"offset"`
+	CustomerID string      `json:"customerId"`
 	SortBy     string      `json:"sortBy"`
 	SortOrder  string      `json:"sortOrder"`
+	Status     OrderStatus `json:"status"`
+	Limit      int         `json:"limit"`
+	Offset     int         `json:"offset"`
 }
 
 // Utility functions

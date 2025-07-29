@@ -28,23 +28,23 @@ type GDPRConsentManager struct {
 
 // GDPRConsentConfig configuration for GDPR consent management
 type GDPRConsentConfig struct {
-	Enabled                  bool                     `json:"enabled"`
+	DataRetentionPolicies    map[string]time.Duration `json:"data_retention_policies"`
+	CrossBorderTransferRules []CrossBorderRule        `json:"cross_border_transfer_rules"`
 	ConsentRenewalDays       int                      `json:"consent_renewal_days"`
+	BreachNotificationHours  int                      `json:"breach_notification_hours"`
+	// Additional fields needed by tests
+	ConsentExpiryDays      int  `json:"consent_expiry_days"`
+	DataRetentionDays      int  `json:"data_retention_days"`
+	RequestProcessingDays  int  `json:"request_processing_days"`
+	Enabled                  bool                     `json:"enabled"`
 	AutomaticConsentRenewal  bool                     `json:"automatic_consent_renewal"`
 	GranularConsentRequired  bool                     `json:"granular_consent_required"`
 	ConsentWithdrawalEnabled bool                     `json:"consent_withdrawal_enabled"`
 	DataPortabilityEnabled   bool                     `json:"data_portability_enabled"`
 	RightToErasureEnabled    bool                     `json:"right_to_erasure_enabled"`
-	BreachNotificationHours  int                      `json:"breach_notification_hours"`
-	DataRetentionPolicies    map[string]time.Duration `json:"data_retention_policies"`
-	CrossBorderTransferRules []CrossBorderRule        `json:"cross_border_transfer_rules"`
 	PrivacyByDesignEnabled   bool                     `json:"privacy_by_design_enabled"`
-	// Additional fields needed by tests
-	ConsentExpiryDays      int  `json:"consent_expiry_days"`
 	RequireExplicitConsent bool `json:"require_explicit_consent"`
 	RequireConsentProof    bool `json:"require_consent_proof"`
-	DataRetentionDays      int  `json:"data_retention_days"`
-	RequestProcessingDays  int  `json:"request_processing_days"`
 	ConsentProofRequired   bool `json:"consent_proof_required"`
 }
 
