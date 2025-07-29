@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
@@ -16,6 +17,50 @@ var (
 	orderService    = &mockOrderService{}
 	cartService     = &mockCartService{}
 )
+
+// Helper function for update operations to reduce code duplication
+func handleUpdateOperation[T any](ctx *lift.Context, 
+	idParamName string,
+	responseName string,
+	performUpdate func(tenantID, resourceID string, req T) error,
+	auditMessage string,
+	additionalResponse func(T) map[string]any) error {
+	tenantID := getTenantID(ctx)
+	resourceID := ctx.PathParam(idParamName)
+
+	if tenantID == "" {
+		return ctx.BadRequest("Tenant ID is required", nil)
+	}
+	if resourceID == "" {
+		return ctx.BadRequest(strings.Title(idParamName) + " ID is required", nil)
+	}
+
+	var req T
+	if err := ctx.ParseRequest(&req); err != nil {
+		return ctx.BadRequest("Invalid request", err)
+	}
+
+	err := performUpdate(tenantID, resourceID, req)
+	if err != nil {
+		return ctx.SystemError("Failed to perform update", err)
+	}
+
+	log.Printf(auditMessage, tenantID, resourceID, req)
+
+	response := map[string]any{
+		responseName: resourceID,
+		"updated":    true,
+		"timestamp":  time.Now(),
+	}
+	
+	if additionalResponse != nil {
+		for k, v := range additionalResponse(req) {
+			response[k] = v
+		}
+	}
+
+	return ctx.OK(response)
+}
 
 // Tenant handlers
 func createTenant(ctx *lift.Context) error {
@@ -197,38 +242,19 @@ func searchProducts(ctx *lift.Context) error {
 }
 
 func updateProductInventory(ctx *lift.Context) error {
-	tenantID := getTenantID(ctx)
-	productID := ctx.PathParam("id")
-
-	if tenantID == "" {
-		return ctx.BadRequest("Tenant ID is required", nil)
-	}
-	if productID == "" {
-		return ctx.BadRequest("Product ID is required", nil)
-	}
-
-	var req struct {
+	type inventoryUpdate struct {
 		Quantity int `json:"quantity" validate:"required,min=0"`
 	}
 
-	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
-	}
-
-	err := productService.UpdateInventory(ctx.Request.Context(), tenantID, productID, req.Quantity)
-	if err != nil {
-		return ctx.SystemError("Failed to update inventory", err)
-	}
-
-	log.Printf("ECOMMERCE AUDIT: Inventory updated - Tenant: %s, Product: %s, Quantity: %d",
-		tenantID, productID, req.Quantity)
-
-	return ctx.OK(map[string]any{
-		"productId": productID,
-		"quantity":  req.Quantity,
-		"updated":   true,
-		"timestamp": time.Now(),
-	})
+	return handleUpdateOperation(ctx, "id", "productId",
+		func(tenantID, productID string, req inventoryUpdate) error {
+			return productService.UpdateInventory(ctx.Request.Context(), tenantID, productID, req.Quantity)
+		},
+		"ECOMMERCE AUDIT: Inventory updated - Tenant: %s, Product: %s, Quantity: %d",
+		func(req inventoryUpdate) map[string]any {
+			return map[string]any{"quantity": req.Quantity}
+		},
+	)
 }
 
 // Customer handlers
@@ -429,38 +455,19 @@ func listOrders(ctx *lift.Context) error {
 }
 
 func updateOrderStatus(ctx *lift.Context) error {
-	tenantID := getTenantID(ctx)
-	orderID := ctx.PathParam("id")
-
-	if tenantID == "" {
-		return ctx.BadRequest("Tenant ID is required", nil)
-	}
-	if orderID == "" {
-		return ctx.BadRequest("Order ID is required", nil)
-	}
-
-	var req struct {
+	type statusUpdate struct {
 		Status OrderStatus `json:"status" validate:"required"`
 	}
 
-	if err := ctx.ParseRequest(&req); err != nil {
-		return ctx.BadRequest("Invalid request", err)
-	}
-
-	err := orderService.UpdateOrderStatus(ctx.Request.Context(), tenantID, orderID, req.Status)
-	if err != nil {
-		return ctx.SystemError("Failed to update order status", err)
-	}
-
-	log.Printf("ECOMMERCE AUDIT: Order status updated - Tenant: %s, Order: %s, Status: %s",
-		tenantID, orderID, req.Status)
-
-	return ctx.OK(map[string]any{
-		"orderId":   orderID,
-		"status":    req.Status,
-		"updated":   true,
-		"timestamp": time.Now(),
-	})
+	return handleUpdateOperation(ctx, "id", "orderId",
+		func(tenantID, orderID string, req statusUpdate) error {
+			return orderService.UpdateOrderStatus(ctx.Request.Context(), tenantID, orderID, req.Status)
+		},
+		"ECOMMERCE AUDIT: Order status updated - Tenant: %s, Order: %s, Status: %s",
+		func(req statusUpdate) map[string]any {
+			return map[string]any{"status": req.Status}
+		},
+	)
 }
 
 func getCustomerOrders(ctx *lift.Context) error {

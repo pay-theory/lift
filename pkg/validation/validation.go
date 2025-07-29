@@ -152,82 +152,66 @@ func validateRequired(field reflect.Value, fieldName string) error {
 	return nil
 }
 
-func validateMin(field reflect.Value, fieldName, ruleValue string) error {
-	minVal, err := strconv.Atoi(ruleValue)
+// validateComparison is a generic function for min/max validation
+func validateComparison(field reflect.Value, fieldName, ruleValue, tag string, isMin bool) error {
+	limitVal, err := strconv.Atoi(ruleValue)
 	if err != nil {
-		return fmt.Errorf("invalid min rule value: %s", ruleValue)
+		return fmt.Errorf("invalid %s rule value: %s", tag, ruleValue)
 	}
+
+	var failsCheck bool
+	var messageFormat string
 
 	switch field.Kind() {
 	case reflect.String:
-		if len(field.String()) < minVal {
-			return ValidationError{
-				Field:   fieldName,
-				Message: fmt.Sprintf("field must be at least %d characters", minVal),
-				Tag:     "min",
-				Value:   field.Interface(),
-			}
+		strLen := len(field.String())
+		if isMin {
+			failsCheck = strLen < limitVal
+			messageFormat = "field must be at least %d characters"
+		} else {
+			failsCheck = strLen > limitVal
+			messageFormat = "field must be at most %d characters"
 		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if field.Int() < int64(minVal) {
-			return ValidationError{
-				Field:   fieldName,
-				Message: fmt.Sprintf("field must be at least %d", minVal),
-				Tag:     "min",
-				Value:   field.Interface(),
-			}
+		intVal := field.Int()
+		if isMin {
+			failsCheck = intVal < int64(limitVal)
+			messageFormat = "field must be at least %d"
+		} else {
+			failsCheck = intVal > int64(limitVal)
+			messageFormat = "field must be at most %d"
 		}
 	case reflect.Float32, reflect.Float64:
-		if field.Float() < float64(minVal) {
-			return ValidationError{
-				Field:   fieldName,
-				Message: fmt.Sprintf("field must be at least %d", minVal),
-				Tag:     "min",
-				Value:   field.Interface(),
-			}
+		floatVal := field.Float()
+		if isMin {
+			failsCheck = floatVal < float64(limitVal)
+			messageFormat = "field must be at least %d"
+		} else {
+			failsCheck = floatVal > float64(limitVal)
+			messageFormat = "field must be at most %d"
+		}
+	default:
+		return nil
+	}
+
+	if failsCheck {
+		return ValidationError{
+			Field:   fieldName,
+			Message: fmt.Sprintf(messageFormat, limitVal),
+			Tag:     tag,
+			Value:   field.Interface(),
 		}
 	}
 
 	return nil
 }
 
+func validateMin(field reflect.Value, fieldName, ruleValue string) error {
+	return validateComparison(field, fieldName, ruleValue, "min", true)
+}
+
 func validateMax(field reflect.Value, fieldName, ruleValue string) error {
-	maxVal, err := strconv.Atoi(ruleValue)
-	if err != nil {
-		return fmt.Errorf("invalid max rule value: %s", ruleValue)
-	}
-
-	switch field.Kind() {
-	case reflect.String:
-		if len(field.String()) > maxVal {
-			return ValidationError{
-				Field:   fieldName,
-				Message: fmt.Sprintf("field must be at most %d characters", maxVal),
-				Tag:     "max",
-				Value:   field.Interface(),
-			}
-		}
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if field.Int() > int64(maxVal) {
-			return ValidationError{
-				Field:   fieldName,
-				Message: fmt.Sprintf("field must be at most %d", maxVal),
-				Tag:     "max",
-				Value:   field.Interface(),
-			}
-		}
-	case reflect.Float32, reflect.Float64:
-		if field.Float() > float64(maxVal) {
-			return ValidationError{
-				Field:   fieldName,
-				Message: fmt.Sprintf("field must be at most %d", maxVal),
-				Tag:     "max",
-				Value:   field.Interface(),
-			}
-		}
-	}
-
-	return nil
+	return validateComparison(field, fieldName, ruleValue, "max", false)
 }
 
 func validateEmail(field reflect.Value, fieldName string) error {

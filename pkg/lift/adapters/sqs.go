@@ -48,42 +48,8 @@ func (a *SQSAdapter) CanHandle(event any) bool {
 
 // Validate checks if the event has the required SQS structure
 func (a *SQSAdapter) Validate(event any) error {
-	eventMap, ok := event.(map[string]any)
-	if !ok {
-		return fmt.Errorf("event must be a map[string]any")
-	}
-
-	// Check for Records field
-	records, exists := eventMap["Records"]
-	if !exists {
-		return fmt.Errorf("missing required field: records")
-	}
-
-	// Validate records structure
-	recordsSlice, ok := records.([]any)
-	if !ok {
-		return fmt.Errorf("records must be a slice")
-	}
-
-	if len(recordsSlice) == 0 {
-		return fmt.Errorf("records slice cannot be empty")
-	}
-
-	// Validate first record
-	firstRecord, ok := recordsSlice[0].(map[string]any)
-	if !ok {
-		return fmt.Errorf("records must contain map objects")
-	}
-
-	// Check required fields in record
 	requiredFields := []string{"eventSource", "body", "receiptHandle"}
-	for _, field := range requiredFields {
-		if _, exists := firstRecord[field]; !exists {
-			return fmt.Errorf("missing required field in record: %s", field)
-		}
-	}
-
-	return nil
+	return validateRecordsEvent(event, "aws:sqs", requiredFields)
 }
 
 // Adapt converts an SQS event to a normalized Request

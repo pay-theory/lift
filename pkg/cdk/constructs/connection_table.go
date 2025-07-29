@@ -3,7 +3,6 @@ package constructs
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
-	"github.com/aws/jsii-runtime-go"
 )
 
 // ConnectionTableProps defines properties for the WebSocket connection table
@@ -24,30 +23,18 @@ type ConnectionTable struct {
 // The table uses pk/sk for connection_id and metadata storage
 // GSIs should be defined in your DynamORM model structs
 func NewConnectionTable(scope constructs.Construct, id *string, props *ConnectionTableProps) *ConnectionTable {
-	// Set defaults
-	if props == nil {
-		props = &ConnectionTableProps{}
+	// Create base props
+	baseProps := &BaseManagementTableProps{
+		DefaultTableName: "websocket-connections",
+	}
+	
+	if props != nil {
+		baseProps.TableName = props.TableName
+		baseProps.TimeToLiveAttribute = props.TimeToLiveAttribute
 	}
 
-	// Set connection table specific defaults
-	if props.TableName == nil {
-		props.TableName = jsii.String("websocket-connections")
-	}
-
-	// Enable TTL for connection cleanup
-	if props.TimeToLiveAttribute == nil {
-		props.TimeToLiveAttribute = jsii.String("ttl")
-	}
-
-	// Create the table with field names from Connection struct
-	liftTable := NewLiftTable(scope, id, &LiftTableProps{
-		TableName:                 props.TableName,
-		PartitionKeyName:          jsii.String("PK"),
-		SortKeyName:               jsii.String("SK"),
-		TimeToLiveAttribute:       props.TimeToLiveAttribute,
-		EnablePointInTimeRecovery: jsii.Bool(true),
-		EnableStreams:             jsii.Bool(true),
-	})
+	// Create the table using common function
+	liftTable := createManagementTable(scope, id, baseProps)
 
 	return &ConnectionTable{
 		construct: scope,
@@ -57,8 +44,7 @@ func NewConnectionTable(scope constructs.Construct, id *string, props *Connectio
 
 // GrantConnectionManagement grants permissions to manage WebSocket connections
 func (c *ConnectionTable) GrantConnectionManagement(grantee awsiam.IGrantable) {
-	// Grant read/write permissions for connection management
-	c.Table.GrantReadWriteData(grantee)
+	grantManagementPermissions(c.LiftTable, grantee)
 }
 
 // Example DynamORM model for connections:

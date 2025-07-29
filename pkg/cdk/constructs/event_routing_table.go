@@ -3,7 +3,6 @@ package constructs
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
-	"github.com/aws/jsii-runtime-go"
 )
 
 // EventRoutingTableProps defines properties for the event routing table
@@ -23,30 +22,18 @@ type EventRoutingTable struct {
 // NewEventRoutingTable creates a new event routing table
 // The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
 func NewEventRoutingTable(scope constructs.Construct, id *string, props *EventRoutingTableProps) *EventRoutingTable {
-	// Set defaults
-	if props == nil {
-		props = &EventRoutingTableProps{}
+	// Create base props
+	baseProps := &BaseManagementTableProps{
+		DefaultTableName: "event-routing",
+	}
+	
+	if props != nil {
+		baseProps.TableName = props.TableName
+		baseProps.TimeToLiveAttribute = props.TimeToLiveAttribute
 	}
 
-	// Set event routing table specific defaults
-	if props.TableName == nil {
-		props.TableName = jsii.String("event-routing")
-	}
-
-	// Enable TTL for event cleanup
-	if props.TimeToLiveAttribute == nil {
-		props.TimeToLiveAttribute = jsii.String("ttl")
-	}
-
-	// Create the table with field names from EventRoute struct
-	liftTable := NewLiftTable(scope, id, &LiftTableProps{
-		TableName:                 props.TableName,
-		PartitionKeyName:          jsii.String("PK"),
-		SortKeyName:               jsii.String("SK"),
-		TimeToLiveAttribute:       props.TimeToLiveAttribute,
-		EnablePointInTimeRecovery: jsii.Bool(true),
-		EnableStreams:             jsii.Bool(true),
-	})
+	// Create the table using common function
+	liftTable := createManagementTable(scope, id, baseProps)
 
 	return &EventRoutingTable{
 		construct: scope,
@@ -56,8 +43,7 @@ func NewEventRoutingTable(scope constructs.Construct, id *string, props *EventRo
 
 // GrantEventManagement grants permissions to manage events
 func (e *EventRoutingTable) GrantEventManagement(grantee awsiam.IGrantable) {
-	// Grant read/write permissions for event management
-	e.Table.GrantReadWriteData(grantee)
+	grantManagementPermissions(e.LiftTable, grantee)
 }
 
 // Example DynamORM model for event routing:

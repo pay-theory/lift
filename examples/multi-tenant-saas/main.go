@@ -368,6 +368,100 @@ func (s *TaskService) GetTasksByProject(_ context.Context, tenantID, projectID s
 	return tasks, 1, nil
 }
 
+// Handler helpers
+
+// Generic list handler to reduce duplication
+func handleListRequest[T any](
+	ctx *lift.Context,
+	listFunc func(context.Context, string, int, int) ([]T, int64, error),
+	resourceName string,
+) error {
+	tenantID := ctx.TenantID()
+	if tenantID == "" {
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
+	}
+
+	page, err := strconv.Atoi(ctx.Query("page"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	perPage, err := strconv.Atoi(ctx.Query("per_page"))
+	if err != nil || perPage < 1 || perPage > 100 {
+		perPage = 10
+	}
+
+	resources, total, err := listFunc(ctx.Context, tenantID, page, perPage)
+	if err != nil {
+		if logger := ctx.Logger; logger != nil {
+			logger.WithField("error", err.Error()).Error(fmt.Sprintf("Failed to list %s", resourceName))
+		}
+		return lift.NewLiftError("INTERNAL_ERROR", fmt.Sprintf("Failed to list %s", resourceName), 500)
+	}
+
+	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
+
+	pagination := Pagination{
+		Page:       page,
+		PerPage:    perPage,
+		Total:      total,
+		TotalPages: totalPages,
+	}
+
+	if page < totalPages {
+		nextPage := page + 1
+		pagination.NextPage = &nextPage
+	}
+
+	if page > 1 {
+		prevPage := page - 1
+		pagination.PrevPage = &prevPage
+	}
+
+	response := PaginatedResponse{
+		Data:       resources,
+		Pagination: pagination,
+	}
+
+	return ctx.JSON(response)
+}
+
+// Generic create handler to reduce duplication
+func handleCreateRequest[TReq any, TResp any](
+	ctx *lift.Context,
+	createFunc func(context.Context, string, string, TReq) (TResp, error),
+	resourceName string,
+) error {
+	tenantID := ctx.TenantID()
+	userID := ctx.UserID()
+
+	if tenantID == "" {
+		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
+	}
+	if userID == "" {
+		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
+	}
+
+	var req TReq
+	if err := ctx.ParseRequest(&req); err != nil {
+		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
+	}
+
+	if err := validation.Validate(req); err != nil {
+		return lift.ValidationError(err.Error()).WithDetail("field", "validation")
+	}
+
+	resource, err := createFunc(ctx.Context, tenantID, userID, req)
+	if err != nil {
+		if logger := ctx.Logger; logger != nil {
+			logger.WithField("error", err.Error()).Error(fmt.Sprintf("Failed to create %s", resourceName))
+		}
+		return lift.NewLiftError("INTERNAL_ERROR", fmt.Sprintf("Failed to create %s", resourceName), 500)
+	}
+
+	return ctx.Status(201).JSON(resource)
+}
+
 // Handlers
 
 // TenantHandlers contains handlers for tenant operations
@@ -453,54 +547,7 @@ func (h *UserHandlers) CreateUser(ctx *lift.Context) error {
 }
 
 func (h *UserHandlers) ListUsers(ctx *lift.Context) error {
-	tenantID := ctx.TenantID()
-	if tenantID == "" {
-		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
-	}
-
-	page, err := strconv.Atoi(ctx.Query("page"))
-	if err != nil || page < 1 {
-		page = 1
-	}
-
-	perPage, err := strconv.Atoi(ctx.Query("per_page"))
-	if err != nil || perPage < 1 || perPage > 100 {
-		perPage = 10
-	}
-
-	users, total, err := h.service.GetUsersByTenant(ctx.Context, tenantID, page, perPage)
-	if err != nil {
-		if logger := ctx.Logger; logger != nil {
-			logger.WithField("error", err.Error()).Error("Failed to list users")
-		}
-		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list users", 500)
-	}
-
-	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
-
-	pagination := Pagination{
-		Page:       page,
-		PerPage:    perPage,
-		Total:      total,
-		TotalPages: totalPages,
-	}
-
-	if page < totalPages {
-		nextPage := page + 1
-		pagination.NextPage = &nextPage
-	}
-
-	if page > 1 {
-		prevPage := page - 1
-		pagination.PrevPage = &prevPage
-	}
-
-	response := PaginatedResponse{
-		Data:       users,
-		Pagination: pagination,
-	}
-
-	return ctx.JSON(response)
+	return handleListRequest(ctx, h.service.GetUsersByTenant, "users")
 }
 
 // ProjectHandlers contains handlers for project operations
@@ -513,85 +560,11 @@ func NewProjectHandlers(service *ProjectService) *ProjectHandlers {
 }
 
 func (h *ProjectHandlers) CreateProject(ctx *lift.Context) error {
-	tenantID := ctx.TenantID()
-	userID := ctx.UserID()
-
-	if tenantID == "" {
-		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
-	}
-	if userID == "" {
-		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
-	}
-
-	var req CreateProjectRequest
-	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
-	}
-
-	if err := validation.Validate(req); err != nil {
-		return lift.ValidationError(err.Error()).WithDetail("field", "validation")
-	}
-
-	project, err := h.service.CreateProject(ctx.Context, tenantID, userID, req)
-	if err != nil {
-		if logger := ctx.Logger; logger != nil {
-			logger.WithField("error", err.Error()).Error("Failed to create project")
-		}
-		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create project", 500)
-	}
-
-	return ctx.Status(201).JSON(project)
+	return handleCreateRequest(ctx, h.service.CreateProject, "project")
 }
 
 func (h *ProjectHandlers) ListProjects(ctx *lift.Context) error {
-	tenantID := ctx.TenantID()
-	if tenantID == "" {
-		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
-	}
-
-	page, err := strconv.Atoi(ctx.Query("page"))
-	if err != nil || page < 1 {
-		page = 1
-	}
-
-	perPage, err := strconv.Atoi(ctx.Query("per_page"))
-	if err != nil || perPage < 1 || perPage > 100 {
-		perPage = 10
-	}
-
-	projects, total, err := h.service.GetProjectsByTenant(ctx.Context, tenantID, page, perPage)
-	if err != nil {
-		if logger := ctx.Logger; logger != nil {
-			logger.WithField("error", err.Error()).Error("Failed to list projects")
-		}
-		return lift.NewLiftError("INTERNAL_ERROR", "Failed to list projects", 500)
-	}
-
-	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
-
-	pagination := Pagination{
-		Page:       page,
-		PerPage:    perPage,
-		Total:      total,
-		TotalPages: totalPages,
-	}
-
-	if page < totalPages {
-		nextPage := page + 1
-		pagination.NextPage = &nextPage
-	}
-
-	if page > 1 {
-		prevPage := page - 1
-		pagination.PrevPage = &prevPage
-	}
-
-	response := PaginatedResponse{
-		Data:       projects,
-		Pagination: pagination,
-	}
-
-	return ctx.JSON(response)
+	return handleListRequest(ctx, h.service.GetProjectsByTenant, "projects")
 }
 
 // TaskHandlers contains handlers for task operations
@@ -604,34 +577,7 @@ func NewTaskHandlers(service *TaskService) *TaskHandlers {
 }
 
 func (h *TaskHandlers) CreateTask(ctx *lift.Context) error {
-	tenantID := ctx.TenantID()
-	userID := ctx.UserID()
-
-	if tenantID == "" {
-		return lift.NewLiftError("BAD_REQUEST", "Tenant ID is required", 400)
-	}
-	if userID == "" {
-		return lift.NewLiftError("BAD_REQUEST", "User ID is required", 400)
-	}
-
-	var req CreateTaskRequest
-	if err := ctx.ParseRequest(&req); err != nil {
-		return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400)
-	}
-
-	if err := validation.Validate(req); err != nil {
-		return lift.ValidationError(err.Error()).WithDetail("field", "validation")
-	}
-
-	task, err := h.service.CreateTask(ctx.Context, tenantID, userID, req)
-	if err != nil {
-		if logger := ctx.Logger; logger != nil {
-			logger.WithField("error", err.Error()).Error("Failed to create task")
-		}
-		return lift.NewLiftError("INTERNAL_ERROR", "Failed to create task", 500)
-	}
-
-	return ctx.Status(201).JSON(task)
+	return handleCreateRequest(ctx, h.service.CreateTask, "task")
 }
 
 func (h *TaskHandlers) UpdateTask(ctx *lift.Context) error {

@@ -229,10 +229,17 @@ func (bm *bulkheadManager) releaseResources(acquired *acquiredResources, tenantI
 	}
 }
 
-// getTenantSemaphore gets or creates a semaphore for a tenant
-func (bm *bulkheadManager) getTenantSemaphore(tenantID string) *semaphore {
+// getSemaphore is a generic helper to get or create a semaphore
+func (bm *bulkheadManager) getSemaphore(
+	key string,
+	semaphoreMap map[string]*semaphore,
+	defaultLimit int,
+	specificLimits map[string]int,
+	statsMap map[string]*ResourceStats,
+	statsMutex *sync.RWMutex,
+) *semaphore {
 	bm.mutex.RLock()
-	sem, exists := bm.tenantSemaphores[tenantID]
+	sem, exists := semaphoreMap[key]
 	bm.mutex.RUnlock()
 
 	if exists {
@@ -243,64 +250,72 @@ func (bm *bulkheadManager) getTenantSemaphore(tenantID string) *semaphore {
 	defer bm.mutex.Unlock()
 
 	// Double-check after acquiring write lock
-	if existingSem, exists := bm.tenantSemaphores[tenantID]; exists {
+	if existingSem, exists := semaphoreMap[key]; exists {
 		return existingSem
 	}
 
-	// Determine limit for this tenant
-	limit := bm.config.DefaultTenantLimit
-	if tenantLimit, exists := bm.config.PerTenantLimits[tenantID]; exists {
-		limit = tenantLimit
+	// Determine limit for this resource
+	limit := defaultLimit
+	if specificLimit, exists := specificLimits[key]; exists {
+		limit = specificLimit
 	}
 
 	sem = newSemaphore(limit)
-	bm.tenantSemaphores[tenantID] = sem
+	semaphoreMap[key] = sem
 
 	// Initialize stats
-	bm.statsMutex.Lock()
-	bm.stats.TenantStats[tenantID] = &ResourceStats{
+	statsMutex.Lock()
+	statsMap[key] = &ResourceStats{
 		Limit: limit,
 	}
-	bm.statsMutex.Unlock()
+	statsMutex.Unlock()
 
 	return sem
 }
 
+// getTenantSemaphore gets or creates a semaphore for a tenant
+func (bm *bulkheadManager) getTenantSemaphore(tenantID string) *semaphore {
+	return bm.getSemaphore(
+		tenantID,
+		bm.tenantSemaphores,
+		bm.config.DefaultTenantLimit,
+		bm.config.PerTenantLimits,
+		bm.stats.TenantStats,
+		&bm.statsMutex,
+	)
+}
+
 // getOperationSemaphore gets or creates a semaphore for an operation
 func (bm *bulkheadManager) getOperationSemaphore(operation string) *semaphore {
-	bm.mutex.RLock()
-	sem, exists := bm.operationSemaphores[operation]
-	bm.mutex.RUnlock()
+	return bm.getSemaphore(
+		operation,
+		bm.operationSemaphores,
+		bm.config.DefaultOperationLimit,
+		bm.config.PerOperationLimits,
+		bm.stats.OperationStats,
+		&bm.statsMutex,
+	)
+}
 
-	if exists {
-		return sem
+// buildMetricTags creates common metric tags
+func (bm *bulkheadManager) buildMetricTags(tenantID, operation, result string) map[string]string {
+	tags := map[string]string{
+		"bulkhead_name": bm.config.Name,
+	}
+	
+	if result != "" {
+		tags["result"] = result
 	}
 
-	bm.mutex.Lock()
-	defer bm.mutex.Unlock()
-
-	// Double-check after acquiring write lock
-	if existingSem, exists := bm.operationSemaphores[operation]; exists {
-		return existingSem
+	if bm.config.EnableTenantIsolation && tenantID != "" {
+		tags["tenant_id"] = tenantID
 	}
 
-	// Determine limit for this operation
-	limit := bm.config.DefaultOperationLimit
-	if opLimit, exists := bm.config.PerOperationLimits[operation]; exists {
-		limit = opLimit
+	if bm.config.EnableOperationIsolation && operation != "" {
+		tags["operation"] = operation
 	}
 
-	sem = newSemaphore(limit)
-	bm.operationSemaphores[operation] = sem
-
-	// Initialize stats
-	bm.statsMutex.Lock()
-	bm.stats.OperationStats[operation] = &ResourceStats{
-		Limit: limit,
-	}
-	bm.statsMutex.Unlock()
-
-	return sem
+	return tags
 }
 
 // recordAcquisition records successful resource acquisition
@@ -309,19 +324,7 @@ func (bm *bulkheadManager) recordAcquisition(tenantID, operation string, waitTim
 		return
 	}
 
-	tags := map[string]string{
-		"bulkhead_name": bm.config.Name,
-		"result":        "acquired",
-	}
-
-	if bm.config.EnableTenantIsolation && tenantID != "" {
-		tags["tenant_id"] = tenantID
-	}
-
-	if bm.config.EnableOperationIsolation {
-		tags["operation"] = operation
-	}
-
+	tags := bm.buildMetricTags(tenantID, operation, "acquired")
 	metrics := bm.config.Metrics.WithTags(tags)
 
 	// Record acquisition
@@ -339,19 +342,7 @@ func (bm *bulkheadManager) recordRejection(tenantID, operation string, waitTime 
 		return
 	}
 
-	tags := map[string]string{
-		"bulkhead_name": bm.config.Name,
-		"result":        "rejected",
-	}
-
-	if bm.config.EnableTenantIsolation && tenantID != "" {
-		tags["tenant_id"] = tenantID
-	}
-
-	if bm.config.EnableOperationIsolation {
-		tags["operation"] = operation
-	}
-
+	tags := bm.buildMetricTags(tenantID, operation, "rejected")
 	metrics := bm.config.Metrics.WithTags(tags)
 
 	// Record rejection

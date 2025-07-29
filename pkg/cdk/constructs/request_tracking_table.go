@@ -2,7 +2,6 @@ package constructs
 
 import (
 	"github.com/aws/constructs-go/constructs/v10"
-	"github.com/aws/jsii-runtime-go"
 )
 
 // RequestTrackingTableProps defines properties for the request tracking table
@@ -22,30 +21,18 @@ type RequestTrackingTable struct {
 // NewRequestTrackingTable creates a new request tracking table
 // The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
 func NewRequestTrackingTable(scope constructs.Construct, id *string, props *RequestTrackingTableProps) *RequestTrackingTable {
-	// Set defaults
-	if props == nil {
-		props = &RequestTrackingTableProps{}
+	// Create base props
+	baseProps := &BaseManagementTableProps{
+		DefaultTableName: "request-tracking",
+	}
+	
+	if props != nil {
+		baseProps.TableName = props.TableName
+		baseProps.TimeToLiveAttribute = props.TimeToLiveAttribute
 	}
 
-	// Set request tracking table specific defaults
-	if props.TableName == nil {
-		props.TableName = jsii.String("request-tracking")
-	}
-
-	// Enable TTL for request cleanup
-	if props.TimeToLiveAttribute == nil {
-		props.TimeToLiveAttribute = jsii.String("ttl")
-	}
-
-	// Create the table with field names from RequestTracking struct
-	liftTable := NewLiftTable(scope, id, &LiftTableProps{
-		TableName:                 props.TableName,
-		PartitionKeyName:          jsii.String("PK"),
-		SortKeyName:               jsii.String("SK"),
-		TimeToLiveAttribute:       props.TimeToLiveAttribute,
-		EnablePointInTimeRecovery: jsii.Bool(true),
-		EnableStreams:             jsii.Bool(true),
-	})
+	// Create the table using common function
+	liftTable := createManagementTable(scope, id, baseProps)
 
 	return &RequestTrackingTable{
 		construct: scope,

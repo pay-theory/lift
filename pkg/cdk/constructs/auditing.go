@@ -481,6 +481,45 @@ func createFirehoseDeliveryStream(scope constructs.Construct, props *AuditingPro
 	})
 }
 
+// createAuditLambdaFunction creates a Lambda function with common audit configurations
+func createAuditLambdaFunction(scope constructs.Construct, id string, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key, config struct {
+	FunctionName string
+	Description  string
+	Timeout      awscdk.Duration
+	Permissions  string // "read" or "readwrite"
+}) awslambda.Function {
+	// Create IAM role
+	role := awsiam.NewRole(scope, jsii.String(fmt.Sprintf("%sRole", id)), &awsiam.RoleProps{
+		AssumedBy: awsiam.NewServicePrincipal(jsii.String("lambda.amazonaws.com"), nil),
+		ManagedPolicies: &[]awsiam.IManagedPolicy{
+			awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/AWSLambdaBasicExecutionRole")),
+		},
+	})
+
+	// Grant permissions
+	if config.Permissions == "readwrite" {
+		bucket.GrantReadWrite(role, nil)
+	} else {
+		bucket.GrantRead(role, nil)
+	}
+	encryptionKey.GrantEncryptDecrypt(role)
+
+	return awslambda.NewFunction(scope, jsii.String(id), &awslambda.FunctionProps{
+		FunctionName: jsii.String(config.FunctionName),
+		Runtime:      awslambda.Runtime_PROVIDED_AL2(),
+		Handler:      jsii.String("bootstrap"),
+		Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+		Role:         role,
+		Description:  jsii.String(config.Description),
+		Timeout:      config.Timeout,
+		Environment: &map[string]*string{
+			"AUDIT_BUCKET": bucket.BucketName(),
+			"APP_NAME":     props.AppName,
+			"ENVIRONMENT":  props.Environment,
+		},
+	})
+}
+
 // createLogProcessingFunction creates a Lambda function for log processing
 func createLogProcessingFunction(scope constructs.Construct, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key, stream awskinesis.Stream) awslambda.Function {
 	// Create IAM role for log processing function
@@ -628,24 +667,19 @@ func createAuditComplianceFunction(scope constructs.Construct, props *AuditingPr
 
 // createAuditDashboard creates a CloudWatch dashboard for audit monitoring
 func createAuditDashboard(scope constructs.Construct, props *AuditingProps, appLogGroup awslogs.LogGroup, dbLogGroup awslogs.LogGroup, auditLogGroup awslogs.LogGroup) awscloudwatch.Dashboard {
+	// Helper function to create text widgets
+	createLogWidget := func(title string, logGroup awslogs.LogGroup) awscloudwatch.TextWidget {
+		return awscloudwatch.NewTextWidget(&awscloudwatch.TextWidgetProps{
+			Markdown: jsii.String(fmt.Sprintf("## %s\nLog Group: %s", title, *logGroup.LogGroupName())),
+			Width:    jsii.Number(8),
+			Height:   jsii.Number(3),
+		})
+	}
+
 	// Create text widgets for each log group
-	appLogWidget := awscloudwatch.NewTextWidget(&awscloudwatch.TextWidgetProps{
-		Markdown: jsii.String(fmt.Sprintf("## Application Audit Logs\nLog Group: %s", *appLogGroup.LogGroupName())),
-		Width:    jsii.Number(8),
-		Height:   jsii.Number(3),
-	})
-
-	dbLogWidget := awscloudwatch.NewTextWidget(&awscloudwatch.TextWidgetProps{
-		Markdown: jsii.String(fmt.Sprintf("## Database Audit Logs\nLog Group: %s", *dbLogGroup.LogGroupName())),
-		Width:    jsii.Number(8),
-		Height:   jsii.Number(3),
-	})
-
-	systemLogWidget := awscloudwatch.NewTextWidget(&awscloudwatch.TextWidgetProps{
-		Markdown: jsii.String(fmt.Sprintf("## System Audit Logs\nLog Group: %s", *auditLogGroup.LogGroupName())),
-		Width:    jsii.Number(8),
-		Height:   jsii.Number(3),
-	})
+	appLogWidget := createLogWidget("Application Audit Logs", appLogGroup)
+	dbLogWidget := createLogWidget("Database Audit Logs", dbLogGroup)
+	systemLogWidget := createLogWidget("System Audit Logs", auditLogGroup)
 
 	return awscloudwatch.NewDashboard(scope, jsii.String("AuditDashboard"), &awscloudwatch.DashboardProps{
 		DashboardName: jsii.String(fmt.Sprintf("%s-audit-dashboard", *props.AppName)),

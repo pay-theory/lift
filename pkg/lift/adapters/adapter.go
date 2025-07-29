@@ -148,6 +148,53 @@ func (b *BaseAdapter) GetTriggerType() TriggerType {
 	return b.triggerType
 }
 
+// validateRecordsEvent validates events that have a Records structure (S3, SQS, etc.)
+func validateRecordsEvent(event any, eventSource string, requiredFields []string) error {
+	eventMap, ok := event.(map[string]any)
+	if !ok {
+		return fmt.Errorf("event must be a map[string]any")
+	}
+
+	// Check for Records field
+	records, exists := eventMap["Records"]
+	if !exists {
+		return fmt.Errorf("missing required field: records")
+	}
+
+	// Validate records structure
+	recordsSlice, ok := records.([]any)
+	if !ok {
+		return fmt.Errorf("records must be a slice")
+	}
+
+	if len(recordsSlice) == 0 {
+		return fmt.Errorf("records slice cannot be empty")
+	}
+
+	// Validate first record
+	firstRecord, ok := recordsSlice[0].(map[string]any)
+	if !ok {
+		return fmt.Errorf("records must contain map objects")
+	}
+
+	// Check eventSource if specified
+	if eventSource != "" {
+		actualSource := extractStringField(firstRecord, "eventSource")
+		if actualSource != eventSource {
+			return fmt.Errorf("expected eventSource %s, got %s", eventSource, actualSource)
+		}
+	}
+
+	// Check required fields in record
+	for _, field := range requiredFields {
+		if _, exists := firstRecord[field]; !exists {
+			return fmt.Errorf("missing required field in record: %s", field)
+		}
+	}
+
+	return nil
+}
+
 // extractStringField safely extracts a string field from a map
 func extractStringField(data map[string]any, key string) string {
 	if value, exists := data[key]; exists {
