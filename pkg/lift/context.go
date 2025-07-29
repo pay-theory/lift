@@ -15,33 +15,23 @@ type Validator interface {
 type Context struct {
 	context.Context
 
+	// 8-byte aligned fields (pointers, interfaces, maps)
+	Request        *Request
+	Response       *Response
+	Logger         Logger
+	Metrics        MetricsCollector
+	validator      Validator
+	params         map[string]string
+	values         map[string]any
+	DB             any
+	claims         map[string]any
+	responseBuffer *ResponseBuffer
+
 	// Performance tracking (24 bytes)
 	startTime time.Time
 
 	// Lambda-specific (16 bytes)
 	RequestID string
-
-	// Request/Response cycle (8 bytes each)
-	Request  *Request
-	Response *Response
-
-	// Observability (8 bytes each)
-	Logger  Logger
-	Metrics MetricsCollector
-
-	// Utilities (8 bytes each)
-	validator Validator
-	params    map[string]string
-	values    map[string]any
-
-	// Optional database connection (8 bytes)
-	DB any
-
-	// Authentication (8 bytes)
-	claims map[string]any
-
-	// Response buffering (8 bytes)
-	responseBuffer *ResponseBuffer
 
 	// Boolean flags (1 byte each)
 	isAuthenticated  bool

@@ -6,13 +6,16 @@ import (
 
 // Response represents a unified response structure for Lambda functions
 type Response struct {
-	StatusCode      int               `json:"statusCode"`
-	Body            any               `json:"body"`
-	Headers         map[string]string `json:"headers"`
-	IsBase64Encoded bool              `json:"isBase64Encoded"`
+	// 8-byte aligned fields
+	Body    any               `json:"body"`
+	Headers map[string]string `json:"headers"`
 
-	// Internal state
-	written bool
+	// 4-byte aligned fields
+	StatusCode int `json:"statusCode"`
+
+	// 1-byte aligned fields
+	IsBase64Encoded bool `json:"isBase64Encoded"`
+	written         bool
 }
 
 // NewResponse creates a new Response with default values
@@ -115,9 +118,9 @@ func (r *Response) MarshalJSON() ([]byte, error) {
 
 	// Create the Lambda response structure
 	lambdaResponse := struct {
-		StatusCode      int               `json:"statusCode"`
-		Body            string            `json:"body"`
 		Headers         map[string]string `json:"headers"`
+		Body            string            `json:"body"`
+		StatusCode      int               `json:"statusCode"`
 		IsBase64Encoded bool              `json:"isBase64Encoded"`
 	}{
 		StatusCode:      r.StatusCode,

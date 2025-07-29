@@ -12,38 +12,30 @@ import (
 
 // TimeoutConfig holds configuration for request timeouts
 type TimeoutConfig struct {
-	// Basic timeout settings
-	DefaultTimeout time.Duration `json:"default_timeout"` // Default timeout for all requests
-	ReadTimeout    time.Duration `json:"read_timeout"`    // Timeout for reading request body
-	WriteTimeout   time.Duration `json:"write_timeout"`   // Timeout for writing response
-	IdleTimeout    time.Duration `json:"idle_timeout"`    // Timeout for idle connections
+	// 8-byte aligned fields (durations, maps, functions, interfaces)
+	DefaultTimeout       time.Duration                   `json:"default_timeout"`    // Default timeout for all requests
+	ReadTimeout          time.Duration                   `json:"read_timeout"`       // Timeout for reading request body
+	WriteTimeout         time.Duration                   `json:"write_timeout"`      // Timeout for writing response
+	IdleTimeout          time.Duration                   `json:"idle_timeout"`       // Timeout for idle connections
+	ShutdownTimeout      time.Duration                   `json:"shutdown_timeout"`   // Timeout for graceful shutdown
+	OperationTimeouts    map[string]time.Duration        `json:"operation_timeouts"` // Timeouts per operation
+	TenantTimeouts       map[string]time.Duration        `json:"tenant_timeouts"`    // Timeouts per tenant
+	TimeoutCalculator    func(*lift.Context) time.Duration `json:"-"`                // Custom timeout calculator
+	TimeoutHandler       func(*lift.Context) error       `json:"-"`                  // Custom timeout response handler
+	Logger               observability.StructuredLogger  `json:"-"`
+	Metrics              observability.MetricsCollector  `json:"-"`
 
-	// Per-operation timeouts
-	OperationTimeouts map[string]time.Duration `json:"operation_timeouts"` // Timeouts per operation
+	// Strings (16 bytes each)
+	TimeoutMessage string `json:"timeout_message"` // Message for timeout response
+	Name           string `json:"name"`            // Timeout middleware name for metrics
 
-	// Per-tenant timeouts
-	TenantTimeouts map[string]time.Duration `json:"tenant_timeouts"` // Timeouts per tenant
+	// 4-byte aligned fields
+	TimeoutStatusCode int `json:"timeout_status_code"` // HTTP status for timeout
 
-	// Dynamic timeout settings
-	EnableDynamicTimeout bool                              `json:"enable_dynamic_timeout"` // Enable dynamic timeout adjustment
-	TimeoutCalculator    func(*lift.Context) time.Duration `json:"-"`                      // Custom timeout calculator
-
-	// Graceful handling
-	GracefulShutdown bool          `json:"graceful_shutdown"` // Enable graceful shutdown
-	ShutdownTimeout  time.Duration `json:"shutdown_timeout"`  // Timeout for graceful shutdown
-
-	// Response settings
-	TimeoutHandler    func(*lift.Context) error `json:"-"`                   // Custom timeout response handler
-	TimeoutStatusCode int                       `json:"timeout_status_code"` // HTTP status for timeout
-	TimeoutMessage    string                    `json:"timeout_message"`     // Message for timeout response
-
-	// Observability
-	Logger        observability.StructuredLogger `json:"-"`
-	Metrics       observability.MetricsCollector `json:"-"`
-	EnableMetrics bool                           `json:"enable_metrics"`
-
-	// Naming
-	Name string `json:"name"` // Timeout middleware name for metrics
+	// Boolean flags (1 byte each)
+	EnableDynamicTimeout bool `json:"enable_dynamic_timeout"` // Enable dynamic timeout adjustment
+	GracefulShutdown     bool `json:"graceful_shutdown"`      // Enable graceful shutdown
+	EnableMetrics        bool `json:"enable_metrics"`
 }
 
 // TimeoutStats provides statistics about timeout performance

@@ -16,22 +16,24 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	// Performance settings
+	// Performance settings (8 bytes each)
 	MaxRequestSize  int64 `json:"max_request_size"`
 	MaxResponseSize int64 `json:"max_response_size"`
-	Timeout         int   `json:"timeout_seconds"`
 
-	// Observability
-	LogLevel       string `json:"log_level"`
-	MetricsEnabled bool   `json:"metrics_enabled"`
-	TracingEnabled bool   `json:"tracing_enabled"`
-	Debug          bool   `json:"debug"`
-
-	// Security
-	CORSEnabled    bool     `json:"cors_enabled"`
+	// Security (slice = 24 bytes)
 	AllowedOrigins []string `json:"allowed_origins"`
 
-	// Multi-tenant
+	// Observability (string = 16 bytes)
+	LogLevel string `json:"log_level"`
+
+	// Performance settings (4 bytes)
+	Timeout int `json:"timeout_seconds"`
+
+	// Boolean flags (1 byte each)
+	MetricsEnabled  bool `json:"metrics_enabled"`
+	TracingEnabled  bool `json:"tracing_enabled"`
+	Debug           bool `json:"debug"`
+	CORSEnabled     bool `json:"cors_enabled"`
 	RequireTenantID bool `json:"require_tenant_id"`
 }
 

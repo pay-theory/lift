@@ -21,15 +21,23 @@ func (f EventHandlerFunc) HandleEvent(ctx *Context) error {
 
 // EventRoute represents a route for a specific event type
 type EventRoute struct {
+	// 8-byte aligned fields
+	Handler EventHandler
+
+	// Strings (16 bytes)
+	Pattern string // For matching specific sources, queues, buckets, etc.
+
+	// Smaller types
 	TriggerType TriggerType
-	Pattern     string // For matching specific sources, queues, buckets, etc.
-	Handler     EventHandler
 }
 
 // EventRouter handles routing for non-HTTP Lambda events
 type EventRouter struct {
-	mu     sync.RWMutex
+	// 8-byte aligned fields
 	routes map[TriggerType][]*EventRoute
+
+	// 24-byte mutex
+	mu sync.RWMutex
 }
 
 // NewEventRouter creates a new event router

@@ -12,25 +12,23 @@ import (
 
 // DynamORMConfig holds configuration for DynamORM integration
 type DynamORMConfig struct {
-	// Table configuration
+	// 8-byte aligned fields
+	Timeout time.Duration `json:"timeout"`
+
+	// Strings (16 bytes each)
 	TableName string `json:"table_name"`
 	Region    string `json:"region"`
 	Endpoint  string `json:"endpoint,omitempty"` // For local testing
+	TenantKey string `json:"tenant_key"`         // Key used for tenant isolation (default: "tenant_id")
 
-	// Connection settings
-	MaxRetries int           `json:"max_retries"`
-	Timeout    time.Duration `json:"timeout"`
+	// 4-byte aligned fields
+	MaxRetries int `json:"max_retries"`
+	BatchSize  int `json:"batch_size"` // Default batch size for operations
 
-	// Transaction settings
+	// Boolean flags (1 byte each)
 	AutoTransaction bool `json:"auto_transaction"` // Automatically wrap writes in transactions
-
-	// Multi-tenant settings
-	TenantIsolation bool   `json:"tenant_isolation"` // Enforce tenant-based data isolation
-	TenantKey       string `json:"tenant_key"`       // Key used for tenant isolation (default: "tenant_id")
-
-	// Performance settings
-	ConsistentRead bool `json:"consistent_read"` // Use strongly consistent reads
-	BatchSize      int  `json:"batch_size"`      // Default batch size for operations
+	TenantIsolation bool `json:"tenant_isolation"` // Enforce tenant-based data isolation
+	ConsistentRead  bool `json:"consistent_read"`  // Use strongly consistent reads
 }
 
 // DefaultConfig returns a default DynamORM configuration
@@ -129,9 +127,9 @@ func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Ha
 	// Set up panic recovery
 	defer func() {
 		if r := recover(); r != nil {
-			if err := tx.Rollback(); err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				// Log rollback error but still re-panic the original error
-				ctx.Set("rollback_error", err)
+				ctx.Set("rollback_error", rollbackErr)
 			}
 			panic(r) // Re-panic after rollback
 		}

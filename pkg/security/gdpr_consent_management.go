@@ -17,35 +17,44 @@ var (
 
 // GDPRConsentManager provides comprehensive GDPR consent management
 type GDPRConsentManager struct {
-	config               GDPRConsentConfig
+	// 8-byte aligned fields (interfaces)
 	consentStore         ConsentStore
 	dataSubjectRights    DataSubjectRightsHandler
 	privacyAssessment    PrivacyImpactAssessment
 	crossBorderValidator CrossBorderValidator
 	auditLogger          GDPRAuditLogger
-	mu                   sync.RWMutex
+
+	// 24-byte mutex
+	mu sync.RWMutex
+
+	// Structs (varies)
+	config GDPRConsentConfig
 }
 
 // GDPRConsentConfig configuration for GDPR consent management
 type GDPRConsentConfig struct {
+	// 8-byte aligned fields (maps, slices)
 	DataRetentionPolicies    map[string]time.Duration `json:"data_retention_policies"`
 	CrossBorderTransferRules []CrossBorderRule        `json:"cross_border_transfer_rules"`
-	ConsentRenewalDays       int                      `json:"consent_renewal_days"`
-	BreachNotificationHours  int                      `json:"breach_notification_hours"`
-	// Additional fields needed by tests
-	ConsentExpiryDays      int  `json:"consent_expiry_days"`
-	DataRetentionDays      int  `json:"data_retention_days"`
-	RequestProcessingDays  int  `json:"request_processing_days"`
-	Enabled                  bool                     `json:"enabled"`
-	AutomaticConsentRenewal  bool                     `json:"automatic_consent_renewal"`
-	GranularConsentRequired  bool                     `json:"granular_consent_required"`
-	ConsentWithdrawalEnabled bool                     `json:"consent_withdrawal_enabled"`
-	DataPortabilityEnabled   bool                     `json:"data_portability_enabled"`
-	RightToErasureEnabled    bool                     `json:"right_to_erasure_enabled"`
-	PrivacyByDesignEnabled   bool                     `json:"privacy_by_design_enabled"`
-	RequireExplicitConsent bool `json:"require_explicit_consent"`
-	RequireConsentProof    bool `json:"require_consent_proof"`
-	ConsentProofRequired   bool `json:"consent_proof_required"`
+
+	// 4-byte aligned fields (ints)
+	ConsentRenewalDays      int `json:"consent_renewal_days"`
+	BreachNotificationHours int `json:"breach_notification_hours"`
+	ConsentExpiryDays       int `json:"consent_expiry_days"`
+	DataRetentionDays       int `json:"data_retention_days"`
+	RequestProcessingDays   int `json:"request_processing_days"`
+
+	// Boolean flags (1 byte each)
+	Enabled                  bool `json:"enabled"`
+	AutomaticConsentRenewal  bool `json:"automatic_consent_renewal"`
+	GranularConsentRequired  bool `json:"granular_consent_required"`
+	ConsentWithdrawalEnabled bool `json:"consent_withdrawal_enabled"`
+	DataPortabilityEnabled   bool `json:"data_portability_enabled"`
+	RightToErasureEnabled    bool `json:"right_to_erasure_enabled"`
+	PrivacyByDesignEnabled   bool `json:"privacy_by_design_enabled"`
+	RequireExplicitConsent   bool `json:"require_explicit_consent"`
+	RequireConsentProof      bool `json:"require_consent_proof"`
+	ConsentProofRequired     bool `json:"consent_proof_required"`
 }
 
 // ConsentStore interface for storing and retrieving consent data

@@ -9,26 +9,16 @@ import (
 
 // JWTAuthConfig holds configuration for JWT authentication
 type JWTAuthConfig struct {
-	// Secret key for HMAC algorithms
-	Secret string
+	// 8-byte aligned fields (interfaces, functions, slices)
+	PublicKey    any                                   // Public key for RSA/ECDSA algorithms
+	ErrorHandler func(ctx *Context, err error) error  // Custom error handler
+	Validator    func(claims jwt.MapClaims) error      // Custom claims validator
+	SkipPaths    []string                              // Skip authentication for these paths
 
-	// Public key for RSA/ECDSA algorithms
-	PublicKey any
-
-	// Algorithm to use (HS256, RS256, etc)
-	Algorithm string
-
-	// Token lookup string (e.g., "header:Authorization,query:token")
-	TokenLookup string
-
-	// Skip authentication for these paths
-	SkipPaths []string
-
-	// Custom error handler
-	ErrorHandler func(ctx *Context, err error) error
-
-	// Custom claims validator
-	Validator func(claims jwt.MapClaims) error
+	// Strings (16 bytes each)
+	Secret      string // Secret key for HMAC algorithms
+	Algorithm   string // Algorithm to use (HS256, RS256, etc)
+	TokenLookup string // Token lookup string (e.g., "header:Authorization,query:token")
 }
 
 // WithJWTAuth adds JWT authentication middleware to the application
@@ -63,26 +53,16 @@ func WithSimpleJWTAuth(secret string) AppOption {
 
 // SecurityConfig holds configuration for security middleware
 type SecurityConfig struct {
-	// Enable security headers
-	EnableSecurityHeaders bool
+	// 8-byte aligned fields (functions, slices)
+	Handler       func(ctx *Context) error                                  // Custom security handler
+	AuditLogger   func(ctx *Context, event string, data map[string]any)    // Audit logger
+	IPWhitelist   []string                                                  // IP whitelist (empty means allow all)
+	RequiredRoles []string                                                  // Required roles for all endpoints (can be overridden per route)
 
-	// Enable CSRF protection
-	EnableCSRF bool
-
-	// Enable rate limiting
-	EnableRateLimiting bool
-
-	// Custom security handler
-	Handler func(ctx *Context) error
-
-	// IP whitelist (empty means allow all)
-	IPWhitelist []string
-
-	// Required roles for all endpoints (can be overridden per route)
-	RequiredRoles []string
-
-	// Audit logger
-	AuditLogger func(ctx *Context, event string, data map[string]any)
+	// Boolean flags (1 byte each)
+	EnableSecurityHeaders bool // Enable security headers
+	EnableCSRF            bool // Enable CSRF protection
+	EnableRateLimiting    bool // Enable rate limiting
 }
 
 // WithSecurityMiddleware adds security middleware to the application

@@ -26,9 +26,12 @@ type JWTClaims struct {
 
 // JWTValidator handles JWT token validation
 type JWTValidator struct {
-	config    security.JWTConfig
+	// 8-byte aligned fields
 	publicKey *rsa.PublicKey
 	secretKey []byte
+
+	// Structs (varies)
+	config security.JWTConfig
 }
 
 // NewJWTValidator creates a new JWT validator

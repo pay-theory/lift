@@ -20,28 +20,26 @@ const (
 
 // Request represents a normalized request from any event source
 type Request struct {
-	// Event metadata
-	TriggerType TriggerType `json:"trigger_type"`
-	RawEvent    any         `json:"raw_event,omitempty"`
-	EventID     string      `json:"event_id,omitempty"`
-	Timestamp   string      `json:"timestamp,omitempty"`
-
-	// HTTP-like fields (for API Gateway compatibility)
-	Method      string            `json:"method,omitempty"`
-	Path        string            `json:"path,omitempty"`
+	// 8-byte aligned fields (interfaces, slices, maps)
+	RawEvent    any               `json:"raw_event,omitempty"`
 	Headers     map[string]string `json:"headers,omitempty"`
 	QueryParams map[string]string `json:"query_params,omitempty"`
 	PathParams  map[string]string `json:"path_params,omitempty"`
+	Records     []any             `json:"records,omitempty"`
+	Detail      map[string]any    `json:"detail,omitempty"`
+	Metadata    map[string]any    `json:"metadata,omitempty"`
 	Body        []byte            `json:"body,omitempty"`
 
-	// Event-specific data
-	Records    []any          `json:"records,omitempty"`
-	Detail     map[string]any `json:"detail,omitempty"`
-	Source     string         `json:"source,omitempty"`
-	DetailType string         `json:"detail_type,omitempty"`
+	// Strings (16 bytes each)
+	EventID     string `json:"event_id,omitempty"`
+	Timestamp   string `json:"timestamp,omitempty"`
+	Method      string `json:"method,omitempty"`
+	Path        string `json:"path,omitempty"`
+	Source      string `json:"source,omitempty"`
+	DetailType  string `json:"detail_type,omitempty"`
 
-	// Additional metadata for specific event types (e.g., WebSocket)
-	Metadata map[string]any `json:"metadata,omitempty"`
+	// Smaller types
+	TriggerType TriggerType `json:"trigger_type"`
 }
 
 // EventAdapter defines the interface for converting Lambda events to normalized requests
