@@ -661,7 +661,7 @@ func (mrd *MultiRegionDeployer) switchTraffic(ctx context.Context, regions []str
 }
 
 // cleanupBlueEnvironment cleans up the blue environment
-func (mrd *MultiRegionDeployer) cleanupBlueEnvironment(ctx context.Context, regions []string) error {
+func (mrd *MultiRegionDeployer) cleanupBlueEnvironment(_ context.Context, regions []string) error {
 	// Implementation would clean up old blue environment resources
 	return nil
 }

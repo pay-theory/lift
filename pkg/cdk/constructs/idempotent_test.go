@@ -96,7 +96,7 @@ func TestNewIdempotentFunction(t *testing.T) {
 				KeyField:     jsii.String("X-Idempotency-Key"),
 				TTLSeconds:   jsii.Number(48 * 3600),
 			},
-			assertions: func(_ *testing.T, template assertions.Template, fn *IdempotentFunction) {
+			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
 				// Check custom table name
 				template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &map[string]interface{}{
 					"TableName": "custom-idempotency-table",
@@ -129,7 +129,7 @@ func TestNewIdempotentFunction(t *testing.T) {
 				KeyExtractor: IdempotentKeyBody,
 				KeyField:     jsii.String("requestId"),
 			},
-			assertions: func(_ *testing.T, template assertions.Template, fn *IdempotentFunction) {
+			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
 				// Check environment variables for body extraction
 				template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
 					"Environment": &map[string]interface{}{
@@ -154,7 +154,7 @@ func TestNewIdempotentFunction(t *testing.T) {
 				KeyExtractor: IdempotentKeyPath,
 				KeyField:     jsii.String("orderId"),
 			},
-			assertions: func(_ *testing.T, template assertions.Template, fn *IdempotentFunction) {
+			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
 				// Check environment variables for path extraction
 				template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
 					"Environment": &map[string]interface{}{
@@ -179,7 +179,7 @@ func TestNewIdempotentFunction(t *testing.T) {
 				KeyExtractor: IdempotentKeyCustom,
 				KeyField:     jsii.String("customExtractorFunction"),
 			},
-			assertions: func(_ *testing.T, template assertions.Template, fn *IdempotentFunction) {
+			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
 				// Check environment variables for custom extraction
 				template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
 					"Environment": &map[string]interface{}{

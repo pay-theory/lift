@@ -93,7 +93,7 @@ func (d *DevDashboard) Stop() error {
 }
 
 // handleDashboard serves the main dashboard page
-func (d *DevDashboard) handleDashboard(w http.ResponseWriter, r *http.Request) {
+func (d *DevDashboard) handleDashboard(w http.ResponseWriter, _ *http.Request) {
 	tmpl := template.Must(template.New("dashboard").Parse(dashboardHTML))
 
 	data := struct {
@@ -116,7 +116,7 @@ func (d *DevDashboard) handleDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAPIStats returns server statistics as JSON
-func (d *DevDashboard) handleAPIStats(w http.ResponseWriter, r *http.Request) {
+func (d *DevDashboard) handleAPIStats(w http.ResponseWriter, _ *http.Request) {
 	stats := d.server.GetStats()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -126,7 +126,7 @@ func (d *DevDashboard) handleAPIStats(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAPIHealth returns server health as JSON
-func (d *DevDashboard) handleAPIHealth(w http.ResponseWriter, r *http.Request) {
+func (d *DevDashboard) handleAPIHealth(w http.ResponseWriter, _ *http.Request) {
 	health := map[string]any{
 		"status":     "healthy",
 		"timestamp":  time.Now(),

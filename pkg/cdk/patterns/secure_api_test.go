@@ -137,7 +137,7 @@ func TestNewSecureAPI_DisableWAF(t *testing.T) {
 	assert.Nil(t, secureAPI.WebACL)
 }
 
-func TestNewSecureAPI_WithExistingVPC(t *testing.T) {
+func TestNewSecureAPI_WithExistingVPC(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -160,7 +160,7 @@ func TestNewSecureAPI_WithExistingVPC(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::EC2::VPC"), jsii.Number(1))
 }
 
-func TestNewSecureAPI_CustomRateLimiting(t *testing.T) {
+func TestNewSecureAPI_CustomRateLimiting(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -189,7 +189,7 @@ func TestNewSecureAPI_CustomRateLimiting(t *testing.T) {
 	})
 }
 
-func TestNewSecureAPI_WithAlarms(t *testing.T) {
+func TestNewSecureAPI_WithAlarms(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -224,7 +224,7 @@ func TestNewSecureAPI_WithAlarms(t *testing.T) {
 	})
 }
 
-func TestNewSecureAPI_WithCustomDomain(t *testing.T) {
+func TestNewSecureAPI_WithCustomDomain(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -252,7 +252,7 @@ func TestNewSecureAPI_WithCustomDomain(t *testing.T) {
 	})
 }
 
-func TestNewSecureAPI_WithAdditionalPolicies(t *testing.T) {
+func TestNewSecureAPI_WithAdditionalPolicies(_ *testing.T) {
 	// Given
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)

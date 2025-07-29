@@ -77,24 +77,24 @@ func (m *mockServiceMeshLogger) Debug(msg string, fields ...map[string]any) {
 }
 
 // lift.Logger interface methods
-func (m *mockServiceMeshLogger) WithField(key string, value any) lift.Logger {
+func (m *mockServiceMeshLogger) WithField(_ string, _ any) lift.Logger {
 	return m
 }
-func (m *mockServiceMeshLogger) WithFields(fields map[string]any) lift.Logger {
+func (m *mockServiceMeshLogger) WithFields(_ map[string]any) lift.Logger {
 	return m
 }
 
 // observability.StructuredLogger interface methods
-func (m *mockServiceMeshLogger) WithRequestID(requestID string) observability.StructuredLogger {
+func (m *mockServiceMeshLogger) WithRequestID(_ string) observability.StructuredLogger {
 	return m
 }
-func (m *mockServiceMeshLogger) WithTenantID(tenantID string) observability.StructuredLogger {
+func (m *mockServiceMeshLogger) WithTenantID(_ string) observability.StructuredLogger {
 	return m
 }
-func (m *mockServiceMeshLogger) WithUserID(userID string) observability.StructuredLogger   { return m }
-func (m *mockServiceMeshLogger) WithTraceID(traceID string) observability.StructuredLogger { return m }
-func (m *mockServiceMeshLogger) WithSpanID(spanID string) observability.StructuredLogger   { return m }
-func (m *mockServiceMeshLogger) Flush(ctx context.Context) error                           { return nil }
+func (m *mockServiceMeshLogger) WithUserID(_ string) observability.StructuredLogger   { return m }
+func (m *mockServiceMeshLogger) WithTraceID(_ string) observability.StructuredLogger { return m }
+func (m *mockServiceMeshLogger) WithSpanID(_ string) observability.StructuredLogger   { return m }
+func (m *mockServiceMeshLogger) Flush(_ context.Context) error                           { return nil }
 func (m *mockServiceMeshLogger) Close() error                                              { return nil }
 func (m *mockServiceMeshLogger) IsHealthy() bool                                           { return true }
 func (m *mockServiceMeshLogger) GetStats() observability.LoggerStats {
@@ -108,15 +108,15 @@ type mockServiceMeshMetrics struct {
 }
 
 // lift.MetricsCollector interface methods
-func (m *mockServiceMeshMetrics) Counter(name string, tags ...map[string]string) lift.Counter {
+func (m *mockServiceMeshMetrics) Counter(name string, _ ...map[string]string) lift.Counter {
 	return &mockServiceMeshCounter{metrics: m.metrics, name: name}
 }
 
-func (m *mockServiceMeshMetrics) Histogram(name string, tags ...map[string]string) lift.Histogram {
+func (m *mockServiceMeshMetrics) Histogram(name string, _ ...map[string]string) lift.Histogram {
 	return &mockServiceMeshHistogram{metrics: m.metrics, name: name}
 }
 
-func (m *mockServiceMeshMetrics) Gauge(name string, tags ...map[string]string) lift.Gauge {
+func (m *mockServiceMeshMetrics) Gauge(name string, _ ...map[string]string) lift.Gauge {
 	return &mockServiceMeshGauge{metrics: m.metrics, name: name}
 }
 
@@ -144,7 +144,7 @@ func (m *mockServiceMeshMetrics) WithTag(key, value string) observability.Metric
 	return m.WithTags(map[string]string{key: value})
 }
 
-func (m *mockServiceMeshMetrics) RecordBatch(entries []*observability.MetricEntry) error { return nil }
+func (m *mockServiceMeshMetrics) RecordBatch(_ []*observability.MetricEntry) error { return nil }
 func (m *mockServiceMeshMetrics) Close() error                                           { return nil }
 func (m *mockServiceMeshMetrics) GetStats() observability.MetricsStats {
 	return observability.MetricsStats{}
@@ -182,7 +182,7 @@ func (m *mockServiceMeshMetrics) RecordSuccess(operation string) {
 // Helper method to get metrics count for testing
 func (m *mockServiceMeshMetrics) GetMetricsCount() int {
 	count := 0
-	m.metrics.Range(func(key, value any) bool {
+	m.metrics.Range(func(_, _ any) bool {
 		count++
 		return true
 	})

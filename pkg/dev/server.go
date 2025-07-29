@@ -297,7 +297,7 @@ func (s *DevServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleStats returns development server statistics
-func (s *DevServer) handleStats(w http.ResponseWriter, r *http.Request) {
+func (s *DevServer) handleStats(w http.ResponseWriter, _ *http.Request) {
 	stats := s.GetStats()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -335,7 +335,7 @@ func (s *DevServer) handleRestart(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleHealth returns server health status
-func (s *DevServer) handleHealth(w http.ResponseWriter, r *http.Request) {
+func (s *DevServer) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	health := map[string]any{
 		"status":    "healthy",
 		"timestamp": time.Now(),

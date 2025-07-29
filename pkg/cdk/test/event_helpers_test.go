@@ -248,7 +248,7 @@ func TestEventReplayWithDelay(t *testing.T) {
 	replay := NewEventReplay(events)
 	startTime := time.Now()
 
-	handler := func(event interface{}) error {
+	handler := func(_ interface{}) error {
 		return nil
 	}
 
