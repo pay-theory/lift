@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -445,12 +446,14 @@ func (drm *DisasterRecoveryManager) executeFailover(ctx context.Context, event *
 	drm.currentState.FailoverReason = event.Reason
 
 	// Notify stakeholders
-	drm.notificationMgr.SendNotification(ctx, "failover_started", map[string]any{
+	if err := drm.notificationMgr.SendNotification(ctx, "failover_started", map[string]any{
 		"event":       event,
 		"from_region": event.FromRegion,
 		"to_region":   event.ToRegion,
 		"reason":      event.Reason,
-	})
+	}); err != nil {
+		log.Printf("Failed to send failover started notification: %v", err)
+	}
 
 	// Execute failover steps
 	for i, step := range event.Steps {
@@ -511,11 +514,13 @@ func (drm *DisasterRecoveryManager) executeFailover(ctx context.Context, event *
 	drm.updateMetrics(event)
 
 	// Notify completion
-	drm.notificationMgr.SendNotification(ctx, "failover_completed", map[string]any{
+	if err := drm.notificationMgr.SendNotification(ctx, "failover_completed", map[string]any{
 		"event":    event,
 		"duration": event.Duration,
 		"impact":   event.Impact,
-	})
+	}); err != nil {
+		log.Printf("Failed to send failover completed notification: %v", err)
+	}
 
 	return event, nil
 }

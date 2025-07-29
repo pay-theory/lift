@@ -217,7 +217,7 @@ func BenchmarkLargeEventParsing(b *testing.B) {
 	}
 
 	for i := 0; i < 100; i++ {
-		records, _ := largeEvent["Records"].([]any)
+		records, _ := largeEvent["Records"].([]any) //nolint:errcheck // Test setup
 		records[i] = map[string]any{
 			"messageId":     "test-message-" + string(rune(i)),
 			"receiptHandle": "test-receipt-" + string(rune(i)),

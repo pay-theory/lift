@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/dynamorm"
@@ -65,17 +66,31 @@ func main() {
 	app.Use(LoggingMiddleware())
 
 	// User routes
-	app.POST("/users", CreateUser)
-	app.GET("/users/:id", GetUser)
-	app.GET("/users", ListUsers)
-	app.PUT("/users/:id", UpdateUser)
-	app.DELETE("/users/:id", DeleteUser)
+	if err := app.POST("/users", CreateUser); err != nil {
+		log.Fatalf("Failed to register POST /users: %v", err)
+	}
+	if err := app.GET("/users/:id", GetUser); err != nil {
+		log.Fatalf("Failed to register GET /users/:id: %v", err)
+	}
+	if err := app.GET("/users", ListUsers); err != nil {
+		log.Fatalf("Failed to register GET /users: %v", err)
+	}
+	if err := app.PUT("/users/:id", UpdateUser); err != nil {
+		log.Fatalf("Failed to register PUT /users/:id: %v", err)
+	}
+	if err := app.DELETE("/users/:id", DeleteUser); err != nil {
+		log.Fatalf("Failed to register DELETE /users/:id: %v", err)
+	}
 
 	// Health check
-	app.GET("/health", HealthCheck)
+	if err := app.GET("/health", HealthCheck); err != nil {
+		log.Fatalf("Failed to register GET /health: %v", err)
+	}
 
 	// Start the application
-	app.Start()
+	if err := app.Start(); err != nil {
+		log.Fatalf("Failed to start application: %v", err)
+	}
 }
 
 // CreateUser creates a new user

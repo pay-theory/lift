@@ -34,12 +34,14 @@ func BenchmarkRoutingWithPathParams(b *testing.B) {
 	// Add routes with path parameters
 	for i := 0; i < 100; i++ {
 		path := fmt.Sprintf("/api/v1/resource%d/:id", i)
-		_ = app.GET(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"id": ctx.Param("id")})
 		})
 
 		path = fmt.Sprintf("/api/v1/resource%d/:id/sub/:subid", i)
-		_ = app.GET(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{
 				"id":    ctx.Param("id"),
 				"subid": ctx.Param("subid"),
@@ -76,7 +78,8 @@ func BenchmarkRoutingComplexPaths(b *testing.B) {
 	for i := 0; i < 50; i++ {
 		for _, pattern := range patterns {
 			path := fmt.Sprintf("%s_%d", pattern, i)
-			_ = app.GET(path, func(ctx *lift.Context) error {
+			//nolint:errcheck // Benchmark doesn't need error handling
+			app.GET(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{"status": "ok"})
 			})
 		}
@@ -93,19 +96,24 @@ func BenchmarkRoutingMethodMatching(b *testing.B) {
 	for i := 0; i < 100; i++ {
 		path := fmt.Sprintf("/api/v1/resource%d", i)
 
-		_ = app.GET(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "GET"})
 		})
-		_ = app.POST(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.POST(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "POST"})
 		})
-		_ = app.PUT(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.PUT(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "PUT"})
 		})
-		_ = app.DELETE(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.DELETE(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "DELETE"})
 		})
-		_ = app.PATCH(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.PATCH(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"method": "PATCH"})
 		})
 	}
@@ -120,7 +128,8 @@ func BenchmarkRoutingWorstCase(b *testing.B) {
 	// Create routes that would be checked last in a linear search
 	for i := 0; i < 1000; i++ {
 		path := fmt.Sprintf("/api/v1/resource%d", i)
-		_ = app.GET(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"id": fmt.Sprintf("%d", i)})
 		})
 	}
@@ -215,7 +224,8 @@ func setupAppWithRoutes(numRoutes int) *lift.App {
 
 	for i := 0; i < numRoutes; i++ {
 		path := fmt.Sprintf("/api/v1/resource%d", i)
-		_ = app.GET(path, func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET(path, func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"id": fmt.Sprintf("%d", i)})
 		})
 	}

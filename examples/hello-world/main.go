@@ -24,15 +24,17 @@ func main() {
 	app := lift.New()
 
 	// Basic health check endpoint
-	app.GET("/health", func(ctx *lift.Context) error {
+	if err := app.GET("/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
 			"status":  "healthy",
 			"service": "lift-demo",
 		})
-	})
+	}); err != nil {
+		panic(fmt.Sprintf("Failed to register GET /health: %v", err))
+	}
 
 	// Simple hello world endpoint
-	app.GET("/hello", func(ctx *lift.Context) error {
+	if err := app.GET("/hello", func(ctx *lift.Context) error {
 		name := ctx.Query("name")
 		if name == "" {
 			name = "World"
@@ -42,10 +44,12 @@ func main() {
 			"message": fmt.Sprintf("Hello, %s!", name),
 			"tenant":  ctx.TenantID(),
 		})
-	})
+	}); err != nil {
+		panic(fmt.Sprintf("Failed to register GET /hello: %v", err))
+	}
 
 	// Type-safe handler example
-	app.POST("/users", lift.SimpleHandler(func(ctx *lift.Context, req UserRequest) (UserResponse, error) {
+	if err := app.POST("/users", lift.SimpleHandler(func(ctx *lift.Context, req UserRequest) (UserResponse, error) {
 		// Simulate user creation logic
 		userID := "user_123"
 
@@ -54,10 +58,12 @@ func main() {
 			UserID:   userID,
 			TenantID: ctx.TenantID(),
 		}, nil
-	}))
+	})); err != nil {
+		panic(fmt.Sprintf("Failed to register POST /users: %v", err))
+	}
 
 	// Path parameter example
-	app.GET("/users/:id", func(ctx *lift.Context) error {
+	if err := app.GET("/users/:id", func(ctx *lift.Context) error {
 		userID := ctx.Param("id")
 
 		return ctx.JSON(map[string]any{
@@ -65,12 +71,16 @@ func main() {
 			"name":    fmt.Sprintf("User %s", userID),
 			"tenant":  ctx.TenantID(),
 		})
-	})
+	}); err != nil {
+		panic(fmt.Sprintf("Failed to register GET /users/:id: %v", err))
+	}
 
 	// Error handling example
-	app.POST("/error", func(ctx *lift.Context) error {
+	if err := app.POST("/error", func(ctx *lift.Context) error {
 		return fmt.Errorf("this is a demo error")
-	})
+	}); err != nil {
+		panic(fmt.Sprintf("Failed to register POST /error: %v", err))
+	}
 
 	// Start the application
 	if err := app.Start(); err != nil {

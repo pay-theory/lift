@@ -60,19 +60,33 @@ func createComplianceTestApp() *lift.App {
 
 	// Account management endpoints
 	accounts := api.Group("/accounts")
-	accounts.POST("", complianceCreateAccount)
-	accounts.GET("/:id", complianceGetAccount)
-	accounts.GET("/:id/balance", complianceGetBalance)
+	if err := accounts.POST("", complianceCreateAccount); err != nil {
+		log.Fatalf("Failed to register POST /accounts: %v", err)
+	}
+	if err := accounts.GET("/:id", complianceGetAccount); err != nil {
+		log.Fatalf("Failed to register GET /accounts/:id: %v", err)
+	}
+	if err := accounts.GET("/:id/balance", complianceGetBalance); err != nil {
+		log.Fatalf("Failed to register GET /accounts/:id/balance: %v", err)
+	}
 
 	// Payment processing endpoints
 	payments := api.Group("/payments")
-	payments.POST("", complianceProcessPayment)
-	payments.GET("/:id", complianceGetPayment)
+	if err := payments.POST("", complianceProcessPayment); err != nil {
+		log.Fatalf("Failed to register POST /payments: %v", err)
+	}
+	if err := payments.GET("/:id", complianceGetPayment); err != nil {
+		log.Fatalf("Failed to register GET /payments/:id: %v", err)
+	}
 
 	// Compliance endpoints
 	compliance := api.Group("/compliance")
-	compliance.GET("/audit-trail", complianceGetAuditTrail)
-	compliance.GET("/reports/:type", complianceGenerateReport)
+	if err := compliance.GET("/audit-trail", complianceGetAuditTrail); err != nil {
+		log.Fatalf("Failed to register GET /compliance/audit-trail: %v", err)
+	}
+	if err := compliance.GET("/reports/:type", complianceGenerateReport); err != nil {
+		log.Fatalf("Failed to register GET /compliance/reports/:type: %v", err)
+	}
 
 	return app
 }

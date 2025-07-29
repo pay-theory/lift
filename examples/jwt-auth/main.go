@@ -34,21 +34,37 @@ func main() {
 	}
 
 	// Public endpoints (no authentication required)
-	app.GET("/health", healthHandler)
-	app.GET("/public", publicHandler)
+	if err := app.GET("/health", healthHandler); err != nil {
+		log.Fatalf("Failed to register GET /health: %v", err)
+	}
+	if err := app.GET("/public", publicHandler); err != nil {
+		log.Fatalf("Failed to register GET /public: %v", err)
+	}
 
 	// Protected endpoints with JWT authentication
-	app.GET("/api/profile", protectedHandler(jwtConfig, profileHandler))
-	app.GET("/api/users", adminHandler(jwtConfig, usersHandler))
-	app.GET("/api/payments", paymentsAccessHandler(jwtConfig, paymentsHandler))
-	app.GET("/api/tenant/:id/data", protectedHandler(jwtConfig, tenantDataHandler))
+	if err := app.GET("/api/profile", protectedHandler(jwtConfig, profileHandler)); err != nil {
+		log.Fatalf("Failed to register GET /api/profile: %v", err)
+	}
+	if err := app.GET("/api/users", adminHandler(jwtConfig, usersHandler)); err != nil {
+		log.Fatalf("Failed to register GET /api/users: %v", err)
+	}
+	if err := app.GET("/api/payments", paymentsAccessHandler(jwtConfig, paymentsHandler)); err != nil {
+		log.Fatalf("Failed to register GET /api/payments: %v", err)
+	}
+	if err := app.GET("/api/tenant/:id/data", protectedHandler(jwtConfig, tenantDataHandler)); err != nil {
+		log.Fatalf("Failed to register GET /api/tenant/:id/data: %v", err)
+	}
 
 	// Optional authentication endpoints
-	app.GET("/mixed/content", optionalAuthHandler(jwtConfig, mixedContentHandler))
+	if err := app.GET("/mixed/content", optionalAuthHandler(jwtConfig, mixedContentHandler)); err != nil {
+		log.Fatalf("Failed to register GET /mixed/content: %v", err)
+	}
 
 	// Start the application
 	log.Println("Starting JWT authentication example...")
-	app.Start()
+	if err := app.Start(); err != nil {
+		log.Fatalf("Failed to start application: %v", err)
+	}
 }
 
 // protectedHandler wraps a handler with JWT authentication

@@ -67,7 +67,8 @@ func BenchmarkMiddlewareComposition(b *testing.B) {
 			app.Use(mw)
 		}
 
-		_ = app.GET("/test", func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET("/test", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
 
@@ -86,7 +87,8 @@ func BenchmarkMiddlewareWithComplexLogic(b *testing.B) {
 	app.Use(createMetricsMiddleware())
 	app.Use(createCacheMiddleware())
 
-	_ = app.GET("/test", func(ctx *lift.Context) error {
+	//nolint:errcheck // Benchmark doesn't need error handling
+	app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
 	})
 
@@ -102,7 +104,8 @@ func BenchmarkMiddlewareMemoryAllocation(b *testing.B) {
 		app.Use(createMemoryAllocatingMiddleware(i))
 	}
 
-	_ = app.GET("/test", func(ctx *lift.Context) error {
+	//nolint:errcheck // Benchmark doesn't need error handling
+	app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
 	})
 
@@ -117,7 +120,8 @@ func BenchmarkMiddlewareErrorHandling(b *testing.B) {
 	app.Use(createErrorProneMiddleware())
 	app.Use(createRecoveryMiddleware())
 
-	_ = app.GET("/test", func(ctx *lift.Context) error {
+	//nolint:errcheck // Benchmark doesn't need error handling
+	app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
 	})
 
@@ -154,7 +158,8 @@ func setupAppWithMiddleware(count int) *lift.App {
 		app.Use(createSimpleMiddleware(i))
 	}
 
-	_ = app.GET("/test", func(ctx *lift.Context) error {
+	//nolint:errcheck // Benchmark doesn't need error handling
+	app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
 	})
 

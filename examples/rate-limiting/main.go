@@ -11,24 +11,48 @@ func main() {
 	app := lift.New()
 
 	// Public endpoints
-	app.POST("/public/signup", handleSignup)
-	app.POST("/public/login", handleLogin)
-	app.POST("/public/forgot-password", handleForgotPassword)
+	if err := app.POST("/public/signup", handleSignup); err != nil {
+		panic(fmt.Sprintf("Failed to register POST /public/signup: %v", err))
+	}
+	if err := app.POST("/public/login", handleLogin); err != nil {
+		panic(fmt.Sprintf("Failed to register POST /public/login: %v", err))
+	}
+	if err := app.POST("/public/forgot-password", handleForgotPassword); err != nil {
+		panic(fmt.Sprintf("Failed to register POST /public/forgot-password: %v", err))
+	}
 
 	// API endpoints
-	app.POST("/api/v1/expensive-operation", handleExpensiveOperation)
-	app.POST("/api/v1/data-export", handleDataExport)
-	app.GET("/api/v1/users", handleListUsers)
-	app.POST("/api/v1/users", handleCreateUser)
-	app.GET("/api/v1/users/:id", handleGetUser)
-	app.PUT("/api/v1/users/:id", handleUpdateUser)
-	app.DELETE("/api/v1/users/:id", handleDeleteUser)
+	if err := app.POST("/api/v1/expensive-operation", handleExpensiveOperation); err != nil {
+		panic(fmt.Sprintf("Failed to register POST /api/v1/expensive-operation: %v", err))
+	}
+	if err := app.POST("/api/v1/data-export", handleDataExport); err != nil {
+		panic(fmt.Sprintf("Failed to register POST /api/v1/data-export: %v", err))
+	}
+	if err := app.GET("/api/v1/users", handleListUsers); err != nil {
+		panic(fmt.Sprintf("Failed to register GET /api/v1/users: %v", err))
+	}
+	if err := app.POST("/api/v1/users", handleCreateUser); err != nil {
+		panic(fmt.Sprintf("Failed to register POST /api/v1/users: %v", err))
+	}
+	if err := app.GET("/api/v1/users/:id", handleGetUser); err != nil {
+		panic(fmt.Sprintf("Failed to register GET /api/v1/users/:id: %v", err))
+	}
+	if err := app.PUT("/api/v1/users/:id", handleUpdateUser); err != nil {
+		panic(fmt.Sprintf("Failed to register PUT /api/v1/users/:id: %v", err))
+	}
+	if err := app.DELETE("/api/v1/users/:id", handleDeleteUser); err != nil {
+		panic(fmt.Sprintf("Failed to register DELETE /api/v1/users/:id: %v", err))
+	}
 
 	// Health check
-	app.GET("/health", handleHealth)
+	if err := app.GET("/health", handleHealth); err != nil {
+		panic(fmt.Sprintf("Failed to register GET /health: %v", err))
+	}
 
 	// Start the app (this would be called by Lambda)
-	app.Start()
+	if err := app.Start(); err != nil {
+		panic(fmt.Sprintf("Failed to start application: %v", err))
+	}
 }
 
 // Handler implementations

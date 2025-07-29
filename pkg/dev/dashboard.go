@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -29,9 +30,14 @@ func NewDevDashboard(server *DevServer, port int) *DevDashboard {
 		ff = server.features
 	}
 	if ff == nil {
-		ff, _ = features.NewFeatureFlags(features.FeatureFlagConfig{
+		var err error
+		ff, err = features.NewFeatureFlags(features.FeatureFlagConfig{
 			LocalOnly: true,
 		})
+		if err != nil {
+			log.Printf("Warning: failed to create feature flags: %v", err)
+			// Continue with nil feature flags
+		}
 	}
 
 	return &DevDashboard{
@@ -103,7 +109,10 @@ func (d *DevDashboard) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	tmpl.Execute(w, data)
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Failed to execute dashboard template: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
 }
 
 // handleAPIStats returns server statistics as JSON
@@ -111,7 +120,9 @@ func (d *DevDashboard) handleAPIStats(w http.ResponseWriter, r *http.Request) {
 	stats := d.server.GetStats()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		log.Printf("Failed to encode stats: %v", err)
+	}
 }
 
 // handleAPIHealth returns server health as JSON
@@ -126,7 +137,9 @@ func (d *DevDashboard) handleAPIHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(health)
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		log.Printf("Failed to encode health: %v", err)
+	}
 }
 
 // handleAPIRestart triggers a server restart
@@ -139,9 +152,11 @@ func (d *DevDashboard) handleAPIRestart(w http.ResponseWriter, r *http.Request) 
 	d.server.triggerRestart()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "restart triggered",
-	})
+	}); err != nil {
+		log.Printf("Failed to encode restart response: %v", err)
+	}
 }
 
 // handleAPILogs returns recent logs from the log service
@@ -178,10 +193,14 @@ func (d *DevDashboard) handleStatic(w http.ResponseWriter, r *http.Request) {
 	switch path {
 	case "style.css":
 		w.Header().Set("Content-Type", "text/css")
-		w.Write([]byte(dashboardCSS))
+		if _, err := w.Write([]byte(dashboardCSS)); err != nil {
+			log.Printf("Failed to write CSS: %v", err)
+		}
 	case "script.js":
 		w.Header().Set("Content-Type", "application/javascript")
-		w.Write([]byte(dashboardJS))
+		if _, err := w.Write([]byte(dashboardJS)); err != nil {
+			log.Printf("Failed to write JS: %v", err)
+		}
 	default:
 		http.NotFound(w, r)
 	}

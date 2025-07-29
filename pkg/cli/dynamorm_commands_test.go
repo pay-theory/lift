@@ -14,11 +14,20 @@ import (
 func TestDynamORMScaffoldCommand(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore directory: %v", err)
+		}
+	}()
 
 	// Change to temp directory
-	os.Chdir(tempDir)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
 
 	// Create a mock go.mod file to simulate being in a Lift project
 	goModContent := `module test-project
@@ -29,7 +38,7 @@ require (
 	github.com/pay-theory/lift v1.0.0
 )
 `
-	err := os.WriteFile("go.mod", []byte(goModContent), 0644)
+	err = os.WriteFile("go.mod", []byte(goModContent), 0644)
 	require.NoError(t, err)
 
 	cmd := &DynamORMScaffoldCommand{}
@@ -125,7 +134,9 @@ require (
 
 	t.Run("not in Lift project", func(t *testing.T) {
 		// Remove go.mod to simulate not being in a Lift project
-		os.Remove("go.mod")
+		if err := os.Remove("go.mod"); err != nil {
+			t.Fatalf("Failed to remove go.mod: %v", err)
+		}
 
 		args := []string{"scaffold", "--model", "Test"}
 
@@ -207,10 +218,19 @@ func TestParseScaffoldArgs(t *testing.T) {
 
 func TestTemplateGeneration(t *testing.T) {
 	tempDir := t.TempDir()
-	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore directory: %v", err)
+		}
+	}()
 
-	os.Chdir(tempDir)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
 
 	cmd := &DynamORMScaffoldCommand{}
 

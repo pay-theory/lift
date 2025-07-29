@@ -502,7 +502,11 @@ func (c *CDKDestroyCommand) Execute(ctx context.Context, args []string) error {
 	fmt.Print("Are you sure? (y/N): ")
 
 	var response string
-	fmt.Scanln(&response)
+	if _, err := fmt.Scanln(&response); err != nil {
+		// If user just presses enter or there's an error, treat as "no"
+		fmt.Println("Destruction cancelled")
+		return nil
+	}
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
 		fmt.Println("Destruction cancelled")
 		return nil

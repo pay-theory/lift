@@ -171,8 +171,11 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 			Format:         jsii.String(`$context.requestId $context.requestTime "$context.httpMethod $context.path $context.protocol" $context.status $context.responseLength $context.error.message $context.error.responseType`),
 		}
 
-		cfnStage := stage.Node().DefaultChild().(awsapigatewayv2.CfnStage)
-		cfnStage.SetAccessLogSettings(accessLogSettings)
+		if defaultChild := stage.Node().DefaultChild(); defaultChild != nil {
+			if cfnStage, ok := defaultChild.(awsapigatewayv2.CfnStage); ok {
+				cfnStage.SetAccessLogSettings(accessLogSettings)
+			}
+		}
 
 		// Grant write permissions to API Gateway service
 		logGroup.Grant(awsiam.NewServicePrincipal(jsii.String("apigateway.amazonaws.com"), nil), jsii.String("logs:PutLogEvents"))
@@ -180,8 +183,11 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 
 	// Configure detailed metrics
 	if props.EnableDetailedMetrics != nil && *props.EnableDetailedMetrics {
-		cfnStage := stage.Node().DefaultChild().(awsapigatewayv2.CfnStage)
-		cfnStage.AddPropertyOverride(jsii.String("DetailedMetricsEnabled"), jsii.Bool(true))
+		if defaultChild := stage.Node().DefaultChild(); defaultChild != nil {
+			if cfnStage, ok := defaultChild.(awsapigatewayv2.CfnStage); ok {
+				cfnStage.AddPropertyOverride(jsii.String("DetailedMetricsEnabled"), jsii.Bool(true))
+			}
+		}
 	}
 
 	// Configure custom domain if provided

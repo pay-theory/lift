@@ -3,6 +3,7 @@ package deployment
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -408,7 +409,9 @@ func (mrd *MultiRegionDeployer) deployRolling(ctx context.Context, strategy Depl
 		// Deploy batch
 		if err := mrd.deployBatch(ctx, batch); err != nil {
 			if strategy.RollbackOnFailure {
-				mrd.rollbackBatch(ctx, batch)
+				if rollbackErr := mrd.rollbackBatch(ctx, batch); rollbackErr != nil {
+					log.Printf("Failed to rollback batch %v: %v", batch, rollbackErr)
+				}
 			}
 			return fmt.Errorf("failed to deploy batch %v: %w", batch, err)
 		}
@@ -467,7 +470,9 @@ func (mrd *MultiRegionDeployer) deployCanary(ctx context.Context, strategy Deplo
 	// Monitor canary for specified duration
 	if err := mrd.monitorCanary(ctx, strategy.CanaryDuration); err != nil {
 		// Rollback canary on failure
-		mrd.rollbackCanary(ctx)
+		if rollbackErr := mrd.rollbackCanary(ctx); rollbackErr != nil {
+			log.Printf("Failed to rollback canary: %v", rollbackErr)
+		}
 		return fmt.Errorf("canary monitoring failed: %w", err)
 	}
 

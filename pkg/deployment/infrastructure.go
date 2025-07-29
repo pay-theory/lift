@@ -451,7 +451,14 @@ func (ig *InfrastructureGenerator) generateLambdaResources(template *Infrastruct
 	}
 
 	if lambdaConfig.VPCConfig != nil {
-		managedPolicies := executionRole.Properties["ManagedPolicyArns"].([]string)
+		managedPoliciesInterface, ok := executionRole.Properties["ManagedPolicyArns"]
+		if !ok {
+			return fmt.Errorf("ManagedPolicyArns not found in execution role")
+		}
+		managedPolicies, ok := managedPoliciesInterface.([]string)
+		if !ok {
+			return fmt.Errorf("ManagedPolicyArns is not a string slice")
+		}
 		managedPolicies = append(managedPolicies, "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole")
 		executionRole.Properties["ManagedPolicyArns"] = managedPolicies
 	}
@@ -635,12 +642,13 @@ func (ig *InfrastructureGenerator) generateDatabaseResources(template *Infrastru
 			}
 
 			if dbConfig.Encryption.Enabled {
-				table.Properties["SSESpecification"] = map[string]any{
+				sseSpec := map[string]any{
 					"SSEEnabled": true,
 				}
 				if dbConfig.Encryption.KMSKeyId != "" {
-					table.Properties["SSESpecification"].(map[string]any)["KMSMasterKeyId"] = dbConfig.Encryption.KMSKeyId
+					sseSpec["KMSMasterKeyId"] = dbConfig.Encryption.KMSKeyId
 				}
+				table.Properties["SSESpecification"] = sseSpec
 			}
 
 			if tableConfig.BackupEnabled {
@@ -662,7 +670,9 @@ func (ig *InfrastructureGenerator) generateDatabaseResources(template *Infrastru
 					}
 
 					if gsi.Projection.Type == "INCLUDE" && len(gsi.Projection.Attributes) > 0 {
-						gsiDef["Projection"].(map[string]any)["NonKeyAttributes"] = gsi.Projection.Attributes
+						if projection, ok := gsiDef["Projection"].(map[string]any); ok {
+							projection["NonKeyAttributes"] = gsi.Projection.Attributes
+						}
 					}
 
 					gsis = append(gsis, gsiDef)

@@ -343,7 +343,10 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 		encrypted, key, err := g.encryptData(jsonData)
 		if err != nil {
 			exportRecord.Status = "failed"
-			g.db.Put(ctx, exportRecord)
+			if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
+				// Log error but continue with original error
+				log.Printf("Failed to update export record: %v", putErr)
+			}
 			return nil, fmt.Errorf("failed to encrypt export data: %w", err)
 		}
 		finalData = encrypted
@@ -626,10 +629,18 @@ func (g *GDPRCompleteService) deleteItem(_ context.Context, tableName string, it
 	key := make(map[string]types.AttributeValue)
 
 	if pk, exists := item["PK"]; exists {
-		key["PK"] = &types.AttributeValueMemberS{Value: pk.(string)}
+		pkStr, ok := pk.(string)
+		if !ok {
+			return fmt.Errorf("PK is not a string")
+		}
+		key["PK"] = &types.AttributeValueMemberS{Value: pkStr}
 	}
 	if sk, exists := item["SK"]; exists {
-		key["SK"] = &types.AttributeValueMemberS{Value: sk.(string)}
+		skStr, ok := sk.(string)
+		if !ok {
+			return fmt.Errorf("SK is not a string")
+		}
+		key["SK"] = &types.AttributeValueMemberS{Value: skStr}
 	}
 
 	// TODO: Implement using DynamORM Delete method

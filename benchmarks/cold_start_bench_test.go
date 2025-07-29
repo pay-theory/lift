@@ -81,7 +81,8 @@ func BenchmarkColdStartWithBasicRoute(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		app := lift.New()
-		_ = app.GET("/health", func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET("/health", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
 		_ = app
@@ -97,7 +98,8 @@ func BenchmarkColdStartWithMiddleware(b *testing.B) {
 		app.Use(loggerMiddleware())
 		app.Use(recoverMiddleware())
 		app.Use(corsMiddleware())
-		_ = app.GET("/health", func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET("/health", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
 		_ = app
@@ -114,7 +116,8 @@ func BenchmarkColdStartWithEventAdapters(b *testing.B) {
 		// Event adapters are automatically registered in the adapter registry
 		// No explicit registration needed - they're available by default
 
-		_ = app.GET("/health", func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET("/health", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
 		_ = app
@@ -138,16 +141,20 @@ func BenchmarkFrameworkInitializationTime(b *testing.B) {
 		app.Use(timeoutMiddleware())
 
 		// Add multiple routes
-		_ = app.GET("/health", func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.GET("/health", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
 		})
-		_ = app.POST("/users", func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.POST("/users", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"message": "created"})
 		})
-		_ = app.PUT("/users/:id", func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.PUT("/users/:id", func(ctx *lift.Context) error {
 			return ctx.JSON(map[string]string{"message": "updated"})
 		})
-		_ = app.DELETE("/users/:id", func(ctx *lift.Context) error {
+		//nolint:errcheck // Benchmark doesn't need error handling
+		app.DELETE("/users/:id", func(ctx *lift.Context) error {
 			return ctx.JSON(nil)
 		})
 
@@ -180,10 +187,12 @@ func BenchmarkMemoryAllocationDuringInit(b *testing.B) {
 		// Add routes
 		for j := 0; j < 10; j++ {
 			path := fmt.Sprintf("/api/v1/resource%d", j)
-			_ = app.GET(path, func(ctx *lift.Context) error {
+			//nolint:errcheck // Benchmark doesn't need error handling
+			app.GET(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{"id": ctx.Param("id")})
 			})
-			_ = app.POST(path, func(ctx *lift.Context) error {
+			//nolint:errcheck // Benchmark doesn't need error handling
+			app.POST(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{"message": "created"})
 			})
 		}
@@ -208,7 +217,8 @@ func BenchmarkGarbageCollectionImpact(b *testing.B) {
 		// Heavy initialization to trigger potential GC
 		for j := 0; j < 100; j++ {
 			path := fmt.Sprintf("/api/v1/resource%d/:id", j)
-			_ = app.GET(path, func(ctx *lift.Context) error {
+			//nolint:errcheck // Benchmark doesn't need error handling
+			app.GET(path, func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]any{
 					"id":   ctx.Param("id"),
 					"data": make([]byte, 1024), // Allocate some memory
@@ -242,6 +252,7 @@ func BenchmarkConcurrentInitialization(b *testing.B) {
 			app := lift.New()
 			app.Use(loggerMiddleware())
 			app.Use(recoverMiddleware())
+			//nolint:errcheck // Benchmark doesn't need error handling
 			app.GET("/health", func(ctx *lift.Context) error {
 				return ctx.JSON(map[string]string{"status": "ok"})
 			})

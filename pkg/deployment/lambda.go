@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 	"sync"
@@ -80,11 +81,17 @@ func NewLambdaDeployment(app *lift.App, config *DeploymentConfig) (*LambdaDeploy
 	for _, checkName := range config.HealthChecks {
 		switch checkName {
 		case "app":
-			healthManager.RegisterChecker("app", &AppHealthChecker{app: app})
+			if err := healthManager.RegisterChecker("app", &AppHealthChecker{app: app}); err != nil {
+				log.Printf("Failed to register app health checker: %v", err)
+			}
 		case "resources":
-			healthManager.RegisterChecker("resources", &ResourceHealthChecker{})
+			if err := healthManager.RegisterChecker("resources", &ResourceHealthChecker{}); err != nil {
+				log.Printf("Failed to register resources health checker: %v", err)
+			}
 		case "memory":
-			healthManager.RegisterChecker("memory", &MemoryHealthChecker{maxMemoryMB: config.MemoryMB})
+			if err := healthManager.RegisterChecker("memory", &MemoryHealthChecker{maxMemoryMB: config.MemoryMB}); err != nil {
+				log.Printf("Failed to register memory health checker: %v", err)
+			}
 		}
 	}
 

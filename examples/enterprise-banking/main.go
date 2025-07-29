@@ -584,7 +584,9 @@ func Recovery() lift.Middleware {
 							"panic": r,
 						})
 					}
-					ctx.SystemError("Internal server error", fmt.Errorf("panic: %v", r))
+					if err := ctx.SystemError("Internal server error", fmt.Errorf("panic: %v", r)); err != nil {
+						log.Printf("Failed to send system error response: %v", err)
+					}
 				}
 			}()
 			return next.Handle(ctx)
@@ -799,5 +801,7 @@ func main() {
 	log.Println("  GET  /api/v1/compliance/audit-trail")
 	log.Println("  GET  /api/v1/compliance/reports/:type")
 
-	app.Start()
+	if err := app.Start(); err != nil {
+		log.Fatalf("Failed to start application: %v", err)
+	}
 }

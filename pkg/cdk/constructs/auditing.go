@@ -148,7 +148,11 @@ func NewAuditingConstruct(scope constructs.Construct, id string, props *Auditing
 	var encryptionKey awskms.Key
 	if props.EnableEncryption != nil && *props.EnableEncryption {
 		if props.EncryptionKey != nil {
-			encryptionKey = props.EncryptionKey.(awskms.Key)
+			var ok bool
+			encryptionKey, ok = props.EncryptionKey.(awskms.Key)
+			if !ok {
+				panic("EncryptionKey must be of type awskms.Key")
+			}
 		} else {
 			encryptionKey = awskms.NewKey(this, jsii.String("AuditEncryptionKey"), &awskms.KeyProps{
 				Description:       jsii.String(fmt.Sprintf("Audit encryption key for %s", *props.AppName)),
@@ -192,7 +196,11 @@ func NewAuditingConstruct(scope constructs.Construct, id string, props *Auditing
 	// Create S3 bucket for audit logs
 	var auditBucket awss3.Bucket
 	if props.AuditBucket != nil {
-		auditBucket = props.AuditBucket.(awss3.Bucket)
+		var ok bool
+		auditBucket, ok = props.AuditBucket.(awss3.Bucket)
+		if !ok {
+			panic("AuditBucket must be of type awss3.Bucket")
+		}
 	} else {
 		auditBucket = awss3.NewBucket(this, jsii.String("AuditBucket"), &awss3.BucketProps{
 			BucketName: jsii.String(fmt.Sprintf("%s-audit-%s", *props.AppName, *awscdk.Stack_Of(this).Region())),

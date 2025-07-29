@@ -28,7 +28,9 @@ func Recovery() lift.Middleware {
 							"panic": r,
 						})
 					}
-					ctx.SystemError("Internal server error", fmt.Errorf("panic: %v", r))
+					if err := ctx.SystemError("Internal server error", fmt.Errorf("panic: %v", r)); err != nil {
+						log.Printf("Failed to send system error response: %v", err)
+					}
 				}
 			}()
 			return next.Handle(ctx)
@@ -360,7 +362,12 @@ type mockEncryptionService struct {
 func newMockEncryptionService() *mockEncryptionService {
 	// In production, this would use proper key management (AWS KMS, etc.)
 	key := make([]byte, 32) // AES-256
-	rand.Read(key)
+	if _, err := rand.Read(key); err != nil {
+		log.Printf("Warning: failed to generate random key: %v", err)
+		// Fall back to a deterministic key for testing
+		// In production, this should be a fatal error
+		copy(key, []byte("test-key-for-demo-purposes-only!"))
+	}
 	return &mockEncryptionService{key: key}
 }
 
@@ -803,7 +810,9 @@ func createPatient(ctx *lift.Context) error {
 		IPAddress:  ctx.Request.RemoteAddr(),
 		UserAgent:  ctx.Request.UserAgent(),
 	}
-	complianceService.LogAccess(ctx.Request.Context(), accessEntry)
+	if err := complianceService.LogAccess(ctx.Request.Context(), accessEntry); err != nil {
+		log.Printf("Failed to log access for HIPAA audit: %v", err)
+	}
 
 	log.Printf("HIPAA AUDIT: Patient created - ID: %s, MRN: %s, Provider: %s",
 		patient.ID, patient.MRN, accessEntry.UserID)
@@ -850,7 +859,9 @@ func getPatient(ctx *lift.Context) error {
 		IPAddress:  ctx.Request.RemoteAddr(),
 		UserAgent:  ctx.Request.UserAgent(),
 	}
-	complianceService.LogAccess(ctx.Request.Context(), accessEntry)
+	if err := complianceService.LogAccess(ctx.Request.Context(), accessEntry); err != nil {
+		log.Printf("Failed to log access for HIPAA audit: %v", err)
+	}
 
 	return ctx.OK(patient)
 }
@@ -884,7 +895,9 @@ func searchPatients(ctx *lift.Context) error {
 		IPAddress:  ctx.Request.RemoteAddr(),
 		UserAgent:  ctx.Request.UserAgent(),
 	}
-	complianceService.LogAccess(ctx.Request.Context(), accessEntry)
+	if err := complianceService.LogAccess(ctx.Request.Context(), accessEntry); err != nil {
+		log.Printf("Failed to log access for HIPAA audit: %v", err)
+	}
 
 	return ctx.OK(map[string]any{
 		"query":       query,
@@ -922,7 +935,9 @@ func updatePatientConsent(ctx *lift.Context) error {
 		IPAddress:  ctx.Request.RemoteAddr(),
 		UserAgent:  ctx.Request.UserAgent(),
 	}
-	complianceService.LogAccess(ctx.Request.Context(), accessEntry)
+	if err := complianceService.LogAccess(ctx.Request.Context(), accessEntry); err != nil {
+		log.Printf("Failed to log access for HIPAA audit: %v", err)
+	}
 
 	return ctx.OK(map[string]any{
 		"patientId": patientID,
@@ -1224,5 +1239,7 @@ func main() {
 	log.Println("  GET  /api/v1/compliance/audit-trail")
 	log.Println("  GET  /api/v1/compliance/reports/:type")
 
-	app.Start()
+	if err := app.Start(); err != nil {
+		log.Fatalf("Failed to start application: %v", err)
+	}
 }

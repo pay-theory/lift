@@ -348,7 +348,9 @@ func (c *DevCommand) Execute(ctx context.Context, args []string) error {
 	// Parse arguments (simplified)
 	for _, arg := range args {
 		if strings.HasPrefix(arg, "--port=") {
-			fmt.Sscanf(arg, "--port=%d", &port)
+			if _, err := fmt.Sscanf(arg, "--port=%d", &port); err != nil {
+				fmt.Printf("Warning: invalid port format in %s\n", arg)
+			}
 		}
 		if arg == "--no-hot-reload" {
 			hotReload = false
