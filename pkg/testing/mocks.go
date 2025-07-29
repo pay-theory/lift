@@ -1220,21 +1220,21 @@ func (m *MockCloudWatchMetricsClient) GetMetricStatistics(ctx context.Context, n
 			}
 			result[stat] = sum / float64(len(values))
 		case StatisticMinimum:
-			min := values[0]
+			minVal := values[0]
 			for _, v := range values {
-				if v < min {
-					min = v
+				if v < minVal {
+					minVal = v
 				}
 			}
-			result[stat] = min
+			result[stat] = minVal
 		case StatisticMaximum:
-			max := values[0]
+			maxVal := values[0]
 			for _, v := range values {
-				if v > max {
-					max = v
+				if v > maxVal {
+					maxVal = v
 				}
 			}
-			result[stat] = max
+			result[stat] = maxVal
 		}
 	}
 

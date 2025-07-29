@@ -43,7 +43,7 @@ func main() {
 	lambda.Start(app.HandleRequest)
 }
 
-func performWakeupTasks(ctx *lift.Context) error {
+func performWakeupTasks(_ *lift.Context) error {
 	// Example wakeup tasks:
 	// 1. Test database connectivity
 	// 2. Warm up connection pools

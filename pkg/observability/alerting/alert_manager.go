@@ -478,7 +478,7 @@ func (am *AlertManager) executeActions(ctx context.Context, alert *Alert, rule *
 		// Execute action in background
 		go func(ch AlertChannel, a *Alert) {
 			if err := ch.Send(ctx, a); err != nil {
-				// Log error but don't fail the alert
+				// TODO: Log error but don't fail the alert
 			}
 		}(channel, alert)
 	}

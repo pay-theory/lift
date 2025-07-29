@@ -24,7 +24,7 @@ func TestNewLiftAPI(t *testing.T) {
 				Name:        jsii.String("test-api"),
 				Description: jsii.String("Test API"),
 			},
-			assertions: func(t *testing.T, template assertions.Template) {
+			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"), &map[string]interface{}{
 					"Name":         "test-api",
 					"Description":  "Test API",
@@ -38,7 +38,7 @@ func TestNewLiftAPI(t *testing.T) {
 				Name:       jsii.String("test-api"),
 				EnableCORS: jsii.Bool(true),
 			},
-			assertions: func(t *testing.T, template assertions.Template) {
+			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"), &map[string]interface{}{
 					"CorsConfiguration": &map[string]interface{}{
 						"AllowOrigins": &[]interface{}{"*"},
@@ -68,7 +68,7 @@ func TestNewLiftAPI(t *testing.T) {
 				DomainName:     jsii.String("api.example.com"),
 				CertificateArn: jsii.String("arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"),
 			},
-			assertions: func(t *testing.T, template assertions.Template) {
+			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::DomainName"), &map[string]interface{}{
 					"DomainName": "api.example.com",
 					"DomainNameConfigurations": &[]interface{}{
@@ -86,7 +86,7 @@ func TestNewLiftAPI(t *testing.T) {
 				Name:                jsii.String("test-api"),
 				EnableAccessLogging: jsii.Bool(true),
 			},
-			assertions: func(t *testing.T, template assertions.Template) {
+			assertions: func(_ *testing.T, template assertions.Template) {
 				// Check log group is created
 				template.HasResourceProperties(jsii.String("AWS::Logs::LogGroup"), &map[string]interface{}{
 					"LogGroupName":    "/aws/apigateway/test-api",
@@ -108,7 +108,7 @@ func TestNewLiftAPI(t *testing.T) {
 				ThrottleRateLimit:  jsii.Number(100),
 				ThrottleBurstLimit: jsii.Number(200),
 			},
-			assertions: func(t *testing.T, template assertions.Template) {
+			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Stage"), &map[string]interface{}{
 					"DefaultRouteSettings": &map[string]interface{}{
 						"ThrottlingRateLimit":  100,
@@ -123,7 +123,7 @@ func TestNewLiftAPI(t *testing.T) {
 				Name:      jsii.String("test-api"),
 				StageName: jsii.String("prod"),
 			},
-			assertions: func(t *testing.T, template assertions.Template) {
+			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Stage"), &map[string]interface{}{
 					"StageName":  "prod",
 					"AutoDeploy": true,
@@ -136,7 +136,7 @@ func TestNewLiftAPI(t *testing.T) {
 				Name:                  jsii.String("test-api"),
 				EnableDetailedMetrics: jsii.Bool(true),
 			},
-			assertions: func(t *testing.T, template assertions.Template) {
+			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Stage"), &map[string]interface{}{
 					"DetailedMetricsEnabled": true,
 				})
@@ -161,7 +161,7 @@ func TestNewLiftAPI(t *testing.T) {
 	}
 }
 
-func TestLiftAPI_AddLambdaRoute(t *testing.T) {
+func TestLiftAPI_AddLambdaRoute(_ *testing.T) {
 	// Create test stack
 	stack := test.NewTestStack()
 
@@ -197,7 +197,7 @@ func TestLiftAPI_AddLambdaRoute(t *testing.T) {
 	})
 }
 
-func TestLiftAPI_AddLambdaRouteWithOptions(t *testing.T) {
+func TestLiftAPI_AddLambdaRouteWithOptions(_ *testing.T) {
 	// Create test stack
 	stack := test.NewTestStack()
 
@@ -232,7 +232,7 @@ func TestLiftAPI_AddLambdaRouteWithOptions(t *testing.T) {
 	})
 }
 
-func TestLiftAPI_AddRoutes(t *testing.T) {
+func TestLiftAPI_AddRoutes(_ *testing.T) {
 	// Create test stack
 	stack := test.NewTestStack()
 

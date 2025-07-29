@@ -601,7 +601,5 @@ func (w *FileWatcher) checkPath(path string) {
 		return nil
 	})
 
-	if err != nil {
-		// Log error but continue
-	}
+	_ = err // Log error but continue
 }

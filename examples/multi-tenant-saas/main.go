@@ -140,12 +140,12 @@ func newMockDB() MockDB {
 	}
 }
 
-func (db *mockDB) Put(ctx context.Context, item any) error {
+func (db *mockDB) Put(_ context.Context, item any) error {
 	// Mock implementation
 	return nil
 }
 
-func (db *mockDB) Get(ctx context.Context, id string, item any) error {
+func (db *mockDB) Get(_ context.Context, id string, item any) error {
 	// Mock implementation
 	return nil
 }
@@ -217,7 +217,7 @@ func (s *UserService) CreateUser(ctx context.Context, tenantID string, req Creat
 	return user, nil
 }
 
-func (s *UserService) GetUsersByTenant(ctx context.Context, tenantID string, page, perPage int) ([]*User, int64, error) {
+func (s *UserService) GetUsersByTenant(_ context.Context, tenantID string, page, perPage int) ([]*User, int64, error) {
 	// This would use DynamORM's query capabilities
 	// For now, return mock data
 	users := []*User{
@@ -262,7 +262,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, tenantID, userID str
 	return project, nil
 }
 
-func (s *ProjectService) GetProjectsByTenant(ctx context.Context, tenantID string, page, perPage int) ([]*Project, int64, error) {
+func (s *ProjectService) GetProjectsByTenant(_ context.Context, tenantID string, page, perPage int) ([]*Project, int64, error) {
 	// This would use DynamORM's query capabilities
 	// For now, return mock data
 	projects := []*Project{
@@ -288,7 +288,7 @@ func NewTaskService(db MockDB) *TaskService {
 	return &TaskService{db: db}
 }
 
-func (s *TaskService) CreateTask(ctx context.Context, tenantID, userID string, req CreateTaskRequest) (*Task, error) {
+func (s *TaskService) CreateTask(ctx context.Context, tenantID, _ string, req CreateTaskRequest) (*Task, error) {
 	task := &Task{
 		ID:          generateID(),
 		TenantID:    tenantID,
@@ -350,7 +350,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, tenantID, taskID string, r
 	return task, nil
 }
 
-func (s *TaskService) GetTasksByProject(ctx context.Context, tenantID, projectID string, page, perPage int) ([]*Task, int64, error) {
+func (s *TaskService) GetTasksByProject(_ context.Context, tenantID, projectID string, page, perPage int) ([]*Task, int64, error) {
 	// This would use DynamORM's query capabilities
 	// For now, return mock data
 	tasks := []*Task{
@@ -833,16 +833,16 @@ func main() {
 // Simple logger implementation for demo
 type simpleLogger struct{}
 
-func (l *simpleLogger) WithField(key string, value any) lift.Logger {
+func (l *simpleLogger) WithField(_ string, _ any) lift.Logger {
 	return l
 }
 
-func (l *simpleLogger) WithFields(fields map[string]any) lift.Logger {
+func (l *simpleLogger) WithFields(_ map[string]any) lift.Logger {
 	return l
 }
 
-func (l *simpleLogger) Debug(msg string, fields ...map[string]any) {}
-func (l *simpleLogger) Info(msg string, fields ...map[string]any)  {}
-func (l *simpleLogger) Warn(msg string, fields ...map[string]any)  {}
-func (l *simpleLogger) Error(msg string, fields ...map[string]any) {}
-func (l *simpleLogger) Fatal(msg string, fields ...map[string]any) {}
+func (l *simpleLogger) Debug(_ string, _ ...map[string]any) {}
+func (l *simpleLogger) Info(_ string, _ ...map[string]any)  {}
+func (l *simpleLogger) Warn(_ string, _ ...map[string]any)  {}
+func (l *simpleLogger) Error(_ string, _ ...map[string]any) {}
+func (l *simpleLogger) Fatal(_ string, _ ...map[string]any) {}

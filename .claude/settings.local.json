@@ -72,7 +72,8 @@
       "Bash(go install:*)",
       "Bash(fieldalignment:*)",
       "Bash(./fix-fieldalignment.sh:*)",
-      "Bash(revive:*)"
+      "Bash(revive:*)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }

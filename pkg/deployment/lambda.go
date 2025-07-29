@@ -18,6 +18,17 @@ import (
 	"github.com/pay-theory/lift/pkg/lift/resources"
 )
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+const (
+	lambdaRequestIDKey     contextKey = "lambda_request_id"
+	lambdaFunctionNameKey  contextKey = "lambda_function_name"
+	deploymentEnvKey       contextKey = "deployment_environment"
+	isColdStartKey         contextKey = "is_cold_start"
+	deploymentStartTimeKey contextKey = "deployment_start_time"
+)
+
 // DeploymentConfig holds configuration for Lambda deployment
 type DeploymentConfig struct {
 	Environment     string        `json:"environment"`
@@ -181,15 +192,15 @@ func (d *LambdaDeployment) markWarm() {
 func (d *LambdaDeployment) enrichContext(ctx context.Context, isColdStart bool) context.Context {
 	// Add Lambda context if available
 	if lc, ok := lambdacontext.FromContext(ctx); ok {
-		ctx = context.WithValue(ctx, "lambda_request_id", lc.AwsRequestID)
-		ctx = context.WithValue(ctx, "lambda_function_name", lc.InvokedFunctionArn)
+		ctx = context.WithValue(ctx, lambdaRequestIDKey, lc.AwsRequestID)
+		ctx = context.WithValue(ctx, lambdaFunctionNameKey, lc.InvokedFunctionArn)
 		// Note: Lambda context deadline is available through ctx.Deadline()
 	}
 
 	// Add deployment information
-	ctx = context.WithValue(ctx, "deployment_environment", d.config.Environment)
-	ctx = context.WithValue(ctx, "is_cold_start", isColdStart)
-	ctx = context.WithValue(ctx, "deployment_start_time", d.startTime)
+	ctx = context.WithValue(ctx, deploymentEnvKey, d.config.Environment)
+	ctx = context.WithValue(ctx, isColdStartKey, isColdStart)
+	ctx = context.WithValue(ctx, deploymentStartTimeKey, d.startTime)
 
 	return ctx
 }

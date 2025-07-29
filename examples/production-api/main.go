@@ -275,13 +275,13 @@ type MockResource struct {
 	valid    bool
 }
 
-func (r *MockResource) Initialize(ctx context.Context) error {
+func (r *MockResource) Initialize(_ context.Context) error {
 	r.lastUsed = time.Now()
 	r.valid = true
 	return nil
 }
 
-func (r *MockResource) HealthCheck(ctx context.Context) error {
+func (r *MockResource) HealthCheck(_ context.Context) error {
 	if !r.valid {
 		return fmt.Errorf("resource %s is invalid", r.id)
 	}
@@ -308,7 +308,7 @@ func (r *MockResource) MarkUsed() {
 // MockResourceFactory creates mock resources
 type MockResourceFactory struct{}
 
-func (f *MockResourceFactory) Create(ctx context.Context) (resources.Resource, error) {
+func (f *MockResourceFactory) Create(_ context.Context) (resources.Resource, error) {
 	resource := &MockResource{
 		id:       fmt.Sprintf("resource-%d", time.Now().UnixNano()),
 		lastUsed: time.Now(),
@@ -364,7 +364,7 @@ func NewProductionAPI() *ProductionAPI {
 	}
 
 	// Custom business logic health checker
-	businessChecker := health.NewCustomHealthChecker("business-logic", func(ctx context.Context) health.HealthStatus {
+	businessChecker := health.NewCustomHealthChecker("business-logic", func(_ context.Context) health.HealthStatus {
 		start := time.Now()
 
 		// Check if we have users (business logic validation)

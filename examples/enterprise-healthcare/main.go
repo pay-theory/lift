@@ -490,12 +490,12 @@ func (m *mockPatientService) GetPatient(_ context.Context, id string, _ string) 
 	return patient, nil
 }
 
-func (m *mockPatientService) UpdatePatient(ctx context.Context, id string, patient *Patient) error {
+func (m *mockPatientService) UpdatePatient(_ context.Context, _ string, patient *Patient) error {
 	patient.UpdatedAt = time.Now()
 	return nil
 }
 
-func (m *mockPatientService) SearchPatients(ctx context.Context, query string, providerID string) ([]Patient, error) {
+func (m *mockPatientService) SearchPatients(_ context.Context, _ string, _ string) ([]Patient, error) {
 	// Simulate patient search with privacy controls
 	patients := []Patient{
 		{
@@ -523,13 +523,13 @@ func (m *mockPatientService) SearchPatients(ctx context.Context, query string, p
 	return patients, nil
 }
 
-func (m *mockPatientService) UpdateConsent(ctx context.Context, patientID string, req UpdateConsentRequest) error {
+func (m *mockPatientService) UpdateConsent(_ context.Context, patientID string, _ UpdateConsentRequest) error {
 	// Simulate consent update with audit logging
 	log.Printf("HIPAA AUDIT: Consent updated for patient %s", patientID)
 	return nil
 }
 
-func (m *mockMedicalRecordService) CreateRecord(ctx context.Context, req CreateMedicalRecordRequest, providerID string) (*MedicalRecord, error) {
+func (m *mockMedicalRecordService) CreateRecord(_ context.Context, req CreateMedicalRecordRequest, providerID string) (*MedicalRecord, error) {
 	encService := newMockEncryptionService()
 
 	// Encrypt the medical record content
@@ -563,7 +563,7 @@ func (m *mockMedicalRecordService) CreateRecord(ctx context.Context, req CreateM
 	return record, nil
 }
 
-func (m *mockMedicalRecordService) GetRecord(ctx context.Context, id string, providerID string, purpose string) (*MedicalRecord, error) {
+func (m *mockMedicalRecordService) GetRecord(_ context.Context, id string, providerID string, purpose string) (*MedicalRecord, error) {
 	// Simulate record retrieval with access logging
 	record := &MedicalRecord{
 		ID:              id,
@@ -590,7 +590,7 @@ func (m *mockMedicalRecordService) GetRecord(ctx context.Context, id string, pro
 	return record, nil
 }
 
-func (m *mockMedicalRecordService) GetPatientRecords(ctx context.Context, patientID string, providerID string) ([]MedicalRecord, error) {
+func (m *mockMedicalRecordService) GetPatientRecords(_ context.Context, patientID string, _ string) ([]MedicalRecord, error) {
 	// Simulate getting patient records with access controls
 	records := []MedicalRecord{
 		{
@@ -616,19 +616,19 @@ func (m *mockMedicalRecordService) GetPatientRecords(ctx context.Context, patien
 	return records, nil
 }
 
-func (m *mockMedicalRecordService) UpdateRecord(ctx context.Context, id string, content string, providerID string) error {
+func (m *mockMedicalRecordService) UpdateRecord(_ context.Context, id string, _ string, providerID string) error {
 	// Simulate record update with encryption and audit
 	log.Printf("HIPAA AUDIT: Medical record %s updated by provider %s", id, providerID)
 	return nil
 }
 
-func (m *mockMedicalRecordService) DeleteRecord(ctx context.Context, id string, providerID string) error {
+func (m *mockMedicalRecordService) DeleteRecord(_ context.Context, id string, providerID string) error {
 	// Simulate record deletion with audit
 	log.Printf("HIPAA AUDIT: Medical record %s deleted by provider %s", id, providerID)
 	return nil
 }
 
-func (m *mockProviderService) CreateProvider(ctx context.Context, req CreateProviderRequest) (*Provider, error) {
+func (m *mockProviderService) CreateProvider(_ context.Context, req CreateProviderRequest) (*Provider, error) {
 	provider := &Provider{
 		ID:            generateID(),
 		NPI:           req.NPI,
@@ -645,7 +645,7 @@ func (m *mockProviderService) CreateProvider(ctx context.Context, req CreateProv
 	return provider, nil
 }
 
-func (m *mockProviderService) GetProvider(ctx context.Context, id string) (*Provider, error) {
+func (m *mockProviderService) GetProvider(_ context.Context, id string) (*Provider, error) {
 	provider := &Provider{
 		ID:        id,
 		NPI:       "1234567890",
@@ -678,25 +678,25 @@ func (m *mockProviderService) GetProvider(ctx context.Context, id string) (*Prov
 	return provider, nil
 }
 
-func (m *mockProviderService) ValidateAccess(ctx context.Context, providerID string, patientID string, recordType string) (bool, error) {
+func (m *mockProviderService) ValidateAccess(_ context.Context, _ string, _ string, _ string) (bool, error) {
 	// Simulate access validation based on provider permissions
 	// In production, this would check against actual permissions
 	return true, nil
 }
 
-func (m *mockProviderService) UpdateAccessLevel(ctx context.Context, providerID string, accessLevel AccessLevel) error {
+func (m *mockProviderService) UpdateAccessLevel(_ context.Context, providerID string, _ AccessLevel) error {
 	log.Printf("HIPAA AUDIT: Access level updated for provider %s", providerID)
 	return nil
 }
 
-func (m *mockComplianceService) LogAccess(ctx context.Context, entry AccessEntry) error {
+func (m *mockComplianceService) LogAccess(_ context.Context, entry AccessEntry) error {
 	// Simulate HIPAA audit logging
 	log.Printf("HIPAA ACCESS LOG: User %s (%s) %s access to patient data - Purpose: %s, Authorized: %t",
 		entry.UserID, entry.UserRole, entry.AccessType, entry.Purpose, entry.Authorized)
 	return nil
 }
 
-func (m *mockComplianceService) GetAuditTrail(ctx context.Context, patientID string, startDate, endDate time.Time) ([]AccessEntry, error) {
+func (m *mockComplianceService) GetAuditTrail(_ context.Context, _ string, _, _ time.Time) ([]AccessEntry, error) {
 	// Simulate audit trail retrieval
 	auditTrail := []AccessEntry{
 		{
@@ -724,7 +724,7 @@ func (m *mockComplianceService) GetAuditTrail(ctx context.Context, patientID str
 	return auditTrail, nil
 }
 
-func (m *mockComplianceService) GenerateComplianceReport(ctx context.Context, reportType string, params map[string]any) (any, error) {
+func (m *mockComplianceService) GenerateComplianceReport(_ context.Context, reportType string, params map[string]any) (any, error) {
 	report := map[string]any{
 		"reportType":  reportType,
 		"generatedAt": time.Now(),
@@ -754,13 +754,13 @@ func (m *mockComplianceService) GenerateComplianceReport(ctx context.Context, re
 	return report, nil
 }
 
-func (m *mockComplianceService) ValidateHIPAACompliance(ctx context.Context, operation string, data any) error {
+func (m *mockComplianceService) ValidateHIPAACompliance(_ context.Context, _ string, _ any) error {
 	// Simulate HIPAA compliance validation
 	// In production, this would perform comprehensive compliance checks
 	return nil
 }
 
-func (m *mockComplianceService) DetectBreach(ctx context.Context, accessPattern []AccessEntry) (bool, string, error) {
+func (m *mockComplianceService) DetectBreach(_ context.Context, accessPattern []AccessEntry) (bool, string, error) {
 	// Simulate breach detection
 	// Check for suspicious patterns like unusual access times, locations, etc.
 	for _, entry := range accessPattern {

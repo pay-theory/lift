@@ -127,7 +127,7 @@ type LiftAlarms struct {
 	constructs.Construct
 }
 
-func NewLiftAlarms(scope constructs.Construct, id *string, props *LiftAlarmsProps) *LiftAlarms {
+func NewLiftAlarms(scope constructs.Construct, id *string, _ *LiftAlarmsProps) *LiftAlarms {
 	this := constructs.NewConstruct(scope, id)
 
 	// Note: In a real implementation, you would create CloudWatch alarms here

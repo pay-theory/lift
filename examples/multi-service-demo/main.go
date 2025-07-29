@@ -23,7 +23,7 @@ func NewDemoServiceRegistry() *DemoServiceRegistry {
 	}
 }
 
-func (d *DemoServiceRegistry) Register(ctx context.Context, config *services.ServiceConfig) error {
+func (d *DemoServiceRegistry) Register(_ context.Context, config *services.ServiceConfig) error {
 	instance := &services.ServiceInstance{
 		ID:          fmt.Sprintf("%s-%d", config.Name, time.Now().Unix()),
 		ServiceName: config.Name,
@@ -45,7 +45,7 @@ func (d *DemoServiceRegistry) Register(ctx context.Context, config *services.Ser
 	return nil
 }
 
-func (d *DemoServiceRegistry) Deregister(ctx context.Context, serviceID string) error {
+func (d *DemoServiceRegistry) Deregister(_ context.Context, serviceID string) error {
 	// Simple implementation - remove all instances for now
 	for serviceName := range d.services {
 		delete(d.services, serviceName)
@@ -53,7 +53,7 @@ func (d *DemoServiceRegistry) Deregister(ctx context.Context, serviceID string) 
 	return nil
 }
 
-func (d *DemoServiceRegistry) Discover(ctx context.Context, serviceName string) ([]*services.ServiceInstance, error) {
+func (d *DemoServiceRegistry) Discover(_ context.Context, serviceName string) ([]*services.ServiceInstance, error) {
 	instances, exists := d.services[serviceName]
 	if !exists {
 		return nil, fmt.Errorf("service not found: %s", serviceName)
@@ -77,7 +77,7 @@ func (d *DemoServiceRegistry) Watch(ctx context.Context, serviceName string) (<-
 	return ch, nil
 }
 
-func (d *DemoServiceRegistry) HealthCheck(ctx context.Context, instance *services.ServiceInstance) (*services.HealthStatus, error) {
+func (d *DemoServiceRegistry) HealthCheck(_ context.Context, instance *services.ServiceInstance) (*services.HealthStatus, error) {
 	return &services.HealthStatus{
 		Status:    "healthy",
 		Message:   "Health check passed",

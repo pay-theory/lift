@@ -140,7 +140,7 @@ func (m *mockTenantService) ListTenants(_ context.Context, _, _ int) ([]Tenant, 
 	return tenants, nil
 }
 
-func (m *mockTenantService) DeactivateTenant(_ context.Context, tenantID string) error {
+func (m *mockTenantService) DeactivateTenant(_ context.Context, _ string) error {
 	return nil
 }
 
@@ -592,7 +592,7 @@ func (m *mockCartService) ClearCart(_ context.Context, _, _ string) error {
 	return nil
 }
 
-func (m *mockCartService) ConvertCartToOrder(ctx context.Context, tenantID, cartID string, orderReq CreateOrderRequest) (*Order, error) {
+func (m *mockCartService) ConvertCartToOrder(ctx context.Context, tenantID, _ string, orderReq CreateOrderRequest) (*Order, error) {
 	orderService := &mockOrderService{}
 	return orderService.CreateOrder(ctx, tenantID, orderReq)
 }

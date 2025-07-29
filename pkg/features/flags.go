@@ -85,7 +85,7 @@ func NewFeatureFlags(config FeatureFlagConfig) (*FeatureFlags, error) {
 
 	// Load initial flags
 	if err := ff.refresh(); err != nil {
-		// Log error but continue with defaults
+		// TODO: Log error but continue with defaults
 		// In production, you'd use proper logging here
 	}
 
@@ -179,7 +179,7 @@ func (ff *FeatureFlags) refreshLoop() {
 		select {
 		case <-ticker.C:
 			if err := ff.refresh(); err != nil {
-				// In production, log the error
+				// TODO: In production, log the error
 			}
 		case <-ff.stopRefresh:
 			return

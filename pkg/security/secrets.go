@@ -95,7 +95,7 @@ func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (strin
 	// Check cache first (encrypted or plain text)
 	if asm.useEncryption && asm.encryptedCache != nil {
 		if value, err := asm.encryptedCache.Get(name); err != nil {
-			// Log error but continue to fetch from AWS
+			// TODO: Log error but continue to fetch from AWS
 		} else if value != "" {
 			return value, nil
 		}

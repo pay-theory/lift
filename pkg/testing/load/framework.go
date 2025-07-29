@@ -468,7 +468,7 @@ func (lt *LoadTest) calculateStats() {
 	// Calculate scenario statistics
 	for _, stats := range lt.results.ScenarioStats {
 		if stats.Count > 0 {
-			// This would require tracking latencies per scenario
+			// TODO: This would require tracking latencies per scenario
 			// For now, we'll leave mean latency as zero
 		}
 	}

@@ -23,7 +23,7 @@ func main() {
 	}
 
 	// Register event handlers with error handling
-	if err := app.SQS("my-queue", func(ctx *lift.Context) error {
+	if err := app.SQS("my-queue", func(_ *lift.Context) error {
 		log.Println("Processing SQS message")
 		return nil
 	}); err != nil {
@@ -31,7 +31,7 @@ func main() {
 	}
 
 	// Register EventBridge handler
-	if err := app.EventBridge("custom.event", func(ctx *lift.Context) error {
+	if err := app.EventBridge("custom.event", func(_ *lift.Context) error {
 		log.Println("Processing EventBridge event")
 		return nil
 	}); err != nil {

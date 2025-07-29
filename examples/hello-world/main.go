@@ -76,7 +76,7 @@ func main() {
 	}
 
 	// Error handling example
-	if err := app.POST("/error", func(ctx *lift.Context) error {
+	if err := app.POST("/error", func(_ *lift.Context) error {
 		return fmt.Errorf("this is a demo error")
 	}); err != nil {
 		panic(fmt.Sprintf("Failed to register POST /error: %v", err))

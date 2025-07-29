@@ -83,7 +83,7 @@ func main() {
 		HeaderName:        "Idempotency-Key",
 		TTL:               24 * time.Hour,
 		ProcessingTimeout: 30 * time.Second,
-		OnDuplicate: func(ctx *lift.Context, record *middleware.IdempotencyRecord) {
+		OnDuplicate: func(_ *lift.Context, record *middleware.IdempotencyRecord) {
 			// Log when duplicate requests are detected
 			log.Printf("🔄 Duplicate request detected: key=%s, original_time=%v",
 				record.Key, record.CreatedAt)

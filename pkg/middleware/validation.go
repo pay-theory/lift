@@ -505,14 +505,14 @@ func ValidateAlphaNumeric(value string) error {
 }
 
 // ValidateLength validates string length
-func ValidateLength(min, max int) func(string) error {
+func ValidateLength(minLen, maxLen int) func(string) error {
 	return func(value string) error {
 		length := len(value)
-		if length < min {
-			return fmt.Errorf("must be at least %d characters", min)
+		if length < minLen {
+			return fmt.Errorf("must be at least %d characters", minLen)
 		}
-		if length > max {
-			return fmt.Errorf("must be at most %d characters", max)
+		if length > maxLen {
+			return fmt.Errorf("must be at most %d characters", maxLen)
 		}
 		return nil
 	}

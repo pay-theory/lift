@@ -27,7 +27,7 @@ func main() {
 		}),
 		lift.WithSecurityMiddleware(lift.SecurityConfig{
 			EnableSecurityHeaders: true,
-			AuditLogger: func(ctx *lift.Context, event string, data map[string]any) {
+			AuditLogger: func(_ *lift.Context, event string, data map[string]any) {
 				fmt.Printf("Audit: %s - %v\n", event, data)
 			},
 		}),

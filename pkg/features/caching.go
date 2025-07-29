@@ -331,7 +331,7 @@ func (c *CacheMiddleware) invalidateCache(ctx *lift.Context) {
 	// For now, implement simple invalidation
 	// In a production system, this would be more sophisticated
 	if c.config.TenantIsolation {
-		// Invalidate tenant-specific entries
+		// TODO: Invalidate tenant-specific entries
 		// This would require a more sophisticated cache store
 	}
 }

@@ -32,34 +32,34 @@ type DynamoDBConnectionStore struct {
 	// In a real implementation, this would have DynamoDB client
 }
 
-func (s *DynamoDBConnectionStore) Save(ctx context.Context, conn *lift.Connection) error {
+func (s *DynamoDBConnectionStore) Save(_ context.Context, conn *lift.Connection) error {
 	// Save to DynamoDB
 	log.Printf("Saving connection: %+v", conn)
 	return nil
 }
 
-func (s *DynamoDBConnectionStore) Get(ctx context.Context, connectionID string) (*lift.Connection, error) {
+func (s *DynamoDBConnectionStore) Get(_ context.Context, connectionID string) (*lift.Connection, error) {
 	// Get from DynamoDB
 	return &lift.Connection{ID: connectionID}, nil
 }
 
-func (s *DynamoDBConnectionStore) Delete(ctx context.Context, connectionID string) error {
+func (s *DynamoDBConnectionStore) Delete(_ context.Context, connectionID string) error {
 	// Delete from DynamoDB
 	log.Printf("Deleting connection: %s", connectionID)
 	return nil
 }
 
-func (s *DynamoDBConnectionStore) ListByUser(ctx context.Context, userID string) ([]*lift.Connection, error) {
+func (s *DynamoDBConnectionStore) ListByUser(_ context.Context, userID string) ([]*lift.Connection, error) {
 	// Query DynamoDB by user
 	return []*lift.Connection{}, nil
 }
 
-func (s *DynamoDBConnectionStore) ListByTenant(ctx context.Context, tenantID string) ([]*lift.Connection, error) {
+func (s *DynamoDBConnectionStore) ListByTenant(_ context.Context, tenantID string) ([]*lift.Connection, error) {
 	// Query DynamoDB by tenant
 	return []*lift.Connection{}, nil
 }
 
-func (s *DynamoDBConnectionStore) CountActive(ctx context.Context) (int64, error) {
+func (s *DynamoDBConnectionStore) CountActive(_ context.Context) (int64, error) {
 	// Count active connections in DynamoDB
 	// In a real implementation, this would use a DynamoDB counter or query
 	log.Printf("Counting active connections")

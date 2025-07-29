@@ -701,7 +701,6 @@ func setupAPIRoutes(app *lift.App) error {
 	if err := app.POST("/api/v1/cart/:cartId/checkout", checkout); err != nil {
 		return err
 	}
-	
 	return nil
 }
 

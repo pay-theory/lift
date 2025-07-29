@@ -224,7 +224,7 @@ func (vm *ValidationMiddleware) validateData(data any, schema *ValidationSchema)
 func (vm *ValidationMiddleware) validateField(field string, value any, rule ValidationRule) *ValidationError {
 	// Check conditions first
 	if len(rule.Conditions) > 0 {
-		// For now, skip conditional validation
+		// TODO: For now, skip conditional validation
 		// This would require access to the full data context
 	}
 
