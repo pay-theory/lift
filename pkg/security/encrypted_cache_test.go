@@ -245,6 +245,7 @@ func TestEncryptedCacheVsPlainTextCache(t *testing.T) {
 		// In a real attack, plain text cache would expose secrets in memory
 		// while encrypted cache would only show encrypted data
 
+		// #nosec G101 -- Test API key for security testing demonstration
 		secretValue := "super-sensitive-api-key"
 
 		// Set in both caches

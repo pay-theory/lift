@@ -77,8 +77,10 @@ func handleLogin(ctx *lift.Context) error {
 	}
 
 	// Process login...
+	// In production, generate a real JWT token with proper secret management
+	// This is just a demo placeholder
 	return ctx.JSON(map[string]any{
-		"token": "jwt-token-here",
+		"token": "demo-jwt-token-placeholder", // #nosec G101 -- Demo placeholder, not a real token
 		"user": map[string]any{
 			"id":    "user-id",
 			"email": req.Email,

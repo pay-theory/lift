@@ -849,5 +849,15 @@ func main() {
 	fmt.Println("  • Type-safe request/response handling")
 	fmt.Println("  • Production-ready observability")
 
-	log.Fatal(http.ListenAndServe(port, mux))
+	server := &http.Server{
+		Addr:              port,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
+		Handler:           mux,
+	}
+
+	log.Fatal(server.ListenAndServe())
 }

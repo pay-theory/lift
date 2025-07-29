@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -162,19 +163,31 @@ func main() {
 	fmt.Println("  POST /demo/service-call - Test inter-service communication")
 	fmt.Println("  GET  /demo/stats - View performance statistics")
 
-	http.ListenAndServe(":8080", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Convert HTTP request to Lift context
-		ctx := createLiftContext(r)
+	server := &http.Server{
+		Addr:              ":8080",
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Convert HTTP request to Lift context
+			ctx := createLiftContext(r)
 
-		// Handle request through the app's test handler
-		if err := app.HandleTestRequest(ctx); err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
+			// Handle request through the app's test handler
+			if err := app.HandleTestRequest(ctx); err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
 
-		// Write response
-		writeResponse(w, ctx.Response)
-	}))
+			// Write response
+			writeResponse(w, ctx.Response)
+		}),
+	}
+
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func registerDemoServices(registry *services.ServiceRegistry) {

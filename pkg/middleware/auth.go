@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -419,6 +420,12 @@ func createPrincipalFromClaims(claims *JWTClaims, ctx *lift.Context) *security.P
 
 // loadRSAPublicKey loads an RSA public key from a PEM file
 func loadRSAPublicKey(path string) (*rsa.PublicKey, error) {
+	// Validate file path to prevent directory traversal
+	path = filepath.Clean(path)
+	if strings.Contains(path, "..") {
+		return nil, fmt.Errorf("invalid key file path")
+	}
+
 	keyData, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read key file: %w", err)

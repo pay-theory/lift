@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -9,10 +10,18 @@ import (
 )
 
 func main() {
+	// Get JWT secret from environment or generate a secure one
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		// In production, this should fail or use a secure secret management service
+		fmt.Println("WARNING: JWT_SECRET not set. Using a default value for demo purposes only.")
+		jwtSecret = "demo-secret-key-change-in-production"
+	}
+
 	// Create app with JWT authentication
 	app := lift.New(
 		lift.WithJWTAuth(lift.JWTAuthConfig{
-			Secret:    "my-secret-key",
+			Secret:    jwtSecret,
 			Algorithm: "HS256",
 			SkipPaths: []string{"/health", "/login"},
 			Validator: func(claims jwt.MapClaims) error {
@@ -58,7 +67,7 @@ func main() {
 			"exp":       time.Now().Add(24 * time.Hour).Unix(),
 		})
 
-		tokenString, err := token.SignedString([]byte("my-secret-key"))
+		tokenString, err := token.SignedString([]byte(jwtSecret))
 		if err != nil {
 			return ctx.SystemError("Failed to create token", err)
 		}

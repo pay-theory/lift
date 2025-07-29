@@ -13,6 +13,7 @@ import (
 func TestJWTValidator(t *testing.T) {
 	config := security.JWTConfig{
 		SigningMethod: "HS256",
+		// #nosec G101 -- Test secret for unit testing only
 		SecretKey:     "test-secret",
 		Issuer:        "test-issuer",
 		Audience:      []string{"test-audience"},
@@ -42,6 +43,7 @@ func TestJWTValidator(t *testing.T) {
 	t.Run("Invalid Signature", func(t *testing.T) {
 		// Create token with different secret
 		wrongConfig := config
+		// #nosec G101 -- Test secret for unit testing only
 		wrongConfig.SecretKey = "wrong-secret"
 		token := createTestToken(t, wrongConfig, map[string]any{
 			"sub": "user123",

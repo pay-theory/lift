@@ -491,7 +491,7 @@ func saveResults(results *BenchmarkResults) error {
 		return err
 	}
 	
-	return os.WriteFile("results.json", data, 0644)
+	return os.WriteFile("results.json", data, 0600)
 }
 
 func printSummary(results *BenchmarkResults) {

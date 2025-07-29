@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -730,6 +732,17 @@ func (a *App) RunLocalTest() {
 	if testFile == "" {
 		if a.logger != nil {
 			a.logger.Info("No test file defined", nil)
+		}
+		return
+	}
+
+	// Validate file path to prevent directory traversal
+	testFile = filepath.Clean(testFile)
+	if strings.Contains(testFile, "..") {
+		if a.logger != nil {
+			a.logger.Error("Invalid test file path", map[string]any{
+				"path": testFile,
+			})
 		}
 		return
 	}

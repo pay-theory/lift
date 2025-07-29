@@ -13,6 +13,7 @@ import (
 )
 
 func TestJWTAuthentication(t *testing.T) {
+	// #nosec G101 -- Test secret for unit testing only
 	secret := "test-secret"
 
 	// Create app with JWT auth
@@ -104,6 +105,7 @@ func TestJWTAuthentication(t *testing.T) {
 			"tenant_id": "test-tenant",
 			"exp":       time.Now().Add(time.Hour).Unix(),
 		})
+		// #nosec G101 -- Test secret for unit testing only
 		tokenString, err := token.SignedString([]byte("wrong-secret"))
 		require.NoError(t, err)
 

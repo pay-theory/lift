@@ -295,5 +295,15 @@ func main() {
 	fmt.Println("  • Health checks are cached for 30 seconds")
 	fmt.Println("  • Business logic checker shows degraded status outside 9-5")
 
-	log.Fatal(http.ListenAndServe(port, mux))
+	server := &http.Server{
+		Addr:              port,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
+		Handler:           mux,
+	}
+
+	log.Fatal(server.ListenAndServe())
 }

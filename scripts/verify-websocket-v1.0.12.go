@@ -64,7 +64,7 @@ func main() {
 `
 
 	// Write test file
-	err = os.WriteFile("test_websocket.go", []byte(testCode), 0644)
+	err = os.WriteFile("test_websocket.go", []byte(testCode), 0600)
 	if err != nil {
 		fmt.Printf("   ❌ Could not create test file: %v\n", err)
 		return

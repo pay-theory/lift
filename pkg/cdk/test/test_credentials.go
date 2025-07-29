@@ -11,8 +11,10 @@ import (
 // These should only be used with local testing tools like DynamoDB Local
 const (
 	// DefaultTestAccessKeyID is used for local testing only
+	// #nosec G101 -- These are dummy credentials for local testing only, not real AWS credentials
 	DefaultTestAccessKeyID = "local-test-key"
 	// DefaultTestSecretAccessKey is used for local testing only
+	// #nosec G101 -- These are dummy credentials for local testing only, not real AWS credentials
 	DefaultTestSecretAccessKey = "local-test-secret"
 )
 

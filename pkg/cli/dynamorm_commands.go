@@ -1117,7 +1117,7 @@ func (c *DynamORMMigrateCommand) saveAnalysis(analysis *TableAnalysis, path stri
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
 func (c *DynamORMMigrateCommand) printAnalysisSummary(analysis *TableAnalysis) {

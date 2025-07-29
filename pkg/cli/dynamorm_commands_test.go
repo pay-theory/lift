@@ -38,7 +38,7 @@ require (
 	github.com/pay-theory/lift v1.0.0
 )
 `
-	err = os.WriteFile("go.mod", []byte(goModContent), 0644)
+	err = os.WriteFile("go.mod", []byte(goModContent), 0600)
 	require.NoError(t, err)
 
 	cmd := &DynamORMScaffoldCommand{}
