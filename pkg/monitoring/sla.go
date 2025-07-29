@@ -645,7 +645,11 @@ func (rg *ReportGenerator) GenerateSLAReport(metrics map[string]*SLAMetrics) []b
 		},
 	}
 
-	data, _ := json.MarshalIndent(report, "", "  ")
+	data, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		// Fallback to error message if marshaling fails
+		return []byte(fmt.Sprintf(`{"error": "failed to marshal report: %v"}`, err))
+	}
 	return data
 }
 

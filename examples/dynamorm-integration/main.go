@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/dynamorm"
@@ -46,12 +47,14 @@ func main() {
 	}))
 
 	// Health check endpoint
-	app.GET("/health", func(ctx *lift.Context) error {
+	if err := app.GET("/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
 			"status":  "healthy",
 			"service": "dynamorm-integration-demo",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register health endpoint: %v", err)
+	}
 
 	// Create user endpoint
 	app.POST("/users", func(ctx *lift.Context) error {

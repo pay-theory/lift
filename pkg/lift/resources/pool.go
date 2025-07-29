@@ -172,7 +172,10 @@ func (p *DefaultConnectionPool) Get(ctx context.Context) (any, error) {
 		}
 
 		// Resource is invalid, clean it up
-		resource.Cleanup()
+		if err := resource.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 	}
 
 	// Check if we can create a new connection
@@ -197,7 +200,10 @@ func (p *DefaultConnectionPool) Get(ctx context.Context) (any, error) {
 		p.mu.Lock()
 		p.stats.Errors++
 		p.mu.Unlock()
-		resource.Cleanup()
+		if err := resource.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 		return nil, err
 	}
 
@@ -232,7 +238,10 @@ func (p *DefaultConnectionPool) Put(resource any) error {
 
 	// Check if resource is still valid
 	if !p.factory.Validate(res) || !res.IsValid() {
-		res.Cleanup()
+		if err := res.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 		p.cond.Signal()
 		return nil
 	}
@@ -242,7 +251,10 @@ func (p *DefaultConnectionPool) Put(resource any) error {
 		p.idle = append(p.idle, res)
 	} else {
 		// Pool is full, cleanup the resource
-		res.Cleanup()
+		if err := res.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 	}
 
 	p.cond.Signal()
@@ -268,13 +280,19 @@ func (p *DefaultConnectionPool) Close() error {
 
 	// Cleanup all idle resources
 	for _, resource := range p.idle {
-		resource.Cleanup()
+		if err := resource.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 	}
 	p.idle = nil
 
 	// Cleanup all active resources
 	for resource := range p.active {
-		resource.Cleanup()
+		if err := resource.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 	}
 	p.active = nil
 
@@ -342,13 +360,19 @@ func (p *DefaultConnectionPool) cleanup() {
 	for _, resource := range p.idle {
 		// Check if resource has exceeded max lifetime
 		if p.config.MaxLifetime > 0 && now.Sub(resource.LastUsed()) > p.config.MaxLifetime {
-			resource.Cleanup()
+			if err := resource.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 			continue
 		}
 
 		// Check if resource has been idle too long
 		if p.config.IdleTimeout > 0 && now.Sub(resource.LastUsed()) > p.config.IdleTimeout {
-			resource.Cleanup()
+			if err := resource.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 			continue
 		}
 
@@ -356,7 +380,10 @@ func (p *DefaultConnectionPool) cleanup() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		if err := resource.HealthCheck(ctx); err != nil {
 			cancel()
-			resource.Cleanup()
+			if err := resource.Cleanup(); err != nil {
+			// Log cleanup error but continue - this is best-effort cleanup
+			// TODO: Add proper logging once logger is available
+		}
 			continue
 		}
 		cancel()

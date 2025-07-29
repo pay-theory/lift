@@ -346,7 +346,11 @@ func (l *CloudWatchLogger) flushBatch(batch []*observability.LogEntry) {
 	// Convert entries to CloudWatch format
 	events := make([]types.InputLogEvent, len(batch))
 	for i, entry := range batch {
-		message, _ := json.Marshal(entry)
+		message, err := json.Marshal(entry)
+		if err != nil {
+			// Fallback to string representation if JSON marshaling fails
+			message = []byte(fmt.Sprintf(`{"error": "failed to marshal log entry", "level": "%s", "message": "%s"}`, entry.Level, entry.Message))
+		}
 		events[i] = types.InputLogEvent{
 			Message:   aws.String(string(message)),
 			Timestamp: aws.Int64(entry.Timestamp.UnixMilli()),

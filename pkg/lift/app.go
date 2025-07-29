@@ -422,14 +422,19 @@ func (a *App) handleError(ctx *Context, err error) (any, error) {
 			resp["details"] = liftErr.Details
 		}
 
-		ctx.Status(liftErr.StatusCode).JSON(resp)
+		if err := ctx.Status(liftErr.StatusCode).JSON(resp); err != nil {
+			// Log error but continue - we're already in error handling
+			return nil, fmt.Errorf("failed to send error response: %w", err)
+		}
 		return ctx.Response, nil
 	}
 
 	// For non-Lift errors, set 500 status
-	ctx.Status(500).JSON(map[string]string{
+	if err := ctx.Status(500).JSON(map[string]string{
 		"error": "Internal server error",
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("failed to send internal server error response: %w", err)
+	}
 
 	return ctx.Response, nil
 }
@@ -446,18 +451,22 @@ func (a *App) HandleTestRequest(ctx *Context) error {
 	if err := a.router.Handle(ctx); err != nil {
 		// Handle Lift errors properly by setting appropriate status codes
 		if liftErr, ok := err.(*LiftError); ok {
-			ctx.Status(liftErr.StatusCode).JSON(map[string]any{
+			if jsonErr := ctx.Status(liftErr.StatusCode).JSON(map[string]any{
 				"error":   liftErr.Code,
 				"message": liftErr.Message,
-			})
+			}); jsonErr != nil {
+				return fmt.Errorf("failed to send error response: %w", jsonErr)
+			}
 			return nil // Don't return error, status is set in response
 		}
 
 		// For non-Lift errors, set 500 status
-		ctx.Status(500).JSON(map[string]any{
+		if jsonErr := ctx.Status(500).JSON(map[string]any{
 			"error":   "Internal Server Error",
 			"message": err.Error(),
-		})
+		}); jsonErr != nil {
+			return fmt.Errorf("failed to send internal server error response: %w", jsonErr)
+		}
 		return nil // Don't return error, status is set in response
 	}
 
@@ -658,7 +667,10 @@ func createReflectedHandler(v reflect.Value, t reflect.Type) Handler {
 		case 1:
 			// Only error return
 			if !results[0].IsNil() {
-				return results[0].Interface().(error)
+				if err, ok := results[0].Interface().(error); ok {
+					return err
+				}
+				return fmt.Errorf("handler returned non-error value: %v", results[0].Interface())
 			}
 			return nil
 
@@ -666,12 +678,18 @@ func createReflectedHandler(v reflect.Value, t reflect.Type) Handler {
 			// (value, error) return
 			errValue := results[1]
 			if !errValue.IsNil() {
-				return errValue.Interface().(error)
+				if err, ok := errValue.Interface().(error); ok {
+					return err
+				}
+				return fmt.Errorf("handler returned non-error value in error position: %v", errValue.Interface())
 			}
 
 			// Send the response value as JSON
 			responseValue := results[0].Interface()
-			return ctx.JSON(responseValue)
+			if err := ctx.JSON(responseValue); err != nil {
+				return fmt.Errorf("failed to send JSON response: %w", err)
+			}
+			return nil
 
 		default:
 			return fmt.Errorf("unexpected number of return values: %d", len(results))
@@ -773,7 +791,10 @@ func (a *App) RunLocalTest() {
 	defer cancel()
 
 	// Run the test event locally
-	a.HandleRequest(ctx, rawEvent)
+	if _, err := a.HandleRequest(ctx, rawEvent); err != nil {
+		// Log error but don't return it since this is for debugging
+		fmt.Printf("Debug: Error handling request: %v\n", err)
+	}
 }
 
 // WithDebug enables debug mode for the application

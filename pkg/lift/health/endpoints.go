@@ -213,7 +213,10 @@ func (he *HealthEndpoints) ComponentsHandler(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log error but can't change status code at this point
+		// TODO: Add proper logging once logger is available
+	}
 }
 
 // healthStatusToHTTPStatus converts health status to HTTP status code
@@ -260,7 +263,10 @@ func (he *HealthEndpoints) writeJSONResponse(w http.ResponseWriter, statusCode i
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log error but can't change status code at this point
+		// TODO: Add proper logging once logger is available
+	}
 }
 
 // writePlainTextResponse writes a plain text health response
@@ -273,7 +279,10 @@ func (he *HealthEndpoints) writePlainTextResponse(w http.ResponseWriter, statusC
 		message = fmt.Sprintf("%s: %s", status.Status, status.Message)
 	}
 
-	fmt.Fprint(w, message)
+	if _, err := fmt.Fprint(w, message); err != nil {
+		// Log error but can't change status code at this point
+		// TODO: Add proper logging once logger is available
+	}
 }
 
 // writeError writes an error response
@@ -287,7 +296,10 @@ func (he *HealthEndpoints) writeError(w http.ResponseWriter, statusCode int, mes
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
-	json.NewEncoder(w).Encode(errorResponse)
+	if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+		// Log error but can't change status code at this point
+		// TODO: Add proper logging once logger is available
+	}
 }
 
 // setCORSHeaders sets CORS headers if enabled

@@ -285,7 +285,11 @@ func isDevelopment() bool {
 
 // generateClientId generates a unique client ID for AppConfig
 func generateClientId() string {
-	hostname, _ := os.Hostname()
+	hostname, err := os.Hostname()
+	if err != nil {
+		// Fallback to a timestamp-based ID if hostname is unavailable
+		hostname = "unknown-host"
+	}
 	return fmt.Sprintf("%s-%d", hostname, time.Now().Unix())
 }
 

@@ -29,9 +29,15 @@ func TestFactoryPattern(t *testing.T) {
 	app.Use(dynamorm.WithDynamORM(config, factory))
 
 	// Register routes
-	app.GET("/health", HealthCheck)
-	app.POST("/users", CreateUser)
-	app.GET("/users/:id", GetUser)
+	if err := app.GET("/health", HealthCheck); err != nil {
+		t.Fatalf("Failed to register health route: %v", err)
+	}
+	if err := app.POST("/users", CreateUser); err != nil {
+		t.Fatalf("Failed to register create user route: %v", err)
+	}
+	if err := app.GET("/users/:id", GetUser); err != nil {
+		t.Fatalf("Failed to register get user route: %v", err)
+	}
 
 	t.Run("HealthCheck", func(t *testing.T) {
 		resp := testApp.GET("/health")
@@ -75,7 +81,11 @@ func TestFactoryPattern(t *testing.T) {
 		mockDB.On("Model", mock.AnythingOfType("*main.User")).Return(mockQuery).Once()
 		mockQuery.On("Where", "ID", "=", "123").Return(mockQuery).Once()
 		mockQuery.On("First", mock.AnythingOfType("*main.User")).Run(func(args mock.Arguments) {
-			user := args.Get(0).(*User)
+			user, ok := args.Get(0).(*User)
+			if !ok {
+				t.Errorf("Expected *User but got %T", args.Get(0))
+				return
+			}
 			user.ID = "123"
 			user.Name = "John Doe"
 			user.Email = "john@example.com"
@@ -150,7 +160,9 @@ func TestFactoryPatternWithTenantIsolation(t *testing.T) {
 	app.Use(dynamorm.WithDynamORM(config, factory))
 
 	// Register routes
-	app.GET("/users/:id", GetUser)
+	if err := app.GET("/users/:id", GetUser); err != nil {
+		t.Fatalf("Failed to register get user route: %v", err)
+	}
 
 	t.Run("RequiresTenantID", func(t *testing.T) {
 		// Test request without tenant ID
@@ -171,7 +183,11 @@ func TestFactoryPatternWithTenantIsolation(t *testing.T) {
 		mockDB.On("Model", mock.AnythingOfType("*main.User")).Return(mockQuery).Once()
 		mockQuery.On("Where", "ID", "=", "123").Return(mockQuery).Once()
 		mockQuery.On("First", mock.AnythingOfType("*main.User")).Run(func(args mock.Arguments) {
-			user := args.Get(0).(*User)
+			user, ok := args.Get(0).(*User)
+			if !ok {
+				t.Errorf("Expected *User but got %T", args.Get(0))
+				return
+			}
 			user.ID = "123"
 			user.Name = "Tenant User"
 			user.Email = "user@tenant.com"

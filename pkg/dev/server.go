@@ -183,15 +183,24 @@ func (s *DevServer) Stop() error {
 	if s.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		s.server.Shutdown(ctx)
+		if err := s.server.Shutdown(ctx); err != nil {
+			// Log error but continue shutdown process
+			fmt.Printf("Warning: Error shutting down server: %v\n", err)
+		}
 	}
 
 	if s.profiler != nil {
-		s.profiler.Stop()
+		if err := s.profiler.Stop(); err != nil {
+			// Log error but continue shutdown process
+			fmt.Printf("Warning: Error stopping profiler: %v\n", err)
+		}
 	}
 
 	if s.dashboard != nil {
-		s.dashboard.Stop()
+		if err := s.dashboard.Stop(); err != nil {
+			// Log error but continue shutdown process
+			fmt.Printf("Warning: Error stopping dashboard: %v\n", err)
+		}
 	}
 
 	if s.watcher != nil {
@@ -275,7 +284,10 @@ func (s *DevServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log error but continue - best effort dev server response
+		fmt.Printf("Warning: Error encoding JSON response: %v\n", err)
+	}
 
 	// Update latency stats
 	duration := time.Since(start)
@@ -289,7 +301,10 @@ func (s *DevServer) handleStats(w http.ResponseWriter, r *http.Request) {
 	stats := s.GetStats()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		// Log error but continue - best effort dev server response
+		fmt.Printf("Warning: Error encoding JSON stats: %v\n", err)
+	}
 }
 
 // handleRestart triggers a server restart
@@ -302,14 +317,20 @@ func (s *DevServer) handleRestart(w http.ResponseWriter, r *http.Request) {
 	select {
 	case s.restartCh <- struct{}{}:
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{
+		if err := json.NewEncoder(w).Encode(map[string]string{
 			"status": "restart triggered",
-		})
+		}); err != nil {
+			// Log error but continue - best effort dev server response
+			fmt.Printf("Warning: Error encoding restart response: %v\n", err)
+		}
 	default:
 		w.WriteHeader(http.StatusTooManyRequests)
-		json.NewEncoder(w).Encode(map[string]string{
+		if err := json.NewEncoder(w).Encode(map[string]string{
 			"error": "restart already in progress",
-		})
+		}); err != nil {
+			// Log error but continue - best effort dev server response
+			fmt.Printf("Warning: Error encoding restart error response: %v\n", err)
+		}
 	}
 }
 
@@ -328,7 +349,10 @@ func (s *DevServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(health)
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		// Log error but continue - best effort dev server response
+		fmt.Printf("Warning: Error encoding health response: %v\n", err)
+	}
 }
 
 // devMiddleware adds development-specific middleware

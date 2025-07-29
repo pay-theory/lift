@@ -129,7 +129,10 @@ func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Ha
 	// Set up panic recovery
 	defer func() {
 		if r := recover(); r != nil {
-			tx.Rollback()
+			if err := tx.Rollback(); err != nil {
+				// Log rollback error but still re-panic the original error
+				ctx.Set("rollback_error", err)
+			}
 			panic(r) // Re-panic after rollback
 		}
 	}()
@@ -138,7 +141,12 @@ func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Ha
 	err = next.Handle(ctx)
 	if err != nil {
 		// Rollback on error
-		tx.Rollback()
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			// Return both errors - handler error is primary, rollback error is additional context
+			return lift.SystemError("Handler failed and rollback failed").
+				WithCause(err).
+				WithDetail("rollback_error", rollbackErr.Error())
+		}
 		return err
 	}
 

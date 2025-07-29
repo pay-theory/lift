@@ -51,7 +51,11 @@ type SQSMessage struct {
 
 // GenerateEventBridgeEvent creates a mock EventBridge event for testing
 func (e *EventHelpers) GenerateEventBridgeEvent(source, detailType string, detail interface{}) events.CloudWatchEvent {
-	detailBytes, _ := json.Marshal(detail)
+	detailBytes, err := json.Marshal(detail)
+	if err != nil {
+		// Fallback to empty JSON object for test
+		detailBytes = []byte("{}")
+	}
 
 	return events.CloudWatchEvent{
 		ID:         "test-event-" + time.Now().Format("20060102150405"),

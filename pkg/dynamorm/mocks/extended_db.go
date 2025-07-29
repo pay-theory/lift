@@ -50,13 +50,25 @@ func (m *MockExtendedDB) DescribeTable(model any) (any, error) {
 // WithLambdaTimeout sets a deadline based on Lambda context
 func (m *MockExtendedDB) WithLambdaTimeout(ctx context.Context) core.DB {
 	args := m.Called(ctx)
-	return args.Get(0).(core.DB)
+	if args.Get(0) == nil {
+		return nil
+	}
+	if db, ok := args.Get(0).(core.DB); ok {
+		return db
+	}
+	return nil
 }
 
 // WithLambdaTimeoutBuffer sets a custom timeout buffer
 func (m *MockExtendedDB) WithLambdaTimeoutBuffer(buffer time.Duration) core.DB {
 	args := m.Called(buffer)
-	return args.Get(0).(core.DB)
+	if args.Get(0) == nil {
+		return nil
+	}
+	if db, ok := args.Get(0).(core.DB); ok {
+		return db
+	}
+	return nil
 }
 
 // TransactionFunc executes a function within a full transaction context

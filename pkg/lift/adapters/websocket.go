@@ -72,8 +72,15 @@ func (a *WebSocketAdapter) Adapt(rawEvent any) (*Request, error) {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	eventMap := rawEvent.(map[string]any)
-	requestContext := eventMap["requestContext"].(map[string]any)
+	eventMap, ok := rawEvent.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("event must be a map[string]any, got %T", rawEvent)
+	}
+	
+	requestContext, ok := eventMap["requestContext"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("requestContext must be a map[string]any")
+	}
 
 	// Extract WebSocket specific information
 	connectionID := extractStringField(requestContext, "connectionId")

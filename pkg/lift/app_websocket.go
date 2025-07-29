@@ -162,7 +162,14 @@ func (a *App) WebSocketHandler() any {
 
 		// Non-WebSocket event, use regular routing
 		if err := a.router.Handle(liftCtx); err != nil {
-			resp, _ := a.handleError(liftCtx, err)
+			resp, handleErr := a.handleError(liftCtx, err)
+			if handleErr != nil {
+				// Log error but continue with fallback response
+				return events.APIGatewayProxyResponse{
+					StatusCode: 500,
+					Body:       `{"error": "Internal server error"}`,
+				}, nil
+			}
 			if apiResp, ok := resp.(events.APIGatewayProxyResponse); ok {
 				return apiResp, nil
 			}
@@ -265,7 +272,10 @@ func wrapWithConnectionManagement(handler Handler, store ConnectionStore) Handle
 		case "$disconnect":
 			// Auto-remove connection before handler
 			if store != nil {
-				_ = store.Delete(ctx.Context, wsCtx.ConnectionID())
+				if err := store.Delete(ctx.Context, wsCtx.ConnectionID()); err != nil {
+					// Log error but don't fail disconnect - connection cleanup should be best effort
+					// TODO: Add proper logging once logger is available
+				}
 			}
 
 			// Then let handler process

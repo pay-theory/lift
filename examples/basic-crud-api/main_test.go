@@ -58,7 +58,9 @@ func TestCRUDAPI(t *testing.T) {
 		healthApp.App().Use(LoggingMiddleware())
 
 		// Set up just the health route
-		healthApp.App().GET("/health", HealthCheck)
+		if err := healthApp.App().GET("/health", HealthCheck); err != nil {
+			t.Fatalf("Failed to register health route: %v", err)
+		}
 
 		response := healthApp.GET("/health")
 
@@ -185,7 +187,11 @@ func TestCRUDAPI(t *testing.T) {
 		mockDB.On("Model", mock.AnythingOfType("*main.User")).Return(mockQuery)
 		mockQuery.On("Where", "ID", "=", "user456").Return(mockQuery)
 		mockQuery.On("First", mock.AnythingOfType("*main.User")).Run(func(args mock.Arguments) {
-			user := args.Get(0).(*User)
+			user, ok := args.Get(0).(*User)
+			if !ok {
+				t.Errorf("Expected *User but got %T", args.Get(0))
+				return
+			}
 			user.ID = "user456"
 			user.TenantID = "tenant123"
 			user.Email = "existing@example.com"
@@ -298,12 +304,24 @@ func (m *MockDynamORMWrapper) WithTenant(tenantID string) any {
 // setupRoutes configures the application routes (extracted from main for testing)
 func setupRoutes(app *lift.App) {
 	// Routes only - middleware is added separately in tests
-	app.POST("/users", CreateUser)
-	app.GET("/users/:id", GetUser)
-	app.GET("/users", ListUsers)
-	app.PUT("/users/:id", UpdateUser)
-	app.DELETE("/users/:id", DeleteUser)
-	app.GET("/health", HealthCheck)
+	if err := app.POST("/users", CreateUser); err != nil {
+		panic(fmt.Errorf("failed to register POST /users: %w", err))
+	}
+	if err := app.GET("/users/:id", GetUser); err != nil {
+		panic(fmt.Errorf("failed to register GET /users/:id: %w", err))
+	}
+	if err := app.GET("/users", ListUsers); err != nil {
+		panic(fmt.Errorf("failed to register GET /users: %w", err))
+	}
+	if err := app.PUT("/users/:id", UpdateUser); err != nil {
+		panic(fmt.Errorf("failed to register PUT /users/:id: %w", err))
+	}
+	if err := app.DELETE("/users/:id", DeleteUser); err != nil {
+		panic(fmt.Errorf("failed to register DELETE /users/:id: %w", err))
+	}
+	if err := app.GET("/health", HealthCheck); err != nil {
+		panic(fmt.Errorf("failed to register GET /health: %w", err))
+	}
 }
 
 // BenchmarkCRUDOperations benchmarks the CRUD operations

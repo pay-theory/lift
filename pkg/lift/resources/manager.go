@@ -272,7 +272,10 @@ func (pw *DefaultPreWarmer) PreWarm(ctx context.Context, pool ConnectionPool) er
 		if err != nil {
 			// Return any resources we've already gotten
 			for _, res := range resources {
-				pool.Put(res)
+				if putErr := pool.Put(res); putErr != nil {
+					// Log but continue cleanup - this is best-effort cleanup
+					// TODO: Add proper logging once logger is available
+				}
 			}
 			return fmt.Errorf("failed to pre-warm connection %d: %w", i+1, err)
 		}

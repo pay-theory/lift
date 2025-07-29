@@ -121,20 +121,28 @@ func (er *EventRouter) matchS3Pattern(ctx *Context, pattern string) bool {
 	if ctx.Request.Source == "aws.s3" && ctx.Request.Detail != nil {
 		// For EventBridge S3 events, bucket and object info is in the detail field
 		if bucket, ok := ctx.Request.Detail["bucket"].(map[string]any); ok {
-			bucketName, _ = bucket["name"].(string)
+			if name, nameOk := bucket["name"].(string); nameOk {
+				bucketName = name
+			}
 		}
 		if object, ok := ctx.Request.Detail["object"].(map[string]any); ok {
-			objectKey, _ = object["key"].(string)
+			if key, keyOk := object["key"].(string); keyOk {
+				objectKey = key
+			}
 		}
 	} else if len(ctx.Request.Records) > 0 {
 		// For direct S3 events, extract from records
 		if record, ok := ctx.Request.Records[0].(map[string]any); ok {
 			if s3Data, ok := record["s3"].(map[string]any); ok {
 				if bucket, ok := s3Data["bucket"].(map[string]any); ok {
-					bucketName, _ = bucket["name"].(string)
+					if name, nameOk := bucket["name"].(string); nameOk {
+						bucketName = name
+					}
 				}
 				if object, ok := s3Data["object"].(map[string]any); ok {
-					objectKey, _ = object["key"].(string)
+					if key, keyOk := object["key"].(string); keyOk {
+						objectKey = key
+					}
 				}
 			}
 		}

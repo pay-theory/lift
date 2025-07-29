@@ -662,9 +662,12 @@ func (drm *DisasterRecoveryManager) rollbackFailover(ctx context.Context, event 
 	event.Status = FailoverStatusRolledBack
 	drm.currentState.Status = DRStatusNormal
 
-	drm.notificationMgr.SendNotification(ctx, "failover_rolled_back", map[string]any{
+	if err := drm.notificationMgr.SendNotification(ctx, "failover_rolled_back", map[string]any{
 		"event": event,
-	})
+	}); err != nil {
+		// Log notification error but don't fail rollback operation
+		// TODO: Add proper logging once logger is available
+	}
 
 	return event, nil
 }
@@ -727,11 +730,14 @@ func (drm *DisasterRecoveryManager) handleHealthEvent(ctx context.Context, event
 				go func() {
 					_, err := drm.TriggerFailover(ctx, targetRegion, fmt.Sprintf("Automatic failover due to health check failure: %s", event.Error))
 					if err != nil {
-						drm.notificationMgr.SendNotification(ctx, "automatic_failover_failed", map[string]any{
+						if notifyErr := drm.notificationMgr.SendNotification(ctx, "automatic_failover_failed", map[string]any{
 							"error":       err.Error(),
 							"from_region": event.Region,
 							"to_region":   targetRegion,
-						})
+						}); notifyErr != nil {
+							// Log notification error but continue
+							// TODO: Add proper logging once logger is available
+						}
 					}
 				}()
 			}
@@ -756,10 +762,13 @@ func (drm *DisasterRecoveryManager) handleSyncEvent(ctx context.Context, event S
 
 	// Check if replication lag exceeds RPO
 	if event.ReplicationLag > drm.config.RPO {
-		drm.notificationMgr.SendNotification(ctx, "rpo_violation", map[string]any{
+		if err := drm.notificationMgr.SendNotification(ctx, "rpo_violation", map[string]any{
 			"rpo":             drm.config.RPO,
 			"replication_lag": event.ReplicationLag,
-		})
+		}); err != nil {
+			// Log notification error but continue
+			// TODO: Add proper logging once logger is available
+		}
 	}
 }
 
@@ -807,9 +816,12 @@ func (drm *DisasterRecoveryManager) performDRTest(ctx context.Context) {
 	defer drm.mu.Unlock()
 
 	// Notify before test
-	drm.notificationMgr.SendNotification(ctx, "dr_test_starting", map[string]any{
+	if err := drm.notificationMgr.SendNotification(ctx, "dr_test_starting", map[string]any{
 		"scheduled_time": time.Now().Add(drm.config.TestingSchedule.NotifyBefore),
-	})
+	}); err != nil {
+		// Log notification error but continue with test
+		// TODO: Add proper logging once logger is available
+	}
 
 	// Wait for notification period
 	time.Sleep(drm.config.TestingSchedule.NotifyBefore)
@@ -844,10 +856,13 @@ func (drm *DisasterRecoveryManager) executeTestFailover(ctx context.Context, eve
 
 	drm.failoverHistory = append(drm.failoverHistory, *event)
 
-	drm.notificationMgr.SendNotification(ctx, "dr_test_completed", map[string]any{
+	if err := drm.notificationMgr.SendNotification(ctx, "dr_test_completed", map[string]any{
 		"event":   event,
 		"success": event.Status == FailoverStatusCompleted,
-	})
+	}); err != nil {
+		// Log notification error but continue
+		// TODO: Add proper logging once logger is available
+	}
 }
 
 // GetCurrentState returns the current DR state

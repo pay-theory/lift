@@ -85,7 +85,11 @@ func (e *LiftError) WithTraceID(traceID string) *LiftError {
 	if traceID == "" {
 		// Generate a simple UUID v4
 		uuid := make([]byte, 16)
-		rand.Read(uuid)
+		if _, err := rand.Read(uuid); err != nil {
+			// Fallback to time-based ID if crypto/rand fails
+			e.TraceID = fmt.Sprintf("fallback-%d", time.Now().UnixNano())
+			return e
+		}
 		uuid[6] = (uuid[6] & 0x0f) | 0x40 // Version 4
 		uuid[8] = (uuid[8] & 0x3f) | 0x80 // Variant RFC 4122
 		e.TraceID = fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:16])
@@ -180,7 +184,9 @@ func ErrorResponse(e *LiftError) map[string]any {
 	}
 
 	if len(e.Details) > 0 {
-		response["error"].(map[string]any)["details"] = e.Details
+		if errorMap, ok := response["error"].(map[string]any); ok {
+			errorMap["details"] = e.Details
+		}
 	}
 
 	return response

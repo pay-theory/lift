@@ -58,7 +58,10 @@ func (a *S3Adapter) Adapt(rawEvent any) (*Request, error) {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	eventMap := rawEvent.(map[string]any)
+	eventMap, ok := rawEvent.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("event must be a map[string]any, got %T", rawEvent)
+	}
 	records := extractSliceField(eventMap, "Records")
 
 	// Extract metadata from first record for event-level info

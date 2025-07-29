@@ -531,12 +531,14 @@ func (s *semaphore) capacity() int {
 
 // defaultRejectionHandler provides a default rejection response
 func defaultRejectionHandler(ctx *lift.Context, reason string) error {
-	ctx.Status(503).JSON(map[string]any{
+	if err := ctx.Status(503).JSON(map[string]any{
 		"error":   "Service temporarily unavailable",
 		"message": "Resource limit exceeded",
 		"reason":  reason,
 		"code":    "BULKHEAD_LIMIT_EXCEEDED",
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to send bulkhead rejection response: %w", err)
+	}
 	// Return an error to indicate rejection
 	return fmt.Errorf("bulkhead limit exceeded: %s", reason)
 }

@@ -181,7 +181,10 @@ func (d *DevDashboard) handleAPILogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(logs)
+	if err := json.NewEncoder(w).Encode(logs); err != nil {
+		// Log error but continue - best effort dev dashboard response
+		fmt.Printf("Warning: Error encoding logs response: %v\n", err)
+	}
 }
 
 // handleStatic serves static assets

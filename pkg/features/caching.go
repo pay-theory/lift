@@ -567,7 +567,10 @@ func (m *MultiBendCacheStore) Get(ctx context.Context, key string) (any, bool, e
 	if value, found, err := m.secondary.Get(ctx, key); err == nil && found {
 		// Write back to primary if using write-back strategy
 		if m.strategy == "write_back" {
-			m.primary.Set(ctx, key, value, 0) // Use default TTL
+			if setErr := m.primary.Set(ctx, key, value, 0); setErr != nil {
+				// Log error but don't fail the read operation
+				// TODO: Add proper logging once logger is available
+			}
 		}
 		return value, true, nil
 	}
