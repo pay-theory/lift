@@ -42,7 +42,7 @@ func wrapHandler(handler any) Handler {
 		return HandlerFunc(h)
 	default:
 		// Return a handler that always returns an error
-		return HandlerFunc(func(ctx *Context) error {
+		return HandlerFunc(func(_ *Context) error {
 			return NewLiftError("INVALID_HANDLER", "Unsupported handler type", http.StatusInternalServerError)
 		})
 	}

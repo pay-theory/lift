@@ -738,6 +738,7 @@ func (drm *DisasterRecoveryManager) handleHealthEvent(ctx context.Context, event
 						}); notifyErr != nil {
 							// Log notification error but continue
 							// TODO: Add proper logging once logger is available
+							_ = notifyErr
 						}
 					}
 				}()
@@ -769,6 +770,7 @@ func (drm *DisasterRecoveryManager) handleSyncEvent(ctx context.Context, event S
 		}); err != nil {
 			// Log notification error but continue
 			// TODO: Add proper logging once logger is available
+			_ = err
 		}
 	}
 }
@@ -822,6 +824,7 @@ func (drm *DisasterRecoveryManager) performDRTest(ctx context.Context) {
 	}); err != nil {
 		// Log notification error but continue with test
 		// TODO: Add proper logging once logger is available
+		_ = err
 	}
 
 	// Wait for notification period
@@ -863,6 +866,7 @@ func (drm *DisasterRecoveryManager) executeTestFailover(ctx context.Context, eve
 	}); err != nil {
 		// Log notification error but continue
 		// TODO: Add proper logging once logger is available
+		_ = err
 	}
 }
 

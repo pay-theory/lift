@@ -319,7 +319,7 @@ func (p *DefaultConnectionPool) Stats() PoolStats {
 }
 
 // HealthCheck verifies pool health
-func (p *DefaultConnectionPool) HealthCheck(ctx context.Context) error {
+func (p *DefaultConnectionPool) HealthCheck(_ context.Context) error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 

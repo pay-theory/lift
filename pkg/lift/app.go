@@ -716,7 +716,7 @@ func isErrorType(t reflect.Type) bool {
 	return t.Implements(errorInterface)
 }
 
-func isInterfaceType(t reflect.Type) bool {
+func isInterfaceType(_ reflect.Type) bool {
 	// Accept any type for response values (any)
 	return true
 }

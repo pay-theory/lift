@@ -24,7 +24,7 @@ func TestNewRouter(t *testing.T) {
 
 func TestRouterAddRoute(t *testing.T) {
 	router := NewRouter()
-	handler := HandlerFunc(func(ctx *Context) error {
+	handler := HandlerFunc(func(_ *Context) error {
 		return nil
 	})
 

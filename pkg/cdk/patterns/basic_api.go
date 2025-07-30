@@ -22,8 +22,6 @@ type BasicAPIProps struct {
 	EnableCORS *bool
 	// Enable monitoring with CloudWatch dashboard
 	EnableMonitoring *bool
-	// Enable dead letter queue
-	EnableDeadLetterQueue *bool
 	// Memory size in MB (default: 512)
 	MemorySize *float64
 	// Timeout in seconds (default: 30)
@@ -53,9 +51,6 @@ func NewBasicAPI(scope constructs.Construct, id *string, props *BasicAPIProps) *
 	if props.EnableMonitoring == nil {
 		props.EnableMonitoring = jsii.Bool(true)
 	}
-	if props.EnableDeadLetterQueue == nil {
-		props.EnableDeadLetterQueue = jsii.Bool(true)
-	}
 
 	// Create Lambda function
 	functionProps := &liftconstructs.LiftFunctionProps{
@@ -64,9 +59,8 @@ func NewBasicAPI(scope constructs.Construct, id *string, props *BasicAPIProps) *
 			Handler:     props.Handler,
 			Environment: props.Environment,
 		},
-		EnableTracing:         jsii.Bool(true),
-		EnableMetrics:         jsii.Bool(true),
-		EnableDeadLetterQueue: props.EnableDeadLetterQueue,
+		EnableTracing: jsii.Bool(true),
+		EnableMetrics: jsii.Bool(true),
 	}
 
 	if props.MemorySize != nil {

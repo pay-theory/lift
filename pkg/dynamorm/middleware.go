@@ -114,7 +114,7 @@ func TenantDB(ctx *lift.Context) (*DynamORMWrapper, error) {
 }
 
 // executeWithTransaction wraps the handler execution in a DynamORM transaction
-func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Handler, config *DynamORMConfig) error {
+func executeWithTransaction(ctx *lift.Context, db *DynamORMWrapper, next lift.Handler, _ *DynamORMConfig) error {
 	// Begin transaction
 	tx, err := db.BeginTransaction()
 	if err != nil {
@@ -338,7 +338,7 @@ type TransactionOperation struct {
 }
 
 // Put adds a put operation to the transaction
-func (t *Transaction) Put(ctx context.Context, item any) error {
+func (t *Transaction) Put(_ context.Context, item any) error {
 	if t.committed || t.rolledBack {
 		return lift.SystemError("Transaction already completed")
 	}
@@ -351,7 +351,7 @@ func (t *Transaction) Put(ctx context.Context, item any) error {
 }
 
 // Delete adds a delete operation to the transaction
-func (t *Transaction) Delete(ctx context.Context, key any) error {
+func (t *Transaction) Delete(_ context.Context, key any) error {
 	if t.committed || t.rolledBack {
 		return lift.SystemError("Transaction already completed")
 	}

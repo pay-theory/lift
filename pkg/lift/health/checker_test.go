@@ -136,7 +136,7 @@ func TestHealthManager_CheckAllParallel(t *testing.T) {
 	manager := NewHealthManager(config)
 
 	// Register checkers with delays to test parallelism
-	slowChecker := NewCustomHealthChecker("slow", func(ctx context.Context) HealthStatus {
+	slowChecker := NewCustomHealthChecker("slow", func(_ context.Context) HealthStatus {
 		time.Sleep(100 * time.Millisecond)
 		return HealthStatus{
 			Status:    StatusHealthy,
@@ -194,7 +194,7 @@ func TestHealthManager_OverallHealth(t *testing.T) {
 
 	// Remove unhealthy, add degraded
 	manager.UnregisterChecker("unhealthy1")
-	degradedChecker := NewCustomHealthChecker("degraded", func(ctx context.Context) HealthStatus {
+	degradedChecker := NewCustomHealthChecker("degraded", func(_ context.Context) HealthStatus {
 		return HealthStatus{
 			Status:    StatusDegraded,
 			Timestamp: time.Now(),
@@ -216,7 +216,7 @@ func TestHealthManager_Timeout(t *testing.T) {
 	manager := NewHealthManager(config)
 
 	// Create a slow checker that will timeout
-	slowChecker := NewCustomHealthChecker("slow", func(ctx context.Context) HealthStatus {
+	slowChecker := NewCustomHealthChecker("slow", func(_ context.Context) HealthStatus {
 		time.Sleep(100 * time.Millisecond) // Longer than timeout
 		return HealthStatus{
 			Status:    StatusHealthy,
@@ -250,7 +250,7 @@ func TestHealthManager_Cache(t *testing.T) {
 	manager := NewHealthManager(config)
 
 	callCount := 0
-	countingChecker := NewCustomHealthChecker("counting", func(ctx context.Context) HealthStatus {
+	countingChecker := NewCustomHealthChecker("counting", func(_ context.Context) HealthStatus {
 		callCount++
 		return HealthStatus{
 			Status:    StatusHealthy,
@@ -289,7 +289,7 @@ func TestHealthManager_Cache(t *testing.T) {
 func TestHealthManager_PanicRecovery(t *testing.T) {
 	manager := NewHealthManager(DefaultHealthManagerConfig())
 
-	panicChecker := NewCustomHealthChecker("panic", func(ctx context.Context) HealthStatus {
+	panicChecker := NewCustomHealthChecker("panic", func(_ context.Context) HealthStatus {
 		panic("test panic")
 	})
 
@@ -360,7 +360,7 @@ func TestBuiltInCheckers(t *testing.T) {
 	})
 
 	t.Run("CustomHealthChecker", func(t *testing.T) {
-		customFn := func(ctx context.Context) HealthStatus {
+		customFn := func(_ context.Context) HealthStatus {
 			return HealthStatus{
 				Status:    StatusDegraded,
 				Timestamp: time.Now(),

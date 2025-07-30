@@ -487,7 +487,7 @@ func defaultKeyFunc(ctx *lift.Context) string {
 	return fmt.Sprintf("%s:%s:%s", ctx.Request.Method, ctx.Request.Path, queryString)
 }
 
-func defaultShouldCache(ctx *lift.Context, result any) bool {
+func defaultShouldCache(ctx *lift.Context, _ any) bool {
 	// Cache GET requests by default
 	return ctx.Request.Method == "GET" && ctx.Response.StatusCode == 200
 }
@@ -572,6 +572,7 @@ func (m *MultiBendCacheStore) Get(ctx context.Context, key string) (any, bool, e
 			if setErr := m.primary.Set(ctx, key, value, 0); setErr != nil {
 				// Log error but don't fail the read operation
 				// TODO: Add proper logging once logger is available
+				_ = setErr
 			}
 		}
 		return value, true, nil

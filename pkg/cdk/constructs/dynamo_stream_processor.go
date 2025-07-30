@@ -195,10 +195,7 @@ func NewDynamoStreamProcessor(scope constructs.Construct, id *string, props *Dyn
 		liftProps.EnableMultiTenant = props.EnableMultiTenant
 	}
 
-	// Disable Lambda DLQ when stream DLQ is disabled to avoid confusion
-	if !enableDLQ {
-		liftProps.EnableDeadLetterQueue = jsii.Bool(false)
-	}
+	// DynamoDB stream processor handles its own DLQ through SQS, no need for Lambda DLQ
 
 	this.Function = NewLiftFunction(this, jsii.String("Function"), liftProps)
 

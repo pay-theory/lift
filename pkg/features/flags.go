@@ -87,6 +87,7 @@ func NewFeatureFlags(config FeatureFlagConfig) (*FeatureFlags, error) {
 	if err := ff.refresh(); err != nil {
 		// TODO: Log error but continue with defaults
 		// In production, you'd use proper logging here
+		_ = err
 	}
 
 	// Start refresh goroutine if client is available
@@ -180,6 +181,7 @@ func (ff *FeatureFlags) refreshLoop() {
 		case <-ticker.C:
 			if err := ff.refresh(); err != nil {
 				// TODO: In production, log the error
+				_ = err
 			}
 		case <-ff.stopRefresh:
 			return

@@ -57,16 +57,16 @@ func (m *mockLogger) Debug(msg string, fields ...map[string]any) {
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockLogger) WithField(key string, value any) lift.Logger  { return m }
-func (m *mockLogger) WithFields(fields map[string]any) lift.Logger { return m }
+func (m *mockLogger) WithField(_ string, _ any) lift.Logger  { return m }
+func (m *mockLogger) WithFields(_ map[string]any) lift.Logger { return m }
 
-func (m *mockLogger) WithRequestID(requestID string) observability.StructuredLogger { return m }
-func (m *mockLogger) WithTenantID(tenantID string) observability.StructuredLogger   { return m }
-func (m *mockLogger) WithUserID(userID string) observability.StructuredLogger       { return m }
-func (m *mockLogger) WithTraceID(traceID string) observability.StructuredLogger     { return m }
-func (m *mockLogger) WithSpanID(spanID string) observability.StructuredLogger       { return m }
+func (m *mockLogger) WithRequestID(_ string) observability.StructuredLogger { return m }
+func (m *mockLogger) WithTenantID(_ string) observability.StructuredLogger   { return m }
+func (m *mockLogger) WithUserID(_ string) observability.StructuredLogger       { return m }
+func (m *mockLogger) WithTraceID(_ string) observability.StructuredLogger     { return m }
+func (m *mockLogger) WithSpanID(_ string) observability.StructuredLogger       { return m }
 
-func (m *mockLogger) Flush(ctx context.Context) error { return nil }
+func (m *mockLogger) Flush(_ context.Context) error { return nil }
 func (m *mockLogger) Close() error                    { return nil }
 func (m *mockLogger) IsHealthy() bool                 { return m.healthy }
 func (m *mockLogger) GetStats() observability.LoggerStats {
@@ -82,15 +82,15 @@ type mockMetrics struct {
 	tags    map[string]string
 }
 
-func (m *mockMetrics) Counter(name string, tags ...map[string]string) lift.Counter {
+func (m *mockMetrics) Counter(name string, _ ...map[string]string) lift.Counter {
 	return &mockCounter{metrics: m.metrics, name: name}
 }
 
-func (m *mockMetrics) Histogram(name string, tags ...map[string]string) lift.Histogram {
+func (m *mockMetrics) Histogram(name string, _ ...map[string]string) lift.Histogram {
 	return &mockHistogram{metrics: m.metrics, name: name}
 }
 
-func (m *mockMetrics) Gauge(name string, tags ...map[string]string) lift.Gauge {
+func (m *mockMetrics) Gauge(name string, _ ...map[string]string) lift.Gauge {
 	return &mockGauge{metrics: m.metrics, name: name}
 }
 

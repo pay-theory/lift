@@ -39,13 +39,13 @@ func NewMemoryCache(config MemoryCacheConfig) *MemoryCache {
 }
 
 // Get retrieves a value from the cache
-func (mc *MemoryCache) Get(ctx context.Context, key string) (any, bool, error) {
+func (mc *MemoryCache) Get(_ context.Context, key string) (any, bool, error) {
 	value, found := mc.cache.Get(key)
 	return value, found, nil
 }
 
 // Set stores a value in the cache
-func (mc *MemoryCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+func (mc *MemoryCache) Set(_ context.Context, key string, value any, ttl time.Duration) error {
 	if ttl == 0 {
 		// Use default TTL
 		mc.cache.Set(key, value, cache.DefaultExpiration)
@@ -56,13 +56,13 @@ func (mc *MemoryCache) Set(ctx context.Context, key string, value any, ttl time.
 }
 
 // Delete removes a value from the cache
-func (mc *MemoryCache) Delete(ctx context.Context, key string) error {
+func (mc *MemoryCache) Delete(_ context.Context, key string) error {
 	mc.cache.Delete(key)
 	return nil
 }
 
 // Clear removes all items from the cache
-func (mc *MemoryCache) Clear(ctx context.Context) error {
+func (mc *MemoryCache) Clear(_ context.Context) error {
 	mc.cache.Flush()
 	return nil
 }
@@ -85,7 +85,7 @@ func (mc *MemoryCache) Close() error {
 }
 
 // Keys returns all keys (go-cache doesn't have pattern matching, so we return all keys)
-func (mc *MemoryCache) Keys(pattern string) ([]string, error) {
+func (mc *MemoryCache) Keys(_ string) ([]string, error) {
 	items := mc.cache.Items()
 	keys := make([]string, 0, len(items))
 

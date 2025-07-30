@@ -526,7 +526,7 @@ func TestWebSocketContext_APIErrorHandling(t *testing.T) {
 }
 
 // Test concurrent operations safety
-func TestWebSocketContext_ConcurrentSafety(t *testing.T) {
+func TestWebSocketContext_ConcurrentSafety(_ *testing.T) {
 	req := &Request{
 		Request: &adapters.Request{
 			TriggerType: TriggerWebSocket,

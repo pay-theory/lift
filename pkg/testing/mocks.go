@@ -60,7 +60,7 @@ func (m *MockDynamORM) WithData(table, key string, item any) *MockDynamORM {
 }
 
 // Get retrieves an item by key
-func (m *MockDynamORM) Get(ctx context.Context, table, key string, result any) error {
+func (m *MockDynamORM) Get(_ context.Context, table, key string, result any) error {
 	if err := m.simulateOperation("get"); err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (m *MockDynamORM) Get(ctx context.Context, table, key string, result any) e
 }
 
 // Put saves an item
-func (m *MockDynamORM) Put(ctx context.Context, table, key string, item any) error {
+func (m *MockDynamORM) Put(_ context.Context, table, key string, item any) error {
 	if err := m.simulateOperation("put"); err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (m *MockDynamORM) Put(ctx context.Context, table, key string, item any) err
 }
 
 // Delete removes an item
-func (m *MockDynamORM) Delete(ctx context.Context, table, key string) error {
+func (m *MockDynamORM) Delete(_ context.Context, table, key string) error {
 	if err := m.simulateOperation("delete"); err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (m *MockDynamORM) Delete(ctx context.Context, table, key string) error {
 }
 
 // Query performs a query operation
-func (m *MockDynamORM) Query(ctx context.Context, table string, query *dynamorm.Query) (*dynamorm.QueryResult, error) {
+func (m *MockDynamORM) Query(_ context.Context, table string, _ *dynamorm.Query) (*dynamorm.QueryResult, error) {
 	if err := m.simulateOperation("query"); err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ type TransactionOperation struct {
 }
 
 // Put adds a put operation to the transaction
-func (tx *MockTransaction) Put(ctx context.Context, table, key string, item any) error {
+func (tx *MockTransaction) Put(_ context.Context, table, key string, item any) error {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 
@@ -251,7 +251,7 @@ func (tx *MockTransaction) Put(ctx context.Context, table, key string, item any)
 }
 
 // Delete adds a delete operation to the transaction
-func (tx *MockTransaction) Delete(ctx context.Context, table, key string) error {
+func (tx *MockTransaction) Delete(_ context.Context, table, key string) error {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 
@@ -348,7 +348,7 @@ func (m *MockAWSService) WithError(operation string, err error) *MockAWSService 
 }
 
 // Call simulates calling an AWS service operation
-func (m *MockAWSService) Call(operation string, input any) (any, error) {
+func (m *MockAWSService) Call(operation string, _ any) (any, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -494,7 +494,7 @@ func (w *MockDynamORMWrapper) Delete(ctx context.Context, key any) error {
 }
 
 // Query performs a query operation (matches DynamORMWrapper interface)
-func (w *MockDynamORMWrapper) Query(ctx context.Context, query any) (any, error) {
+func (w *MockDynamORMWrapper) Query(ctx context.Context, _ any) (any, error) {
 	// Simple implementation for testing
 	return w.mock.Query(ctx, w.tableName, nil)
 }
@@ -644,7 +644,7 @@ func (m *MockAPIGatewayManagementClient) WithError(connectionID string, err erro
 }
 
 // PostToConnection sends data to a WebSocket connection
-func (m *MockAPIGatewayManagementClient) PostToConnection(ctx context.Context, connectionID string, data []byte) error {
+func (m *MockAPIGatewayManagementClient) PostToConnection(_ context.Context, connectionID string, data []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -713,7 +713,7 @@ func (m *MockAPIGatewayManagementClient) PostToConnection(ctx context.Context, c
 }
 
 // DeleteConnection terminates a WebSocket connection
-func (m *MockAPIGatewayManagementClient) DeleteConnection(ctx context.Context, connectionID string) error {
+func (m *MockAPIGatewayManagementClient) DeleteConnection(_ context.Context, connectionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -749,7 +749,7 @@ func (m *MockAPIGatewayManagementClient) DeleteConnection(ctx context.Context, c
 }
 
 // GetConnection retrieves connection information
-func (m *MockAPIGatewayManagementClient) GetConnection(ctx context.Context, connectionID string) (*MockConnectionInfo, error) {
+func (m *MockAPIGatewayManagementClient) GetConnection(_ context.Context, connectionID string) (*MockConnectionInfo, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -1078,7 +1078,7 @@ func (m *MockCloudWatchMetricsClient) WithError(operation string, err error) *Mo
 }
 
 // PutMetricData publishes metric data to CloudWatch
-func (m *MockCloudWatchMetricsClient) PutMetricData(ctx context.Context, namespace string, metricData []*MockMetricDatum) error {
+func (m *MockCloudWatchMetricsClient) PutMetricData(_ context.Context, namespace string, metricData []*MockMetricDatum) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -1286,7 +1286,7 @@ func (m *MockCloudWatchAlarmsClient) WithError(operation string, err error) *Moc
 }
 
 // PutMetricAlarm creates or updates an alarm
-func (m *MockCloudWatchAlarmsClient) PutMetricAlarm(ctx context.Context, alarm *MockAlarmDefinition) error {
+func (m *MockCloudWatchAlarmsClient) PutMetricAlarm(_ context.Context, alarm *MockAlarmDefinition) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -1343,7 +1343,7 @@ func (m *MockCloudWatchAlarmsClient) PutMetricAlarm(ctx context.Context, alarm *
 }
 
 // DescribeAlarms retrieves alarm information
-func (m *MockCloudWatchAlarmsClient) DescribeAlarms(ctx context.Context, alarmNames []string) ([]*MockAlarmDefinition, error) {
+func (m *MockCloudWatchAlarmsClient) DescribeAlarms(_ context.Context, alarmNames []string) ([]*MockAlarmDefinition, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -1394,7 +1394,7 @@ func (m *MockCloudWatchAlarmsClient) DescribeAlarms(ctx context.Context, alarmNa
 }
 
 // DeleteAlarms deletes one or more alarms
-func (m *MockCloudWatchAlarmsClient) DeleteAlarms(ctx context.Context, alarmNames []string) error {
+func (m *MockCloudWatchAlarmsClient) DeleteAlarms(_ context.Context, alarmNames []string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

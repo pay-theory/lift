@@ -282,7 +282,7 @@ func NewRegionHealthChecker(region string, config HealthCheckConfig) *RegionHeal
 }
 
 // CheckHealth checks the health of an endpoint
-func (rhc *RegionHealthChecker) CheckHealth(ctx context.Context, endpoint string) error {
+func (rhc *RegionHealthChecker) CheckHealth(_ context.Context, _ string) error {
 	// Implementation would check endpoint health
 	return nil
 }
@@ -300,7 +300,7 @@ func NewDNSManager(config DNSConfig) *DNSManager {
 }
 
 // UpdateRecords updates DNS records for failover
-func (dm *DNSManager) UpdateRecords(ctx context.Context, regions []string) error {
+func (dm *DNSManager) UpdateRecords(_ context.Context, _ []string) error {
 	// Implementation would update DNS records
 	return nil
 }
@@ -318,7 +318,7 @@ func NewGlobalLoadBalancer(config LoadBalancingConfig) *GlobalLoadBalancer {
 }
 
 // UpdateTrafficWeights updates traffic weights for canary deployment
-func (glb *GlobalLoadBalancer) UpdateTrafficWeights(ctx context.Context, weights map[string]int) error {
+func (glb *GlobalLoadBalancer) UpdateTrafficWeights(_ context.Context, _ map[string]int) error {
 	// Implementation would update traffic weights
 	return nil
 }
@@ -661,7 +661,7 @@ func (mrd *MultiRegionDeployer) switchTraffic(ctx context.Context, regions []str
 }
 
 // cleanupBlueEnvironment cleans up the blue environment
-func (mrd *MultiRegionDeployer) cleanupBlueEnvironment(_ context.Context, regions []string) error {
+func (mrd *MultiRegionDeployer) cleanupBlueEnvironment(_ context.Context, _ []string) error {
 	// Implementation would clean up old blue environment resources
 	return nil
 }

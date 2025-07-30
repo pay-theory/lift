@@ -273,10 +273,7 @@ func NewS3Processor(scope constructs.Construct, id *string, props *S3ProcessorPr
 		liftProps.EnableMultiTenant = props.EnableMultiTenant
 	}
 
-	// Disable Lambda DLQ when S3 DLQ is disabled to avoid confusion
-	if !enableDLQ {
-		liftProps.EnableDeadLetterQueue = jsii.Bool(false)
-	}
+	// S3 processor handles its own DLQ through SQS, no need for Lambda DLQ
 
 	this.Function = NewLiftFunction(this, jsii.String("Function"), liftProps)
 

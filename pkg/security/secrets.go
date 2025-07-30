@@ -368,7 +368,7 @@ func NewFileSecretsProviderWithConfig(basePath string, enableRotation bool) *Fil
 }
 
 // GetSecret retrieves a secret from a file
-func (fsp *FileSecretsProvider) GetSecret(ctx context.Context, name string) (string, error) {
+func (fsp *FileSecretsProvider) GetSecret(_ context.Context, name string) (string, error) {
 	// This is a simple implementation for development use
 	// In production, always use AWS Secrets Manager
 	fsp.mu.RLock()
@@ -383,7 +383,7 @@ func (fsp *FileSecretsProvider) GetSecret(ctx context.Context, name string) (str
 }
 
 // PutSecret stores a secret in memory (file provider)
-func (fsp *FileSecretsProvider) PutSecret(ctx context.Context, name string, value string) error {
+func (fsp *FileSecretsProvider) PutSecret(_ context.Context, name string, value string) error {
 	fsp.mu.Lock()
 	defer fsp.mu.Unlock()
 
@@ -392,7 +392,7 @@ func (fsp *FileSecretsProvider) PutSecret(ctx context.Context, name string, valu
 }
 
 // RotateSecret implements rotation for file provider with simulation
-func (fsp *FileSecretsProvider) RotateSecret(ctx context.Context, name string) error {
+func (fsp *FileSecretsProvider) RotateSecret(_ context.Context, name string) error {
 	if !fsp.enableRotation {
 		return fmt.Errorf("rotation not enabled for file provider")
 	}
@@ -435,7 +435,7 @@ func (fsp *FileSecretsProvider) RotateSecret(ctx context.Context, name string) e
 }
 
 // generateRotatedValue generates a new value for rotation simulation
-func (fsp *FileSecretsProvider) generateRotatedValue(oldValue, _secretName string) string {
+func (fsp *FileSecretsProvider) generateRotatedValue(oldValue, _ string) string {
 	// For development, we'll use different strategies based on the secret type
 
 	// If it looks like a JWT token or API key, append a version
@@ -507,7 +507,7 @@ func (fsp *FileSecretsProvider) GetAllRotationHistory() map[string][]RotationRec
 }
 
 // SimulateRotationFailure simulates a rotation failure for testing
-func (fsp *FileSecretsProvider) SimulateRotationFailure(ctx context.Context, name string, errorMessage string) error {
+func (fsp *FileSecretsProvider) SimulateRotationFailure(_ context.Context, name string, errorMessage string) error {
 	if !fsp.enableRotation {
 		return fmt.Errorf("rotation not enabled for file provider")
 	}
@@ -549,7 +549,7 @@ func (fsp *FileSecretsProvider) ClearRotationHistory() {
 }
 
 // DeleteSecret removes a secret from memory
-func (fsp *FileSecretsProvider) DeleteSecret(ctx context.Context, name string) error {
+func (fsp *FileSecretsProvider) DeleteSecret(_ context.Context, name string) error {
 	fsp.mu.Lock()
 	defer fsp.mu.Unlock()
 
@@ -575,7 +575,7 @@ func NewMockSecretsProvider() *MockSecretsProvider {
 }
 
 // GetSecret retrieves a mock secret
-func (msp *MockSecretsProvider) GetSecret(ctx context.Context, name string) (string, error) {
+func (msp *MockSecretsProvider) GetSecret(_ context.Context, name string) (string, error) {
 	msp.mu.RLock()
 	defer msp.mu.RUnlock()
 
@@ -587,7 +587,7 @@ func (msp *MockSecretsProvider) GetSecret(ctx context.Context, name string) (str
 }
 
 // PutSecret stores a mock secret
-func (msp *MockSecretsProvider) PutSecret(ctx context.Context, name string, value string) error {
+func (msp *MockSecretsProvider) PutSecret(_ context.Context, name string, value string) error {
 	msp.mu.Lock()
 	defer msp.mu.Unlock()
 
@@ -596,7 +596,7 @@ func (msp *MockSecretsProvider) PutSecret(ctx context.Context, name string, valu
 }
 
 // RotateSecret simulates secret rotation
-func (msp *MockSecretsProvider) RotateSecret(ctx context.Context, name string) error {
+func (msp *MockSecretsProvider) RotateSecret(_ context.Context, name string) error {
 	msp.mu.Lock()
 	defer msp.mu.Unlock()
 
@@ -610,7 +610,7 @@ func (msp *MockSecretsProvider) RotateSecret(ctx context.Context, name string) e
 }
 
 // DeleteSecret removes a mock secret
-func (msp *MockSecretsProvider) DeleteSecret(ctx context.Context, name string) error {
+func (msp *MockSecretsProvider) DeleteSecret(_ context.Context, name string) error {
 	msp.mu.Lock()
 	defer msp.mu.Unlock()
 

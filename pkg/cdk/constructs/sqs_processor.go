@@ -239,10 +239,7 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 		liftProps.EnableMultiTenant = props.EnableMultiTenant
 	}
 
-	// Disable Lambda DLQ when SQS DLQ is disabled to avoid confusion
-	if !enableDLQ {
-		liftProps.EnableDeadLetterQueue = jsii.Bool(false)
-	}
+	// SQS handles its own DLQ, no need for Lambda DLQ
 
 	this.Function = NewLiftFunction(this, jsii.String("Function"), liftProps)
 

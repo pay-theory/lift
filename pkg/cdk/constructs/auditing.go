@@ -632,7 +632,7 @@ func createAuditDashboard(scope constructs.Construct, props *AuditingProps, appL
 }
 
 // createLogMetricAlarm creates a CloudWatch alarm for log metrics
-func createLogMetricAlarm(scope constructs.Construct, id string, props *AuditingProps, config struct {
+func createLogMetricAlarm(scope constructs.Construct, id string, _ *AuditingProps, config struct {
 	AlarmName       string
 	LogGroupName    *string
 	PeriodMinutes   int

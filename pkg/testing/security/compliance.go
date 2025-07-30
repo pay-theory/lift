@@ -138,7 +138,7 @@ func (h *HIPAAComplianceChecker) checkAdministrativeSafeguards(ctx context.Conte
 	return resp.StatusCode == 401 || resp.StatusCode == 403
 }
 
-func (h *HIPAAComplianceChecker) checkPhysicalSafeguards(_ context.Context, system SystemInfo) bool {
+func (h *HIPAAComplianceChecker) checkPhysicalSafeguards(_ context.Context, _ SystemInfo) bool {
 	// For cloud applications, this is typically handled by the cloud provider
 	// Check for proper infrastructure security
 	return true // Assume cloud provider compliance
@@ -178,13 +178,13 @@ func (h *HIPAAComplianceChecker) checkTechnicalSafeguards(ctx context.Context, s
 	return true
 }
 
-func (h *HIPAAComplianceChecker) checkOrganizationalRequirements(ctx context.Context, system SystemInfo) bool {
+func (h *HIPAAComplianceChecker) checkOrganizationalRequirements(_ context.Context, _ SystemInfo) bool {
 	// Check for business associate agreements and organizational policies
 	// This would typically be verified through documentation review
 	return true // Assume organizational requirements are met
 }
 
-func (h *HIPAAComplianceChecker) checkPoliciesAndProcedures(ctx context.Context, system SystemInfo) bool {
+func (h *HIPAAComplianceChecker) checkPoliciesAndProcedures(_ context.Context, _ SystemInfo) bool {
 	// Check for documented policies and procedures
 	// This would typically be verified through documentation review
 	return true // Assume policies are documented
@@ -370,7 +370,7 @@ func (p *PCIDSSComplianceChecker) validatePCIRequirement(ctx context.Context, sy
 	return reqResult
 }
 
-func (p *PCIDSSComplianceChecker) checkFirewallConfig(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkFirewallConfig(_ context.Context, _ SystemInfo) bool {
 	// Check for proper network security
 	return true // Assume cloud provider handles firewall
 }
@@ -392,7 +392,7 @@ func (p *PCIDSSComplianceChecker) checkVendorDefaults(ctx context.Context, syste
 	return resp.StatusCode != 200
 }
 
-func (p *PCIDSSComplianceChecker) checkStoredDataProtection(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkStoredDataProtection(_ context.Context, _ SystemInfo) bool {
 	// Check for proper data encryption at rest
 	// This would typically require database inspection
 	return true // Assume encryption is implemented
@@ -419,12 +419,12 @@ func (p *PCIDSSComplianceChecker) checkTransmissionEncryption(ctx context.Contex
 	return resp.TLS != nil && resp.TLS.Version >= 0x0303 // TLS 1.2 or higher
 }
 
-func (p *PCIDSSComplianceChecker) checkAntiMalware(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkAntiMalware(_ context.Context, _ SystemInfo) bool {
 	// For cloud applications, this is typically handled by the platform
 	return true
 }
 
-func (p *PCIDSSComplianceChecker) checkSecureSystems(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkSecureSystems(_ context.Context, _ SystemInfo) bool {
 	// Check for secure development practices
 	return true // Assume secure development practices
 }
@@ -446,27 +446,27 @@ func (p *PCIDSSComplianceChecker) checkAccessRestriction(ctx context.Context, sy
 	return resp.StatusCode == 401 || resp.StatusCode == 403
 }
 
-func (p *PCIDSSComplianceChecker) checkAuthentication(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkAuthentication(_ context.Context, _ SystemInfo) bool {
 	// Check for strong authentication mechanisms
 	return true // Assume strong authentication is implemented
 }
 
-func (p *PCIDSSComplianceChecker) checkPhysicalAccess(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkPhysicalAccess(_ context.Context, _ SystemInfo) bool {
 	// For cloud applications, physical security is handled by cloud provider
 	return true
 }
 
-func (p *PCIDSSComplianceChecker) checkMonitoring(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkMonitoring(_ context.Context, _ SystemInfo) bool {
 	// Check for audit logging and monitoring
 	return true // Assume monitoring is implemented
 }
 
-func (p *PCIDSSComplianceChecker) checkSecurityTesting(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkSecurityTesting(_ context.Context, _ SystemInfo) bool {
 	// Check for regular security testing
 	return true // Assume security testing is performed
 }
 
-func (p *PCIDSSComplianceChecker) checkSecurityPolicy(ctx context.Context, system SystemInfo) bool {
+func (p *PCIDSSComplianceChecker) checkSecurityPolicy(_ context.Context, _ SystemInfo) bool {
 	// Check for documented security policies
 	return true // Assume policies are documented
 }

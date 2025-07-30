@@ -171,10 +171,7 @@ func NewEventBridgeHandler(scope constructs.Construct, id *string, props *EventB
 		liftProps.EnableMultiTenant = props.EnableMultiTenant
 	}
 
-	// Configure Lambda DLQ based on EventBridge DLQ setting
-	if !enableDLQ {
-		liftProps.EnableDeadLetterQueue = jsii.Bool(false)
-	}
+	// EventBridge handles its own DLQ through SQS, no need for Lambda DLQ
 
 	this.Function = NewLiftFunction(this, jsii.String("Function"), liftProps)
 

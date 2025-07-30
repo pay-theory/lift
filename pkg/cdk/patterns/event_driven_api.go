@@ -43,10 +43,9 @@ type EventDrivenAPIProps struct {
 	RequestRetentionDays      *float64
 
 	// Lift-specific settings
-	EnableTracing         *bool
-	EnableMultiTenant     *bool
-	EnableMonitoring      *bool
-	EnableDeadLetterQueue *bool
+	EnableTracing     *bool
+	EnableMultiTenant *bool
+	EnableMonitoring  *bool
 }
 
 // EventDrivenAPI represents an API Gateway + EventBridge pattern for async processing
@@ -161,10 +160,9 @@ func NewEventDrivenAPI(scope constructs.Construct, id *string, props *EventDrive
 	}
 
 	this.APIFunction = liftconstructs.NewLiftFunction(this, jsii.String("APIFunction"), &liftconstructs.LiftFunctionProps{
-		FunctionProps:         apiFunctionProps,
-		EnableTracing:         props.EnableTracing,
-		EnableMultiTenant:     props.EnableMultiTenant,
-		EnableDeadLetterQueue: props.EnableDeadLetterQueue,
+		FunctionProps:     apiFunctionProps,
+		EnableTracing:     props.EnableTracing,
+		EnableMultiTenant: props.EnableMultiTenant,
 	})
 
 	// Grant permissions to API function
@@ -212,10 +210,9 @@ func NewEventDrivenAPI(scope constructs.Construct, id *string, props *EventDrive
 	}
 
 	eventHandler, err := liftconstructs.NewEventBridgeHandler(this, jsii.String("EventHandler"), &liftconstructs.EventBridgeHandlerProps{
-		FunctionProps:         eventFunctionProps,
-		EnableTracing:         props.EnableTracing,
-		EnableMultiTenant:     props.EnableMultiTenant,
-		EnableDeadLetterQueue: props.EnableDeadLetterQueue,
+		FunctionProps:     eventFunctionProps,
+		EnableTracing:     props.EnableTracing,
+		EnableMultiTenant: props.EnableMultiTenant,
 		RuleProps: &awsevents.RuleProps{
 			RuleName:    jsii.String(appName + "-processor-rule"),
 			Description: jsii.String("Process async API requests"),

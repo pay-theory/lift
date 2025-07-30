@@ -957,6 +957,7 @@ func (pae *PerformanceAnalyticsEngine) runContinuousAnalysis(ctx context.Context
 			if _, err := pae.AnalyzePerformance(ctx, timeRange); err != nil {
 				// Log error but continue processing
 				// PerformanceAnalyticsEngine doesn't have a logger field
+				_ = err
 			}
 		case <-pae.stopCh:
 			return
@@ -978,6 +979,7 @@ func (pae *PerformanceAnalyticsEngine) runDataCleanup(ctx context.Context) {
 				if err := pae.dataStore.DeleteOldMetrics(ctx, cutoff); err != nil {
 					// Log error but continue cleanup
 					// PerformanceAnalyticsEngine doesn't have a logger field
+					_ = err
 				}
 			}
 		case <-pae.stopCh:

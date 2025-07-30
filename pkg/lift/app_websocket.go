@@ -275,6 +275,7 @@ func wrapWithConnectionManagement(handler Handler, store ConnectionStore) Handle
 				if err := store.Delete(ctx.Context, wsCtx.ConnectionID()); err != nil {
 					// Log error but don't fail disconnect - connection cleanup should be best effort
 					// TODO: Add proper logging once logger is available
+					_ = err
 				}
 			}
 

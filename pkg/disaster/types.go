@@ -88,7 +88,7 @@ func (hm *HealthMonitor) Start(ctx context.Context, eventHandler func(context.Co
 }
 
 // VerifyRegionHealth verifies the health of a specific region
-func (hm *HealthMonitor) VerifyRegionHealth(ctx context.Context, region string) error {
+func (hm *HealthMonitor) VerifyRegionHealth(_ context.Context, _ string) error {
 	// Implementation would verify region health
 	return nil
 }
@@ -134,7 +134,7 @@ func (ds *DataSynchronizer) StartMonitoring(ctx context.Context, eventHandler fu
 }
 
 // ForceSynchronization forces data synchronization
-func (ds *DataSynchronizer) ForceSynchronization(ctx context.Context) error {
+func (ds *DataSynchronizer) ForceSynchronization(_ context.Context) error {
 	// Implementation would force synchronization
 	return nil
 }
@@ -152,7 +152,7 @@ func NewNotificationManager(config NotificationConfig) *NotificationManager {
 }
 
 // SendNotification sends a notification
-func (nm *NotificationManager) SendNotification(ctx context.Context, eventType string, data map[string]any) error {
+func (nm *NotificationManager) SendNotification(_ context.Context, _ string, _ map[string]any) error {
 	if !nm.config.Enabled {
 		return nil
 	}
@@ -176,7 +176,7 @@ func NewRegionHealthChecker(region string, config HealthCheckConfig) *RegionHeal
 }
 
 // CheckHealth checks the health of an endpoint
-func (rhc *RegionHealthChecker) CheckHealth(ctx context.Context, endpoint string) error {
+func (rhc *RegionHealthChecker) CheckHealth(_ context.Context, _ string) error {
 	// Implementation would check endpoint health
 	return nil
 }
@@ -194,7 +194,7 @@ func NewDNSManager(config DNSConfig) *DNSManager {
 }
 
 // UpdateRecords updates DNS records for failover
-func (dm *DNSManager) UpdateRecords(ctx context.Context, regions []string) error {
+func (dm *DNSManager) UpdateRecords(_ context.Context, _ []string) error {
 	// Implementation would update DNS records
 	return nil
 }
@@ -212,7 +212,7 @@ func NewGlobalLoadBalancer(config LoadBalancingConfig) *GlobalLoadBalancer {
 }
 
 // UpdateTrafficWeights updates traffic weights for canary deployment
-func (glb *GlobalLoadBalancer) UpdateTrafficWeights(ctx context.Context, weights map[string]int) error {
+func (glb *GlobalLoadBalancer) UpdateTrafficWeights(_ context.Context, _ map[string]int) error {
 	// Implementation would update traffic weights
 	return nil
 }

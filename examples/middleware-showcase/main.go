@@ -384,7 +384,7 @@ func main() {
 	}
 
 	// Route that demonstrates panic recovery
-	if err := app.GET("/panic", func(ctx *lift.Context) error {
+	if err := app.GET("/panic", func(_ *lift.Context) error {
 		panic("This is a demonstration panic")
 	}); err != nil {
 		log.Fatalf("Failed to register GET /panic: %v", err)

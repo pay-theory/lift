@@ -471,6 +471,7 @@ func (lt *LoadTest) calculateStats() {
 		if stats.Count > 0 {
 			// TODO: This would require tracking latencies per scenario
 			// For now, we'll leave mean latency as zero
+			_ = stats
 		}
 	}
 }

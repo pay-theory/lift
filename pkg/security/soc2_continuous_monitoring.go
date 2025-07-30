@@ -560,6 +560,7 @@ func (ms *MonitoringScheduler) runScheduledTasks() {
 				if err := t.TaskFunc(); err != nil {
 					// Task errors are expected to be handled internally
 					// Log would be here if MonitoringScheduler had a logger
+					_ = err
 				}
 
 				// Update next run time

@@ -426,7 +426,7 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 				"isBase64Encoded": true,
 			},
 			wantErr: true, // Base64 decode error is returned
-			checkResult: func(t *testing.T, req *Request) {
+			checkResult: func(_ *testing.T, _ *Request) {
 				// Should not reach here due to error
 			},
 		},

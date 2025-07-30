@@ -610,6 +610,7 @@ func (am *AlertManager) processEscalations(ctx context.Context) {
 				if err := am.escalator.Escalate(ctx, a); err != nil {
 					// Log error but don't fail the check
 					// AlertManager doesn't have a logger field, so we'll skip logging
+					_ = err
 				}
 			}(alert)
 		}

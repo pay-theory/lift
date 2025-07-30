@@ -1,13 +1,10 @@
 package constructs
 
 import (
-	"fmt"
-
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -21,12 +18,6 @@ type LiftFunctionProps struct {
 	EnableMetrics *bool
 	// EnableMultiTenant enables multi-tenant support
 	EnableMultiTenant *bool
-	// EnableDeadLetterQueue creates a DLQ for failed invocations
-	EnableDeadLetterQueue *bool
-	// DeadLetterQueue to use (optional - will create if not provided)
-	DeadLetterQueue awssqs.IQueue
-	// DeadLetterQueueMaxReceiveCount before sending to DLQ (default: 3)
-	DeadLetterQueueMaxReceiveCount *float64
 	// ReservedConcurrentExecutions to limit concurrent executions
 	ReservedConcurrentExecutions *float64
 	// EnableDynamORM configures DynamORM environment variables
@@ -40,8 +31,7 @@ type LiftFunctionProps struct {
 // LiftFunction is a Lambda function construct optimized for Lift applications
 type LiftFunction struct {
 	constructs.Construct
-	Function        awslambda.Function
-	DeadLetterQueue awssqs.IQueue
+	Function awslambda.Function
 }
 
 // GetResourceName returns the function name
@@ -68,39 +58,6 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 	}
 	if props.EnableTracing != nil && *props.EnableTracing {
 		props.Tracing = awslambda.Tracing_ACTIVE
-	}
-	if props.EnableDeadLetterQueue == nil {
-		props.EnableDeadLetterQueue = jsii.Bool(true)
-	}
-	if props.DeadLetterQueueMaxReceiveCount == nil {
-		props.DeadLetterQueueMaxReceiveCount = jsii.Number(3)
-	}
-
-	// Configure Dead Letter Queue if enabled
-	var dlq awssqs.IQueue
-	if *props.EnableDeadLetterQueue {
-		if props.DeadLetterQueue != nil {
-			dlq = props.DeadLetterQueue
-		} else {
-			// Create a new DLQ
-			dlqName := fmt.Sprintf("%s-dlq", *id)
-			dlq = awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), &awssqs.QueueProps{
-				QueueName:         jsii.String(dlqName),
-				RetentionPeriod:   awscdk.Duration_Days(jsii.Number(14)),
-				VisibilityTimeout: awscdk.Duration_Seconds(jsii.Number(300)),
-			})
-		}
-
-		// Configure DLQ in Lambda props
-		props.DeadLetterQueueEnabled = jsii.Bool(true)
-		props.DeadLetterQueue = dlq
-		props.MaxEventAge = awscdk.Duration_Hours(jsii.Number(6))
-		// Lambda retry attempts must be between 0 and 2
-		retryAttempts := float64(2)
-		if props.DeadLetterQueueMaxReceiveCount != nil && *props.DeadLetterQueueMaxReceiveCount < 2 {
-			retryAttempts = *props.DeadLetterQueueMaxReceiveCount
-		}
-		props.RetryAttempts = jsii.Number(retryAttempts)
 	}
 
 	// Set reserved concurrent executions if specified
@@ -150,9 +107,8 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 	fn := awslambda.NewFunction(this, jsii.String("Function"), &props.FunctionProps)
 
 	return &LiftFunction{
-		Construct:       this,
-		Function:        fn,
-		DeadLetterQueue: dlq,
+		Construct: this,
+		Function:  fn,
 	}
 }
 
@@ -161,10 +117,6 @@ func (f *LiftFunction) GetFunction() awslambda.Function {
 	return f.Function
 }
 
-// GetDeadLetterQueue returns the dead letter queue if configured
-func (f *LiftFunction) GetDeadLetterQueue() awssqs.IQueue {
-	return f.DeadLetterQueue
-}
 
 // AddEnvironment adds an environment variable to the function
 func (f *LiftFunction) AddEnvironment(key *string, value *string) {

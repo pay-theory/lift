@@ -924,7 +924,7 @@ func (al *GDPRAuditLogger) LogDataSubjectRequest(_ context.Context, request *sec
 	return nil
 }
 
-func (al *GDPRAuditLogger) LogDataProcessingActivity(_ context.Context, activity *security.DataProcessingLog) error {
+func (al *GDPRAuditLogger) LogDataProcessingActivity(_ context.Context, _ *security.DataProcessingLog) error {
 	// Implementation would store data processing activity log
 	log.Printf("Data processing activity logged")
 	return nil

@@ -20,14 +20,14 @@ func TestEventRouterThreadSafety(t *testing.T) {
 
 	// Concurrent writes (AddEventRoute)
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 			for j := 0; j < numOperations; j++ {
 				pattern := "*"
 				if j%2 == 0 {
 					pattern = "test-queue"
 				}
-				router.AddEventRoute(TriggerSQS, pattern, EventHandlerFunc(func(ctx *Context) error {
+				router.AddEventRoute(TriggerSQS, pattern, EventHandlerFunc(func(_ *Context) error {
 					return nil
 				}))
 			}
@@ -36,7 +36,7 @@ func TestEventRouterThreadSafety(t *testing.T) {
 
 	// Concurrent reads (FindEventHandler)
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 			ctx := &Context{
 				Request: &Request{
@@ -58,7 +58,7 @@ func TestEventRouterThreadSafety(t *testing.T) {
 
 	// Concurrent reads (GetRoutes)
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 			for j := 0; j < numOperations; j++ {
 				routes := router.GetRoutes()
@@ -93,7 +93,7 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 	// Add multiple routes with different patterns
 	patterns := []string{"*", "test-*", "*-queue", "specific-queue"}
 	for _, pattern := range patterns {
-		router.AddEventRoute(TriggerSQS, pattern, EventHandlerFunc(func(ctx *Context) error {
+		router.AddEventRoute(TriggerSQS, pattern, EventHandlerFunc(func(_ *Context) error {
 			return nil
 		}))
 	}
@@ -101,7 +101,7 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 	// Add S3 routes
 	s3Patterns := []string{"*", "my-bucket/*", "*/uploads/*", "docs/*/reports"}
 	for _, pattern := range s3Patterns {
-		router.AddEventRoute(TriggerS3, pattern, EventHandlerFunc(func(ctx *Context) error {
+		router.AddEventRoute(TriggerS3, pattern, EventHandlerFunc(func(_ *Context) error {
 			return nil
 		}))
 	}
@@ -112,7 +112,7 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 	// Concurrent pattern matching for SQS
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 			ctx := &Context{
 				Request: &Request{
@@ -141,7 +141,7 @@ func TestEventRouterMatchingThreadSafety(t *testing.T) {
 	// Concurrent pattern matching for S3
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 			ctx := &Context{
 				Request: &Request{

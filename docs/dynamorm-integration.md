@@ -11,6 +11,66 @@ Lift uses a standardized approach for all DynamoDB tables, making them compatibl
 - DynamORM struct tags map model fields to existing GSIs
 - Time-to-live (TTL) attributes for automatic data expiration
 
+## DynamoDB Connection Initialization
+
+### Basic Initialization
+
+To initialize a DynamoDB connection in your Lift application:
+
+```go
+import (
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/core"
+    "github.com/pay-theory/dynamorm/pkg/session"
+)
+
+// Initialize DynamoDB connection
+var db core.DB
+db, err := dynamorm.NewBasic(session.Config{
+    Region: "us-east-1",
+    // For local testing with DynamoDB Local:
+    // Endpoint: "http://localhost:8000",
+})
+if err != nil {
+    log.Fatal("Failed to initialize DynamoDB:", err)
+}
+```
+
+### Extended Functionality
+
+If you need extended DynamORM features, use `dynamorm.New()`:
+
+```go
+// Returns core.ExtendedDB with additional features
+var db core.ExtendedDB
+db, err := dynamorm.New(session.Config{
+    Region: "us-east-1",
+})
+if err != nil {
+    log.Fatal("Failed to initialize DynamoDB:", err)
+}
+```
+
+### Using the Connection
+
+The initialized `db` (type `core.DB` or `core.ExtendedDB`) can be used throughout your application:
+
+```go
+// Query example
+users, err := dynamorm.Query[User](ctx, db).
+    WithTable("my-app-table").
+    WithPK("user#123").
+    Execute()
+
+// With rate limiting
+rateLimiter := limited.NewDynamoRateLimiter(
+    db,  // Pass the core.DB
+    nil, // Use default config
+    strategy,
+    logger,
+)
+```
+
 ## Table Structure
 
 ### Standard Table Design
@@ -264,21 +324,22 @@ import (
     "os"
     
     "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/core"
     "github.com/pay-theory/dynamorm/pkg/session"
     "github.com/pay-theory/lift/pkg/lift"
 )
 
-var db *dynamorm.Client
+var db core.DB
 
 func init() {
-    // Initialize DynamORM client
-    client, err := dynamorm.NewClient(session.Config{
+    // Initialize DynamoDB connection
+    var err error
+    db, err = dynamorm.NewBasic(session.Config{
         Region: os.Getenv("AWS_REGION"),
     })
     if err != nil {
         panic(err)
     }
-    db = client
 }
 
 func handler(ctx *lift.Context) error {

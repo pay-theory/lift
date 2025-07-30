@@ -314,12 +314,12 @@ type mockConnectionStore struct {
 	connections map[string]*Connection
 }
 
-func (m *mockConnectionStore) Save(ctx context.Context, conn *Connection) error {
+func (m *mockConnectionStore) Save(_ context.Context, conn *Connection) error {
 	m.connections[conn.ID] = conn
 	return nil
 }
 
-func (m *mockConnectionStore) Get(ctx context.Context, connectionID string) (*Connection, error) {
+func (m *mockConnectionStore) Get(_ context.Context, connectionID string) (*Connection, error) {
 	conn, ok := m.connections[connectionID]
 	if !ok {
 		return nil, nil
@@ -327,12 +327,12 @@ func (m *mockConnectionStore) Get(ctx context.Context, connectionID string) (*Co
 	return conn, nil
 }
 
-func (m *mockConnectionStore) Delete(ctx context.Context, connectionID string) error {
+func (m *mockConnectionStore) Delete(_ context.Context, connectionID string) error {
 	delete(m.connections, connectionID)
 	return nil
 }
 
-func (m *mockConnectionStore) ListByUser(ctx context.Context, userID string) ([]*Connection, error) {
+func (m *mockConnectionStore) ListByUser(_ context.Context, userID string) ([]*Connection, error) {
 	var conns []*Connection
 	for _, conn := range m.connections {
 		if conn.UserID == userID {
@@ -342,7 +342,7 @@ func (m *mockConnectionStore) ListByUser(ctx context.Context, userID string) ([]
 	return conns, nil
 }
 
-func (m *mockConnectionStore) ListByTenant(ctx context.Context, tenantID string) ([]*Connection, error) {
+func (m *mockConnectionStore) ListByTenant(_ context.Context, tenantID string) ([]*Connection, error) {
 	var conns []*Connection
 	for _, conn := range m.connections {
 		if conn.TenantID == tenantID {
@@ -352,7 +352,7 @@ func (m *mockConnectionStore) ListByTenant(ctx context.Context, tenantID string)
 	return conns, nil
 }
 
-func (m *mockConnectionStore) CountActive(ctx context.Context) (int64, error) {
+func (m *mockConnectionStore) CountActive(_ context.Context) (int64, error) {
 	return int64(len(m.connections)), nil
 }
 

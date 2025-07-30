@@ -94,7 +94,7 @@ func TestHealthEndpoints_ReadinessHandler(t *testing.T) {
 
 	t.Run("Degraded Service (Still Ready)", func(t *testing.T) {
 		manager.UnregisterChecker("healthy")
-		degradedChecker := NewCustomHealthChecker("degraded", func(ctx context.Context) HealthStatus {
+		degradedChecker := NewCustomHealthChecker("degraded", func(_ context.Context) HealthStatus {
 			return HealthStatus{
 				Status:    StatusDegraded,
 				Timestamp: time.Now(),
@@ -338,7 +338,7 @@ func TestHealthMiddleware(t *testing.T) {
 	middleware := NewHealthMiddleware(manager, config)
 
 	// Create a simple handler
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
@@ -414,7 +414,7 @@ func BenchmarkHealthMiddleware_Handler(b *testing.B) {
 	config := DefaultHealthMiddlewareConfig()
 	middleware := NewHealthMiddleware(manager, config)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 

@@ -226,6 +226,7 @@ func (vm *ValidationMiddleware) validateField(field string, value any, rule Vali
 	if len(rule.Conditions) > 0 {
 		// TODO: For now, skip conditional validation
 		// This would require access to the full data context
+		_ = rule.Conditions
 	}
 
 	// Type validation
@@ -458,7 +459,7 @@ func (vm *ValidationMiddleware) valuesEqual(a, b any) bool {
 	return reflect.DeepEqual(a, b)
 }
 
-func defaultErrorHandler(ctx *lift.Context, errors []ValidationError) error {
+func defaultErrorHandler(_ *lift.Context, errors []ValidationError) error {
 	return fmt.Errorf("validation failed: %d errors", len(errors))
 }
 

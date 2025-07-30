@@ -173,8 +173,8 @@ func TestMiddlewareLiftErrorStatusCodes(t *testing.T) {
 	app := New()
 
 	// Add middleware that returns a LiftError
-	app.Use(func(next Handler) Handler {
-		return HandlerFunc(func(ctx *Context) error {
+	app.Use(func(_ Handler) Handler {
+		return HandlerFunc(func(_ *Context) error {
 			// Simulate auth middleware that fails
 			return NewLiftError("UNAUTHORIZED", "Invalid API key", 401)
 		})

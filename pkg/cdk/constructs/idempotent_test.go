@@ -255,8 +255,7 @@ func TestIdempotentFunction_Integration(t *testing.T) {
 				Timeout:      awscdk.Duration_Seconds(jsii.Number(30)),
 				MemorySize:   jsii.Number(512),
 			},
-			EnableTracing:         jsii.Bool(true),
-			EnableDeadLetterQueue: jsii.Bool(true),
+			EnableTracing: jsii.Bool(true),
 		},
 		TableName:    jsii.String("test-idempotency"),
 		KeyExtractor: IdempotentKeyHeader,
@@ -294,8 +293,6 @@ func TestIdempotentFunction_Integration(t *testing.T) {
 		"BillingMode": "PAY_PER_REQUEST",
 	})
 
-	// Assert DLQ is created
-	template.HasResource(jsii.String("AWS::SQS::Queue"), &map[string]interface{}{})
 
 	// Assert IAM permissions
 	template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), &map[string]interface{}{

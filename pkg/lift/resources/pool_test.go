@@ -17,11 +17,11 @@ type mockResource struct {
 	mu       sync.Mutex
 }
 
-func (r *mockResource) Initialize(ctx context.Context) error {
+func (r *mockResource) Initialize(_ context.Context) error {
 	return nil
 }
 
-func (r *mockResource) HealthCheck(ctx context.Context) error {
+func (r *mockResource) HealthCheck(_ context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -62,7 +62,7 @@ type mockFactory struct {
 	mu      sync.Mutex
 }
 
-func (f *mockFactory) Create(ctx context.Context) (Resource, error) {
+func (f *mockFactory) Create(_ context.Context) (Resource, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 

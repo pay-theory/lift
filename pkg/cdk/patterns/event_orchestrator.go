@@ -17,10 +17,9 @@ import (
 
 // EventOrchestratorProps defines properties for an event orchestrator pattern
 type EventOrchestratorProps struct {
-	DefaultFunctionProps   awslambda.FunctionProps
-	EnableEventArchive     *bool
-	EnableDeadLetterQueue  *bool
-	EventBusName           *string
+	DefaultFunctionProps awslambda.FunctionProps
+	EnableEventArchive   *bool
+	EventBusName         *string
 	AppName                *string
 	EventRoutingTableProps *liftconstructs.EventRoutingTableProps
 	DefaultMemorySize      *float64
@@ -160,10 +159,9 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 	}
 
 	this.OrchestratorFunction = liftconstructs.NewLiftFunction(this, jsii.String("Orchestrator"), &liftconstructs.LiftFunctionProps{
-		FunctionProps:         orchestratorProps,
-		EnableTracing:         props.EnableTracing,
-		EnableMultiTenant:     props.EnableMultiTenant,
-		EnableDeadLetterQueue: props.EnableDeadLetterQueue,
+		FunctionProps:     orchestratorProps,
+		EnableTracing:     props.EnableTracing,
+		EnableMultiTenant: props.EnableMultiTenant,
 	})
 
 	// Grant permissions to orchestrator
@@ -183,10 +181,9 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 		correlationProps.Environment = &correlationEnv
 
 		this.CorrelationFunction = liftconstructs.NewLiftFunction(this, jsii.String("Correlator"), &liftconstructs.LiftFunctionProps{
-			FunctionProps:         correlationProps,
-			EnableTracing:         props.EnableTracing,
-			EnableMultiTenant:     props.EnableMultiTenant,
-			EnableDeadLetterQueue: jsii.Bool(false), // Correlator shouldn't have its own DLQ
+			FunctionProps:     correlationProps,
+			EnableTracing:     props.EnableTracing,
+			EnableMultiTenant: props.EnableMultiTenant,
 		})
 
 		// Grant permissions to correlator
@@ -239,10 +236,9 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 
 		// Create EventBridge handler
 		handler, err := liftconstructs.NewEventBridgeHandler(this, jsii.String(sourceName+"Handler"), &liftconstructs.EventBridgeHandlerProps{
-			FunctionProps:         handlerProps,
-			EnableTracing:         props.EnableTracing,
-			EnableMultiTenant:     props.EnableMultiTenant,
-			EnableDeadLetterQueue: props.EnableDeadLetterQueue,
+			FunctionProps:     handlerProps,
+			EnableTracing:     props.EnableTracing,
+			EnableMultiTenant: props.EnableMultiTenant,
 			RuleProps: &awsevents.RuleProps{
 				RuleName:     jsii.String(fmt.Sprintf("%s-%s-rule", appName, sourceName)),
 				Description:  jsii.String(fmt.Sprintf("Process %s events", sourceName)),
@@ -263,8 +259,9 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 		this.EventHandlers[sourceName] = handler
 	}
 
-	// Create DLQ handler if dead letter queues are enabled
-	if props.EnableDeadLetterQueue != nil && *props.EnableDeadLetterQueue {
+	// Create DLQ handler for event-specific dead letter queues
+	// Note: Individual event sources (like SQS) handle their own DLQs
+	if false { // Removed automatic DLQ handler creation
 		dlqEnv := make(map[string]*string)
 		if props.DefaultEnvironment != nil {
 			for k, v := range *props.DefaultEnvironment {
@@ -282,10 +279,9 @@ func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOr
 		dlqProps.Environment = &dlqEnv
 
 		this.DLQHandler = liftconstructs.NewLiftFunction(this, jsii.String("DLQHandler"), &liftconstructs.LiftFunctionProps{
-			FunctionProps:         dlqProps,
-			EnableTracing:         props.EnableTracing,
-			EnableMultiTenant:     props.EnableMultiTenant,
-			EnableDeadLetterQueue: jsii.Bool(false), // DLQ handler shouldn't have its own DLQ
+			FunctionProps:     dlqProps,
+			EnableTracing:     props.EnableTracing,
+			EnableMultiTenant: props.EnableMultiTenant,
 		})
 
 		// Grant permissions

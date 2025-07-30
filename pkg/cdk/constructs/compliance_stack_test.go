@@ -228,7 +228,7 @@ func TestComplianceStack_SOC2Framework(_ *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::Config::ConfigRule"), jsii.Number(1))
 }
 
-func TestComplianceStack_HIPAAFramework(t *testing.T) {
+func TestComplianceStack_HIPAAFramework(_ *testing.T) {
 	// GIVEN, WHEN
 	_, template := createComplianceFrameworkTestStack("hipaa-app", []ComplianceFramework{HIPAA})
 
@@ -246,7 +246,7 @@ func TestComplianceStack_HIPAAFramework(t *testing.T) {
 	})
 }
 
-func TestComplianceStack_PCIDSSFramework(t *testing.T) {
+func TestComplianceStack_PCIDSSFramework(_ *testing.T) {
 	// GIVEN, WHEN
 	_, template := createComplianceFrameworkTestStack("pci-app", []ComplianceFramework{PCI_DSS})
 

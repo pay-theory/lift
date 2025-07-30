@@ -44,14 +44,14 @@ func TestAppRoutes(t *testing.T) {
 	}
 
 	// Test individual route registrations (method chaining not supported with error returns)
-	err = app.PUT("/update", func(ctx *Context) error {
+	err = app.PUT("/update", func(_ *Context) error {
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("PUT route registration failed: %v", err)
 	}
 
-	err = app.DELETE("/delete", func(ctx *Context) error {
+	err = app.DELETE("/delete", func(_ *Context) error {
 		return nil
 	})
 	if err != nil {

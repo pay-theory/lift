@@ -154,6 +154,51 @@ app.GET("/users/:id", func(ctx *lift.Context) error {
 })
 ```
 
+## DynamoDB Initialization
+
+### Basic Initialization
+```go
+import (
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/core"
+    "github.com/pay-theory/dynamorm/pkg/session"
+)
+
+// Initialize DynamoDB connection
+var db core.DB
+db, err := dynamorm.NewBasic(session.Config{
+    Region: "us-east-1",
+    // For local testing:
+    // Endpoint: "http://localhost:8000",
+})
+if err != nil {
+    panic(fmt.Sprintf("Failed to initialize DynamoDB: %v", err))
+}
+```
+
+### Extended Functionality
+```go
+// If you need extended features, use dynamorm.New()
+var db core.ExtendedDB
+db, err := dynamorm.New(session.Config{
+    Region: "us-east-1",
+})
+if err != nil {
+    panic(fmt.Sprintf("Failed to initialize DynamoDB: %v", err))
+}
+```
+
+### Usage with Limited Rate Limiter
+```go
+// The initialized db can be used with rate limiters
+rateLimiter := limited.NewDynamoRateLimiter(
+    db,  // Pass the core.DB
+    nil, // Use default config
+    strategy,
+    logger,
+)
+```
+
 ## Testing Patterns
 
 ### Creating Test Context

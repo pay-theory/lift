@@ -62,10 +62,6 @@ func TestNewBasicAPI_DefaultConfiguration(t *testing.T) {
 	// Verify CloudWatch dashboard exists (monitoring enabled by default)
 	template.ResourceCountIs(jsii.String("AWS::CloudWatch::Dashboard"), jsii.Number(1))
 
-	// Verify dead letter queue exists (enabled by default)
-	// There might be multiple queues (function DLQ + other)
-	template.HasResource(jsii.String("AWS::SQS::Queue"), &map[string]interface{}{})
-
 	assert.NotNil(t, basicAPI)
 	assert.NotNil(t, basicAPI.Api)
 	assert.NotNil(t, basicAPI.Function)
@@ -142,10 +138,9 @@ func TestNewBasicAPI_CustomConfiguration(_ *testing.T) {
 		ApiName:               jsii.String("test-api"),
 		Code:                  awslambda.Code_FromAsset(jsii.String("."), nil),
 		Handler:               jsii.String("main"),
-		MemorySize:            jsii.Number(1024),
-		Timeout:               jsii.Number(60),
-		Environment:           &env,
-		EnableDeadLetterQueue: jsii.Bool(false),
+		MemorySize:  jsii.Number(1024),
+		Timeout:     jsii.Number(60),
+		Environment: &env,
 	})
 
 	// Then

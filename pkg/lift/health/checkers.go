@@ -308,7 +308,7 @@ func (m *MemoryHealthChecker) Name() string {
 }
 
 // Check performs a memory health check
-func (m *MemoryHealthChecker) Check(ctx context.Context) HealthStatus {
+func (m *MemoryHealthChecker) Check(_ context.Context) HealthStatus {
 	start := time.Now()
 
 	var memStats runtime.MemStats
@@ -385,7 +385,7 @@ func (a *AlwaysHealthyChecker) Name() string {
 }
 
 // Check always returns healthy status
-func (a *AlwaysHealthyChecker) Check(ctx context.Context) HealthStatus {
+func (a *AlwaysHealthyChecker) Check(_ context.Context) HealthStatus {
 	return HealthStatus{
 		Status:    StatusHealthy,
 		Timestamp: time.Now(),
@@ -410,7 +410,7 @@ func (a *AlwaysUnhealthyChecker) Name() string {
 }
 
 // Check always returns unhealthy status
-func (a *AlwaysUnhealthyChecker) Check(ctx context.Context) HealthStatus {
+func (a *AlwaysUnhealthyChecker) Check(_ context.Context) HealthStatus {
 	return HealthStatus{
 		Status:    StatusUnhealthy,
 		Timestamp: time.Now(),

@@ -71,7 +71,7 @@ func TestHTTPTimeoutSecurity(t *testing.T) {
 		dashboard := NewDevDashboard(nil, 0)
 
 		// Simulate slow request handler
-		slowHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		slowHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			// Simulate slow response that should be timed out
 			time.Sleep(20 * time.Second) // Longer than our timeouts
 			w.WriteHeader(http.StatusOK)
@@ -103,7 +103,7 @@ func TestHTTPTimeoutSecurity(t *testing.T) {
 func TestSlowlorisAttackPrevention(t *testing.T) {
 	t.Run("ReadHeaderTimeout prevents slow header attacks", func(t *testing.T) {
 		// Create a test server that simulates our dev server configuration
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		})
@@ -140,7 +140,7 @@ func TestHTTPClientSecurity(t *testing.T) {
 	t.Run("HTTP health checker has secure client configuration", func(t *testing.T) {
 		// Test that our HTTP health checker would use secure configuration
 		// Create a test server for health checking
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		}))

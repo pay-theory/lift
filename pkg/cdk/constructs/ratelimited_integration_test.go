@@ -122,11 +122,6 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 			},
 		})
 
-		// Verify Dead Letter Queue
-		template.HasResourceProperties(jsii.String("AWS::SQS::Queue"), &map[string]interface{}{
-			"MessageRetentionPeriod": 1209600, // 14 days
-			"VisibilityTimeout":      300,
-		})
 
 		// Verify function references
 		assert.NotNil(t, fn.GetFunction())
@@ -202,7 +197,6 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 				EnableTracing:                jsii.Bool(true),
 				EnableMetrics:                jsii.Bool(true),
 				EnableMultiTenant:            jsii.Bool(true),
-				EnableDeadLetterQueue:        jsii.Bool(true),
 				ReservedConcurrentExecutions: jsii.Number(10),
 			},
 			RateLimitType: RateLimitTypeUser,
@@ -241,7 +235,6 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 		// Lambda automatically manages its own LogGroup
 
 		assert.NotNil(t, fn)
-		assert.NotNil(t, fn.Function.DeadLetterQueue)
 	})
 }
 
