@@ -17,18 +17,15 @@ var (
 
 // GDPRConsentManager provides comprehensive GDPR consent management
 type GDPRConsentManager struct {
+	config GDPRConsentConfig
+	mu     sync.RWMutex
+
 	// 8-byte aligned fields (interfaces)
 	consentStore         ConsentStore
 	dataSubjectRights    DataSubjectRightsHandler
 	privacyAssessment    PrivacyImpactAssessment
 	crossBorderValidator CrossBorderValidator
 	auditLogger          GDPRAuditLogger
-
-	// 24-byte mutex
-	mu sync.RWMutex
-
-	// Structs (varies)
-	config GDPRConsentConfig
 }
 
 // GDPRConsentConfig configuration for GDPR consent management
@@ -114,38 +111,37 @@ type GDPRAuditLogger interface {
 
 // ConsentRecord represents a complete consent record
 type ConsentRecord struct {
+	Metadata           map[string]any   `json:"metadata"`
 	ID                 string           `json:"id"`
 	DataSubjectID      string           `json:"data_subject_id"`
 	DataSubjectEmail   string           `json:"data_subject_email"`
 	ConsentVersion     string           `json:"consent_version"`
-	ConsentDate        time.Time        `json:"consent_date"`
 	ConsentMethod      string           `json:"consent_method"` // "explicit", "implicit", "opt_in", "opt_out"
-	ConsentScope       []ConsentPurpose `json:"consent_scope"`
 	LegalBasis         string           `json:"legal_basis"`
+	WithdrawalMethod   string           `json:"withdrawal_method,omitempty"`
+	Status             string           `json:"status"` // "active", "expired", "withdrawn", "renewed"
+	Purpose            string           `json:"purpose,omitempty"`
+	Source             string           `json:"source,omitempty"`
+	IPAddress          string           `json:"ip_address,omitempty"`
+	UserAgent          string           `json:"user_agent,omitempty"`
+	ConsentScope       []ConsentPurpose `json:"consent_scope"`
 	ProcessingPurposes []string         `json:"processing_purposes"`
 	DataCategories     []string         `json:"data_categories"`
 	Recipients         []DataRecipient  `json:"recipients"`
-	RetentionPeriod    time.Duration    `json:"retention_period"`
+	ConsentProof       *ConsentProof    `json:"consent_proof,omitempty"`
 	ExpiryDate         *time.Time       `json:"expiry_date,omitempty"`
 	RenewalDate        *time.Time       `json:"renewal_date,omitempty"`
 	WithdrawalDate     *time.Time       `json:"withdrawal_date,omitempty"`
-	WithdrawalMethod   string           `json:"withdrawal_method,omitempty"`
-	ConsentProof       *ConsentProof    `json:"consent_proof,omitempty"`
-	Status             string           `json:"status"` // "active", "expired", "withdrawn", "renewed"
+	Timestamp          *time.Time       `json:"timestamp,omitempty"`
+	ConsentDate        time.Time        `json:"consent_date"`
+	CreatedAt          time.Time        `json:"created_at"`
+	UpdatedAt          time.Time        `json:"updated_at"`
+	RetentionPeriod    time.Duration    `json:"retention_period"`
 	Granular           bool             `json:"granular"`
 	Specific           bool             `json:"specific"`
 	Informed           bool             `json:"informed"`
 	Unambiguous        bool             `json:"unambiguous"`
-	// Additional fields needed by tests
-	Purpose      string         `json:"purpose,omitempty"`
-	ConsentGiven bool           `json:"consent_given"`
-	Timestamp    *time.Time     `json:"timestamp,omitempty"`
-	Source       string         `json:"source,omitempty"`
-	IPAddress    string         `json:"ip_address,omitempty"`
-	UserAgent    string         `json:"user_agent,omitempty"`
-	Metadata     map[string]any `json:"metadata"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
+	ConsentGiven       bool             `json:"consent_given"`
 }
 
 // ConsentPurpose represents a specific purpose for data processing
@@ -153,10 +149,10 @@ type ConsentPurpose struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	LegalBasis  string    `json:"legal_basis"`
+	ConsentDate time.Time `json:"consent_date"`
 	Required    bool      `json:"required"`
 	Consented   bool      `json:"consented"`
-	ConsentDate time.Time `json:"consent_date"`
-	LegalBasis  string    `json:"legal_basis"`
 }
 
 // DataRecipient represents a recipient of personal data
@@ -171,79 +167,75 @@ type DataRecipient struct {
 
 // ConsentProof represents proof of consent
 type ConsentProof struct {
+	Metadata  map[string]any `json:"metadata"`
 	Type      string         `json:"type"` // "digital_signature", "double_opt_in", "recorded_consent"
 	Evidence  string         `json:"evidence"`
-	Timestamp time.Time      `json:"timestamp"`
 	IPAddress string         `json:"ip_address"`
 	UserAgent string         `json:"user_agent"`
 	Method    string         `json:"method"`
-	Verified  bool           `json:"verified"`
 	Signature string         `json:"signature,omitempty"`
-	Metadata  map[string]any `json:"metadata"`
+	Timestamp time.Time      `json:"timestamp"`
+	Verified  bool           `json:"verified"`
 }
 
 // ConsentUpdates represents updates to consent
 type ConsentUpdates struct {
+	Metadata        map[string]any   `json:"metadata,omitempty"`
+	UpdatedBy       string           `json:"updated_by"`
+	UpdateReason    string           `json:"update_reason"`
+	Reason          string           `json:"reason,omitempty"`
 	ConsentScope    []ConsentPurpose `json:"consent_scope,omitempty"`
 	Recipients      []DataRecipient  `json:"recipients,omitempty"`
 	RetentionPeriod *time.Duration   `json:"retention_period,omitempty"`
 	ExpiryDate      *time.Time       `json:"expiry_date,omitempty"`
-	UpdatedBy       string           `json:"updated_by"`
-	UpdateReason    string           `json:"update_reason"`
-	// Additional fields needed by tests
-	ConsentGiven bool           `json:"consent_given,omitempty"`
-	Timestamp    time.Time      `json:"timestamp,omitempty"`
-	Reason       string         `json:"reason,omitempty"`
-	Metadata     map[string]any `json:"metadata,omitempty"`
+	Timestamp       time.Time        `json:"timestamp,omitempty"`
+	ConsentGiven    bool             `json:"consent_given,omitempty"`
 }
 
 // ConsentWithdrawal represents consent withdrawal
 type ConsentWithdrawal struct {
-	WithdrawalDate    time.Time `json:"withdrawal_date"`
-	WithdrawalMethod  string    `json:"withdrawal_method"`
-	Reason            string    `json:"reason,omitempty"`
-	PartialWithdrawal bool      `json:"partial_withdrawal"`
-	WithdrawnPurposes []string  `json:"withdrawn_purposes,omitempty"`
-	RequestedBy       string    `json:"requested_by"`
-	Verified          bool      `json:"verified"`
-	// Additional fields needed by tests
-	Timestamp time.Time      `json:"timestamp,omitempty"`
-	Method    string         `json:"method,omitempty"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	Metadata          map[string]any `json:"metadata,omitempty"`
+	WithdrawalMethod  string         `json:"withdrawal_method"`
+	Reason            string         `json:"reason,omitempty"`
+	RequestedBy       string         `json:"requested_by"`
+	Method            string         `json:"method,omitempty"`
+	WithdrawnPurposes []string       `json:"withdrawn_purposes,omitempty"`
+	WithdrawalDate    time.Time      `json:"withdrawal_date"`
+	Timestamp         time.Time      `json:"timestamp,omitempty"`
+	PartialWithdrawal bool           `json:"partial_withdrawal"`
+	Verified          bool           `json:"verified"`
 }
 
 // DataAccessRequest represents a data subject access request
 type DataAccessRequest struct {
+	Metadata      map[string]any        `json:"metadata"`
 	ID            string                `json:"id"`
 	DataSubjectID string                `json:"data_subject_id"`
 	Email         string                `json:"email"`
-	RequestDate   time.Time             `json:"request_date"`
 	RequestType   string                `json:"request_type"` // "access", "portability", "erasure", "rectification", "objection"
+	Status        string                `json:"status"`
+	ContactInfo   string                `json:"contact_info,omitempty"`
+	UserID        string                `json:"user_id,omitempty"`
+	Purpose       string                `json:"purpose,omitempty"`
+	Region        string                `json:"region,omitempty"`
 	Scope         []string              `json:"scope"`
 	Verification  *IdentityVerification `json:"verification"`
-	Status        string                `json:"status"`
+	RequestDate   time.Time             `json:"request_date"`
 	DueDate       time.Time             `json:"due_date"`
-	// Additional fields needed by tests
-	Timestamp   time.Time      `json:"timestamp,omitempty"`
-	ContactInfo string         `json:"contact_info,omitempty"`
-	UserID      string         `json:"user_id,omitempty"`
-	Purpose     string         `json:"purpose,omitempty"`
-	Region      string         `json:"region,omitempty"`
-	Metadata    map[string]any `json:"metadata"`
+	Timestamp     time.Time             `json:"timestamp,omitempty"`
 }
 
 // DataAccessResponse represents the response to a data access request
 type DataAccessResponse struct {
-	RequestID      string         `json:"request_id"`
-	ResponseDate   time.Time      `json:"response_date"`
 	Data           map[string]any `json:"data"`
-	DataSources    []string       `json:"data_sources"`
+	Metadata       map[string]any `json:"metadata"`
+	RequestID      string         `json:"request_id"`
 	Format         string         `json:"format"`
 	DeliveryMethod string         `json:"delivery_method"`
+	Status         string         `json:"status,omitempty"`
+	DataSources    []string       `json:"data_sources"`
+	ResponseDate   time.Time      `json:"response_date"`
 	Encrypted      bool           `json:"encrypted"`
-	// Additional fields needed by tests
-	Status   string         `json:"status,omitempty"`
-	Metadata map[string]any `json:"metadata"`
 }
 
 // DataPortabilityRequest represents a data portability request
@@ -256,13 +248,13 @@ type DataPortabilityRequest struct {
 
 // DataPortabilityResponse represents the response to a data portability request
 type DataPortabilityResponse struct {
-	RequestID      string         `json:"request_id"`
-	ResponseDate   time.Time      `json:"response_date"`
 	Data           map[string]any `json:"data"`
-	Format         string         `json:"format"`
-	StructuredData bool           `json:"structured_data"`
-	TransferMethod string         `json:"transfer_method"`
 	Metadata       map[string]any `json:"metadata"`
+	RequestID      string         `json:"request_id"`
+	Format         string         `json:"format"`
+	TransferMethod string         `json:"transfer_method"`
+	ResponseDate   time.Time      `json:"response_date"`
+	StructuredData bool           `json:"structured_data"`
 }
 
 // DataErasureRequest represents a data erasure request

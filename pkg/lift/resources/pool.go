@@ -201,10 +201,10 @@ func (p *DefaultConnectionPool) Get(ctx context.Context) (any, error) {
 		p.mu.Lock()
 		p.stats.Errors++
 		p.mu.Unlock()
-		if err := resource.Cleanup(); err != nil {
+		if cleanupErr := resource.Cleanup(); cleanupErr != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
 			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			_ = cleanupErr // Intentionally ignored
 		}
 		return nil, err
 	}

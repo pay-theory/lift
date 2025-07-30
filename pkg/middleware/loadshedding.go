@@ -78,12 +78,12 @@ type LoadMetrics struct {
 type LoadSheddingStats struct {
 	SystemMetrics       LoadMetrics          `json:"system_metrics"`
 	Name                string               `json:"name"`
-	Strategy            LoadSheddingStrategy `json:"strategy"`
-	CurrentSheddingRate float64              `json:"current_shedding_rate"`
+	AverageLatency      time.Duration        `json:"average_latency"`
 	TotalRequests       int64                `json:"total_requests"`
 	ShedRequests        int64                `json:"shed_requests"`
+	CurrentSheddingRate float64              `json:"current_shedding_rate"`
 	SheddingRatio       float64              `json:"shedding_ratio"`
-	AverageLatency      time.Duration        `json:"average_latency"`
+	Strategy            LoadSheddingStrategy `json:"strategy"`
 	Enabled             bool                 `json:"enabled"`
 }
 
@@ -214,13 +214,13 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 
 // loadSheddingManager manages load shedding logic and metrics
 type loadSheddingManager struct {
-	metrics        *LoadMetrics
-	stats          *LoadSheddingStats
 	config         LoadSheddingConfig
+	mutex          sync.RWMutex
 	latencyHistory []time.Duration
 	requestHistory []loadRequestRecord
+	metrics        *LoadMetrics
+	stats          *LoadSheddingStats
 	errorCount     int64
-	mutex          sync.RWMutex
 }
 
 // loadRequestRecord tracks individual request metrics for load shedding

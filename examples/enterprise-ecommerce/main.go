@@ -14,14 +14,14 @@ import (
 
 // Tenant represents a multi-tenant e-commerce store
 type Tenant struct {
-	CreatedAt     time.Time    `json:"createdAt"`
-	UpdatedAt     time.Time    `json:"updatedAt"`
 	Configuration TenantConfig `json:"configuration"`
 	Subscription  Subscription `json:"subscription"`
 	Owner         TenantOwner  `json:"owner"`
 	ID            string       `json:"id"`
 	Name          string       `json:"name"`
 	Domain        string       `json:"domain"`
+	CreatedAt     time.Time    `json:"createdAt"`
+	UpdatedAt     time.Time    `json:"updatedAt"`
 	IsActive      bool         `json:"isActive"`
 }
 
@@ -88,6 +88,14 @@ type TenantOwner struct {
 
 // Product represents a product in the catalog
 type Product struct {
+	Price        Money            `json:"price"`
+	Inventory    Inventory        `json:"inventory"`
+	SEO          SEOData          `json:"seo"`
+	ID           string           `json:"id"`
+	TenantID     string           `json:"tenantId"`
+	SKU          string           `json:"sku"`
+	Name         string           `json:"name"`
+	Description  string           `json:"description"`
 	Attributes   map[string]any   `json:"attributes"`
 	Images       []ProductImage   `json:"images"`
 	Variants     []ProductVariant `json:"variants,omitempty"`
@@ -96,14 +104,6 @@ type Product struct {
 	ComparePrice *Money           `json:"comparePrice,omitempty"`
 	CreatedAt    time.Time        `json:"createdAt"`
 	UpdatedAt    time.Time        `json:"updatedAt"`
-	ID           string           `json:"id"`
-	TenantID     string           `json:"tenantId"`
-	SKU          string           `json:"sku"`
-	Name         string           `json:"name"`
-	Description  string           `json:"description"`
-	Price        Money            `json:"price"`
-	Inventory    Inventory        `json:"inventory"`
-	SEO          SEOData          `json:"seo"`
 	Status       ProductStatus    `json:"status"`
 }
 
@@ -134,10 +134,10 @@ type ProductImage struct {
 
 // SEOData for search engine optimization
 type SEOData struct {
-	Keywords    []string `json:"keywords"`
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
 	Slug        string   `json:"slug"`
+	Keywords    []string `json:"keywords"`
 }
 
 // ProductStatus represents product status
@@ -162,18 +162,18 @@ type ProductVariant struct {
 
 // Customer represents a customer
 type Customer struct {
+	Profile        CustomerProfile     `json:"profile"`
+	Preferences    CustomerPreferences `json:"preferences"`
+	ID             string              `json:"id"`
+	TenantID       string              `json:"tenantId"`
+	Email          string              `json:"email"`
 	Addresses      []Address           `json:"addresses"`
 	PaymentMethods []PaymentMethod     `json:"paymentMethods"`
 	OrderHistory   []string            `json:"orderHistory"`
 	Tags           []string            `json:"tags"`
-	Profile        CustomerProfile     `json:"profile"`
-	Preferences    CustomerPreferences `json:"preferences"`
 	CreatedAt      time.Time           `json:"createdAt"`
 	UpdatedAt      time.Time           `json:"updatedAt"`
 	LastLoginAt    time.Time           `json:"lastLoginAt"`
-	ID             string              `json:"id"`
-	TenantID       string              `json:"tenantId"`
-	Email          string              `json:"email"`
 	IsActive       bool                `json:"isActive"`
 }
 

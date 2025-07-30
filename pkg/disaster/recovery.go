@@ -12,19 +12,24 @@ import (
 // DisasterRecoveryManager manages disaster recovery operations
 type DisasterRecoveryManager struct {
 	config          DRConfig
+	currentState    DRState
+	metrics         DRMetrics
+	mu              sync.RWMutex
 	primaryRegion   string
 	backupRegions   []string
-	currentState    DRState
 	failoverHistory []FailoverEvent
 	healthMonitor   *HealthMonitor
 	dataSync        *DataSynchronizer
 	notificationMgr *NotificationManager
-	mu              sync.RWMutex
-	metrics         DRMetrics
 }
 
 // DRConfig holds disaster recovery configuration
 type DRConfig struct {
+	HealthCheck      HealthCheckConfig     `json:"health_check"`
+	DataReplication  DataReplicationConfig `json:"data_replication"`
+	Notifications    NotificationConfig    `json:"notifications"`
+	BackupRetention  BackupRetentionConfig `json:"backup_retention"`
+	TestingSchedule  TestingScheduleConfig `json:"testing_schedule"`
 	ApplicationName  string                `json:"application_name"`
 	Environment      string                `json:"environment"`
 	PrimaryRegion    string                `json:"primary_region"`
@@ -34,11 +39,6 @@ type DRConfig struct {
 	FailoverStrategy FailoverStrategyType  `json:"failover_strategy"`
 	AutoFailover     bool                  `json:"auto_failover"`
 	AutoFailback     bool                  `json:"auto_failback"`
-	HealthCheck      HealthCheckConfig     `json:"health_check"`
-	DataReplication  DataReplicationConfig `json:"data_replication"`
-	Notifications    NotificationConfig    `json:"notifications"`
-	BackupRetention  BackupRetentionConfig `json:"backup_retention"`
-	TestingSchedule  TestingScheduleConfig `json:"testing_schedule"`
 }
 
 // FailoverStrategyType defines failover strategies
@@ -79,13 +79,13 @@ const (
 // RegionHealth represents the health of a region
 type RegionHealth struct {
 	Region              string        `json:"region"`
-	Status              HealthStatus  `json:"status"`
+	LastError           string        `json:"last_error,omitempty"`
 	LastCheck           time.Time     `json:"last_check"`
 	ResponseTime        time.Duration `json:"response_time"`
 	ErrorRate           float64       `json:"error_rate"`
 	Availability        float64       `json:"availability"`
 	ConsecutiveFailures int           `json:"consecutive_failures"`
-	LastError           string        `json:"last_error,omitempty"`
+	Status              HealthStatus  `json:"status"`
 }
 
 // HealthStatus represents health status
@@ -100,12 +100,12 @@ const (
 
 // DataSyncStatus represents data synchronization status
 type DataSyncStatus struct {
-	Status         SyncStatus      `json:"status"`
-	LastSync       time.Time       `json:"last_sync"`
-	ReplicationLag time.Duration   `json:"replication_lag"`
-	SyncErrors     []SyncError     `json:"sync_errors"`
 	TablesInSync   map[string]bool `json:"tables_in_sync"`
 	BucketsInSync  map[string]bool `json:"buckets_in_sync"`
+	SyncErrors     []SyncError     `json:"sync_errors"`
+	LastSync       time.Time       `json:"last_sync"`
+	ReplicationLag time.Duration   `json:"replication_lag"`
+	Status         SyncStatus      `json:"status"`
 }
 
 // SyncStatus represents synchronization status
@@ -128,18 +128,18 @@ type SyncError struct {
 
 // FailoverEvent represents a failover event
 type FailoverEvent struct {
+	Impact       FailoverImpact  `json:"impact"`
 	ID           string          `json:"id"`
-	Timestamp    time.Time       `json:"timestamp"`
-	Type         FailoverType    `json:"type"`
 	FromRegion   string          `json:"from_region"`
 	ToRegion     string          `json:"to_region"`
 	Reason       string          `json:"reason"`
-	Trigger      FailoverTrigger `json:"trigger"`
-	Duration     time.Duration   `json:"duration"`
-	Status       FailoverStatus  `json:"status"`
 	Steps        []FailoverStep  `json:"steps"`
 	RollbackPlan *RollbackPlan   `json:"rollback_plan,omitempty"`
-	Impact       FailoverImpact  `json:"impact"`
+	Timestamp    time.Time       `json:"timestamp"`
+	Duration     time.Duration   `json:"duration"`
+	Type         FailoverType    `json:"type"`
+	Trigger      FailoverTrigger `json:"trigger"`
+	Status       FailoverStatus  `json:"status"`
 }
 
 // FailoverType represents the type of failover
@@ -216,37 +216,37 @@ type FailoverImpact struct {
 
 // DRMetrics holds disaster recovery metrics
 type DRMetrics struct {
-	TotalFailovers      int64         `json:"total_failovers"`
-	SuccessfulFailovers int64         `json:"successful_failovers"`
-	FailedFailovers     int64         `json:"failed_failovers"`
+	LastUpdated         time.Time     `json:"last_updated"`
 	AverageFailoverTime time.Duration `json:"average_failover_time"`
 	AverageDowntime     time.Duration `json:"average_downtime"`
 	MTTR                time.Duration `json:"mttr"` // Mean Time To Recovery
 	MTBF                time.Duration `json:"mtbf"` // Mean Time Between Failures
+	TotalFailovers      int64         `json:"total_failovers"`
+	SuccessfulFailovers int64         `json:"successful_failovers"`
+	FailedFailovers     int64         `json:"failed_failovers"`
 	Availability        float64       `json:"availability"`
-	LastUpdated         time.Time     `json:"last_updated"`
 }
 
 // HealthCheckConfig defines health check configuration
 type HealthCheckConfig struct {
-	Enabled           bool                `json:"enabled"`
+	Endpoints         []HealthEndpoint    `json:"endpoints"`
+	CustomChecks      []CustomHealthCheck `json:"custom_checks"`
 	Interval          time.Duration       `json:"interval"`
 	Timeout           time.Duration       `json:"timeout"`
 	FailureThreshold  int                 `json:"failure_threshold"`
 	RecoveryThreshold int                 `json:"recovery_threshold"`
-	Endpoints         []HealthEndpoint    `json:"endpoints"`
-	CustomChecks      []CustomHealthCheck `json:"custom_checks"`
+	Enabled           bool                `json:"enabled"`
 }
 
 // HealthEndpoint defines a health check endpoint
 type HealthEndpoint struct {
+	Headers        map[string]string `json:"headers"`
 	Name           string            `json:"name"`
 	URL            string            `json:"url"`
 	Method         string            `json:"method"`
-	Headers        map[string]string `json:"headers"`
-	ExpectedStatus int               `json:"expected_status"`
 	ExpectedBody   string            `json:"expected_body,omitempty"`
 	Timeout        time.Duration     `json:"timeout"`
+	ExpectedStatus int               `json:"expected_status"`
 	Critical       bool              `json:"critical"`
 }
 

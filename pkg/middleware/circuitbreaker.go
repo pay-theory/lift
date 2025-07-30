@@ -257,19 +257,19 @@ func (m *circuitBreakerManager) generateBreakerKey(ctx *lift.Context) string {
 
 // circuitBreaker implements the circuit breaker logic
 type circuitBreaker struct {
+	config               CircuitBreakerConfig
+	mutex                sync.RWMutex
+	name                 string
+	requestHistory       []requestRecord
 	lastSuccessTime      time.Time
 	nextRetryAt          time.Time
 	stateChangedAt       time.Time
 	lastFailureTime      time.Time
-	config               CircuitBreakerConfig
-	state                CircuitBreakerState
-	name                 string
-	requestHistory       []requestRecord
 	failureCount         int64
+	successCount         int64
 	consecutiveSuccesses int
 	consecutiveFailures  int
-	successCount         int64
-	mutex                sync.RWMutex
+	state                CircuitBreakerState
 }
 
 // requestRecord tracks individual request results for sliding window analysis

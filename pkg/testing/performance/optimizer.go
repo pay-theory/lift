@@ -295,11 +295,11 @@ type PercentileStats struct {
 type ComparisonResult struct {
 	Baseline        BenchmarkResult
 	Current         BenchmarkResult
+	Significance    StatisticalSignificance
 	Improvements    []Improvement
 	Regressions     []Regression
-	OverallChange   PerformanceChange
-	Significance    StatisticalSignificance
 	Recommendations []string
+	OverallChange   PerformanceChange
 }
 
 type Improvement struct {

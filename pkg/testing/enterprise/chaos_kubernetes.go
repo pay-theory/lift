@@ -430,21 +430,21 @@ type ServicePort struct {
 
 // ClusterMetrics defines cluster-level metrics
 type ClusterMetrics struct {
-	NodeCount         int           `json:"node_count"`
-	PodCount          int           `json:"pod_count"`
-	ServiceCount      int           `json:"service_count"`
-	NamespaceCount    int           `json:"namespace_count"`
-	CPUCapacity       float64       `json:"cpu_capacity"`
+	Version           string        `json:"version"`
+	LastUpdated       time.Time     `json:"last_updated"`
+	APIServerLatency  time.Duration `json:"api_server_latency"`
+	ETCDLatency       time.Duration `json:"etcd_latency"`
 	MemoryCapacity    int64         `json:"memory_capacity"`
-	CPUUsage          float64       `json:"cpu_usage"`
 	MemoryUsage       int64         `json:"memory_usage"`
 	StorageCapacity   int64         `json:"storage_capacity"`
 	StorageUsage      int64         `json:"storage_usage"`
 	NetworkThroughput int64         `json:"network_throughput"`
-	APIServerLatency  time.Duration `json:"api_server_latency"`
-	ETCDLatency       time.Duration `json:"etcd_latency"`
-	Version           string        `json:"version"`
-	LastUpdated       time.Time     `json:"last_updated"`
+	CPUCapacity       float64       `json:"cpu_capacity"`
+	CPUUsage          float64       `json:"cpu_usage"`
+	NodeCount         int           `json:"node_count"`
+	PodCount          int           `json:"pod_count"`
+	ServiceCount      int           `json:"service_count"`
+	NamespaceCount    int           `json:"namespace_count"`
 }
 
 // ChaosEventBus manages chaos engineering events

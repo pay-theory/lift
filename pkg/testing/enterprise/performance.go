@@ -60,11 +60,11 @@ type PerformanceConfig struct {
 // PerformanceTestResult represents the result of a performance test
 type PerformanceTestResult struct {
 	TestCase  PerformanceTestCase
-	Success   bool
-	Duration  time.Duration
-	Timestamp time.Time
 	Metrics   PerformanceTestMetrics
+	Timestamp time.Time
+	Duration  time.Duration
 	Error     string
+	Success   bool
 }
 
 // PerformanceTestMetrics contains detailed performance metrics

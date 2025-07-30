@@ -14,13 +14,13 @@ import (
 
 // LoadTest represents a load testing configuration and execution
 type LoadTest struct {
-	App         *lift.App
-	results     *Results
+	Config      LoadTestConfig
+	mu          sync.RWMutex
 	Name        string
 	Description string
-	Config      LoadTestConfig
 	Scenarios   []Scenario
-	mu          sync.RWMutex
+	App         *lift.App
+	results     *Results
 }
 
 // LoadTestConfig holds configuration for load testing

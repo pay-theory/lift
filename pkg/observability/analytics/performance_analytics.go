@@ -52,18 +52,18 @@ type PerformanceMetric struct {
 
 // PerformanceAnalysis represents the result of performance analysis
 type PerformanceAnalysis struct {
-	TimeRange       TimeRange                   `json:"time_range"`
-	GeneratedAt     time.Time                   `json:"generated_at"`
 	ID              string                      `json:"id"`
 	Statistics      PerformanceStatistics       `json:"statistics"`
+	TimeRange       TimeRange                   `json:"time_range"`
+	GeneratedAt     time.Time                   `json:"generated_at"`
 	Metrics         []PerformanceMetric         `json:"metrics"`
 	Trends          []PerformanceTrend          `json:"trends"`
 	Anomalies       []PerformanceAnomaly        `json:"anomalies"`
 	Predictions     []PerformancePrediction     `json:"predictions"`
 	Recommendations []PerformanceRecommendation `json:"recommendations"`
 	Alerts          []PerformanceAlert          `json:"alerts"`
-	HealthScore     float64                     `json:"health_score"`
 	Duration        time.Duration               `json:"duration"`
+	HealthScore     float64                     `json:"health_score"`
 }
 
 // PerformanceStatistics provides statistical analysis of metrics

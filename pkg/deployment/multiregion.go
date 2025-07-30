@@ -10,17 +10,17 @@ import (
 
 // MultiRegionDeployer orchestrates deployments across multiple regions
 type MultiRegionDeployer struct {
+	config           InfrastructureConfig
+	mu               sync.RWMutex
 	primaryRegion    string
-	regions          []string
 	applicationName  string
 	environment      string
-	config           InfrastructureConfig
+	regions          []string
 	deployers        map[string]*PulumiDeployer
 	healthCheckers   map[string]*RegionHealthChecker
+	deploymentStatus map[string]RegionDeploymentStatus
 	dnsManager       *DNSManager
 	loadBalancer     *GlobalLoadBalancer
-	mu               sync.RWMutex
-	deploymentStatus map[string]RegionDeploymentStatus
 }
 
 // RegionDeploymentStatus represents the deployment status of a region

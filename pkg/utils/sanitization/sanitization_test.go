@@ -215,9 +215,9 @@ func TestSanitizeHeaders(t *testing.T) {
 	s := Default()
 
 	tests := []struct {
-		name     string
 		headers  map[string][]string
 		expected map[string]string
+		name     string
 	}{
 		{
 			name: "sensitive headers",
@@ -284,9 +284,9 @@ func TestSanitizeQueryParams(t *testing.T) {
 	s := Default()
 
 	tests := []struct {
-		name     string
 		params   map[string][]string
 		expected map[string]string
+		name     string
 	}{
 		{
 			name: "sensitive params",

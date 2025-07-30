@@ -491,10 +491,10 @@ func (r *ServiceRegistry) GetStats() RegistryStats {
 
 // RegistryStats provides registry performance metrics
 type RegistryStats struct {
-	RegisteredServices int               `json:"registered_services"`
 	CacheStats         CacheStats        `json:"cache_stats"`
 	LoadBalancerStats  LoadBalancerStats `json:"load_balancer_stats"`
 	Timestamp          time.Time         `json:"timestamp"`
+	RegisteredServices int               `json:"registered_services"`
 }
 
 // LoadBalancerStats provides load balancer metrics

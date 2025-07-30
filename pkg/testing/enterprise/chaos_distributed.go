@@ -24,31 +24,31 @@ type MultiRegionChaosOrchestrator struct {
 // DistributedConfig configures distributed chaos experiments
 type DistributedConfig struct {
 	Regions          []*RegionConfig            `json:"regions"`
-	CoordinationMode CoordinationMode           `json:"coordination_mode"`
-	ConsistencyLevel ConsistencyLevel           `json:"consistency_level"`
-	ReplicationMode  ReplicationMode            `json:"replication_mode"`
 	NetworkTopology  *NetworkTopology           `json:"network_topology"`
 	FailoverPolicy   *FailoverPolicy            `json:"failover_policy"`
 	LoadBalancing    *LoadBalancingConfig       `json:"load_balancing"`
 	Monitoring       *MonitoringConfig          `json:"monitoring"`
 	Security         *DistributedSecurityConfig `json:"security"`
 	Performance      *PerformanceConfig         `json:"performance"`
+	CoordinationMode CoordinationMode           `json:"coordination_mode"`
+	ConsistencyLevel ConsistencyLevel           `json:"consistency_level"`
+	ReplicationMode  ReplicationMode            `json:"replication_mode"`
 }
 
 // RegionConfig configures a specific region
 type RegionConfig struct {
+	Metadata          map[string]any       `json:"metadata"`
 	Name              string               `json:"name"`
 	Code              string               `json:"code"`
 	Endpoint          string               `json:"endpoint"`
+	AvailabilityZones []string             `json:"availability_zones"`
 	Credentials       *RegionCredentials   `json:"credentials"`
 	Resources         *RegionResources     `json:"resources"`
 	NetworkConfig     *RegionNetworkConfig `json:"network_config"`
-	AvailabilityZones []string             `json:"availability_zones"`
 	Latency           time.Duration        `json:"latency"`
 	Bandwidth         int64                `json:"bandwidth"`
 	Priority          int                  `json:"priority"`
 	Status            RegionStatus         `json:"status"`
-	Metadata          map[string]any       `json:"metadata"`
 }
 
 // RegionCredentials holds region-specific credentials
@@ -174,10 +174,10 @@ const (
 type DistributedNetworkPartition struct {
 	Name        string                     `json:"name"`
 	Regions     []string                   `json:"regions"`
-	Duration    time.Duration              `json:"duration"`
-	Type        PartitionType              `json:"type"`
-	Probability float64                    `json:"probability"`
 	Recovery    *DistributedRecoveryConfig `json:"recovery"`
+	Duration    time.Duration              `json:"duration"`
+	Probability float64                    `json:"probability"`
+	Type        PartitionType              `json:"type"`
 }
 
 // PartitionType defines partition types
@@ -192,9 +192,9 @@ const (
 
 // DistributedRecoveryConfig defines partition recovery settings
 type DistributedRecoveryConfig struct {
-	Mode        DistributedRecoveryMode `json:"mode"`
 	Timeout     time.Duration           `json:"timeout"`
 	RetryCount  int                     `json:"retry_count"`
+	Mode        DistributedRecoveryMode `json:"mode"`
 	BackoffMode BackoffMode             `json:"backoff_mode"`
 	Validation  bool                    `json:"validation"`
 }
@@ -221,13 +221,13 @@ const (
 
 // FailoverPolicy defines failover behavior
 type FailoverPolicy struct {
-	Mode          FailoverMode              `json:"mode"`
-	Threshold     *FailoverThreshold        `json:"threshold"`
 	Priority      []string                  `json:"priority"`
-	AutoFailback  bool                      `json:"auto_failback"`
-	FailbackDelay time.Duration             `json:"failback_delay"`
 	HealthChecks  []*DistributedHealthCheck `json:"health_checks"`
 	Notifications []*Notification           `json:"notifications"`
+	Threshold     *FailoverThreshold        `json:"threshold"`
+	FailbackDelay time.Duration             `json:"failback_delay"`
+	Mode          FailoverMode              `json:"mode"`
+	AutoFailback  bool                      `json:"auto_failback"`
 }
 
 // FailoverMode defines failover modes
@@ -252,14 +252,14 @@ type FailoverThreshold struct {
 
 // DistributedHealthCheck defines health check configuration
 type DistributedHealthCheck struct {
+	Expected  any             `json:"expected"`
 	Name      string          `json:"name"`
-	Type      HealthCheckType `json:"type"`
 	Endpoint  string          `json:"endpoint"`
 	Interval  time.Duration   `json:"interval"`
 	Timeout   time.Duration   `json:"timeout"`
-	Retries   int             `json:"retries"`
-	Expected  any             `json:"expected"`
 	Threshold float64         `json:"threshold"`
+	Retries   int             `json:"retries"`
+	Type      HealthCheckType `json:"type"`
 }
 
 // HealthCheckType defines health check types
