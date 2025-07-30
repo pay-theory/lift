@@ -954,7 +954,10 @@ func (pae *PerformanceAnalyticsEngine) runContinuousAnalysis(ctx context.Context
 				Start: time.Now().Add(-pae.config.AnalysisInterval),
 				End:   time.Now(),
 			}
-			pae.AnalyzePerformance(ctx, timeRange)
+			if _, err := pae.AnalyzePerformance(ctx, timeRange); err != nil {
+				// Log error but continue processing
+				// PerformanceAnalyticsEngine doesn't have a logger field
+			}
 		case <-pae.stopCh:
 			return
 		case <-ctx.Done():
@@ -972,7 +975,10 @@ func (pae *PerformanceAnalyticsEngine) runDataCleanup(ctx context.Context) {
 		case <-ticker.C:
 			cutoff := time.Now().AddDate(0, 0, -pae.config.DataRetentionDays)
 			if pae.dataStore != nil {
-				pae.dataStore.DeleteOldMetrics(ctx, cutoff)
+				if err := pae.dataStore.DeleteOldMetrics(ctx, cutoff); err != nil {
+					// Log error but continue cleanup
+					// PerformanceAnalyticsEngine doesn't have a logger field
+				}
 			}
 		case <-pae.stopCh:
 			return

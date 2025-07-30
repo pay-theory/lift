@@ -161,27 +161,47 @@ func (l *CloudWatchLogger) WithFields(fields map[string]any) lift.Logger {
 
 // WithRequestID adds request ID to logger context
 func (l *CloudWatchLogger) WithRequestID(requestID string) observability.StructuredLogger {
-	return l.WithField("request_id", requestID).(observability.StructuredLogger)
+	logger := l.WithField("request_id", requestID)
+	if structured, ok := logger.(observability.StructuredLogger); ok {
+		return structured
+	}
+	return l
 }
 
 // WithTenantID adds tenant ID to logger context
 func (l *CloudWatchLogger) WithTenantID(tenantID string) observability.StructuredLogger {
-	return l.WithField("tenant_id", tenantID).(observability.StructuredLogger)
+	logger := l.WithField("tenant_id", tenantID)
+	if structured, ok := logger.(observability.StructuredLogger); ok {
+		return structured
+	}
+	return l
 }
 
 // WithUserID adds user ID to logger context
 func (l *CloudWatchLogger) WithUserID(userID string) observability.StructuredLogger {
-	return l.WithField("user_id", userID).(observability.StructuredLogger)
+	logger := l.WithField("user_id", userID)
+	if structured, ok := logger.(observability.StructuredLogger); ok {
+		return structured
+	}
+	return l
 }
 
 // WithTraceID adds trace ID to logger context
 func (l *CloudWatchLogger) WithTraceID(traceID string) observability.StructuredLogger {
-	return l.WithField("trace_id", traceID).(observability.StructuredLogger)
+	logger := l.WithField("trace_id", traceID)
+	if structured, ok := logger.(observability.StructuredLogger); ok {
+		return structured
+	}
+	return l
 }
 
 // WithSpanID adds span ID to logger context
 func (l *CloudWatchLogger) WithSpanID(spanID string) observability.StructuredLogger {
-	return l.WithField("span_id", spanID).(observability.StructuredLogger)
+	logger := l.WithField("span_id", spanID)
+	if structured, ok := logger.(observability.StructuredLogger); ok {
+		return structured
+	}
+	return l
 }
 
 // log is the internal logging method

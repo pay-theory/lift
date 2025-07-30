@@ -144,7 +144,9 @@ func NewComplianceStack(scope constructs.Construct, id string, props *Compliance
 	var encryptionKey awskms.Key
 	if props.EnableEncryption != nil && *props.EnableEncryption {
 		if props.EncryptionKey != nil {
-			encryptionKey = props.EncryptionKey.(awskms.Key)
+			if key, ok := props.EncryptionKey.(awskms.Key); ok {
+				encryptionKey = key
+			}
 		} else {
 			encryptionKey = awskms.NewKey(this, jsii.String("ComplianceKey"), &awskms.KeyProps{
 				Description:       jsii.String(fmt.Sprintf("Compliance encryption key for %s", *props.AppName)),
@@ -183,7 +185,9 @@ func NewComplianceStack(scope constructs.Construct, id string, props *Compliance
 	// Create S3 bucket for compliance data
 	var complianceBucket awss3.Bucket
 	if props.ComplianceBucket != nil {
-		complianceBucket = props.ComplianceBucket.(awss3.Bucket)
+		if bucket, ok := props.ComplianceBucket.(awss3.Bucket); ok {
+			complianceBucket = bucket
+		}
 	} else {
 		complianceBucket = awss3.NewBucket(this, jsii.String("ComplianceBucket"), &awss3.BucketProps{
 			BucketName: jsii.String(fmt.Sprintf("%s-compliance-%s", *props.AppName, *awscdk.Stack_Of(this).Region())),
@@ -228,7 +232,9 @@ func NewComplianceStack(scope constructs.Construct, id string, props *Compliance
 	// Create CloudWatch log group for compliance logs
 	var complianceLogGroup awslogs.LogGroup
 	if props.ComplianceLogGroup != nil {
-		complianceLogGroup = props.ComplianceLogGroup.(awslogs.LogGroup)
+		if lg, ok := props.ComplianceLogGroup.(awslogs.LogGroup); ok {
+			complianceLogGroup = lg
+		}
 	} else {
 		complianceLogGroup = awslogs.NewLogGroup(this, jsii.String("ComplianceLogGroup"), &awslogs.LogGroupProps{
 			LogGroupName:  jsii.String(fmt.Sprintf("/aws/compliance/%s", *props.AppName)),
@@ -451,8 +457,9 @@ func createComplianceFunction(scope constructs.Construct, props *ComplianceStack
 	})
 
 	// Add additional compliance-specific permissions
-	functionRole := function.Role().(awsiam.Role)
-	functionRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+	if roleInterface := function.Role(); roleInterface != nil {
+		if functionRole, ok := roleInterface.(awsiam.Role); ok {
+			functionRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 		Effect: awsiam.Effect_ALLOW,
 		Actions: &[]*string{
 			jsii.String("config:GetComplianceDetailsByConfigRule"),
@@ -466,6 +473,8 @@ func createComplianceFunction(scope constructs.Construct, props *ComplianceStack
 		},
 		Resources: &[]*string{jsii.String("*")},
 	}))
+		}
+	}
 
 	return function
 }

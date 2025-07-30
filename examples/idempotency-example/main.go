@@ -83,15 +83,19 @@ func main() {
 	})
 
 	// Payment intent creation endpoint
-	app.POST("/v1/payment_intents", lift.SimpleHandler(createPaymentIntent))
+	if err := app.POST("/v1/payment_intents", lift.SimpleHandler(createPaymentIntent)); err != nil {
+		log.Fatalf("Failed to register POST /v1/payment_intents: %v", err)
+	}
 
 	// Health check endpoint (no idempotency needed)
-	app.GET("/health", func(ctx *lift.Context) error {
+	if err := app.GET("/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
 			"status":  "healthy",
 			"service": "payment-api",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /health: %v", err)
+	}
 
 	// Start the application
 	if err := app.Start(); err != nil {

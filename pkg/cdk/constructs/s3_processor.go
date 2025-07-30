@@ -737,7 +737,7 @@ func (s *S3Processor) enableCrossRegionReplication() {
 
 		// Add replication configuration
 		if sourceBucket, ok := s.Bucket.(awss3.Bucket); ok {
-			cfnBucket := sourceBucket.Node().DefaultChild().(awss3.CfnBucket)
+			if cfnBucket, ok := sourceBucket.Node().DefaultChild().(awss3.CfnBucket); ok {
 
 			replicationConfig := &awss3.CfnBucket_ReplicationConfigurationProperty{
 				Role: replicationRole.RoleArn(),
@@ -756,6 +756,7 @@ func (s *S3Processor) enableCrossRegionReplication() {
 			}
 
 			cfnBucket.SetReplicationConfiguration(replicationConfig)
+			}
 		}
 	}
 }

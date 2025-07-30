@@ -1191,30 +1191,54 @@ func main() {
 	api := app.Group("/api/v1")
 
 	// Health check endpoint
-	api.GET("/health", healthCheck)
+	if err := api.GET("/health", healthCheck); err != nil {
+		log.Fatalf("Failed to register health endpoint: %v", err)
+	}
 
 	// Patient management endpoints
 	patients := api.Group("/patients")
-	patients.POST("", createPatient)
-	patients.GET("/search", searchPatients)
-	patients.GET("/:id", getPatient)
-	patients.PUT("/:id/consent", updatePatientConsent)
-	patients.GET("/:id/records", getPatientRecords)
+	if err := patients.POST("", createPatient); err != nil {
+		log.Fatalf("Failed to register POST /patients: %v", err)
+	}
+	if err := patients.GET("/search", searchPatients); err != nil {
+		log.Fatalf("Failed to register GET /patients/search: %v", err)
+	}
+	if err := patients.GET("/:id", getPatient); err != nil {
+		log.Fatalf("Failed to register GET /patients/:id: %v", err)
+	}
+	if err := patients.PUT("/:id/consent", updatePatientConsent); err != nil {
+		log.Fatalf("Failed to register PUT /patients/:id/consent: %v", err)
+	}
+	if err := patients.GET("/:id/records", getPatientRecords); err != nil {
+		log.Fatalf("Failed to register GET /patients/:id/records: %v", err)
+	}
 
 	// Medical records endpoints
 	records := api.Group("/records")
-	records.POST("", createMedicalRecord)
-	records.GET("/:id", getMedicalRecord)
+	if err := records.POST("", createMedicalRecord); err != nil {
+		log.Fatalf("Failed to register POST /records: %v", err)
+	}
+	if err := records.GET("/:id", getMedicalRecord); err != nil {
+		log.Fatalf("Failed to register GET /records/:id: %v", err)
+	}
 
 	// Provider management endpoints
 	providers := api.Group("/providers")
-	providers.POST("", createProvider)
-	providers.GET("/:id", getProvider)
+	if err := providers.POST("", createProvider); err != nil {
+		log.Fatalf("Failed to register POST /providers: %v", err)
+	}
+	if err := providers.GET("/:id", getProvider); err != nil {
+		log.Fatalf("Failed to register GET /providers/:id: %v", err)
+	}
 
 	// Compliance and audit endpoints
 	compliance := api.Group("/compliance")
-	compliance.GET("/audit-trail", getAuditTrail)
-	compliance.GET("/reports/:type", generateComplianceReport)
+	if err := compliance.GET("/audit-trail", getAuditTrail); err != nil {
+		log.Fatalf("Failed to register GET /compliance/audit-trail: %v", err)
+	}
+	if err := compliance.GET("/reports/:type", generateComplianceReport); err != nil {
+		log.Fatalf("Failed to register GET /compliance/reports/:type: %v", err)
+	}
 
 	// Start the application
 	log.Println("Starting Enterprise Healthcare API on port 8080...")

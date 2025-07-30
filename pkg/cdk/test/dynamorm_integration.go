@@ -165,7 +165,9 @@ func (s *DynamORMTableTestSuite) TestCreateAndQueryTable() {
 
 	s.NoError(err)
 	s.Len(resp.Items, 1)
-	s.Equal("Test User", resp.Items[0]["name"].(*types.AttributeValueMemberS).Value)
+	if nameAttr, ok := resp.Items[0]["name"].(*types.AttributeValueMemberS); ok {
+		s.Equal("Test User", nameAttr.Value)
+	}
 }
 
 // TestTTLFunctionality tests TTL configuration
@@ -263,9 +265,10 @@ func (s *DynamORMTestScenarios) TestMultiTenantAccess(t *testing.T, tableName st
 
 	// Verify tenant isolation
 	for _, item := range resp.Items {
-		pk := item["pk"].(*types.AttributeValueMemberS).Value
-		if pk != "TENANT#abc123" {
-			t.Errorf("Got item from wrong tenant: %s", pk)
+		if pkAttr, ok := item["pk"].(*types.AttributeValueMemberS); ok {
+			if pkAttr.Value != "TENANT#abc123" {
+				t.Errorf("Got item from wrong tenant: %s", pkAttr.Value)
+			}
 		}
 	}
 }

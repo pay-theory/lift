@@ -57,7 +57,7 @@ func main() {
 	}
 
 	// Create user endpoint
-	app.POST("/users", func(ctx *lift.Context) error {
+	if err := app.POST("/users", func(ctx *lift.Context) error {
 		var req CreateUserRequest
 		if err := ctx.ParseRequest(&req); err != nil {
 			return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400).WithCause(err)
@@ -89,10 +89,12 @@ func main() {
 			User:    user,
 			Message: "User created successfully",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register POST /users: %v", err)
+	}
 
 	// Get user endpoint
-	app.GET("/users/:id", func(ctx *lift.Context) error {
+	if err := app.GET("/users/:id", func(ctx *lift.Context) error {
 		userID := ctx.Param("id")
 
 		// Get DynamORM instance from context
@@ -116,10 +118,12 @@ func main() {
 			User:    &user,
 			Message: "User retrieved successfully",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /users/:id: %v", err)
+	}
 
 	// Update user endpoint
-	app.PUT("/users/:id", func(ctx *lift.Context) error {
+	if err := app.PUT("/users/:id", func(ctx *lift.Context) error {
 		userID := ctx.Param("id")
 
 		var req CreateUserRequest
@@ -158,10 +162,12 @@ func main() {
 			User:    &user,
 			Message: "User updated successfully",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register PUT /users/:id: %v", err)
+	}
 
 	// Delete user endpoint
-	app.DELETE("/users/:id", func(ctx *lift.Context) error {
+	if err := app.DELETE("/users/:id", func(ctx *lift.Context) error {
 		userID := ctx.Param("id")
 
 		// Get DynamORM instance from context
@@ -188,10 +194,12 @@ func main() {
 		return ctx.JSON(map[string]string{
 			"message": "User deleted successfully",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register DELETE /users/:id: %v", err)
+	}
 
 	// List users for tenant
-	app.GET("/users", func(ctx *lift.Context) error {
+	if err := app.GET("/users", func(ctx *lift.Context) error {
 		// Get DynamORM instance from context
 		db, err := dynamorm.TenantDB(ctx)
 		if err != nil {
@@ -214,7 +222,9 @@ func main() {
 			"users": result.Items,
 			"count": result.Count,
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /users: %v", err)
+	}
 
 	// Start the application
 	if err := app.Start(); err != nil {

@@ -125,7 +125,11 @@ func (ts *TestStack) GetResource(logicalId string) map[string]interface{} {
 // PrintTemplate prints the synthesized template for debugging
 func (ts *TestStack) PrintTemplate() {
 	template := ts.Template().ToJSON()
-	jsonBytes, _ := json.MarshalIndent(*template, "", "  ")
+	jsonBytes, err := json.MarshalIndent(*template, "", "  ")
+	if err != nil && ts.t != nil {
+		ts.t.Logf("Failed to marshal template: %v", err)
+		return
+	}
 	if ts.t != nil {
 		ts.t.Logf("Stack Template:\n%s", string(jsonBytes))
 	}

@@ -212,7 +212,9 @@ func (p *DynamORMPool) SessionStats() map[string]interface{} {
 		}
 		session.mu.RUnlock()
 
-		stats["sessions"].(map[string]interface{})[key] = sessionStats
+		if sessions, ok := stats["sessions"].(map[string]interface{}); ok {
+			sessions[key] = sessionStats
+		}
 	}
 
 	return stats

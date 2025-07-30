@@ -453,8 +453,8 @@ func checkPathTraversal(content string) error {
 	}
 
 	// Check for encoded path traversal attempts
-	decoded, _ := url.QueryUnescape(content)
-	if decoded != content {
+	decoded, err := url.QueryUnescape(content)
+	if err == nil && decoded != content {
 		// Check decoded content for path traversal
 		decodedLower := strings.ToLower(decoded)
 		for _, pattern := range pathPatterns {

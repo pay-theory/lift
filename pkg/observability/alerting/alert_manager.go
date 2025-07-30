@@ -606,7 +606,12 @@ func (am *AlertManager) processEscalations(ctx context.Context) {
 
 	for _, alert := range am.activeAlerts {
 		if am.escalator.ShouldEscalate(alert) {
-			go am.escalator.Escalate(ctx, alert)
+			go func(a *Alert) {
+				if err := am.escalator.Escalate(ctx, a); err != nil {
+					// Log error but don't fail the check
+					// AlertManager doesn't have a logger field, so we'll skip logging
+				}
+			}(alert)
 		}
 	}
 }

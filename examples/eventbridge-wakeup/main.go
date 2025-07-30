@@ -20,7 +20,7 @@ func main() {
 	})
 
 	// Handle EventBridge scheduled events (like cron jobs)
-	app.EventBridge("scheduled-wakeup", func(ctx *lift.Context) error {
+	if err := app.EventBridge("scheduled-wakeup", func(ctx *lift.Context) error {
 		log.Println("Wakeup event received!")
 
 		// Get event details
@@ -37,7 +37,9 @@ func main() {
 			"status":  "success",
 			"message": "Wakeup completed successfully",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register EventBridge handler: %v", err)
+	}
 
 	// Start Lambda handler
 	lambda.Start(app.HandleRequest)

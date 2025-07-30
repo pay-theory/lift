@@ -516,8 +516,9 @@ func createLogProcessingFunction(scope constructs.Construct, props *AuditingProp
 	})
 
 	// Add additional Kinesis permissions to the role
-	role := function.Role().(awsiam.Role)
-	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+	roleInterface := function.Role()
+	if role, ok := roleInterface.(awsiam.Role); ok {
+		role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 		Effect: awsiam.Effect_ALLOW,
 		Actions: &[]*string{
 			jsii.String("kinesis:DescribeStream"),
@@ -528,14 +529,15 @@ func createLogProcessingFunction(scope constructs.Construct, props *AuditingProp
 		Resources: &[]*string{stream.StreamArn()},
 	}))
 
-	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Effect: awsiam.Effect_ALLOW,
-		Actions: &[]*string{
-			jsii.String("logs:CreateLogStream"),
-			jsii.String("logs:PutLogEvents"),
-		},
-		Resources: &[]*string{jsii.String("*")},
-	}))
+		role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+			Effect: awsiam.Effect_ALLOW,
+			Actions: &[]*string{
+				jsii.String("logs:CreateLogStream"),
+				jsii.String("logs:PutLogEvents"),
+			},
+			Resources: &[]*string{jsii.String("*")},
+		}))
+	}
 
 	// Add Kinesis event source using higher-level construct
 	eventSource := awslambdaeventsources.NewKinesisEventSource(stream, &awslambdaeventsources.KinesisEventSourceProps{

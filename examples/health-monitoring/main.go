@@ -79,7 +79,9 @@ func main() {
 	// 1. Memory Health Checker
 	fmt.Println("\n📊 Setting up Memory Health Checker...")
 	memoryChecker := health.NewMemoryHealthChecker("memory")
-	healthManager.RegisterChecker("memory", memoryChecker)
+	if err := healthManager.RegisterChecker("memory", memoryChecker); err != nil {
+		log.Fatalf("Failed to register memory checker: %v", err)
+	}
 
 	// 2. Connection Pool Health Checker
 	fmt.Println("🔗 Setting up Connection Pool Health Checker...")
@@ -92,12 +94,16 @@ func main() {
 	pool := resources.NewConnectionPool(poolConfig, factory)
 
 	poolChecker := health.NewPoolHealthChecker("connection-pool", pool)
-	healthManager.RegisterChecker("connection-pool", poolChecker)
+	if err := healthManager.RegisterChecker("connection-pool", poolChecker); err != nil {
+		log.Fatalf("Failed to register pool checker: %v", err)
+	}
 
 	// 3. HTTP Service Health Checker
 	fmt.Println("🌐 Setting up HTTP Service Health Checker...")
 	httpChecker := health.NewHTTPHealthChecker("google", "https://www.google.com")
-	healthManager.RegisterChecker("external-service", httpChecker)
+	if err := healthManager.RegisterChecker("external-service", httpChecker); err != nil {
+		log.Fatalf("Failed to register HTTP checker: %v", err)
+	}
 
 	// 4. Custom Business Logic Health Checker
 	fmt.Println("⚙️  Setting up Custom Business Logic Health Checker...")
@@ -128,7 +134,9 @@ func main() {
 			},
 		}
 	})
-	healthManager.RegisterChecker("business-logic", businessChecker)
+	if err := healthManager.RegisterChecker("business-logic", businessChecker); err != nil {
+		log.Fatalf("Failed to register business logic checker: %v", err)
+	}
 
 	// 5. Database Health Checker (mock)
 	fmt.Println("🗄️  Setting up Database Health Checker...")
@@ -159,11 +167,13 @@ func main() {
 	demoHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{
+		if _, err := fmt.Fprintf(w, `{
 			"message": "Hello from Lift Health Monitoring Demo!",
 			"timestamp": "%s",
 			"path": "%s"
-		}`, time.Now().Format(time.RFC3339), r.URL.Path)
+		}`, time.Now().Format(time.RFC3339), r.URL.Path); err != nil {
+			log.Printf("Failed to write response: %v", err)
+		}
 	})
 
 	// Wrap demo handler with health middleware

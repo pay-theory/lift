@@ -374,7 +374,7 @@ func demonstrateSOC2ContinuousMonitoring(_ *enterprise.SOC2TypeIICompliance, _ *
 
 	for _, alert := range alerts {
 		status := "✅ Enabled"
-		if !alert["enabled"].(bool) {
+		if enabled, ok := alert["enabled"].(bool); ok && !enabled {
 			status = "❌ Disabled"
 		}
 		fmt.Printf("   %s %s (threshold: %s)\n", status, alert["type"], alert["threshold"])

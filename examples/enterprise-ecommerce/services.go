@@ -289,7 +289,10 @@ func (m *mockProductService) ListProducts(_ context.Context, tenantID string, _ 
 
 func (m *mockProductService) SearchProducts(ctx context.Context, tenantID, query string, filters ProductFilters) ([]Product, error) {
 	// Simulate search functionality
-	allProducts, _ := m.ListProducts(ctx, tenantID, filters)
+	allProducts, err := m.ListProducts(ctx, tenantID, filters)
+	if err != nil {
+		return nil, err
+	}
 	var results []Product
 
 	query = strings.ToLower(query)

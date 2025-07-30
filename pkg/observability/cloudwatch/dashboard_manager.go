@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -342,7 +343,11 @@ func (dm *DashboardManager) buildDashboardBody(template *DashboardTemplate, vari
 			"properties": dm.buildWidgetProperties(widgetTemplate, allVariables),
 		}
 
-		dashboard["widgets"] = append(dashboard["widgets"].([]map[string]any), widget)
+		widgets, ok := dashboard["widgets"].([]map[string]any)
+		if !ok {
+			widgets = []map[string]any{}
+		}
+		dashboard["widgets"] = append(widgets, widget)
 	}
 
 	// Convert to JSON
@@ -499,7 +504,10 @@ func (dm *DashboardManager) StartAutoUpdate(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				dm.SyncDashboards(ctx)
+				if err := dm.SyncDashboards(ctx); err != nil {
+					// Log error but continue running
+					log.Printf("Failed to sync dashboards: %v", err)
+				}
 			case <-ctx.Done():
 				return
 			}

@@ -56,7 +56,9 @@ func (m *MockDynamORMClient) PutItem(ctx context.Context, params *dynamodb.PutIt
 			if call.Method == "PutItem" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.PutItemOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.PutItemOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -107,7 +109,9 @@ func (m *MockDynamORMClient) GetItem(ctx context.Context, params *dynamodb.GetIt
 			if call.Method == "GetItem" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.GetItemOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.GetItemOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -143,7 +147,9 @@ func (m *MockDynamORMClient) Query(ctx context.Context, params *dynamodb.QueryIn
 			if call.Method == "Query" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.QueryOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.QueryOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -168,7 +174,9 @@ func (m *MockDynamORMClient) Scan(ctx context.Context, params *dynamodb.ScanInpu
 			if call.Method == "Scan" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.ScanOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.ScanOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -206,7 +214,9 @@ func (m *MockDynamORMClient) UpdateItem(ctx context.Context, params *dynamodb.Up
 			if call.Method == "UpdateItem" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.UpdateItemOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.UpdateItemOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -236,7 +246,9 @@ func (m *MockDynamORMClient) DeleteItem(ctx context.Context, params *dynamodb.De
 			if call.Method == "DeleteItem" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.DeleteItemOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.DeleteItemOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -269,7 +281,9 @@ func (m *MockDynamORMClient) CreateTable(ctx context.Context, params *dynamodb.C
 			if call.Method == "CreateTable" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.CreateTableOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.CreateTableOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -336,7 +350,9 @@ func (m *MockDynamORMClient) DeleteTable(ctx context.Context, params *dynamodb.D
 			if call.Method == "DeleteTable" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.DeleteTableOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.DeleteTableOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -367,7 +383,9 @@ func (m *MockDynamORMClient) DescribeTable(ctx context.Context, params *dynamodb
 			if call.Method == "DescribeTable" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.DescribeTableOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.DescribeTableOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}
@@ -405,7 +423,9 @@ func (m *MockDynamORMClient) UpdateTimeToLive(ctx context.Context, params *dynam
 			if call.Method == "UpdateTimeToLive" {
 				args := m.Called(ctx, params, optFns)
 				if args.Get(0) != nil {
-					return args.Get(0).(*dynamodb.UpdateTimeToLiveOutput), args.Error(1)
+					if output, ok := args.Get(0).(*dynamodb.UpdateTimeToLiveOutput); ok {
+						return output, args.Error(1)
+					}
 				}
 				return nil, args.Error(1)
 			}

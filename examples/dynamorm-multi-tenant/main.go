@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -426,8 +427,10 @@ func main() {
 	}
 
 	// Public routes
-	app.POST("/api/tenants", tenantHandlers.CreateTenant)
-	app.GET("/api/health", func(ctx *lift.Context) error {
+	if err := app.POST("/api/tenants", tenantHandlers.CreateTenant); err != nil {
+		log.Fatalf("Failed to register POST /api/tenants: %v", err)
+	}
+	if err := app.GET("/api/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]interface{}{
 			"status":     "healthy",
 			"timestamp":  time.Now().Format(time.RFC3339),
@@ -441,7 +444,9 @@ func main() {
 				"monitoring",
 			},
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /api/health: %v", err)
+	}
 
 	// Add tenant isolation middleware
 	app.Use(TenantIsolationMiddleware())
@@ -450,18 +455,28 @@ func main() {
 	tenantGroup := app.Group("/api")
 
 	// Tenant management
-	tenantGroup.GET("/tenants/:id", tenantHandlers.GetTenant)
+	if err := tenantGroup.GET("/tenants/:id", tenantHandlers.GetTenant); err != nil {
+		log.Fatalf("Failed to register GET /api/tenants/:id: %v", err)
+	}
 
 	// User management (tenant-scoped)
-	tenantGroup.POST("/users", userHandlers.CreateUser)
-	tenantGroup.GET("/users", userHandlers.ListUsers)
+	if err := tenantGroup.POST("/users", userHandlers.CreateUser); err != nil {
+		log.Fatalf("Failed to register POST /api/users: %v", err)
+	}
+	if err := tenantGroup.GET("/users", userHandlers.ListUsers); err != nil {
+		log.Fatalf("Failed to register GET /api/users: %v", err)
+	}
 
 	// Project management (tenant-scoped)
-	tenantGroup.POST("/projects", projectHandlers.CreateProject)
-	tenantGroup.GET("/projects", projectHandlers.ListProjects)
+	if err := tenantGroup.POST("/projects", projectHandlers.CreateProject); err != nil {
+		log.Fatalf("Failed to register POST /api/projects: %v", err)
+	}
+	if err := tenantGroup.GET("/projects", projectHandlers.ListProjects); err != nil {
+		log.Fatalf("Failed to register GET /api/projects: %v", err)
+	}
 
 	// Metrics endpoint showing tenant-specific data
-	tenantGroup.GET("/metrics", func(ctx *lift.Context) error {
+	if err := tenantGroup.GET("/metrics", func(ctx *lift.Context) error {
 		tenantID := ctx.TenantID()
 		return ctx.JSON(map[string]interface{}{
 			"tenant_id":  tenantID,
@@ -479,16 +494,20 @@ func main() {
 				"X-Ray tracing with tenant context",
 			},
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /api/metrics: %v", err)
+	}
 
 	// Admin endpoints (would require admin authentication in real app)
-	app.GET("/admin/tenants", func(ctx *lift.Context) error {
+	if err := app.GET("/admin/tenants", func(ctx *lift.Context) error {
 		// This would query all tenants (admin only)
 		return ctx.JSON(map[string]interface{}{
 			"message": "Admin endpoint - would list all tenants",
 			"note":    "Requires admin authentication in production",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /admin/tenants: %v", err)
+	}
 
 	// Start the Lambda handler
 	lambda.Start(app.HandleRequest)

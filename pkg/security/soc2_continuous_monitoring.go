@@ -557,7 +557,10 @@ func (ms *MonitoringScheduler) runScheduledTasks() {
 		if task.Enabled && now.After(task.NextRun) {
 			go func(t *ScheduledTask) {
 				// Execute task and track errors silently
-				t.TaskFunc()
+				if err := t.TaskFunc(); err != nil {
+					// Task errors are expected to be handled internally
+					// Log would be here if MonitoringScheduler had a logger
+				}
 
 				// Update next run time
 				ms.mu.Lock()

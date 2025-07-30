@@ -712,13 +712,13 @@ type Group struct {
 }
 
 // GET adds a GET route to the group
-func (g *Group) GET(path string, handler func(*lift.Context) error) {
-	g.app.GET(g.prefix+path, handler)
+func (g *Group) GET(path string, handler func(*lift.Context) error) error {
+	return g.app.GET(g.prefix+path, handler)
 }
 
 // POST adds a POST route to the group
-func (g *Group) POST(path string, handler func(*lift.Context) error) {
-	g.app.POST(g.prefix+path, handler)
+func (g *Group) POST(path string, handler func(*lift.Context) error) error {
+	return g.app.POST(g.prefix+path, handler)
 }
 
 // Group creates a new route group
@@ -767,25 +767,45 @@ func main() {
 	api := NewGroup(app, "/api/v1")
 
 	// Health check endpoint
-	api.GET("/health", healthCheck)
+	if err := api.GET("/health", healthCheck); err != nil {
+		log.Fatalf("Failed to register health endpoint: %v", err)
+	}
 
 	// Account management endpoints
 	accounts := api.Group("/accounts")
-	accounts.POST("", createAccount)
-	accounts.GET("/:id", getAccount)
-	accounts.GET("/:id/balance", getBalance)
-	accounts.POST("/:id/transactions", createTransaction)
+	if err := accounts.POST("", createAccount); err != nil {
+		log.Fatalf("Failed to register POST /accounts: %v", err)
+	}
+	if err := accounts.GET("/:id", getAccount); err != nil {
+		log.Fatalf("Failed to register GET /accounts/:id: %v", err)
+	}
+	if err := accounts.GET("/:id/balance", getBalance); err != nil {
+		log.Fatalf("Failed to register GET /accounts/:id/balance: %v", err)
+	}
+	if err := accounts.POST("/:id/transactions", createTransaction); err != nil {
+		log.Fatalf("Failed to register POST /accounts/:id/transactions: %v", err)
+	}
 
 	// Payment processing endpoints
 	payments := api.Group("/payments")
-	payments.POST("", processPayment)
-	payments.GET("/:id", getPayment)
-	payments.POST("/:id/refund", refundPayment)
+	if err := payments.POST("", processPayment); err != nil {
+		log.Fatalf("Failed to register POST /payments: %v", err)
+	}
+	if err := payments.GET("/:id", getPayment); err != nil {
+		log.Fatalf("Failed to register GET /payments/:id: %v", err)
+	}
+	if err := payments.POST("/:id/refund", refundPayment); err != nil {
+		log.Fatalf("Failed to register POST /payments/:id/refund: %v", err)
+	}
 
 	// Compliance endpoints
 	compliance := api.Group("/compliance")
-	compliance.GET("/audit-trail", getAuditTrail)
-	compliance.GET("/reports/:type", generateComplianceReport)
+	if err := compliance.GET("/audit-trail", getAuditTrail); err != nil {
+		log.Fatalf("Failed to register GET /compliance/audit-trail: %v", err)
+	}
+	if err := compliance.GET("/reports/:type", generateComplianceReport); err != nil {
+		log.Fatalf("Failed to register GET /compliance/reports/:type: %v", err)
+	}
 
 	// Start the application
 	log.Println("Starting Enterprise Banking API on port 8080...")

@@ -193,9 +193,11 @@ func RecoveryMiddleware() lift.Middleware {
 						})
 					}
 
-					ctx.Status(500).JSON(map[string]string{
+					if err := ctx.Status(500).JSON(map[string]string{
 						"error": "Internal server error",
-					})
+					}); err != nil {
+						log.Printf("Failed to send error response: %v", err)
+					}
 				}
 			}()
 
@@ -291,14 +293,16 @@ func main() {
 	public := app.Group("/public")
 	// Note: RouteGroup doesn't support Use() method directly - apply middleware at app level
 
-	public.GET("/health", func(ctx *lift.Context) error {
+	if err := public.GET("/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
 			"status":    "healthy",
 			"timestamp": time.Now().Format(time.RFC3339),
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /public/health: %v", err)
+	}
 
-	public.POST("/feedback", func(ctx *lift.Context) error {
+	if err := public.POST("/feedback", func(ctx *lift.Context) error {
 		var feedback map[string]any
 		if err := ctx.ParseRequest(&feedback); err != nil {
 			return ctx.Status(400).JSON(map[string]string{
@@ -310,15 +314,17 @@ func main() {
 			"message": "Feedback received",
 			"data":    feedback,
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register POST /public/feedback: %v", err)
+	}
 
 	// API routes with authentication and validation
 	api := app.Group("/api")
 	// Note: RouteGroup doesn't support Use() method directly - apply middleware at app level
 
-	api.GET("/profile", func(ctx *lift.Context) error {
-		userID := ctx.Get("user_id").(string)
-		userEmail := ctx.Get("user_email").(string)
+	if err := api.GET("/profile", func(ctx *lift.Context) error {
+		userID, _ := ctx.Get("user_id").(string)
+		userEmail, _ := ctx.Get("user_email").(string)
 
 		return ctx.JSON(map[string]any{
 			"user_id": userID,
@@ -328,9 +334,11 @@ func main() {
 				"role": "user",
 			},
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /api/profile: %v", err)
+	}
 
-	api.POST("/data", func(ctx *lift.Context) error {
+	if err := api.POST("/data", func(ctx *lift.Context) error {
 		var data map[string]any
 		if err := ctx.ParseRequest(&data); err != nil {
 			return ctx.Status(400).JSON(map[string]string{
@@ -343,10 +351,12 @@ func main() {
 			"id":      generateRequestID(),
 			"data":    data,
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register POST /api/data: %v", err)
+	}
 
 	// Protected route with additional validation
-	api.GET("/protected", func(ctx *lift.Context) error {
+	if err := api.GET("/protected", func(ctx *lift.Context) error {
 		apiVersion := ctx.Header("X-API-Version")
 
 		return ctx.JSON(map[string]any{
@@ -354,32 +364,40 @@ func main() {
 			"api_version": apiVersion,
 			"user_id":     ctx.Get("user_id"),
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /api/protected: %v", err)
+	}
 
 	// Admin routes with conditional middleware
 	admin := app.Group("/admin")
 	// Note: RouteGroup doesn't support Use() method directly - apply middleware at app level
 	// Admin routes would need authentication applied at the app level
 
-	admin.GET("/stats", func(ctx *lift.Context) error {
+	if err := admin.GET("/stats", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]any{
 			"message":   "Admin stats",
 			"timestamp": time.Now().Format(time.RFC3339),
 			"user_id":   ctx.Get("user_id"),
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /admin/stats: %v", err)
+	}
 
 	// Route that demonstrates panic recovery
-	app.GET("/panic", func(ctx *lift.Context) error {
+	if err := app.GET("/panic", func(ctx *lift.Context) error {
 		panic("This is a demonstration panic")
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /panic: %v", err)
+	}
 
 	// Route that demonstrates timeout
-	app.GET("/slow", func(ctx *lift.Context) error {
+	if err := app.GET("/slow", func(ctx *lift.Context) error {
 		// Simulate slow operation
 		time.Sleep(35 * time.Second) // This will timeout due to TimeoutMiddleware
 		return ctx.JSON(map[string]string{"message": "This won't be reached"})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /slow: %v", err)
+	}
 
 	if err := app.Start(); err != nil {
 		log.Fatalf("Failed to start app: %v", err)

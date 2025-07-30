@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -43,11 +44,13 @@ func main() {
 	)
 
 	// Public endpoints
-	app.GET("/health", func(ctx *lift.Context) error {
+	if err := app.GET("/health", func(ctx *lift.Context) error {
 		return ctx.OK(map[string]string{"status": "healthy"})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /health: %v", err)
+	}
 
-	app.POST("/login", func(ctx *lift.Context) error {
+	if err := app.POST("/login", func(ctx *lift.Context) error {
 		// In real app, validate credentials
 		var req struct {
 			Username string `json:"username"`
@@ -75,10 +78,12 @@ func main() {
 		return ctx.OK(map[string]string{
 			"token": tokenString,
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register POST /login: %v", err)
+	}
 
 	// Protected endpoints
-	app.GET("/me", func(ctx *lift.Context) error {
+	if err := app.GET("/me", func(ctx *lift.Context) error {
 		// Access JWT claims
 		claims := ctx.Claims()
 		if claims == nil {
@@ -92,9 +97,11 @@ func main() {
 			"roles":            claims["roles"],
 			"is_authenticated": ctx.IsAuthenticated(),
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /me: %v", err)
+	}
 
-	app.GET("/admin", func(ctx *lift.Context) error {
+	if err := app.GET("/admin", func(ctx *lift.Context) error {
 		// Check for admin role
 		claims := ctx.Claims()
 		if claims == nil {
@@ -122,10 +129,12 @@ func main() {
 			"message": "Welcome admin!",
 			"user_id": ctx.UserID(),
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /admin: %v", err)
+	}
 
 	// Multi-tenant endpoint
-	app.GET("/tenant/:tenantId/data", func(ctx *lift.Context) error {
+	if err := app.GET("/tenant/:tenantId/data", func(ctx *lift.Context) error {
 		requestedTenant := ctx.Param("tenantId")
 		userTenant := ctx.TenantID()
 
@@ -138,7 +147,9 @@ func main() {
 			"data":      "Tenant specific data",
 			"user_id":   ctx.UserID(),
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /tenant/:tenantId/data: %v", err)
+	}
 
 	// In Lambda, you would start with:
 	// lambda.Start(app.HandleRequest)
