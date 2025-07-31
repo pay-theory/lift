@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -417,9 +418,13 @@ func (ta *TestApp) Start() error {
 
 		// Type assert the response body
 		if bodyBytes, ok := ctx.Response.Body.([]byte); ok {
-			w.Write(bodyBytes)
+			if _, err := w.Write(bodyBytes); err != nil {
+				log.Printf("Warning: failed to write response: %v", err)
+			}
 		} else if bodyStr, ok := ctx.Response.Body.(string); ok {
-			w.Write([]byte(bodyStr))
+			if _, err := w.Write([]byte(bodyStr)); err != nil {
+				log.Printf("Warning: failed to write response: %v", err)
+			}
 		} else if ctx.Response.Body != nil {
 			// Handle any types (from ctx.JSON calls) by marshaling to JSON
 			jsonBytes, err := json.Marshal(ctx.Response.Body)
@@ -427,7 +432,9 @@ func (ta *TestApp) Start() error {
 				http.Error(w, fmt.Sprintf("Failed to marshal response: %v", err), 500)
 				return
 			}
-			w.Write(jsonBytes)
+			if _, err := w.Write(jsonBytes); err != nil {
+				log.Printf("Warning: failed to write response: %v", err)
+			}
 		}
 	}))
 
@@ -572,7 +579,11 @@ func (ta *TestApp) request(method, path string, body any, query map[string]strin
 	if err != nil {
 		return NewTestResponse(nil, 500, map[string]string{}, []byte{}, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Read response body
 	respBody := bytes.NewBuffer([]byte{})
@@ -628,7 +639,10 @@ func getRequestBody(r *http.Request) []byte {
 	}
 
 	buf := bytes.NewBuffer([]byte{})
-	buf.ReadFrom(r.Body)
+	if _, err := buf.ReadFrom(r.Body); err != nil {
+		log.Printf("Warning: failed to read request body: %v", err)
+		return []byte{}
+	}
 	return buf.Bytes()
 }
 

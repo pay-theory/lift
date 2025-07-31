@@ -2,6 +2,7 @@ package testing
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -33,7 +34,10 @@ func (m *MockCloudWatchClient) PutMetricData(
 ) (*cloudwatch.PutMetricDataOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.PutMetricDataOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.PutMetricDataOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -46,7 +50,10 @@ func (m *MockCloudWatchClient) GetMetricStatistics(
 ) (*cloudwatch.GetMetricStatisticsOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.GetMetricStatisticsOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.GetMetricStatisticsOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -59,7 +66,10 @@ func (m *MockCloudWatchClient) PutMetricAlarm(
 ) (*cloudwatch.PutMetricAlarmOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.PutMetricAlarmOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.PutMetricAlarmOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -72,7 +82,10 @@ func (m *MockCloudWatchClient) DescribeAlarms(
 ) (*cloudwatch.DescribeAlarmsOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.DescribeAlarmsOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.DescribeAlarmsOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -85,7 +98,10 @@ func (m *MockCloudWatchClient) DeleteAlarms(
 ) (*cloudwatch.DeleteAlarmsOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.DeleteAlarmsOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.DeleteAlarmsOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -98,7 +114,10 @@ func (m *MockCloudWatchClient) ListMetrics(
 ) (*cloudwatch.ListMetricsOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.ListMetricsOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.ListMetricsOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -111,7 +130,10 @@ func (m *MockCloudWatchClient) GetMetricData(
 ) (*cloudwatch.GetMetricDataOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.GetMetricDataOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.GetMetricDataOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -124,7 +146,10 @@ func (m *MockCloudWatchClient) PutAnomalyDetector(
 ) (*cloudwatch.PutAnomalyDetectorOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.PutAnomalyDetectorOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.PutAnomalyDetectorOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -137,7 +162,10 @@ func (m *MockCloudWatchClient) DescribeAnomalyDetectors(
 ) (*cloudwatch.DescribeAnomalyDetectorsOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.DescribeAnomalyDetectorsOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.DescribeAnomalyDetectorsOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -150,7 +178,10 @@ func (m *MockCloudWatchClient) DeleteAnomalyDetector(
 ) (*cloudwatch.DeleteAnomalyDetectorOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.DeleteAnomalyDetectorOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.DeleteAnomalyDetectorOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -163,7 +194,10 @@ func (m *MockCloudWatchClient) TagResource(
 ) (*cloudwatch.TagResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.TagResourceOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.TagResourceOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -176,7 +210,10 @@ func (m *MockCloudWatchClient) UntagResource(
 ) (*cloudwatch.UntagResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.UntagResourceOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.UntagResourceOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }
@@ -189,7 +226,10 @@ func (m *MockCloudWatchClient) ListTagsForResource(
 ) (*cloudwatch.ListTagsForResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
 	if v := args.Get(0); v != nil {
-		return v.(*cloudwatch.ListTagsForResourceOutput), args.Error(1)
+		if output, ok := v.(*cloudwatch.ListTagsForResourceOutput); ok {
+			return output, args.Error(1)
+		}
+		return nil, fmt.Errorf("unexpected type in mock return value")
 	}
 	return nil, args.Error(1)
 }

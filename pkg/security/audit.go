@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -282,7 +283,10 @@ func (bal *BufferedAuditLogger) startFlusher() {
 			case <-bal.stopCh:
 				// Final flush before stopping
 				bal.bufferMu.Lock()
-				bal.flushBuffer()
+				if err := bal.flushBuffer(); err != nil {
+					// Log error but continue shutdown
+					log.Printf("Warning: failed to flush audit buffer during shutdown: %v", err)
+				}
 				bal.bufferMu.Unlock()
 				return
 			}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -162,7 +163,10 @@ func (c *ServiceClient) Call(ctx context.Context, request *ServiceRequest) (*Ser
 			return nil, cbErr
 		}
 
-		response := result.(*ServiceResponse)
+		response, ok := result.(*ServiceResponse)
+		if !ok {
+			return nil, fmt.Errorf("unexpected circuit breaker result type")
+		}
 		c.recordMetrics(request.ServiceName, "success", time.Since(start), nil)
 		return response, nil
 	}
@@ -216,7 +220,11 @@ func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceIns
 		if execErr != nil {
 			return execErr
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				log.Printf("Warning: failed to close response body: %v", err)
+			}
+		}()
 
 		// Read response body
 		bodyBytes, readErr := io.ReadAll(resp.Body)

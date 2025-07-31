@@ -69,7 +69,11 @@ func main() {
 		fmt.Printf("   ❌ Could not create test file: %v\n", err)
 		return
 	}
-	defer os.Remove("test_websocket.go")
+	defer func() {
+		if err := os.Remove("test_websocket.go"); err != nil {
+			fmt.Printf("Warning: failed to remove test file: %v\n", err)
+		}
+	}()
 
 	// Try to build it
 	fmt.Println("   Building test file...")
@@ -83,7 +87,11 @@ func main() {
 		fmt.Println("   3. Run: go mod tidy")
 	} else {
 		fmt.Println("   ✅ Build successful!")
-		defer os.Remove("test_websocket")
+		defer func() {
+			if err := os.Remove("test_websocket"); err != nil {
+				fmt.Printf("Warning: failed to remove test binary: %v\n", err)
+			}
+		}()
 
 		// Run the test
 		fmt.Println("   Running test...")

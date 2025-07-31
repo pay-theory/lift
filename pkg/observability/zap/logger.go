@@ -348,7 +348,11 @@ func (f *ZapLoggerFactory) CreateTestLogger() observability.StructuredLogger {
 		Level:  "debug", // Debug level available for testing with enhanced sanitization
 		Format: "json",
 	}
-	logger, _ := NewZapLogger(config) // No options for test logger
+	logger, err := NewZapLogger(config) // No options for test logger
+	if err != nil {
+		// Fall back to a no-op logger for tests if creation fails
+		return &NoOpStructuredLogger{&lift.NoOpLogger{}}
+	}
 	return logger
 }
 

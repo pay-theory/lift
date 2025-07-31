@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -611,7 +612,10 @@ func (cd *ComplianceDashboard) refreshCache(ctx context.Context) {
 	}
 
 	for _, timeRange := range timeRanges {
-		cd.GetDashboardMetrics(ctx, timeRange)
+		if _, err := cd.GetDashboardMetrics(ctx, timeRange); err != nil {
+			log.Printf("Warning: failed to get dashboard metrics for time range %v-%v: %v", 
+				timeRange.Start, timeRange.End, err)
+		}
 	}
 }
 

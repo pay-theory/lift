@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/pay-theory/lift/pkg/observability"
 	"github.com/pay-theory/lift/pkg/observability/cloudwatch"
 	"github.com/pay-theory/lift/pkg/observability/zap"
@@ -154,50 +153,6 @@ func demoCloudWatchLoggerMock() {
 		stats.EntriesLogged, stats.EntriesDropped, stats.FlushCount)
 }
 
-func demoCloudWatchLoggerReal() {
-	// This demo requires AWS credentials and permissions
-	// Uncomment and configure for real AWS usage
-
-	// Load AWS config
-	cfg, err := config.LoadDefaultConfig(context.Background())
-	if err != nil {
-		log.Fatalf("Failed to load AWS config: %v", err)
-	}
-
-	// Create real CloudWatch client
-	client := cloudwatch.NewCloudWatchLogsClient(cfg)
-
-	// Configure CloudWatch logger
-	config := observability.LoggerConfig{
-		LogGroup:      "/aws/lambda/lift-production",
-		LogStream:     fmt.Sprintf("production-stream-%d", time.Now().Unix()),
-		BatchSize:     25,
-		FlushInterval: 5 * time.Second,
-		BufferSize:    100,
-		Level:         "info",
-		Format:        "json",
-	}
-
-	// Create CloudWatch logger
-	logger, err := cloudwatch.NewCloudWatchLogger(config, client)
-	if err != nil {
-		log.Fatalf("Failed to create CloudWatch logger: %v", err)
-	}
-	defer func() {
-		if err := logger.Close(); err != nil {
-			log.Printf("Error closing logger: %v", err)
-		}
-	}()
-
-	// Production logging example
-	logger.Info("Production system started", map[string]any{
-		"version":     "1.0.0",
-		"environment": "production",
-		"region":      cfg.Region,
-	})
-
-	fmt.Println("   Real CloudWatch logging completed")
-}
 
 func demoMultiTenantLogging() {
 	// Create mock client

@@ -3,6 +3,7 @@ package cloudwatch
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -288,8 +289,14 @@ func (m *CloudWatchMetrics) Close() error {
 
 // GetStats returns metrics collection statistics
 func (m *CloudWatchMetrics) GetStats() observability.MetricsStats {
-	lastFlush, _ := m.lastFlush.Load().(time.Time)
-	lastError, _ := m.lastError.Load().(string)
+	lastFlush, ok := m.lastFlush.Load().(time.Time)
+	if !ok {
+		lastFlush = time.Time{} // zero time if assertion fails
+	}
+	lastError, ok := m.lastError.Load().(string)
+	if !ok {
+		lastError = "" // empty string if assertion fails
+	}
 
 	return observability.MetricsStats{
 		MetricsRecorded: atomic.LoadInt64(&m.metricsRecorded),
@@ -313,11 +320,15 @@ func (m *CloudWatchMetrics) backgroundFlusher() {
 			return
 		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			_ = m.flush(ctx)
+			if err := m.flush(ctx); err != nil {
+				log.Printf("Warning: periodic metrics flush failed: %v", err)
+			}
 			cancel()
 		case <-m.flushNow:
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			_ = m.flush(ctx)
+			if err := m.flush(ctx); err != nil {
+				log.Printf("Warning: manual metrics flush failed: %v", err)
+			}
 			cancel()
 		}
 	}

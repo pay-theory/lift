@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -302,7 +303,9 @@ func (cf *ComplianceFramework) ComplianceAudit() LiftMiddleware {
 									Timestamp: time.Now(),
 									Resolved:  false,
 								}
-								cf.auditor.LogSecurityEvent(auditID, securityEvent)
+								if err := cf.auditor.LogSecurityEvent(auditID, securityEvent); err != nil {
+									log.Printf("Warning: failed to log security event: %v", err)
+								}
 							}
 						}
 

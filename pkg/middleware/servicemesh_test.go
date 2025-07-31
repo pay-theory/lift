@@ -315,7 +315,7 @@ func TestCircuitBreakerMiddleware(t *testing.T) {
 			middleware := CircuitBreakerMiddleware(tt.config)
 
 			for i, shouldSucceed := range tt.requests {
-				handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+				handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 					if shouldSucceed {
 						return nil
 					}
@@ -395,10 +395,10 @@ func TestBulkheadMiddleware(t *testing.T) {
 			// Start concurrent requests simultaneously
 			wg.Add(tt.concurrentRequests)
 			for i := 0; i < tt.concurrentRequests; i++ {
-				go func(requestID int) {
+				go func(_ int) {
 					defer wg.Done()
 
-					handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+					handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 						time.Sleep(100 * time.Millisecond) // Longer work simulation
 						return nil
 					}))
@@ -494,7 +494,7 @@ func TestRetryMiddleware(t *testing.T) {
 			middleware := RetryMiddleware(tt.config)
 
 			attemptCount := 0
-			handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+			handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 				shouldFail := attemptCount < len(tt.failurePattern) && tt.failurePattern[attemptCount]
 				attemptCount++
 
@@ -559,7 +559,7 @@ func TestServiceMeshIntegration(t *testing.T) {
 	bulkheadMiddleware := BulkheadMiddleware(bulkheadConfig)
 
 	failureCount := 0
-	handler := retryMiddleware(circuitBreakerMiddleware(bulkheadMiddleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := retryMiddleware(circuitBreakerMiddleware(bulkheadMiddleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		failureCount++
 		if failureCount <= 3 {
 			return errors.New("temporary failure")
@@ -600,7 +600,7 @@ func BenchmarkCircuitBreakerMiddleware(b *testing.B) {
 	config.EnableMetrics = false // Disable for pure performance test
 
 	middleware := CircuitBreakerMiddleware(config)
-	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	}))
 
@@ -625,7 +625,7 @@ func BenchmarkBulkheadMiddleware(b *testing.B) {
 	config.EnableMetrics = false // Disable for pure performance test
 
 	middleware := BulkheadMiddleware(config)
-	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	}))
 
@@ -650,7 +650,7 @@ func BenchmarkRetryMiddleware(b *testing.B) {
 	config.EnableMetrics = false            // Disable for pure performance test
 
 	middleware := RetryMiddleware(config)
-	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	}))
 
@@ -685,7 +685,7 @@ func BenchmarkServiceMeshStack(b *testing.B) {
 	circuitBreakerMiddleware := CircuitBreakerMiddleware(circuitBreakerConfig)
 	bulkheadMiddleware := BulkheadMiddleware(bulkheadConfig)
 
-	handler := retryMiddleware(circuitBreakerMiddleware(bulkheadMiddleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := retryMiddleware(circuitBreakerMiddleware(bulkheadMiddleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	}))))
 

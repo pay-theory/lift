@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -431,7 +432,11 @@ func (o *OWASPScanner) scanAccessControl(ctx context.Context, target SecurityTar
 	if err != nil {
 		return vulns
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Check if admin endpoint is accessible without authentication
 	if resp.StatusCode == 200 {
@@ -488,7 +493,9 @@ func (o *OWASPScanner) scanInjection(ctx context.Context, target SecurityTarget)
 		if err != nil {
 			continue
 		}
-		resp.Body.Close()
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
 
 		// Simple heuristic: SQL errors in response indicate potential injection
 		if resp.StatusCode == 500 {
@@ -530,7 +537,11 @@ func (o *OWASPScanner) scanMisconfiguration(ctx context.Context, target Security
 	if err != nil {
 		return vulns
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Check for missing security headers
 	securityHeaders := []string{

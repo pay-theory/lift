@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -594,7 +595,9 @@ func (aae *AuditAnalyticsEngine) AnalyzeEvent(ctx context.Context, event *AuditE
 			dataPoint.Metrics["risk_score"] = analysis.RiskScore.Score
 		}
 
-		aae.dataStore.StoreAnalyticsData(ctx, dataPoint)
+		if err := aae.dataStore.StoreAnalyticsData(ctx, dataPoint); err != nil {
+			log.Printf("Warning: failed to store analytics data: %v", err)
+		}
 	}
 
 	return analysis, nil

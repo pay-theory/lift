@@ -129,7 +129,7 @@ func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (strin
 	// Cache the secret (encrypted or plain text)
 	if asm.useEncryption && asm.encryptedCache != nil {
 		// Best effort cache update - ignore errors
-		asm.encryptedCache.Set(name, value)
+		_ = asm.encryptedCache.Set(name, value)
 	} else if asm.cache != nil {
 		asm.cache.Set(name, value)
 	}
@@ -170,7 +170,7 @@ func (asm *AWSSecretsManager) PutSecret(ctx context.Context, name string, value 
 	// Update cache (encrypted or plain text)
 	if asm.useEncryption && asm.encryptedCache != nil {
 		// Best effort cache update - ignore errors
-		asm.encryptedCache.Set(name, value)
+		_ = asm.encryptedCache.Set(name, value)
 	} else if asm.cache != nil {
 		asm.cache.Set(name, value)
 	}

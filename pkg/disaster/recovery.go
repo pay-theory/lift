@@ -598,14 +598,14 @@ func (drm *DisasterRecoveryManager) executeFailoverStep(ctx context.Context, ste
 }
 
 // validateTargetRegion validates the target region
-func (drm *DisasterRecoveryManager) validateTargetRegion(ctx context.Context, step *FailoverStep) error {
+func (drm *DisasterRecoveryManager) validateTargetRegion(_ context.Context, _ *FailoverStep) error {
 	// Implementation would validate that the target region is ready
 	time.Sleep(2 * time.Second) // Simulate validation time
 	return nil
 }
 
 // stopTrafficToPrimary stops traffic to the primary region
-func (drm *DisasterRecoveryManager) stopTrafficToPrimary(ctx context.Context, step *FailoverStep) error {
+func (drm *DisasterRecoveryManager) stopTrafficToPrimary(_ context.Context, _ *FailoverStep) error {
 	// Implementation would stop traffic routing
 	time.Sleep(1 * time.Second) // Simulate traffic stop time
 	return nil
@@ -618,21 +618,21 @@ func (drm *DisasterRecoveryManager) synchronizeData(ctx context.Context, _ *Fail
 }
 
 // activateStandbyRegion activates the standby region
-func (drm *DisasterRecoveryManager) activateStandbyRegion(ctx context.Context, step *FailoverStep) error {
+func (drm *DisasterRecoveryManager) activateStandbyRegion(_ context.Context, _ *FailoverStep) error {
 	// Implementation would activate services in the standby region
 	time.Sleep(5 * time.Second) // Simulate activation time
 	return nil
 }
 
 // updateDNSRecords updates DNS records
-func (drm *DisasterRecoveryManager) updateDNSRecords(ctx context.Context, step *FailoverStep) error {
+func (drm *DisasterRecoveryManager) updateDNSRecords(_ context.Context, _ *FailoverStep) error {
 	// Implementation would update DNS records
 	time.Sleep(3 * time.Second) // Simulate DNS update time
 	return nil
 }
 
 // startTrafficToNewPrimary starts traffic to the new primary
-func (drm *DisasterRecoveryManager) startTrafficToNewPrimary(ctx context.Context, step *FailoverStep) error {
+func (drm *DisasterRecoveryManager) startTrafficToNewPrimary(_ context.Context, _ *FailoverStep) error {
 	// Implementation would start traffic routing
 	time.Sleep(1 * time.Second) // Simulate traffic start time
 	return nil

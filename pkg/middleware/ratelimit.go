@@ -455,7 +455,7 @@ func UpdateRateLimitStats(ctx context.Context, config RateLimitConfig, allowed b
 }
 
 // CleanupExpiredEntries removes expired rate limit entries
-func CleanupExpiredEntries(ctx context.Context, config RateLimitConfig) error {
+func CleanupExpiredEntries(_ context.Context, _ RateLimitConfig) error {
 	// This would scan the table and remove expired entries
 	// Implementation depends on DynamORM's scan capabilities
 	// For now, we rely on DynamoDB TTL to handle cleanup automatically

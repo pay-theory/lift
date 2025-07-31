@@ -3,6 +3,7 @@ package deployment
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -623,7 +624,11 @@ func (h *HTTPHealthCheck) Check(ctx context.Context, env *Environment) error {
 	if err != nil {
 		return fmt.Errorf("health check request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Check status code
 	if resp.StatusCode != env.Config.ExpectedStatusCode {

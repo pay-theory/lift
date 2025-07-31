@@ -111,7 +111,7 @@ func (m *mockMetrics) WithTag(key, value string) observability.MetricsCollector 
 	return m.WithTags(map[string]string{key: value})
 }
 
-func (m *mockMetrics) RecordBatch(entries []*observability.MetricEntry) error { return nil }
+func (m *mockMetrics) RecordBatch(_ []*observability.MetricEntry) error { return nil }
 func (m *mockMetrics) Close() error                                           { return nil }
 func (m *mockMetrics) GetStats() observability.MetricsStats {
 	return observability.MetricsStats{
@@ -330,7 +330,7 @@ func BenchmarkEnhancedObservabilityMiddleware(b *testing.B) {
 
 	middleware := EnhancedObservabilityMiddleware(config)
 
-	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	}))
 
@@ -374,7 +374,7 @@ func TestEnhancedObservabilityDefaults(t *testing.T) {
 		Response: &lift.Response{},
 	}
 
-	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	}))
 
@@ -476,7 +476,7 @@ func BenchmarkEnhancedObservabilityLoggingOnly(b *testing.B) {
 
 	middleware := EnhancedObservabilityMiddleware(config)
 
-	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	}))
 
@@ -510,7 +510,7 @@ func BenchmarkEnhancedObservabilityMetricsOnly(b *testing.B) {
 
 	middleware := EnhancedObservabilityMiddleware(config)
 
-	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	}))
 

@@ -776,19 +776,3 @@ func main() {
 	lambda.Start(app.HandleRequest)
 }
 
-// Simple logger implementation for demo
-type simpleLogger struct{}
-
-func (l *simpleLogger) WithField(_ string, _ any) lift.Logger {
-	return l
-}
-
-func (l *simpleLogger) WithFields(_ map[string]any) lift.Logger {
-	return l
-}
-
-func (l *simpleLogger) Debug(_ string, _ ...map[string]any) {}
-func (l *simpleLogger) Info(_ string, _ ...map[string]any)  {}
-func (l *simpleLogger) Warn(_ string, _ ...map[string]any)  {}
-func (l *simpleLogger) Error(_ string, _ ...map[string]any) {}
-func (l *simpleLogger) Fatal(_ string, _ ...map[string]any) {}

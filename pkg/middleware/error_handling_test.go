@@ -14,7 +14,7 @@ func TestErrorHandlingImprovements(t *testing.T) {
 	t.Run("Recovery middleware handles JSON response errors gracefully", func(t *testing.T) {
 		middleware := Recover()
 
-		panicHandler := lift.HandlerFunc(func(ctx *lift.Context) error {
+		panicHandler := lift.HandlerFunc(func(_ *lift.Context) error {
 			panic("test panic")
 		})
 
@@ -30,7 +30,7 @@ func TestErrorHandlingImprovements(t *testing.T) {
 	t.Run("Error handler middleware processes LiftErrors correctly", func(t *testing.T) {
 		middleware := ErrorHandler()
 
-		errorHandler := lift.HandlerFunc(func(ctx *lift.Context) error {
+		errorHandler := lift.HandlerFunc(func(_ *lift.Context) error {
 			return &lift.LiftError{
 				Code:       "TEST_ERROR",
 				Message:    "Test error message",
@@ -49,7 +49,7 @@ func TestErrorHandlingImprovements(t *testing.T) {
 	t.Run("Error handler middleware processes generic errors correctly", func(t *testing.T) {
 		middleware := ErrorHandler()
 
-		errorHandler := lift.HandlerFunc(func(ctx *lift.Context) error {
+		errorHandler := lift.HandlerFunc(func(_ *lift.Context) error {
 			return errors.New("generic test error")
 		})
 

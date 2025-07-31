@@ -161,7 +161,7 @@ func TestIdempotencyMiddleware(t *testing.T) {
 			Store: store,
 		})
 
-		handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+		handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error {
 			callCount++
 			return lift.NewLiftError("PAYMENT_FAILED", "Insufficient funds", 400)
 		}))

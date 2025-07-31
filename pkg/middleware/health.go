@@ -523,7 +523,7 @@ func (m *MemoryHealthChecker) Name() string {
 	return m.name
 }
 
-func (m *MemoryHealthChecker) Check(ctx context.Context) error {
+func (m *MemoryHealthChecker) Check(_ context.Context) error {
 	// This would implement memory usage checking
 	// For now, return success
 	return nil

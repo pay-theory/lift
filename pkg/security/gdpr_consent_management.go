@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 	"sync"
 	"time"
@@ -745,7 +746,9 @@ func (gcm *GDPRConsentManager) RecordConsent(ctx context.Context, consent *Conse
 				"legal_basis":    consent.LegalBasis,
 			},
 		}
-		gcm.auditLogger.LogConsentEvent(ctx, event)
+		if err := gcm.auditLogger.LogConsentEvent(ctx, event); err != nil {
+			log.Printf("Warning: failed to log consent event: %v", err)
+		}
 	}
 
 	return nil
@@ -805,7 +808,9 @@ func (gcm *GDPRConsentManager) WithdrawConsent(ctx context.Context, consentID st
 				"partial":           withdrawal.PartialWithdrawal,
 			},
 		}
-		gcm.auditLogger.LogConsentEvent(ctx, event)
+		if err := gcm.auditLogger.LogConsentEvent(ctx, event); err != nil {
+			log.Printf("Warning: failed to log consent event: %v", err)
+		}
 	}
 
 	return nil
@@ -829,7 +834,9 @@ func (gcm *GDPRConsentManager) ProcessDataSubjectRequest(ctx context.Context, re
 			Timestamp:     time.Now(),
 			Status:        "received",
 		}
-		gcm.auditLogger.LogDataSubjectRequest(ctx, requestLog)
+		if err := gcm.auditLogger.LogDataSubjectRequest(ctx, requestLog); err != nil {
+			log.Printf("Warning: failed to log data subject request: %v", err)
+		}
 	}
 
 	// Process based on request type

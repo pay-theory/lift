@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsec2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
-	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/stretchr/testify/assert"
 
@@ -608,52 +607,7 @@ func getDurationPtr(duration awscdk.Duration) *awscdk.Duration {
 	return &duration
 }
 
-func createTestVPC(stack constructs.Construct) awsec2.IVpc {
-	return awsec2.NewVpc(stack, jsii.String("TestVPC"), &awsec2.VpcProps{
-		MaxAzs: jsii.Number(2),
-		SubnetConfiguration: &[]*awsec2.SubnetConfiguration{
-			{
-				Name:       jsii.String("Public"),
-				SubnetType: awsec2.SubnetType_PUBLIC,
-				CidrMask:   jsii.Number(24),
-			},
-			{
-				Name:       jsii.String("Private"),
-				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-				CidrMask:   jsii.Number(24),
-			},
-		},
-	})
-}
 
-func createTestFunction(stack constructs.Construct, vpc awsec2.IVpc) *liftconstructs.LiftFunction {
-	return liftconstructs.NewLiftFunction(stack, jsii.String("TestFunction"), &liftconstructs.LiftFunctionProps{
-		FunctionProps: awslambda.FunctionProps{
-			Code:    awslambda.Code_FromAsset(jsii.String("../../../examples/hello-world"), nil),
-			Handler: jsii.String("main"),
-			Runtime: awslambda.Runtime_PROVIDED_AL2(),
-			Vpc:     vpc,
-			Environment: &map[string]*string{
-				"TEST_MODE": jsii.String("true"),
-			},
-		},
-	})
-}
 
-func validateCloudWatchResources(t *testing.T, template interface{}) {
-	// Validate that CloudWatch resources are properly configured
-	// This would inspect the CloudFormation template
-	assert.NotNil(t, template)
-}
 
-func validateSecurityResources(t *testing.T, template interface{}) {
-	// Validate that security resources are properly configured
-	// This would inspect WAF, security groups, VPC endpoints, etc.
-	assert.NotNil(t, template)
-}
 
-func validateServiceDiscoveryResources(t *testing.T, template interface{}) {
-	// Validate that service discovery resources are properly configured
-	// This would inspect ECS services, service discovery namespaces, etc.
-	assert.NotNil(t, template)
-}

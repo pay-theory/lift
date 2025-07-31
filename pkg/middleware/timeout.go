@@ -414,7 +414,7 @@ func PriorityTimeoutCalculator(baseTimeout time.Duration) func(*lift.Context) ti
 
 // LoadBasedTimeoutCalculator creates a timeout calculator that adjusts based on system load
 func LoadBasedTimeoutCalculator(baseTimeout time.Duration, loadMetrics *LoadMetrics) func(*lift.Context) time.Duration {
-	return func(ctx *lift.Context) time.Duration {
+	return func(_ *lift.Context) time.Duration {
 		if loadMetrics == nil {
 			return baseTimeout
 		}

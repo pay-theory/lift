@@ -218,7 +218,7 @@ func NewMemoryIdempotencyStore() *MemoryIdempotencyStore {
 }
 
 // Get retrieves a record by key
-func (m *MemoryIdempotencyStore) Get(ctx context.Context, key string) (*IdempotencyRecord, error) {
+func (m *MemoryIdempotencyStore) Get(_ context.Context, key string) (*IdempotencyRecord, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -236,7 +236,7 @@ func (m *MemoryIdempotencyStore) Get(ctx context.Context, key string) (*Idempote
 }
 
 // Set stores a record
-func (m *MemoryIdempotencyStore) Set(ctx context.Context, key string, record *IdempotencyRecord) error {
+func (m *MemoryIdempotencyStore) Set(_ context.Context, key string, record *IdempotencyRecord) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -259,7 +259,7 @@ func (m *MemoryIdempotencyStore) SetProcessing(ctx context.Context, key string, 
 }
 
 // Delete removes a record
-func (m *MemoryIdempotencyStore) Delete(ctx context.Context, key string) error {
+func (m *MemoryIdempotencyStore) Delete(_ context.Context, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

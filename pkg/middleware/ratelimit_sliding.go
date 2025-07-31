@@ -200,7 +200,7 @@ func (r *SlidingWindowRateLimiter) recordRequest(ctx context.Context, key string
 }
 
 // SlidingWindowRateLimit creates a sliding window rate limiter
-func SlidingWindowRateLimit(limit int, window time.Duration) (lift.Middleware, error) {
+func SlidingWindowRateLimit(_ int, _ time.Duration) (lift.Middleware, error) {
 	// This would require DynamORMWrapper to be passed in
 	// For now, return an error indicating the need for proper setup
 	return nil, fmt.Errorf("sliding window rate limit requires DynamORM configuration - use NewSlidingWindowRateLimiter with full config")

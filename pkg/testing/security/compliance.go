@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -132,7 +133,11 @@ func (h *HIPAAComplianceChecker) checkAdministrativeSafeguards(ctx context.Conte
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Should require authentication
 	return resp.StatusCode == 401 || resp.StatusCode == 403
@@ -160,7 +165,11 @@ func (h *HIPAAComplianceChecker) checkTechnicalSafeguards(ctx context.Context, s
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Check for required security headers
 	requiredHeaders := []string{
@@ -386,7 +395,11 @@ func (p *PCIDSSComplianceChecker) checkVendorDefaults(ctx context.Context, syste
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Should not be accessible with default credentials
 	return resp.StatusCode != 200
@@ -413,7 +426,11 @@ func (p *PCIDSSComplianceChecker) checkTransmissionEncryption(ctx context.Contex
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Check for strong TLS configuration
 	return resp.TLS != nil && resp.TLS.Version >= 0x0303 // TLS 1.2 or higher
@@ -440,7 +457,11 @@ func (p *PCIDSSComplianceChecker) checkAccessRestriction(ctx context.Context, sy
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Payment data should require authentication
 	return resp.StatusCode == 401 || resp.StatusCode == 403
@@ -650,7 +671,11 @@ func (s *SOC2ComplianceChecker) checkAccessControls(ctx context.Context, system 
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Protected resources should require authentication
 	return resp.StatusCode == 401 || resp.StatusCode == 403
@@ -667,7 +692,11 @@ func (s *SOC2ComplianceChecker) checkSystemOperations(ctx context.Context, syste
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// Health endpoint should be available
 	return resp.StatusCode == 200
@@ -684,7 +713,11 @@ func (s *SOC2ComplianceChecker) checkAvailability(ctx context.Context, system Sy
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
 
 	// System should be available
 	return resp.StatusCode < 500

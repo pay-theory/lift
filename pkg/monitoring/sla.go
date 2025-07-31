@@ -298,7 +298,7 @@ func (sm *SLAMonitor) calculateAvailability(dataPoints []MetricDataPoint) float6
 }
 
 // calculatePercentile calculates percentile value
-func (sm *SLAMonitor) calculatePercentile(dataPoints []MetricDataPoint, percentile float64) float64 {
+func (sm *SLAMonitor) calculatePercentile(dataPoints []MetricDataPoint, _ float64) float64 {
 	if len(dataPoints) == 0 {
 		return 0.0
 	}
@@ -440,7 +440,7 @@ func (sm *SLAMonitor) determineSeverity(metrics *SLAMetrics, slo SLO) Severity {
 }
 
 // updateSLAStatus updates SLA status
-func (sm *SLAMonitor) updateSLAStatus(metrics *SLAMetrics, slo SLO) {
+func (sm *SLAMonitor) updateSLAStatus(metrics *SLAMetrics, _ SLO) {
 	if metrics.ErrorBudget < sm.config.Thresholds.CriticalThreshold {
 		metrics.Status = SLAStatusCritical
 	} else if metrics.ErrorBudget < sm.config.Thresholds.WarningThreshold {
@@ -514,17 +514,17 @@ func (sm *SLAMonitor) executeAlertActions(ctx context.Context, alert Alert, rule
 }
 
 // sendEmailAlert sends email alert
-func (sm *SLAMonitor) sendEmailAlert(ctx context.Context, alert Alert, config map[string]any) {
+func (sm *SLAMonitor) sendEmailAlert(_ context.Context, _ Alert, _ map[string]any) {
 	// Implementation would send email
 }
 
 // sendSlackAlert sends Slack alert
-func (sm *SLAMonitor) sendSlackAlert(ctx context.Context, alert Alert, config map[string]any) {
+func (sm *SLAMonitor) sendSlackAlert(_ context.Context, _ Alert, _ map[string]any) {
 	// Implementation would send Slack message
 }
 
 // sendWebhookAlert sends webhook alert
-func (sm *SLAMonitor) sendWebhookAlert(ctx context.Context, alert Alert, config map[string]any) {
+func (sm *SLAMonitor) sendWebhookAlert(_ context.Context, _ Alert, _ map[string]any) {
 	// Implementation would send webhook
 }
 
@@ -554,7 +554,7 @@ func (sm *SLAMonitor) generateReport(ctx context.Context) {
 }
 
 // sendReport sends report to recipient
-func (sm *SLAMonitor) sendReport(ctx context.Context, recipient string, report []byte) {
+func (sm *SLAMonitor) sendReport(_ context.Context, _ string, _ []byte) {
 	// Implementation would send report
 }
 
