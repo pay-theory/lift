@@ -20,12 +20,12 @@ type SLAMonitor struct {
 
 // SLAConfig holds SLA configuration
 type SLAConfig struct {
-	Reporting       ReportConfig    `json:"reporting"`
+	SLOs            []SLO           `json:"slos"`        // slice = 24 bytes
+	AlertRules      []AlertRule     `json:"alert_rules"` // slice = 24 bytes
+	Reporting       ReportConfig    `json:"reporting"`   // struct
+	Thresholds      ThresholdConfig `json:"thresholds"`  // struct
 	ApplicationName string          `json:"application_name"`
 	Environment     string          `json:"environment"`
-	SLOs            []SLO           `json:"slos"`
-	AlertRules      []AlertRule     `json:"alert_rules"`
-	Thresholds      ThresholdConfig `json:"thresholds"`
 }
 
 // SLO represents a Service Level Objective

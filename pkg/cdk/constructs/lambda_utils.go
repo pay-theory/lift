@@ -12,11 +12,11 @@ import (
 
 // LambdaFunctionConfig defines configuration for creating Lambda functions
 type LambdaFunctionConfig struct {
-	FunctionName string
-	Description  string
-	Timeout      awscdk.Duration
-	Permissions  string // "read" or "readwrite"
-	Environment  map[string]*string
+	Environment  map[string]*string // 8 bytes (map)
+	Timeout      awscdk.Duration    // 8 bytes (int64)
+	FunctionName string             // 16 bytes
+	Description  string             // 16 bytes
+	Permissions  string             // "read" or "readwrite" - 16 bytes
 }
 
 // CreateStandardLambdaFunction creates a Lambda function with common configurations

@@ -9,13 +9,13 @@ import (
 
 // ComplianceDashboard provides real-time compliance visibility
 type ComplianceDashboard struct {
-	config         DashboardConfig
-	metricsEngine  MetricsEngine
-	dataAggregator DataAggregator
-	alertManager   DashboardAlertManager
-	cache          DashboardCache
-	mu             sync.RWMutex
-	running        bool
+	mu             sync.RWMutex           // 24 bytes
+	config         DashboardConfig        // interface/struct
+	metricsEngine  MetricsEngine          // interface
+	dataAggregator DataAggregator         // interface
+	alertManager   DashboardAlertManager  // interface
+	cache          DashboardCache         // interface
+	running        bool                   // 1 byte
 }
 
 // DashboardConfig configuration for compliance dashboard

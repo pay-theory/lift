@@ -58,12 +58,12 @@ type ComplianceFramework struct {
 
 // ComplianceConfig holds configuration for compliance frameworks
 type ComplianceConfig struct {
-	EnabledFrameworks  []string          `json:"enabled_frameworks"`
-	AuditRetention     time.Duration     `json:"audit_retention"`
-	DataClassification map[string]string `json:"data_classification"`
-	EncryptionRequired bool              `json:"encryption_required"`
-	RegionRestrictions []string          `json:"region_restrictions"`
-	CustomRules        []ComplianceRule  `json:"custom_rules"`
+	EnabledFrameworks  []string          `json:"enabled_frameworks"`  // slice = 24 bytes
+	RegionRestrictions []string          `json:"region_restrictions"` // slice = 24 bytes
+	CustomRules        []ComplianceRule  `json:"custom_rules"`        // slice = 24 bytes
+	DataClassification map[string]string `json:"data_classification"` // map = 8 bytes
+	AuditRetention     time.Duration     `json:"audit_retention"`     // int64 = 8 bytes
+	EncryptionRequired bool              `json:"encryption_required"` // bool = 1 byte
 }
 
 // ComplianceRule defines a custom compliance rule

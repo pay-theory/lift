@@ -633,12 +633,12 @@ func createAuditDashboard(scope constructs.Construct, props *AuditingProps, appL
 
 // createLogMetricAlarm creates a CloudWatch alarm for log metrics
 func createLogMetricAlarm(scope constructs.Construct, id string, _ *AuditingProps, config struct {
-	AlarmName       string
-	LogGroupName    *string
-	PeriodMinutes   int
-	Threshold       float64
-	EvaluationPeriods int
-	DatapointsToAlarm int
+	LogGroupName    *string // 8 bytes (pointer)
+	Threshold       float64 // 8 bytes
+	AlarmName       string  // 16 bytes
+	PeriodMinutes   int     // 4 bytes on most platforms
+	EvaluationPeriods int   // 4 bytes
+	DatapointsToAlarm int   // 4 bytes
 }) awscloudwatch.Alarm {
 	return awscloudwatch.NewAlarm(scope, jsii.String(id), &awscloudwatch.AlarmProps{
 		AlarmName: jsii.String(config.AlarmName),
@@ -664,12 +664,12 @@ func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogG
 
 	// Failed login attempts alarm
 	failedLoginAlarm := createLogMetricAlarm(scope, "FailedLoginAlarm", props, struct {
-		AlarmName       string
-		LogGroupName    *string
-		PeriodMinutes   int
-		Threshold       float64
-		EvaluationPeriods int
-		DatapointsToAlarm int
+		LogGroupName    *string // 8 bytes (pointer)
+		Threshold       float64 // 8 bytes
+		AlarmName       string  // 16 bytes
+		PeriodMinutes   int     // 4 bytes
+		EvaluationPeriods int   // 4 bytes
+		DatapointsToAlarm int   // 4 bytes
 	}{
 		AlarmName:       fmt.Sprintf("%s-failed-login-attempts", *props.AppName),
 		LogGroupName:    appLogGroup.LogGroupName(),
@@ -682,12 +682,12 @@ func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogG
 
 	// Suspicious activity alarm
 	suspiciousActivityAlarm := createLogMetricAlarm(scope, "SuspiciousActivityAlarm", props, struct {
-		AlarmName       string
-		LogGroupName    *string
-		PeriodMinutes   int
-		Threshold       float64
-		EvaluationPeriods int
-		DatapointsToAlarm int
+		LogGroupName    *string // 8 bytes (pointer)
+		Threshold       float64 // 8 bytes
+		AlarmName       string  // 16 bytes
+		PeriodMinutes   int     // 4 bytes
+		EvaluationPeriods int   // 4 bytes
+		DatapointsToAlarm int   // 4 bytes
 	}{
 		AlarmName:       fmt.Sprintf("%s-suspicious-activity", *props.AppName),
 		LogGroupName:    auditLogGroup.LogGroupName(),

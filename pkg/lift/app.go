@@ -26,10 +26,10 @@ type Config struct {
 	// Observability (string = 16 bytes)
 	LogLevel string `json:"log_level"`
 
-	// Performance settings (4 bytes)
+	// Performance settings (4 bytes - place before bools to minimize padding)
 	Timeout int `json:"timeout_seconds"`
 
-	// Boolean flags (1 byte each)
+	// Boolean flags (1 byte each) - grouped together to minimize padding
 	MetricsEnabled  bool `json:"metrics_enabled"`
 	TracingEnabled  bool `json:"tracing_enabled"`
 	Debug           bool `json:"debug"`
@@ -58,6 +58,9 @@ type AppOption func(*App)
 
 // App represents the main application container
 type App struct {
+	// Runtime state (24 bytes) - place largest first
+	mu sync.RWMutex
+
 	// Slice (24 bytes)
 	middleware []Middleware
 
@@ -75,10 +78,7 @@ type App struct {
 	wsRoutes map[string]WebSocketHandler
 	features map[string]bool
 
-	// Runtime state (24 bytes)
-	mu sync.RWMutex
-
-	// Boolean flags (1 byte each)
+	// Boolean flags (1 byte each) - place smallest last
 	started                   bool
 	hasInterceptingMiddleware bool
 }

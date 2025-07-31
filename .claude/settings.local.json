@@ -77,7 +77,8 @@
       "Bash(gosec:*)",
       "Bash(dupl:*)",
       "Bash(staticcheck:*)",
-      "Bash(go:*)"
+      "Bash(go:*)",
+      "Bash(awk:*)"
     ],
     "deny": []
   }

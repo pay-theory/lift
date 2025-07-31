@@ -15,13 +15,14 @@ import (
 
 // PoolHealthChecker checks the health of a connection pool
 type PoolHealthChecker struct {
-	name string
-	pool resources.ConnectionPool
+	pool resources.ConnectionPool // 8 bytes (interface)
 
-	// Thresholds
+	// Thresholds (8 bytes each)
 	maxActiveThreshold float64 // Percentage of max active connections
-	minIdleThreshold   int     // Minimum idle connections
 	errorRateThreshold float64 // Maximum error rate (0.0-1.0)
+
+	name             string // 16 bytes
+	minIdleThreshold int    // 4 bytes
 }
 
 // NewPoolHealthChecker creates a new pool health checker
@@ -103,11 +104,12 @@ func (p *PoolHealthChecker) Check(ctx context.Context) HealthStatus {
 
 // DatabaseHealthChecker checks database connectivity
 type DatabaseHealthChecker struct {
-	name string
-	db   *sql.DB
+	db          *sql.DB       // 8 bytes (pointer)
+	pingTimeout time.Duration // 8 bytes
 
-	// Configuration
-	pingTimeout  time.Duration
+	name string // 16 bytes
+
+	// Configuration (4 bytes each)
 	maxOpenConns int
 	maxIdleConns int
 }
@@ -167,13 +169,14 @@ func (d *DatabaseHealthChecker) Check(ctx context.Context) HealthStatus {
 
 // HTTPHealthChecker checks the health of an HTTP service
 type HTTPHealthChecker struct {
-	name string
-	url  string
+	client  *http.Client  // 8 bytes (pointer)
+	timeout time.Duration // 8 bytes
+
+	name string // 16 bytes
+	url  string // 16 bytes
 
 	// Configuration
-	timeout        time.Duration
-	expectedStatus int
-	client         *http.Client
+	expectedStatus int // 4 bytes
 }
 
 // NewHTTPHealthChecker creates a new HTTP health checker
@@ -347,8 +350,8 @@ func (m *MemoryHealthChecker) Check(_ context.Context) HealthStatus {
 
 // CustomHealthChecker allows for custom health check functions
 type CustomHealthChecker struct {
-	name    string
-	checkFn func(ctx context.Context) HealthStatus
+	checkFn func(ctx context.Context) HealthStatus // function pointer (8 bytes)
+	name    string                                 // 16 bytes
 }
 
 // NewCustomHealthChecker creates a new custom health checker

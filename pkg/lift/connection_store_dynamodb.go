@@ -56,6 +56,8 @@ func NewDynamoDBConnectionStore(ctx context.Context, config DynamoDBConnectionSt
 
 // DynamoDBConnection represents a connection record in DynamoDB
 type DynamoDBConnection struct {
+	Metadata  map[string]any `` // map = 8 bytes
+	TTL       int64          `` // int64 = 8 bytes
 	PK        string         `` // Primary key: "CONNECTION#<connectionId>"
 	SK        string         `` // Sort key: "CONNECTION"
 	GSI1PK    string         `` // GSI1 primary key: "USER#<userId>"
@@ -66,8 +68,6 @@ type DynamoDBConnection struct {
 	UserID    string         ``
 	TenantID  string         ``
 	CreatedAt string         ``
-	TTL       int64          ``
-	Metadata  map[string]any ``
 }
 
 // Save stores a connection in DynamoDB

@@ -18,8 +18,8 @@ import (
 type WebSocketContextV2 struct {
 	*Context
 	managementAPI *apigatewaymanagementapi.Client
-	apiMutex      sync.Mutex
 	region        string
+	apiMutex      sync.Mutex
 }
 
 // AsWebSocketV2 converts a regular context to a WebSocket context using SDK v2
@@ -294,10 +294,10 @@ func (wc *WebSocketContextV2) GetAuthorizationFromQuery() string {
 
 // ConnectionMetadata represents metadata about a WebSocket connection
 type ConnectionMetadata struct {
-	ConnectionID string
-	ConnectedAt  *time.Time
 	Identity     map[string]string
+	ConnectedAt  *time.Time
 	LastActiveAt *time.Time
+	ConnectionID string
 }
 
 // GetConnectionMetadata retrieves metadata about a connection

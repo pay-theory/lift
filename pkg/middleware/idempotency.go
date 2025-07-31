@@ -23,33 +23,35 @@ type IdempotencyStore interface {
 
 // IdempotencyRecord represents a stored idempotent response
 type IdempotencyRecord struct {
-	Key          string    `json:"key"`
-	Status       string    `json:"status"` // "processing", "completed", "error"
-	Response     any       `json:"response,omitempty"`
-	StatusCode   int       `json:"status_code,omitempty"`
-	Error        string    `json:"error,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	RequestHash  string    `json:"request_hash,omitempty"`
-	FunctionName string    `json:"function_name,omitempty"`
-	TenantID     string    `json:"tenant_id,omitempty"`
-	UserID       string    `json:"user_id,omitempty"`
+	Response  any       `json:"response,omitempty"`    // 8 bytes (interface)
+	CreatedAt time.Time `json:"created_at"`            // 8 bytes (int64)
+	ExpiresAt time.Time `json:"expires_at"`            // 8 bytes (int64)
+
+	Key          string `json:"key"`                      // 16 bytes
+	Status       string `json:"status"`                   // "processing", "completed", "error" - 16 bytes
+	Error        string `json:"error,omitempty"`          // 16 bytes
+	RequestHash  string `json:"request_hash,omitempty"`   // 16 bytes
+	FunctionName string `json:"function_name,omitempty"`  // 16 bytes
+	TenantID     string `json:"tenant_id,omitempty"`      // 16 bytes
+	UserID       string `json:"user_id,omitempty"`        // 16 bytes
+
+	StatusCode int `json:"status_code,omitempty"` // 4 bytes
 }
 
 // IdempotencyOptions configures the idempotency middleware
 type IdempotencyOptions struct {
 	// Store is the backend for storing idempotency records
-	Store IdempotencyStore
-	// HeaderName is the header to check for idempotency key (default: "Idempotency-Key")
-	HeaderName string
-	// TTL is how long to store successful responses (default: 24 hours)
-	TTL time.Duration
-	// ProcessingTimeout is how long to wait for in-flight requests (default: 30 seconds)
-	ProcessingTimeout time.Duration
-	// IncludeRequestHash includes request body hash for stricter validation
-	IncludeRequestHash bool
+	Store IdempotencyStore // 8 bytes (interface)
 	// OnDuplicate is called when a duplicate request is detected
-	OnDuplicate func(ctx *lift.Context, record *IdempotencyRecord)
+	OnDuplicate func(ctx *lift.Context, record *IdempotencyRecord) // 8 bytes (function pointer)
+	// TTL is how long to store successful responses (default: 24 hours)
+	TTL time.Duration // 8 bytes
+	// ProcessingTimeout is how long to wait for in-flight requests (default: 30 seconds)
+	ProcessingTimeout time.Duration // 8 bytes
+	// HeaderName is the header to check for idempotency key (default: "Idempotency-Key")
+	HeaderName string // 16 bytes
+	// IncludeRequestHash includes request body hash for stricter validation
+	IncludeRequestHash bool // 1 byte
 }
 
 // Idempotency creates middleware that provides idempotent request handling
