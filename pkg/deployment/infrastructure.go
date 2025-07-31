@@ -484,7 +484,7 @@ func (ig *InfrastructureGenerator) generateLambdaResources(template *Infrastruct
 		Tags:         ig.config.Tags,
 	}
 
-	if lambdaConfig.Environment != nil && len(lambdaConfig.Environment) > 0 {
+	if len(lambdaConfig.Environment) > 0 {
 		lambdaFunction.Properties["Environment"] = map[string]any{
 			"Variables": lambdaConfig.Environment,
 		}
@@ -791,7 +791,7 @@ func (ig *InfrastructureGenerator) generateSecurityResources(template *Infrastru
 						{
 							"Effect": "Allow",
 							"Principal": map[string]any{
-								"AWS": fmt.Sprintf("arn:aws:iam::${AWS::AccountId}:root"),
+								"AWS": "arn:aws:iam::${AWS::AccountId}:root",
 							},
 							"Action":   "kms:*",
 							"Resource": "*",

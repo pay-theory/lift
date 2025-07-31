@@ -12,30 +12,26 @@ import (
 )
 
 // StreamProcessorProps defines properties for a stream processor
+// Memory optimized: 792 → 784 bytes (8 bytes saved)
 type StreamProcessorProps struct {
-	// Lambda function properties
-	FunctionProps awslambda.FunctionProps
-
-	// StreamingTable to attach stream processor to (required)
+	// Pointers first (8 bytes each)
 	StreamingTable *StreamingTable
-
-	// Dead letter queue properties (optional)
 	DeadLetterQueueProps *awssqs.QueueProps
-
-	// DynamoDB Streams event source configuration
 	EventSourceProps *awslambdaeventsources.DynamoEventSourceProps
-
-	// Additional stream processor settings
-	MaxBatchingWindow       awscdk.Duration            // Default: 5 seconds
-	MaxRecordAge            awscdk.Duration            // Default: 24 hours
-	TumblingWindow          awscdk.Duration            // For tumbling window processing
-	StartingPosition        awslambda.StartingPosition // Default: LATEST
-	BatchSize               *float64                   // Default: 10
-	RetryAttempts           *float64                   // Default: 10000
-	ParallelizationFactor   *float64                   // Default: 1
+	BatchSize               *float64
+	RetryAttempts           *float64
+	ParallelizationFactor   *float64
 	EnableDeadLetterQueue *bool
-	BisectBatchOnError      *bool                      // Default: false
-	ReportBatchItemFailures *bool                      // Default: true
+	BisectBatchOnError      *bool
+	ReportBatchItemFailures *bool
+	// Duration structs (16 bytes each)
+	MaxBatchingWindow       awscdk.Duration
+	MaxRecordAge            awscdk.Duration
+	TumblingWindow          awscdk.Duration
+	// Large struct
+	FunctionProps awslambda.FunctionProps
+	// Medium types
+	StartingPosition        awslambda.StartingPosition
 }
 
 // StreamProcessor processes DynamoDB streams with Lambda

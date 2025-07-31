@@ -94,15 +94,6 @@ func (e *DynamORMTestEnvironment) GetDynamoDBClient(t *testing.T) *dynamodb.Clie
 		// Configure for local DynamoDB
 		cfg, err = config.LoadDefaultConfig(context.TODO(),
 			config.WithRegion(e.Region),
-			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(service, _ string, _ ...interface{}) (aws.Endpoint, error) {
-					if service == dynamodb.ServiceID {
-						return aws.Endpoint{
-							URL: e.LocalEndpoint,
-						}, nil
-					}
-					return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-				})),
 			config.WithCredentialsProvider(GetTestCredentials(true)),
 		)
 	} else {
@@ -116,6 +107,12 @@ func (e *DynamORMTestEnvironment) GetDynamoDBClient(t *testing.T) *dynamodb.Clie
 		t.Fatalf("Failed to load AWS config: %v", err)
 	}
 
+	// Create client with endpoint override for local testing
+	if e.IsLocal {
+		return dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+			o.BaseEndpoint = aws.String(e.LocalEndpoint)
+		})
+	}
 	return dynamodb.NewFromConfig(cfg)
 }
 

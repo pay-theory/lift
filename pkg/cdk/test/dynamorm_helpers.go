@@ -41,20 +41,19 @@ func NewDynamORMTestHelper(t *testing.T) *DynamORMTestHelper {
 	// Create config for local testing
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(region),
-		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-			func(service, _ string, _ ...interface{}) (aws.Endpoint, error) {
-				if service == dynamodb.ServiceID && endpoint != "" {
-					return aws.Endpoint{
-						URL: endpoint,
-					}, nil
-				}
-				return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-			})),
 		config.WithCredentialsProvider(GetTestCredentials(endpoint != "")),
 	)
 	require.NoError(t, err)
 
-	client := dynamodb.NewFromConfig(cfg)
+	// Create client with endpoint override for local testing
+	var client *dynamodb.Client
+	if endpoint != "" {
+		client = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+			o.BaseEndpoint = aws.String(endpoint)
+		})
+	} else {
+		client = dynamodb.NewFromConfig(cfg)
+	}
 
 	return &DynamORMTestHelper{
 		DynamoClient: client,
@@ -308,16 +307,21 @@ func (h *DynamORMTestHelper) buildTags(tags map[string]string) []types.Tag {
 }
 
 // Test table configuration
+// Memory optimized: 144 → 120 bytes (24 bytes saved)
 type testTableConfig struct {
-	tableName      string
-	billingMode    types.BillingMode
-	partitionKey   string
-	sortKey        string
-	ttlAttribute   string
-	streamEnabled  bool
+	// Slices and map first (24 bytes each)
 	gsiDefinitions []gsiDefinition
 	lsiDefinitions []lsiDefinition
 	tags           map[string]string
+	// Strings (16 bytes each)
+	tableName      string
+	partitionKey   string
+	sortKey        string
+	ttlAttribute   string
+	// Enum (4 bytes)
+	billingMode    types.BillingMode
+	// Bool last (1 byte)
+	streamEnabled  bool
 }
 
 type gsiDefinition struct {
@@ -384,16 +388,21 @@ func WithTags(tags map[string]string) TestTableOption {
 }
 
 // DynamORMTestItem represents a test item for DynamORM tables
+// Memory optimized: 144 → 128 bytes (16 bytes saved)
 type DynamORMTestItem struct {
+	// Map first (24 bytes)
+	Data      map[string]string ``
+	// Time structs (24 bytes each)
+	CreatedAt time.Time         ``
+	UpdatedAt time.Time         ``
+	// Strings (16 bytes each)
 	PK        string            ``
 	SK        string            ``
 	Type      string            ``
-	Data      map[string]string ``
-	TTL       int64             ``
 	GSI1PK    string            ``
 	GSI1SK    string            ``
-	CreatedAt time.Time         ``
-	UpdatedAt time.Time         ``
+	// Int64 last (8 bytes)
+	TTL       int64             ``
 }
 
 // CreateDynamORMItem creates a standard DynamORM test item

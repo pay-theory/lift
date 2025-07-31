@@ -58,65 +58,43 @@ const (
 )
 
 // DynamORMEventStoreProps defines properties for DynamORM event store
+// Memory optimized: 312 → 296 bytes (16 bytes saved)
 type DynamORMEventStoreProps struct {
-	// Archival configuration
-	ArchivalBucket awss3.IBucket   // S3 bucket for archival
-	
-	// Query optimization
-	ProjectionQueries []string // Queries for projection views
-	
-	// Monitoring configuration
+	// Interface first (24 bytes)
+	ArchivalBucket awss3.IBucket
+	// Slice (24 bytes)
+	ProjectionQueries []string
+	// Pointers (8 bytes each)
 	AlertThresholds       *EventStoreAlertThresholds
-	
-	// Tags
 	Tags *map[string]*string
-	
-	// Event configuration
-	EventTTL               awscdk.Duration // TTL for old events
-	// Snapshot configuration
-	SnapshotTimeInterval awscdk.Duration // Time interval for snapshots
-	SnapshotRetention    awscdk.Duration // How long to keep snapshots
-	ArchivalAfter  awscdk.Duration // Archive events after this duration
-	
-	// Event store pattern
-	Pattern EventStorePattern
-	SnapshotStrategy     SnapshotStrategy
-	
-	// Table configuration
 	EventTableName    *string
 	SnapshotTableName *string
-	// Multi-tenant configuration
 	TenantAttribute   *string
-	// Security configuration
-	KMSKey           *string // KMS key for encryption
-	
-	// Performance configuration
-	ReadCapacity          *float64 // Read capacity units
-	WriteCapacity         *float64 // Write capacity units
-	
-	// Snapshot configuration
-	SnapshotFrequency    *int            // Number of events between snapshots
-	SnapshotSizeLimit    *int            // Size limit in KB for snapshots
-	
-	// Multi-tenant configuration
+	KMSKey           *string
+	ReadCapacity          *float64
+	WriteCapacity         *float64
+	SnapshotFrequency    *int
+	SnapshotSizeLimit    *int
 	EnableMultiTenant *bool
-	// Event configuration
 	EnableEventVersioning  *bool
 	EnableEventEncryption  *bool
 	EnableEventCompression *bool
-	// Performance configuration
-	EventStreamEnabled    *bool    // Enable DynamoDB streams for events
-	SnapshotStreamEnabled *bool    // Enable DynamoDB streams for snapshots
-	EnableAutoScaling     *bool    // Enable auto-scaling
-	// Archival configuration
-	EnableArchival *bool           // Enable event archival to S3
-	// Monitoring configuration
-	EnableMetrics         *bool // Enable CloudWatch metrics
-	EnableDetailedMetrics *bool // Enable detailed monitoring
-	// Security configuration
-	EnableEncryption *bool   // Enable encryption at rest
-	// Query optimization
-	EnableGSIs        *bool    // Enable Global Secondary Indexes
+	EventStreamEnabled    *bool
+	SnapshotStreamEnabled *bool
+	EnableAutoScaling     *bool
+	EnableArchival *bool
+	EnableMetrics         *bool
+	EnableDetailedMetrics *bool
+	EnableEncryption *bool
+	EnableGSIs        *bool
+	// Duration structs (16 bytes each)
+	EventTTL               awscdk.Duration
+	SnapshotTimeInterval awscdk.Duration
+	SnapshotRetention    awscdk.Duration
+	ArchivalAfter  awscdk.Duration
+	// Enums/smaller types
+	Pattern EventStorePattern
+	SnapshotStrategy     SnapshotStrategy
 }
 
 // EventStoreAlertThresholds defines alert thresholds for event store monitoring

@@ -147,13 +147,15 @@ func (ff *FeatureFlags) refresh() error {
 	defer cancel()
 
 	// Get configuration from AWS AppConfig
+	// NOTE: GetConfiguration is deprecated in favor of StartConfigurationSession/GetLatestConfiguration
+	// but the new APIs require AWS SDK v2 appconfig 1.15.0+.
+	// TODO: Update to new API when SDK is upgraded
 	resp, err := ff.client.GetConfiguration(ctx, &appconfig.GetConfigurationInput{
 		Application:   aws.String(ff.application),
 		Environment:   aws.String(ff.environment),
 		Configuration: aws.String("feature-flags"),
 		ClientId:      aws.String(ff.clientId),
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to get configuration: %w", err)
 	}

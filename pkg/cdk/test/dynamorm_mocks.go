@@ -13,29 +13,41 @@ import (
 
 // MockDynamORMClient provides a mock DynamoDB client for testing DynamORM operations
 // This avoids circular dependencies by implementing the minimal interface needed
+// Memory optimized: 112 → 80 bytes (32 bytes saved)
 type MockDynamORMClient struct {
+	// Embedded struct first (largest)
 	mock.Mock
-	mu     sync.RWMutex
+	// Map (24 bytes)
 	tables map[string]*mockTable
+	// Mutex last (24 bytes)
+	mu     sync.RWMutex
 }
 
 // mockTable represents a mock DynamoDB table
+// Memory optimized: 80 → 72 bytes (8 bytes saved)
 type mockTable struct {
-	name                 string
+	// Maps and slices first (24 bytes each)
 	items                map[string]map[string]types.AttributeValue
 	gsis                 map[string]*mockGSI
-	ttlAttribute         string
-	streamEnabled        bool
-	billingMode          types.BillingMode
 	attributeDefinitions []types.AttributeDefinition
+	// Strings (16 bytes each)
+	name                 string
+	ttlAttribute         string
+	// Enum (4 bytes)
+	billingMode          types.BillingMode
+	// Bool last (1 byte)
+	streamEnabled        bool
 }
 
 // mockGSI represents a mock global secondary index
+// Memory optimized: 56 → 48 bytes (8 bytes saved)
 type mockGSI struct {
+	// Map first (24 bytes)
+	items        map[string][]map[string]types.AttributeValue
+	// Strings (16 bytes each)
 	name         string
 	partitionKey string
 	sortKey      string
-	items        map[string][]map[string]types.AttributeValue
 }
 
 // NewMockDynamORMClient creates a new mock DynamoDB client

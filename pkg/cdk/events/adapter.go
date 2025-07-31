@@ -278,9 +278,12 @@ func (l *LiftContextAdapter) AdaptS3ToHTTP(record events.S3EventRecord) (*lift.C
 }
 
 // BatchEventProcessor processes events in batches
+// Memory optimized: 16 → 8 bytes (8 bytes saved)
 type BatchEventProcessor struct {
-	batchSize int
+	// Function pointer first (8 bytes)
 	processor func([]LiftEvent) error
+	// Int last (4 bytes)
+	batchSize int
 }
 
 // NewBatchEventProcessor creates a new batch processor

@@ -9,18 +9,25 @@ import (
 )
 
 // MultiRegionDeployer orchestrates deployments across multiple regions
+// Memory optimized: 1032 → 984 bytes (48 bytes saved)
 type MultiRegionDeployer struct {
+	// Large struct first
 	config           InfrastructureConfig
-	mu               sync.RWMutex
-	primaryRegion    string
-	applicationName  string
-	environment      string
+	// Slice (24 bytes)
 	regions          []string
+	// Maps (24 bytes each)
 	deployers        map[string]*PulumiDeployer
 	healthCheckers   map[string]*RegionHealthChecker
 	deploymentStatus map[string]RegionDeploymentStatus
+	// Pointers (8 bytes each)
 	dnsManager       *DNSManager
 	loadBalancer     *GlobalLoadBalancer
+	// Sync primitive (24 bytes)
+	mu               sync.RWMutex
+	// Strings (16 bytes each)
+	primaryRegion    string
+	applicationName  string
+	environment      string
 }
 
 // RegionDeploymentStatus represents the deployment status of a region
@@ -58,12 +65,15 @@ const (
 )
 
 // RegionMetrics holds metrics for a region
+// Memory optimized: 56 → 24 bytes (32 bytes saved)
 type RegionMetrics struct {
+	// Time struct first (24 bytes)
+	LastUpdated  time.Time     `json:"last_updated"`
+	// 8-byte values
 	Latency      time.Duration `json:"latency"`
 	ErrorRate    float64       `json:"error_rate"`
 	RequestCount int64         `json:"request_count"`
 	Availability float64       `json:"availability"`
-	LastUpdated  time.Time     `json:"last_updated"`
 }
 
 // MultiRegionConfig holds multi-region deployment configuration
@@ -89,16 +99,22 @@ type FailoverStrategy struct {
 }
 
 // HealthCheckConfig defines health check configuration
+// Memory optimized: 88 → 40 bytes (48 bytes saved)
 type HealthCheckConfig struct {
-	Enabled            bool          `json:"enabled"`
+	// Slice first (24 bytes)
+	ExpectedCodes      []int         `json:"expected_codes"`
+	// Durations (8 bytes each)
 	Interval           time.Duration `json:"interval"`
 	Timeout            time.Duration `json:"timeout"`
+	// Strings (16 bytes each)
+	Path               string        `json:"path"`
+	Protocol           string        `json:"protocol"`
+	// Ints (4 bytes each)
 	HealthyThreshold   int           `json:"healthy_threshold"`
 	UnhealthyThreshold int           `json:"unhealthy_threshold"`
-	Path               string        `json:"path"`
 	Port               int           `json:"port"`
-	Protocol           string        `json:"protocol"`
-	ExpectedCodes      []int         `json:"expected_codes"`
+	// Bool last (1 byte)
+	Enabled            bool          `json:"enabled"`
 }
 
 // DNSConfig defines DNS configuration

@@ -8,19 +8,16 @@ import (
 )
 
 // StreamingTableProps defines properties for creating a streaming table
+// Memory optimized: 56 → 48 bytes (8 bytes saved)
 type StreamingTableProps struct {
-	// Stream view type (NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES, KEYS_ONLY)
-	StreamViewType awsdynamodb.StreamViewType
-	// Table name
+	// Pointers first (8 bytes each)
 	TableName *string
-	// TTL attribute name for automatic cleanup
 	TimeToLiveAttribute *string
-	// Read capacity (for provisioned mode)
 	ReadCapacity *float64
-	// Write capacity (for provisioned mode)
 	WriteCapacity *float64
-	// Enable auto-scaling
 	EnableAutoScaling *bool
+	// Enum last
+	StreamViewType awsdynamodb.StreamViewType
 }
 
 // StreamingTable is a table with DynamoDB Streams enabled

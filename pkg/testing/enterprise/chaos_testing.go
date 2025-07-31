@@ -172,7 +172,7 @@ func (tester *ChaosEngineeringTester) InjectMemoryPressure(ctx context.Context, 
 	}
 
 	// Hold the memory for the remaining duration
-	remainingDuration := endTime.Sub(time.Now())
+	remainingDuration := time.Until(endTime)
 	if remainingDuration > 0 {
 		time.Sleep(remainingDuration)
 	}

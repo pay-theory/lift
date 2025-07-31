@@ -150,24 +150,24 @@ func NewSecureFunction(scope constructs.Construct, id *string, props *SecureFunc
 			// Add alias for easier identification
 			kmsKey.AddAlias(jsii.String(*id + "-key"))
 		}
-		props.LiftFunctionProps.EnvironmentEncryption = kmsKey
+		props.EnvironmentEncryption = kmsKey
 	}
 
 	// Configure VPC for the function
-	props.LiftFunctionProps.Vpc = vpc
-	props.LiftFunctionProps.VpcSubnets = vpcSubnets
-	props.LiftFunctionProps.SecurityGroups = &[]awsec2.ISecurityGroup{securityGroup}
+	props.Vpc = vpc
+	props.VpcSubnets = vpcSubnets
+	props.SecurityGroups = &[]awsec2.ISecurityGroup{securityGroup}
 
 	// Add additional security groups if provided
 	if props.SecurityGroupIds != nil {
 		for _, sgId := range *props.SecurityGroupIds {
 			sg := awsec2.SecurityGroup_FromSecurityGroupId(this, sgId, sgId, &awsec2.SecurityGroupImportOptions{})
-			*props.LiftFunctionProps.SecurityGroups = append(*props.LiftFunctionProps.SecurityGroups, sg)
+			*props.SecurityGroups = append(*props.SecurityGroups, sg)
 		}
 	}
 
 	// Enable AWS X-Ray tracing for security monitoring
-	props.LiftFunctionProps.Tracing = awslambda.Tracing_ACTIVE
+	props.Tracing = awslambda.Tracing_ACTIVE
 
 	// Create the base Lift function
 	liftFn := NewLiftFunction(this, jsii.String("Function"), &props.LiftFunctionProps)

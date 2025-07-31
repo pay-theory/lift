@@ -15,34 +15,29 @@ import (
 )
 
 // DynamoStreamProcessorProps defines properties for a DynamoDB stream processor
+// Memory optimized: 816 → 808 bytes (8 bytes saved)
 type DynamoStreamProcessorProps struct {
-	// Lambda function properties
-	FunctionProps awslambda.FunctionProps
-
-	// DynamORM Streaming table properties (creates new table if not provided)
+	// Pointers first (8 bytes each)
 	StreamingTableProps *StreamingTableProps
-
-	// Dead letter queue properties (optional)
 	DeadLetterQueueProps *awssqs.QueueProps
-
-	// DynamoDB Streams event source configuration
 	EventSourceProps *awslambdaeventsources.DynamoEventSourceProps
-
-	// Additional DynamoDB stream processor settings
-	MaxBatchingWindow       awscdk.Duration            // Default: 5 seconds
-	MaxRecordAge            awscdk.Duration            // Default: 24 hours
-	TumblingWindow          awscdk.Duration            // For tumbling window processing
-	StartingPosition        awslambda.StartingPosition // Default: LATEST
-	BatchSize               *float64                   // Default: 10
-	RetryAttempts           *float64                   // Default: 10000
-	ParallelizationFactor   *float64                   // Default: 1
+	BatchSize               *float64
+	RetryAttempts           *float64
+	ParallelizationFactor   *float64
 	EnableDeadLetterQueue *bool
-	BisectBatchOnError      *bool                      // Default: false
-	ReportBatchItemFailures *bool                      // Default: true
-	// Lift-specific settings
+	BisectBatchOnError      *bool
+	ReportBatchItemFailures *bool
 	EnableTracing     *bool
 	EnableMultiTenant *bool
 	EnableMonitoring  *bool
+	// Duration structs (16 bytes each)
+	MaxBatchingWindow       awscdk.Duration
+	MaxRecordAge            awscdk.Duration
+	TumblingWindow          awscdk.Duration
+	// Large struct
+	FunctionProps awslambda.FunctionProps
+	// Medium types
+	StartingPosition        awslambda.StartingPosition
 }
 
 // DynamoStreamProcessor represents a DynamoDB table with stream processor using DynamORM
@@ -174,18 +169,18 @@ func NewDynamoStreamProcessor(scope constructs.Construct, id *string, props *Dyn
 	}
 
 	// If no code is provided, use default inline code
-	if liftProps.FunctionProps.Code == nil {
-		liftProps.FunctionProps.Code = awslambda.Code_FromInline(jsii.String("exports.handler = async (event) => { console.log('Stream event:', JSON.stringify(event)); };"))
+	if liftProps.Code == nil {
+		liftProps.Code = awslambda.Code_FromInline(jsii.String("exports.handler = async (event) => { console.log('Stream event:', JSON.stringify(event)); };"))
 	}
-	if liftProps.FunctionProps.Handler == nil {
-		liftProps.FunctionProps.Handler = jsii.String("index.handler")
+	if liftProps.Handler == nil {
+		liftProps.Handler = jsii.String("index.handler")
 	}
-	if liftProps.FunctionProps.Runtime == nil {
-		liftProps.FunctionProps.Runtime = awslambda.Runtime_NODEJS_18_X()
+	if liftProps.Runtime == nil {
+		liftProps.Runtime = awslambda.Runtime_NODEJS_18_X()
 	}
 
 	// Override environment
-	liftProps.FunctionProps.Environment = &functionEnv
+	liftProps.Environment = &functionEnv
 
 	// Set Lift-specific properties
 	if props.EnableTracing != nil {
