@@ -70,8 +70,8 @@ func main() {
 		return
 	}
 	defer func() {
-		if err := os.Remove("test_websocket.go"); err != nil {
-			fmt.Printf("Warning: failed to remove test file: %v\n", err)
+		if removeErr := os.Remove("test_websocket.go"); removeErr != nil {
+			fmt.Printf("Warning: failed to remove test file: %v\n", removeErr)
 		}
 	}()
 

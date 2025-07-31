@@ -16,7 +16,7 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	// Performance settings (8 bytes each)
+	// Performance settings (8 bytes each) - largest individual fields first
 	MaxRequestSize  int64 `json:"max_request_size"`
 	MaxResponseSize int64 `json:"max_response_size"`
 

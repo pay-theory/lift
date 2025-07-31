@@ -580,8 +580,8 @@ func (ta *TestApp) request(method, path string, body any, query map[string]strin
 		return NewTestResponse(nil, 500, map[string]string{}, []byte{}, err)
 	}
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.Printf("Warning: failed to close response body: %v", closeErr)
 		}
 	}()
 

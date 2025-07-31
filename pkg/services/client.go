@@ -221,8 +221,8 @@ func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceIns
 			return execErr
 		}
 		defer func() {
-			if err := resp.Body.Close(); err != nil {
-				log.Printf("Warning: failed to close response body: %v", err)
+			if closeErr := resp.Body.Close(); closeErr != nil {
+				log.Printf("Warning: failed to close response body: %v", closeErr)
 			}
 		}()
 
