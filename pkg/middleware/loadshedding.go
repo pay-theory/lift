@@ -12,6 +12,12 @@ import (
 	"github.com/pay-theory/lift/pkg/observability"
 )
 
+const (
+	defaultName = "default"
+	priorityHigh = "high"
+	priorityLow = "low"
+)
+
 // LoadSheddingStrategy defines different load shedding strategies
 type LoadSheddingStrategy string
 
@@ -76,15 +82,22 @@ type LoadMetrics struct {
 
 // LoadSheddingStats provides statistics about load shedding performance
 type LoadSheddingStats struct {
-	SystemMetrics       LoadMetrics          `json:"system_metrics"`
-	Name                string               `json:"name"`
-	AverageLatency      time.Duration        `json:"average_latency"`
+	// Structs (size varies) - group similar types together
+	SystemMetrics LoadMetrics `json:"system_metrics"`
+	
+	// 8-byte types
 	TotalRequests       int64                `json:"total_requests"`
 	ShedRequests        int64                `json:"shed_requests"`
+	AverageLatency      time.Duration        `json:"average_latency"`
 	CurrentSheddingRate float64              `json:"current_shedding_rate"`
 	SheddingRatio       float64              `json:"shedding_ratio"`
 	Strategy            LoadSheddingStrategy `json:"strategy"`
-	Enabled             bool                 `json:"enabled"`
+	
+	// Strings (16 bytes)
+	Name string `json:"name"`
+	
+	// Booleans (1 byte) - smallest last
+	Enabled bool `json:"enabled"`
 }
 
 // LoadSheddingMiddleware creates a load shedding middleware
@@ -127,7 +140,7 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 		config.SheddingMessage = "Service temporarily overloaded"
 	}
 	if config.Name == "" {
-		config.Name = "default"
+		config.Name = defaultName
 	}
 	if config.PriorityExtractor == nil {
 		config.PriorityExtractor = defaultLoadSheddingPriorityExtractor
@@ -214,13 +227,22 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 
 // loadSheddingManager manages load shedding logic and metrics
 type loadSheddingManager struct {
-	config         LoadSheddingConfig
-	mutex          sync.RWMutex
+	// Struct first (largest)
+	config LoadSheddingConfig
+	
+	// Sync primitives (24 bytes)
+	mutex sync.RWMutex
+	
+	// Slices (24 bytes each)
 	latencyHistory []time.Duration
 	requestHistory []loadRequestRecord
-	metrics        *LoadMetrics
-	stats          *LoadSheddingStats
-	errorCount     int64
+	
+	// Pointers (8 bytes each)
+	metrics *LoadMetrics
+	stats   *LoadSheddingStats
+	
+	// 8-byte types
+	errorCount int64
 }
 
 // loadRequestRecord tracks individual request metrics for load shedding
@@ -252,7 +274,7 @@ func (lsm *loadSheddingManager) shouldShedRequest(ctx *lift.Context) bool {
 // randomShedding implements random load shedding based on current load
 func (lsm *loadSheddingManager) randomShedding() bool {
 	sheddingRate := lsm.calculateSheddingRate()
-	return rand.Float64() < sheddingRate
+	return rand.Float64() < sheddingRate // #nosec G404 - non-cryptographic use for load shedding
 }
 
 // priorityShedding implements priority-based load shedding
@@ -271,7 +293,7 @@ func (lsm *loadSheddingManager) priorityShedding(ctx *lift.Context) bool {
 	priorityMultiplier := 1.0 / (1.0 + float64(priority)*0.1)
 	adjustedRate := sheddingRate * priorityMultiplier
 
-	return rand.Float64() < adjustedRate
+	return rand.Float64() < adjustedRate // #nosec G404 - non-cryptographic use for load shedding
 }
 
 // adaptiveShedding implements adaptive load shedding based on target latency
@@ -284,7 +306,7 @@ func (lsm *loadSheddingManager) adaptiveShedding() bool {
 		currentRate := lsm.getCurrentSheddingRate()
 		newRate := math.Max(currentRate-lsm.config.AdaptationRate, lsm.config.MinSheddingRate)
 		lsm.setCurrentSheddingRate(newRate)
-		return rand.Float64() < newRate
+		return rand.Float64() < newRate // #nosec G404 - non-cryptographic use for load shedding
 	}
 
 	// Performance is poor, increase shedding
@@ -295,7 +317,7 @@ func (lsm *loadSheddingManager) adaptiveShedding() bool {
 	newRate := math.Min(currentRate+lsm.config.AdaptationRate, desiredRate)
 	lsm.setCurrentSheddingRate(newRate)
 
-	return rand.Float64() < newRate
+	return rand.Float64() < newRate // #nosec G404 - non-cryptographic use for load shedding
 }
 
 // circuitShedding implements circuit breaker style load shedding
@@ -325,7 +347,7 @@ func (lsm *loadSheddingManager) circuitShedding() bool {
 	sheddingRate = math.Min(sheddingRate, lsm.config.MaxSheddingRate)
 
 	lsm.setCurrentSheddingRate(sheddingRate)
-	return rand.Float64() < sheddingRate
+	return rand.Float64() < sheddingRate // #nosec G404 - non-cryptographic use for load shedding
 }
 
 // calculateSheddingRate calculates the current shedding rate based on system metrics
@@ -564,11 +586,11 @@ func defaultLoadSheddingPriorityExtractor(ctx *lift.Context) int {
 		switch priority {
 		case "critical":
 			return 10
-		case "high":
+		case priorityHigh:
 			return 8
 		case "normal":
 			return 5
-		case "low":
+		case priorityLow:
 			return 2
 		case "background":
 			return 1

@@ -30,13 +30,18 @@ type SLAConfig struct {
 
 // SLO represents a Service Level Objective
 type SLO struct {
-	Name        string        `json:"name"`
-	Type        SLOType       `json:"type"`
-	Description string        `json:"description"`
-	Target      float64       `json:"target"`
-	Window      time.Duration `json:"window"`
-	Critical    bool          `json:"critical"`
-	Enabled     bool          `json:"enabled"`
+	// 8-byte types first
+	Target float64       `json:"target"`
+	Window time.Duration `json:"window"`
+	Type   SLOType       `json:"type"`
+	
+	// Strings (16 bytes each)
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	
+	// Booleans (1 byte each) - smallest last
+	Critical bool `json:"critical"`
+	Enabled  bool `json:"enabled"`
 }
 
 // SLOType defines types of SLOs
@@ -599,7 +604,6 @@ type Alert struct {
 // AlertManager manages alerts
 type AlertManager struct {
 	alertChannel chan Alert
-	mu           sync.RWMutex
 }
 
 // NewAlertManager creates a new alert manager

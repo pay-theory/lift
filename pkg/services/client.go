@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
@@ -34,44 +33,56 @@ type ServiceClient struct {
 	metrics        MetricsCollector
 	httpClient     HTTPClient
 	config         ServiceClientConfig
-	mu             sync.RWMutex
 }
 
 // ServiceClientConfig configures the service client
 type ServiceClientConfig struct {
-	DefaultTimeout       time.Duration `json:"default_timeout"`
-	MaxRetries           int           `json:"max_retries"`
-	RetryBackoff         time.Duration `json:"retry_backoff"`
-	EnableTracing        bool          `json:"enable_tracing"`
-	EnableMetrics        bool          `json:"enable_metrics"`
-	EnableCircuitBreaker bool          `json:"enable_circuit_breaker"`
-	TenantIsolation      bool          `json:"tenant_isolation"`
-	UserAgent            string        `json:"user_agent"`
+	// 8-byte types first
+	DefaultTimeout time.Duration `json:"default_timeout"`
+	RetryBackoff   time.Duration `json:"retry_backoff"`
+	
+	// Strings (16 bytes)
+	UserAgent string `json:"user_agent"`
+	
+	// 4-byte types
+	MaxRetries int `json:"max_retries"`
+	
+	// Booleans (1 byte each) - smallest last
+	EnableTracing        bool `json:"enable_tracing"`
+	EnableMetrics        bool `json:"enable_metrics"`
+	EnableCircuitBreaker bool `json:"enable_circuit_breaker"`
+	TenantIsolation      bool `json:"tenant_isolation"`
 }
 
 // ServiceRequest represents a service call request
 type ServiceRequest struct {
-	ServiceName         string              `json:"service_name"`
-	Method              string              `json:"method"`
-	Path                string              `json:"path"`
-	Headers             map[string]string   `json:"headers"`
+	// 8-byte types first (interfaces, maps, durations)
 	Body                any                 `json:"body"`
-	TenantID            string              `json:"tenant_id,omitempty"`
-	UserID              string              `json:"user_id,omitempty"`
-	RequestID           string              `json:"request_id,omitempty"`
-	LoadBalanceStrategy LoadBalanceStrategy `json:"load_balance_strategy"`
-	Timeout             time.Duration       `json:"timeout"`
+	Headers             map[string]string   `json:"headers"`
 	Metadata            map[string]any      `json:"metadata"`
+	Timeout             time.Duration       `json:"timeout"`
+	LoadBalanceStrategy LoadBalanceStrategy `json:"load_balance_strategy"`
+	
+	// Strings (16 bytes each)
+	ServiceName string `json:"service_name"`
+	Method      string `json:"method"`
+	Path        string `json:"path"`
+	TenantID    string `json:"tenant_id,omitempty"`
+	UserID      string `json:"user_id,omitempty"`
+	RequestID   string `json:"request_id,omitempty"`
 }
 
 // ServiceResponse represents a service call response
 type ServiceResponse struct {
-	StatusCode int               `json:"status_code"`
-	Headers    map[string]string `json:"headers"`
-	Body       []byte            `json:"body"`
-	Metadata   map[string]any    `json:"metadata"`
-	Duration   time.Duration     `json:"duration"`
-	Instance   *ServiceInstance  `json:"instance"`
+	// 8-byte types first (maps, slices, pointers, durations)
+	Headers  map[string]string `json:"headers"`
+	Metadata map[string]any    `json:"metadata"`
+	Body     []byte            `json:"body"`
+	Duration time.Duration     `json:"duration"`
+	Instance *ServiceInstance  `json:"instance"`
+	
+	// 4-byte types
+	StatusCode int `json:"status_code"`
 }
 
 // RetryPolicy defines retry behavior

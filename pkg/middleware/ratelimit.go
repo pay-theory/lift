@@ -149,7 +149,16 @@ func RateLimitMiddleware(config RateLimitConfig) lift.Middleware {
 			// If configured to skip successful requests, decrement counter for successful requests
 			if config.SkipSuccessful && err == nil && ctx.Response.StatusCode < 400 {
 				// Decrement the counter (best effort)
-				_ = limiter.decrementCounter(ctx.Context, key)
+				if decrementErr := limiter.decrementCounter(ctx.Context, key); decrementErr != nil {
+					// Log decrement error but don't fail the request
+					// This is a best-effort optimization feature
+					if ctx.Logger != nil {
+						ctx.Logger.Warn("Failed to decrement rate limit counter", map[string]any{
+							"error": decrementErr.Error(),
+							"key":   key,
+						})
+					}
+				}
 			}
 
 			return err

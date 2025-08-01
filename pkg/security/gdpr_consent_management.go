@@ -18,10 +18,13 @@ var (
 
 // GDPRConsentManager provides comprehensive GDPR consent management
 type GDPRConsentManager struct {
+	// Struct first (largest)
 	config GDPRConsentConfig
-	mu     sync.RWMutex
-
-	// 8-byte aligned fields (interfaces)
+	
+	// Sync primitive (24 bytes)
+	mu sync.RWMutex
+	
+	// Interfaces (8 bytes each)
 	consentStore         ConsentStore
 	dataSubjectRights    DataSubjectRightsHandler
 	privacyAssessment    PrivacyImpactAssessment
@@ -112,37 +115,50 @@ type GDPRAuditLogger interface {
 
 // ConsentRecord represents a complete consent record
 type ConsentRecord struct {
-	Metadata           map[string]any   `json:"metadata"`
-	ID                 string           `json:"id"`
-	DataSubjectID      string           `json:"data_subject_id"`
-	DataSubjectEmail   string           `json:"data_subject_email"`
-	ConsentVersion     string           `json:"consent_version"`
-	ConsentMethod      string           `json:"consent_method"` // "explicit", "implicit", "opt_in", "opt_out"
-	LegalBasis         string           `json:"legal_basis"`
-	WithdrawalMethod   string           `json:"withdrawal_method,omitempty"`
-	Status             string           `json:"status"` // "active", "expired", "withdrawn", "renewed"
-	Purpose            string           `json:"purpose,omitempty"`
-	Source             string           `json:"source,omitempty"`
-	IPAddress          string           `json:"ip_address,omitempty"`
-	UserAgent          string           `json:"user_agent,omitempty"`
+	// Time structs (24 bytes each) - largest first
+	ConsentDate time.Time `json:"consent_date"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	
+	// Slices (24 bytes each)
 	ConsentScope       []ConsentPurpose `json:"consent_scope"`
 	ProcessingPurposes []string         `json:"processing_purposes"`
 	DataCategories     []string         `json:"data_categories"`
 	Recipients         []DataRecipient  `json:"recipients"`
-	ConsentProof       *ConsentProof    `json:"consent_proof,omitempty"`
-	ExpiryDate         *time.Time       `json:"expiry_date,omitempty"`
-	RenewalDate        *time.Time       `json:"renewal_date,omitempty"`
-	WithdrawalDate     *time.Time       `json:"withdrawal_date,omitempty"`
-	Timestamp          *time.Time       `json:"timestamp,omitempty"`
-	ConsentDate        time.Time        `json:"consent_date"`
-	CreatedAt          time.Time        `json:"created_at"`
-	UpdatedAt          time.Time        `json:"updated_at"`
-	RetentionPeriod    time.Duration    `json:"retention_period"`
-	Granular           bool             `json:"granular"`
-	Specific           bool             `json:"specific"`
-	Informed           bool             `json:"informed"`
-	Unambiguous        bool             `json:"unambiguous"`
-	ConsentGiven       bool             `json:"consent_given"`
+	
+	// Maps (8 bytes)
+	Metadata map[string]any `json:"metadata"`
+	
+	// Pointers (8 bytes each)
+	ConsentProof   *ConsentProof `json:"consent_proof,omitempty"`
+	ExpiryDate     *time.Time    `json:"expiry_date,omitempty"`
+	RenewalDate    *time.Time    `json:"renewal_date,omitempty"`
+	WithdrawalDate *time.Time    `json:"withdrawal_date,omitempty"`
+	Timestamp      *time.Time    `json:"timestamp,omitempty"`
+	
+	// Duration (8 bytes)
+	RetentionPeriod time.Duration `json:"retention_period"`
+	
+	// Strings (16 bytes each)
+	ID               string `json:"id"`
+	DataSubjectID    string `json:"data_subject_id"`
+	DataSubjectEmail string `json:"data_subject_email"`
+	ConsentVersion   string `json:"consent_version"`
+	ConsentMethod    string `json:"consent_method"` // "explicit", "implicit", "opt_in", "opt_out"
+	LegalBasis       string `json:"legal_basis"`
+	WithdrawalMethod string `json:"withdrawal_method,omitempty"`
+	Status           string `json:"status"` // "active", "expired", "withdrawn", "renewed"
+	Purpose          string `json:"purpose,omitempty"`
+	Source           string `json:"source,omitempty"`
+	IPAddress        string `json:"ip_address,omitempty"`
+	UserAgent        string `json:"user_agent,omitempty"`
+	
+	// Booleans (1 byte each) - smallest last
+	Granular      bool `json:"granular"`
+	Specific      bool `json:"specific"`
+	Informed      bool `json:"informed"`
+	Unambiguous   bool `json:"unambiguous"`
+	ConsentGiven  bool `json:"consent_given"`
 }
 
 // ConsentPurpose represents a specific purpose for data processing

@@ -32,14 +32,23 @@ type MultiRegionDeployer struct {
 
 // RegionDeploymentStatus represents the deployment status of a region
 type RegionDeploymentStatus struct {
-	Region          string               `json:"region"`
-	Status          DeploymentStatusType `json:"status"`
-	Health          HealthStatus         `json:"health"`
-	LastDeployed    time.Time            `json:"last_deployed"`
-	LastHealthCheck time.Time            `json:"last_health_check"`
-	Endpoints       map[string]string    `json:"endpoints"`
-	Metrics         RegionMetrics        `json:"metrics"`
-	Error           string               `json:"error,omitempty"`
+	// Time structs (24 bytes each) - largest first
+	LastDeployed    time.Time `json:"last_deployed"`
+	LastHealthCheck time.Time `json:"last_health_check"`
+	
+	// Structs (size varies)
+	Metrics RegionMetrics `json:"metrics"`
+	
+	// Maps (8 bytes)
+	Endpoints map[string]string `json:"endpoints"`
+	
+	// Strings (16 bytes each)
+	Region string `json:"region"`
+	Error  string `json:"error,omitempty"`
+	
+	// Enums (8 bytes each)
+	Status DeploymentStatusType `json:"status"`
+	Health HealthStatus         `json:"health"`
 }
 
 // DeploymentStatusType represents deployment status
@@ -90,12 +99,19 @@ type MultiRegionConfig struct {
 
 // FailoverStrategy defines failover behavior
 type FailoverStrategy struct {
-	Type                string        `json:"type"` // automatic, manual
+	// Durations (8 bytes each) - largest first
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
-	FailureThreshold    int           `json:"failure_threshold"`
-	RecoveryThreshold   int           `json:"recovery_threshold"`
-	AutoFailback        bool          `json:"auto_failback"`
 	FailbackDelay       time.Duration `json:"failback_delay"`
+	
+	// Strings (16 bytes)
+	Type string `json:"type"` // automatic, manual
+	
+	// Ints (4 bytes each)
+	FailureThreshold  int `json:"failure_threshold"`
+	RecoveryThreshold int `json:"recovery_threshold"`
+	
+	// Bool (1 byte) - smallest last
+	AutoFailback bool `json:"auto_failback"`
 }
 
 // HealthCheckConfig defines health check configuration

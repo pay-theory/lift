@@ -6,42 +6,44 @@ import (
 
 // Principal represents an authenticated entity (user, service, etc.) with their permissions
 type Principal struct {
-	// Identity
-	UserID    string `json:"user_id"`
-	TenantID  string `json:"tenant_id"`
-	AccountID string `json:"account_id"` // Partner or Kernel account
-
-	// Authorization
+	// Time structs (24 bytes each) - largest first
+	IssuedAt  time.Time `json:"issued_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+	
+	// Slices (24 bytes each)
 	Roles  []string `json:"roles"`
 	Scopes []string `json:"scopes"`
-
-	// Metadata
-	AuthMethod string    `json:"auth_method"` // "jwt", "api_key", "cross_account"
-	IssuedAt   time.Time `json:"issued_at"`
-	ExpiresAt  time.Time `json:"expires_at"`
-
-	// Request context
-	IPAddress string `json:"ip_address"`
-	UserAgent string `json:"user_agent"`
-
-	// Internal tracking
-	SessionID string `json:"session_id"`
-	RequestID string `json:"request_id"`
+	
+	// Strings (16 bytes each)
+	UserID     string `json:"user_id"`
+	TenantID   string `json:"tenant_id"`
+	AccountID  string `json:"account_id"` // Partner or Kernel account
+	AuthMethod string `json:"auth_method"` // "jwt", "api_key", "cross_account"
+	IPAddress  string `json:"ip_address"`
+	UserAgent  string `json:"user_agent"`
+	SessionID  string `json:"session_id"`
+	RequestID  string `json:"request_id"`
 }
 
 // Permission represents a specific permission in the RBAC system
 type Permission struct {
-	Resource   string         `json:"resource"`   // "users", "payments", "accounts"
-	Action     string         `json:"action"`     // "read", "write", "delete"
+	// Maps (8 bytes) - largest first
 	Conditions map[string]any `json:"conditions"` // Dynamic conditions
+	
+	// Strings (16 bytes each)
+	Resource string `json:"resource"` // "users", "payments", "accounts"
+	Action   string `json:"action"`   // "read", "write", "delete"
 }
 
 // Role represents a collection of permissions
 type Role struct {
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
+	// Slices (24 bytes) - largest first
 	Permissions []Permission `json:"permissions"`
-	TenantID    string       `json:"tenant_id"` // Empty for global roles
+	
+	// Strings (16 bytes each)
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	TenantID    string `json:"tenant_id"` // Empty for global roles
 }
 
 // HasRole checks if the principal has a specific role
@@ -110,7 +112,7 @@ func (p *Principal) IsValidForTenant(tenantID string) bool {
 }
 
 // CanAccessResource checks if the principal can access a specific resource
-func (p *Principal) CanAccessResource(resource, action string) bool {
+func (p *Principal) CanAccessResource(resource, _ string) bool {
 	// For now, this is a simple role-based check
 	// In the future, this will integrate with the RBAC system
 
