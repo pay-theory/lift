@@ -112,7 +112,7 @@ func main() {
 	}
 
 	for _, dep := range deps {
-		modCheck, err := exec.Command("go", "list", "-m", dep).Output()
+		modCheck, err := exec.Command("go", "list", "-m", dep).Output() // #nosec G204 - dep is from controlled slice
 		if err != nil {
 			fmt.Printf("   ❌ Missing: %s\n", dep)
 			fmt.Printf("      Run: go get %s\n", dep)

@@ -182,7 +182,7 @@ func main() {
 	// Add a simple index page
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `
+		_, _ = fmt.Fprintf(w, `
 <!DOCTYPE html>
 <html>
 <head>

@@ -757,8 +757,8 @@ func DataProtection(config DataProtectionConfig) LiftMiddleware {
 	manager, err := NewDataProtectionManager(config)
 	if err != nil {
 		// Return a middleware that always returns an error
-		return func(next LiftHandler) LiftHandler {
-			return LiftHandlerFunc(func(ctx LiftContext) error {
+		return func(_ LiftHandler) LiftHandler {
+			return LiftHandlerFunc(func(_ LiftContext) error {
 				// Don't expose internal implementation details
 				return fmt.Errorf("data protection service unavailable: configuration error")
 			})

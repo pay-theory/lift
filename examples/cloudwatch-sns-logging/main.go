@@ -53,7 +53,7 @@ func main() {
 	logger2, err := cloudwatch.NewCloudWatchLogger(loggerConfig, cwClient,
 		cloudwatch.WithErrorNotifications(snsClient, customTopicARN))
 	if err != nil {
-		log.Fatalf("Failed to create CloudWatch logger: %v", err)
+		log.Fatalf("Failed to create CloudWatch logger: %v", err) //nolint:gocritic // defer not needed if creation fails
 	}
 	defer func() {
 		if closeErr := logger2.Close(); closeErr != nil {

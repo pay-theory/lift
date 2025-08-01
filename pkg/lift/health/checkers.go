@@ -108,10 +108,6 @@ type DatabaseHealthChecker struct {
 	pingTimeout time.Duration // 8 bytes
 
 	name string // 16 bytes
-
-	// Configuration (4 bytes each)
-	maxOpenConns int
-	maxIdleConns int
 }
 
 // NewDatabaseHealthChecker creates a new database health checker

@@ -111,7 +111,7 @@ func NewSOC2ComplianceTester(app any) *SOC2ComplianceTester {
 }
 
 // TestSecurityControls tests security controls implementation
-func (tester *SOC2ComplianceTester) TestSecurityControls(ctx context.Context) error {
+func (tester *SOC2ComplianceTester) TestSecurityControls(_ context.Context) error {
 	// Test authentication controls
 	if err := tester.testAuthenticationControls(); err != nil {
 		return fmt.Errorf("authentication controls failed: %w", err)
@@ -135,7 +135,7 @@ func (tester *SOC2ComplianceTester) TestSecurityControls(ctx context.Context) er
 }
 
 // TestAvailabilityControls tests system availability controls
-func (tester *SOC2ComplianceTester) TestAvailabilityControls(ctx context.Context) error {
+func (tester *SOC2ComplianceTester) TestAvailabilityControls(_ context.Context) error {
 	// Test monitoring systems
 	if err := tester.testMonitoringSystems(); err != nil {
 		return fmt.Errorf("monitoring systems failed: %w", err)
@@ -159,7 +159,7 @@ func (tester *SOC2ComplianceTester) TestAvailabilityControls(ctx context.Context
 }
 
 // TestProcessingIntegrity tests data processing integrity controls
-func (tester *SOC2ComplianceTester) TestProcessingIntegrity(ctx context.Context) error {
+func (tester *SOC2ComplianceTester) TestProcessingIntegrity(_ context.Context) error {
 	// Test data validation controls
 	if err := tester.testDataValidation(); err != nil {
 		return fmt.Errorf("data validation failed: %w", err)
@@ -183,7 +183,7 @@ func (tester *SOC2ComplianceTester) TestProcessingIntegrity(ctx context.Context)
 }
 
 // TestConfidentialityControls tests data confidentiality controls
-func (tester *SOC2ComplianceTester) TestConfidentialityControls(ctx context.Context) error {
+func (tester *SOC2ComplianceTester) TestConfidentialityControls(_ context.Context) error {
 	// Test data encryption
 	if err := tester.testDataEncryption(); err != nil {
 		return fmt.Errorf("data encryption failed: %w", err)
@@ -207,7 +207,7 @@ func (tester *SOC2ComplianceTester) TestConfidentialityControls(ctx context.Cont
 }
 
 // TestPrivacyControls tests privacy controls
-func (tester *SOC2ComplianceTester) TestPrivacyControls(ctx context.Context) error {
+func (tester *SOC2ComplianceTester) TestPrivacyControls(_ context.Context) error {
 	// Test privacy policy implementation
 	if err := tester.testPrivacyPolicy(); err != nil {
 		return fmt.Errorf("privacy policy failed: %w", err)
@@ -231,7 +231,7 @@ func (tester *SOC2ComplianceTester) TestPrivacyControls(ctx context.Context) err
 }
 
 // CollectControlEvidence collects evidence for SOC2 controls
-func (tester *SOC2ComplianceTester) CollectControlEvidence(ctx context.Context) (*ControlEvidence, error) {
+func (tester *SOC2ComplianceTester) CollectControlEvidence(_ context.Context) (*ControlEvidence, error) {
 	evidence := &ControlEvidence{
 		SecurityControls: []SecurityControl{
 			{

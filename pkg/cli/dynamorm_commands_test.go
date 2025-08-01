@@ -59,21 +59,21 @@ require (
 		assert.FileExists(t, exampleFile)
 
 		// Check model file content
-		modelContent, err := os.ReadFile(modelFile)
+		modelContent, err := os.ReadFile(modelFile) // #nosec G304 - test file path is controlled
 		require.NoError(t, err)
 		assert.Contains(t, string(modelContent), "type User struct")
 		assert.Contains(t, string(modelContent), "package models")
 		assert.Contains(t, string(modelContent), "func NewUser(")
 
 		// Check CDK file content
-		cdkContent, err := os.ReadFile(cdkFile)
+		cdkContent, err := os.ReadFile(cdkFile) // #nosec G304 - test file path is controlled
 		require.NoError(t, err)
 		assert.Contains(t, string(cdkContent), "type UserTableProps struct")
 		assert.Contains(t, string(cdkContent), "func NewUserTable(")
 		assert.Contains(t, string(cdkContent), "package constructs")
 
 		// Check example file content
-		exampleContent, err := os.ReadFile(exampleFile)
+		exampleContent, err := os.ReadFile(exampleFile) // #nosec G304 - test file path is controlled
 		require.NoError(t, err)
 		assert.Contains(t, string(exampleContent), "type UserService struct")
 		assert.Contains(t, string(exampleContent), "func main()")
@@ -88,7 +88,7 @@ require (
 
 		// Check model file content
 		modelFile := filepath.Join("models", "product.go")
-		modelContent, err := os.ReadFile(modelFile)
+		modelContent, err := os.ReadFile(modelFile) // #nosec G304 - test file path is controlled
 		require.NoError(t, err)
 
 		assert.Contains(t, string(modelContent), "TenantID string")
@@ -105,7 +105,7 @@ require (
 
 		// Check model file content
 		modelFile := filepath.Join("models", "order.go")
-		modelContent, err := os.ReadFile(modelFile)
+		modelContent, err := os.ReadFile(modelFile) // #nosec G304 - test file path is controlled
 		require.NoError(t, err)
 
 		assert.Contains(t, string(modelContent), "Status string")
@@ -115,7 +115,7 @@ require (
 
 		// Check CDK file content
 		cdkFile := filepath.Join("cdk", "constructs", "order_table.go")
-		cdkContent, err := os.ReadFile(cdkFile)
+		cdkContent, err := os.ReadFile(cdkFile) // #nosec G304 - test file path is controlled
 		require.NoError(t, err)
 
 		assert.Contains(t, string(cdkContent), `IndexName: jsii.String("Status")`)

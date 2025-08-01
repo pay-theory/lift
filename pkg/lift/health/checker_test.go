@@ -67,8 +67,12 @@ func TestHealthManager_CheckComponent(t *testing.T) {
 	healthyChecker := NewAlwaysHealthyChecker("healthy")
 	unhealthyChecker := NewAlwaysUnhealthyChecker("unhealthy")
 
-	_ = manager.RegisterChecker("healthy", healthyChecker)
-	_ = manager.RegisterChecker("unhealthy", unhealthyChecker)
+	if err := manager.RegisterChecker("healthy", healthyChecker); err != nil {
+		t.Fatalf("failed to register healthy checker: %v", err)
+	}
+	if err := manager.RegisterChecker("unhealthy", unhealthyChecker); err != nil {
+		t.Fatalf("failed to register unhealthy checker: %v", err)
+	}
 
 	ctx := context.Background()
 
@@ -105,9 +109,15 @@ func TestHealthManager_CheckAll(t *testing.T) {
 	manager := NewHealthManager(config)
 
 	// Register multiple checkers
-	_ = manager.RegisterChecker("healthy1", NewAlwaysHealthyChecker("healthy1"))
-	_ = manager.RegisterChecker("healthy2", NewAlwaysHealthyChecker("healthy2"))
-	_ = manager.RegisterChecker("unhealthy1", NewAlwaysUnhealthyChecker("unhealthy1"))
+	if err := manager.RegisterChecker("healthy1", NewAlwaysHealthyChecker("healthy1")); err != nil {
+		t.Fatalf("failed to register healthy1 checker: %v", err)
+	}
+	if err := manager.RegisterChecker("healthy2", NewAlwaysHealthyChecker("healthy2")); err != nil {
+		t.Fatalf("failed to register healthy2 checker: %v", err)
+	}
+	if err := manager.RegisterChecker("unhealthy1", NewAlwaysUnhealthyChecker("unhealthy1")); err != nil {
+		t.Fatalf("Failed to register unhealthy1 checker: %v", err)
+	}
 
 	ctx := context.Background()
 	results := manager.CheckAll(ctx)
@@ -146,9 +156,15 @@ func TestHealthManager_CheckAllParallel(t *testing.T) {
 		}
 	})
 
-	_ = manager.RegisterChecker("slow1", slowChecker)
-	_ = manager.RegisterChecker("slow2", slowChecker)
-	_ = manager.RegisterChecker("slow3", slowChecker)
+	if err := manager.RegisterChecker("slow1", slowChecker); err != nil {
+		t.Fatalf("Failed to register slow1 checker: %v", err)
+	}
+	if err := manager.RegisterChecker("slow2", slowChecker); err != nil {
+		t.Fatalf("Failed to register slow2 checker: %v", err)
+	}
+	if err := manager.RegisterChecker("slow3", slowChecker); err != nil {
+		t.Fatalf("Failed to register slow3 checker: %v", err)
+	}
 
 	ctx := context.Background()
 	start := time.Now()
@@ -176,8 +192,12 @@ func TestHealthManager_OverallHealth(t *testing.T) {
 	}
 
 	// Test with all healthy
-	_ = manager.RegisterChecker("healthy1", NewAlwaysHealthyChecker("healthy1"))
-	_ = manager.RegisterChecker("healthy2", NewAlwaysHealthyChecker("healthy2"))
+	if err := manager.RegisterChecker("healthy1", NewAlwaysHealthyChecker("healthy1")); err != nil {
+		t.Fatalf("Failed to register healthy1 checker: %v", err)
+	}
+	if err := manager.RegisterChecker("healthy2", NewAlwaysHealthyChecker("healthy2")); err != nil {
+		t.Fatalf("Failed to register healthy2 checker: %v", err)
+	}
 
 	overall = manager.OverallHealth(ctx)
 	if overall.Status != StatusHealthy {
@@ -185,7 +205,9 @@ func TestHealthManager_OverallHealth(t *testing.T) {
 	}
 
 	// Test with one unhealthy
-	_ = manager.RegisterChecker("unhealthy1", NewAlwaysUnhealthyChecker("unhealthy1"))
+	if err := manager.RegisterChecker("unhealthy1", NewAlwaysUnhealthyChecker("unhealthy1")); err != nil {
+		t.Fatalf("Failed to register unhealthy1 checker: %v", err)
+	}
 
 	overall = manager.OverallHealth(ctx)
 	if overall.Status != StatusUnhealthy {
@@ -202,7 +224,9 @@ func TestHealthManager_OverallHealth(t *testing.T) {
 			Message:   "Degraded service",
 		}
 	})
-	_ = manager.RegisterChecker("degraded1", degradedChecker)
+	if err := manager.RegisterChecker("degraded1", degradedChecker); err != nil {
+		t.Fatalf("Failed to register degraded1 checker: %v", err)
+	}
 
 	overall = manager.OverallHealth(ctx)
 	if overall.Status != StatusDegraded {
@@ -226,7 +250,9 @@ func TestHealthManager_Timeout(t *testing.T) {
 		}
 	})
 
-	_ = manager.RegisterChecker("slow", slowChecker)
+	if err := manager.RegisterChecker("slow", slowChecker); err != nil {
+		t.Fatalf("Failed to register slow checker: %v", err)
+	}
 
 	ctx := context.Background()
 	status, err := manager.CheckComponent(ctx, "slow")
@@ -260,7 +286,9 @@ func TestHealthManager_Cache(t *testing.T) {
 		}
 	})
 
-	_ = manager.RegisterChecker("counting", countingChecker)
+	if err := manager.RegisterChecker("counting", countingChecker); err != nil {
+		t.Fatalf("Failed to register counting checker: %v", err)
+	}
 
 	ctx := context.Background()
 
@@ -293,7 +321,9 @@ func TestHealthManager_PanicRecovery(t *testing.T) {
 		panic("test panic")
 	})
 
-	_ = manager.RegisterChecker("panic", panicChecker)
+	if err := manager.RegisterChecker("panic", panicChecker); err != nil {
+		t.Fatalf("Failed to register panic checker: %v", err)
+	}
 
 	ctx := context.Background()
 	status, err := manager.CheckComponent(ctx, "panic")
@@ -389,7 +419,9 @@ func BenchmarkHealthManager_CheckAll(b *testing.B) {
 	// Register multiple fast checkers
 	for i := 0; i < 10; i++ {
 		name := fmt.Sprintf("checker-%d", i)
-		_ = manager.RegisterChecker(name, NewAlwaysHealthyChecker(name))
+		if err := manager.RegisterChecker(name, NewAlwaysHealthyChecker(name)); err != nil {
+			b.Fatalf("Failed to register checker %s: %v", name, err)
+		}
 	}
 
 	ctx := context.Background()
@@ -402,7 +434,9 @@ func BenchmarkHealthManager_CheckAll(b *testing.B) {
 
 func BenchmarkHealthManager_CheckComponent(b *testing.B) {
 	manager := NewHealthManager(DefaultHealthManagerConfig())
-	_ = manager.RegisterChecker("test", NewAlwaysHealthyChecker("test"))
+	if err := manager.RegisterChecker("test", NewAlwaysHealthyChecker("test")); err != nil {
+		b.Fatalf("Failed to register test checker: %v", err)
+	}
 
 	ctx := context.Background()
 
@@ -418,7 +452,9 @@ func BenchmarkHealthManager_OverallHealth(b *testing.B) {
 	// Register multiple checkers
 	for i := 0; i < 5; i++ {
 		name := fmt.Sprintf("checker-%d", i)
-		_ = manager.RegisterChecker(name, NewAlwaysHealthyChecker(name))
+		if err := manager.RegisterChecker(name, NewAlwaysHealthyChecker(name)); err != nil {
+			b.Fatalf("Failed to register checker %s: %v", name, err)
+		}
 	}
 
 	ctx := context.Background()

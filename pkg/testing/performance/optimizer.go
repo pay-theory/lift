@@ -12,14 +12,11 @@ import (
 // PerformanceOptimizer provides comprehensive performance monitoring and optimization
 type PerformanceOptimizer struct {
 	mu              sync.RWMutex         // 24 bytes
-	monitors        []PerformanceMonitor // 24 bytes
-	benchmarks      []Benchmark          // 24 bytes
-	analyzers       []PerformanceAnalyzer // 24 bytes
-	optimizers      []Optimizer          // 24 bytes
-	alerting        AlertingSystem       // interface
-	trending        TrendAnalyzer        // interface
-	recommendations RecommendationEngine // interface
-	config          PerformanceConfig    // struct
+	monitors   []PerformanceMonitor // 24 bytes
+	benchmarks []Benchmark          // 24 bytes
+	analyzers  []PerformanceAnalyzer // 24 bytes
+	optimizers []Optimizer          // 24 bytes
+	config     PerformanceConfig    // struct
 }
 
 // PerformanceConfig configures performance optimization behavior

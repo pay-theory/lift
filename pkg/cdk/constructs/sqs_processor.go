@@ -13,6 +13,10 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
+const (
+	fifoSuffix = ".fifo"
+)
+
 // SQSProcessorProps defines properties for an SQS processor
 type SQSProcessorProps struct {
 	// Lambda function properties
@@ -140,8 +144,8 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 			// Handle FIFO DLQ suffix
 			if fifoQueue && dlqProps.QueueName != nil {
 				queueName := *dlqProps.QueueName
-				if len(queueName) < 5 || queueName[len(queueName)-5:] != ".fifo" {
-					dlqProps.QueueName = jsii.String(queueName + ".fifo")
+				if len(queueName) < 5 || queueName[len(queueName)-5:] != fifoSuffix {
+					dlqProps.QueueName = jsii.String(queueName + fifoSuffix)
 				}
 				dlqProps.Fifo = jsii.Bool(true)
 				if props.EnableContentBasedDeduplication != nil {
@@ -191,8 +195,8 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 			// Ensure FIFO queue name ends with .fifo
 			if queueProps.QueueName != nil {
 				queueName := *queueProps.QueueName
-				if len(queueName) < 5 || queueName[len(queueName)-5:] != ".fifo" {
-					queueProps.QueueName = jsii.String(queueName + ".fifo")
+				if len(queueName) < 5 || queueName[len(queueName)-5:] != fifoSuffix {
+					queueProps.QueueName = jsii.String(queueName + fifoSuffix)
 				}
 			}
 		}
@@ -201,7 +205,7 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 		if queueProps.QueueName == nil && props.FunctionProps.FunctionName != nil {
 			suffix := ""
 			if fifoQueue {
-				suffix = ".fifo"
+				suffix = fifoSuffix
 			}
 			queueProps.QueueName = jsii.String(*props.FunctionProps.FunctionName + "-queue" + suffix)
 		}
@@ -229,7 +233,7 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 	}
 
 	// Override environment
-	liftProps.FunctionProps.Environment = &functionEnv
+	liftProps.Environment = &functionEnv
 
 	// Set Lift-specific properties
 	if props.EnableTracing != nil {

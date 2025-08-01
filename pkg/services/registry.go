@@ -16,7 +16,6 @@ type ServiceRegistry struct {
 	discovery      ServiceDiscovery
 	loadBalancer   LoadBalancer
 	healthChecker  health.HealthManager
-	circuitBreaker CircuitBreaker
 	metrics        observability.MetricsCollector
 	cache          ServiceCache
 	mu             sync.RWMutex
@@ -463,7 +462,7 @@ func (r *ServiceRegistry) generateCacheKey(serviceName string, opts DiscoveryOpt
 }
 
 // startHealthMonitoring starts health monitoring for a service
-func (r *ServiceRegistry) startHealthMonitoring(config *ServiceConfig) {
+func (r *ServiceRegistry) startHealthMonitoring(_ *ServiceConfig) {
 	// This would integrate with the existing health monitoring system
 	// For now, this is a placeholder
 }

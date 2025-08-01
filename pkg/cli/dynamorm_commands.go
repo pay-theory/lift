@@ -16,6 +16,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+const (
+	stringType          = "string"
+	mediumSize          = "Medium"
+	keysOnlyView        = "KEYS_ONLY"
+	newAndOldImagesView = "NEW_AND_OLD_IMAGES"
+	allView             = "ALL"
+)
+
 // DynamORMScaffoldCommand scaffolds DynamORM models, CDK constructs, and examples
 type DynamORMScaffoldCommand struct{}
 
@@ -179,7 +187,7 @@ func (c *DynamORMScaffoldCommand) createDirectories(_ *ScaffoldConfig) error {
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			return err
 		}
 	}
@@ -251,7 +259,7 @@ func (m *{{.ModelName}}) Update() {
 	}
 
 	filename := filepath.Join("models", strings.ToLower(config.ModelName)+".go")
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 - filename is constructed from sanitized input in controlled directories
 	if err != nil {
 		return err
 	}
@@ -375,7 +383,7 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 	}
 
 	filename := filepath.Join("cdk", "constructs", strings.ToLower(config.ModelName)+"_table.go")
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 - filename is constructed from sanitized input in controlled directories
 	if err != nil {
 		return err
 	}
@@ -600,7 +608,7 @@ func main() {
 	}
 
 	filename := filepath.Join("examples", strings.ToLower(config.ModelName)+"_example.go")
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 - filename is constructed from sanitized input in controlled directories
 	if err != nil {
 		return err
 	}
@@ -720,7 +728,7 @@ func (c *DynamORMMigrateCommand) Execute(ctx context.Context, args []string) err
 	}
 
 	// Create output directory
-	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(config.OutputDir, 0750); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -872,9 +880,10 @@ func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynam
 			Required: true,
 		}
 
-		if key.KeyType == types.KeyTypeHash {
+		switch key.KeyType {
+		case types.KeyTypeHash:
 			analysis.PartitionKey = spec
-		} else if key.KeyType == types.KeyTypeRange {
+		case types.KeyTypeRange:
 			analysis.SortKey = &spec
 		}
 	}
@@ -900,9 +909,10 @@ func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynam
 				Required: true,
 			}
 
-			if key.KeyType == types.KeyTypeHash {
+			switch key.KeyType {
+			case types.KeyTypeHash:
 				gsiAnalysis.PartitionKey = spec
-			} else if key.KeyType == types.KeyTypeRange {
+			case types.KeyTypeRange:
 				gsiAnalysis.SortKey = &spec
 			}
 		}
@@ -984,13 +994,13 @@ func (c *DynamORMMigrateCommand) findAttribute(attrs []types.AttributeDefinition
 func (c *DynamORMMigrateCommand) convertDynamoType(attrType types.ScalarAttributeType) string {
 	switch attrType {
 	case types.ScalarAttributeTypeS:
-		return "string"
+		return stringType
 	case types.ScalarAttributeTypeN:
 		return "number"
 	case types.ScalarAttributeTypeB:
 		return "binary"
 	default:
-		return "string"
+		return stringType
 	}
 }
 
@@ -1039,15 +1049,15 @@ func (c *DynamORMMigrateCommand) determineMigrationComplexity(analysis *TableAna
 	complexity := "Simple"
 
 	if len(analysis.GlobalSecondaryIndexes) > 2 {
-		complexity = "Medium"
+		complexity = mediumSize
 	}
 
 	if len(analysis.LocalSecondaryIndexes) > 0 {
-		complexity = "Medium"
+		complexity = mediumSize
 	}
 
 	if analysis.StreamSpec != nil && analysis.StreamSpec.Enabled {
-		complexity = "Medium"
+		complexity = mediumSize
 	}
 
 	if len(analysis.SampleItems) > 0 {
@@ -1263,7 +1273,7 @@ func (m *{{.ModelName}}) Update() {
 	}
 
 	filename := filepath.Join(config.OutputDir, strings.ToLower(config.ModelName)+".go")
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 - filename is constructed from sanitized input in controlled directories
 	if err != nil {
 		return err
 	}
@@ -1427,7 +1437,7 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 	funcMap := template.FuncMap{
 		"ToDynamoType": func(s string) string {
 			switch strings.ToLower(s) {
-			case "string":
+			case stringType:
 				return "STRING"
 			case "number":
 				return "NUMBER"
@@ -1439,28 +1449,28 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 		},
 		"ToStreamType": func(s string) string {
 			switch strings.ToUpper(s) {
-			case "KEYS_ONLY":
-				return "KEYS_ONLY"
+			case keysOnlyView:
+				return keysOnlyView
 			case "NEW_IMAGE":
 				return "NEW_IMAGE"
 			case "OLD_IMAGE":
 				return "OLD_IMAGE"
-			case "NEW_AND_OLD_IMAGES":
-				return "NEW_AND_OLD_IMAGES"
+			case newAndOldImagesView:
+				return newAndOldImagesView
 			default:
-				return "NEW_AND_OLD_IMAGES"
+				return newAndOldImagesView
 			}
 		},
 		"ToProjectionType": func(s string) string {
 			switch strings.ToUpper(s) {
-			case "ALL":
-				return "ALL"
-			case "KEYS_ONLY":
-				return "KEYS_ONLY"
+			case allView:
+				return allView
+			case keysOnlyView:
+				return keysOnlyView
 			case "INCLUDE":
 				return "INCLUDE"
 			default:
-				return "ALL"
+				return allView
 			}
 		},
 	}
@@ -1471,7 +1481,7 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 	}
 
 	filename := filepath.Join(config.OutputDir, strings.ToLower(config.ModelName)+"_table.go")
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 - filename is constructed from sanitized input in controlled directories
 	if err != nil {
 		return err
 	}
@@ -1841,7 +1851,7 @@ func printMigrationSummary(stats *MigrationStats) {
 	}
 
 	filename := filepath.Join(config.OutputDir, "migrate_"+strings.ToLower(config.ModelName)+".go")
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 - filename is constructed from sanitized input in controlled directories
 	if err != nil {
 		return err
 	}
@@ -2113,7 +2123,7 @@ func Benchmark{{.ModelName}}_CRUD(b *testing.B) {
 	}
 
 	filename := filepath.Join(config.OutputDir, strings.ToLower(config.ModelName)+"_test.go")
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 - filename is constructed from sanitized input in controlled directories
 	if err != nil {
 		return err
 	}

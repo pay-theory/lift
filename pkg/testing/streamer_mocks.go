@@ -200,7 +200,7 @@ func (m *StreamerAPIGatewayClientMock) WithError(connectionID string, err error)
 
 // PostToConnection sends data to a WebSocket connection
 // Implements StreamerAPIGatewayClient interface
-func (m *StreamerAPIGatewayClientMock) PostToConnection(ctx context.Context, connectionID string, data []byte) error {
+func (m *StreamerAPIGatewayClientMock) PostToConnection(_ context.Context, connectionID string, data []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -265,7 +265,7 @@ func (m *StreamerAPIGatewayClientMock) PostToConnection(ctx context.Context, con
 
 // DeleteConnection terminates a WebSocket connection
 // Implements StreamerAPIGatewayClient interface
-func (m *StreamerAPIGatewayClientMock) DeleteConnection(ctx context.Context, connectionID string) error {
+func (m *StreamerAPIGatewayClientMock) DeleteConnection(_ context.Context, connectionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -301,7 +301,7 @@ func (m *StreamerAPIGatewayClientMock) DeleteConnection(ctx context.Context, con
 
 // GetConnection retrieves connection information
 // Implements StreamerAPIGatewayClient interface
-func (m *StreamerAPIGatewayClientMock) GetConnection(ctx context.Context, connectionID string) (*StreamerConnectionInfo, error) {
+func (m *StreamerAPIGatewayClientMock) GetConnection(_ context.Context, connectionID string) (*StreamerConnectionInfo, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

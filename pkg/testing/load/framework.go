@@ -357,7 +357,7 @@ func (lt *LoadTest) recordResult(scenarioName string, result *ScenarioResult, du
 }
 
 // recordError records an error
-func (lt *LoadTest) recordError(errorType string, statusCode int, err error) {
+func (lt *LoadTest) recordError(errorType string, statusCode int, _ error) {
 	lt.mu.Lock()
 	defer lt.mu.Unlock()
 
@@ -532,11 +532,11 @@ func (lt *LoadTest) PrintResults() {
 // Example scenarios for common use cases
 
 // HTTPGetScenario creates a simple HTTP GET scenario
-func HTTPGetScenario(name, path string) Scenario {
+func HTTPGetScenario(name, _ string) Scenario {
 	return Scenario{
 		Name:   name,
 		Weight: 1,
-		Execute: func(ctx context.Context, app *lift.App, data any) (*ScenarioResult, error) {
+		Execute: func(_ context.Context, _ *lift.App, _ any) (*ScenarioResult, error) {
 			start := time.Now()
 
 			// This would need to be implemented to actually call the app
@@ -553,14 +553,14 @@ func HTTPGetScenario(name, path string) Scenario {
 }
 
 // HTTPPostScenario creates a simple HTTP POST scenario
-func HTTPPostScenario(name, path string, payload any) Scenario {
+func HTTPPostScenario(name, _ string, payload any) Scenario {
 	return Scenario{
 		Name:   name,
 		Weight: 1,
 		Setup: func() (any, error) {
 			return payload, nil
 		},
-		Execute: func(ctx context.Context, app *lift.App, data any) (*ScenarioResult, error) {
+		Execute: func(_ context.Context, _ *lift.App, _ any) (*ScenarioResult, error) {
 			start := time.Now()
 
 			// This would need to be implemented to actually call the app
@@ -578,11 +578,11 @@ func HTTPPostScenario(name, path string, payload any) Scenario {
 }
 
 // RateLimitTestScenario creates a scenario for testing rate limits
-func RateLimitTestScenario(name, path string, expectedLimit int) Scenario {
+func RateLimitTestScenario(name, _ string, expectedLimit int) Scenario {
 	return Scenario{
 		Name:   name,
 		Weight: 1,
-		Execute: func(ctx context.Context, app *lift.App, data any) (*ScenarioResult, error) {
+		Execute: func(_ context.Context, _ *lift.App, _ any) (*ScenarioResult, error) {
 			start := time.Now()
 
 			// This would make rapid requests to test rate limiting

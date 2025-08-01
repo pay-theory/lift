@@ -537,15 +537,15 @@ func (d *DefaultRollbackStrategy) Name() string {
 // DefaultDeploymentMonitoring provides default monitoring
 type DefaultDeploymentMonitoring struct{}
 
-func (d *DefaultDeploymentMonitoring) StartMonitoring(_ context.Context, env *Environment) error {
+func (d *DefaultDeploymentMonitoring) StartMonitoring(_ context.Context, _ *Environment) error {
 	return nil
 }
 
-func (d *DefaultDeploymentMonitoring) StopMonitoring(ctx context.Context, env *Environment) error {
+func (d *DefaultDeploymentMonitoring) StopMonitoring(_ context.Context, _ *Environment) error {
 	return nil
 }
 
-func (d *DefaultDeploymentMonitoring) GetMetrics(ctx context.Context, env *Environment) (EnvironmentMetrics, error) {
+func (d *DefaultDeploymentMonitoring) GetMetrics(_ context.Context, _ *Environment) (EnvironmentMetrics, error) {
 	// Simulate metrics collection
 	return EnvironmentMetrics{
 		ResponseTime:      50 * time.Millisecond,
@@ -559,7 +559,7 @@ func (d *DefaultDeploymentMonitoring) GetMetrics(ctx context.Context, env *Envir
 	}, nil
 }
 
-func (d *DefaultDeploymentMonitoring) AlertOnIssue(ctx context.Context, env *Environment, issue string) error {
+func (d *DefaultDeploymentMonitoring) AlertOnIssue(_ context.Context, env *Environment, issue string) error {
 	// Simulate alerting
 	fmt.Printf("ALERT: Environment %s - %s\n", env.Name, issue)
 	return nil
@@ -568,18 +568,18 @@ func (d *DefaultDeploymentMonitoring) AlertOnIssue(ctx context.Context, env *Env
 // DefaultTrafficSplitter provides default traffic splitting
 type DefaultTrafficSplitter struct{}
 
-func (d *DefaultTrafficSplitter) SetTrafficWeight(ctx context.Context, env *Environment, weight float64) error {
+func (d *DefaultTrafficSplitter) SetTrafficWeight(_ context.Context, _ *Environment, _ float64) error {
 	// Simulate traffic weight setting
 	// Note: In Go, we need to modify the original struct, not a copy
 	// This is a limitation of the interface design - in production, this would modify the actual load balancer
 	return nil
 }
 
-func (d *DefaultTrafficSplitter) GetTrafficWeight(ctx context.Context, env *Environment) (float64, error) {
+func (d *DefaultTrafficSplitter) GetTrafficWeight(_ context.Context, env *Environment) (float64, error) {
 	return env.Config.TrafficWeight, nil
 }
 
-func (d *DefaultTrafficSplitter) SwitchTraffic(ctx context.Context, fromEnv, toEnv *Environment) error {
+func (d *DefaultTrafficSplitter) SwitchTraffic(_ context.Context, _, _ *Environment) error {
 	// Simulate traffic switching
 	// Note: In production, this would update the actual load balancer configuration
 	// The interface design would need pointers to modify the original structs

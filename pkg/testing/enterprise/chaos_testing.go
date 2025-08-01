@@ -29,7 +29,7 @@ func NewChaosEngineeringTester(app any) *ChaosEngineeringTester {
 }
 
 // CheckSystemHealth checks if the system is healthy
-func (tester *ChaosEngineeringTester) CheckSystemHealth(ctx context.Context) (bool, error) {
+func (tester *ChaosEngineeringTester) CheckSystemHealth(_ context.Context) (bool, error) {
 	// Mock health check - in real implementation, this would check:
 	// - Service availability
 	// - Database connectivity
@@ -50,7 +50,7 @@ func (tester *ChaosEngineeringTester) CheckSystemHealth(ctx context.Context) (bo
 }
 
 // InjectDatabaseFailure simulates database connection failures
-func (tester *ChaosEngineeringTester) InjectDatabaseFailure(ctx context.Context, failureType string, duration time.Duration) error {
+func (tester *ChaosEngineeringTester) InjectDatabaseFailure(_ context.Context, failureType string, duration time.Duration) error {
 	if !tester.safetyChecks {
 		return fmt.Errorf("safety checks disabled - refusing to run database failure injection")
 	}
@@ -90,7 +90,7 @@ func (tester *ChaosEngineeringTester) InjectDatabaseFailure(ctx context.Context,
 }
 
 // InjectCPUSpike simulates high CPU load
-func (tester *ChaosEngineeringTester) InjectCPUSpike(ctx context.Context, percentage int, duration time.Duration) error {
+func (tester *ChaosEngineeringTester) InjectCPUSpike(_ context.Context, percentage int, duration time.Duration) error {
 	if percentage > 95 && tester.safetyChecks {
 		return fmt.Errorf("CPU spike percentage %d exceeds safety limit (95%%)", percentage)
 	}
@@ -136,7 +136,7 @@ func (tester *ChaosEngineeringTester) InjectCPUSpike(ctx context.Context, percen
 }
 
 // InjectMemoryPressure simulates memory pressure
-func (tester *ChaosEngineeringTester) InjectMemoryPressure(ctx context.Context, percentage int, duration time.Duration) error {
+func (tester *ChaosEngineeringTester) InjectMemoryPressure(_ context.Context, percentage int, duration time.Duration) error {
 	if percentage > 90 && tester.safetyChecks {
 		return fmt.Errorf("memory pressure percentage %d exceeds safety limit (90%%)", percentage)
 	}
@@ -178,7 +178,7 @@ func (tester *ChaosEngineeringTester) InjectMemoryPressure(ctx context.Context, 
 	}
 
 	// Release memory (garbage collection will handle this)
-	memoryToAllocate = nil
+	_ = memoryToAllocate
 	runtime.GC()
 
 	tester.logChaosEvent("memory_pressure_injection", "completed", map[string]any{
@@ -189,7 +189,7 @@ func (tester *ChaosEngineeringTester) InjectMemoryPressure(ctx context.Context, 
 }
 
 // InjectAPILatency simulates artificial latency in API responses
-func (tester *ChaosEngineeringTester) InjectAPILatency(ctx context.Context, latencyMs int, percentage int, duration time.Duration) error {
+func (tester *ChaosEngineeringTester) InjectAPILatency(_ context.Context, latencyMs int, percentage int, duration time.Duration) error {
 	if latencyMs > 10000 && tester.safetyChecks { // 10 seconds max
 		return fmt.Errorf("latency %dms exceeds safety limit (10000ms)", latencyMs)
 	}

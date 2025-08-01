@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -23,6 +22,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/pay-theory/lift/pkg/dynamorm"
 	"github.com/pay-theory/lift/pkg/security"
+)
+
+const (
+	statusFailed = "failed"
 )
 
 // GDPRCompleteService provides comprehensive GDPR compliance implementation
@@ -304,7 +307,7 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 				"table": table,
 				"error": err.Error(),
 			})
-			exportRecord.Status = "failed"
+			exportRecord.Status = statusFailed
 			if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
 				// Log database error but continue with the original error
 				fmt.Printf("Warning: failed to update export record status: %v\n", putErr)
@@ -331,7 +334,7 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 	// Convert to JSON
 	jsonData, err := json.MarshalIndent(exportData, "", "  ")
 	if err != nil {
-		exportRecord.Status = "failed"
+		exportRecord.Status = statusFailed
 		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
 			log.Printf("Failed to update export record: %v", putErr)
 		}
@@ -340,7 +343,7 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 
 	// Check size limits
 	if len(jsonData) > g.config.MaxExportSizeMB*1024*1024 {
-		exportRecord.Status = "failed"
+		exportRecord.Status = statusFailed
 		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
 			log.Printf("Failed to update export record: %v", putErr)
 		}
@@ -352,7 +355,7 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 	if g.config.EncryptionEnabled {
 		encrypted, key, err := g.encryptData(jsonData)
 		if err != nil {
-			exportRecord.Status = "failed"
+			exportRecord.Status = statusFailed
 			if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
 				// Log error but continue with original error
 				log.Printf("Failed to update export record: %v", putErr)
@@ -374,7 +377,7 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 	}
 
 	if err := g.uploadToS3(ctx, g.config.DataExportBucket, exportPath, finalData); err != nil {
-		exportRecord.Status = "failed"
+		exportRecord.Status = statusFailed
 		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
 			log.Printf("Failed to update export record: %v", putErr)
 		}
@@ -736,7 +739,7 @@ func (g *GDPRCompleteService) uploadToS3(_ context.Context, bucket, key string, 
 	return nil
 }
 
-func (g *GDPRCompleteService) convertAttributeValue(av types.AttributeValue) interface{} {
+func (g *GDPRCompleteService) convertAttributeValue(av types.AttributeValue) interface{} { //nolint:unused // false positive - used recursively
 	switch v := av.(type) {
 	case *types.AttributeValueMemberS:
 		return v.Value
@@ -952,13 +955,3 @@ func (al *GDPRAuditLogger) LogPrivacyBreach(_ context.Context, breach *security.
 	return nil
 }
 
-// Helper function to clean and validate text input
-func cleanText(input string) string {
-	// Remove non-printable characters
-	return strings.Map(func(r rune) rune {
-		if unicode.IsPrint(r) {
-			return r
-		}
-		return -1
-	}, input)
-}

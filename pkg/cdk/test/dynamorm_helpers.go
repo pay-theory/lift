@@ -74,7 +74,6 @@ func (h *DynamORMTestHelper) CreateTestTable(t *testing.T, tableName string, opt
 		ttlAttribute:   "",
 		streamEnabled:  false,
 		gsiDefinitions: []gsiDefinition{},
-		lsiDefinitions: []lsiDefinition{},
 		tags:           map[string]string{},
 	}
 
@@ -128,7 +127,7 @@ func (h *DynamORMTestHelper) CreateTestTable(t *testing.T, tableName string, opt
 	}
 
 	// Build GSIs
-	var gsis []types.GlobalSecondaryIndex
+	gsis := make([]types.GlobalSecondaryIndex, 0, len(config.gsiDefinitions))
 	for _, gsi := range config.gsiDefinitions {
 		gsiKeySchema := []types.KeySchemaElement{
 			{
@@ -296,7 +295,7 @@ func (h *DynamORMTestHelper) ScanTable(t *testing.T, tableName string) []map[str
 
 // buildTags converts a map to DynamoDB tags
 func (h *DynamORMTestHelper) buildTags(tags map[string]string) []types.Tag {
-	var result []types.Tag
+	result := make([]types.Tag, 0, len(tags))
 	for k, v := range tags {
 		result = append(result, types.Tag{
 			Key:   aws.String(k),
@@ -311,7 +310,6 @@ func (h *DynamORMTestHelper) buildTags(tags map[string]string) []types.Tag {
 type testTableConfig struct {
 	// Slices and map first (24 bytes each)
 	gsiDefinitions []gsiDefinition
-	lsiDefinitions []lsiDefinition
 	tags           map[string]string
 	// Strings (16 bytes each)
 	tableName      string
@@ -330,10 +328,6 @@ type gsiDefinition struct {
 	sortKey      string
 }
 
-type lsiDefinition struct {
-	name    string
-	sortKey string
-}
 
 // TestTableOption configures a test table
 type TestTableOption func(*testTableConfig)

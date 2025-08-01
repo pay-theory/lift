@@ -504,7 +504,7 @@ func (bct *BankingComplianceTemplate) GetComplianceMiddleware() []LiftMiddleware
 }
 
 // ValidateCompliance validates compliance for banking
-func (bct *BankingComplianceTemplate) ValidateCompliance(ctx LiftContext) (*ComplianceResult, error) {
+func (bct *BankingComplianceTemplate) ValidateCompliance(_ LiftContext) (*ComplianceResult, error) {
 	result := &ComplianceResult{
 		Compliant: true,
 		Framework: "Banking",
@@ -651,7 +651,7 @@ func (hct *HealthcareComplianceTemplate) GetComplianceMiddleware() []LiftMiddlew
 }
 
 // ValidateCompliance validates compliance for healthcare
-func (hct *HealthcareComplianceTemplate) ValidateCompliance(ctx LiftContext) (*ComplianceResult, error) {
+func (hct *HealthcareComplianceTemplate) ValidateCompliance(_ LiftContext) (*ComplianceResult, error) {
 	result := &ComplianceResult{
 		Compliant: true,
 		Framework: "Healthcare",
@@ -675,24 +675,24 @@ func NewEcommerceComplianceTemplate(config EcommerceComplianceConfig) *Ecommerce
 }
 
 // GetIndustry returns the industry name
-func (ect *EcommerceComplianceTemplate) GetIndustry() string {
+func (e *EcommerceComplianceTemplate) GetIndustry() string {
 	return "ecommerce"
 }
 
 // GetRegulations returns applicable regulations
-func (ect *EcommerceComplianceTemplate) GetRegulations() []string {
+func (e *EcommerceComplianceTemplate) GetRegulations() []string {
 	regulations := []string{}
 
-	if ect.config.PCIDSSRequired {
+	if e.config.PCIDSSRequired {
 		regulations = append(regulations, "PCI-DSS")
 	}
-	if ect.config.GDPRRequired {
+	if e.config.GDPRRequired {
 		regulations = append(regulations, "GDPR")
 	}
-	if ect.config.CCPARequired {
+	if e.config.CCPARequired {
 		regulations = append(regulations, "CCPA")
 	}
-	if ect.config.COPPARequired {
+	if e.config.COPPARequired {
 		regulations = append(regulations, "COPPA")
 	}
 
@@ -700,7 +700,7 @@ func (ect *EcommerceComplianceTemplate) GetRegulations() []string {
 }
 
 // GetControls returns compliance controls
-func (ect *EcommerceComplianceTemplate) GetControls() []ComplianceControl {
+func (e *EcommerceComplianceTemplate) GetControls() []ComplianceControl {
 	controls := []ComplianceControl{
 		{
 			ID:          "EC-001",
@@ -719,7 +719,7 @@ func (ect *EcommerceComplianceTemplate) GetControls() []ComplianceControl {
 		},
 	}
 
-	if ect.config.GDPRRequired {
+	if e.config.GDPRRequired {
 		controls = append(controls, ComplianceControl{
 			ID:          "EC-002",
 			Name:        "Cookie Consent Management",
@@ -741,10 +741,10 @@ func (ect *EcommerceComplianceTemplate) GetControls() []ComplianceControl {
 }
 
 // GetAudits returns audit requirements
-func (ect *EcommerceComplianceTemplate) GetAudits() []AuditRequirement {
+func (e *EcommerceComplianceTemplate) GetAudits() []AuditRequirement {
 	audits := []AuditRequirement{}
 
-	if ect.config.PCIDSSRequired {
+	if e.config.PCIDSSRequired {
 		audits = append(audits, AuditRequirement{
 			ID:        "EC-AUDIT-001",
 			Name:      "PCI DSS Compliance Audit",
@@ -760,7 +760,7 @@ func (ect *EcommerceComplianceTemplate) GetAudits() []AuditRequirement {
 }
 
 // GetRiskAssessments returns risk assessment templates
-func (ect *EcommerceComplianceTemplate) GetRiskAssessments() []RiskAssessmentTemplate {
+func (e *EcommerceComplianceTemplate) GetRiskAssessments() []RiskAssessmentTemplate {
 	return []RiskAssessmentTemplate{
 		{
 			ID:       "EC-RISK-001",
@@ -782,12 +782,12 @@ func (ect *EcommerceComplianceTemplate) GetRiskAssessments() []RiskAssessmentTem
 }
 
 // GetComplianceMiddleware returns compliance middleware
-func (ect *EcommerceComplianceTemplate) GetComplianceMiddleware() []LiftMiddleware {
+func (e *EcommerceComplianceTemplate) GetComplianceMiddleware() []LiftMiddleware {
 	return []LiftMiddleware{}
 }
 
 // ValidateCompliance validates compliance for e-commerce
-func (ect *EcommerceComplianceTemplate) ValidateCompliance(ctx LiftContext) (*ComplianceResult, error) {
+func (e *EcommerceComplianceTemplate) ValidateCompliance(_ LiftContext) (*ComplianceResult, error) {
 	result := &ComplianceResult{
 		Compliant: true,
 		Framework: "E-commerce",
@@ -801,8 +801,8 @@ func (ect *EcommerceComplianceTemplate) ValidateCompliance(ctx LiftContext) (*Co
 }
 
 // GenerateComplianceReport generates an e-commerce compliance report
-func (ect *EcommerceComplianceTemplate) GenerateComplianceReport() (*IndustryComplianceReport, error) {
-	return generateStandardComplianceReport("ecommerce", 88.0, 12, 11, ect.GetRegulations())
+func (e *EcommerceComplianceTemplate) GenerateComplianceReport() (*IndustryComplianceReport, error) {
+	return generateStandardComplianceReport("ecommerce", 88.0, 12, 11, e.GetRegulations())
 }
 
 // NewGovernmentComplianceTemplate creates a new government compliance template
@@ -948,7 +948,7 @@ func (gct *GovernmentComplianceTemplate) GetComplianceMiddleware() []LiftMiddlew
 }
 
 // ValidateCompliance validates compliance for government
-func (gct *GovernmentComplianceTemplate) ValidateCompliance(ctx LiftContext) (*ComplianceResult, error) {
+func (gct *GovernmentComplianceTemplate) ValidateCompliance(_ LiftContext) (*ComplianceResult, error) {
 	result := &ComplianceResult{
 		Compliant: true,
 		Framework: "Government",

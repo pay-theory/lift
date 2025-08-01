@@ -145,14 +145,12 @@ type TestExecutor struct {
 
 // HTTPClient handles HTTP-based performance tests
 type HTTPClient struct {
-	baseURL string
 	timeout time.Duration
 }
 
 // DatabaseClient handles database performance tests
 type DatabaseClient struct {
-	connectionString string
-	maxConnections   int
+	maxConnections int
 }
 
 // ResourceMonitor monitors system resources during tests
@@ -270,7 +268,7 @@ func (pt *PerformanceTester) ExecuteTest(ctx context.Context, testCase Performan
 }
 
 // executeResponseTimeTest executes a response time performance test
-func (pt *PerformanceTester) executeResponseTimeTest(_ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+func (pt *PerformanceTester) executeResponseTimeTest(_ context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
 	metrics := &PerformanceTestMetrics{}
 
 	// Simulate response time test execution
@@ -304,7 +302,7 @@ func (pt *PerformanceTester) executeResponseTimeTest(_ctx context.Context, confi
 }
 
 // executeThroughputTest executes a throughput performance test
-func (pt *PerformanceTester) executeThroughputTest(_ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+func (pt *PerformanceTester) executeThroughputTest(_ context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
 	metrics := &PerformanceTestMetrics{}
 
 	// Simulate throughput test execution
@@ -332,7 +330,7 @@ func (pt *PerformanceTester) executeThroughputTest(_ctx context.Context, config 
 }
 
 // executeDatabaseTest executes a database performance test
-func (pt *PerformanceTester) executeDatabaseTest(_ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+func (pt *PerformanceTester) executeDatabaseTest(_ context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
 	metrics := &PerformanceTestMetrics{}
 
 	// Simulate database performance test
@@ -351,7 +349,7 @@ func (pt *PerformanceTester) executeDatabaseTest(_ctx context.Context, config Pe
 }
 
 // executeMemoryTest executes a memory usage performance test
-func (pt *PerformanceTester) executeMemoryTest(_ctx context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
+func (pt *PerformanceTester) executeMemoryTest(_ context.Context, config PerformanceConfig) (*PerformanceTestMetrics, error) {
 	metrics := &PerformanceTestMetrics{}
 
 	// Simulate memory usage test
@@ -676,7 +674,7 @@ func (p *PerformanceValidator) ValidatePerformance(testCase TestCase, env *TestE
 }
 
 // Profile profiles a test case and returns metrics
-func (p *PerformanceProfiler) Profile(testCase TestCase, env *TestEnvironment) (map[string]float64, error) {
+func (p *PerformanceProfiler) Profile(_ TestCase, env *TestEnvironment) (map[string]float64, error) {
 	metrics := make(map[string]float64)
 
 	// Measure execution time

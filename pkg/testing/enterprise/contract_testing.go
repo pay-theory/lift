@@ -99,7 +99,7 @@ func NewBasicContractValidator() *BasicContractValidator {
 }
 
 // Validate validates a contract interaction
-func (v *BasicContractValidator) Validate(ctx context.Context, interaction *ContractInteraction) error {
+func (v *BasicContractValidator) Validate(_ context.Context, interaction *ContractInteraction) error {
 	start := time.Now()
 	defer func() {
 		v.updateMetrics(time.Since(start))
@@ -215,7 +215,7 @@ func (f *ContractTestingFramework) RunContractTest(ctx context.Context, test *Co
 }
 
 // NewContractRegistry creates a new contract registry
-func NewContractRegistry(config *ContractTestConfig) *ContractRegistry {
+func NewContractRegistry(_ *ContractTestConfig) *ContractRegistry {
 	return &ContractRegistry{
 		contracts: make(map[string]*ServiceContract),
 		versions:  make(map[string][]string),
@@ -308,7 +308,7 @@ func (v *BasicContractValidator) ValidateInteraction(ctx context.Context, intera
 }
 
 // ValidateContract validates a complete service contract (implementing ContractTestingFramework method)
-func (f *ContractTestingFramework) ValidateContract(ctx context.Context, contract *ServiceContract) (*ContractValidationResult, error) {
+func (f *ContractTestingFramework) ValidateContract(_ context.Context, contract *ServiceContract) (*ContractValidationResult, error) {
 	startTime := time.Now()
 
 	result := &ContractValidationResult{

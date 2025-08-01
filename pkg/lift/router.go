@@ -147,11 +147,9 @@ func matchPattern(pattern, path string) map[string]string {
 			// This is a parameter
 			paramName := patternPart[1:] // Remove the ":"
 			params[paramName] = pathPart
-		} else {
+		} else if patternPart != pathPart {
 			// This must be an exact match
-			if patternPart != pathPart {
-				return nil
-			}
+			return nil
 		}
 	}
 

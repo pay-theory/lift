@@ -210,7 +210,7 @@ const (
 	PlannedGameDay    GameDayStatus = "planned"
 	InProgressGameDay GameDayStatus = "in_progress"
 	CompletedGameDay  GameDayStatus = "completed"
-	CancelledGameDay  GameDayStatus = "cancelled"
+	CancelledGameDay  GameDayStatus = "canceled"
 	PostponedGameDay  GameDayStatus = "postponed"
 )
 
@@ -290,7 +290,7 @@ const (
 	OpenAction       ActionStatus = "open"
 	InProgressAction ActionStatus = "in_progress"
 	CompletedAction  ActionStatus = "completed"
-	CancelledAction  ActionStatus = "cancelled"
+	CancelledAction  ActionStatus = "canceled"
 )
 
 // ActionCategory defines action item category
@@ -455,7 +455,7 @@ func NewNetworkFaultInjector(config *NetworkFaultConfig) *NetworkFaultInjector {
 	}
 }
 
-func (nfi *NetworkFaultInjector) Inject(ctx context.Context, fault FaultDefinition, target ExperimentTarget) error {
+func (nfi *NetworkFaultInjector) Inject(_ context.Context, fault FaultDefinition, _ ExperimentTarget) error {
 	nfi.mutex.Lock()
 	defer nfi.mutex.Unlock()
 
@@ -496,7 +496,7 @@ func (nfi *NetworkFaultInjector) Inject(ctx context.Context, fault FaultDefiniti
 	return nil
 }
 
-func (nfi *NetworkFaultInjector) Remove(ctx context.Context, fault FaultDefinition, target ExperimentTarget) error {
+func (nfi *NetworkFaultInjector) Remove(_ context.Context, fault FaultDefinition, _ ExperimentTarget) error {
 	nfi.mutex.Lock()
 	defer nfi.mutex.Unlock()
 
@@ -504,7 +504,7 @@ func (nfi *NetworkFaultInjector) Remove(ctx context.Context, fault FaultDefiniti
 	return nil
 }
 
-func (nfi *NetworkFaultInjector) Status(ctx context.Context, fault FaultDefinition, target ExperimentTarget) (FaultStatus, error) {
+func (nfi *NetworkFaultInjector) Status(_ context.Context, fault FaultDefinition, _ ExperimentTarget) (FaultStatus, error) {
 	nfi.mutex.RLock()
 	defer nfi.mutex.RUnlock()
 
@@ -530,7 +530,7 @@ func NewServiceFaultInjector(config *ServiceFaultConfig) *ServiceFaultInjector {
 	}
 }
 
-func (sfi *ServiceFaultInjector) Inject(ctx context.Context, fault FaultDefinition, target ExperimentTarget) error {
+func (sfi *ServiceFaultInjector) Inject(_ context.Context, fault FaultDefinition, _ ExperimentTarget) error {
 	sfi.mutex.Lock()
 	defer sfi.mutex.Unlock()
 
@@ -571,7 +571,7 @@ func (sfi *ServiceFaultInjector) Inject(ctx context.Context, fault FaultDefiniti
 	return nil
 }
 
-func (sfi *ServiceFaultInjector) Remove(ctx context.Context, fault FaultDefinition, target ExperimentTarget) error {
+func (sfi *ServiceFaultInjector) Remove(_ context.Context, fault FaultDefinition, _ ExperimentTarget) error {
 	sfi.mutex.Lock()
 	defer sfi.mutex.Unlock()
 
@@ -579,7 +579,7 @@ func (sfi *ServiceFaultInjector) Remove(ctx context.Context, fault FaultDefiniti
 	return nil
 }
 
-func (sfi *ServiceFaultInjector) Status(ctx context.Context, fault FaultDefinition, target ExperimentTarget) (FaultStatus, error) {
+func (sfi *ServiceFaultInjector) Status(_ context.Context, fault FaultDefinition, _ ExperimentTarget) (FaultStatus, error) {
 	sfi.mutex.RLock()
 	defer sfi.mutex.RUnlock()
 
@@ -604,7 +604,7 @@ func NewResourceFaultInjector(config *ResourceFaultConfig) *ResourceFaultInjecto
 	}
 }
 
-func (rfi *ResourceFaultInjector) Inject(ctx context.Context, fault FaultDefinition, target ExperimentTarget) error {
+func (rfi *ResourceFaultInjector) Inject(_ context.Context, fault FaultDefinition, _ ExperimentTarget) error {
 	rfi.mutex.Lock()
 	defer rfi.mutex.Unlock()
 
@@ -644,7 +644,7 @@ func (rfi *ResourceFaultInjector) Inject(ctx context.Context, fault FaultDefinit
 	return nil
 }
 
-func (rfi *ResourceFaultInjector) Remove(ctx context.Context, fault FaultDefinition, target ExperimentTarget) error {
+func (rfi *ResourceFaultInjector) Remove(_ context.Context, fault FaultDefinition, _ ExperimentTarget) error {
 	rfi.mutex.Lock()
 	defer rfi.mutex.Unlock()
 
@@ -652,7 +652,7 @@ func (rfi *ResourceFaultInjector) Remove(ctx context.Context, fault FaultDefinit
 	return nil
 }
 
-func (rfi *ResourceFaultInjector) Status(ctx context.Context, fault FaultDefinition, target ExperimentTarget) (FaultStatus, error) {
+func (rfi *ResourceFaultInjector) Status(_ context.Context, fault FaultDefinition, _ ExperimentTarget) (FaultStatus, error) {
 	rfi.mutex.RLock()
 	defer rfi.mutex.RUnlock()
 

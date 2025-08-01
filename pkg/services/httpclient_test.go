@@ -112,7 +112,7 @@ func TestValidateHTTPClientSecurity(t *testing.T) {
 		// Test client with insecure transport
 		insecureTransport := &http.Transport{
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: true, // #nosec G402 - test code for insecure transport validation
 			},
 		}
 		insecureTLSClient := &http.Client{

@@ -11,6 +11,11 @@ import (
 	"github.com/pay-theory/lift/pkg/models"
 )
 
+const (
+	statusCompleted = "completed"
+	statusProcessing = "processing"
+)
+
 // DynamORMIdempotencyStore implements IdempotencyStore using DynamORM
 type DynamORMIdempotencyStore struct {
 	wrapper *dynamorm.DynamORMWrapper
@@ -119,7 +124,7 @@ func (d *DynamORMIdempotencyStore) Set(ctx context.Context, key string, record *
 	}
 
 	// If this is a completed record, set completion time
-	if record.Status == "completed" {
+	if record.Status == statusCompleted {
 		dynamormRecord.CompletedAt = time.Now()
 	}
 
@@ -137,7 +142,7 @@ func (d *DynamORMIdempotencyStore) SetProcessing(ctx context.Context, key string
 	record := &models.IdempotencyRecord{
 		IdempotencyKey: key,
 		SK:             "IDEMPOTENCY",
-		Status:         "processing",
+		Status:         statusProcessing,
 		Timestamp:      time.Now(),
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),

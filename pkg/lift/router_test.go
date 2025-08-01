@@ -132,10 +132,8 @@ func TestMatchPattern(t *testing.T) {
 						test.pattern, test.path, key, expectedValue, key, actualValue)
 				}
 			}
-		} else {
-			if result != nil {
-				t.Errorf("Pattern %s should not match path %s", test.pattern, test.path)
-			}
+		} else if result != nil {
+			t.Errorf("Pattern %s should not match path %s", test.pattern, test.path)
 		}
 	}
 }

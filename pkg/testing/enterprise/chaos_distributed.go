@@ -3,7 +3,6 @@ package enterprise
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -18,7 +17,6 @@ type MultiRegionChaosOrchestrator struct {
 	replicationController *ReplicationChaosController
 	monitoringSystem      *DistributedMonitoringSystem
 	eventBus              *DistributedEventBus
-	mutex                 sync.RWMutex
 }
 
 // DistributedConfig configures distributed chaos experiments
@@ -326,15 +324,7 @@ const (
 
 // RegionManager manages chaos operations within a region
 type RegionManager struct {
-	config          *RegionConfig
-	chaosController ChaosController
-	resourceManager *RegionResourceManager
-	networkManager  *RegionNetworkManager
-	monitoringAgent *RegionMonitoringAgent
-	healthChecker   *RegionHealthChecker
-	status          RegionStatus
-	lastHealthCheck time.Time
-	mutex           sync.RWMutex
+	config *RegionConfig
 }
 
 // ChaosCoordinator coordinates chaos experiments across regions
@@ -342,9 +332,6 @@ type ChaosCoordinator struct {
 	config            *DistributedConfig
 	regions           map[string]*RegionManager
 	activeExperiments map[string]*DistributedExperiment
-	consensusManager  *ConsensusManager
-	eventBus          *DistributedEventBus
-	mutex             sync.RWMutex
 }
 
 // DistributedExperiment defines a multi-region chaos experiment
@@ -944,9 +931,7 @@ func NewMultiRegionChaosOrchestrator(config *DistributedConfig) (*MultiRegionCha
 }
 
 // CreateDistributedExperiment creates a new distributed chaos experiment
-func (m *MultiRegionChaosOrchestrator) CreateDistributedExperiment(ctx context.Context, spec *DistributedExperimentSpec) (*DistributedExperiment, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+func (m *MultiRegionChaosOrchestrator) CreateDistributedExperiment(_ context.Context, spec *DistributedExperimentSpec) (*DistributedExperiment, error) {
 
 	// Validate experiment specification
 	if err := m.validateExperimentSpec(spec); err != nil {
@@ -1024,37 +1009,37 @@ func NewChaosCoordinator(config *DistributedConfig, regions map[string]*RegionMa
 }
 
 // NewDistributedFaultInjector creates a new distributed fault injector
-func NewDistributedFaultInjector(config *DistributedConfig) (*DistributedFaultInjector, error) {
+func NewDistributedFaultInjector(_ *DistributedConfig) (*DistributedFaultInjector, error) {
 	return &DistributedFaultInjector{}, nil
 }
 
 // NewConsistencyTester creates a new consistency tester
-func NewConsistencyTester(config *DistributedConfig) (*ConsistencyTester, error) {
+func NewConsistencyTester(_ *DistributedConfig) (*ConsistencyTester, error) {
 	return &ConsistencyTester{}, nil
 }
 
 // NewPartitionTester creates a new partition tester
-func NewPartitionTester(config *DistributedConfig) (*PartitionTester, error) {
+func NewPartitionTester(_ *DistributedConfig) (*PartitionTester, error) {
 	return &PartitionTester{}, nil
 }
 
 // NewReplicationChaosController creates a new replication chaos controller
-func NewReplicationChaosController(config *DistributedConfig) (*ReplicationChaosController, error) {
+func NewReplicationChaosController(_ *DistributedConfig) (*ReplicationChaosController, error) {
 	return &ReplicationChaosController{}, nil
 }
 
 // NewDistributedMonitoringSystem creates a new distributed monitoring system
-func NewDistributedMonitoringSystem(config *DistributedConfig) (*DistributedMonitoringSystem, error) {
+func NewDistributedMonitoringSystem(_ *DistributedConfig) (*DistributedMonitoringSystem, error) {
 	return &DistributedMonitoringSystem{}, nil
 }
 
 // NewDistributedEventBus creates a new distributed event bus
-func NewDistributedEventBus(config *DistributedConfig) (*DistributedEventBus, error) {
+func NewDistributedEventBus(_ *DistributedConfig) (*DistributedEventBus, error) {
 	return &DistributedEventBus{}, nil
 }
 
 // ExecuteExperiment executes a distributed experiment
-func (c *ChaosCoordinator) ExecuteExperiment(ctx context.Context, experiment *DistributedExperiment) error {
+func (c *ChaosCoordinator) ExecuteExperiment(_ context.Context, _ *DistributedExperiment) error {
 	// Implementation would go here
 	return nil
 }

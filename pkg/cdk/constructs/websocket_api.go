@@ -14,9 +14,13 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
+const (
+	defaultRoute = "$default"
+)
+
 // WebSocketRouteConfig defines configuration for WebSocket routes
 type WebSocketRouteConfig struct {
-	// Route key (e.g., "$connect", "$disconnect", "$default", "custom")
+	// Route key (e.g., "$connect", "$disconnect", defaultRoute, "custom")
 	RouteKey *string
 	// Lambda function for this route
 	Function awslambda.IFunction
@@ -215,8 +219,8 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 	}
 
 	if defaultFunction != nil {
-		this.AddRoute("$default", defaultFunction, &WebSocketRouteConfig{
-			RouteKey: jsii.String("$default"),
+		this.AddRoute(defaultRoute, defaultFunction, &WebSocketRouteConfig{
+			RouteKey: jsii.String(defaultRoute),
 			Function: defaultFunction,
 		})
 	}
@@ -276,7 +280,7 @@ func (w *WebSocketAPI) AddRoute(routeKey string, function awslambda.IFunction, c
 		shortId = "C"
 	case "$disconnect":
 		shortId = "D"
-	case "$default":
+	case defaultRoute:
 		shortId = "X"
 	default:
 		// For custom routes, use first letter or two

@@ -266,7 +266,7 @@ func (pd *PulumiDeployer) GetStackOutputs(ctx context.Context) (map[string]any, 
 
 // checkPulumiCLI verifies that Pulumi CLI is available and functional
 func (pd *PulumiDeployer) checkPulumiCLI() error {
-	cmd := exec.Command(pd.pulumiCmd, "version")
+	cmd := exec.Command(pd.pulumiCmd, "version") // #nosec G204 - pulumiCmd is validated during initialization
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("pulumi CLI not available or not working: %w", err)
 	}
@@ -275,7 +275,7 @@ func (pd *PulumiDeployer) checkPulumiCLI() error {
 
 // runPulumiCommand executes a Pulumi CLI command
 func (pd *PulumiDeployer) runPulumiCommand(ctx context.Context, args ...string) error {
-	cmd := exec.CommandContext(ctx, pd.pulumiCmd, args...)
+	cmd := exec.CommandContext(ctx, pd.pulumiCmd, args...) // #nosec G204 - pulumiCmd is validated, args are controlled
 	cmd.Dir = pd.workspaceDir
 
 	// Set environment variables
@@ -293,7 +293,7 @@ func (pd *PulumiDeployer) runPulumiCommand(ctx context.Context, args ...string) 
 
 // runPulumiCommandWithOutput executes a Pulumi CLI command and returns output
 func (pd *PulumiDeployer) runPulumiCommandWithOutput(ctx context.Context, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, pd.pulumiCmd, args...)
+	cmd := exec.CommandContext(ctx, pd.pulumiCmd, args...) // #nosec G204 - pulumiCmd is validated, args are controlled
 	cmd.Dir = pd.workspaceDir
 
 	// Set environment variables

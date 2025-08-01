@@ -62,14 +62,12 @@ func DefaultDeploymentConfig() *DeploymentConfig {
 // LambdaDeployment provides production-ready Lambda deployment infrastructure
 type LambdaDeployment struct {
 	startTime      time.Time
-	lastRequest    time.Time
 	healthManager  health.HealthManager
 	metrics        lift.MetricsCollector
 	app            *lift.App
 	config         *DeploymentConfig
 	resourceMgr    *resources.ResourceManager
 	requestCount   int64
-	totalDuration  time.Duration
 	coldStartMutex sync.RWMutex
 	isColdStartVar bool
 }
@@ -555,7 +553,7 @@ func (c *MemoryHealthChecker) Check(ctx context.Context) health.HealthStatus {
 
 		// Check GC frequency
 		if memStats.NumGC > 0 {
-			gcRate := float64(memStats.NumGC) / time.Since(time.Unix(0, int64(memStats.LastGC))).Minutes()
+			gcRate := float64(memStats.NumGC) / time.Since(time.Unix(0, int64(memStats.LastGC))).Minutes() // #nosec G115 - LastGC is uint64 nanoseconds since epoch, safe to convert to int64
 			if gcRate > 60 { // More than 60 GC cycles per minute
 				issues = append(issues, fmt.Sprintf("High GC frequency: %.1f cycles/minute", gcRate))
 			}

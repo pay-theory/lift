@@ -150,7 +150,7 @@ func (ff *FeatureFlags) refresh() error {
 	// NOTE: GetConfiguration is deprecated in favor of StartConfigurationSession/GetLatestConfiguration
 	// but the new APIs require AWS SDK v2 appconfig 1.15.0+.
 	// TODO: Update to new API when SDK is upgraded
-	resp, err := ff.client.GetConfiguration(ctx, &appconfig.GetConfigurationInput{
+	resp, err := ff.client.GetConfiguration(ctx, &appconfig.GetConfigurationInput{ //nolint:staticcheck // Using deprecated API until SDK upgrade
 		Application:   aws.String(ff.application),
 		Environment:   aws.String(ff.environment),
 		Configuration: aws.String("feature-flags"),
@@ -252,7 +252,7 @@ func (ff *FeatureFlags) loadLocalOverrides() {
 		configFile = ".lift-features.json"
 	}
 
-	data, err := os.ReadFile(configFile)
+	data, err := os.ReadFile(configFile) // #nosec G304 - configFile is either default or from controlled env var
 	if err == nil {
 		var overrides map[string]bool
 		if err := json.Unmarshal(data, &overrides); err == nil {

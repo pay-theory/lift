@@ -1,8 +1,5 @@
 package lift
 
-import (
-	"net/http"
-)
 
 // Handler represents a request handler
 type Handler interface {
@@ -33,20 +30,6 @@ func (f TypedHandlerFunc[Req, Resp]) Handle(ctx *Context, req Req) (Resp, error)
 	return f(ctx, req)
 }
 
-// wrapHandler converts various handler types into our Handler interface
-func wrapHandler(handler any) Handler {
-	switch h := handler.(type) {
-	case Handler:
-		return h
-	case func(*Context) error:
-		return HandlerFunc(h)
-	default:
-		// Return a handler that always returns an error
-		return HandlerFunc(func(_ *Context) error {
-			return NewLiftError("INVALID_HANDLER", "Unsupported handler type", http.StatusInternalServerError)
-		})
-	}
-}
 
 // SimpleHandler creates a Handler from a typed handler function
 // This is the main convenience function for creating type-safe handlers

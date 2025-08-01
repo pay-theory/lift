@@ -10,6 +10,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 )
 
+const (
+	connectRoute    = "$connect"
+	disconnectRoute = "$disconnect"
+)
+
 // WebSocketContext provides WebSocket-specific functionality
 type WebSocketContext struct {
 	*Context
@@ -223,18 +228,18 @@ func (wc *WebSocketContext) GetConnectionInfo(connectionID string) (*apigatewaym
 
 // IsConnectEvent returns true if this is a $connect event
 func (wc *WebSocketContext) IsConnectEvent() bool {
-	return wc.RouteKey() == "$connect"
+	return wc.RouteKey() == connectRoute
 }
 
 // IsDisconnectEvent returns true if this is a $disconnect event
 func (wc *WebSocketContext) IsDisconnectEvent() bool {
-	return wc.RouteKey() == "$disconnect"
+	return wc.RouteKey() == disconnectRoute
 }
 
 // IsMessageEvent returns true if this is a message event (not connect/disconnect)
 func (wc *WebSocketContext) IsMessageEvent() bool {
 	routeKey := wc.RouteKey()
-	return routeKey != "$connect" && routeKey != "$disconnect"
+	return routeKey != connectRoute && routeKey != disconnectRoute
 }
 
 // GetAuthorizationFromQuery extracts authorization token from query parameters

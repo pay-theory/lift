@@ -24,25 +24,21 @@ func (c *Context) GoContext() context.Context {
 
 // TenantID returns the tenant ID from the context
 func (c *Context) TenantID() string {
-	if tenantID, ok := c.Get("tenant_id").(string); ok {
-		return tenantID
-	}
-	return c.Header("X-Tenant-ID")
+	// Delegate to the embedded lift.Context
+	return c.Context.TenantID()
 }
 
 // UserID returns the user ID from the context
 func (c *Context) UserID() string {
-	if userID, ok := c.Get("user_id").(string); ok {
-		return userID
-	}
-	return c.Header("X-User-ID")
+	// Delegate to the embedded lift.Context
+	return c.Context.UserID()
 }
 
 // Logger returns a structured logger
 func (c *Context) Logger() observability.StructuredLogger {
 	// Return a default logger if none is set
 	// This would typically be injected via middleware
-	if logger, ok := c.Get("logger").(observability.StructuredLogger); ok {
+	if logger, ok := c.Context.Get("logger").(observability.StructuredLogger); ok {
 		return logger
 	}
 	// Return a no-op logger as fallback
@@ -51,12 +47,12 @@ func (c *Context) Logger() observability.StructuredLogger {
 
 // PathParam returns a path parameter value
 func (c *Context) PathParam(key string) string {
-	return c.Param(key)
+	return c.Context.Param(key)
 }
 
 // QueryParam returns a query parameter value with optional default
 func (c *Context) QueryParam(key string, defaultValue ...string) string {
-	value := c.Query(key)
+	value := c.Context.Query(key)
 	if value == "" && len(defaultValue) > 0 {
 		return defaultValue[0]
 	}
@@ -65,7 +61,7 @@ func (c *Context) QueryParam(key string, defaultValue ...string) string {
 
 // ParseJSON parses the request body as JSON
 func (c *Context) ParseJSON(target any) error {
-	return c.ParseRequest(target)
+	return c.Context.ParseRequest(target)
 }
 
 // noOpLogger is a fallback logger that does nothing

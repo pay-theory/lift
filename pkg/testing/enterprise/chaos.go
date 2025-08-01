@@ -306,7 +306,7 @@ func NewNetworkLatencyScenario(latency, duration time.Duration) *NetworkLatencyS
 func (n *NetworkLatencyScenario) Name() string        { return n.name }
 func (n *NetworkLatencyScenario) Description() string { return n.description }
 
-func (n *NetworkLatencyScenario) InjectFailure(ctx context.Context) (ChaosFailure, error) {
+func (n *NetworkLatencyScenario) InjectFailure(_ context.Context) (ChaosFailure, error) {
 	failure := &NetworkLatencyFailure{
 		latency:  n.latency,
 		duration: n.duration,
@@ -320,7 +320,7 @@ func (n *NetworkLatencyScenario) InjectFailure(ctx context.Context) (ChaosFailur
 	return failure, nil
 }
 
-func (n *NetworkLatencyScenario) ExecuteOperations(ctx context.Context) ([]OperationResult, error) {
+func (n *NetworkLatencyScenario) ExecuteOperations(_ context.Context) ([]OperationResult, error) {
 	var results []OperationResult
 
 	// Simulate operations with injected latency
@@ -348,7 +348,7 @@ func (n *NetworkLatencyScenario) ExecuteOperations(ctx context.Context) ([]Opera
 	return results, nil
 }
 
-func (n *NetworkLatencyScenario) ValidateRecovery(ctx context.Context, metrics *ChaosMetrics) error {
+func (n *NetworkLatencyScenario) ValidateRecovery(_ context.Context, metrics *ChaosMetrics) error {
 	// Validate that latency has returned to normal
 	if metrics.AverageLatency > n.latency*2 {
 		return fmt.Errorf("latency still elevated: %v", metrics.AverageLatency)
@@ -396,7 +396,7 @@ func NewServiceUnavailableScenario(serviceName string, duration time.Duration) *
 func (s *ServiceUnavailableScenario) Name() string        { return s.name }
 func (s *ServiceUnavailableScenario) Description() string { return s.description }
 
-func (s *ServiceUnavailableScenario) InjectFailure(ctx context.Context) (ChaosFailure, error) {
+func (s *ServiceUnavailableScenario) InjectFailure(_ context.Context) (ChaosFailure, error) {
 	failure := &ServiceUnavailableFailure{
 		serviceName: s.serviceName,
 		duration:    s.duration,
@@ -409,7 +409,7 @@ func (s *ServiceUnavailableScenario) InjectFailure(ctx context.Context) (ChaosFa
 	return failure, nil
 }
 
-func (s *ServiceUnavailableScenario) ExecuteOperations(ctx context.Context) ([]OperationResult, error) {
+func (s *ServiceUnavailableScenario) ExecuteOperations(_ context.Context) ([]OperationResult, error) {
 	var results []OperationResult
 
 	// Simulate operations with service unavailable
@@ -443,7 +443,7 @@ func (s *ServiceUnavailableScenario) ExecuteOperations(ctx context.Context) ([]O
 	return results, nil
 }
 
-func (s *ServiceUnavailableScenario) ValidateRecovery(ctx context.Context, metrics *ChaosMetrics) error {
+func (s *ServiceUnavailableScenario) ValidateRecovery(_ context.Context, metrics *ChaosMetrics) error {
 	// Validate that service is available again
 	if metrics.ErrorRate > 0.1 { // Allow 10% error rate during recovery
 		return fmt.Errorf("service still experiencing high error rate: %.2f%%", metrics.ErrorRate*100)

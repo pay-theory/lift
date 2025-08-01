@@ -161,7 +161,7 @@ func NewEventBridgeHandler(scope constructs.Construct, id *string, props *EventB
 	}
 
 	// Override environment
-	liftProps.FunctionProps.Environment = &functionEnv
+	liftProps.Environment = &functionEnv
 
 	// Set Lift-specific properties
 	if props.EnableTracing != nil {

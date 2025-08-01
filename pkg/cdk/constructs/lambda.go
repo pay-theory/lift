@@ -9,6 +9,10 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
+const (
+	trueStr = "true"
+)
+
 // LiftFunctionProps extends standard Lambda function properties with Lift-specific configuration
 type LiftFunctionProps struct {
 	awslambda.FunctionProps
@@ -72,10 +76,10 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 	env := *props.Environment
 	env["LIFT_VERSION"] = jsii.String("1.0.0")
 	if props.EnableMultiTenant != nil && *props.EnableMultiTenant {
-		env["LIFT_MULTI_TENANT"] = jsii.String("true")
+		env["LIFT_MULTI_TENANT"] = jsii.String(trueStr)
 	}
 	if props.EnableMetrics != nil && *props.EnableMetrics {
-		env["LIFT_METRICS_ENABLED"] = jsii.String("true")
+		env["LIFT_METRICS_ENABLED"] = jsii.String(trueStr)
 	}
 
 	// Configure DynamORM environment variables if enabled
@@ -89,7 +93,7 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 		// Set debug mode
 		debugMode := "false"
 		if props.DynamORMDebug != nil && *props.DynamORMDebug {
-			debugMode = "true"
+			debugMode = trueStr
 		}
 		env["DYNAMORM_DEBUG"] = jsii.String(debugMode)
 
@@ -150,7 +154,7 @@ func (f *LiftFunction) ConfigureDynamORM(tableName *string, debug *bool) {
 
 	debugMode := "false"
 	if debug != nil && *debug {
-		debugMode = "true"
+		debugMode = trueStr
 	}
 	f.AddEnvironment(jsii.String("DYNAMORM_DEBUG"), jsii.String(debugMode))
 	f.AddEnvironment(jsii.String("DYNAMORM_RETRY_MAX_ATTEMPTS"), jsii.String("3"))

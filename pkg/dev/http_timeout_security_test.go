@@ -122,7 +122,8 @@ func TestSlowlorisAttackPrevention(t *testing.T) {
 
 		// Test normal request works
 		client := &http.Client{Timeout: 2 * time.Second}
-		resp, err := client.Get(server.URL)
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", server.URL, nil)
+		resp, err := client.Do(req)
 		require.NoError(t, err, "Normal request should succeed")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		if err := resp.Body.Close(); err != nil {

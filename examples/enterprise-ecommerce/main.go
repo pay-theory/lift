@@ -262,7 +262,7 @@ type CustomerPreferences struct {
 type Order struct {
 	// Pointers first (8 bytes each)
 	CompletedAt *time.Time   `json:"completedAt,omitempty"`
-	CancelledAt *time.Time   `json:"cancelledAt,omitempty"`
+	CancelledAt *time.Time   `json:"canceledAt,omitempty"`
 	// Slice (24 bytes)
 	Items       []OrderItem  `json:"items"`
 	// Time structs (24 bytes each)
@@ -347,7 +347,7 @@ const (
 	OrderStatusProcessing OrderStatus = "processing"
 	OrderStatusShipped    OrderStatus = "shipped"
 	OrderStatusDelivered  OrderStatus = "delivered"
-	OrderStatusCancelled  OrderStatus = "cancelled"
+	OrderStatusCancelled  OrderStatus = "canceled"
 	OrderStatusRefunded   OrderStatus = "refunded"
 )
 

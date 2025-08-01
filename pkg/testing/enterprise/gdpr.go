@@ -66,25 +66,25 @@ func NewFileEvidenceStorage(basePath string, indexer EvidenceIndexer) *FileEvide
 }
 
 // Store implements EvidenceStorage.Store
-func (f *FileEvidenceStorage) Store(ctx context.Context, evidence *Evidence) error {
+func (f *FileEvidenceStorage) Store(_ context.Context, _ *Evidence) error {
 	// Implementation would store evidence to file system
 	return nil
 }
 
 // Retrieve implements EvidenceStorage.Retrieve
-func (f *FileEvidenceStorage) Retrieve(ctx context.Context, id string) (*Evidence, error) {
+func (f *FileEvidenceStorage) Retrieve(_ context.Context, _ string) (*Evidence, error) {
 	// Implementation would retrieve evidence from file system
 	return &Evidence{}, nil
 }
 
 // List implements EvidenceStorage.List
-func (f *FileEvidenceStorage) List(ctx context.Context, filter EvidenceFilter) ([]*Evidence, error) {
+func (f *FileEvidenceStorage) List(_ context.Context, _ EvidenceFilter) ([]*Evidence, error) {
 	// Implementation would list evidence from file system
 	return []*Evidence{}, nil
 }
 
 // Delete implements EvidenceStorage.Delete
-func (f *FileEvidenceStorage) Delete(ctx context.Context, id string) error {
+func (f *FileEvidenceStorage) Delete(_ context.Context, _ string) error {
 	// Implementation would delete evidence from file system
 	return nil
 }
@@ -102,19 +102,19 @@ func NewBasicEvidenceIndexer() *BasicEvidenceIndexer {
 }
 
 // IndexEvidence implements EvidenceIndexer.IndexEvidence
-func (b *BasicEvidenceIndexer) IndexEvidence(ctx context.Context, evidence *Evidence) error {
+func (b *BasicEvidenceIndexer) IndexEvidence(_ context.Context, _ *Evidence) error {
 	// Implementation would index evidence
 	return nil
 }
 
 // SearchEvidence implements EvidenceIndexer.SearchEvidence
-func (b *BasicEvidenceIndexer) SearchEvidence(ctx context.Context, query string) ([]*Evidence, error) {
+func (b *BasicEvidenceIndexer) SearchEvidence(_ context.Context, _ string) ([]*Evidence, error) {
 	// Implementation would search evidence
 	return []*Evidence{}, nil
 }
 
 // GetEvidence implements EvidenceIndexer.GetEvidence
-func (b *BasicEvidenceIndexer) GetEvidence(ctx context.Context, id string) (*Evidence, error) {
+func (b *BasicEvidenceIndexer) GetEvidence(_ context.Context, _ string) (*Evidence, error) {
 	// Implementation would get evidence by ID
 	return &Evidence{}, nil
 }
@@ -290,7 +290,7 @@ func (g *GDPRCompliance) testRightOfErasure(ctx context.Context) error {
 }
 
 // GenerateComplianceReport generates a GDPR compliance report
-func (g *GDPRCompliance) GenerateComplianceReport(ctx context.Context) (*TestReport, error) {
+func (g *GDPRCompliance) GenerateComplianceReport(_ context.Context) (*TestReport, error) {
 	return &TestReport{
 		ID:          fmt.Sprintf("gdpr-report-%d", time.Now().Unix()),
 		Type:        ComplianceReportType,

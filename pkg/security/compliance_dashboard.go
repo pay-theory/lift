@@ -533,28 +533,28 @@ func (cd *ComplianceDashboard) GetWidget(ctx context.Context, widgetID string, c
 }
 
 // GetDashboardLayout returns a dashboard layout
-func (cd *ComplianceDashboard) GetDashboardLayout(ctx context.Context, layoutID string) (*DashboardLayout, error) {
+func (cd *ComplianceDashboard) GetDashboardLayout(_ context.Context, _ string) (*DashboardLayout, error) {
 	// This would typically load from a database
 	// For now, return a default layout
 	return cd.getDefaultLayout(), nil
 }
 
 // CreateDashboardLayout creates a new dashboard layout
-func (cd *ComplianceDashboard) CreateDashboardLayout(ctx context.Context, layout *DashboardLayout) error {
+func (cd *ComplianceDashboard) CreateDashboardLayout(_ context.Context, layout *DashboardLayout) error {
 	// This would typically save to a database
 	// For now, just validate the layout
 	return cd.validateLayout(layout)
 }
 
 // UpdateDashboardLayout updates a dashboard layout
-func (cd *ComplianceDashboard) UpdateDashboardLayout(ctx context.Context, layoutID string, layout *DashboardLayout) error {
+func (cd *ComplianceDashboard) UpdateDashboardLayout(_ context.Context, _ string, layout *DashboardLayout) error {
 	// This would typically update in a database
 	// For now, just validate the layout
 	return cd.validateLayout(layout)
 }
 
 // DeleteDashboardLayout deletes a dashboard layout
-func (cd *ComplianceDashboard) DeleteDashboardLayout(ctx context.Context, layoutID string) error {
+func (cd *ComplianceDashboard) DeleteDashboardLayout(_ context.Context, _ string) error {
 	// This would typically delete from a database
 	// For now, just return success
 	return nil

@@ -18,7 +18,7 @@ type mockSNSClient struct {
 	publishErr   error
 }
 
-func (m *mockSNSClient) Publish(ctx context.Context, params *sns.PublishInput, optFns ...func(*sns.Options)) (*sns.PublishOutput, error) {
+func (m *mockSNSClient) Publish(_ context.Context, params *sns.PublishInput, _ ...func(*sns.Options)) (*sns.PublishOutput, error) {
 	m.publishCalls = append(m.publishCalls, *params)
 	if m.publishErr != nil {
 		return nil, m.publishErr

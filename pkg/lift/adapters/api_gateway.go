@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+const (
+	apiGatewayV2 = "2.0"
+	defaultRoute = "$default"
+)
+
 // APIGatewayAdapter handles API Gateway V1 (REST API) events
 type APIGatewayAdapter struct {
 	BaseAdapter
@@ -33,10 +38,10 @@ func (a *APIGatewayAdapter) CanHandle(event any) bool {
 	// API Gateway V1 events have resource, httpMethod, and requestContext
 	// but no version field (or version "1.0")
 	if hasResource && hasHttpMethod && hasRequestContext {
-		// If version exists, it should be "1.0" or not "2.0"
+		// If version exists, it should be "1.0" or not apiGatewayV2
 		if version, exists := eventMap["version"]; exists {
 			if versionStr, ok := version.(string); ok {
-				return versionStr == "1.0" || versionStr != "2.0"
+				return versionStr == "1.0" || versionStr != apiGatewayV2
 			}
 		}
 		return true
@@ -89,7 +94,7 @@ func (a *APIGatewayAdapter) Adapt(rawEvent any) (*Request, error) {
 	// Handle stage prefix in path (occurs with custom domains)
 	// This matches the behavior of the v2 adapter
 	stage := extractStringField(requestContext, "stage")
-	if stage != "" && stage != "$default" {
+	if stage != "" && stage != defaultRoute {
 		stagePrefix := "/" + stage
 		if path == stagePrefix {
 			// Path is exactly the stage, return root

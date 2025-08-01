@@ -1038,6 +1038,3 @@ func generateAlertID() string {
 	return fmt.Sprintf("alert-%d", time.Now().UnixNano())
 }
 
-func generateMetricID() string {
-	return fmt.Sprintf("metric-%d", time.Now().UnixNano())
-}

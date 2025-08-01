@@ -91,11 +91,11 @@ func NewSecureAPI(scope constructs.Construct, id *string, props *SecureAPIProps)
 
 		// Add VPC configuration if provided
 		if props.Vpc != nil {
-			rateLimitedProps.LiftFunctionProps.FunctionProps.Vpc = props.Vpc
+			rateLimitedProps.Vpc = props.Vpc
 		}
 
 		if props.Timeout != nil {
-			rateLimitedProps.LiftFunctionProps.Timeout = awscdk.Duration_Seconds(props.Timeout)
+			rateLimitedProps.Timeout = awscdk.Duration_Seconds(props.Timeout)
 		}
 
 		rateLimitedFn = liftconstructs.NewRateLimitedFunction(this, jsii.String("Function"), rateLimitedProps)
@@ -120,7 +120,7 @@ func NewSecureAPI(scope constructs.Construct, id *string, props *SecureAPIProps)
 		}
 
 		if props.Timeout != nil {
-			secureFunctionProps.LiftFunctionProps.Timeout = awscdk.Duration_Seconds(props.Timeout)
+			secureFunctionProps.Timeout = awscdk.Duration_Seconds(props.Timeout)
 		}
 
 		secureFn = liftconstructs.NewSecureFunction(this, jsii.String("Function"), secureFunctionProps)

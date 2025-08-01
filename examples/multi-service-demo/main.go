@@ -13,6 +13,11 @@ import (
 	"github.com/pay-theory/lift/pkg/services"
 )
 
+const (
+	userService1 = "user-service-1"
+	userService2 = "user-service-2"
+)
+
 // DemoServiceRegistry implements a simple in-memory service discovery
 type DemoServiceRegistry struct {
 	services map[string][]*services.ServiceInstance
@@ -278,14 +283,20 @@ func registerDemoServices(registry *services.ServiceRegistry) {
 	}
 
 	// Register services
-	registry.Register(ctx, userService1)
-	registry.Register(ctx, userService2)
-	registry.Register(ctx, paymentService)
+	if err := registry.Register(ctx, userService1); err != nil {
+		log.Printf("Failed to register userService1: %v", err)
+	}
+	if err := registry.Register(ctx, userService2); err != nil {
+		log.Printf("Failed to register userService2: %v", err)
+	}
+	if err := registry.Register(ctx, paymentService); err != nil {
+		log.Printf("Failed to register paymentService: %v", err)
+	}
 }
 
 func setupDemoRoutes(app *lift.App) {
 	// List registered services
-	app.GET("/demo/services", func(ctx *lift.Context) error {
+	if err := app.GET("/demo/services", func(ctx *lift.Context) error {
 		// Get service client from context
 		client := services.GetServiceClient(ctx)
 		if client == nil {
@@ -314,10 +325,12 @@ func setupDemoRoutes(app *lift.App) {
 			"services": services,
 			"total":    len(services),
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /demo/services: %v", err)
+	}
 
 	// Test service discovery
-	app.GET("/demo/discovery", func(ctx *lift.Context) error {
+	if err := app.GET("/demo/discovery", func(ctx *lift.Context) error {
 		serviceName := ctx.Query("service")
 		if serviceName == "" {
 			serviceName = "user-service"
@@ -335,7 +348,7 @@ func setupDemoRoutes(app *lift.App) {
 			"service": serviceName,
 			"instances": []map[string]any{
 				{
-					"id":     "user-service-1",
+					"id":     userService1,
 					"host":   "user-service-1.internal",
 					"port":   8080,
 					"weight": 100,
@@ -358,10 +371,12 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		return ctx.JSON(discoveryResult)
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /demo/discovery: %v", err)
+	}
 
 	// Test load balancing
-	app.GET("/demo/loadbalancer", func(ctx *lift.Context) error {
+	if err := app.GET("/demo/loadbalancer", func(ctx *lift.Context) error {
 		strategy := ctx.Query("strategy")
 		if strategy == "" {
 			strategy = "round_robin"
@@ -375,15 +390,15 @@ func setupDemoRoutes(app *lift.App) {
 			switch strategy {
 			case "weighted_random":
 				if i%3 == 0 {
-					selected = "user-service-1"
+					selected = userService1
 				} else {
 					selected = "user-service-2" // Higher weight
 				}
 			case "least_connections":
-				selected = "user-service-1" // Assume fewer connections
+				selected = userService1 // Assume fewer connections
 			default: // round_robin
 				if i%2 == 0 {
-					selected = "user-service-1"
+					selected = userService1
 				} else {
 					selected = "user-service-2"
 				}
@@ -400,10 +415,12 @@ func setupDemoRoutes(app *lift.App) {
 			"requests": 10,
 			"results":  results,
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /demo/loadbalancer: %v", err)
+	}
 
 	// Test inter-service communication
-	app.POST("/demo/service-call", func(ctx *lift.Context) error {
+	if err := app.POST("/demo/service-call", func(ctx *lift.Context) error {
 		var request struct {
 			Data    any    `json:"data"`
 			Service string `json:"service"`
@@ -451,10 +468,12 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		return ctx.JSON(serviceCall)
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register POST /demo/service-call: %v", err)
+	}
 
 	// Performance statistics
-	app.GET("/demo/stats", func(ctx *lift.Context) error {
+	if err := app.GET("/demo/stats", func(ctx *lift.Context) error {
 		stats := map[string]any{
 			"service_registry": map[string]any{
 				"registered_services": 2,
@@ -486,7 +505,9 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		return ctx.JSON(stats)
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /demo/stats: %v", err)
+	}
 }
 
 // Helper functions
@@ -546,7 +567,10 @@ func writeResponse(w http.ResponseWriter, response *lift.Response) {
 	// Write body
 	if response.Body != nil {
 		if bodyBytes, err := json.Marshal(response.Body); err == nil {
-			w.Write(bodyBytes)
+			if _, err := w.Write(bodyBytes); err != nil {
+				// Log write error but don't return it since we're in a test handler
+				log.Printf("Warning: failed to write response body: %v", err)
+			}
 		}
 	}
 }

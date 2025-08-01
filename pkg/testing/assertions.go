@@ -392,7 +392,7 @@ func (r *TestResponse) AssertRequiresAuthentication() *TestResponse {
 // Performance Assertions
 
 // AssertResponseTime verifies response was fast enough
-func (r *TestResponse) AssertResponseTime(maxDuration string) *TestResponse {
+func (r *TestResponse) AssertResponseTime(_ string) *TestResponse {
 	// This would require timing information to be passed in
 	// For now, just check that response time header exists if present
 	if responseTime := r.GetHeader("X-Response-Time"); responseTime != "" {

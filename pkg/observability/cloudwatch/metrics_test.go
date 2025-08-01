@@ -28,7 +28,7 @@ func NewMockCloudWatchMetricsClient() *MockCloudWatchMetricsClient {
 	}
 }
 
-func (m *MockCloudWatchMetricsClient) PutMetricData(ctx context.Context, params *cloudwatch.PutMetricDataInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error) {
+func (m *MockCloudWatchMetricsClient) PutMetricData(_ context.Context, params *cloudwatch.PutMetricDataInput, _ ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -140,10 +140,11 @@ func TestCloudWatchMetrics_MultiTenantDimensions(t *testing.T) {
 	for _, metric := range data {
 		for _, dim := range metric.Dimensions {
 			if *dim.Name == "TenantID" {
-				if *dim.Value == "tenant-1" {
+				switch *dim.Value {
+				case "tenant-1":
 					tenant1Found = true
 					assert.Equal(t, float64(10), *metric.Value)
-				} else if *dim.Value == "tenant-2" {
+				case "tenant-2":
 					tenant2Found = true
 					assert.Equal(t, float64(20), *metric.Value)
 				}

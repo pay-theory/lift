@@ -211,7 +211,7 @@ func (m *MockDynamORMClient) Scan(ctx context.Context, params *dynamodb.ScanInpu
 
 	return &dynamodb.ScanOutput{
 		Items: items,
-		Count: int32(len(items)),
+		Count: int32(len(items)), // #nosec G115 - len() returns int which is safe to convert to int32 for DynamoDB API
 	}, nil
 }
 
@@ -531,14 +531,6 @@ func (m *MockDynamORMClient) AddMockTable(tableName string, opts ...TestTableOpt
 	m.tables[tableName] = table
 }
 
-// GetMockTable returns a mock table for inspection
-func (m *MockDynamORMClient) getMockTable(tableName string) (*mockTable, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	table, exists := m.tables[tableName]
-	return table, exists
-}
 
 // ClearMockTables removes all mock tables
 func (m *MockDynamORMClient) ClearMockTables() {

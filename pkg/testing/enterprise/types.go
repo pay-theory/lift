@@ -945,7 +945,6 @@ type ContractReportExporter interface {
 
 // ContractReportExporterImpl struct implementation of ContractReportExporter
 type ContractReportExporterImpl struct {
-	destinations map[string]ExportDestination
 }
 
 // ExportDestination represents an export destination
@@ -1046,8 +1045,6 @@ const (
 // FUNCTION TEMPLATE TYPES
 // ============================================================================
 
-// getDefaultContractReportTemplates function type for getting default templates
-var getDefaultContractReportTemplates func() map[string]*ContractReportTemplate
 
 // ============================================================================
 // CONTRACT TESTING TYPES
@@ -1422,7 +1419,7 @@ func NewChaosReporter() *ChaosReporter {
 }
 
 // RunExperiment runs a chaos experiment
-func (f *ChaosEngineeringFramework) RunExperiment(ctx context.Context, experiment *ChaosExperiment) (*ExperimentResults, error) {
+func (f *ChaosEngineeringFramework) RunExperiment(_ context.Context, experiment *ChaosExperiment) (*ExperimentResults, error) {
 	// Validate experiment first
 	if err := f.validateExperiment(experiment); err != nil {
 		return nil, fmt.Errorf("experiment validation failed: %w", err)

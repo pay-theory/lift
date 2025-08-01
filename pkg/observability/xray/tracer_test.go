@@ -123,7 +123,7 @@ func TestXRayMiddleware_WithError(t *testing.T) {
 
 	// Create test handler that returns an error
 	testError := errors.New("test error")
-	handler := lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := lift.HandlerFunc(func(_ *lift.Context) error {
 		return testError
 	})
 
@@ -263,7 +263,7 @@ func TestGetSegmentID(t *testing.T) {
 	assert.Empty(t, segmentID2)
 }
 
-func TestAddAnnotation(t *testing.T) {
+func TestAddAnnotation(_ *testing.T) {
 	// Configure X-Ray for testing
 	xray.Configure(xray.Config{
 		DaemonAddr: "127.0.0.1:2000",
@@ -282,7 +282,7 @@ func TestAddAnnotation(t *testing.T) {
 	AddAnnotation(noSegmentCtx, "test.key", "test.value")
 }
 
-func TestAddMetadata(t *testing.T) {
+func TestAddMetadata(_ *testing.T) {
 	// Configure X-Ray for testing
 	xray.Configure(xray.Config{
 		DaemonAddr: "127.0.0.1:2000",
@@ -301,7 +301,7 @@ func TestAddMetadata(t *testing.T) {
 	AddMetadata(noSegmentCtx, "test", "key", "value")
 }
 
-func TestSetError(t *testing.T) {
+func TestSetError(_ *testing.T) {
 	// Configure X-Ray for testing
 	xray.Configure(xray.Config{
 		DaemonAddr: "127.0.0.1:2000",
@@ -357,7 +357,7 @@ func TestXRayMiddleware_Performance(t *testing.T) {
 	middleware := XRayMiddleware(config)
 
 	// Create simple handler
-	handler := lift.HandlerFunc(func(ctx *lift.Context) error {
+	handler := lift.HandlerFunc(func(_ *lift.Context) error {
 		return nil
 	})
 

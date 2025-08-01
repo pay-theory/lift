@@ -86,7 +86,7 @@ func main() {
 			response := map[string]any{
 				"action": "broadcast",
 				"from":   connectionID,
-				"data":   json.RawMessage(msg.Data),
+				"data":   msg.Data,
 			}
 
 			responseData, _ := json.Marshal(response)

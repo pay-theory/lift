@@ -81,7 +81,7 @@ func NewGDPRComplianceTester(app any) *GDPRComplianceTester {
 }
 
 // TestRightToAccess tests the right to access personal data
-func (tester *GDPRComplianceTester) TestRightToAccess(ctx context.Context, userID string) error {
+func (tester *GDPRComplianceTester) TestRightToAccess(_ context.Context, userID string) error {
 	// Simulate right to access test
 	if userID == "" {
 		return fmt.Errorf("user ID is required for right to access test")
@@ -118,7 +118,7 @@ func (tester *GDPRComplianceTester) TestRightToAccess(ctx context.Context, userI
 }
 
 // TestRightToRectification tests the right to rectify personal data
-func (tester *GDPRComplianceTester) TestRightToRectification(ctx context.Context, userID string, updates map[string]any) error {
+func (tester *GDPRComplianceTester) TestRightToRectification(_ context.Context, userID string, updates map[string]any) error {
 	if userID == "" {
 		return fmt.Errorf("user ID is required for right to rectification test")
 	}
@@ -155,7 +155,7 @@ func (tester *GDPRComplianceTester) TestRightToRectification(ctx context.Context
 }
 
 // TestRightToErasure tests the right to erasure (right to be forgotten)
-func (tester *GDPRComplianceTester) TestRightToErasure(ctx context.Context, userID string) error {
+func (tester *GDPRComplianceTester) TestRightToErasure(_ context.Context, userID string) error {
 	if userID == "" {
 		return fmt.Errorf("user ID is required for right to erasure test")
 	}
@@ -189,7 +189,7 @@ func (tester *GDPRComplianceTester) TestRightToErasure(ctx context.Context, user
 }
 
 // TestRightToDataPortability tests the right to data portability
-func (tester *GDPRComplianceTester) TestRightToDataPortability(ctx context.Context, userID string) error {
+func (tester *GDPRComplianceTester) TestRightToDataPortability(_ context.Context, userID string) error {
 	if userID == "" {
 		return fmt.Errorf("user ID is required for right to data portability test")
 	}
@@ -235,7 +235,7 @@ func (tester *GDPRComplianceTester) TestRightToDataPortability(ctx context.Conte
 }
 
 // TestRightToObject tests the right to object to processing
-func (tester *GDPRComplianceTester) TestRightToObject(ctx context.Context, userID string, processingType string) error {
+func (tester *GDPRComplianceTester) TestRightToObject(_ context.Context, userID string, processingType string) error {
 	if userID == "" {
 		return fmt.Errorf("user ID is required for right to object test")
 	}
@@ -271,7 +271,7 @@ func (tester *GDPRComplianceTester) TestRightToObject(ctx context.Context, userI
 }
 
 // GetAuditTrail retrieves the audit trail for a user
-func (tester *GDPRComplianceTester) GetAuditTrail(ctx context.Context, userID string) (*AuditTrail, error) {
+func (tester *GDPRComplianceTester) GetAuditTrail(_ context.Context, userID string) (*AuditTrail, error) {
 	if userID == "" {
 		return nil, fmt.Errorf("user ID is required")
 	}

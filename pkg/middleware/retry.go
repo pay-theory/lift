@@ -278,7 +278,7 @@ func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler
 		case <-time.After(delay):
 			// Continue to next attempt
 		case <-totalCtx.Done():
-			// Context cancelled during delay
+			// Context canceled during delay
 			totalDuration := time.Since(totalStart)
 			rm.recordFailure(attempt, totalDuration, totalDelay, totalCtx.Err())
 			return totalCtx.Err()
@@ -371,7 +371,7 @@ func (rm *retryManager) calculateDelay(attempt int, totalDelay time.Duration) ti
 	// Apply jitter if enabled
 	if rm.config.Jitter {
 		jitterAmount := float64(delay) * rm.config.JitterRange
-		jitter := (rand.Float64() - 0.5) * 2 * jitterAmount // Random value between -jitterAmount and +jitterAmount
+		jitter := (rand.Float64() - 0.5) * 2 * jitterAmount // #nosec G404 - non-cryptographic use for retry jitter
 		delay = time.Duration(float64(delay) + jitter)
 
 		// Ensure delay is not negative

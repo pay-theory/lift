@@ -47,9 +47,10 @@ func (h *HIPAAComplianceChecker) Validate(ctx context.Context, system SystemInfo
 		reqResult := h.validateRequirement(ctx, system, req)
 		result.Requirements = append(result.Requirements, reqResult)
 
-		if reqResult.Status == ComplianceStatusPass {
+		switch reqResult.Status {
+		case ComplianceStatusPass:
 			passedCount++
-		} else if reqResult.Status == ComplianceStatusFail {
+		case ComplianceStatusFail:
 			violation := ComplianceViolation{
 				RequirementID: req.ID,
 				Severity:      SeverityHigh,
@@ -281,9 +282,10 @@ func (p *PCIDSSComplianceChecker) Validate(ctx context.Context, system SystemInf
 		reqResult := p.validatePCIRequirement(ctx, system, req)
 		result.Requirements = append(result.Requirements, reqResult)
 
-		if reqResult.Status == ComplianceStatusPass {
+		switch reqResult.Status {
+		case ComplianceStatusPass:
 			passedCount++
-		} else if reqResult.Status == ComplianceStatusFail {
+		case ComplianceStatusFail:
 			violation := ComplianceViolation{
 				RequirementID: req.ID,
 				Severity:      SeverityCritical,

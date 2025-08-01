@@ -8,6 +8,10 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
+const (
+	schemeHTTPS = "https"
+)
+
 // SecurityHeadersConfig configures the security headers middleware
 type SecurityHeadersConfig struct {
 	CustomHeaders           map[string]string
@@ -70,8 +74,8 @@ func SecurityHeaders(config SecurityHeadersConfig) lift.Middleware {
 			// Set Strict-Transport-Security (check if HTTPS via headers or scheme)
 			if config.StrictTransportSecurity != "" {
 				// Check for HTTPS indicators
-				isSecure := ctx.Header("X-Forwarded-Proto") == "https" ||
-					ctx.Header("CloudFront-Forwarded-Proto") == "https" ||
+				isSecure := ctx.Header("X-Forwarded-Proto") == schemeHTTPS ||
+					ctx.Header("CloudFront-Forwarded-Proto") == schemeHTTPS ||
 					ctx.Header("X-Forwarded-SSL") == "on"
 
 				if isSecure {

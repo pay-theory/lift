@@ -357,7 +357,8 @@ func authenticateCustomer(ctx *lift.Context) error {
 	}
 
 	// In production, generate JWT token
-	token := "jwt_token_here"
+	// TODO: Implement proper JWT generation
+	token := "placeholder_token" // #nosec G101 - This is a placeholder for demonstration
 
 	log.Printf("ECOMMERCE AUDIT: Customer authenticated - Tenant: %s, Customer: %s, Email: %s",
 		tenantID, customer.ID, customer.Email)

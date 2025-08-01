@@ -78,14 +78,14 @@ func NewDataMapper() *DataMapper {
 }
 
 // MapData creates a new data mapping
-func (dm *DataMapper) MapData(ctx context.Context, mapping *DataMapping) error {
+func (dm *DataMapper) MapData(_ context.Context, mapping *DataMapping) error {
 	mapping.LastUpdated = time.Now()
 	dm.mappings[mapping.ID] = mapping
 	return nil
 }
 
 // GetDataMappings returns all data mappings
-func (dm *DataMapper) GetDataMappings(ctx context.Context) map[string]*DataMapping {
+func (dm *DataMapper) GetDataMappings(_ context.Context) map[string]*DataMapping {
 	return dm.mappings
 }
 
@@ -149,7 +149,7 @@ func NewConsentManager() *ConsentManager {
 }
 
 // GrantConsent grants consent for a data subject
-func (cm *ConsentManager) GrantConsent(ctx context.Context, consent *LocalConsentRecord) error {
+func (cm *ConsentManager) GrantConsent(_ context.Context, consent *LocalConsentRecord) error {
 	consent.Timestamp = time.Now()
 	consent.Granted = true
 	cm.consents[consent.ID] = consent
@@ -173,7 +173,7 @@ func (cm *ConsentManager) GrantConsent(ctx context.Context, consent *LocalConsen
 }
 
 // WithdrawConsent withdraws consent for a data subject
-func (cm *ConsentManager) WithdrawConsent(ctx context.Context, consentID string) error {
+func (cm *ConsentManager) WithdrawConsent(_ context.Context, consentID string) error {
 	consent, exists := cm.consents[consentID]
 	if !exists {
 		return fmt.Errorf("consent not found: %s", consentID)
@@ -202,7 +202,7 @@ func (cm *ConsentManager) WithdrawConsent(ctx context.Context, consentID string)
 }
 
 // GetConsent retrieves consent by ID
-func (cm *ConsentManager) GetConsent(ctx context.Context, consentID string) (*LocalConsentRecord, error) {
+func (cm *ConsentManager) GetConsent(_ context.Context, consentID string) (*LocalConsentRecord, error) {
 	consent, exists := cm.consents[consentID]
 	if !exists {
 		return nil, fmt.Errorf("consent not found: %s", consentID)
@@ -259,7 +259,7 @@ func NewTransferValidator() *TransferValidator {
 }
 
 // ValidateTransfer validates a data transfer
-func (tv *TransferValidator) ValidateTransfer(ctx context.Context, transfer *DataTransfer) (*TransferValidationResult, error) {
+func (tv *TransferValidator) ValidateTransfer(_ context.Context, transfer *DataTransfer) (*TransferValidationResult, error) {
 	result := &TransferValidationResult{
 		TransferID: transfer.ID,
 		Valid:      true,

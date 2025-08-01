@@ -263,7 +263,7 @@ func NewS3Processor(scope constructs.Construct, id *string, props *S3ProcessorPr
 	}
 
 	// Override environment
-	liftProps.FunctionProps.Environment = &functionEnv
+	liftProps.Environment = &functionEnv
 
 	// Set Lift-specific properties
 	if props.EnableTracing != nil {
@@ -312,20 +312,18 @@ func NewS3Processor(scope constructs.Construct, id *string, props *S3ProcessorPr
 	if bucket, ok := this.Bucket.(awss3.Bucket); ok {
 		this.EventSource = awslambdaeventsources.NewS3EventSource(bucket, eventSourceProps)
 		this.Function.Function.AddEventSource(this.EventSource)
-	} else {
+	} else if props.ExternalBucket != nil {
 		// For external buckets, we need to handle event source differently
 		// External buckets require bucket notification configuration
-		if props.ExternalBucket != nil {
-			// Add bucket notification for external bucket
-			bucket.AddEventNotification(
-				awss3.EventType_OBJECT_CREATED,
-				awss3notifications.NewLambdaDestination(this.Function.Function),
-				&awss3.NotificationKeyFilter{
-					Prefix: props.EventFilter.Prefix,
-					Suffix: props.EventFilter.Suffix,
-				},
-			)
-		}
+		// Add bucket notification for external bucket
+		bucket.AddEventNotification(
+			awss3.EventType_OBJECT_CREATED,
+			awss3notifications.NewLambdaDestination(this.Function.Function),
+			&awss3.NotificationKeyFilter{
+				Prefix: props.EventFilter.Prefix,
+				Suffix: props.EventFilter.Suffix,
+			},
+		)
 	}
 
 	// Grant permissions

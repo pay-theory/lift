@@ -257,10 +257,10 @@ func (tm *timeoutManager) updateTimeoutStats(timeout, duration time.Duration) {
 	} else {
 		// Running average
 		tm.stats.AverageTimeout = time.Duration(
-			(int64(tm.stats.AverageTimeout)*int64(tm.stats.TotalRequests-1) + int64(timeout)) / int64(tm.stats.TotalRequests),
+			(int64(tm.stats.AverageTimeout)*(tm.stats.TotalRequests-1) + int64(timeout)) / tm.stats.TotalRequests,
 		)
 		tm.stats.AverageDuration = time.Duration(
-			(int64(tm.stats.AverageDuration)*int64(tm.stats.TotalRequests-1) + int64(duration)) / int64(tm.stats.TotalRequests),
+			(int64(tm.stats.AverageDuration)*(tm.stats.TotalRequests-1) + int64(duration)) / tm.stats.TotalRequests,
 		)
 	}
 }
@@ -369,21 +369,21 @@ func AdaptiveTimeoutCalculator(baseTimeout time.Duration) func(*lift.Context) ti
 		// Adjust based on request method
 		switch ctx.Request.Method {
 		case "GET":
-			timeout = timeout / 2 // GET requests should be faster
+			timeout /= 2 // GET requests should be faster
 		case "POST", "PUT":
-			timeout = timeout * 2 // Write operations may take longer
+			timeout *= 2 // Write operations may take longer
 		case "DELETE":
-			timeout = timeout * 3 // Delete operations may be complex
+			timeout *= 3 // Delete operations may be complex
 		}
 
 		// Adjust based on query parameters (more params = more complex)
 		if len(ctx.Request.QueryParams) > 5 {
-			timeout = timeout * 2
+			timeout *= 2
 		}
 
 		// Adjust based on body size
 		if len(ctx.Request.Body) > 1024*1024 { // > 1MB
-			timeout = timeout * 3
+			timeout *= 3
 		}
 
 		return timeout

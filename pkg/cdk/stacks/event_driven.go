@@ -124,7 +124,7 @@ func NewEventDrivenStack(scope constructs.Construct, id string, props *EventDriv
 			DetailType: &[]*string{
 				jsii.String("Order Created"),
 				jsii.String("Order Updated"),
-				jsii.String("Order Cancelled"),
+				jsii.String("Order Canceled"),
 			},
 		},
 	})

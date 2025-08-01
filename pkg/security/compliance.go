@@ -401,7 +401,7 @@ func (cf *ComplianceFramework) hasCriticalViolations(violations []ComplianceViol
 }
 
 // GetComplianceStatus returns the current compliance status
-func (cf *ComplianceFramework) GetComplianceStatus(ctx context.Context) (*ComplianceResult, error) {
+func (cf *ComplianceFramework) GetComplianceStatus(_ context.Context) (*ComplianceResult, error) {
 	cf.mu.RLock()
 	defer cf.mu.RUnlock()
 

@@ -120,9 +120,11 @@ func TestAppHandleRequest(t *testing.T) {
 	app := New()
 
 	// Add a simple route
-	app.GET("/test", func(ctx *Context) error {
+	if err := app.GET("/test", func(ctx *Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register GET route: %v", err)
+	}
 
 	err := app.Start()
 	if err != nil {
@@ -213,7 +215,9 @@ func TestIsLambda(t *testing.T) {
 			savedEnv := make(map[string]string)
 			for key := range tc.envVars {
 				savedEnv[key] = os.Getenv(key)
-				os.Unsetenv(key)
+				if err := os.Unsetenv(key); err != nil {
+					t.Logf("Warning: failed to unset env var %s: %v", key, err)
+				}
 			}
 
 			// Also ensure Lambda env vars are unset when testing non-Lambda scenarios
@@ -221,13 +225,17 @@ func TestIsLambda(t *testing.T) {
 			for _, key := range lambdaVars {
 				if _, exists := tc.envVars[key]; !exists {
 					savedEnv[key] = os.Getenv(key)
-					os.Unsetenv(key)
+					if err := os.Unsetenv(key); err != nil {
+						t.Logf("Warning: failed to unset lambda env var %s: %v", key, err)
+					}
 				}
 			}
 
 			// Set test environment variables
 			for key, value := range tc.envVars {
-				os.Setenv(key, value)
+				if err := os.Setenv(key, value); err != nil {
+					t.Fatalf("Failed to set test env var %s: %v", key, err)
+				}
 			}
 
 			// Test IsLambda
@@ -239,9 +247,13 @@ func TestIsLambda(t *testing.T) {
 			// Restore environment
 			for key, value := range savedEnv {
 				if value == "" {
-					os.Unsetenv(key)
+					if err := os.Unsetenv(key); err != nil {
+						t.Logf("Warning: failed to restore env var %s: %v", key, err)
+					}
 				} else {
-					os.Setenv(key, value)
+					if err := os.Setenv(key, value); err != nil {
+						t.Logf("Warning: failed to restore env var %s: %v", key, err)
+					}
 				}
 			}
 		})

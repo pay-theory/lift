@@ -12,11 +12,6 @@ import (
 // WebSocketHandler is a function that handles WebSocket events
 type WebSocketHandler func(ctx *Context) error
 
-// WebSocketRoute stores WebSocket route information
-type webSocketRoute struct {
-	routeKey string
-	handler  WebSocketHandler
-}
 
 // WebSocketOptions configures WebSocket support
 type WebSocketOptions struct {

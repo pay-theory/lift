@@ -37,7 +37,7 @@ func NewMockCloudWatchLogsClient() *MockCloudWatchLogsClient {
 }
 
 // CreateLogGroup mocks creating a log group
-func (m *MockCloudWatchLogsClient) CreateLogGroup(ctx context.Context, params *cloudwatchlogs.CreateLogGroupInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.CreateLogGroupOutput, error) {
+func (m *MockCloudWatchLogsClient) CreateLogGroup(_ context.Context, params *cloudwatchlogs.CreateLogGroupInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.CreateLogGroupOutput, error) {
 	m.incrementCall("CreateLogGroup")
 
 	if err := m.getError("CreateLogGroup"); err != nil {
@@ -73,7 +73,7 @@ func (m *MockCloudWatchLogsClient) CreateLogGroup(ctx context.Context, params *c
 }
 
 // CreateLogStream mocks creating a log stream
-func (m *MockCloudWatchLogsClient) CreateLogStream(ctx context.Context, params *cloudwatchlogs.CreateLogStreamInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.CreateLogStreamOutput, error) {
+func (m *MockCloudWatchLogsClient) CreateLogStream(_ context.Context, params *cloudwatchlogs.CreateLogStreamInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.CreateLogStreamOutput, error) {
 	m.incrementCall("CreateLogStream")
 
 	if err := m.getError("CreateLogStream"); err != nil {
@@ -116,7 +116,7 @@ func (m *MockCloudWatchLogsClient) CreateLogStream(ctx context.Context, params *
 }
 
 // PutLogEvents mocks putting log events
-func (m *MockCloudWatchLogsClient) PutLogEvents(ctx context.Context, params *cloudwatchlogs.PutLogEventsInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.PutLogEventsOutput, error) {
+func (m *MockCloudWatchLogsClient) PutLogEvents(_ context.Context, params *cloudwatchlogs.PutLogEventsInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.PutLogEventsOutput, error) {
 	m.incrementCall("PutLogEvents")
 
 	if err := m.getError("PutLogEvents"); err != nil {
@@ -164,7 +164,7 @@ func (m *MockCloudWatchLogsClient) PutLogEvents(ctx context.Context, params *clo
 }
 
 // DescribeLogGroups mocks describing log groups
-func (m *MockCloudWatchLogsClient) DescribeLogGroups(ctx context.Context, params *cloudwatchlogs.DescribeLogGroupsInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
+func (m *MockCloudWatchLogsClient) DescribeLogGroups(_ context.Context, _ *cloudwatchlogs.DescribeLogGroupsInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error) {
 	m.incrementCall("DescribeLogGroups")
 
 	if err := m.getError("DescribeLogGroups"); err != nil {
@@ -185,7 +185,7 @@ func (m *MockCloudWatchLogsClient) DescribeLogGroups(ctx context.Context, params
 }
 
 // DescribeLogStreams mocks describing log streams
-func (m *MockCloudWatchLogsClient) DescribeLogStreams(ctx context.Context, params *cloudwatchlogs.DescribeLogStreamsInput, optFns ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogStreamsOutput, error) {
+func (m *MockCloudWatchLogsClient) DescribeLogStreams(_ context.Context, params *cloudwatchlogs.DescribeLogStreamsInput, _ ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogStreamsOutput, error) {
 	m.incrementCall("DescribeLogStreams")
 
 	if err := m.getError("DescribeLogStreams"); err != nil {

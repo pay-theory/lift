@@ -8,6 +8,11 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
+const (
+	algorithmHS256 = "HS256"
+	algorithmRS256 = "RS256"
+)
+
 // JWTConfig holds configuration for JWT middleware
 type JWTConfig struct {
 	PublicKey    any
@@ -24,7 +29,7 @@ type JWTConfig struct {
 // DefaultJWTConfig returns a default JWT configuration
 func DefaultJWTConfig() JWTConfig {
 	return JWTConfig{
-		Algorithm:   "HS256",
+		Algorithm:   algorithmHS256,
 		TokenLookup: "header:Authorization",
 		ErrorHandler: func(ctx *lift.Context, err error) error {
 			return ctx.Unauthorized("Invalid or missing token", err)
@@ -36,7 +41,7 @@ func DefaultJWTConfig() JWTConfig {
 func JWTAuth(config JWTConfig) lift.Middleware {
 	// Apply defaults
 	if config.Algorithm == "" {
-		config.Algorithm = "HS256"
+		config.Algorithm = algorithmHS256
 	}
 	if config.TokenLookup == "" {
 		config.TokenLookup = "header:Authorization"
@@ -153,7 +158,7 @@ func createExtractor(lookup string) func(*lift.Context) (string, error) {
 func parseToken(tokenString string, config JWTConfig) (*jwt.Token, error) {
 	// Parse with appropriate method based on algorithm
 	switch config.Algorithm {
-	case "HS256", "HS384", "HS512":
+	case algorithmHS256, "HS384", "HS512":
 		return jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			// Validate algorithm
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -161,7 +166,7 @@ func parseToken(tokenString string, config JWTConfig) (*jwt.Token, error) {
 			}
 			return []byte(config.Secret), nil
 		})
-	case "RS256", "RS384", "RS512":
+	case algorithmRS256, "RS384", "RS512":
 		return jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			// Validate algorithm
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
@@ -178,7 +183,7 @@ func parseToken(tokenString string, config JWTConfig) (*jwt.Token, error) {
 func WithJWTAuth(secret string) lift.Middleware {
 	return JWTAuth(JWTConfig{
 		Secret:    secret,
-		Algorithm: "HS256",
+		Algorithm: algorithmHS256,
 	})
 }
 

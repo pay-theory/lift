@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+const (
+	tableFlag = "--table"
+)
+
 // DynamORMBenchmarkCommand handles performance benchmarking for DynamORM operations
 type DynamORMBenchmarkCommand struct{}
 
@@ -108,7 +112,7 @@ func (c *DynamORMBenchmarkCommand) parseBenchmarkArgs(args []string) (*Benchmark
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
-		case "--table":
+		case tableFlag:
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("--table requires a value")
 			}
@@ -177,7 +181,7 @@ func (c *DynamORMBenchmarkCommand) isLiftProject() bool {
 
 func (c *DynamORMBenchmarkCommand) generateBenchmarkCode(config *BenchmarkConfig) error {
 	// Create output directory
-	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(config.OutputDir, 0750); err != nil {
 		return err
 	}
 
@@ -560,7 +564,7 @@ type BenchmarkEnvironment struct {
 	}
 
 	filename := filepath.Join(config.OutputDir, "benchmark_runner.go")
-	file, err := os.Create(filename)
+	file, err := os.Create(filename) // #nosec G304 - filename is constructed from sanitized config.OutputDir
 	if err != nil {
 		return err
 	}

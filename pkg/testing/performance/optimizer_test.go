@@ -11,7 +11,7 @@ import (
 
 func TestPerformanceOptimizer_OptimizePerformance(t *testing.T) {
 	// Create test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Simulate some processing time
 		time.Sleep(10 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -118,7 +118,7 @@ func NewTestPerformanceMonitor() *TestPerformanceMonitor {
 	}
 }
 
-func (t *TestPerformanceMonitor) StartMonitoring(ctx context.Context, target string) error {
+func (t *TestPerformanceMonitor) StartMonitoring(_ context.Context, _ string) error {
 	t.monitoring = true
 	return nil
 }
@@ -128,7 +128,7 @@ func (t *TestPerformanceMonitor) StopMonitoring() error {
 	return nil
 }
 
-func (t *TestPerformanceMonitor) GetMetrics(ctx context.Context) (PerformanceMetrics, error) {
+func (t *TestPerformanceMonitor) GetMetrics(_ context.Context) (PerformanceMetrics, error) {
 	return t.metrics, nil
 }
 
@@ -147,7 +147,7 @@ func (t *TestPerformanceMonitor) GetThresholds() PerformanceThresholds {
 	}
 }
 
-func (t *TestPerformanceMonitor) SetThresholds(thresholds PerformanceThresholds) error {
+func (t *TestPerformanceMonitor) SetThresholds(_ PerformanceThresholds) error {
 	return nil
 }
 
@@ -187,7 +187,7 @@ func NewTestBenchmark() *TestBenchmark {
 	}
 }
 
-func (t *TestBenchmark) Run(ctx context.Context, config BenchmarkConfig) (BenchmarkResult, error) {
+func (t *TestBenchmark) Run(_ context.Context, config BenchmarkConfig) (BenchmarkResult, error) {
 	// Simulate benchmark execution
 	result := BenchmarkResult{
 		Config:         config,
@@ -320,7 +320,7 @@ func NewTestPerformanceAnalyzer() *TestPerformanceAnalyzer {
 	return &TestPerformanceAnalyzer{}
 }
 
-func (t *TestPerformanceAnalyzer) Analyze(ctx context.Context, metrics []PerformanceMetrics) (AnalysisResult, error) {
+func (t *TestPerformanceAnalyzer) Analyze(_ context.Context, metrics []PerformanceMetrics) (AnalysisResult, error) {
 	bottlenecks := []Bottleneck{}
 	patterns := []PerformancePattern{}
 	anomalies := []Anomaly{}
@@ -439,7 +439,7 @@ func (t *TestPerformanceAnalyzer) GenerateRecommendations(analysis AnalysisResul
 	return analysis.Recommendations
 }
 
-func (t *TestPerformanceAnalyzer) PredictScaling(trends []PerformanceMetrics) ScalingPrediction {
+func (t *TestPerformanceAnalyzer) PredictScaling(_ []PerformanceMetrics) ScalingPrediction {
 	return ScalingPrediction{
 		CurrentCapacity: CapacityMetrics{
 			CPU: CapacityInfo{
@@ -700,7 +700,7 @@ func TestScalingPrediction(t *testing.T) {
 }
 
 func BenchmarkPerformanceOptimizer_OptimizePerformance(b *testing.B) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()

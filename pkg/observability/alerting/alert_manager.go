@@ -579,7 +579,7 @@ func (am *AlertManager) runCleanupProcessor(ctx context.Context) {
 	}
 }
 
-func (am *AlertManager) processAlerts(ctx context.Context) {
+func (am *AlertManager) processAlerts(_ context.Context) {
 	// Update alert states and durations
 	am.mu.Lock()
 	defer am.mu.Unlock()

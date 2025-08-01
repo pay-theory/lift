@@ -479,7 +479,7 @@ func TestSecurityConfig(t *testing.T) {
 }
 
 func BenchmarkOWASPScanner_Scan(b *testing.B) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -502,7 +502,7 @@ func BenchmarkOWASPScanner_Scan(b *testing.B) {
 }
 
 func BenchmarkHIPAAComplianceCheck(b *testing.B) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -529,7 +529,7 @@ func BenchmarkHIPAAComplianceCheck(b *testing.B) {
 }
 
 func BenchmarkSecurityValidator_ValidateTarget(b *testing.B) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()

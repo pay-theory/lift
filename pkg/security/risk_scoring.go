@@ -15,7 +15,6 @@ type MLRiskScorer struct {
 	model       RiskModel
 	riskFactors []RiskFactor
 	feedback    []RiskFeedback
-	baseline    *RiskBaseline
 	mu          sync.RWMutex
 }
 
@@ -95,8 +94,6 @@ type ContextualRiskFactor struct {
 
 // RiskFeatureExtractor extracts features from audit events
 type RiskFeatureExtractor struct {
-	config   FeatureExtractionConfig
-	features map[string]FeatureExtractor
 }
 
 // FeatureExtractionConfig configuration for feature extraction
@@ -352,7 +349,7 @@ func (mrs *MLRiskScorer) CalculateAggregateRisk(ctx context.Context, events []*A
 }
 
 // UpdateRiskModel updates the risk model with feedback
-func (mrs *MLRiskScorer) UpdateRiskModel(ctx context.Context, feedback []*RiskFeedback) error {
+func (mrs *MLRiskScorer) UpdateRiskModel(_ context.Context, feedback []*RiskFeedback) error {
 	mrs.mu.Lock()
 	defer mrs.mu.Unlock()
 
@@ -524,7 +521,7 @@ func (mrs *MLRiskScorer) extractBehavioralFeatures(ctx context.Context, event *A
 }
 
 // extractContextualFeatures extracts contextual features
-func (mrs *MLRiskScorer) extractContextualFeatures(_ctx context.Context, event *AuditEvent) ([]float64, []RiskFactor) {
+func (mrs *MLRiskScorer) extractContextualFeatures(_ context.Context, event *AuditEvent) ([]float64, []RiskFactor) {
 	var features []float64
 	var factors []RiskFactor
 

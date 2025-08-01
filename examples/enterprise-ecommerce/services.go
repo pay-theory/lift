@@ -194,7 +194,7 @@ func (m *mockProductService) GetProduct(_ context.Context, tenantID, id string) 
 			LowStockThreshold: 10,
 		},
 		Categories: []string{"Electronics", "Audio", "Headphones"},
-		Tags:       []string{"wireless", "premium", "noise-cancelling"},
+		Tags:       []string{"wireless", "premium", "noise-canceling"},
 		Attributes: map[string]any{
 			"brand":        "AudioTech",
 			"color":        "Black",
@@ -220,7 +220,7 @@ func (m *mockProductService) GetProduct(_ context.Context, tenantID, id string) 
 		SEO: SEOData{
 			Title:       "Premium Wireless Headphones - AudioTech",
 			Description: "Experience premium sound quality with our wireless headphones featuring noise cancellation and 30-hour battery life.",
-			Keywords:    []string{"wireless headphones", "noise cancelling", "premium audio", "bluetooth headphones"},
+			Keywords:    []string{"wireless headphones", "noise canceling", "premium audio", "bluetooth headphones"},
 			Slug:        "premium-wireless-headphones",
 		},
 		Status:    ProductStatusActive,

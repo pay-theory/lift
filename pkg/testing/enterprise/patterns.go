@@ -167,7 +167,7 @@ func (e *EnterpriseTestPatterns) runSingleTest(ctx context.Context, test Test) T
 }
 
 // RunContractTests runs contract tests
-func (e *EnterpriseTestPatterns) RunContractTests(ctx context.Context) (map[string]ContractTestResult, error) {
+func (e *EnterpriseTestPatterns) RunContractTests(_ context.Context) (map[string]ContractTestResult, error) {
 	return e.contractSuite.RunContractTests()
 }
 
@@ -177,7 +177,7 @@ func (e *EnterpriseTestPatterns) RunChaosTests(ctx context.Context) error {
 }
 
 // ValidatePerformance validates performance across environments
-func (e *EnterpriseTestPatterns) ValidatePerformance(ctx context.Context, testCase TestCase, envName string) error {
+func (e *EnterpriseTestPatterns) ValidatePerformance(_ context.Context, testCase TestCase, envName string) error {
 	env, exists := e.environments[envName]
 	if !exists {
 		return fmt.Errorf("environment %s not found", envName)
@@ -275,7 +275,7 @@ func (e *EnterpriseTestPatterns) CreatePerformanceTest(name string, testFunc fun
 	return TestCase{
 		Name:        name,
 		Description: fmt.Sprintf("Performance test: %s", name),
-		Execute: func(app *EnterpriseTestApp, env *TestEnvironment) error {
+		Execute: func(_ *EnterpriseTestApp, _ *TestEnvironment) error {
 			return testFunc()
 		},
 		Timeout: 30 * time.Second,
@@ -284,7 +284,7 @@ func (e *EnterpriseTestPatterns) CreatePerformanceTest(name string, testFunc fun
 }
 
 // CreateMultiEnvironmentTest creates a test that runs across multiple environments
-func (e *EnterpriseTestPatterns) CreateMultiEnvironmentTest(name string, testFunc func(env *TestEnvironment) error) error {
+func (e *EnterpriseTestPatterns) CreateMultiEnvironmentTest(_ string, testFunc func(env *TestEnvironment) error) error {
 	e.mutex.RLock()
 	environments := make([]*TestEnvironment, 0, len(e.environments))
 	for _, env := range e.environments {

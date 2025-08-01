@@ -554,7 +554,7 @@ func (aae *AuditAnalyticsEngine) AnalyzeEvent(ctx context.Context, event *AuditE
 	analysis := &EventAnalysis{
 		EventID:   event.ID,
 		Timestamp: time.Now(),
-		Analyses:  make(map[string]any),
+		Analyzes:  make(map[string]any),
 	}
 
 	// Risk scoring
@@ -562,7 +562,7 @@ func (aae *AuditAnalyticsEngine) AnalyzeEvent(ctx context.Context, event *AuditE
 		riskScore, err := aae.riskScorer.CalculateRiskScore(ctx, event)
 		if err == nil {
 			analysis.RiskScore = riskScore
-			analysis.Analyses["risk_scoring"] = riskScore
+			analysis.Analyzes["risk_scoring"] = riskScore
 		}
 	}
 
@@ -571,7 +571,7 @@ func (aae *AuditAnalyticsEngine) AnalyzeEvent(ctx context.Context, event *AuditE
 		anomalies, err := aae.anomalyDetector.DetectAnomalies(ctx, []*AuditEvent{event})
 		if err == nil && len(anomalies) > 0 {
 			analysis.Anomalies = anomalies
-			analysis.Analyses["anomaly_detection"] = anomalies
+			analysis.Analyzes["anomaly_detection"] = anomalies
 		}
 	}
 
@@ -607,7 +607,7 @@ func (aae *AuditAnalyticsEngine) AnalyzeEvent(ctx context.Context, event *AuditE
 type EventAnalysis struct {
 	Timestamp time.Time      `json:"timestamp"`
 	RiskScore *RiskScore     `json:"risk_score,omitempty"`
-	Analyses  map[string]any `json:"analyses"`
+	Analyzes  map[string]any `json:"analyzes"`
 	EventID   string         `json:"event_id"`
 	Anomalies []*Anomaly     `json:"anomalies,omitempty"`
 }
@@ -621,14 +621,14 @@ func (aae *AuditAnalyticsEngine) AnalyzeBatch(ctx context.Context, events []*Aud
 		BatchID:       fmt.Sprintf("batch_%d", time.Now().Unix()),
 		EventCount:    len(events),
 		Timestamp:     time.Now(),
-		EventAnalyses: make([]*EventAnalysis, 0, len(events)),
+		EventAnalyzes: make([]*EventAnalysis, 0, len(events)),
 	}
 
 	// Analyze individual events
 	for _, event := range events {
 		eventAnalysis, err := aae.AnalyzeEvent(ctx, event)
 		if err == nil {
-			analysis.EventAnalyses = append(analysis.EventAnalyses, eventAnalysis)
+			analysis.EventAnalyzes = append(analysis.EventAnalyzes, eventAnalysis)
 		}
 	}
 
@@ -656,7 +656,7 @@ type BatchAnalysis struct {
 	Timestamp      time.Time           `json:"timestamp"`
 	AggregateRisk  *AggregateRiskScore `json:"aggregate_risk,omitempty"`
 	BatchID        string              `json:"batch_id"`
-	EventAnalyses  []*EventAnalysis    `json:"event_analyses"`
+	EventAnalyzes  []*EventAnalysis    `json:"event_analyzes"`
 	BatchAnomalies []*Anomaly          `json:"batch_anomalies,omitempty"`
 	EventCount     int                 `json:"event_count"`
 }
@@ -737,13 +737,13 @@ func (aae *AuditAnalyticsEngine) runModelUpdates(ctx context.Context) {
 }
 
 // performPeriodicAnalysis performs periodic analysis
-func (aae *AuditAnalyticsEngine) performPeriodicAnalysis(ctx context.Context) {
+func (aae *AuditAnalyticsEngine) performPeriodicAnalysis(_ context.Context) {
 	// This would implement periodic analysis logic
 	// For now, just a placeholder
 }
 
 // updateModels updates ML models with new data
-func (aae *AuditAnalyticsEngine) updateModels(ctx context.Context) {
+func (aae *AuditAnalyticsEngine) updateModels(_ context.Context) {
 	// This would implement model update logic
 	// For now, just a placeholder
 }

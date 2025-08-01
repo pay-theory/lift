@@ -3,7 +3,6 @@ package enterprise
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -15,7 +14,6 @@ type ChaosMeshIntegration struct {
 	crdManager       *CRDManager
 	monitoringSystem *KubernetesMonitoringSystem
 	eventBus         *ChaosEventBus
-	mutex            sync.RWMutex
 }
 
 // KubernetesConfig defines Kubernetes cluster configuration
@@ -158,61 +156,37 @@ type ChaosCondition struct {
 
 // PodChaosController implements pod-level chaos operations
 type PodChaosController struct {
-	name             string
-	config           *KubernetesConfig
-	kubeClient       KubernetesClient
-	eventRecorder    EventRecorder
-	metricsCollector MetricsCollector
-	mutex            sync.RWMutex
+	name   string
+	config *KubernetesConfig
 }
 
 // NetworkChaosController implements network-level chaos operations
 type NetworkChaosController struct {
-	name              string
-	config            *KubernetesConfig
-	kubeClient        KubernetesClient
-	networkManager    NetworkManager
-	trafficController TrafficController
-	mutex             sync.RWMutex
+	name   string
+	config *KubernetesConfig
 }
 
 // StressChaosController implements resource stress testing
 type StressChaosController struct {
-	name            string
-	config          *KubernetesConfig
-	kubeClient      KubernetesClient
-	resourceManager ResourceManager
-	stressInjector  StressInjector
-	mutex           sync.RWMutex
+	name   string
+	config *KubernetesConfig
 }
 
 // IOChaosController implements I/O fault injection
 type IOChaosController struct {
-	name          string
-	config        *KubernetesConfig
-	kubeClient    KubernetesClient
-	ioManager     IOManager
-	faultInjector IOFaultInjector
-	mutex         sync.RWMutex
+	name   string
+	config *KubernetesConfig
 }
 
 // TimeChaosController implements time-based chaos scenarios
 type TimeChaosController struct {
-	name        string
-	config      *KubernetesConfig
-	kubeClient  KubernetesClient
-	timeManager TimeManager
-	clockSkewer ClockSkewer
-	mutex       sync.RWMutex
+	name   string
+	config *KubernetesConfig
 }
 
 // ChaosOperatorManager manages Kubernetes operator patterns
 type ChaosOperatorManager struct {
-	operators      map[string]*ChaosOperator
-	watchManager   *WatchManager
-	reconciler     *ChaosReconciler
-	leaderElection *LeaderElection
-	mutex          sync.RWMutex
+	operators map[string]*ChaosOperator
 }
 
 // ChaosOperator defines a Kubernetes operator for chaos engineering
@@ -330,21 +304,10 @@ const (
 
 // KubernetesMonitoringSystem provides comprehensive monitoring
 type KubernetesMonitoringSystem struct {
-	metricsCollector *KubernetesMetricsCollector
-	eventWatcher     *EventWatcher
-	logAggregator    *LogAggregator
-	alertManager     *AlertManager
-	dashboardManager *DashboardManager
-	mutex            sync.RWMutex
 }
 
 // KubernetesMetricsCollector collects Kubernetes-specific metrics
 type KubernetesMetricsCollector struct {
-	podMetrics     map[string]*PodMetrics
-	nodeMetrics    map[string]*NodeMetrics
-	serviceMetrics map[string]*ServiceMetrics
-	clusterMetrics *ClusterMetrics
-	mutex          sync.RWMutex
 }
 
 // PodMetrics defines pod-level metrics
@@ -451,8 +414,6 @@ type ClusterMetrics struct {
 type ChaosEventBus struct {
 	subscribers map[string][]EventSubscriber
 	eventQueue  chan *ChaosEvent
-	processor   *EventProcessor
-	mutex       sync.RWMutex
 }
 
 // ChaosEvent defines chaos engineering event
@@ -568,8 +529,6 @@ func (c *ChaosMeshIntegration) initializeControllers() error {
 
 // CreateExperiment creates a new chaos experiment
 func (c *ChaosMeshIntegration) CreateExperiment(ctx context.Context, spec *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	// Validate experiment specification
 	if err := c.validateExperimentSpec(spec); err != nil {
@@ -609,8 +568,6 @@ func (c *ChaosMeshIntegration) CreateExperiment(ctx context.Context, spec *Chaos
 
 // MonitorExperiment monitors an active experiment
 func (c *ChaosMeshIntegration) MonitorExperiment(ctx context.Context, experimentID string, controllerType ChaosControllerType) (*ExperimentStatusInfo, error) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
 
 	controller, exists := c.controllers[string(controllerType)]
 	if !exists {
@@ -622,8 +579,6 @@ func (c *ChaosMeshIntegration) MonitorExperiment(ctx context.Context, experiment
 
 // StopExperiment stops an active experiment
 func (c *ChaosMeshIntegration) StopExperiment(ctx context.Context, experimentID string, controllerType ChaosControllerType) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	controller, exists := c.controllers[string(controllerType)]
 	if !exists {
@@ -650,8 +605,6 @@ func (c *ChaosMeshIntegration) StopExperiment(ctx context.Context, experimentID 
 
 // GetSupportedFaults returns supported fault types for all controllers
 func (c *ChaosMeshIntegration) GetSupportedFaults() map[ChaosControllerType][]FaultType {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
 
 	faults := make(map[ChaosControllerType][]FaultType)
 	for name, controller := range c.controllers {
@@ -715,9 +668,7 @@ func (p *PodChaosController) GetType() ChaosControllerType {
 }
 
 // Initialize initializes the pod chaos controller
-func (p *PodChaosController) Initialize(_ context.Context, config *KubernetesConfig) error {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+func (p *PodChaosController) Initialize(_ context.Context, _ *KubernetesConfig) error {
 
 	// Initialize Kubernetes client
 	// Implementation would include actual Kubernetes client initialization
@@ -726,9 +677,7 @@ func (p *PodChaosController) Initialize(_ context.Context, config *KubernetesCon
 }
 
 // CreateChaosExperiment creates a pod chaos experiment
-func (p *PodChaosController) CreateChaosExperiment(_ context.Context, spec *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+func (p *PodChaosController) CreateChaosExperiment(_ context.Context, _ *ChaosExperimentSpec) (*ChaosExperimentResult, error) {
 
 	// Implementation would include actual pod chaos experiment creation
 	result := &ChaosExperimentResult{
@@ -756,7 +705,7 @@ func (p *PodChaosController) MonitorExperiment(_ context.Context, experimentID s
 }
 
 // StopExperiment stops a pod chaos experiment
-func (p *PodChaosController) StopExperiment(_ context.Context, experimentID string) error {
+func (p *PodChaosController) StopExperiment(_ context.Context, _ string) error {
 	// Implementation would include actual experiment stopping
 	return nil
 }
@@ -807,8 +756,6 @@ func (c *ChaosEventBus) PublishEvent(ctx context.Context, event *ChaosEvent) err
 
 // Subscribe subscribes to chaos events
 func (c *ChaosEventBus) Subscribe(eventType string, subscriber EventSubscriber) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	c.subscribers[eventType] = append(c.subscribers[eventType], subscriber)
 }

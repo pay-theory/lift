@@ -515,7 +515,7 @@ func (o *OWASPScanner) scanInjection(ctx context.Context, target SecurityTarget)
 	return vulns
 }
 
-func (o *OWASPScanner) scanInsecureDesign(_ context.Context, target SecurityTarget) []Vulnerability {
+func (o *OWASPScanner) scanInsecureDesign(_ context.Context, _ SecurityTarget) []Vulnerability {
 	var vulns []Vulnerability
 
 	// Check for common insecure design patterns

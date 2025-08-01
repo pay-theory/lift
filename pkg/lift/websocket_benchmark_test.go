@@ -207,10 +207,3 @@ type BenchmarkComparison struct {
 	MemoryDelta int64
 }
 
-// Helper to calculate improvement percentage
-func calculateImprovement(oldTime, newTime int64) float64 {
-	if oldTime == 0 {
-		return 0
-	}
-	return float64(oldTime-newTime) / float64(oldTime) * 100
-}

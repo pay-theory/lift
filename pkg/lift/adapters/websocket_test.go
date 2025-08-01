@@ -5,6 +5,12 @@ import (
 	"testing"
 )
 
+const (
+	connectMethod = "CONNECT"
+	messageMethod = "MESSAGE"
+	disconnectMethod = "DISCONNECT"
+)
+
 func TestWebSocketAdapter_CanHandle(t *testing.T) {
 	adapter := NewWebSocketAdapter()
 
@@ -108,8 +114,8 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 			},
 			wantErr: false,
 			checkResult: func(t *testing.T, req *Request) {
-				if req.Method != "CONNECT" {
-					t.Errorf("Method = %s, want CONNECT", req.Method)
+				if req.Method != connectMethod {
+					t.Errorf("Method = %s, want %s", req.Method, connectMethod)
 				}
 				if req.Path != "/connect" {
 					t.Errorf("Path = %s, want /connect", req.Path)
@@ -137,8 +143,8 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 			},
 			wantErr: false,
 			checkResult: func(t *testing.T, req *Request) {
-				if req.Method != "MESSAGE" {
-					t.Errorf("Method = %s, want MESSAGE", req.Method)
+				if req.Method != messageMethod {
+					t.Errorf("Method = %s, want %s", req.Method, messageMethod)
 				}
 				if req.Path != "/sendMessage" {
 					t.Errorf("Path = %s, want /sendMessage", req.Path)
@@ -163,8 +169,8 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 			},
 			wantErr: false,
 			checkResult: func(t *testing.T, req *Request) {
-				if req.Method != "DISCONNECT" {
-					t.Errorf("Method = %s, want DISCONNECT", req.Method)
+				if req.Method != disconnectMethod {
+					t.Errorf("Method = %s, want %s", req.Method, disconnectMethod)
 				}
 				if req.Path != "/disconnect" {
 					t.Errorf("Path = %s, want /disconnect", req.Path)

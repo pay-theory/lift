@@ -12,7 +12,6 @@ type EnhancedComplianceFramework struct {
 	framework string // "SOC2-TypeII", "GDPR", "CCPA", "NIST"
 	auditor   EnhancedAuditLogger
 	validator AdvancedComplianceValidator
-	reporter  ComplianceReporter
 	templates map[string]ComplianceTemplate
 	config    EnhancedComplianceConfig
 	mu        sync.RWMutex
@@ -541,7 +540,7 @@ func (ecf *EnhancedComplianceFramework) createControlMiddleware(control Complian
 }
 
 // runComplianceTest executes an automated compliance test
-func (ecf *EnhancedComplianceFramework) runComplianceTest(_ctx LiftContext, control ComplianceControl) *ComplianceTestResult {
+func (ecf *EnhancedComplianceFramework) runComplianceTest(_ LiftContext, control ComplianceControl) *ComplianceTestResult {
 	// Run automated compliance test
 	return &ComplianceTestResult{
 		TestID:          fmt.Sprintf("test_%s_%d", control.ID, time.Now().Unix()),
@@ -617,13 +616,13 @@ func (ecf *EnhancedComplianceFramework) validateLawfulBasis(ctx LiftContext) boo
 	return false
 }
 
-func (ecf *EnhancedComplianceFramework) enforceDataMinimization(_ctx LiftContext) error {
+func (ecf *EnhancedComplianceFramework) enforceDataMinimization(_ LiftContext) error {
 	// Implement data minimization checks
 	// This would analyze the request to ensure only necessary data is processed
 	return nil
 }
 
-func (ecf *EnhancedComplianceFramework) isDataDeletionRequest(_ctx LiftContext) bool {
+func (ecf *EnhancedComplianceFramework) isDataDeletionRequest(_ LiftContext) bool {
 	// Check if this is a data deletion request (right to be forgotten)
 	// Note: This would need to be implemented based on the actual LiftContext interface
 	return false // Simplified for now
@@ -877,7 +876,7 @@ func (ecf *EnhancedComplianceFramework) extractDeletionReason(ctx LiftContext) s
 	return "user_request" // Default reason
 }
 
-func (ecf *EnhancedComplianceFramework) getVerificationMethod(_ctx LiftContext) string {
+func (ecf *EnhancedComplianceFramework) getVerificationMethod(_ LiftContext) string {
 	// In a real implementation, this would check how the user was authenticated
 	return "authenticated_session"
 }
@@ -969,7 +968,7 @@ func (ecf *EnhancedComplianceFramework) buildRetentionReason(retainForLegal bool
 	return fmt.Sprintf("Provider-specific retention: %v", reasonList)
 }
 
-func (ecf *EnhancedComplianceFramework) notifyThirdParties(ctx LiftContext, _request *DataErasureRequest) bool {
+func (ecf *EnhancedComplianceFramework) notifyThirdParties(ctx LiftContext, _ *DataErasureRequest) bool {
 	// In a real implementation, this would notify third parties about the data deletion
 	// For now, return true to indicate notifications were sent
 	ctx.Logger().Info("Third party notifications would be sent here",

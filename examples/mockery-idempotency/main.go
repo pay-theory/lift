@@ -113,7 +113,7 @@ func main() {
 	})
 
 	// Payment processing endpoint
-	app.POST("/api/v1/payments", func(ctx *lift.Context) error {
+	if err := app.POST("/api/v1/payments", func(ctx *lift.Context) error {
 		// Parse and validate request
 		var req PaymentRequest
 		if err := ctx.ParseRequest(&req); err != nil {
@@ -135,18 +135,22 @@ func main() {
 
 		// Return successful response
 		return ctx.Status(201).JSON(response)
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register POST /api/v1/payments: %v", err)
+	}
 
 	// Health check endpoint (no idempotency needed)
-	app.GET("/health", func(ctx *lift.Context) error {
+	if err := app.GET("/health", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
 			"status":  "healthy",
 			"service": "mockery-payment-service",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /health: %v", err)
+	}
 
 	// List processed payments (for demo)
-	app.GET("/api/v1/payments", func(ctx *lift.Context) error {
+	if err := app.GET("/api/v1/payments", func(ctx *lift.Context) error {
 		payments := make([]*PaymentResponse, 0, len(processor.processedPayments))
 		for _, p := range processor.processedPayments {
 			payments = append(payments, p)
@@ -155,7 +159,9 @@ func main() {
 			"payments": payments,
 			"count":    len(payments),
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /api/v1/payments: %v", err)
+	}
 
 	// Start the app
 	if err := app.Start(); err != nil {
@@ -207,10 +213,8 @@ func simulatePaymentRequests(app *lift.App) {
 	ctx2 := lift.NewContext(context.Background(), paymentReq)
 	if err := app.HandleTestRequest(ctx2); err != nil {
 		log.Printf("  ❌ Error: %v", err)
-	} else {
-		if ctx2.Response.Headers["X-Idempotent-Replay"] == "true" {
-			log.Println("  ✅ Success: Returned cached response (no double charge!)")
-		}
+	} else if ctx2.Response.Headers["X-Idempotent-Replay"] == "true" {
+		log.Println("  ✅ Success: Returned cached response (no double charge!)")
 	}
 
 	// Scenario 2: Different payment with new idempotency key

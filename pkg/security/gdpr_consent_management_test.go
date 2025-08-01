@@ -214,7 +214,7 @@ func TestGDPRConsentManager_RecordConsent(t *testing.T) {
 				ProcessingPurposes: []string{"marketing"},
 				LegalBasis:         "consent",
 			},
-			setupMock:     func(m *MockConsentStore) {},
+			setupMock:     func(_ *MockConsentStore) {},
 			expectedError: "data subject ID is required",
 		},
 		{
@@ -223,7 +223,7 @@ func TestGDPRConsentManager_RecordConsent(t *testing.T) {
 				DataSubjectID: "user-456",
 				LegalBasis:    "consent",
 			},
-			setupMock:     func(m *MockConsentStore) {},
+			setupMock:     func(_ *MockConsentStore) {},
 			expectedError: "purpose is required",
 		},
 		{
@@ -289,7 +289,7 @@ func TestGDPRConsentManager_GetConsent(t *testing.T) {
 			name:          "empty data subject ID",
 			dataSubjectID: "",
 			purpose:       "marketing",
-			setupMock:     func(m *MockConsentStore) {},
+			setupMock:     func(_ *MockConsentStore) {},
 			expectedError: "data subject ID is required",
 		},
 	}
@@ -347,14 +347,14 @@ func TestGDPRConsentManager_WithdrawConsent(t *testing.T) {
 			withdrawal: &ConsentWithdrawal{
 				Reason: "user_request",
 			},
-			setupMock:     func(m *MockConsentStore) {},
+			setupMock:     func(_ *MockConsentStore) {},
 			expectedError: "consent ID is required",
 		},
 		{
 			name:          "nil withdrawal",
 			consentID:     "consent-123",
 			withdrawal:    nil,
-			setupMock:     func(m *MockConsentStore) {},
+			setupMock:     func(_ *MockConsentStore) {},
 			expectedError: "withdrawal information is required",
 		},
 	}
@@ -413,7 +413,7 @@ func TestGDPRConsentManager_HandleAccessRequest(t *testing.T) {
 				ID:          "req-123",
 				RequestType: "access",
 			},
-			setupMock:     func(m *MockDataSubjectRightsHandler) {},
+			setupMock:     func(_ *MockDataSubjectRightsHandler) {},
 			expectedError: "data subject ID is required",
 		},
 	}
@@ -477,7 +477,7 @@ func TestGDPRConsentManager_ConductPIA(t *testing.T) {
 				DataTypes: []string{"email"},
 				Purpose:   "marketing",
 			},
-			setupMock:     func(m *MockPrivacyImpactAssessment) {},
+			setupMock:     func(_ *MockPrivacyImpactAssessment) {},
 			expectedError: "project name is required",
 		},
 	}

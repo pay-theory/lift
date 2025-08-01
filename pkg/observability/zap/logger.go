@@ -69,7 +69,7 @@ func NewZapLogger(config observability.LoggerConfig, opts ...ZapLoggerOptions) (
 
 // buildZapConfig creates a Zap configuration from our LoggerConfig
 func buildZapConfig(config observability.LoggerConfig) zap.Config {
-	level := zapcore.InfoLevel
+	var level zapcore.Level
 	switch config.Level {
 	case "debug":
 		level = zapcore.DebugLevel
@@ -271,7 +271,7 @@ func (z *ZapLogger) sanitizeFieldValue(key string, value any) any {
 }
 
 // Flush syncs the logger (Zap handles this automatically)
-func (z *ZapLogger) Flush(ctx context.Context) error {
+func (z *ZapLogger) Flush(_ context.Context) error {
 	atomic.AddInt64(&z.stats.flushCount, 1)
 	atomic.StoreInt64(&z.stats.lastFlush, time.Now().Unix())
 	return z.logger.Sync()
@@ -336,7 +336,7 @@ func (f *ZapLoggerFactory) CreateConsoleLogger(config observability.LoggerConfig
 }
 
 // CreateCloudWatchLogger creates a CloudWatch-integrated logger
-func (f *ZapLoggerFactory) CreateCloudWatchLogger(config observability.LoggerConfig, client observability.CloudWatchLogsClient) (observability.StructuredLogger, error) {
+func (f *ZapLoggerFactory) CreateCloudWatchLogger(config observability.LoggerConfig, _ observability.CloudWatchLogsClient) (observability.StructuredLogger, error) {
 	// For now, return a console logger - CloudWatch integration will be in the CloudWatch package
 	config.Format = "json"
 	return NewZapLogger(config) // No SNS options in factory method
@@ -366,14 +366,14 @@ type NoOpStructuredLogger struct {
 	*lift.NoOpLogger
 }
 
-func (n *NoOpStructuredLogger) WithRequestID(requestID string) observability.StructuredLogger {
+func (n *NoOpStructuredLogger) WithRequestID(_ string) observability.StructuredLogger {
 	return n
 }
-func (n *NoOpStructuredLogger) WithTenantID(tenantID string) observability.StructuredLogger { return n }
-func (n *NoOpStructuredLogger) WithUserID(userID string) observability.StructuredLogger     { return n }
-func (n *NoOpStructuredLogger) WithTraceID(traceID string) observability.StructuredLogger   { return n }
-func (n *NoOpStructuredLogger) WithSpanID(spanID string) observability.StructuredLogger     { return n }
-func (n *NoOpStructuredLogger) Flush(ctx context.Context) error                             { return nil }
+func (n *NoOpStructuredLogger) WithTenantID(_ string) observability.StructuredLogger { return n }
+func (n *NoOpStructuredLogger) WithUserID(_ string) observability.StructuredLogger     { return n }
+func (n *NoOpStructuredLogger) WithTraceID(_ string) observability.StructuredLogger   { return n }
+func (n *NoOpStructuredLogger) WithSpanID(_ string) observability.StructuredLogger     { return n }
+func (n *NoOpStructuredLogger) Flush(_ context.Context) error                             { return nil }
 func (n *NoOpStructuredLogger) Close() error                                                { return nil }
 func (n *NoOpStructuredLogger) IsHealthy() bool                                             { return true }
 func (n *NoOpStructuredLogger) GetStats() observability.LoggerStats {

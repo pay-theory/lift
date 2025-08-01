@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+const (
+	basicType = "basic"
+)
+
 // CDKInitCommand creates a new CDK app for a Lift project
 type CDKInitCommand struct{}
 
@@ -25,7 +29,7 @@ func (c *CDKInitCommand) Usage() string {
 }
 
 func (c *CDKInitCommand) Execute(_ context.Context, args []string) error {
-	stackType := "basic"
+	stackType := basicType
 	if len(args) > 0 {
 		stackType = args[0]
 	}
@@ -43,7 +47,7 @@ func (c *CDKInitCommand) Execute(_ context.Context, args []string) error {
 
 	// Generate CDK app based on stack type
 	switch stackType {
-	case "basic":
+	case basicType:
 		return c.generateBasicCDKApp(cdkDir)
 	case "microservice":
 		return c.generateMicroserviceCDKApp(cdkDir)
@@ -504,11 +508,11 @@ func (c *CDKDestroyCommand) Execute(ctx context.Context, args []string) error {
 	var response string
 	if _, err := fmt.Scanln(&response); err != nil {
 		// If user just presses enter or there's an error, treat as "no"
-		fmt.Println("Destruction cancelled")
+		fmt.Println("Destruction canceled")
 		return nil
 	}
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
-		fmt.Println("Destruction cancelled")
+		fmt.Println("Destruction canceled")
 		return nil
 	}
 

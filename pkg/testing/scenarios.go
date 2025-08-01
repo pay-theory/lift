@@ -235,7 +235,6 @@ func (sr *ScenarioRunner) runScenariosParallel(t *testing.T, scenarios []TestSce
 	semaphore := make(chan bool, sr.maxConcurrency)
 
 	for _, scenario := range scenarios {
-		scenario := scenario // capture loop variable
 		t.Run(scenario.Name, func(t *testing.T) {
 			t.Parallel()
 

@@ -20,15 +20,17 @@ func main() {
 	})
 
 	// Handle HTTP requests from API Gateway
-	app.GET("/status", func(ctx *lift.Context) error {
+	if err := app.GET("/status", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
 			"status":  "healthy",
 			"handler": "multi-event",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET route: %v", err)
+	}
 
 	// Handle SQS messages
-	app.SQS("process-order", func(ctx *lift.Context) error {
+	if err := app.SQS("process-order", func(ctx *lift.Context) error {
 		log.Println("Processing SQS message")
 
 		// Parse message body
@@ -39,10 +41,12 @@ func main() {
 
 		log.Printf("Processing order: %+v", order)
 		return nil
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register SQS handler: %v", err)
+	}
 
 	// Handle S3 events
-	app.S3("file-uploaded", func(ctx *lift.Context) error {
+	if err := app.S3("file-uploaded", func(ctx *lift.Context) error {
 		log.Println("Processing S3 event")
 
 		// Get S3 event details from context
@@ -50,10 +54,12 @@ func main() {
 		log.Printf("S3 event: %+v", event)
 
 		return nil
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register S3 handler: %v", err)
+	}
 
 	// Handle EventBridge events
-	app.EventBridge("user-signup", func(ctx *lift.Context) error {
+	if err := app.EventBridge("user-signup", func(ctx *lift.Context) error {
 		log.Println("Processing EventBridge user signup event")
 
 		// Process user signup
@@ -64,10 +70,12 @@ func main() {
 
 		log.Printf("New user signup: %+v", userData)
 		return nil
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register EventBridge handler: %v", err)
+	}
 
 	// Handle DynamoDB Streams
-	app.Handle("DynamoDBStreams", "user-table-stream", func(ctx *lift.Context) error {
+	if err := app.Handle("DynamoDBStreams", "user-table-stream", func(ctx *lift.Context) error {
 		log.Println("Processing DynamoDB stream event")
 
 		// Process stream records
@@ -75,7 +83,9 @@ func main() {
 		log.Printf("DynamoDB stream event: %+v", event)
 
 		return nil
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register DynamoDB stream handler: %v", err)
+	}
 
 	// Start Lambda handler - it will automatically route to the correct handler
 	// based on the incoming event type

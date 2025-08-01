@@ -22,7 +22,6 @@ type LoadBalancerMetrics struct {
 	successfulSelections int64
 	failedSelections     int64
 	totalLatency         int64
-	mu                   sync.RWMutex
 }
 
 // NewDefaultLoadBalancer creates a new load balancer
@@ -31,7 +30,7 @@ func NewDefaultLoadBalancer() *DefaultLoadBalancer {
 		roundRobinCounters: make(map[string]*int64),
 		connectionCounts:   make(map[string]*int64),
 		stats:              &LoadBalancerMetrics{},
-		rand:               rand.New(rand.NewSource(time.Now().UnixNano())),
+		rand:               rand.New(rand.NewSource(time.Now().UnixNano())), // #nosec G404 - non-cryptographic use for load balancing
 	}
 }
 
@@ -224,7 +223,7 @@ func (lb *DefaultLoadBalancer) selectLocalFirst(instances []*ServiceInstance) *S
 }
 
 // UpdateWeights updates the weights of instances
-func (lb *DefaultLoadBalancer) UpdateWeights(instances []*ServiceInstance) error {
+func (lb *DefaultLoadBalancer) UpdateWeights(_ []*ServiceInstance) error {
 	// This could be used to dynamically adjust weights based on performance
 	// For now, this is a no-op as weights are stored in the instances themselves
 	return nil
@@ -390,7 +389,7 @@ func (w *WeightedLoadBalancer) GetWeight(instanceID string) int {
 }
 
 // UpdateWeights updates weights based on performance metrics
-func (w *WeightedLoadBalancer) UpdateWeights(instances []*ServiceInstance) error {
+func (w *WeightedLoadBalancer) UpdateWeights(_ []*ServiceInstance) error {
 	// This could implement dynamic weight adjustment based on:
 	// - Response times
 	// - Error rates

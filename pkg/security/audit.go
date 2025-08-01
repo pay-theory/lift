@@ -436,7 +436,7 @@ func NewInMemoryAuditStorage() *InMemoryAuditStorage {
 }
 
 // Store stores a single audit entry
-func (imas *InMemoryAuditStorage) Store(ctx context.Context, entry AuditLogEntry) error {
+func (imas *InMemoryAuditStorage) Store(_ context.Context, entry AuditLogEntry) error {
 	imas.mu.Lock()
 	defer imas.mu.Unlock()
 
@@ -449,7 +449,7 @@ func (imas *InMemoryAuditStorage) Store(ctx context.Context, entry AuditLogEntry
 }
 
 // BatchStore stores multiple audit entries
-func (imas *InMemoryAuditStorage) BatchStore(ctx context.Context, entries []AuditLogEntry) error {
+func (imas *InMemoryAuditStorage) BatchStore(_ context.Context, entries []AuditLogEntry) error {
 	imas.mu.Lock()
 	defer imas.mu.Unlock()
 

@@ -13,6 +13,10 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
+const (
+	httpGET = "GET"
+)
+
 // CacheStore defines the interface for cache backends
 type CacheStore interface {
 	Get(ctx context.Context, key string) (any, bool, error)
@@ -94,7 +98,6 @@ type CacheMiddleware struct {
 	config  CacheConfig
 	store   CacheStore
 	metrics *CacheMetrics
-	mu      sync.RWMutex
 }
 
 // CacheMetrics tracks cache performance
@@ -206,7 +209,7 @@ func (c *CacheMiddleware) Handle(ctx *lift.Context, next lift.Handler) error {
 // shouldUseCache determines if caching should be used for this request
 func (c *CacheMiddleware) shouldUseCache(ctx *lift.Context) bool {
 	// Only cache GET requests by default
-	if ctx.Request.Method != "GET" {
+	if ctx.Request.Method != httpGET {
 		return false
 	}
 
@@ -489,7 +492,7 @@ func defaultKeyFunc(ctx *lift.Context) string {
 
 func defaultShouldCache(ctx *lift.Context, _ any) bool {
 	// Cache GET requests by default
-	return ctx.Request.Method == "GET" && ctx.Response.StatusCode == 200
+	return ctx.Request.Method == httpGET && ctx.Response.StatusCode == 200
 }
 
 // Cache utility functions
@@ -523,7 +526,7 @@ func CacheWithInvalidation(store CacheStore, ttl time.Duration, invalidatePatter
 		InvalidatePattern: invalidatePattern,
 		ShouldInvalidate: func(ctx *lift.Context) bool {
 			// Invalidate on POST, PUT, DELETE requests
-			return ctx.Request.Method != "GET" && ctx.Request.Method != "HEAD"
+			return ctx.Request.Method != httpGET && ctx.Request.Method != "HEAD"
 		},
 	}
 
@@ -534,7 +537,7 @@ func CacheWithInvalidation(store CacheStore, ttl time.Duration, invalidatePatter
 func CacheStatsMiddleware(store CacheStore) lift.Middleware {
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			if ctx.Request.Path == "/cache/stats" && ctx.Request.Method == "GET" {
+			if ctx.Request.Path == "/cache/stats" && ctx.Request.Method == httpGET {
 				stats := store.Stats()
 				return ctx.JSON(stats)
 			}

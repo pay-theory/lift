@@ -101,8 +101,7 @@ const (
 
 // MonitorScheduler schedules compliance monitoring
 type MonitorScheduler struct {
-	jobs    map[string]*ScheduledJob
-	running bool
+	jobs map[string]*ScheduledJob
 }
 
 // ScheduledJob represents a scheduled monitoring job
@@ -174,7 +173,6 @@ func NewContinuousMonitor() *ContinuousMonitor {
 // EvidenceStore stores and manages compliance evidence
 type EvidenceStore struct {
 	storage    EvidenceStorage
-	indexer    InfrastructureEvidenceIndexer
 	retention  *InfrastructureRetentionPolicy
 	encryption *EvidenceEncryption
 }
