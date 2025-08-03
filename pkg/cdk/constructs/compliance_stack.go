@@ -111,262 +111,109 @@ type ComplianceStack struct {
 func NewComplianceStack(scope constructs.Construct, id string, props *ComplianceStackProps) *ComplianceStack {
 	this := constructs.NewConstruct(scope, &id)
 
-	// Set defaults
-	if props.EnableCloudTrail == nil {
-		props.EnableCloudTrail = jsii.Bool(true)
+	builder := newComplianceStackBuilder(this, props)
+	return builder.build()
+}
+
+// complianceStackBuilder builds compliance stack components
+type complianceStackBuilder struct {
+	stack  constructs.Construct
+	props  *ComplianceStackProps
+	config *complianceStackConfig
+}
+
+// complianceStackConfig holds resolved configuration values
+type complianceStackConfig struct {
+	enableCloudTrail        bool
+	enableConfig            bool
+	enableGuardDuty         bool
+	enableSecurityHub       bool
+	enableEncryption        bool
+	dataRetentionDays       float64
+	enableComplianceReports bool
+	environment             string
+	enableAutomation        bool
+}
+
+// newComplianceStackBuilder creates a new compliance stack builder
+func newComplianceStackBuilder(stack constructs.Construct, props *ComplianceStackProps) *complianceStackBuilder {
+	return &complianceStackBuilder{
+		stack:  stack,
+		props:  props,
+		config: buildComplianceStackConfig(props),
 	}
-	if props.EnableConfig == nil {
-		props.EnableConfig = jsii.Bool(true)
-	}
-	if props.EnableGuardDuty == nil {
-		props.EnableGuardDuty = jsii.Bool(true)
-	}
-	if props.EnableSecurityHub == nil {
-		props.EnableSecurityHub = jsii.Bool(true)
-	}
-	if props.EnableEncryption == nil {
-		props.EnableEncryption = jsii.Bool(true)
-	}
-	if props.DataRetentionDays == nil {
-		props.DataRetentionDays = jsii.Number(2555) // 7 years
-	}
-	if props.EnableComplianceReports == nil {
-		props.EnableComplianceReports = jsii.Bool(true)
-	}
-	if props.Environment == nil {
-		props.Environment = jsii.String("prod")
-	}
-	if props.EnableAutomation == nil {
-		props.EnableAutomation = jsii.Bool(true)
+}
+
+// buildComplianceStackConfig resolves configuration values with defaults
+func buildComplianceStackConfig(props *ComplianceStackProps) *complianceStackConfig {
+	config := &complianceStackConfig{
+		enableCloudTrail:        true,
+		enableConfig:            true,
+		enableGuardDuty:         true,
+		enableSecurityHub:       true,
+		enableEncryption:        true,
+		dataRetentionDays:       2555, // 7 years
+		enableComplianceReports: true,
+		environment:             "prod",
+		enableAutomation:        true,
 	}
 
-	// Create KMS key for encryption
-	var encryptionKey awskms.Key
-	if props.EnableEncryption != nil && *props.EnableEncryption {
-		if props.EncryptionKey != nil {
-			if key, ok := props.EncryptionKey.(awskms.Key); ok {
-				encryptionKey = key
-			}
-		} else {
-			encryptionKey = awskms.NewKey(this, jsii.String("ComplianceKey"), &awskms.KeyProps{
-				Description:       jsii.String(fmt.Sprintf("Compliance encryption key for %s", *props.AppName)),
-				EnableKeyRotation: jsii.Bool(true),
-				Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
-					Statements: &[]awsiam.PolicyStatement{
-						awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-							Sid:    jsii.String("Enable IAM User Permissions"),
-							Effect: awsiam.Effect_ALLOW,
-							Principals: &[]awsiam.IPrincipal{
-								awsiam.NewAccountRootPrincipal(),
-							},
-							Actions:   &[]*string{jsii.String("kms:*")},
-							Resources: &[]*string{jsii.String("*")},
-						}),
-						awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-							Sid:    jsii.String("Allow CloudTrail to encrypt logs"),
-							Effect: awsiam.Effect_ALLOW,
-							Principals: &[]awsiam.IPrincipal{
-								awsiam.NewServicePrincipal(jsii.String("cloudtrail.amazonaws.com"), nil),
-							},
-							Actions: &[]*string{
-								jsii.String("kms:GenerateDataKey*"),
-								jsii.String("kms:DescribeKey"),
-							},
-							Resources: &[]*string{jsii.String("*")},
-						}),
-					},
-				}),
-			})
-			// Add alias for easier identification
-			encryptionKey.AddAlias(jsii.String(fmt.Sprintf("alias/%s-compliance", *props.AppName)))
-		}
+	// Apply provided values
+	if props.EnableCloudTrail != nil {
+		config.enableCloudTrail = *props.EnableCloudTrail
+	}
+	if props.EnableConfig != nil {
+		config.enableConfig = *props.EnableConfig
+	}
+	if props.EnableGuardDuty != nil {
+		config.enableGuardDuty = *props.EnableGuardDuty
+	}
+	if props.EnableSecurityHub != nil {
+		config.enableSecurityHub = *props.EnableSecurityHub
+	}
+	if props.EnableEncryption != nil {
+		config.enableEncryption = *props.EnableEncryption
+	}
+	if props.DataRetentionDays != nil {
+		config.dataRetentionDays = *props.DataRetentionDays
+	}
+	if props.EnableComplianceReports != nil {
+		config.enableComplianceReports = *props.EnableComplianceReports
+	}
+	if props.Environment != nil {
+		config.environment = *props.Environment
+	}
+	if props.EnableAutomation != nil {
+		config.enableAutomation = *props.EnableAutomation
 	}
 
-	// Create S3 bucket for compliance data
-	var complianceBucket awss3.Bucket
-	if props.ComplianceBucket != nil {
-		if bucket, ok := props.ComplianceBucket.(awss3.Bucket); ok {
-			complianceBucket = bucket
-		}
-	} else {
-		complianceBucket = awss3.NewBucket(this, jsii.String("ComplianceBucket"), &awss3.BucketProps{
-			BucketName: jsii.String(fmt.Sprintf("%s-compliance-%s", *props.AppName, *awscdk.Stack_Of(this).Region())),
-			Encryption: func() awss3.BucketEncryption {
-				if props.EnableEncryption != nil && *props.EnableEncryption {
-					return awss3.BucketEncryption_KMS
-				}
-				return awss3.BucketEncryption_S3_MANAGED
-			}(),
-			EncryptionKey: func() awskms.IKey {
-				if props.EnableEncryption != nil && *props.EnableEncryption {
-					return encryptionKey
-				}
-				return nil
-			}(),
-			BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
-			Versioned:         jsii.Bool(true),
-			LifecycleRules: &[]*awss3.LifecycleRule{
-				{
-					Id: jsii.String("ComplianceDataLifecycle"),
-					Transitions: &[]*awss3.Transition{
-						{
-							StorageClass:    awss3.StorageClass_INFREQUENT_ACCESS(),
-							TransitionAfter: awscdk.Duration_Days(jsii.Number(30)),
-						},
-						{
-							StorageClass:    awss3.StorageClass_GLACIER(),
-							TransitionAfter: awscdk.Duration_Days(jsii.Number(90)),
-						},
-						{
-							StorageClass:    awss3.StorageClass_DEEP_ARCHIVE(),
-							TransitionAfter: awscdk.Duration_Days(jsii.Number(365)),
-						},
-					},
-					Expiration: awscdk.Duration_Days(props.DataRetentionDays),
-				},
-			},
-			ServerAccessLogsPrefix: jsii.String("access-logs/"),
-		})
-	}
+	return config
+}
 
-	// Create CloudWatch log group for compliance logs
-	var complianceLogGroup awslogs.LogGroup
-	if props.ComplianceLogGroup != nil {
-		if lg, ok := props.ComplianceLogGroup.(awslogs.LogGroup); ok {
-			complianceLogGroup = lg
-		}
-	} else {
-		complianceLogGroup = awslogs.NewLogGroup(this, jsii.String("ComplianceLogGroup"), &awslogs.LogGroupProps{
-			LogGroupName:  jsii.String(fmt.Sprintf("/aws/compliance/%s", *props.AppName)),
-			Retention:     awslogs.RetentionDays_ONE_YEAR,
-			RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
-			EncryptionKey: func() awskms.IKey {
-				if props.EnableEncryption != nil && *props.EnableEncryption {
-					return encryptionKey
-				}
-				return nil
-			}(),
-		})
-	}
-
-	// Create CloudTrail
-	var cloudTrail awscloudtrail.Trail
-	if props.EnableCloudTrail != nil && *props.EnableCloudTrail {
-		cloudTrail = awscloudtrail.NewTrail(this, jsii.String("CloudTrail"), &awscloudtrail.TrailProps{
-			TrailName:                  jsii.String(fmt.Sprintf("%s-compliance-trail", *props.AppName)),
-			Bucket:                     complianceBucket,
-			S3KeyPrefix:                jsii.String("cloudtrail/"),
-			IncludeGlobalServiceEvents: jsii.Bool(true),
-			IsMultiRegionTrail:         jsii.Bool(true),
-			EnableFileValidation:       jsii.Bool(true),
-			SendToCloudWatchLogs:       jsii.Bool(true),
-			CloudWatchLogGroup:         complianceLogGroup,
-		})
-	}
-
-	// Create Config configuration recorder
-	var configRecorder awsconfig.CfnConfigurationRecorder
-	if props.EnableConfig != nil && *props.EnableConfig {
-		// Create Config service role
-		configRole := awsiam.NewRole(this, jsii.String("ConfigRole"), &awsiam.RoleProps{
-			AssumedBy: awsiam.NewServicePrincipal(jsii.String("config.amazonaws.com"), nil),
-			ManagedPolicies: &[]awsiam.IManagedPolicy{
-				awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/ConfigRole")),
-			},
-		})
-
-		// Create Config delivery channel
-		awsconfig.NewCfnDeliveryChannel(this, jsii.String("ConfigDeliveryChannel"), &awsconfig.CfnDeliveryChannelProps{
-			S3BucketName: complianceBucket.BucketName(),
-			S3KeyPrefix:  jsii.String("config/"),
-			ConfigSnapshotDeliveryProperties: &awsconfig.CfnDeliveryChannel_ConfigSnapshotDeliveryPropertiesProperty{
-				DeliveryFrequency: jsii.String("TwentyFour_Hours"),
-			},
-		})
-
-		// Create Config recorder
-		configRecorder = awsconfig.NewCfnConfigurationRecorder(this, jsii.String("ConfigRecorder"), &awsconfig.CfnConfigurationRecorderProps{
-			RoleArn: configRole.RoleArn(),
-			RecordingGroup: &awsconfig.CfnConfigurationRecorder_RecordingGroupProperty{
-				AllSupported:               jsii.Bool(true),
-				IncludeGlobalResourceTypes: jsii.Bool(true),
-				RecordingStrategy: &awsconfig.CfnConfigurationRecorder_RecordingStrategyProperty{
-					UseOnly: jsii.String("ALL_SUPPORTED_RESOURCE_TYPES"),
-				},
-			},
-		})
-
-		// Create Config rules for compliance frameworks
-		if props.ComplianceFrameworks != nil {
-			for _, framework := range *props.ComplianceFrameworks {
-				createConfigRulesForFramework(this, framework)
-			}
-		}
-	}
-
-	// Create GuardDuty detector
-	var guardDutyDetector awsguardduty.CfnDetector
-	if props.EnableGuardDuty != nil && *props.EnableGuardDuty {
-		guardDutyDetector = awsguardduty.NewCfnDetector(this, jsii.String("GuardDutyDetector"), &awsguardduty.CfnDetectorProps{
-			Enable:                     jsii.Bool(true),
-			FindingPublishingFrequency: jsii.String("FIFTEEN_MINUTES"),
-			Features: &[]interface{}{
-				&awsguardduty.CfnDetector_CFNFeatureConfigurationProperty{
-					Name:   jsii.String("S3_DATA_EVENTS"),
-					Status: jsii.String("ENABLED"),
-				},
-				&awsguardduty.CfnDetector_CFNFeatureConfigurationProperty{
-					Name:   jsii.String("EKS_AUDIT_LOGS"),
-					Status: jsii.String("ENABLED"),
-				},
-				&awsguardduty.CfnDetector_CFNFeatureConfigurationProperty{
-					Name:   jsii.String("RDS_LOGIN_EVENTS"),
-					Status: jsii.String("ENABLED"),
-				},
-				&awsguardduty.CfnDetector_CFNFeatureConfigurationProperty{
-					Name:   jsii.String("LAMBDA_NETWORK_LOGS"),
-					Status: jsii.String("ENABLED"),
-				},
-			},
-		})
-	}
-
-	// Create Security Hub
-	var securityHub awssecurityhub.CfnHub
-	if props.EnableSecurityHub != nil && *props.EnableSecurityHub {
-		securityHub = awssecurityhub.NewCfnHub(this, jsii.String("SecurityHub"), &awssecurityhub.CfnHubProps{
-			AutoEnableControls:     jsii.Bool(true),
-			EnableDefaultStandards: jsii.Bool(true),
-			Tags: map[string]*string{
-				"Application": props.AppName,
-				"Environment": props.Environment,
-			},
-		})
-
-		// Enable compliance standards
-		if props.ComplianceFrameworks != nil {
-			for i, framework := range *props.ComplianceFrameworks {
-				enableComplianceStandard(this, framework, i)
-			}
-		}
-	}
-
-	// Create compliance automation function
-	var complianceFunction awslambda.Function
-	if props.EnableAutomation != nil && *props.EnableAutomation {
-		complianceFunction = createComplianceFunction(this, props, complianceBucket, encryptionKey)
-	}
-
-	// Create compliance reports
-	if props.EnableComplianceReports != nil && *props.EnableComplianceReports {
-		createComplianceReports(this, props, complianceBucket, complianceFunction)
-	}
-
-	// Store compliance configuration in SSM Parameter Store
-	storeComplianceConfiguration(this, props)
+// build constructs the complete compliance stack
+func (b *complianceStackBuilder) build() *ComplianceStack {
+	// Create encryption resources
+	encryptionKey := b.setupEncryption()
+	
+	// Create storage resources
+	complianceBucket := b.setupComplianceBucket(encryptionKey)
+	complianceLogGroup := b.setupComplianceLogGroup(encryptionKey)
+	
+	// Create monitoring and auditing services
+	cloudTrail := b.setupCloudTrail(complianceBucket, complianceLogGroup)
+	configRecorder := b.setupConfig(complianceBucket)
+	guardDutyDetector := b.setupGuardDuty()
+	securityHub := b.setupSecurityHub()
+	
+	// Create automation and reporting
+	complianceFunction := b.setupComplianceFunction(complianceBucket, encryptionKey)
+	b.setupComplianceReports(complianceBucket, complianceFunction)
+	
+	// Store configuration
+	b.storeConfiguration()
 
 	return &ComplianceStack{
-		Construct:          this,
+		Construct:          b.stack,
 		CloudTrail:         cloudTrail,
 		ConfigRecorder:     configRecorder,
 		GuardDutyDetector:  guardDutyDetector,
@@ -376,6 +223,367 @@ func NewComplianceStack(scope constructs.Construct, id string, props *Compliance
 		ComplianceLogGroup: complianceLogGroup,
 		ComplianceFunction: complianceFunction,
 	}
+}
+
+// setupEncryption creates KMS encryption key if enabled
+func (b *complianceStackBuilder) setupEncryption() awskms.Key {
+	if !b.config.enableEncryption {
+		return nil
+	}
+	
+	if b.props.EncryptionKey != nil {
+		if key, ok := b.props.EncryptionKey.(awskms.Key); ok {
+			return key
+		}
+	}
+
+	encryptionBuilder := newEncryptionKeyBuilder(b.stack, b.props)
+	return encryptionBuilder.build()
+}
+
+// setupComplianceBucket creates S3 bucket for compliance data
+func (b *complianceStackBuilder) setupComplianceBucket(encryptionKey awskms.Key) awss3.Bucket {
+	if b.props.ComplianceBucket != nil {
+		if bucket, ok := b.props.ComplianceBucket.(awss3.Bucket); ok {
+			return bucket
+		}
+	}
+
+	bucketBuilder := newComplianceBucketBuilder(b.stack, b.props, b.config, encryptionKey)
+	return bucketBuilder.build()
+}
+
+// setupComplianceLogGroup creates CloudWatch log group for compliance logs
+func (b *complianceStackBuilder) setupComplianceLogGroup(encryptionKey awskms.Key) awslogs.LogGroup {
+	if b.props.ComplianceLogGroup != nil {
+		if lg, ok := b.props.ComplianceLogGroup.(awslogs.LogGroup); ok {
+			return lg
+		}
+	}
+
+	return awslogs.NewLogGroup(b.stack, jsii.String("ComplianceLogGroup"), &awslogs.LogGroupProps{
+		LogGroupName:  jsii.String(fmt.Sprintf("/aws/compliance/%s", *b.props.AppName)),
+		Retention:     awslogs.RetentionDays_ONE_YEAR,
+		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
+		EncryptionKey: func() awskms.IKey {
+			if b.config.enableEncryption {
+				return encryptionKey
+			}
+			return nil
+		}(),
+	})
+}
+
+// setupCloudTrail creates CloudTrail if enabled
+func (b *complianceStackBuilder) setupCloudTrail(bucket awss3.Bucket, logGroup awslogs.LogGroup) awscloudtrail.Trail {
+	if !b.config.enableCloudTrail {
+		return nil
+	}
+
+	return awscloudtrail.NewTrail(b.stack, jsii.String("CloudTrail"), &awscloudtrail.TrailProps{
+		TrailName:                  jsii.String(fmt.Sprintf("%s-compliance-trail", *b.props.AppName)),
+		Bucket:                     bucket,
+		S3KeyPrefix:                jsii.String("cloudtrail/"),
+		IncludeGlobalServiceEvents: jsii.Bool(true),
+		IsMultiRegionTrail:         jsii.Bool(true),
+		EnableFileValidation:       jsii.Bool(true),
+		SendToCloudWatchLogs:       jsii.Bool(true),
+		CloudWatchLogGroup:         logGroup,
+	})
+}
+
+// setupConfig creates AWS Config configuration recorder if enabled
+func (b *complianceStackBuilder) setupConfig(bucket awss3.Bucket) awsconfig.CfnConfigurationRecorder {
+	if !b.config.enableConfig {
+		return nil
+	}
+
+	configBuilder := newConfigRecorderBuilder(b.stack, b.props, bucket)
+	return configBuilder.build()
+}
+
+// setupGuardDuty creates GuardDuty detector if enabled
+func (b *complianceStackBuilder) setupGuardDuty() awsguardduty.CfnDetector {
+	if !b.config.enableGuardDuty {
+		return nil
+	}
+
+	guardDutyBuilder := newGuardDutyDetectorBuilder(b.stack)
+	return guardDutyBuilder.build()
+}
+
+// setupSecurityHub creates Security Hub if enabled
+func (b *complianceStackBuilder) setupSecurityHub() awssecurityhub.CfnHub {
+	if !b.config.enableSecurityHub {
+		return nil
+	}
+
+	securityHubBuilder := newSecurityHubBuilder(b.stack, b.props)
+	return securityHubBuilder.build()
+}
+
+// setupComplianceFunction creates compliance automation function if enabled
+func (b *complianceStackBuilder) setupComplianceFunction(bucket awss3.Bucket, key awskms.Key) awslambda.Function {
+	if !b.config.enableAutomation {
+		return nil
+	}
+
+	return createComplianceFunction(b.stack, b.props, bucket, key)
+}
+
+// setupComplianceReports creates compliance reports if enabled
+func (b *complianceStackBuilder) setupComplianceReports(bucket awss3.Bucket, function awslambda.Function) {
+	if !b.config.enableComplianceReports {
+		return
+	}
+
+	createComplianceReports(b.stack, b.props, bucket, function)
+}
+
+// storeConfiguration stores compliance configuration in SSM Parameter Store
+func (b *complianceStackBuilder) storeConfiguration() {
+	storeComplianceConfiguration(b.stack, b.props)
+}
+
+// encryptionKeyBuilder builds KMS encryption key
+type encryptionKeyBuilder struct {
+	scope constructs.Construct
+	props *ComplianceStackProps
+}
+
+// newEncryptionKeyBuilder creates a new encryption key builder
+func newEncryptionKeyBuilder(scope constructs.Construct, props *ComplianceStackProps) *encryptionKeyBuilder {
+	return &encryptionKeyBuilder{
+		scope: scope,
+		props: props,
+	}
+}
+
+// build creates the KMS encryption key
+func (ekb *encryptionKeyBuilder) build() awskms.Key {
+	encryptionKey := awskms.NewKey(ekb.scope, jsii.String("ComplianceKey"), &awskms.KeyProps{
+		Description:       jsii.String(fmt.Sprintf("Compliance encryption key for %s", *ekb.props.AppName)),
+		EnableKeyRotation: jsii.Bool(true),
+		Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
+			Statements: &[]awsiam.PolicyStatement{
+				awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+					Sid:    jsii.String("Enable IAM User Permissions"),
+					Effect: awsiam.Effect_ALLOW,
+					Principals: &[]awsiam.IPrincipal{
+						awsiam.NewAccountRootPrincipal(),
+					},
+					Actions:   &[]*string{jsii.String("kms:*")},
+					Resources: &[]*string{jsii.String("*")},
+				}),
+				awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+					Sid:    jsii.String("Allow CloudTrail to encrypt logs"),
+					Effect: awsiam.Effect_ALLOW,
+					Principals: &[]awsiam.IPrincipal{
+						awsiam.NewServicePrincipal(jsii.String("cloudtrail.amazonaws.com"), nil),
+					},
+					Actions: &[]*string{
+						jsii.String("kms:GenerateDataKey*"),
+						jsii.String("kms:DescribeKey"),
+					},
+					Resources: &[]*string{jsii.String("*")},
+				}),
+			},
+		}),
+	})
+	
+	// Add alias for easier identification
+	encryptionKey.AddAlias(jsii.String(fmt.Sprintf("alias/%s-compliance", *ekb.props.AppName)))
+	return encryptionKey
+}
+
+// complianceBucketBuilder builds S3 compliance bucket
+type complianceBucketBuilder struct {
+	scope         constructs.Construct
+	props         *ComplianceStackProps
+	config        *complianceStackConfig
+	encryptionKey awskms.Key
+}
+
+// newComplianceBucketBuilder creates a new compliance bucket builder
+func newComplianceBucketBuilder(scope constructs.Construct, props *ComplianceStackProps, config *complianceStackConfig, encryptionKey awskms.Key) *complianceBucketBuilder {
+	return &complianceBucketBuilder{
+		scope:         scope,
+		props:         props,
+		config:        config,
+		encryptionKey: encryptionKey,
+	}
+}
+
+// build creates the S3 compliance bucket
+func (cbb *complianceBucketBuilder) build() awss3.Bucket {
+	return awss3.NewBucket(cbb.scope, jsii.String("ComplianceBucket"), &awss3.BucketProps{
+		BucketName: jsii.String(fmt.Sprintf("%s-compliance-%s", *cbb.props.AppName, *awscdk.Stack_Of(cbb.scope).Region())),
+		Encryption: func() awss3.BucketEncryption {
+			if cbb.config.enableEncryption {
+				return awss3.BucketEncryption_KMS
+			}
+			return awss3.BucketEncryption_S3_MANAGED
+		}(),
+		EncryptionKey: func() awskms.IKey {
+			if cbb.config.enableEncryption {
+				return cbb.encryptionKey
+			}
+			return nil
+		}(),
+		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
+		Versioned:         jsii.Bool(true),
+		LifecycleRules: &[]*awss3.LifecycleRule{
+			{
+				Id: jsii.String("ComplianceDataLifecycle"),
+				Transitions: &[]*awss3.Transition{
+					{
+						StorageClass:    awss3.StorageClass_INFREQUENT_ACCESS(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(30)),
+					},
+					{
+						StorageClass:    awss3.StorageClass_GLACIER(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(90)),
+					},
+					{
+						StorageClass:    awss3.StorageClass_DEEP_ARCHIVE(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(365)),
+					},
+				},
+				Expiration: awscdk.Duration_Days(jsii.Number(cbb.config.dataRetentionDays)),
+			},
+		},
+		ServerAccessLogsPrefix: jsii.String("access-logs/"),
+	})
+}
+
+// configRecorderBuilder builds AWS Config recorder
+type configRecorderBuilder struct {
+	scope  constructs.Construct
+	props  *ComplianceStackProps
+	bucket awss3.Bucket
+}
+
+// newConfigRecorderBuilder creates a new config recorder builder
+func newConfigRecorderBuilder(scope constructs.Construct, props *ComplianceStackProps, bucket awss3.Bucket) *configRecorderBuilder {
+	return &configRecorderBuilder{
+		scope:  scope,
+		props:  props,
+		bucket: bucket,
+	}
+}
+
+// build creates the AWS Config configuration recorder
+func (crb *configRecorderBuilder) build() awsconfig.CfnConfigurationRecorder {
+	// Create Config service role
+	configRole := awsiam.NewRole(crb.scope, jsii.String("ConfigRole"), &awsiam.RoleProps{
+		AssumedBy: awsiam.NewServicePrincipal(jsii.String("config.amazonaws.com"), nil),
+		ManagedPolicies: &[]awsiam.IManagedPolicy{
+			awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/ConfigRole")),
+		},
+	})
+
+	// Create Config delivery channel
+	awsconfig.NewCfnDeliveryChannel(crb.scope, jsii.String("ConfigDeliveryChannel"), &awsconfig.CfnDeliveryChannelProps{
+		S3BucketName: crb.bucket.BucketName(),
+		S3KeyPrefix:  jsii.String("config/"),
+		ConfigSnapshotDeliveryProperties: &awsconfig.CfnDeliveryChannel_ConfigSnapshotDeliveryPropertiesProperty{
+			DeliveryFrequency: jsii.String("TwentyFour_Hours"),
+		},
+	})
+
+	// Create Config recorder
+	configRecorder := awsconfig.NewCfnConfigurationRecorder(crb.scope, jsii.String("ConfigRecorder"), &awsconfig.CfnConfigurationRecorderProps{
+		RoleArn: configRole.RoleArn(),
+		RecordingGroup: &awsconfig.CfnConfigurationRecorder_RecordingGroupProperty{
+			AllSupported:               jsii.Bool(true),
+			IncludeGlobalResourceTypes: jsii.Bool(true),
+			RecordingStrategy: &awsconfig.CfnConfigurationRecorder_RecordingStrategyProperty{
+				UseOnly: jsii.String("ALL_SUPPORTED_RESOURCE_TYPES"),
+			},
+		},
+	})
+
+	// Create Config rules for compliance frameworks
+	if crb.props.ComplianceFrameworks != nil {
+		for _, framework := range *crb.props.ComplianceFrameworks {
+			createConfigRulesForFramework(crb.scope, framework)
+		}
+	}
+
+	return configRecorder
+}
+
+// guardDutyDetectorBuilder builds GuardDuty detector
+type guardDutyDetectorBuilder struct {
+	scope constructs.Construct
+}
+
+// newGuardDutyDetectorBuilder creates a new GuardDuty detector builder
+func newGuardDutyDetectorBuilder(scope constructs.Construct) *guardDutyDetectorBuilder {
+	return &guardDutyDetectorBuilder{
+		scope: scope,
+	}
+}
+
+// build creates the GuardDuty detector
+func (gdb *guardDutyDetectorBuilder) build() awsguardduty.CfnDetector {
+	return awsguardduty.NewCfnDetector(gdb.scope, jsii.String("GuardDutyDetector"), &awsguardduty.CfnDetectorProps{
+		Enable:                     jsii.Bool(true),
+		FindingPublishingFrequency: jsii.String("FIFTEEN_MINUTES"),
+		Features: &[]interface{}{
+			&awsguardduty.CfnDetector_CFNFeatureConfigurationProperty{
+				Name:   jsii.String("S3_DATA_EVENTS"),
+				Status: jsii.String("ENABLED"),
+			},
+			&awsguardduty.CfnDetector_CFNFeatureConfigurationProperty{
+				Name:   jsii.String("EKS_AUDIT_LOGS"),
+				Status: jsii.String("ENABLED"),
+			},
+			&awsguardduty.CfnDetector_CFNFeatureConfigurationProperty{
+				Name:   jsii.String("RDS_LOGIN_EVENTS"),
+				Status: jsii.String("ENABLED"),
+			},
+			&awsguardduty.CfnDetector_CFNFeatureConfigurationProperty{
+				Name:   jsii.String("LAMBDA_NETWORK_LOGS"),
+				Status: jsii.String("ENABLED"),
+			},
+		},
+	})
+}
+
+// securityHubBuilder builds Security Hub
+type securityHubBuilder struct {
+	scope constructs.Construct
+	props *ComplianceStackProps
+}
+
+// newSecurityHubBuilder creates a new Security Hub builder
+func newSecurityHubBuilder(scope constructs.Construct, props *ComplianceStackProps) *securityHubBuilder {
+	return &securityHubBuilder{
+		scope: scope,
+		props: props,
+	}
+}
+
+// build creates the Security Hub
+func (shb *securityHubBuilder) build() awssecurityhub.CfnHub {
+	securityHub := awssecurityhub.NewCfnHub(shb.scope, jsii.String("SecurityHub"), &awssecurityhub.CfnHubProps{
+		AutoEnableControls:     jsii.Bool(true),
+		EnableDefaultStandards: jsii.Bool(true),
+		Tags: map[string]*string{
+			"Application": shb.props.AppName,
+			"Environment": shb.props.Environment,
+		},
+	})
+
+	// Enable compliance standards
+	if shb.props.ComplianceFrameworks != nil {
+		for i, framework := range *shb.props.ComplianceFrameworks {
+			enableComplianceStandard(shb.scope, framework, i)
+		}
+	}
+
+	return securityHub
 }
 
 // createConfigRulesForFramework creates AWS Config rules based on the compliance framework
