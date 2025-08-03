@@ -290,52 +290,81 @@ func (l *CloudWatchLogger) flushLoop() {
 	ticker := time.NewTicker(l.flushInterval)
 	defer ticker.Stop()
 
-	var batch []*observability.LogEntry
+	handler := newLogBatchHandler(l)
 
 	for {
 		select {
 		case entry := <-l.shared.buffer:
-			batch = append(batch, entry)
-			if len(batch) >= l.batchSize {
-				l.flushBatch(batch)
-				batch = batch[:0] // Reset slice
-			}
+			handler.addEntry(entry)
 
 		case <-l.shared.flushSignal:
-			// Force immediate flush of current batch
-			if len(batch) > 0 {
-				l.flushBatch(batch)
-				batch = batch[:0]
-			}
+			handler.flushIfNeeded()
 
 		case <-ticker.C:
-			if len(batch) > 0 {
-				l.flushBatch(batch)
-				batch = batch[:0]
-			}
+			handler.flushIfNeeded()
 
 		case <-l.shared.done:
-			// Flush remaining entries
-			if len(batch) > 0 {
-				l.flushBatch(batch)
-				batch = batch[:0] // Reset batch after flushing
-			}
-			// Drain buffer
-			for {
-				select {
-				case entry := <-l.shared.buffer:
-					batch = append(batch, entry)
-					if len(batch) >= l.batchSize {
-						l.flushBatch(batch)
-						batch = batch[:0]
-					}
-				default:
-					if len(batch) > 0 {
-						l.flushBatch(batch)
-					}
-					return
-				}
-			}
+			handler.shutdown(l.shared.buffer)
+			return
+		}
+	}
+}
+
+// logBatchHandler manages batching and flushing of log entries
+type logBatchHandler struct {
+	logger    *CloudWatchLogger
+	batch     []*observability.LogEntry
+	batchSize int
+}
+
+// newLogBatchHandler creates a new log batch handler
+func newLogBatchHandler(logger *CloudWatchLogger) *logBatchHandler {
+	return &logBatchHandler{
+		logger:    logger,
+		batch:     make([]*observability.LogEntry, 0),
+		batchSize: logger.batchSize,
+	}
+}
+
+// addEntry adds an entry to the batch and flushes if needed
+func (h *logBatchHandler) addEntry(entry *observability.LogEntry) {
+	h.batch = append(h.batch, entry)
+	if len(h.batch) >= h.batchSize {
+		h.flushAndReset()
+	}
+}
+
+// flushIfNeeded flushes the batch if it has entries
+func (h *logBatchHandler) flushIfNeeded() {
+	if len(h.batch) > 0 {
+		h.flushAndReset()
+	}
+}
+
+// flushAndReset flushes the current batch and resets it
+func (h *logBatchHandler) flushAndReset() {
+	h.logger.flushBatch(h.batch)
+	h.batch = h.batch[:0] // Reset slice
+}
+
+// shutdown handles final cleanup and draining
+func (h *logBatchHandler) shutdown(buffer chan *observability.LogEntry) {
+	// Flush current batch
+	h.flushIfNeeded()
+	
+	// Drain remaining buffer entries
+	h.drainBuffer(buffer)
+}
+
+// drainBuffer drains remaining entries from the buffer
+func (h *logBatchHandler) drainBuffer(buffer chan *observability.LogEntry) {
+	for {
+		select {
+		case entry := <-buffer:
+			h.addEntry(entry)
+		default:
+			h.flushIfNeeded()
+			return
 		}
 	}
 }
