@@ -179,10 +179,60 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		return classification
 	}
 
-	// Check field name patterns for common sensitive data
-	fieldLower := strings.ToLower(field)
+	classifier := newFieldClassifier(field, value, dpm)
+	return classifier.classify()
+}
 
-	// Sensitive number fields
+// fieldClassifier handles field classification logic
+type fieldClassifier struct {
+	field      string
+	fieldLower string
+	value      any
+	dpm        *DataProtectionManager
+}
+
+// newFieldClassifier creates a new field classifier
+func newFieldClassifier(field string, value any, dpm *DataProtectionManager) *fieldClassifier {
+	return &fieldClassifier{
+		field:      field,
+		fieldLower: strings.ToLower(field),
+		value:      value,
+		dpm:        dpm,
+	}
+}
+
+// classify performs the field classification
+func (fc *fieldClassifier) classify() DataClassification {
+	// Check sensitive number fields first
+	if fc.isSensitiveNumberField() {
+		return DataRestricted
+	}
+	
+	// Check IP address fields (public)
+	if fc.isIPAddressField() {
+		return DataPublic
+	}
+	
+	// Check high sensitivity patterns
+	if classification := fc.checkHighSensitivityPatterns(); classification != DataPublic {
+		return classification
+	}
+	
+	// Check specific pattern categories
+	if classification := fc.checkPatternCategories(); classification != DataPublic {
+		return classification
+	}
+	
+	// Check value patterns
+	if fc.hasRestrictedValue() {
+		return DataRestricted
+	}
+	
+	return fc.dpm.config.DefaultClassification
+}
+
+// isSensitiveNumberField checks for sensitive number field patterns
+func (fc *fieldClassifier) isSensitiveNumberField() bool {
 	sensitiveNumberFields := map[string]bool{
 		"account_number":                 true,
 		"business_tin_ssn_number":        true,
@@ -203,12 +253,11 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		"taxid":                          true,
 		"tin":                            true,
 	}
+	return sensitiveNumberFields[fc.fieldLower]
+}
 
-	if sensitiveNumberFields[fieldLower] {
-		return DataRestricted
-	}
-
-	// IP address fields should be public (not redacted) - check BEFORE other patterns
+// isIPAddressField checks for IP address field patterns
+func (fc *fieldClassifier) isIPAddressField() bool {
 	// Check exact matches first
 	ipExactMatches := []string{
 		"ip_address", "ipaddress",
@@ -218,107 +267,148 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		"sourceip", "clientip", "remoteip",
 		"server_ip", "user_ip", "host_ip",
 	}
-
+	
 	for _, ipPattern := range ipExactMatches {
-		if strings.EqualFold(fieldLower, ipPattern) {
-			return DataPublic
+		if strings.EqualFold(fc.fieldLower, ipPattern) {
+			return true
 		}
 	}
-
+	
 	// Special case: exact match for "ip" field
-	if fieldLower == "ip" {
-		return DataPublic
+	if fc.fieldLower == "ip" {
+		return true
 	}
-
+	
 	// Check for IP-related field names with word boundaries
-	if strings.HasSuffix(fieldLower, "_ip") || strings.HasPrefix(fieldLower, "ip_") ||
-		strings.Contains(fieldLower, "_ip_") {
-		return DataPublic
+	if strings.HasSuffix(fc.fieldLower, "_ip") || strings.HasPrefix(fc.fieldLower, "ip_") ||
+		strings.Contains(fc.fieldLower, "_ip_") {
+		return true
 	}
-
+	
 	// Check for specific IP header patterns
-	if strings.Contains(fieldLower, "forwarded") && strings.Contains(fieldLower, "ip") {
-		return DataPublic
-	}
+	return strings.Contains(fc.fieldLower, "forwarded") && strings.Contains(fc.fieldLower, "ip")
+}
 
-	// High sensitivity fields from sanitization logic
+// checkHighSensitivityPatterns checks high sensitivity field patterns
+func (fc *fieldClassifier) checkHighSensitivityPatterns() DataClassification {
 	highSensitiveFields := []string{
 		"password", "token", "secret", "auth", "credential",
 		"email", "phone", "ssn", "card", "account", "routing",
 		"pin", "cvv", "security", "private", "confidential", "key",
 	}
-
+	
 	for _, sensitive := range highSensitiveFields {
-		if strings.Contains(fieldLower, sensitive) {
-			// Determine classification based on the type of sensitive field
-			switch sensitive {
-			case "ssn", "card", "account", "routing", "cvv", "pin", "key":
-				return DataRestricted
-			case "password", "token", "secret", "auth", "credential", "private":
-				return DataConfidential
-			case "email", "phone":
-				return DataInternal
-			default:
-				return DataConfidential
-			}
+		if strings.Contains(fc.fieldLower, sensitive) {
+			return fc.classifySensitiveField(sensitive)
 		}
 	}
+	
+	return DataPublic // No match found
+}
 
-	// User content fields from sanitization logic - these are INTERNAL
+// classifySensitiveField determines classification for a sensitive field type
+func (fc *fieldClassifier) classifySensitiveField(sensitiveType string) DataClassification {
+	switch sensitiveType {
+	case "ssn", "card", "account", "routing", "cvv", "pin", "key":
+		return DataRestricted
+	case "password", "token", "secret", "auth", "credential", "private":
+		return DataConfidential
+	case "email", "phone":
+		return DataInternal
+	default:
+		return DataConfidential
+	}
+}
+
+// checkPatternCategories checks various pattern categories
+func (fc *fieldClassifier) checkPatternCategories() DataClassification {
+	// Check user content fields
+	if fc.isUserContentField() {
+		return DataInternal
+	}
+	
+	// Check restricted patterns
+	if fc.hasRestrictedPattern() {
+		return DataRestricted
+	}
+	
+	// Check confidential patterns
+	if fc.hasConfidentialPattern() {
+		return DataConfidential
+	}
+	
+	// Check internal patterns
+	if fc.hasInternalPattern() {
+		return DataInternal
+	}
+	
+	return DataPublic // No pattern match
+}
+
+// isUserContentField checks for user content field patterns
+func (fc *fieldClassifier) isUserContentField() bool {
 	userContentFields := []string{
 		"body", "request_body", "response_body", "user_input",
 		"query", "search", "message", "comment", "description",
 	}
-
+	
 	for _, userField := range userContentFields {
-		if strings.Contains(fieldLower, userField) {
-			return DataInternal
+		if strings.Contains(fc.fieldLower, userField) {
+			return true
 		}
 	}
+	return false
+}
 
-	// Additional restricted data patterns
+// hasRestrictedPattern checks for restricted data patterns
+func (fc *fieldClassifier) hasRestrictedPattern() bool {
 	restrictedPatterns := []string{
 		"tax_id", "passport", "driver_license", "bank_account",
 		"medical_record", "health_record", "diagnosis", "prescription",
 	}
-
+	
 	for _, pattern := range restrictedPatterns {
-		if strings.Contains(fieldLower, pattern) {
-			return DataRestricted
+		if strings.Contains(fc.fieldLower, pattern) {
+			return true
 		}
 	}
+	return false
+}
 
-	// Additional confidential data patterns
+// hasConfidentialPattern checks for confidential data patterns
+func (fc *fieldClassifier) hasConfidentialPattern() bool {
 	confidentialPatterns := []string{
 		"salary", "income", "financial", "revenue", "profit",
 	}
-
+	
 	for _, pattern := range confidentialPatterns {
-		if strings.Contains(fieldLower, pattern) {
-			return DataConfidential
+		if strings.Contains(fc.fieldLower, pattern) {
+			return true
 		}
 	}
+	return false
+}
 
-	// Additional internal data patterns
+// hasInternalPattern checks for internal data patterns
+func (fc *fieldClassifier) hasInternalPattern() bool {
 	internalPatterns := []string{
 		"address", "name", "birth", "employee", "organization",
 	}
-
+	
 	for _, pattern := range internalPatterns {
-		if strings.Contains(fieldLower, pattern) {
-			return DataInternal
+		if strings.Contains(fc.fieldLower, pattern) {
+			return true
 		}
 	}
+	return false
+}
 
-	// Check value patterns (e.g., credit card numbers, SSNs)
-	if strValue, ok := value.(string); ok {
-		if dpm.isRestrictedValue(strValue) {
-			return DataRestricted
-		}
+// hasRestrictedValue checks if the field value matches restricted patterns
+func (fc *fieldClassifier) hasRestrictedValue() bool {
+	if strValue, ok := fc.value.(string); ok {
+		return fc.dpm.isRestrictedValue(strValue)
 	}
-
-	// Return the configured default classification
-	return dpm.config.DefaultClassification
+	return false
 }
 
 // isRestrictedValue checks if a value matches restricted data patterns
