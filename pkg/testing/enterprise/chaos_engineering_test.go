@@ -217,10 +217,10 @@ func TestChaosExperiment_Validation(t *testing.T) {
 	framework := NewChaosEngineeringFramework(config)
 
 	tests := []struct {
-		name        string
 		experiment  *ChaosExperiment
-		expectError bool
+		name        string
 		errorMsg    string
+		expectError bool
 	}{
 		{
 			name: "valid experiment",
@@ -1043,30 +1043,26 @@ func TestExperimentResults_Analysis(t *testing.T) {
 	}
 
 	// Test hypothesis validation
-	valid := framework.validateHypothesis(experiment, results)
+	hypothesis := &ExperimentHypothesis{
+		Description: experiment.Hypothesis,
+		ExpectedBehavior: "System maintains performance",
+		ExpectedRecovery: &RecoveryConfig{
+			Timeout: 60 * time.Second,
+			Automatic: true,
+		},
+	}
+	valid := framework.validateHypothesis(hypothesis, results)
 	if !valid {
 		t.Error("Hypothesis should be valid with no critical errors")
 	}
 
 	// Test impact calculation
-	impact := framework.calculateImpact(results)
-	if impact == nil {
-		t.Fatal("Impact should not be nil")
+	impact := framework.calculateImpact(experiment, results)
+	if impact == "" {
+		t.Fatal("Impact should not be empty")
 	}
-	if _, exists := impact["avg_response_time"]; !exists {
-		t.Error("Impact should contain avg_response_time")
-	}
-	if _, exists := impact["avg_error_rate"]; !exists {
-		t.Error("Impact should contain avg_error_rate")
-	}
-	if _, exists := impact["avg_throughput"]; !exists {
-		t.Error("Impact should contain avg_throughput")
-	}
-	if impact["failure_count"] != 0 {
-		t.Errorf("Expected failure_count 0, got %v", impact["failure_count"])
-	}
-	if impact["recovery_successful"] != true {
-		t.Errorf("Expected recovery_successful true, got %v", impact["recovery_successful"])
+	if impact != "low" {
+		t.Errorf("Expected impact 'low', got %s", impact)
 	}
 
 	// Test summary generation

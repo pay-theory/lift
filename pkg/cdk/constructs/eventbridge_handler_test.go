@@ -41,7 +41,7 @@ func TestEventBridgeHandler_DefaultConfiguration(t *testing.T) {
 	}
 
 	// Synthesize template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify Lambda function
 	assertResourceExists(t, template, "AWS::Lambda::Function")
@@ -96,7 +96,7 @@ func TestEventBridgeHandler_WithEventPattern(t *testing.T) {
 	}
 
 	// Synthesize template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify rule has event pattern
 	assertResourceExists(t, template, "AWS::Events::Rule")
@@ -128,7 +128,7 @@ func TestEventBridgeHandler_WithScheduleExpression(t *testing.T) {
 	}
 
 	// Synthesize template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify rule has schedule expression
 	assertResourceExists(t, template, "AWS::Events::Rule")
@@ -162,7 +162,7 @@ func TestEventBridgeHandler_WithCustomEventBus(t *testing.T) {
 	}
 
 	// Synthesize template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify custom event bus
 	assertResourceExists(t, template, "AWS::Events::EventBus")
@@ -205,7 +205,7 @@ func TestEventBridgeHandler_WithExistingRule(t *testing.T) {
 	}
 
 	// Synthesize template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Should only have one rule (the existing one)
 	rules := findResourcesByType(template, "AWS::Events::Rule")
@@ -237,7 +237,7 @@ func TestEventBridgeHandler_DisabledDLQ(t *testing.T) {
 	}
 
 	// Synthesize template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify no SQS queue exists
 	queues := findResourcesByType(template, "AWS::SQS::Queue")
@@ -275,7 +275,7 @@ func TestEventBridgeHandler_CustomTargetProps(t *testing.T) {
 	}
 
 	// Synthesize template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify Lambda function exists
 	functions := findResourcesByType(template, "AWS::Lambda::Function")
@@ -309,7 +309,7 @@ func TestEventBridgeHandler_EnvironmentVariables(t *testing.T) {
 	}
 
 	// Synthesize template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify Lambda function has environment variables
 	templateJSON := template.ToJSON()

@@ -15,27 +15,20 @@ import (
 // This avoids circular dependencies by implementing the minimal interface needed
 // Memory optimized: 112 → 80 bytes (32 bytes saved)
 type MockDynamORMClient struct {
-	// Embedded struct first (largest)
-	mock.Mock
-	// Map (24 bytes)
 	tables map[string]*mockTable
-	// Mutex last (24 bytes)
-	mu     sync.RWMutex
+	mock.Mock
+	mu sync.RWMutex
 }
 
 // mockTable represents a mock DynamoDB table
 // Memory optimized: 80 → 72 bytes (8 bytes saved)
 type mockTable struct {
-	// Maps and slices first (24 bytes each)
 	items                map[string]map[string]types.AttributeValue
 	gsis                 map[string]*mockGSI
-	attributeDefinitions []types.AttributeDefinition
-	// Strings (16 bytes each)
 	name                 string
 	ttlAttribute         string
-	// Enum (4 bytes)
 	billingMode          types.BillingMode
-	// Bool last (1 byte)
+	attributeDefinitions []types.AttributeDefinition
 	streamEnabled        bool
 }
 
@@ -43,7 +36,7 @@ type mockTable struct {
 // Memory optimized: 56 → 48 bytes (8 bytes saved)
 type mockGSI struct {
 	// Map first (24 bytes)
-	items        map[string][]map[string]types.AttributeValue
+	items map[string][]map[string]types.AttributeValue
 	// Strings (16 bytes each)
 	name         string
 	partitionKey string
@@ -530,7 +523,6 @@ func (m *MockDynamORMClient) AddMockTable(tableName string, opts ...TestTableOpt
 
 	m.tables[tableName] = table
 }
-
 
 // ClearMockTables removes all mock tables
 func (m *MockDynamORMClient) ClearMockTables() {

@@ -12,40 +12,27 @@ import (
 // DynamORMPool wraps DynamORM with connection pooling for improved performance
 // Memory optimized: 56 → 24 bytes (32 bytes saved)
 type DynamORMPool struct {
-	// Mutex first (24 bytes)
-	mu       sync.RWMutex              // 24 bytes
-	// Map (24 bytes) 
-	sessions map[string]*PooledSession // 24 bytes
-	// Pointers (8 bytes each)
-	pool     *ConnectionPool           // 8 bytes
-	config   *PooledDynamORMConfig     // 8 bytes
-	// Boolean last (1 byte)
-	closed   bool                      // 1 byte
+	sessions map[string]*PooledSession
+	pool     *ConnectionPool
+	config   *PooledDynamORMConfig
+	mu       sync.RWMutex
+	closed   bool
 }
 
 // PooledDynamORMConfig holds configuration for pooled DynamORM operations
 // Memory optimized: 104 → 88 bytes (16 bytes saved)
 type PooledDynamORMConfig struct {
-	// Pointer first (8 bytes)
 	ConnectionPoolConfig *ConnectionPoolConfig `json:"connection_pool_config"`
-	
-	// Durations (8 bytes each)
-	DefaultTimeout     time.Duration `json:"default_timeout"`
-	BatchFlushInterval time.Duration `json:"batch_flush_interval"`
-	CacheTTL          time.Duration `json:"cache_ttl"`
-	
-	// Strings (16 bytes each)
-	DefaultTableName   string `json:"default_table_name"`
-	MetricsPrefix     string `json:"metrics_prefix"`
-	
-	// Ints (4 bytes each)
-	BatchSize     int `json:"batch_size"`
-	CacheSize     int `json:"cache_size"`
-	
-	// Booleans (1 byte each) - group at end
-	EnableBatching bool `json:"enable_batching"`
-	EnableCaching  bool `json:"enable_caching"`
-	EnableMetrics  bool `json:"enable_metrics"`
+	DefaultTableName     string                `json:"default_table_name"`
+	MetricsPrefix        string                `json:"metrics_prefix"`
+	DefaultTimeout       time.Duration         `json:"default_timeout"`
+	BatchFlushInterval   time.Duration         `json:"batch_flush_interval"`
+	CacheTTL             time.Duration         `json:"cache_ttl"`
+	BatchSize            int                   `json:"batch_size"`
+	CacheSize            int                   `json:"cache_size"`
+	EnableBatching       bool                  `json:"enable_batching"`
+	EnableCaching        bool                  `json:"enable_caching"`
+	EnableMetrics        bool                  `json:"enable_metrics"`
 }
 
 // DefaultPooledDynamORMConfig returns a default configuration for pooled DynamORM

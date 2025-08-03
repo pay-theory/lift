@@ -12,16 +12,13 @@ import (
 
 // PulumiDeployer handles Pulumi-specific deployments using CLI automation
 type PulumiDeployer struct {
-	// Slice first (24 bytes)
-	deploymentLog []DeploymentLogEntry
-	// Large struct
-	config        InfrastructureConfig
-	// Strings (16 bytes each)
 	projectName   string
 	stackName     string
 	region        string
 	workspaceDir  string
 	pulumiCmd     string
+	deploymentLog []DeploymentLogEntry
+	config        InfrastructureConfig
 }
 
 // DeploymentLogEntry represents a deployment log entry
@@ -29,35 +26,35 @@ type DeploymentLogEntry struct {
 	// time.Time first (24 bytes)
 	Timestamp time.Time `json:"timestamp"`
 	// Strings (16 bytes each)
-	Level     string    `json:"level"`
-	Message   string    `json:"message"`
-	Resource  string    `json:"resource,omitempty"`
-	Operation string    `json:"operation,omitempty"`
-	Status    string    `json:"status,omitempty"`
-	Error     string    `json:"error,omitempty"`
+	Level     string `json:"level"`
+	Message   string `json:"message"`
+	Resource  string `json:"resource,omitempty"`
+	Operation string `json:"operation,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 // PulumiStackConfig holds Pulumi stack configuration
 type PulumiStackConfig struct {
-	Config          map[string]string `json:"config"`          // 24 bytes (maps first)
-	Tags            map[string]string `json:"tags"`            // 24 bytes
-	ProjectName     string            `json:"project_name"`    // 16 bytes (strings next)
-	StackName       string            `json:"stack_name"`      // 16 bytes
-	Region          string            `json:"region"`          // 16 bytes
+	Config          map[string]string `json:"config"`                     // 24 bytes (maps first)
+	Tags            map[string]string `json:"tags"`                       // 24 bytes
+	ProjectName     string            `json:"project_name"`               // 16 bytes (strings next)
+	StackName       string            `json:"stack_name"`                 // 16 bytes
+	Region          string            `json:"region"`                     // 16 bytes
 	BackendURL      string            `json:"backend_url,omitempty"`      // 16 bytes
 	SecretsProvider string            `json:"secrets_provider,omitempty"` // 16 bytes
 }
 
 // DeploymentResult represents the result of a deployment
 type DeploymentResult struct {
-	Outputs   map[string]any    `json:"outputs"`    // 24 bytes (map first)
-	Resources []ResourceSummary `json:"resources"`  // 24 bytes (slice)
-	StackName string            `json:"stack_name"` // 16 bytes (strings)
+	Outputs   map[string]any    `json:"outputs"`
+	StackName string            `json:"stack_name"`
 	Error     string            `json:"error,omitempty"`
 	Permalink string            `json:"permalink,omitempty"`
 	UpdateID  string            `json:"update_id,omitempty"`
-	Duration  time.Duration     `json:"duration"` // 8 bytes
-	Success   bool              `json:"success"`  // 1 byte (last)
+	Resources []ResourceSummary `json:"resources"`
+	Duration  time.Duration     `json:"duration"`
+	Success   bool              `json:"success"`
 }
 
 // ResourceSummary represents a summary of a deployed resource
@@ -70,21 +67,21 @@ type ResourceSummary struct {
 
 // PulumiOperationResult represents the result of a Pulumi CLI operation
 type PulumiOperationResult struct {
-	Outputs   map[string]any   `json:"outputs"`   // 24 bytes (map first)
-	Resources []PulumiResource `json:"resources"` // 24 bytes (slice)
-	Kind      string           `json:"kind"`      // 16 bytes (strings)
-	Stack     string           `json:"stack"`     // 16 bytes
-	Project   string           `json:"project"`   // 16 bytes
-	Result    string           `json:"result"`    // 16 bytes
-	Version   int              `json:"version"`   // 4 bytes (last)
+	Outputs   map[string]any   `json:"outputs"`
+	Kind      string           `json:"kind"`
+	Stack     string           `json:"stack"`
+	Project   string           `json:"project"`
+	Result    string           `json:"result"`
+	Resources []PulumiResource `json:"resources"`
+	Version   int              `json:"version"`
 }
 
 // PulumiResource represents a resource in Pulumi output
 type PulumiResource struct {
 	URN    string `json:"urn"`
 	Type   string `json:"type"`
-	Custom bool   `json:"custom"`
 	ID     string `json:"id,omitempty"`
+	Custom bool   `json:"custom"`
 }
 
 // NewPulumiDeployer creates a new Pulumi deployer with CLI automation

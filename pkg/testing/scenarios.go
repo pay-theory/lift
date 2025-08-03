@@ -19,21 +19,17 @@ import (
 
 // LoadTestResult represents the result of a load test
 type LoadTestResult struct {
-	// Slice first (24 bytes)
-	Errors             []string      `json:"errors"`
-	// time.Time fields (24 bytes each)
 	StartTime          time.Time     `json:"start_time"`
 	EndTime            time.Time     `json:"end_time"`
-	// 8-byte aligned fields
-	AverageLatency     time.Duration `json:"average_latency"`
+	Errors             []string      `json:"errors"`
+	MaxLatency         time.Duration `json:"max_latency"`
 	P95Latency         time.Duration `json:"p95_latency"`
 	P99Latency         time.Duration `json:"p99_latency"`
-	MaxLatency         time.Duration `json:"max_latency"`
+	AverageLatency     time.Duration `json:"average_latency"`
 	MinLatency         time.Duration `json:"min_latency"`
 	RequestsPerSecond  float64       `json:"requests_per_second"`
 	ErrorRate          float64       `json:"error_rate"`
 	Duration           time.Duration `json:"duration"`
-	// 4-byte int fields grouped
 	TotalRequests      int           `json:"total_requests"`
 	SuccessfulRequests int           `json:"successful_requests"`
 	FailedRequests     int           `json:"failed_requests"`
@@ -344,16 +340,16 @@ func (sr *ScenarioRunner) executeScenario(t *testing.T, scenario TestScenario) {
 // TestScenario represents a complete test scenario
 type TestScenario struct {
 	// Function pointers first (8 bytes each)
-	Setup       func(*TestApp) error
-	Request     func(*TestApp) *TestResponse
-	Assertions  func(*testing.T, *TestResponse)
-	Cleanup     func(*TestApp) error
+	Setup      func(*TestApp) error
+	Request    func(*TestApp) *TestResponse
+	Assertions func(*testing.T, *TestResponse)
+	Cleanup    func(*TestApp) error
 	// Strings (16 bytes each)
 	Name        string
 	Description string
 	SkipReason  string
 	// Bool last (1 byte)
-	Skip        bool
+	Skip bool
 }
 
 // TestApp represents a test application instance

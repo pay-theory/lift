@@ -17,10 +17,10 @@ import (
 // DevDashboard provides an interactive web interface for development
 type DevDashboard struct {
 	server     *DevServer
-	port       int
 	httpServer *http.Server
 	logService *LogService
 	features   *features.FeatureFlags
+	port       int
 }
 
 // NewDevDashboard creates a new development dashboard
@@ -99,9 +99,9 @@ func (d *DevDashboard) handleDashboard(w http.ResponseWriter, _ *http.Request) {
 
 	data := struct {
 		Title        string
+		Stats        SafeDevStats
 		ServerPort   int
 		ProfilerPort int
-		Stats        SafeDevStats
 	}{
 		Title:        "Lift Development Dashboard",
 		ServerPort:   d.server.config.Port,

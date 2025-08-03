@@ -34,35 +34,35 @@ func NewEnterpriseTestPatterns() *EnterpriseTestPatterns {
 
 // TestSuite represents a comprehensive test suite
 type TestSuite struct {
-	Name        string
-	Description string
-	Tests       []Test
 	Setup       func() error
 	Teardown    func() error
-	Parallel    bool
-	Timeout     time.Duration
+	Name        string
+	Description string
 	Environment string
+	Tests       []Test
+	Timeout     time.Duration
+	Parallel    bool
 }
 
 // Test represents a single test
 type Test struct {
+	Function    func(ctx context.Context) error
 	Name        string
 	Description string
-	Function    func(ctx context.Context) error
+	Tags        []string
 	Timeout     time.Duration
 	Retries     int
-	Tags        []string
 }
 
 // PatternTestResult represents the result of running a pattern test
 type PatternTestResult struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Error     error
+	Metadata  map[string]any
 	Name      string
 	Status    PatternTestStatus
 	Duration  time.Duration
-	Error     error
-	StartTime time.Time
-	EndTime   time.Time
-	Metadata  map[string]any
 }
 
 // PatternTestStatus is an alias for the common TestStatus type
@@ -323,20 +323,20 @@ func (e *EnterpriseTestPatterns) CreateMultiEnvironmentTest(_ string, testFunc f
 
 // PatternTestReport generates a comprehensive pattern test report
 type PatternTestReport struct {
-	SuiteName       string                         `json:"suiteName"`
 	StartTime       time.Time                      `json:"startTime"`
 	EndTime         time.Time                      `json:"endTime"`
-	Duration        time.Duration                  `json:"duration"`
-	TotalTests      int                            `json:"totalTests"`
-	PassedTests     int                            `json:"passedTests"`
-	FailedTests     int                            `json:"failedTests"`
-	SkippedTests    int                            `json:"skippedTests"`
-	TestResults     []PatternTestResult            `json:"testResults"`
 	ContractResults map[string]ContractTestResult  `json:"contractResults,omitempty"`
-	ChaosResults    *ChaosMetrics                  `json:"chaosResults,omitempty"`
-	PerformanceData map[string]PerformanceBaseline `json:"performanceData,omitempty"`
-	Environment     string                         `json:"environment"`
 	Metadata        map[string]any                 `json:"metadata"`
+	PerformanceData map[string]PerformanceBaseline `json:"performanceData,omitempty"`
+	ChaosResults    *ChaosMetrics                  `json:"chaosResults,omitempty"`
+	SuiteName       string                         `json:"suiteName"`
+	Environment     string                         `json:"environment"`
+	TestResults     []PatternTestResult            `json:"testResults"`
+	Duration        time.Duration                  `json:"duration"`
+	SkippedTests    int                            `json:"skippedTests"`
+	FailedTests     int                            `json:"failedTests"`
+	PassedTests     int                            `json:"passedTests"`
+	TotalTests      int                            `json:"totalTests"`
 }
 
 // GenerateReport generates a comprehensive test report

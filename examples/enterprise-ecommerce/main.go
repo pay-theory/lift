@@ -15,35 +15,28 @@ import (
 // Tenant represents a multi-tenant e-commerce store
 // Memory optimized: 512 → 504 bytes (8 bytes saved)
 type Tenant struct {
-	// Large structs first (24+ bytes each)
-	Configuration TenantConfig `json:"configuration"`
-	Subscription  Subscription `json:"subscription"`
-	Owner         TenantOwner  `json:"owner"`
-	// Time structs (24 bytes each) 
 	CreatedAt     time.Time    `json:"createdAt"`
 	UpdatedAt     time.Time    `json:"updatedAt"`
-	// Strings (16 bytes each)
+	Owner         TenantOwner  `json:"owner"`
 	ID            string       `json:"id"`
 	Name          string       `json:"name"`
 	Domain        string       `json:"domain"`
-	// Bool (1 byte, placed last)
+	Subscription  Subscription `json:"subscription"`
+	Configuration TenantConfig `json:"configuration"`
 	IsActive      bool         `json:"isActive"`
 }
 
 // TenantConfig holds tenant-specific configuration
 // Memory optimized: 216 → 152 bytes (64 bytes saved)
 type TenantConfig struct {
-	// Maps and slices first (24 bytes each)
 	CustomSettings  map[string]any `json:"customSettings"`
-	PaymentMethods  []string       `json:"paymentMethods"`
-	ShippingMethods []string       `json:"shippingMethods"`
-	// Structs (varies)
 	Theme           ThemeConfig    `json:"theme"`
-	Features        FeatureFlags   `json:"features"`
-	Limits          TenantLimits   `json:"limits"`
-	// Strings last (16 bytes each)
 	Currency        string         `json:"currency"`
 	Locale          string         `json:"locale"`
+	PaymentMethods  []string       `json:"paymentMethods"`
+	ShippingMethods []string       `json:"shippingMethods"`
+	Limits          TenantLimits   `json:"limits"`
+	Features        FeatureFlags   `json:"features"`
 }
 
 // ThemeConfig defines the visual appearance
@@ -98,29 +91,23 @@ type TenantOwner struct {
 // Product represents a product in the catalog
 // Memory optimized: 384 → 336 bytes (48 bytes saved)
 type Product struct {
-	// Pointer first (8 bytes)
-	ComparePrice *Money           `json:"comparePrice,omitempty"`
-	// Maps and slices (24 bytes each)
-	Attributes   map[string]any   `json:"attributes"`
-	Images       []ProductImage   `json:"images"`
-	Variants     []ProductVariant `json:"variants,omitempty"`
-	Categories   []string         `json:"categories"`
-	Tags         []string         `json:"tags"`
-	// Time structs (24 bytes each)
 	CreatedAt    time.Time        `json:"createdAt"`
 	UpdatedAt    time.Time        `json:"updatedAt"`
-	// Medium structs
-	Price        Money            `json:"price"`
-	Inventory    Inventory        `json:"inventory"`
-	SEO          SEOData          `json:"seo"`
-	// Strings (16 bytes each)
+	Attributes   map[string]any   `json:"attributes"`
+	ComparePrice *Money           `json:"comparePrice,omitempty"`
 	ID           string           `json:"id"`
-	TenantID     string           `json:"tenantId"`
-	SKU          string           `json:"sku"`
-	Name         string           `json:"name"`
-	Description  string           `json:"description"`
-	// Small types last
 	Status       ProductStatus    `json:"status"`
+	Description  string           `json:"description"`
+	Name         string           `json:"name"`
+	SKU          string           `json:"sku"`
+	TenantID     string           `json:"tenantId"`
+	SEO          SEOData          `json:"seo"`
+	Categories   []string         `json:"categories"`
+	Price        Money            `json:"price"`
+	Tags         []string         `json:"tags"`
+	Variants     []ProductVariant `json:"variants,omitempty"`
+	Images       []ProductImage   `json:"images"`
+	Inventory    Inventory        `json:"inventory"`
 }
 
 // Money represents monetary values
@@ -179,23 +166,18 @@ type ProductVariant struct {
 // Customer represents a customer
 // Memory optimized: 384 → 368 bytes (16 bytes saved)
 type Customer struct {
-	// Slices first (24 bytes each)
-	Addresses      []Address           `json:"addresses"`
-	PaymentMethods []PaymentMethod     `json:"paymentMethods"`
-	OrderHistory   []string            `json:"orderHistory"`
-	Tags           []string            `json:"tags"`
-	// Time structs (24 bytes each)
 	CreatedAt      time.Time           `json:"createdAt"`
-	UpdatedAt      time.Time           `json:"updatedAt"`
 	LastLoginAt    time.Time           `json:"lastLoginAt"`
-	// Medium structs
+	UpdatedAt      time.Time           `json:"updatedAt"`
 	Profile        CustomerProfile     `json:"profile"`
-	Preferences    CustomerPreferences `json:"preferences"`
-	// Strings (16 bytes each)
-	ID             string              `json:"id"`
-	TenantID       string              `json:"tenantId"`
 	Email          string              `json:"email"`
-	// Bool last (1 byte)
+	TenantID       string              `json:"tenantId"`
+	ID             string              `json:"id"`
+	Tags           []string            `json:"tags"`
+	OrderHistory   []string            `json:"orderHistory"`
+	PaymentMethods []PaymentMethod     `json:"paymentMethods"`
+	Addresses      []Address           `json:"addresses"`
+	Preferences    CustomerPreferences `json:"preferences"`
 	IsActive       bool                `json:"isActive"`
 }
 
@@ -230,28 +212,25 @@ type Address struct {
 // Memory optimized for better alignment
 type PaymentMethod struct {
 	// Time struct first (24 bytes)
-	CreatedAt   time.Time `json:"createdAt"`
+	CreatedAt time.Time `json:"createdAt"`
 	// Strings (16 bytes each)
-	ID          string    `json:"id"`
-	Type        string    `json:"type"` // card, bank, wallet
-	Provider    string    `json:"provider"`
-	Last4       string    `json:"last4,omitempty"`
+	ID       string `json:"id"`
+	Type     string `json:"type"` // card, bank, wallet
+	Provider string `json:"provider"`
+	Last4    string `json:"last4,omitempty"`
 	// Ints (4 bytes each)
-	ExpiryMonth int       `json:"expiryMonth,omitempty"`
-	ExpiryYear  int       `json:"expiryYear,omitempty"`
+	ExpiryMonth int `json:"expiryMonth,omitempty"`
+	ExpiryYear  int `json:"expiryYear,omitempty"`
 	// Bool last (1 byte)
-	IsDefault   bool      `json:"isDefault"`
+	IsDefault bool `json:"isDefault"`
 }
 
 // CustomerPreferences stores customer preferences
 // Memory optimized: 48 → 40 bytes (8 bytes saved)
 type CustomerPreferences struct {
-	// Slice first (24 bytes)
-	FavoriteCategories []string `json:"favoriteCategories"`
-	// Strings (16 bytes each)
 	Language           string   `json:"language"`
 	Currency           string   `json:"currency"`
-	// Bools grouped together (1 byte each, 5 bytes total padding)
+	FavoriteCategories []string `json:"favoriteCategories"`
 	EmailMarketing     bool     `json:"emailMarketing"`
 	SMSMarketing       bool     `json:"smsMarketing"`
 	PushNotifications  bool     `json:"pushNotifications"`
@@ -260,26 +239,20 @@ type CustomerPreferences struct {
 // Order represents a customer order
 // Memory optimized: 720 → 704 bytes (16 bytes saved)
 type Order struct {
-	// Pointers first (8 bytes each)
-	CompletedAt *time.Time   `json:"completedAt,omitempty"`
-	CancelledAt *time.Time   `json:"canceledAt,omitempty"`
-	// Slice (24 bytes)
-	Items       []OrderItem  `json:"items"`
-	// Time structs (24 bytes each)
 	CreatedAt   time.Time    `json:"createdAt"`
 	UpdatedAt   time.Time    `json:"updatedAt"`
-	// Medium structs
-	Totals      OrderTotals  `json:"totals"`
-	Payment     PaymentInfo  `json:"payment"`
+	CompletedAt *time.Time   `json:"completedAt,omitempty"`
+	CancelledAt *time.Time   `json:"canceledAt,omitempty"`
 	Shipping    ShippingInfo `json:"shipping"`
-	// Strings (16 bytes each)
+	Payment     PaymentInfo  `json:"payment"`
 	ID          string       `json:"id"`
 	TenantID    string       `json:"tenantId"`
 	CustomerID  string       `json:"customerId"`
 	OrderNumber string       `json:"orderNumber"`
 	Notes       string       `json:"notes,omitempty"`
-	// Small types last
 	Status      OrderStatus  `json:"status"`
+	Items       []OrderItem  `json:"items"`
+	Totals      OrderTotals  `json:"totals"`
 }
 
 // OrderItem represents items in an order
@@ -308,34 +281,26 @@ type OrderTotals struct {
 // PaymentInfo represents payment information
 // Memory optimized: 280 → 272 bytes (8 bytes saved)
 type PaymentInfo struct {
-	// Pointers first (8 bytes each)
+	ProcessedAt   time.Time  `json:"processedAt"`
 	RefundedAt    *time.Time `json:"refundedAt,omitempty"`
 	RefundAmount  *Money     `json:"refundAmount,omitempty"`
-	// Time struct (24 bytes)
-	ProcessedAt   time.Time  `json:"processedAt"`
-	// Medium struct
-	Amount        Money      `json:"amount"`
-	// Strings (16 bytes each)
 	Method        string     `json:"method"`
 	Provider      string     `json:"provider"`
 	TransactionID string     `json:"transactionId"`
 	Status        string     `json:"status"`
+	Amount        Money      `json:"amount"`
 }
 
 // ShippingInfo represents shipping information
 // Memory optimized: 240 → 224 bytes (16 bytes saved)
 type ShippingInfo struct {
-	// Pointers first (8 bytes each)
+	EstimatedDelivery time.Time  `json:"estimatedDelivery"`
 	ShippedAt         *time.Time `json:"shippedAt,omitempty"`
 	DeliveredAt       *time.Time `json:"deliveredAt,omitempty"`
-	// Time struct (24 bytes)
-	EstimatedDelivery time.Time  `json:"estimatedDelivery"`
-	// Large struct
-	Address           Address    `json:"address"`
-	// Strings (16 bytes each)
 	Method            string     `json:"method"`
 	Provider          string     `json:"provider"`
 	TrackingNumber    string     `json:"trackingNumber,omitempty"`
+	Address           Address    `json:"address"`
 }
 
 // OrderStatus represents order status
@@ -354,33 +319,25 @@ const (
 // ShoppingCart represents a customer's shopping cart
 // Memory optimized for better alignment
 type ShoppingCart struct {
-	// Slice first (24 bytes)
-	Items      []CartItem `json:"items"`
-	// Time structs (24 bytes each)
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`
 	ExpiresAt  time.Time  `json:"expiresAt"`
-	// Medium struct
-	Totals     CartTotals `json:"totals"`
-	// Strings (16 bytes each)
 	ID         string     `json:"id"`
 	TenantID   string     `json:"tenantId"`
 	CustomerID string     `json:"customerId"`
+	Items      []CartItem `json:"items"`
+	Totals     CartTotals `json:"totals"`
 }
 
 // CartItem represents items in shopping cart
 // Memory optimized for better alignment
 type CartItem struct {
-	// Time struct first (24 bytes)
 	AddedAt   time.Time `json:"addedAt"`
-	// Medium structs
-	Price     Money     `json:"price"`
-	Total     Money     `json:"total"`
-	// Strings (16 bytes each)
 	ID        string    `json:"id"`
 	ProductID string    `json:"productId"`
 	VariantID string    `json:"variantId,omitempty"`
-	// Int last (4 bytes)
+	Price     Money     `json:"price"`
+	Total     Money     `json:"total"`
 	Quantity  int       `json:"quantity"`
 }
 
@@ -396,30 +353,25 @@ type CartTotals struct {
 // Request/Response models
 // Memory optimized: 344 → 288 bytes (56 bytes saved)
 type CreateTenantRequest struct {
-	// Large structs first
-	Configuration TenantConfig `json:"configuration"`
 	Owner         TenantOwner  `json:"owner" validate:"required"`
-	// Strings (16 bytes each)
 	Name          string       `json:"name" validate:"required"`
 	Domain        string       `json:"domain" validate:"required"`
 	Plan          string       `json:"plan" validate:"required"`
+	Configuration TenantConfig `json:"configuration"`
 }
 
 // Memory optimized: 248 → 208 bytes (40 bytes saved)
 type CreateProductRequest struct {
-	// Map and slices first (24 bytes each)
 	Attributes  map[string]any `json:"attributes"`
-	Images      []ProductImage `json:"images"`
-	Categories  []string       `json:"categories"`
-	Tags        []string       `json:"tags"`
-	// Medium structs
-	Price       Money          `json:"price" validate:"required"`
-	Inventory   Inventory      `json:"inventory"`
-	SEO         SEOData        `json:"seo"`
-	// Strings (16 bytes each)
 	SKU         string         `json:"sku" validate:"required"`
 	Name        string         `json:"name" validate:"required"`
 	Description string         `json:"description"`
+	SEO         SEOData        `json:"seo"`
+	Images      []ProductImage `json:"images"`
+	Categories  []string       `json:"categories"`
+	Tags        []string       `json:"tags"`
+	Price       Money          `json:"price" validate:"required"`
+	Inventory   Inventory      `json:"inventory"`
 }
 
 type CreateCustomerRequest struct {
@@ -431,14 +383,11 @@ type CreateCustomerRequest struct {
 
 // Memory optimized: 464 → 456 bytes (8 bytes saved)
 type CreateOrderRequest struct {
-	// Slice first (24 bytes)
-	Items      []OrderItem  `json:"items" validate:"required,min=1"`
-	// Large structs
 	Shipping   ShippingInfo `json:"shipping" validate:"required"`
 	Payment    PaymentInfo  `json:"payment" validate:"required"`
-	// Strings (16 bytes each)
 	CustomerID string       `json:"customerId" validate:"required"`
 	Notes      string       `json:"notes"`
+	Items      []OrderItem  `json:"items" validate:"required,min=1"`
 }
 
 type AddToCartRequest struct {
@@ -501,21 +450,16 @@ type CartService interface {
 // Filter types
 // Memory optimized: 112 → 104 bytes (8 bytes saved)
 type ProductFilters struct {
-	// Slices first (24 bytes each)
-	Categories []string      `json:"categories"`
-	Tags       []string      `json:"tags"`
-	// Pointers (8 bytes each)
 	PriceMin   *float64      `json:"priceMin"`
 	PriceMax   *float64      `json:"priceMax"`
 	InStock    *bool         `json:"inStock"`
-	// Strings (16 bytes each)
 	SortBy     string        `json:"sortBy"`
 	SortOrder  string        `json:"sortOrder"`
-	// Ints (4 bytes each)
+	Status     ProductStatus `json:"status"`
+	Categories []string      `json:"categories"`
+	Tags       []string      `json:"tags"`
 	Limit      int           `json:"limit"`
 	Offset     int           `json:"offset"`
-	// Small types last
-	Status     ProductStatus `json:"status"`
 }
 
 type OrderFilters struct {
@@ -533,7 +477,6 @@ type OrderFilters struct {
 func generateID() string {
 	return fmt.Sprintf("id_%d", time.Now().UnixNano())
 }
-
 
 func generateOrderNumber() string {
 	return fmt.Sprintf("ORD-%d", time.Now().UnixNano()%10000000)

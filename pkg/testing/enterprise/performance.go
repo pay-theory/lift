@@ -19,12 +19,10 @@ const (
 
 // PerformanceTester provides comprehensive performance testing capabilities
 type PerformanceTester struct {
-	// mutex first (24 bytes)
-	mutex    sync.RWMutex
-	// pointers (8 bytes each)
 	app      *EnterpriseTestApp
 	metrics  *PerformanceMetrics
 	executor *TestExecutor
+	mutex    sync.RWMutex
 }
 
 // PerformanceTestCase represents a performance test case
@@ -53,16 +51,11 @@ type PerformanceConfig struct {
 
 // PerformanceTestResult represents the result of a performance test
 type PerformanceTestResult struct {
-	// time.Time (24 bytes)
 	Timestamp time.Time
-	// large structs
+	Error     string
 	TestCase  PerformanceTestCase
 	Metrics   PerformanceTestMetrics
-	// string (16 bytes)
-	Error     string
-	// 8-byte aligned field
 	Duration  time.Duration
-	// bool (1 byte)
 	Success   bool
 }
 
@@ -83,27 +76,22 @@ type PerformanceTestMetrics struct {
 	ErrorCount     int64
 	QueryCount     int64
 	// float64 fields (8 bytes each)
-	ThroughputTPS  float64
-	MaxMemoryMB    float64
-	AvgMemoryMB    float64
-	MaxCPUPercent  float64
-	AvgCPUPercent  float64
-	ErrorRate      float64
+	ThroughputTPS float64
+	MaxMemoryMB   float64
+	AvgMemoryMB   float64
+	MaxCPUPercent float64
+	AvgCPUPercent float64
+	ErrorRate     float64
 }
 
 // PerformanceTestReport represents a comprehensive performance report
 type PerformanceTestReport struct {
-	// slice (24 bytes)
-	Results        []PerformanceTestResult
-	// time.Time (24 bytes)
 	Timestamp      time.Time
-	// string (16 bytes)
 	Summary        string
-	// int fields (4 bytes each)
+	Results        []PerformanceTestResult
 	TotalTests     int
 	PassedTests    int
 	FailedTests    int
-	// bool (1 byte)
 	AllTestsPassed bool
 }
 
@@ -118,20 +106,20 @@ type RegressionDetector struct {
 type RegressionResult struct {
 	TestName      string
 	Metric        string
+	Severity      string
 	BaselineValue float64
 	CurrentValue  float64
 	RegressionPct float64
-	Severity      string
 }
 
 // PerformanceMetrics contains real-time performance monitoring data
 type PerformanceMetrics struct {
+	Timestamp   time.Time
 	CPUUsage    float64
 	MemoryUsage float64
 	Latency     time.Duration
 	Throughput  float64
 	ErrorRate   float64
-	Timestamp   time.Time
 }
 
 // TestExecutor executes performance tests
@@ -568,18 +556,18 @@ type PerformanceValidator struct {
 
 // PerformanceBaseline represents a performance baseline
 type PerformanceBaseline struct {
-	Metric      string
-	Value       float64
-	Environment string
 	Timestamp   time.Time
+	Metric      string
+	Environment string
+	Value       float64
 }
 
 // PerformanceThreshold represents performance thresholds
 type PerformanceThreshold struct {
 	Metric           string
+	Environment      string
 	AbsoluteMax      float64
 	RegressionFactor float64
-	Environment      string
 }
 
 // PerformanceProfiler profiles performance metrics

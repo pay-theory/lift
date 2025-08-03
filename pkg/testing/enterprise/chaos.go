@@ -10,9 +10,9 @@ import (
 
 // ChaosTest manages chaos engineering tests
 type ChaosTest struct {
-	scenarios []ChaosScenario
 	metrics   *ChaosMetrics
 	recovery  *RecoveryValidator
+	scenarios []ChaosScenario
 	config    ChaosConfig
 }
 
@@ -48,18 +48,20 @@ const (
 
 // OperationResult represents the result of an operation during chaos testing
 type OperationResult struct {
-	Operation string
-	Success   bool
-	Duration  time.Duration
-	Error     error
 	Timestamp time.Time
+	Error     error
 	Metadata  map[string]any
+	Operation string
+	Duration  time.Duration
+	Success   bool
 }
 
 // ChaosMetrics tracks metrics during chaos testing
 type ChaosMetrics struct {
 	StartTime       time.Time
 	EndTime         time.Time
+	ResourceUsage   map[string]float64
+	CustomMetrics   map[string]any
 	TotalOperations int
 	SuccessfulOps   int
 	FailedOps       int
@@ -67,8 +69,6 @@ type ChaosMetrics struct {
 	RecoveryTime    time.Duration
 	ErrorRate       float64
 	Throughput      float64
-	ResourceUsage   map[string]float64
-	CustomMetrics   map[string]any
 	mutex           sync.RWMutex
 }
 

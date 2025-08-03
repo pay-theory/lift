@@ -13,15 +13,12 @@ import (
 // MockDynamORM provides a mock implementation of DynamORM for testing
 // Memory optimized for better alignment
 type MockDynamORM struct {
-	// Sync primitive first (24 bytes)
-	mu              sync.RWMutex
-	// Maps (8 bytes each)
 	data            map[string]map[string]any
 	transactions    map[string]*MockTransaction
 	FailOnOperation map[string]error
 	Delays          map[string]time.Duration
-	// Pointer last (8 bytes)
 	config          *dynamorm.DynamORMConfig
+	mu              sync.RWMutex
 }
 
 // NewMockDynamORM creates a new mock DynamORM instance
@@ -220,15 +217,10 @@ func (m *MockDynamORM) Reset() {
 // MockTransaction represents a mock DynamORM transaction
 // Memory optimized for better alignment
 type MockTransaction struct {
-	// Sync primitive first (24 bytes)
-	mu         sync.RWMutex
-	// Slice (24 bytes)
-	operations []TransactionOperation
-	// Pointer (8 bytes)
 	mock       *MockDynamORM
-	// String (16 bytes)
 	id         string
-	// Bools last (1 byte each)
+	operations []TransactionOperation
+	mu         sync.RWMutex
 	committed  bool
 	rolledBack bool
 }
@@ -237,7 +229,7 @@ type MockTransaction struct {
 // Memory optimized for better alignment
 type TransactionOperation struct {
 	// Interface first (24 bytes)
-	Item  any
+	Item any
 	// Strings (16 bytes each)
 	Type  string
 	Table string
@@ -330,12 +322,10 @@ func (tx *MockTransaction) Rollback() error {
 // MockAWSService provides a generic mock for AWS services
 // Memory optimized for better alignment
 type MockAWSService struct {
-	// Sync primitive first (24 bytes)
-	mu        sync.RWMutex
-	// Maps (8 bytes each)
 	responses map[string]any
 	errors    map[string]error
 	callCount map[string]int
+	mu        sync.RWMutex
 }
 
 // NewMockAWSService creates a new mock AWS service
@@ -405,23 +395,17 @@ func (m *MockAWSService) Reset() {
 // MockHTTPClient provides a mock HTTP client for external API testing
 // Memory optimized for better alignment
 type MockHTTPClient struct {
-	// Sync primitive first (24 bytes)
-	mu        sync.RWMutex
-	// Maps (8 bytes each)
 	responses map[string]*MockHTTPResponse
 	callCount map[string]int
+	mu        sync.RWMutex
 }
 
 // MockHTTPResponse represents a mock HTTP response
 // Memory optimized for better alignment
 type MockHTTPResponse struct {
-	// Map first (8 bytes)
 	Headers    map[string]string
-	// Duration (8 bytes)
-	Delay      time.Duration
-	// String (16 bytes)
 	Body       string
-	// Int last (4 bytes)
+	Delay      time.Duration
 	StatusCode int
 }
 

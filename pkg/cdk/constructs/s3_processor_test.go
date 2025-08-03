@@ -38,7 +38,7 @@ func TestS3Processor_DefaultConfiguration(t *testing.T) {
 	}
 
 	// Synthesize to verify template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify S3 bucket exists
 	assertResourceExists(t, template, "AWS::S3::Bucket")
@@ -107,7 +107,7 @@ func TestS3Processor_CustomConfiguration(t *testing.T) {
 		t.Fatal("Processor should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify custom configuration is applied
 	assertResourceExists(t, template, "AWS::S3::Bucket")
@@ -174,7 +174,7 @@ func TestS3Processor_ExistingBucket(t *testing.T) {
 		t.Error("Processor should use existing bucket")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Should have exactly one bucket (the existing one)
 	bucketResources := findResourcesByType(template, "AWS::S3::Bucket")
@@ -205,7 +205,7 @@ func TestS3Processor_DisabledDeadLetterQueue(t *testing.T) {
 		t.Error("Dead letter queue should not be created when disabled")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify no SQS queues are created
 	assertResourceCount(t, template, "AWS::SQS::Queue", 0)
@@ -230,7 +230,7 @@ func TestS3Processor_LifecycleRules(t *testing.T) {
 		t.Fatal("Processor should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify bucket has lifecycle configuration
 	bucketResources := findResourcesByType(template, "AWS::S3::Bucket")
@@ -283,7 +283,7 @@ func TestS3Processor_CustomEventSourceProps(t *testing.T) {
 		t.Error("Event source should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify bucket notification is configured
 	bucketResources := findResourcesByType(template, "AWS::S3::Bucket")
@@ -312,7 +312,7 @@ func TestS3Processor_EnvironmentVariables(t *testing.T) {
 		t.Fatal("Processor should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify Lambda function has both custom and S3-specific environment variables
 	functionResources := findResourcesByType(template, "AWS::Lambda::Function")
@@ -392,7 +392,7 @@ func TestS3Processor_PermissionGrants(t *testing.T) {
 	// Test that we can add environment variables
 	processor.AddEnvironmentVariable("TEST_VAR", "test_value")
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify IAM policies are created for S3 and SQS permissions
 	policyResources := findResourcesByType(template, "AWS::IAM::Policy")
@@ -462,7 +462,7 @@ func TestS3Processor_HelperMethods(t *testing.T) {
 	// Test adding environment variables
 	processor.AddEnvironmentVariable("HELPER_TEST", "value")
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify additional IAM policies are created
 	policyResources := findResourcesByType(template, "AWS::IAM::Policy")

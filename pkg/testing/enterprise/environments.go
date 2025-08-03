@@ -11,49 +11,36 @@ import (
 
 // TestEnvironment represents a testing environment configuration
 type TestEnvironment struct {
+	Resources  map[string]any
 	Name       string
 	Config     EnvironmentConfig
-	Resources  map[string]any
-	State      EnvironmentState
 	Validators []EnvironmentValidator
+	State      EnvironmentState
 	mutex      sync.RWMutex
 }
 
 // EnvironmentConfig holds environment-specific configuration
 type EnvironmentConfig struct {
-	// Database configuration
-	DatabaseURL  string
-	DatabaseType string
-
-	// AWS configuration
-	AWSRegion  string
-	AWSProfile string
-
-	// Service endpoints
 	ServiceEndpoints map[string]string
-
-	// Feature flags
-	FeatureFlags map[string]bool
-
-	// Performance settings
-	Timeouts   map[string]time.Duration
-	RateLimits map[string]int
-
-	// Security settings
-	AuthEnabled bool
-	TLSEnabled  bool
-
-	// Custom configuration
-	Custom map[string]any
+	FeatureFlags     map[string]bool
+	Timeouts         map[string]time.Duration
+	RateLimits       map[string]int
+	Custom           map[string]any
+	DatabaseURL      string
+	DatabaseType     string
+	AWSRegion        string
+	AWSProfile       string
+	AuthEnabled      bool
+	TLSEnabled       bool
 }
 
 // EnvironmentState tracks the current state of an environment
 type EnvironmentState struct {
-	Status      EnvironmentStatus
 	LastUpdated time.Time
-	ActiveTests int
 	Resources   map[string]ResourceState
+	Status      EnvironmentStatus
 	Metrics     EnvironmentMetrics
+	ActiveTests int
 }
 
 // EnvironmentStatus represents the status of an environment
@@ -68,18 +55,18 @@ const (
 
 // ResourceState tracks the state of environment resources
 type ResourceState struct {
-	Type        string
-	Status      string
 	LastChecked time.Time
 	Metadata    map[string]any
+	Type        string
+	Status      string
 }
 
 // EnvironmentMetrics tracks environment performance metrics
 type EnvironmentMetrics struct {
+	ResourceUsage  map[string]float64
 	RequestCount   int64
 	ErrorCount     int64
 	AverageLatency time.Duration
-	ResourceUsage  map[string]float64
 }
 
 // EnvironmentValidator validates environment state
@@ -260,11 +247,11 @@ func (e *EnterpriseTestSuite) validateEnvironment(env *TestEnvironment) error {
 
 // TestCase represents a test case that can be executed across environments
 type TestCase struct {
-	Name        string
-	Description string
 	Setup       func(*EnterpriseTestApp, *TestEnvironment) error
 	Execute     func(*EnterpriseTestApp, *TestEnvironment) error
 	Teardown    func(*EnterpriseTestApp, *TestEnvironment) error
+	Name        string
+	Description string
 	Timeout     time.Duration
 	Retries     int
 }

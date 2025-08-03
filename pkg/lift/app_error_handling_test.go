@@ -11,11 +11,11 @@ import (
 
 func TestHandleRequestLiftErrorStatusCodes(t *testing.T) {
 	tests := []struct {
-		name           string
 		error          *LiftError
-		expectedStatus int
+		name           string
 		expectedCode   string
 		expectedMsg    string
+		expectedStatus int
 		hasDetails     bool
 	}{
 		{

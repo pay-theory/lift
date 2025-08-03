@@ -13,12 +13,10 @@ import (
 
 // Memory optimized: 32 → 16 bytes (16 bytes saved)
 type SlidingWindowRateLimiter struct {
-	// 8-byte aligned fields
-	db           *dynamorm.DynamORMWrapper  // 8 bytes
-	windowSize   time.Duration              // 8 bytes
-	keyExtractor func(*lift.Context) string // 8 bytes
-	// 4-byte aligned fields
-	limit        int                        // 4 bytes
+	db           *dynamorm.DynamORMWrapper
+	keyExtractor func(*lift.Context) string
+	windowSize   time.Duration
+	limit        int
 }
 
 func NewSlidingWindowRateLimiter(config RateLimitConfig) (*SlidingWindowRateLimiter, error) {

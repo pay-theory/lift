@@ -17,18 +17,13 @@ var (
 
 // GDPRConsentManager provides comprehensive GDPR consent management
 type GDPRConsentManager struct {
-	// Struct first (largest)
-	config GDPRConsentConfig
-	
-	// Sync primitive (24 bytes)
-	mu sync.RWMutex
-	
-	// Interfaces (8 bytes each)
 	consentStore         ConsentStore
 	dataSubjectRights    DataSubjectRightsHandler
 	privacyAssessment    PrivacyImpactAssessment
 	crossBorderValidator CrossBorderValidator
 	auditLogger          GDPRAuditLogger
+	config               GDPRConsentConfig
+	mu                   sync.RWMutex
 }
 
 // GDPRConsentConfig configuration for GDPR consent management
@@ -114,59 +109,46 @@ type GDPRAuditLogger interface {
 
 // ConsentRecord represents a complete consent record
 type ConsentRecord struct {
-	// Time structs (24 bytes each) - largest first
-	ConsentDate time.Time `json:"consent_date"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	
-	// Slices (24 bytes each)
+	CreatedAt          time.Time        `json:"created_at"`
+	UpdatedAt          time.Time        `json:"updated_at"`
+	ConsentDate        time.Time        `json:"consent_date"`
+	ExpiryDate         *time.Time       `json:"expiry_date,omitempty"`
+	Timestamp          *time.Time       `json:"timestamp,omitempty"`
+	WithdrawalDate     *time.Time       `json:"withdrawal_date,omitempty"`
+	RenewalDate        *time.Time       `json:"renewal_date,omitempty"`
+	Metadata           map[string]any   `json:"metadata"`
+	ConsentProof       *ConsentProof    `json:"consent_proof,omitempty"`
+	ID                 string           `json:"id"`
+	WithdrawalMethod   string           `json:"withdrawal_method,omitempty"`
+	UserAgent          string           `json:"user_agent,omitempty"`
+	IPAddress          string           `json:"ip_address,omitempty"`
+	Source             string           `json:"source,omitempty"`
+	Purpose            string           `json:"purpose,omitempty"`
+	DataSubjectID      string           `json:"data_subject_id"`
+	DataSubjectEmail   string           `json:"data_subject_email"`
+	ConsentVersion     string           `json:"consent_version"`
+	ConsentMethod      string           `json:"consent_method"`
+	LegalBasis         string           `json:"legal_basis"`
+	Status             string           `json:"status"`
+	Recipients         []DataRecipient  `json:"recipients"`
 	ConsentScope       []ConsentPurpose `json:"consent_scope"`
 	ProcessingPurposes []string         `json:"processing_purposes"`
 	DataCategories     []string         `json:"data_categories"`
-	Recipients         []DataRecipient  `json:"recipients"`
-	
-	// Maps (8 bytes)
-	Metadata map[string]any `json:"metadata"`
-	
-	// Pointers (8 bytes each)
-	ConsentProof   *ConsentProof `json:"consent_proof,omitempty"`
-	ExpiryDate     *time.Time    `json:"expiry_date,omitempty"`
-	RenewalDate    *time.Time    `json:"renewal_date,omitempty"`
-	WithdrawalDate *time.Time    `json:"withdrawal_date,omitempty"`
-	Timestamp      *time.Time    `json:"timestamp,omitempty"`
-	
-	// Duration (8 bytes)
-	RetentionPeriod time.Duration `json:"retention_period"`
-	
-	// Strings (16 bytes each)
-	ID               string `json:"id"`
-	DataSubjectID    string `json:"data_subject_id"`
-	DataSubjectEmail string `json:"data_subject_email"`
-	ConsentVersion   string `json:"consent_version"`
-	ConsentMethod    string `json:"consent_method"` // "explicit", "implicit", "opt_in", "opt_out"
-	LegalBasis       string `json:"legal_basis"`
-	WithdrawalMethod string `json:"withdrawal_method,omitempty"`
-	Status           string `json:"status"` // "active", "expired", "withdrawn", "renewed"
-	Purpose          string `json:"purpose,omitempty"`
-	Source           string `json:"source,omitempty"`
-	IPAddress        string `json:"ip_address,omitempty"`
-	UserAgent        string `json:"user_agent,omitempty"`
-	
-	// Booleans (1 byte each) - smallest last
-	Granular      bool `json:"granular"`
-	Specific      bool `json:"specific"`
-	Informed      bool `json:"informed"`
-	Unambiguous   bool `json:"unambiguous"`
-	ConsentGiven  bool `json:"consent_given"`
+	RetentionPeriod    time.Duration    `json:"retention_period"`
+	Granular           bool             `json:"granular"`
+	Specific           bool             `json:"specific"`
+	Informed           bool             `json:"informed"`
+	Unambiguous        bool             `json:"unambiguous"`
+	ConsentGiven       bool             `json:"consent_given"`
 }
 
 // ConsentPurpose represents a specific purpose for data processing
 type ConsentPurpose struct {
+	ConsentDate time.Time `json:"consent_date"`
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	LegalBasis  string    `json:"legal_basis"`
-	ConsentDate time.Time `json:"consent_date"`
 	Required    bool      `json:"required"`
 	Consented   bool      `json:"consented"`
 }
@@ -183,66 +165,67 @@ type DataRecipient struct {
 
 // ConsentProof represents proof of consent
 type ConsentProof struct {
+	Timestamp time.Time      `json:"timestamp"`
 	Metadata  map[string]any `json:"metadata"`
-	Type      string         `json:"type"` // "digital_signature", "double_opt_in", "recorded_consent"
+	Type      string         `json:"type"`
 	Evidence  string         `json:"evidence"`
 	IPAddress string         `json:"ip_address"`
 	UserAgent string         `json:"user_agent"`
 	Method    string         `json:"method"`
 	Signature string         `json:"signature,omitempty"`
-	Timestamp time.Time      `json:"timestamp"`
 	Verified  bool           `json:"verified"`
 }
 
 // ConsentUpdates represents updates to consent
 type ConsentUpdates struct {
+	Timestamp       time.Time        `json:"timestamp,omitempty"`
 	Metadata        map[string]any   `json:"metadata,omitempty"`
+	RetentionPeriod *time.Duration   `json:"retention_period,omitempty"`
+	ExpiryDate      *time.Time       `json:"expiry_date,omitempty"`
 	UpdatedBy       string           `json:"updated_by"`
 	UpdateReason    string           `json:"update_reason"`
 	Reason          string           `json:"reason,omitempty"`
 	ConsentScope    []ConsentPurpose `json:"consent_scope,omitempty"`
 	Recipients      []DataRecipient  `json:"recipients,omitempty"`
-	RetentionPeriod *time.Duration   `json:"retention_period,omitempty"`
-	ExpiryDate      *time.Time       `json:"expiry_date,omitempty"`
-	Timestamp       time.Time        `json:"timestamp,omitempty"`
 	ConsentGiven    bool             `json:"consent_given,omitempty"`
 }
 
 // ConsentWithdrawal represents consent withdrawal
 type ConsentWithdrawal struct {
+	WithdrawalDate    time.Time      `json:"withdrawal_date"`
+	Timestamp         time.Time      `json:"timestamp,omitempty"`
 	Metadata          map[string]any `json:"metadata,omitempty"`
 	WithdrawalMethod  string         `json:"withdrawal_method"`
 	Reason            string         `json:"reason,omitempty"`
 	RequestedBy       string         `json:"requested_by"`
 	Method            string         `json:"method,omitempty"`
 	WithdrawnPurposes []string       `json:"withdrawn_purposes,omitempty"`
-	WithdrawalDate    time.Time      `json:"withdrawal_date"`
-	Timestamp         time.Time      `json:"timestamp,omitempty"`
 	PartialWithdrawal bool           `json:"partial_withdrawal"`
 	Verified          bool           `json:"verified"`
 }
 
 // DataAccessRequest represents a data subject access request
 type DataAccessRequest struct {
+	Timestamp     time.Time             `json:"timestamp,omitempty"`
+	DueDate       time.Time             `json:"due_date"`
+	RequestDate   time.Time             `json:"request_date"`
 	Metadata      map[string]any        `json:"metadata"`
-	ID            string                `json:"id"`
-	DataSubjectID string                `json:"data_subject_id"`
-	Email         string                `json:"email"`
-	RequestType   string                `json:"request_type"` // "access", "portability", "erasure", "rectification", "objection"
-	Status        string                `json:"status"`
+	Verification  *IdentityVerification `json:"verification"`
 	ContactInfo   string                `json:"contact_info,omitempty"`
+	Status        string                `json:"status"`
 	UserID        string                `json:"user_id,omitempty"`
 	Purpose       string                `json:"purpose,omitempty"`
 	Region        string                `json:"region,omitempty"`
+	RequestType   string                `json:"request_type"`
+	Email         string                `json:"email"`
+	DataSubjectID string                `json:"data_subject_id"`
+	ID            string                `json:"id"`
 	Scope         []string              `json:"scope"`
-	Verification  *IdentityVerification `json:"verification"`
-	RequestDate   time.Time             `json:"request_date"`
-	DueDate       time.Time             `json:"due_date"`
-	Timestamp     time.Time             `json:"timestamp,omitempty"`
 }
 
 // DataAccessResponse represents the response to a data access request
 type DataAccessResponse struct {
+	ResponseDate   time.Time      `json:"response_date"`
 	Data           map[string]any `json:"data"`
 	Metadata       map[string]any `json:"metadata"`
 	RequestID      string         `json:"request_id"`
@@ -250,144 +233,140 @@ type DataAccessResponse struct {
 	DeliveryMethod string         `json:"delivery_method"`
 	Status         string         `json:"status,omitempty"`
 	DataSources    []string       `json:"data_sources"`
-	ResponseDate   time.Time      `json:"response_date"`
 	Encrypted      bool           `json:"encrypted"`
 }
 
 // DataPortabilityRequest represents a data portability request
 type DataPortabilityRequest struct {
-	DataAccessRequest
 	TargetController string `json:"target_controller,omitempty"`
-	Format           string `json:"format"` // "json", "xml", "csv"
-	StructuredData   bool   `json:"structured_data"`
+	Format           string `json:"format"`
+	DataAccessRequest
+	StructuredData bool `json:"structured_data"`
 }
 
 // DataPortabilityResponse represents the response to a data portability request
 type DataPortabilityResponse struct {
+	ResponseDate   time.Time      `json:"response_date"`
 	Data           map[string]any `json:"data"`
 	Metadata       map[string]any `json:"metadata"`
 	RequestID      string         `json:"request_id"`
 	Format         string         `json:"format"`
 	TransferMethod string         `json:"transfer_method"`
-	ResponseDate   time.Time      `json:"response_date"`
 	StructuredData bool           `json:"structured_data"`
 }
 
 // DataErasureRequest represents a data erasure request
 type DataErasureRequest struct {
 	DataAccessRequest
+	Reason         string   `json:"reason"`
 	ErasureScope   []string `json:"erasure_scope"`
 	RetainForLegal bool     `json:"retain_for_legal"`
-	Reason         string   `json:"reason"`
 }
 
 // DataErasureResponse represents the response to a data erasure request
 type DataErasureResponse struct {
-	RequestID          string    `json:"request_id"`
-	ResponseDate       time.Time `json:"response_date"`
-	ErasedData         []string  `json:"erased_data"`
-	RetainedData       []string  `json:"retained_data"`
-	RetentionReason    string    `json:"retention_reason,omitempty"`
-	ThirdPartyNotified bool      `json:"third_party_notified"`
-	// Additional fields needed by tests
-	Status       string         `json:"status,omitempty"`
-	DataDeleted  []string       `json:"data_deleted,omitempty"`
-	DeletedCount int            `json:"deleted_count,omitempty"`
-	Metadata     map[string]any `json:"metadata"`
+	ResponseDate       time.Time      `json:"response_date"`
+	Metadata           map[string]any `json:"metadata"`
+	RequestID          string         `json:"request_id"`
+	RetentionReason    string         `json:"retention_reason,omitempty"`
+	Status             string         `json:"status,omitempty"`
+	ErasedData         []string       `json:"erased_data"`
+	RetainedData       []string       `json:"retained_data"`
+	DataDeleted        []string       `json:"data_deleted,omitempty"`
+	DeletedCount       int            `json:"deleted_count,omitempty"`
+	ThirdPartyNotified bool           `json:"third_party_notified"`
 }
 
 // DataRectificationRequest represents a data rectification request
 type DataRectificationRequest struct {
-	DataAccessRequest
 	IncorrectData map[string]any `json:"incorrect_data"`
 	CorrectedData map[string]any `json:"corrected_data"`
+	DataAccessRequest
 }
 
 // DataRectificationResponse represents the response to a data rectification request
 type DataRectificationResponse struct {
-	RequestID          string         `json:"request_id"`
 	ResponseDate       time.Time      `json:"response_date"`
 	RectifiedData      map[string]any `json:"rectified_data"`
-	ThirdPartyNotified bool           `json:"third_party_notified"`
 	Metadata           map[string]any `json:"metadata"`
+	RequestID          string         `json:"request_id"`
+	ThirdPartyNotified bool           `json:"third_party_notified"`
 }
 
 // DataObjectionRequest represents a data processing objection request
 type DataObjectionRequest struct {
 	DataAccessRequest
-	ProcessingPurposes []string `json:"processing_purposes"`
 	ObjectionReason    string   `json:"objection_reason"`
 	LegalGrounds       string   `json:"legal_grounds"`
+	ProcessingPurposes []string `json:"processing_purposes"`
 }
 
 // DataObjectionResponse represents the response to a data objection request
 type DataObjectionResponse struct {
-	RequestID           string         `json:"request_id"`
 	ResponseDate        time.Time      `json:"response_date"`
-	ProcessingStopped   bool           `json:"processing_stopped"`
-	ContinuedProcessing []string       `json:"continued_processing,omitempty"`
-	LegalJustification  string         `json:"legal_justification,omitempty"`
 	Metadata            map[string]any `json:"metadata"`
+	RequestID           string         `json:"request_id"`
+	LegalJustification  string         `json:"legal_justification,omitempty"`
+	ContinuedProcessing []string       `json:"continued_processing,omitempty"`
+	ProcessingStopped   bool           `json:"processing_stopped"`
 }
 
 // IdentityVerification represents identity verification for data subject requests
 type IdentityVerification struct {
-	Method       string         `json:"method"`
-	Verified     bool           `json:"verified"`
-	VerifiedBy   string         `json:"verified_by"`
 	VerifiedDate time.Time      `json:"verified_date"`
-	Evidence     []string       `json:"evidence"`
 	Metadata     map[string]any `json:"metadata"`
+	Method       string         `json:"method"`
+	VerifiedBy   string         `json:"verified_by"`
+	Evidence     []string       `json:"evidence"`
+	Verified     bool           `json:"verified"`
 }
 
 // RequestStatus represents the status of a data subject request
 type RequestStatus struct {
-	RequestID   string    `json:"request_id"`
-	Status      string    `json:"status"`
 	LastUpdated time.Time `json:"last_updated"`
 	DueDate     time.Time `json:"due_date"`
-	Progress    int       `json:"progress"` // percentage
+	RequestID   string    `json:"request_id"`
+	Status      string    `json:"status"`
 	NextAction  string    `json:"next_action"`
 	AssignedTo  string    `json:"assigned_to"`
 	Notes       []string  `json:"notes"`
+	Progress    int       `json:"progress"`
 }
 
 // PIARequest represents a privacy impact assessment request
 type PIARequest struct {
-	ID                 string                  `json:"id"`
-	ProcessingActivity *DataProcessingActivity `json:"processing_activity"`
-	AssessmentType     string                  `json:"assessment_type"`
-	Scope              []string                `json:"scope"`
-	RequestedBy        string                  `json:"requested_by"`
 	RequestDate        time.Time               `json:"request_date"`
 	DueDate            time.Time               `json:"due_date"`
+	ProcessingActivity *DataProcessingActivity `json:"processing_activity"`
+	Metadata           map[string]any          `json:"metadata"`
+	Purpose            string                  `json:"purpose,omitempty"`
+	AssessmentType     string                  `json:"assessment_type"`
+	ID                 string                  `json:"id"`
+	RequestedBy        string                  `json:"requested_by"`
+	ProjectName        string                  `json:"project_name,omitempty"`
+	LegalBasis         string                  `json:"legal_basis,omitempty"`
+	Scope              []string                `json:"scope"`
+	DataTypes          []string                `json:"data_types,omitempty"`
 	Stakeholders       []string                `json:"stakeholders"`
-	// Additional fields needed by tests
-	ProjectName string         `json:"project_name,omitempty"`
-	DataTypes   []string       `json:"data_types,omitempty"`
-	Purpose     string         `json:"purpose,omitempty"`
-	LegalBasis  string         `json:"legal_basis,omitempty"`
-	Metadata    map[string]any `json:"metadata"`
 }
 
 // PIAResult represents the result of a privacy impact assessment
 type PIAResult struct {
-	AssessmentID       string              `json:"assessment_id"`
-	CompletionDate     time.Time           `json:"completion_date"`
-	RiskLevel          string              `json:"risk_level"`
-	RiskScore          float64             `json:"risk_score"`
-	Findings           []PIAFinding        `json:"findings"`
-	Recommendations    []PIARecommendation `json:"recommendations"`
-	MitigationMeasures []MitigationMeasure `json:"mitigation_measures"`
-	ApprovalRequired   bool                `json:"approval_required"`
-	ApprovedBy         string              `json:"approved_by,omitempty"`
-	ApprovalDate       *time.Time          `json:"approval_date,omitempty"`
 	ReviewDate         time.Time           `json:"review_date"`
-	// Additional fields needed by tests
-	ID        string         `json:"id,omitempty"`
-	Status    string         `json:"status,omitempty"`
-	Timestamp time.Time      `json:"timestamp,omitempty"`
-	Metadata  map[string]any `json:"metadata"`
+	CompletionDate     time.Time           `json:"completion_date"`
+	Timestamp          time.Time           `json:"timestamp,omitempty"`
+	Metadata           map[string]any      `json:"metadata"`
+	ApprovalDate       *time.Time          `json:"approval_date,omitempty"`
+	RiskLevel          string              `json:"risk_level"`
+	Status             string              `json:"status,omitempty"`
+	AssessmentID       string              `json:"assessment_id"`
+	ID                 string              `json:"id,omitempty"`
+	ApprovedBy         string              `json:"approved_by,omitempty"`
+	MitigationMeasures []MitigationMeasure `json:"mitigation_measures"`
+	Recommendations    []PIARecommendation `json:"recommendations"`
+	Findings           []PIAFinding        `json:"findings"`
+	RiskScore          float64             `json:"risk_score"`
+	ApprovalRequired   bool                `json:"approval_required"`
 }
 
 // PIAFinding represents a finding from a privacy impact assessment
@@ -398,8 +377,8 @@ type PIAFinding struct {
 	Description string   `json:"description"`
 	Impact      string   `json:"impact"`
 	Likelihood  string   `json:"likelihood"`
-	RiskScore   float64  `json:"risk_score"`
 	Evidence    []string `json:"evidence"`
+	RiskScore   float64  `json:"risk_score"`
 }
 
 // PIARecommendation represents a recommendation from a privacy impact assessment
@@ -407,14 +386,15 @@ type PIARecommendation struct {
 	ID          string   `json:"id"`
 	Priority    string   `json:"priority"`
 	Description string   `json:"description"`
-	Actions     []string `json:"actions"`
 	Timeline    string   `json:"timeline"`
 	Owner       string   `json:"owner"`
 	Status      string   `json:"status"`
+	Actions     []string `json:"actions"`
 }
 
 // MitigationMeasure represents a mitigation measure
 type MitigationMeasure struct {
+	ReviewDate     time.Time `json:"review_date"`
 	ID             string    `json:"id"`
 	Type           string    `json:"type"`
 	Description    string    `json:"description"`
@@ -424,18 +404,17 @@ type MitigationMeasure struct {
 	Timeline       string    `json:"timeline"`
 	Owner          string    `json:"owner"`
 	Status         string    `json:"status"`
-	ReviewDate     time.Time `json:"review_date"`
 }
 
 // PIATemplate represents a template for privacy impact assessments
 type PIATemplate struct {
+	Metadata         map[string]any  `json:"metadata"`
 	ID               string          `json:"id"`
 	Name             string          `json:"name"`
 	ProcessingType   string          `json:"processing_type"`
 	Questions        []PIAQuestion   `json:"questions"`
 	RiskFactors      []PIARiskFactor `json:"risk_factors"`
 	RequiredEvidence []string        `json:"required_evidence"`
-	Metadata         map[string]any  `json:"metadata"`
 }
 
 // PIAQuestion represents a question in a PIA template
@@ -443,11 +422,11 @@ type PIAQuestion struct {
 	ID         string   `json:"id"`
 	Category   string   `json:"category"`
 	Question   string   `json:"question"`
-	Type       string   `json:"type"` // "text", "boolean", "multiple_choice", "scale"
-	Required   bool     `json:"required"`
-	Options    []string `json:"options,omitempty"`
+	Type       string   `json:"type"`
 	Guidance   string   `json:"guidance"`
+	Options    []string `json:"options,omitempty"`
 	RiskWeight float64  `json:"risk_weight"`
+	Required   bool     `json:"required"`
 }
 
 // PIARiskFactor represents a risk factor in privacy assessment
@@ -462,40 +441,40 @@ type PIARiskFactor struct {
 
 // DataProcessingActivity represents a data processing activity
 type DataProcessingActivity struct {
+	NextReview        time.Time       `json:"next_review"`
+	LastReview        time.Time       `json:"last_review"`
+	Metadata          map[string]any  `json:"metadata"`
 	ID                string          `json:"id"`
 	Name              string          `json:"name"`
 	Description       string          `json:"description"`
 	Controller        string          `json:"controller"`
 	Processor         string          `json:"processor,omitempty"`
-	Purposes          []string        `json:"purposes"`
-	LegalBasis        []string        `json:"legal_basis"`
+	ThirdCountries    []string        `json:"third_countries"`
 	DataCategories    []string        `json:"data_categories"`
 	DataSubjects      []string        `json:"data_subjects"`
-	Recipients        []DataRecipient `json:"recipients"`
-	ThirdCountries    []string        `json:"third_countries"`
 	Safeguards        []string        `json:"safeguards"`
-	RetentionPeriod   time.Duration   `json:"retention_period"`
 	SecurityMeasures  []string        `json:"security_measures"`
 	DataSources       []string        `json:"data_sources"`
+	Recipients        []DataRecipient `json:"recipients"`
+	Purposes          []string        `json:"purposes"`
+	LegalBasis        []string        `json:"legal_basis"`
+	RetentionPeriod   time.Duration   `json:"retention_period"`
 	AutomatedDecision bool            `json:"automated_decision"`
-	Profiling         bool            `json:"profiling"`
-	HighRisk          bool            `json:"high_risk"`
-	PIARequired       bool            `json:"pia_required"`
 	PIACompleted      bool            `json:"pia_completed"`
-	LastReview        time.Time       `json:"last_review"`
-	NextReview        time.Time       `json:"next_review"`
-	Metadata          map[string]any  `json:"metadata"`
+	PIARequired       bool            `json:"pia_required"`
+	HighRisk          bool            `json:"high_risk"`
+	Profiling         bool            `json:"profiling"`
 }
 
 // ProcessingValidation represents validation of data processing activity
 type ProcessingValidation struct {
-	Valid           bool              `json:"valid"`
 	ValidationDate  time.Time         `json:"validation_date"`
+	Metadata        map[string]any    `json:"metadata"`
 	Issues          []ValidationIssue `json:"issues"`
 	Recommendations []string          `json:"recommendations"`
-	ComplianceScore float64           `json:"compliance_score"`
 	RequiredActions []string          `json:"required_actions"`
-	Metadata        map[string]any    `json:"metadata"`
+	ComplianceScore float64           `json:"compliance_score"`
+	Valid           bool              `json:"valid"`
 }
 
 // ValidationIssue represents a validation issue
@@ -509,58 +488,58 @@ type ValidationIssue struct {
 
 // RiskAssessment represents a risk assessment
 type RiskAssessment struct {
-	ID             string               `json:"id"`
-	ActivityID     string               `json:"activity_id"`
 	AssessmentDate time.Time            `json:"assessment_date"`
-	RiskLevel      string               `json:"risk_level"`
-	RiskScore      float64              `json:"risk_score"`
-	RiskFactors    []AssessedRiskFactor `json:"risk_factors"`
-	Mitigations    []MitigationMeasure  `json:"mitigations"`
-	ResidualRisk   float64              `json:"residual_risk"`
-	Approved       bool                 `json:"approved"`
-	ApprovedBy     string               `json:"approved_by,omitempty"`
 	ReviewDate     time.Time            `json:"review_date"`
 	Metadata       map[string]any       `json:"metadata"`
+	ID             string               `json:"id"`
+	ActivityID     string               `json:"activity_id"`
+	RiskLevel      string               `json:"risk_level"`
+	ApprovedBy     string               `json:"approved_by,omitempty"`
+	RiskFactors    []AssessedRiskFactor `json:"risk_factors"`
+	Mitigations    []MitigationMeasure  `json:"mitigations"`
+	RiskScore      float64              `json:"risk_score"`
+	ResidualRisk   float64              `json:"residual_risk"`
+	Approved       bool                 `json:"approved"`
 }
 
 // AssessedRiskFactor represents an assessed risk factor
 type AssessedRiskFactor struct {
+	Impact     string `json:"impact"`
+	Likelihood string `json:"likelihood"`
+	Rationale  string `json:"rationale"`
 	PIARiskFactor
-	Score      float64 `json:"score"`
-	Impact     string  `json:"impact"`
-	Likelihood string  `json:"likelihood"`
-	Rationale  string  `json:"rationale"`
+	Score float64 `json:"score"`
 }
 
 // CrossBorderTransfer represents a cross-border data transfer
 type CrossBorderTransfer struct {
+	TransferDate       time.Time      `json:"transfer_date"`
+	Metadata           map[string]any `json:"metadata"`
+	DestinationCountry string         `json:"destination_country"`
+	DataImporter       string         `json:"data_importer"`
 	ID                 string         `json:"id"`
 	DataExporter       string         `json:"data_exporter"`
-	DataImporter       string         `json:"data_importer"`
 	SourceCountry      string         `json:"source_country"`
-	DestinationCountry string         `json:"destination_country"`
-	DataCategories     []string       `json:"data_categories"`
-	Purposes           []string       `json:"purposes"`
 	LegalBasis         string         `json:"legal_basis"`
-	Safeguards         []string       `json:"safeguards"`
-	AdequacyDecision   bool           `json:"adequacy_decision"`
-	SCCApplied         bool           `json:"scc_applied"`
-	BCRApplied         bool           `json:"bcr_applied"`
-	TransferDate       time.Time      `json:"transfer_date"`
-	Volume             string         `json:"volume"`
 	Frequency          string         `json:"frequency"`
-	Metadata           map[string]any `json:"metadata"`
+	Volume             string         `json:"volume"`
+	Purposes           []string       `json:"purposes"`
+	Safeguards         []string       `json:"safeguards"`
+	DataCategories     []string       `json:"data_categories"`
+	BCRApplied         bool           `json:"bcr_applied"`
+	SCCApplied         bool           `json:"scc_applied"`
+	AdequacyDecision   bool           `json:"adequacy_decision"`
 }
 
 // TransferValidation represents validation of cross-border transfer
 type TransferValidation struct {
-	Valid           bool              `json:"valid"`
 	ValidationDate  time.Time         `json:"validation_date"`
-	LegalBasisValid bool              `json:"legal_basis_valid"`
-	SafeguardsValid bool              `json:"safeguards_valid"`
+	Metadata        map[string]any    `json:"metadata"`
 	Issues          []ValidationIssue `json:"issues"`
 	Recommendations []string          `json:"recommendations"`
-	Metadata        map[string]any    `json:"metadata"`
+	Valid           bool              `json:"valid"`
+	LegalBasisValid bool              `json:"legal_basis_valid"`
+	SafeguardsValid bool              `json:"safeguards_valid"`
 }
 
 // CrossBorderRule represents a rule for cross-border transfers
@@ -571,8 +550,8 @@ type CrossBorderRule struct {
 	DestCountries      []string `json:"dest_countries"`
 	DataCategories     []string `json:"data_categories"`
 	RequiredSafeguards []string `json:"required_safeguards"`
-	Prohibited         bool     `json:"prohibited"`
 	Conditions         []string `json:"conditions"`
+	Prohibited         bool     `json:"prohibited"`
 }
 
 // AdequacyDecision represents an adequacy decision
@@ -586,95 +565,95 @@ type AdequacyDecision struct {
 
 // SCCValidation represents Standard Contractual Clauses validation
 type SCCValidation struct {
+	Metadata       map[string]any `json:"metadata"`
 	ClausesVersion string         `json:"clauses_version"`
 	DataExporter   string         `json:"data_exporter"`
 	DataImporter   string         `json:"data_importer"`
 	DataCategories []string       `json:"data_categories"`
 	Purposes       []string       `json:"purposes"`
-	Metadata       map[string]any `json:"metadata"`
 }
 
 // SCCResult represents the result of SCC validation
 type SCCResult struct {
-	Valid             bool              `json:"valid"`
 	ValidationDate    time.Time         `json:"validation_date"`
-	ClausesApplicable bool              `json:"clauses_applicable"`
+	Metadata          map[string]any    `json:"metadata"`
 	Issues            []ValidationIssue `json:"issues"`
 	Recommendations   []string          `json:"recommendations"`
-	Metadata          map[string]any    `json:"metadata"`
+	Valid             bool              `json:"valid"`
+	ClausesApplicable bool              `json:"clauses_applicable"`
 }
 
 // BCRValidation represents Binding Corporate Rules validation
 type BCRValidation struct {
+	Metadata       map[string]any `json:"metadata"`
 	CompanyGroup   string         `json:"company_group"`
 	BCRVersion     string         `json:"bcr_version"`
 	DataCategories []string       `json:"data_categories"`
 	Purposes       []string       `json:"purposes"`
 	Countries      []string       `json:"countries"`
-	Metadata       map[string]any `json:"metadata"`
 }
 
 // BCRResult represents the result of BCR validation
 type BCRResult struct {
-	Valid           bool              `json:"valid"`
 	ValidationDate  time.Time         `json:"validation_date"`
-	BCRApplicable   bool              `json:"bcr_applicable"`
+	Metadata        map[string]any    `json:"metadata"`
 	Issues          []ValidationIssue `json:"issues"`
 	Recommendations []string          `json:"recommendations"`
-	Metadata        map[string]any    `json:"metadata"`
+	Valid           bool              `json:"valid"`
+	BCRApplicable   bool              `json:"bcr_applicable"`
 }
 
 // ConsentEvent represents a consent-related event for audit logging
 type ConsentEvent struct {
+	Timestamp     time.Time      `json:"timestamp"`
+	Details       map[string]any `json:"details"`
+	Metadata      map[string]any `json:"metadata"`
 	EventType     string         `json:"event_type"`
 	ConsentID     string         `json:"consent_id"`
 	DataSubjectID string         `json:"data_subject_id"`
-	Timestamp     time.Time      `json:"timestamp"`
-	Details       map[string]any `json:"details"`
 	IPAddress     string         `json:"ip_address"`
 	UserAgent     string         `json:"user_agent"`
-	Metadata      map[string]any `json:"metadata"`
 }
 
 // DataSubjectRequestLog represents a data subject request for audit logging
 type DataSubjectRequestLog struct {
+	Timestamp     time.Time      `json:"timestamp"`
+	Details       map[string]any `json:"details"`
+	Metadata      map[string]any `json:"metadata"`
 	RequestID     string         `json:"request_id"`
 	RequestType   string         `json:"request_type"`
 	DataSubjectID string         `json:"data_subject_id"`
-	Timestamp     time.Time      `json:"timestamp"`
 	Status        string         `json:"status"`
 	ProcessedBy   string         `json:"processed_by"`
-	Details       map[string]any `json:"details"`
-	Metadata      map[string]any `json:"metadata"`
 }
 
 // CrossBorderTransferLog represents a cross-border transfer for audit logging
 type CrossBorderTransferLog struct {
+	Timestamp          time.Time      `json:"timestamp"`
+	Metadata           map[string]any `json:"metadata"`
 	TransferID         string         `json:"transfer_id"`
 	DataExporter       string         `json:"data_exporter"`
 	DataImporter       string         `json:"data_importer"`
 	SourceCountry      string         `json:"source_country"`
 	DestinationCountry string         `json:"destination_country"`
-	Timestamp          time.Time      `json:"timestamp"`
 	LegalBasis         string         `json:"legal_basis"`
 	Safeguards         []string       `json:"safeguards"`
-	Metadata           map[string]any `json:"metadata"`
 }
 
 // PrivacyBreachLog represents a privacy breach for audit logging
 type PrivacyBreachLog struct {
+	DetectedDate      time.Time      `json:"detected_date"`
+	ReportedDate      time.Time      `json:"reported_date"`
+	Metadata          map[string]any `json:"metadata"`
 	BreachID          string         `json:"breach_id"`
 	BreachType        string         `json:"breach_type"`
 	Severity          string         `json:"severity"`
-	DetectedDate      time.Time      `json:"detected_date"`
-	ReportedDate      time.Time      `json:"reported_date"`
-	AffectedSubjects  int            `json:"affected_subjects"`
-	DataCategories    []string       `json:"data_categories"`
 	Cause             string         `json:"cause"`
+	DataCategories    []string       `json:"data_categories"`
 	Mitigation        []string       `json:"mitigation"`
+	AffectedSubjects  int            `json:"affected_subjects"`
 	AuthorityNotified bool           `json:"authority_notified"`
 	SubjectsNotified  bool           `json:"subjects_notified"`
-	Metadata          map[string]any `json:"metadata"`
 }
 
 // NewGDPRConsentManager creates a new GDPR consent manager
@@ -948,33 +927,33 @@ type ConsentUpdate = ConsentUpdates
 
 // ConsentHistoryEntry represents a historical consent entry
 type ConsentHistoryEntry struct {
+	Timestamp     time.Time      `json:"timestamp"`
+	Changes       map[string]any `json:"changes"`
+	Metadata      map[string]any `json:"metadata"`
 	ID            string         `json:"id"`
 	ConsentID     string         `json:"consent_id"`
-	Action        string         `json:"action"` // "created", "updated", "withdrawn", "renewed"
-	Timestamp     time.Time      `json:"timestamp"`
+	Action        string         `json:"action"`
 	DataSubjectID string         `json:"data_subject_id"`
-	Changes       map[string]any `json:"changes"`
 	UpdatedBy     string         `json:"updated_by"`
 	Reason        string         `json:"reason"`
 	IPAddress     string         `json:"ip_address"`
 	UserAgent     string         `json:"user_agent"`
-	Metadata      map[string]any `json:"metadata"`
 }
 
 // PIAUpdate represents updates to a Privacy Impact Assessment
 type PIAUpdate struct {
 	RiskLevel          *string             `json:"risk_level,omitempty"`
 	RiskScore          *float64            `json:"risk_score,omitempty"`
+	ApprovalRequired   *bool               `json:"approval_required,omitempty"`
+	ApprovalDate       *time.Time          `json:"approval_date,omitempty"`
+	ReviewDate         *time.Time          `json:"review_date,omitempty"`
+	Metadata           map[string]any      `json:"metadata,omitempty"`
+	ApprovedBy         string              `json:"approved_by,omitempty"`
+	UpdatedBy          string              `json:"updated_by"`
+	UpdateReason       string              `json:"update_reason"`
 	Findings           []PIAFinding        `json:"findings,omitempty"`
 	Recommendations    []PIARecommendation `json:"recommendations,omitempty"`
 	MitigationMeasures []MitigationMeasure `json:"mitigation_measures,omitempty"`
-	ApprovalRequired   *bool               `json:"approval_required,omitempty"`
-	ApprovedBy         string              `json:"approved_by,omitempty"`
-	ApprovalDate       *time.Time          `json:"approval_date,omitempty"`
-	ReviewDate         *time.Time          `json:"review_date,omitempty"`
-	UpdatedBy          string              `json:"updated_by"`
-	UpdateReason       string              `json:"update_reason"`
-	Metadata           map[string]any      `json:"metadata,omitempty"`
 }
 
 // PIAFilters represents filters for PIA queries
@@ -1071,7 +1050,7 @@ func (gcm *GDPRConsentManager) isValidEmail(email string) bool {
 	if email == "" {
 		return false
 	}
-	
+
 	// Basic email validation - contains @ and at least one dot after @
 	atIndex := -1
 	for i, char := range email {
@@ -1082,11 +1061,11 @@ func (gcm *GDPRConsentManager) isValidEmail(email string) bool {
 			atIndex = i
 		}
 	}
-	
+
 	if atIndex == -1 || atIndex == 0 || atIndex == len(email)-1 {
 		return false // No @, @ at start, or @ at end
 	}
-	
+
 	// Check for dot after @
 	hasValidDomain := false
 	for i := atIndex + 1; i < len(email); i++ {
@@ -1095,7 +1074,7 @@ func (gcm *GDPRConsentManager) isValidEmail(email string) bool {
 			break
 		}
 	}
-	
+
 	return hasValidDomain
 }
 
@@ -1107,7 +1086,3 @@ func (gcm *GDPRConsentManager) calculateExpiryDate() time.Time {
 	}
 	return time.Now().Add(time.Duration(days) * 24 * time.Hour)
 }
-
-
-
-

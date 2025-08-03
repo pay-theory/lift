@@ -9,18 +9,13 @@ import (
 
 // JWTAuthConfig holds configuration for JWT authentication
 type JWTAuthConfig struct {
-	// Slice first (24 bytes)
-	SkipPaths    []string                              // Skip authentication for these paths
-
-	// Strings (16 bytes each)
-	Secret      string // Secret key for HMAC algorithms
-	Algorithm   string // Algorithm to use (HS256, RS256, etc)
-	TokenLookup string // Token lookup string (e.g., "header:Authorization,query:token")
-
-	// 8-byte aligned fields (interfaces, functions)
-	PublicKey    any                                   // Public key for RSA/ECDSA algorithms
-	ErrorHandler func(ctx *Context, err error) error  // Custom error handler
-	Validator    func(claims jwt.MapClaims) error      // Custom claims validator
+	PublicKey    any
+	ErrorHandler func(ctx *Context, err error) error
+	Validator    func(claims jwt.MapClaims) error
+	Secret       string
+	Algorithm    string
+	TokenLookup  string
+	SkipPaths    []string
 }
 
 // WithJWTAuth adds JWT authentication middleware to the application
@@ -57,10 +52,10 @@ func WithSimpleJWTAuth(secret string) AppOption {
 // Memory optimized: 96 → 88 bytes (8 bytes saved)
 type SecurityConfig struct {
 	// 8-byte aligned fields (functions, slices)
-	Handler       func(ctx *Context) error                                  // Custom security handler
-	AuditLogger   func(ctx *Context, event string, data map[string]any)    // Audit logger
-	IPWhitelist   []string                                                  // IP whitelist (empty means allow all)
-	RequiredRoles []string                                                  // Required roles for all endpoints (can be overridden per route)
+	Handler       func(ctx *Context) error                              // Custom security handler
+	AuditLogger   func(ctx *Context, event string, data map[string]any) // Audit logger
+	IPWhitelist   []string                                              // IP whitelist (empty means allow all)
+	RequiredRoles []string                                              // Required roles for all endpoints (can be overridden per route)
 
 	// Boolean flags (1 byte each)
 	EnableSecurityHeaders bool // Enable security headers

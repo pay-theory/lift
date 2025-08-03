@@ -23,11 +23,11 @@ func TestDataProtectionManager_ClassifyData(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
 		data           map[string]any
 		context        map[string]any
-		expectedClass  DataClassification
 		expectedFields map[string]DataClassification
+		name           string
+		expectedClass  DataClassification
 	}{
 		{
 			name: "restricted data with SSN",
@@ -224,8 +224,8 @@ func TestDataProtectionManager_ProtectData(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name          string
 		dataCtx       *DataContext
+		name          string
 		accessRequest DataProtectionRequest
 		expectMasked  bool
 		expectData    bool

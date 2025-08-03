@@ -375,13 +375,13 @@ type SQSMessage struct {
 
 // S3Event represents a parsed S3 event for type-safe handling
 type S3Event struct {
+	S3Data      map[string]any `json:"s3"`
 	EventSource string         `json:"eventSource"`
 	EventName   string         `json:"eventName"`
 	EventTime   string         `json:"eventTime"`
 	Bucket      string         `json:"bucket"`
 	ObjectKey   string         `json:"objectKey"`
 	ObjectSize  int64          `json:"objectSize"`
-	S3Data      map[string]any `json:"s3"`
 }
 
 // EventBridgeEvent represents a parsed EventBridge event for type-safe handling

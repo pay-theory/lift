@@ -32,17 +32,13 @@ type ServiceMeshConfig struct {
 // ServiceMeshAdapter provides AWS App Mesh integration
 // Memory optimized: 184 → 168 bytes (16 bytes saved)
 type ServiceMeshAdapter struct {
-	// Pointers and interfaces (8 bytes each)
-	registrationError error              // 8 bytes
-	appMeshClient     *appmesh.Client    // 8 bytes
-	sdClient          *servicediscovery.Client // 8 bytes
-	// Struct (varies)
-	config            ServiceMeshConfig  // struct
-	// Strings (16 bytes each)
-	instanceID        string             // 16 bytes
-	serviceID         string             // 16 bytes
-	// Boolean (1 byte)
-	loggedError       bool               // 1 byte
+	registrationError error
+	appMeshClient     *appmesh.Client
+	sdClient          *servicediscovery.Client
+	instanceID        string
+	serviceID         string
+	config            ServiceMeshConfig
+	loggedError       bool
 }
 
 // NewServiceMeshAdapter creates a new service mesh adapter

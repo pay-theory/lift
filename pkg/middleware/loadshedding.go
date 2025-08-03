@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	defaultName = "default"
+	defaultName  = "default"
 	priorityHigh = "high"
-	priorityLow = "low"
+	priorityLow  = "low"
 )
 
 // LoadSheddingStrategy defines different load shedding strategies
@@ -82,22 +82,15 @@ type LoadMetrics struct {
 
 // LoadSheddingStats provides statistics about load shedding performance
 type LoadSheddingStats struct {
-	// Structs (size varies) - group similar types together
-	SystemMetrics LoadMetrics `json:"system_metrics"`
-	
-	// 8-byte types
+	Strategy            LoadSheddingStrategy `json:"strategy"`
+	Name                string               `json:"name"`
+	SystemMetrics       LoadMetrics          `json:"system_metrics"`
 	TotalRequests       int64                `json:"total_requests"`
 	ShedRequests        int64                `json:"shed_requests"`
 	AverageLatency      time.Duration        `json:"average_latency"`
 	CurrentSheddingRate float64              `json:"current_shedding_rate"`
 	SheddingRatio       float64              `json:"shedding_ratio"`
-	Strategy            LoadSheddingStrategy `json:"strategy"`
-	
-	// Strings (16 bytes)
-	Name string `json:"name"`
-	
-	// Booleans (1 byte) - smallest last
-	Enabled bool `json:"enabled"`
+	Enabled             bool                 `json:"enabled"`
 }
 
 // LoadSheddingMiddleware creates a load shedding middleware
@@ -227,22 +220,13 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 
 // loadSheddingManager manages load shedding logic and metrics
 type loadSheddingManager struct {
-	// Struct first (largest)
-	config LoadSheddingConfig
-	
-	// Sync primitives (24 bytes)
-	mutex sync.RWMutex
-	
-	// Slices (24 bytes each)
+	metrics        *LoadMetrics
+	stats          *LoadSheddingStats
 	latencyHistory []time.Duration
 	requestHistory []loadRequestRecord
-	
-	// Pointers (8 bytes each)
-	metrics *LoadMetrics
-	stats   *LoadSheddingStats
-	
-	// 8-byte types
-	errorCount int64
+	config         LoadSheddingConfig
+	errorCount     int64
+	mutex          sync.RWMutex
 }
 
 // loadRequestRecord tracks individual request metrics for load shedding

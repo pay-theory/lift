@@ -12,71 +12,71 @@ import (
 
 // ServiceRegistry manages service registration and discovery
 type ServiceRegistry struct {
-	services       map[string]*ServiceConfig
-	discovery      ServiceDiscovery
-	loadBalancer   LoadBalancer
-	healthChecker  health.HealthManager
-	metrics        observability.MetricsCollector
-	cache          ServiceCache
-	mu             sync.RWMutex
-	config         RegistryConfig
+	services      map[string]*ServiceConfig
+	discovery     ServiceDiscovery
+	loadBalancer  LoadBalancer
+	healthChecker health.HealthManager
+	metrics       observability.MetricsCollector
+	cache         ServiceCache
+	mu            sync.RWMutex
+	config        RegistryConfig
 }
 
 // RegistryConfig configures the service registry
 type RegistryConfig struct {
-	EnableCaching       bool          `json:"enable_caching"`
 	CacheTTL            time.Duration `json:"cache_ttl"`
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
-	EnableMetrics       bool          `json:"enable_metrics"`
-	TenantIsolation     bool          `json:"tenant_isolation"`
 	MaxRetries          int           `json:"max_retries"`
 	RetryBackoff        time.Duration `json:"retry_backoff"`
+	EnableCaching       bool          `json:"enable_caching"`
+	EnableMetrics       bool          `json:"enable_metrics"`
+	TenantIsolation     bool          `json:"tenant_isolation"`
 }
 
 // ServiceConfig represents a service configuration
 type ServiceConfig struct {
-	Name        string            `json:"name"`
-	Version     string            `json:"version"`
-	Endpoints   []ServiceEndpoint `json:"endpoints"`
-	HealthCheck HealthCheckConfig `json:"health_check"`
-	Metadata    map[string]string `json:"metadata"`
-	TenantID    string            `json:"tenant_id,omitempty"`
-	Tags        []string          `json:"tags"`
-	Weight      int               `json:"weight"`
-	Region      string            `json:"region"`
-	Environment string            `json:"environment"`
 	Created     time.Time         `json:"created"`
 	LastSeen    time.Time         `json:"last_seen"`
+	Metadata    map[string]string `json:"metadata"`
+	Name        string            `json:"name"`
+	Version     string            `json:"version"`
+	TenantID    string            `json:"tenant_id,omitempty"`
+	Region      string            `json:"region"`
+	Environment string            `json:"environment"`
+	Endpoints   []ServiceEndpoint `json:"endpoints"`
+	Tags        []string          `json:"tags"`
+	HealthCheck HealthCheckConfig `json:"health_check"`
+	Weight      int               `json:"weight"`
 }
 
 // ServiceEndpoint represents a service endpoint
 type ServiceEndpoint struct {
+	Metadata map[string]string `json:"metadata"`
 	Protocol string            `json:"protocol"`
 	Host     string            `json:"host"`
-	Port     int               `json:"port"`
 	Path     string            `json:"path"`
-	Metadata map[string]string `json:"metadata"`
+	Port     int               `json:"port"`
 }
 
 // ServiceInstance represents a discovered service instance
 type ServiceInstance struct {
+	LastSeen    time.Time         `json:"last_seen"`
+	Metadata    map[string]string `json:"metadata"`
+	Health      HealthStatus      `json:"health"`
 	ID          string            `json:"id"`
 	ServiceName string            `json:"service_name"`
 	Version     string            `json:"version"`
-	Endpoint    ServiceEndpoint   `json:"endpoint"`
-	Health      HealthStatus      `json:"health"`
-	Metadata    map[string]string `json:"metadata"`
 	TenantID    string            `json:"tenant_id,omitempty"`
+	Endpoint    ServiceEndpoint   `json:"endpoint"`
 	Weight      int               `json:"weight"`
-	LastSeen    time.Time         `json:"last_seen"`
 }
 
 // HealthStatus represents the health status of a service
 type HealthStatus struct {
-	Status    string                 `json:"status"`
-	Message   string                 `json:"message"`
 	Timestamp time.Time              `json:"timestamp"`
 	Checks    map[string]CheckResult `json:"checks"`
+	Status    string                 `json:"status"`
+	Message   string                 `json:"message"`
 }
 
 // CheckResult represents the result of a health check
@@ -88,24 +88,24 @@ type CheckResult struct {
 
 // HealthCheckConfig configures health checking for a service
 type HealthCheckConfig struct {
-	Enabled          bool          `json:"enabled"`
 	Path             string        `json:"path"`
 	Interval         time.Duration `json:"interval"`
 	Timeout          time.Duration `json:"timeout"`
 	Retries          int           `json:"retries"`
 	FailureThreshold int           `json:"failure_threshold"`
 	SuccessThreshold int           `json:"success_threshold"`
+	Enabled          bool          `json:"enabled"`
 }
 
 // DiscoveryOptions configures service discovery behavior
 type DiscoveryOptions struct {
 	TenantID         string              `json:"tenant_id,omitempty"`
 	Strategy         LoadBalanceStrategy `json:"strategy"`
-	Tags             []string            `json:"tags"`
 	Version          string              `json:"version,omitempty"`
 	Region           string              `json:"region,omitempty"`
-	IncludeUnhealthy bool                `json:"include_unhealthy"`
+	Tags             []string            `json:"tags"`
 	MaxInstances     int                 `json:"max_instances"`
+	IncludeUnhealthy bool                `json:"include_unhealthy"`
 	PreferLocal      bool                `json:"prefer_local"`
 }
 
@@ -490,9 +490,9 @@ func (r *ServiceRegistry) GetStats() RegistryStats {
 
 // RegistryStats provides registry performance metrics
 type RegistryStats struct {
+	Timestamp          time.Time         `json:"timestamp"`
 	CacheStats         CacheStats        `json:"cache_stats"`
 	LoadBalancerStats  LoadBalancerStats `json:"load_balancer_stats"`
-	Timestamp          time.Time         `json:"timestamp"`
 	RegisteredServices int               `json:"registered_services"`
 }
 
@@ -515,11 +515,11 @@ const (
 
 // CircuitBreakerStats provides circuit breaker metrics
 type CircuitBreakerStats struct {
+	LastStateChange    time.Time           `json:"last_state_change"`
 	State              CircuitBreakerState `json:"state"`
 	TotalRequests      int64               `json:"total_requests"`
 	SuccessfulRequests int64               `json:"successful_requests"`
 	FailedRequests     int64               `json:"failed_requests"`
-	LastStateChange    time.Time           `json:"last_state_change"`
 }
 
 // CacheStats provides cache performance metrics (reusing from features package)

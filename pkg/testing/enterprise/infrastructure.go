@@ -16,12 +16,12 @@ type ComplianceValidator struct {
 
 // ValidationRule defines a compliance validation rule
 type ValidationRule struct {
+	Parameters  map[string]any     `json:"parameters"`
 	ID          string             `json:"id"`
 	Framework   string             `json:"framework"`
 	Category    string             `json:"category"`
 	Description string             `json:"description"`
 	Severity    ValidationSeverity `json:"severity"`
-	Parameters  map[string]any     `json:"parameters"`
 }
 
 // ValidationProcessor processes validation rules
@@ -31,11 +31,11 @@ type ValidationProcessor interface {
 
 // ValidationResult represents the result of a validation
 type ValidationResult struct {
+	Timestamp time.Time        `json:"timestamp"`
+	Details   map[string]any   `json:"details"`
 	RuleID    string           `json:"rule_id"`
 	Status    ValidationStatus `json:"status"`
 	Message   string           `json:"message"`
-	Details   map[string]any   `json:"details"`
-	Timestamp time.Time        `json:"timestamp"`
 }
 
 // ValidationStatus is already defined in types.go
@@ -74,19 +74,19 @@ type ContinuousMonitor struct {
 
 // InfrastructureComplianceMonitor defines a compliance monitor (renamed to avoid conflict)
 type InfrastructureComplianceMonitor struct {
+	Thresholds map[string]float64 `json:"thresholds"`
 	ID         string             `json:"id"`
 	Framework  string             `json:"framework"`
 	Controls   []string           `json:"controls"`
+	Actions    []MonitorAction    `json:"actions"`
 	Frequency  time.Duration      `json:"frequency"`
 	Enabled    bool               `json:"enabled"`
-	Thresholds map[string]float64 `json:"thresholds"`
-	Actions    []MonitorAction    `json:"actions"`
 }
 
 // MonitorAction defines an action to take when a monitor triggers
 type MonitorAction struct {
-	Type       ActionType     `json:"type"`
 	Parameters map[string]any `json:"parameters"`
+	Type       ActionType     `json:"type"`
 }
 
 // ActionType defines the type of monitor action
@@ -106,12 +106,12 @@ type MonitorScheduler struct {
 
 // ScheduledJob represents a scheduled monitoring job
 type ScheduledJob struct {
-	ID        string        `json:"id"`
-	Monitor   string        `json:"monitor"`
-	Frequency time.Duration `json:"frequency"`
 	NextRun   time.Time     `json:"next_run"`
 	LastRun   time.Time     `json:"last_run"`
+	ID        string        `json:"id"`
+	Monitor   string        `json:"monitor"`
 	Status    JobStatus     `json:"status"`
+	Frequency time.Duration `json:"frequency"`
 }
 
 // JobStatus represents the status of a scheduled job
@@ -137,22 +137,22 @@ type InfrastructureAlertChannel interface {
 
 // MonitoringMetrics tracks monitoring metrics
 type MonitoringMetrics struct {
+	LastUpdate         time.Time                    `json:"last_update"`
+	MetricsByFramework map[string]*FrameworkMetrics `json:"metrics_by_framework"`
 	TotalMonitors      int64                        `json:"total_monitors"`
 	ActiveMonitors     int64                        `json:"active_monitors"`
 	AlertsGenerated    int64                        `json:"alerts_generated"`
 	ComplianceScore    float64                      `json:"compliance_score"`
-	LastUpdate         time.Time                    `json:"last_update"`
-	MetricsByFramework map[string]*FrameworkMetrics `json:"metrics_by_framework"`
 }
 
 // FrameworkMetrics tracks metrics for a specific framework
 type FrameworkMetrics struct {
+	LastAssessment  time.Time `json:"last_assessment"`
 	Framework       string    `json:"framework"`
 	TotalControls   int64     `json:"total_controls"`
 	PassingControls int64     `json:"passing_controls"`
 	FailingControls int64     `json:"failing_controls"`
 	ComplianceScore float64   `json:"compliance_score"`
-	LastAssessment  time.Time `json:"last_assessment"`
 }
 
 // NewContinuousMonitor creates a new continuous monitor
@@ -195,51 +195,51 @@ type InfrastructureEvidenceIndexer interface {
 
 // EvidenceFilter defines filters for evidence queries
 type EvidenceFilter struct {
+	StartTime time.Time      `json:"start_time"`
+	EndTime   time.Time      `json:"end_time"`
+	Metadata  map[string]any `json:"metadata"`
 	Framework string         `json:"framework"`
 	ControlID string         `json:"control_id"`
 	Type      EvidenceType   `json:"type"`
-	StartTime time.Time      `json:"start_time"`
-	EndTime   time.Time      `json:"end_time"`
 	Tags      []string       `json:"tags"`
-	Metadata  map[string]any `json:"metadata"`
 }
 
 // EvidenceQuery defines a search query for evidence
 type EvidenceQuery struct {
 	Text      string         `json:"text"`
-	Filters   EvidenceFilter `json:"filters"`
 	SortBy    string         `json:"sort_by"`
 	SortOrder string         `json:"sort_order"`
+	Filters   EvidenceFilter `json:"filters"`
 	Limit     int            `json:"limit"`
 	Offset    int            `json:"offset"`
 }
 
 // InfrastructureRetentionPolicy defines evidence retention policies (renamed to avoid conflict)
 type InfrastructureRetentionPolicy struct {
-	DefaultRetention  time.Duration                    `json:"default_retention"`
 	FrameworkPolicies map[string]time.Duration         `json:"framework_policies"`
 	TypePolicies      map[EvidenceType]time.Duration   `json:"type_policies"`
 	CustomPolicies    map[string]CustomRetentionPolicy `json:"custom_policies"`
+	DefaultRetention  time.Duration                    `json:"default_retention"`
 }
 
 // CustomRetentionPolicy defines custom retention rules
 type CustomRetentionPolicy struct {
 	Conditions []RetentionCondition `json:"conditions"`
-	Retention  time.Duration        `json:"retention"`
 	Actions    []RetentionAction    `json:"actions"`
+	Retention  time.Duration        `json:"retention"`
 }
 
 // RetentionCondition defines a condition for retention
 type RetentionCondition struct {
+	Value    any    `json:"value"`
 	Field    string `json:"field"`
 	Operator string `json:"operator"`
-	Value    any    `json:"value"`
 }
 
 // RetentionAction defines an action for retention
 type RetentionAction struct {
-	Type       string         `json:"type"`
 	Parameters map[string]any `json:"parameters"`
+	Type       string         `json:"type"`
 }
 
 // EvidenceEncryption handles evidence encryption
@@ -292,12 +292,12 @@ func (e *EvidenceStore) StoreReport(ctx context.Context, report *ComplianceRepor
 
 // InfrastructureTest represents an infrastructure test
 type InfrastructureTest struct {
+	Config   map[string]any     `json:"config"`
 	ID       string             `json:"id"`
 	Name     string             `json:"name"`
 	Type     string             `json:"type"`
 	Target   string             `json:"target"`
-	Config   map[string]any     `json:"config"`
+	Severity ValidationSeverity `json:"severity"`
 	Timeout  time.Duration      `json:"timeout"`
 	Retries  int                `json:"retries"`
-	Severity ValidationSeverity `json:"severity"`
 }

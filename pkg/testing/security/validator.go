@@ -79,18 +79,18 @@ const (
 
 // Vulnerability represents a security vulnerability
 type Vulnerability struct {
+	FoundAt     time.Time
+	Impact      ImpactAssessment
 	ID          string
 	Type        VulnerabilityType
 	Severity    Severity
 	Title       string
 	Description string
-	Impact      ImpactAssessment
-	Remediation RemediationPlan
+	Location    string
 	CVSS        CVSSScore
 	References  []string
-	FoundAt     time.Time
-	Location    string
 	Evidence    []Evidence
+	Remediation RemediationPlan
 }
 
 type VulnerabilityType string

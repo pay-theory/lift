@@ -773,13 +773,12 @@ type DataTransfer struct {
 
 // ChaosExperiment represents a chaos engineering experiment
 type ChaosExperiment struct {
-	Target      ExperimentTarget  `json:"target"`
-	Fault       FaultDefinition   `json:"fault"`
-	StartTime   time.Time         `json:"start_time"`
-	EndTime     time.Time         `json:"end_time"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
+	StartTime   time.Time         `json:"start_time"`
+	EndTime     time.Time         `json:"end_time"`
 	Metadata    map[string]any    `json:"metadata"`
+	Target      ExperimentTarget  `json:"target"`
 	Type        FaultType         `json:"type"`
 	Status      ExperimentStatus  `json:"status"`
 	Description string            `json:"description"`
@@ -787,6 +786,7 @@ type ChaosExperiment struct {
 	ID          string            `json:"id"`
 	Hypothesis  string            `json:"hypothesis"`
 	Faults      []FaultDefinition `json:"faults"`
+	Fault       FaultDefinition   `json:"fault"`
 	Duration    time.Duration     `json:"duration"`
 }
 
@@ -1045,7 +1045,6 @@ const (
 // FUNCTION TEMPLATE TYPES
 // ============================================================================
 
-
 // ============================================================================
 // CONTRACT TESTING TYPES
 // ============================================================================
@@ -1139,6 +1138,15 @@ type ValidationCheck struct {
 // ============================================================================
 // CHAOS ENGINEERING ADDITIONAL TYPES
 // ============================================================================
+
+// ExperimentHypothesis represents the hypothesis for a chaos experiment
+type ExperimentHypothesis struct {
+	ExpectedRecovery *RecoveryConfig `json:"expected_recovery,omitempty"`
+	Metadata         map[string]any  `json:"metadata"`
+	Description      string          `json:"description"`
+	ExpectedBehavior string          `json:"expected_behavior"`
+	SuccessCriteria  []string        `json:"success_criteria"`
+}
 
 // Chaos experiment types
 const (
@@ -1471,124 +1479,22 @@ func (f *ChaosEngineeringFramework) validateExperiment(experiment *ChaosExperime
 	return nil
 }
 
-// validateHypothesis validates if an experiment hypothesis is met
-func (f *ChaosEngineeringFramework) validateHypothesis(experiment *ChaosExperiment, results *ExperimentResults) bool {
-	if experiment == nil || results == nil {
-		return false
-	}
-	
-	// Check for critical failures
-	for _, failure := range results.Failures {
-		if failure.Severity == CriticalSeverity {
-			return false
-		}
-	}
-	
-	// If recovery was attempted and failed, hypothesis is invalid
-	if results.Recovery != nil && results.Recovery.Attempted && !results.Recovery.Successful {
-		return false
-	}
-	
-	// For simplicity, assume hypothesis is valid if no critical issues
-	return true
-}
-
-// calculateImpact calculates the impact of a chaos experiment
-func (f *ChaosEngineeringFramework) calculateImpact(results *ExperimentResults) map[string]any {
-	impact := make(map[string]any)
-	
-	if results == nil {
-		return impact
-	}
-	
-	// Calculate basic impact metrics
-	impact["failure_count"] = len(results.Failures)
-	impact["duration"] = results.Duration.String()
-	impact["recovery_successful"] = false
-	
-	if results.Recovery != nil {
-		impact["recovery_successful"] = results.Recovery.Successful
-		impact["recovery_duration"] = results.Recovery.Duration.String()
-	}
-	
-	// Extract metrics from observations
-	if len(results.Observations) > 0 {
-		var totalResponseTime, totalErrorRate, totalThroughput float64
-		count := 0
-		
-		for _, obs := range results.Observations {
-			if obs.Type == MetricObservation && obs.Data != nil {
-				if rt, ok := obs.Data["response_time_p95"].(float64); ok {
-					totalResponseTime += rt
-					count++
-				}
-				if er, ok := obs.Data["error_rate"].(float64); ok {
-					totalErrorRate += er
-				}
-				if tp, ok := obs.Data["throughput"].(float64); ok {
-					totalThroughput += tp
-				}
-			}
-		}
-		
-		if count > 0 {
-			impact["avg_response_time"] = totalResponseTime / float64(count)
-			impact["avg_error_rate"] = totalErrorRate / float64(count)
-			impact["avg_throughput"] = totalThroughput / float64(count)
-		}
-	}
-	
-	return impact
-}
-
-// generateExperimentSummary generates a summary of experiment results
-func (f *ChaosEngineeringFramework) generateExperimentSummary(experiment *ChaosExperiment, results *ExperimentResults) string {
-	if experiment == nil || results == nil {
-		return "Invalid experiment or results"
-	}
-	
-	summary := fmt.Sprintf("Chaos experiment '%s' completed with status: %s. ", 
-		experiment.Name, results.Status)
-	
-	if f.validateHypothesis(experiment, results) {
-		summary += "Hypothesis validated successfully. "
-	} else {
-		summary += "Hypothesis validation failed. "
-	}
-	
-	if len(results.Failures) > 0 {
-		summary += fmt.Sprintf("Encountered %d failures during execution. ", len(results.Failures))
-	} else {
-		summary += "No failures encountered. "
-	}
-	
-	if results.Recovery != nil && results.Recovery.Attempted {
-		if results.Recovery.Successful {
-			summary += fmt.Sprintf("System recovery completed successfully in %v.", results.Recovery.Duration)
-		} else {
-			summary += "System recovery failed."
-		}
-	}
-	
-	return summary
-}
-
 // generateRecommendations generates recommendations based on experiment results
 func (f *ChaosEngineeringFramework) generateRecommendations(experiment *ChaosExperiment, results *ExperimentResults) []string {
 	var recommendations []string
-	
+
 	if experiment == nil || results == nil {
 		return []string{"Unable to generate recommendations due to invalid data"}
 	}
-	
+
 	// Base recommendation on overall results
 	if len(results.Failures) == 0 && results.Recovery != nil && results.Recovery.Successful {
 		recommendations = append(recommendations, "System demonstrates good resilience to this type of failure")
 	}
-	
+
 	if len(results.Failures) > 0 {
 		recommendations = append(recommendations, "Consider implementing additional error handling and recovery mechanisms")
-		
+
 		// Check for specific failure types
 		for _, failure := range results.Failures {
 			switch failure.Severity {
@@ -1599,11 +1505,11 @@ func (f *ChaosEngineeringFramework) generateRecommendations(experiment *ChaosExp
 			}
 		}
 	}
-	
+
 	if results.Recovery != nil && !results.Recovery.Successful {
 		recommendations = append(recommendations, "Recovery mechanisms need improvement")
 	}
-	
+
 	// Add experiment-specific recommendations
 	switch experiment.Type {
 	case NetworkChaos:
@@ -1613,17 +1519,13 @@ func (f *ChaosEngineeringFramework) generateRecommendations(experiment *ChaosExp
 	case ResourceChaos:
 		recommendations = append(recommendations, "Review resource allocation and scaling policies")
 	}
-	
+
 	if len(recommendations) == 0 {
 		recommendations = append(recommendations, "System performed well - continue regular chaos testing")
 	}
-	
+
 	return recommendations
 }
-
-
-
-
 
 // ServiceDefinition represents a service definition for contracts
 type ServiceDefinition struct {
@@ -1777,13 +1679,13 @@ func GenerateBlastRadius(experiment *ChaosExperiment) *BlastRadius {
 		}
 	}
 
-	severity := "low"
+	severity := string(LowSeverity)
 	scope := "service"
 
 	// Determine severity based on fault type
 	switch experiment.Type {
 	case NetworkChaos:
-		severity = "medium"
+		severity = string(MediumSeverity)
 		scope = "network"
 	case ServiceChaos:
 		severity = string(HighSeverity)
@@ -1792,7 +1694,7 @@ func GenerateBlastRadius(experiment *ChaosExperiment) *BlastRadius {
 		severity = string(HighSeverity)
 		scope = "data"
 	case ResourceChaos:
-		severity = "medium"
+		severity = string(MediumSeverity)
 		scope = "infrastructure"
 	case StorageChaos:
 		severity = string(HighSeverity)
@@ -1809,4 +1711,95 @@ func GenerateBlastRadius(experiment *ChaosExperiment) *BlastRadius {
 			"namespace": experiment.Target.Namespace,
 		},
 	}
+}
+
+// validateHypothesis validates the hypothesis of a chaos experiment
+func (f *ChaosEngineeringFramework) validateHypothesis(hypothesis *ExperimentHypothesis, results *ExperimentResults) bool {
+	if hypothesis == nil || results == nil {
+		return false
+	}
+
+	// Check if the expected behavior matches actual results
+	if results.Status != CompletedExperimentStatus {
+		return false
+	}
+
+	// If there were critical failures, hypothesis is invalid
+	for _, failure := range results.Failures {
+		if failure.Severity == CriticalSeverity {
+			return false
+		}
+	}
+
+	// Check recovery expectations
+	if hypothesis.ExpectedRecovery != nil && results.Recovery != nil {
+		if hypothesis.ExpectedRecovery.Timeout > 0 &&
+			results.Recovery.Duration > hypothesis.ExpectedRecovery.Timeout {
+			return false
+		}
+	}
+
+	return true
+}
+
+// calculateImpact calculates the impact of a chaos experiment
+func (f *ChaosEngineeringFramework) calculateImpact(experiment *ChaosExperiment, results *ExperimentResults) string {
+	if experiment == nil || results == nil {
+		return "unknown"
+	}
+
+	// Base impact on failures and recovery
+	failureCount := len(results.Failures)
+	criticalFailures := 0
+
+	for _, failure := range results.Failures {
+		if failure.Severity == CriticalSeverity {
+			criticalFailures++
+		}
+	}
+
+	switch {
+	case criticalFailures > 0:
+		return "critical"
+	case failureCount > 5:
+		return "high"
+	case failureCount > 0:
+		return "medium"
+	default:
+		return "low"
+	}
+}
+
+// generateExperimentSummary generates a summary of the experiment
+func (f *ChaosEngineeringFramework) generateExperimentSummary(experiment *ChaosExperiment, results *ExperimentResults) string {
+	if experiment == nil || results == nil {
+		return "No experiment data available"
+	}
+
+	summary := fmt.Sprintf("Chaos Experiment '%s' (%s) - Status: %s",
+		experiment.Name,
+		experiment.ID,
+		results.Status)
+
+	if len(results.Failures) > 0 {
+		summary += fmt.Sprintf(", Failures: %d", len(results.Failures))
+	}
+
+	if results.Recovery != nil {
+		if results.Recovery.Successful {
+			summary += fmt.Sprintf(", Recovery: Successful (%.2fs)", results.Recovery.Duration.Seconds())
+		} else {
+			summary += ", Recovery: Failed"
+		}
+	}
+
+	summary += fmt.Sprintf(", Duration: %.2fs", results.Duration.Seconds())
+
+	if results.HypothesisValid {
+		summary += ", Hypothesis: Valid"
+	} else {
+		summary += ", Hypothesis: Invalid"
+	}
+
+	return summary
 }

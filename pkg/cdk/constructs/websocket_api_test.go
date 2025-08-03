@@ -42,7 +42,7 @@ func TestWebSocketAPI_NewModularPattern(t *testing.T) {
 		DefaultRouteFunction:    defaultFunction,
 	})
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify WebSocket API is created
 	assertResourceExists(t, template, "AWS::ApiGatewayV2::Api")

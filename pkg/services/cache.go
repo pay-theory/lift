@@ -8,30 +8,22 @@ import (
 // MemoryServiceCache implements an in-memory service discovery cache
 // Memory optimized: 32 → 24 bytes (8 bytes saved)
 type MemoryServiceCache struct {
-	// Mutex first (24 bytes)
-	mu      sync.RWMutex         // 24 bytes
-	// Map (24 bytes)
-	items   map[string]*cacheEntry // 24 bytes
-	// Pointers (8 bytes each)
-	lruList *cacheList           // 8 bytes
-	stats   *serviceCacheStats   // 8 bytes
-	// Int last (4 bytes)
-	maxSize int                  // 4 bytes
+	items   map[string]*cacheEntry
+	lruList *cacheList
+	stats   *serviceCacheStats
+	maxSize int
+	mu      sync.RWMutex
 }
 
 // cacheEntry represents a cached service discovery result
 // Memory optimized: 104 → 88 bytes (16 bytes saved)
 type cacheEntry struct {
-	// Time structs first (24 bytes each)
-	expiry    time.Time           // 24 bytes
-	accessed  time.Time           // 24 bytes
-	// Slice (24 bytes)
-	instances []*ServiceInstance  // 24 bytes
-	// String (16 bytes)
-	key       string              // 16 bytes
-	// Pointers last (8 bytes each)
-	prev      *cacheEntry         // 8 bytes
-	next      *cacheEntry         // 8 bytes
+	expiry    time.Time
+	accessed  time.Time
+	prev      *cacheEntry
+	next      *cacheEntry
+	key       string
+	instances []*ServiceInstance
 }
 
 // cacheList manages the LRU ordering
@@ -348,12 +340,9 @@ func (l *cacheList) moveToFront(entry *cacheEntry) {
 // TTLServiceCache wraps a cache with automatic TTL cleanup
 // Memory optimized: 32 → 24 bytes (8 bytes saved)
 type TTLServiceCache struct {
-	// Interface first (24 bytes)
 	delegate        ServiceCache
-	// Duration (8 bytes)
-	cleanupInterval time.Duration
-	// Channel last (8 bytes)
 	stopCh          chan struct{}
+	cleanupInterval time.Duration
 }
 
 // NewTTLServiceCache creates a cache with automatic TTL cleanup

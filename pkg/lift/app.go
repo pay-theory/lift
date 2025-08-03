@@ -16,25 +16,16 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	// Security (slice = 24 bytes) - largest first
-	AllowedOrigins []string `json:"allowed_origins"`
-
-	// Observability (string = 16 bytes)
-	LogLevel string `json:"log_level"`
-
-	// Performance settings (8 bytes each)
-	MaxRequestSize  int64 `json:"max_request_size"`
-	MaxResponseSize int64 `json:"max_response_size"`
-
-	// Performance settings (4 bytes - place before bools to minimize padding)
-	Timeout int `json:"timeout_seconds"`
-
-	// Boolean flags (1 byte each) - grouped together to minimize padding
-	MetricsEnabled  bool `json:"metrics_enabled"`
-	TracingEnabled  bool `json:"tracing_enabled"`
-	Debug           bool `json:"debug"`
-	CORSEnabled     bool `json:"cors_enabled"`
-	RequireTenantID bool `json:"require_tenant_id"`
+	LogLevel        string   `json:"log_level"`
+	AllowedOrigins  []string `json:"allowed_origins"`
+	MaxRequestSize  int64    `json:"max_request_size"`
+	MaxResponseSize int64    `json:"max_response_size"`
+	Timeout         int      `json:"timeout_seconds"`
+	MetricsEnabled  bool     `json:"metrics_enabled"`
+	TracingEnabled  bool     `json:"tracing_enabled"`
+	Debug           bool     `json:"debug"`
+	CORSEnabled     bool     `json:"cors_enabled"`
+	RequireTenantID bool     `json:"require_tenant_id"`
 }
 
 // DefaultConfig returns a configuration with sensible defaults
@@ -58,27 +49,18 @@ type AppOption func(*App)
 
 // App represents the main application container
 type App struct {
-	// Runtime state (24 bytes) - place largest first
-	mu sync.RWMutex
-
-	// Slice (24 bytes)
-	middleware []Middleware
-
-	// Maps (24 bytes each) 
-	wsRoutes map[string]WebSocketHandler
-	features map[string]bool
-
-	// Pointers and interfaces (8 bytes each)
-	router          *Router                       // HTTP router
-	eventRouter     *EventRouter                  // Non-HTTP event router
-	config          *Config
-	adapterRegistry *adapters.AdapterRegistry
-	wsOptions       *WebSocketOptions
-	db              any
-	logger          Logger
-	metrics         MetricsCollector
-
-	// Boolean flags (1 byte each) - place smallest last
+	db                        any
+	metrics                   MetricsCollector
+	logger                    Logger
+	features                  map[string]bool
+	router                    *Router
+	eventRouter               *EventRouter
+	config                    *Config
+	adapterRegistry           *adapters.AdapterRegistry
+	wsOptions                 *WebSocketOptions
+	wsRoutes                  map[string]WebSocketHandler
+	middleware                []Middleware
+	mu                        sync.RWMutex
 	started                   bool
 	hasInterceptingMiddleware bool
 }

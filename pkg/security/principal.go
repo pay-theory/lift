@@ -6,30 +6,25 @@ import (
 
 // Principal represents an authenticated entity (user, service, etc.) with their permissions
 type Principal struct {
-	// Time structs (24 bytes each) - largest first
-	IssuedAt  time.Time `json:"issued_at"`
-	ExpiresAt time.Time `json:"expires_at"`
-	
-	// Slices (24 bytes each)
-	Roles  []string `json:"roles"`
-	Scopes []string `json:"scopes"`
-	
-	// Strings (16 bytes each)
-	UserID     string `json:"user_id"`
-	TenantID   string `json:"tenant_id"`
-	AccountID  string `json:"account_id"` // Partner or Kernel account
-	AuthMethod string `json:"auth_method"` // "jwt", "api_key", "cross_account"
-	IPAddress  string `json:"ip_address"`
-	UserAgent  string `json:"user_agent"`
-	SessionID  string `json:"session_id"`
-	RequestID  string `json:"request_id"`
+	IssuedAt   time.Time `json:"issued_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	UserID     string    `json:"user_id"`
+	TenantID   string    `json:"tenant_id"`
+	AccountID  string    `json:"account_id"`
+	AuthMethod string    `json:"auth_method"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	SessionID  string    `json:"session_id"`
+	RequestID  string    `json:"request_id"`
+	Roles      []string  `json:"roles"`
+	Scopes     []string  `json:"scopes"`
 }
 
 // Permission represents a specific permission in the RBAC system
 type Permission struct {
 	// Maps (8 bytes) - largest first
 	Conditions map[string]any `json:"conditions"` // Dynamic conditions
-	
+
 	// Strings (16 bytes each)
 	Resource string `json:"resource"` // "users", "payments", "accounts"
 	Action   string `json:"action"`   // "read", "write", "delete"
@@ -37,13 +32,10 @@ type Permission struct {
 
 // Role represents a collection of permissions
 type Role struct {
-	// Slices (24 bytes) - largest first
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	TenantID    string       `json:"tenant_id"`
 	Permissions []Permission `json:"permissions"`
-	
-	// Strings (16 bytes each)
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	TenantID    string `json:"tenant_id"` // Empty for global roles
 }
 
 // HasRole checks if the principal has a specific role

@@ -26,21 +26,21 @@ type NetworkFaultConfig struct {
 
 // ActiveFault represents an active fault injection
 type ActiveFault struct {
-	ID        string         `json:"id"`
-	Type      FaultType      `json:"type"`
 	StartTime time.Time      `json:"start_time"`
-	Duration  time.Duration  `json:"duration"`
 	Config    map[string]any `json:"config"`
 	Impact    *FaultImpact   `json:"impact"`
+	ID        string         `json:"id"`
+	Type      FaultType      `json:"type"`
+	Duration  time.Duration  `json:"duration"`
 }
 
 // FaultImpact tracks the impact of fault injection
 type FaultImpact struct {
+	LastUpdated      time.Time      `json:"last_updated"`
+	Metrics          map[string]any `json:"metrics"`
 	AffectedRequests int64          `json:"affected_requests"`
 	ErrorsIntroduced int64          `json:"errors_introduced"`
 	LatencyAdded     time.Duration  `json:"latency_added"`
-	Metrics          map[string]any `json:"metrics"`
-	LastUpdated      time.Time      `json:"last_updated"`
 }
 
 // ServiceFaultInjector injects service-level faults
@@ -53,11 +53,11 @@ type ServiceFaultInjector struct {
 
 // ServiceFaultConfig configures service fault injection
 type ServiceFaultConfig struct {
+	ErrorRates      map[string]float64 `json:"error_rates"`
+	LatencyProfiles map[string]any     `json:"latency_profiles"`
 	ServiceName     string             `json:"service_name"`
 	BaseURL         string             `json:"base_url"`
 	DefaultTimeout  time.Duration      `json:"default_timeout"`
-	ErrorRates      map[string]float64 `json:"error_rates"`
-	LatencyProfiles map[string]any     `json:"latency_profiles"`
 }
 
 // ResourceFaultInjector injects resource-related faults
@@ -77,32 +77,32 @@ type ResourceFaultConfig struct {
 
 // ChaosGameDay represents a coordinated chaos engineering exercise
 type ChaosGameDay struct {
-	ID           string            `json:"id"`
+	UpdatedAt    time.Time         `json:"updated_at"`
+	CreatedAt    time.Time         `json:"created_at"`
+	Results      *GameDayResults   `json:"results"`
+	Schedule     *GameDaySchedule  `json:"schedule"`
+	Metadata     map[string]any    `json:"metadata"`
 	Name         string            `json:"name"`
 	Description  string            `json:"description"`
-	Scenarios    []GameDayScenario `json:"scenarios"`
-	Participants []Participant     `json:"participants"`
-	Schedule     *GameDaySchedule  `json:"schedule"`
-	Objectives   []string          `json:"objectives"`
-	Success      []SuccessCriteria `json:"success_criteria"`
+	ID           string            `json:"id"`
 	Status       GameDayStatus     `json:"status"`
-	Results      *GameDayResults   `json:"results"`
-	Metadata     map[string]any    `json:"metadata"`
-	CreatedAt    time.Time         `json:"created_at"`
-	UpdatedAt    time.Time         `json:"updated_at"`
+	Scenarios    []GameDayScenario `json:"scenarios"`
+	Success      []SuccessCriteria `json:"success_criteria"`
+	Objectives   []string          `json:"objectives"`
+	Participants []Participant     `json:"participants"`
 }
 
 // GameDayScenario represents a scenario in a game day
 type GameDayScenario struct {
+	Metadata     map[string]any `json:"metadata"`
 	ID           string         `json:"id"`
 	Name         string         `json:"name"`
 	Description  string         `json:"description"`
 	Type         ScenarioType   `json:"type"`
 	Experiments  []string       `json:"experiments"`
+	Dependencies []string       `json:"dependencies"`
 	Duration     time.Duration  `json:"duration"`
 	Sequence     int            `json:"sequence"`
-	Dependencies []string       `json:"dependencies"`
-	Metadata     map[string]any `json:"metadata"`
 }
 
 // ScenarioType defines types of game day scenarios
@@ -118,13 +118,13 @@ const (
 
 // Participant represents a game day participant
 type Participant struct {
+	Metadata map[string]any  `json:"metadata"`
 	ID       string          `json:"id"`
 	Name     string          `json:"name"`
 	Role     ParticipantRole `json:"role"`
 	Team     string          `json:"team"`
 	Contact  ContactInfo     `json:"contact"`
 	Skills   []string        `json:"skills"`
-	Metadata map[string]any  `json:"metadata"`
 }
 
 // ParticipantRole defines participant roles
@@ -150,18 +150,18 @@ type ContactInfo struct {
 type GameDaySchedule struct {
 	StartTime  time.Time     `json:"start_time"`
 	EndTime    time.Time     `json:"end_time"`
-	Duration   time.Duration `json:"duration"`
 	TimeZone   string        `json:"time_zone"`
 	Breaks     []Break       `json:"breaks"`
 	Milestones []Milestone   `json:"milestones"`
+	Duration   time.Duration `json:"duration"`
 }
 
 // Break represents a scheduled break
 type Break struct {
-	Name      string        `json:"name"`
 	StartTime time.Time     `json:"start_time"`
-	Duration  time.Duration `json:"duration"`
+	Name      string        `json:"name"`
 	Type      BreakType     `json:"type"`
+	Duration  time.Duration `json:"duration"`
 }
 
 // BreakType defines types of breaks
@@ -183,15 +183,15 @@ type Milestone struct {
 
 // SuccessCriteria defines success criteria for game day
 type SuccessCriteria struct {
+	Target      any            `json:"target"`
+	Actual      any            `json:"actual"`
+	Metadata    map[string]any `json:"metadata"`
 	ID          string         `json:"id"`
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	Type        CriteriaType   `json:"type"`
-	Target      any            `json:"target"`
-	Actual      any            `json:"actual"`
-	Met         bool           `json:"met"`
 	Weight      float64        `json:"weight"`
-	Metadata    map[string]any `json:"metadata"`
+	Met         bool           `json:"met"`
 }
 
 // CriteriaType defines types of success criteria
@@ -219,27 +219,27 @@ const (
 type GameDayResults struct {
 	StartTime      time.Time             `json:"start_time"`
 	EndTime        time.Time             `json:"end_time"`
+	Metrics        map[string]any        `json:"metrics"`
+	Summary        string                `json:"summary"`
+	Lessons        []Lesson              `json:"lessons"`
+	ActionItems    []ActionItem          `json:"action_items"`
+	Feedback       []ParticipantFeedback `json:"feedback"`
 	Duration       time.Duration         `json:"duration"`
 	ScenariosRun   int                   `json:"scenarios_run"`
 	ExperimentsRun int                   `json:"experiments_run"`
 	SuccessRate    float64               `json:"success_rate"`
-	Lessons        []Lesson              `json:"lessons"`
-	ActionItems    []ActionItem          `json:"action_items"`
-	Feedback       []ParticipantFeedback `json:"feedback"`
-	Metrics        map[string]any        `json:"metrics"`
-	Summary        string                `json:"summary"`
 }
 
 // Lesson represents a lesson learned
 type Lesson struct {
+	Timestamp   time.Time      `json:"timestamp"`
+	Metadata    map[string]any `json:"metadata"`
 	ID          string         `json:"id"`
 	Title       string         `json:"title"`
 	Description string         `json:"description"`
 	Category    LessonCategory `json:"category"`
 	Impact      LessonImpact   `json:"impact"`
 	Source      string         `json:"source"`
-	Timestamp   time.Time      `json:"timestamp"`
-	Metadata    map[string]any `json:"metadata"`
 }
 
 // LessonCategory defines lesson categories
@@ -263,15 +263,15 @@ const (
 
 // ActionItem represents an action item from game day
 type ActionItem struct {
+	DueDate     time.Time      `json:"due_date"`
+	Metadata    map[string]any `json:"metadata"`
 	ID          string         `json:"id"`
 	Title       string         `json:"title"`
 	Description string         `json:"description"`
 	Priority    ActionPriority `json:"priority"`
 	Assignee    string         `json:"assignee"`
-	DueDate     time.Time      `json:"due_date"`
 	Status      ActionStatus   `json:"status"`
 	Category    ActionCategory `json:"category"`
-	Metadata    map[string]any `json:"metadata"`
 }
 
 // ActionPriority defines action item priority
@@ -306,17 +306,20 @@ const (
 
 // ParticipantFeedback represents feedback from participants
 type ParticipantFeedback struct {
+	Timestamp     time.Time      `json:"timestamp"`
+	Metadata      map[string]any `json:"metadata"`
 	ParticipantID string         `json:"participant_id"`
-	Rating        int            `json:"rating"`
 	Comments      string         `json:"comments"`
 	Suggestions   []string       `json:"suggestions"`
-	Timestamp     time.Time      `json:"timestamp"`
+	Rating        int            `json:"rating"`
 	Anonymous     bool           `json:"anonymous"`
-	Metadata      map[string]any `json:"metadata"`
 }
 
 // ChaosEngineeringMetrics tracks chaos engineering metrics
 type ChaosEngineeringMetrics struct {
+	LastExperiment            time.Time      `json:"last_experiment"`
+	LastUpdated               time.Time      `json:"last_updated"`
+	Trends                    map[string]any `json:"trends"`
 	ExperimentsRun            int            `json:"experiments_run"`
 	ExperimentsSucceeded      int            `json:"experiments_succeeded"`
 	ExperimentsFailed         int            `json:"experiments_failed"`
@@ -325,9 +328,6 @@ type ChaosEngineeringMetrics struct {
 	FaultsInjected            int            `json:"faults_injected"`
 	SystemsAffected           int            `json:"systems_affected"`
 	ImprovementsFound         int            `json:"improvements_found"`
-	LastExperiment            time.Time      `json:"last_experiment"`
-	Trends                    map[string]any `json:"trends"`
-	LastUpdated               time.Time      `json:"last_updated"`
 }
 
 // BlastRadiusType defines types of blast radius
@@ -352,28 +352,28 @@ const (
 
 // ChaosPolicy defines policies for chaos engineering
 type ChaosPolicy struct {
+	Scope       PolicyScope       `json:"scope"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
+	Metadata    map[string]any    `json:"metadata"`
 	ID          string            `json:"id"`
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
-	Rules       []PolicyRule      `json:"rules"`
 	Enforcement PolicyEnforcement `json:"enforcement"`
-	Scope       PolicyScope       `json:"scope"`
-	Exceptions  []PolicyException `json:"exceptions"`
-	Metadata    map[string]any    `json:"metadata"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
 	Version     string            `json:"version"`
+	Rules       []PolicyRule      `json:"rules"`
+	Exceptions  []PolicyException `json:"exceptions"`
 }
 
 // PolicyRule defines a policy rule
 type PolicyRule struct {
+	Parameters map[string]any    `json:"parameters"`
 	ID         string            `json:"id"`
 	Name       string            `json:"name"`
 	Type       PolicyRuleType    `json:"type"`
 	Condition  string            `json:"condition"`
 	Action     ChaosPolicyAction `json:"action"`
 	Severity   PolicySeverity    `json:"severity"`
-	Parameters map[string]any    `json:"parameters"`
 	Enabled    bool              `json:"enabled"`
 }
 
@@ -420,10 +420,10 @@ const (
 
 // PolicyScope defines policy scope
 type PolicyScope struct {
-	Type     ChaosScopeType `json:"type"`
-	Targets  []string       `json:"targets"`
 	Filters  map[string]any `json:"filters"`
 	Metadata map[string]any `json:"metadata"`
+	Type     ChaosScopeType `json:"type"`
+	Targets  []string       `json:"targets"`
 }
 
 // ChaosScopeType defines types of policy scope
@@ -438,13 +438,13 @@ const (
 
 // PolicyException defines policy exceptions
 type PolicyException struct {
+	ExpiresAt  time.Time      `json:"expires_at"`
+	Metadata   map[string]any `json:"metadata"`
 	ID         string         `json:"id"`
 	Name       string         `json:"name"`
 	Reason     string         `json:"reason"`
 	Approver   string         `json:"approver"`
-	ExpiresAt  time.Time      `json:"expires_at"`
 	Conditions []string       `json:"conditions"`
-	Metadata   map[string]any `json:"metadata"`
 }
 
 // Helper functions for fault injection status checking

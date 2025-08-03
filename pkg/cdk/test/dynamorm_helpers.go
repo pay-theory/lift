@@ -308,17 +308,13 @@ func (h *DynamORMTestHelper) buildTags(tags map[string]string) []types.Tag {
 // Test table configuration
 // Memory optimized: 144 → 120 bytes (24 bytes saved)
 type testTableConfig struct {
-	// Slices and map first (24 bytes each)
-	gsiDefinitions []gsiDefinition
 	tags           map[string]string
-	// Strings (16 bytes each)
 	tableName      string
 	partitionKey   string
 	sortKey        string
 	ttlAttribute   string
-	// Enum (4 bytes)
 	billingMode    types.BillingMode
-	// Bool last (1 byte)
+	gsiDefinitions []gsiDefinition
 	streamEnabled  bool
 }
 
@@ -327,7 +323,6 @@ type gsiDefinition struct {
 	partitionKey string
 	sortKey      string
 }
-
 
 // TestTableOption configures a test table
 type TestTableOption func(*testTableConfig)
@@ -385,18 +380,18 @@ func WithTags(tags map[string]string) TestTableOption {
 // Memory optimized: 144 → 128 bytes (16 bytes saved)
 type DynamORMTestItem struct {
 	// Map first (24 bytes)
-	Data      map[string]string ``
+	Data map[string]string ``
 	// Time structs (24 bytes each)
-	CreatedAt time.Time         ``
-	UpdatedAt time.Time         ``
+	CreatedAt time.Time ``
+	UpdatedAt time.Time ``
 	// Strings (16 bytes each)
-	PK        string            ``
-	SK        string            ``
-	Type      string            ``
-	GSI1PK    string            ``
-	GSI1SK    string            ``
+	PK     string ``
+	SK     string ``
+	Type   string ``
+	GSI1PK string ``
+	GSI1SK string ``
 	// Int64 last (8 bytes)
-	TTL       int64             ``
+	TTL int64 ``
 }
 
 // CreateDynamORMItem creates a standard DynamORM test item

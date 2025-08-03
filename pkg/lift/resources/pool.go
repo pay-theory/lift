@@ -72,7 +72,7 @@ type PoolConfig struct {
 	MaxActive int
 	MaxIdle   int
 	// Bool last (1 byte)
-	PreWarm   bool
+	PreWarm bool
 }
 
 // PoolStats provides pool statistics
@@ -108,24 +108,16 @@ type PoolStats struct {
 // DefaultConnectionPool implements ConnectionPool
 // Memory optimized: 240 → 152 bytes (88 bytes saved)
 type DefaultConnectionPool struct {
-	// Interfaces first (24 bytes each)
-	factory ResourceFactory
-	logger  lift.Logger
-	// Map (24 bytes)
-	active  map[Resource]bool
-	// Slice (24 bytes)
-	idle    []Resource
-	// Sync primitives (24 bytes each)
-	mu      sync.RWMutex
-	// Struct
-	stats   PoolStats
-	config  PoolConfig
-	// Pointers (8 bytes each)
+	factory       ResourceFactory
+	logger        lift.Logger
+	active        map[Resource]bool
 	cond          *sync.Cond
 	cleanupTicker *time.Ticker
-	// Channel (8 bytes)
 	stopCleanup   chan struct{}
-	// Bool last (1 byte)
+	idle          []Resource
+	config        PoolConfig
+	stats         PoolStats
+	mu            sync.RWMutex
 	closed        bool
 }
 
@@ -377,22 +369,22 @@ func (p *DefaultConnectionPool) cleanup() {
 		// Check if resource has exceeded max lifetime
 		if p.config.MaxLifetime > 0 && now.Sub(resource.LastUsed()) > p.config.MaxLifetime {
 			if err := resource.Cleanup(); err != nil {
-			// Log cleanup error but continue - this is best-effort cleanup
-			if p.logger != nil {
-				p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+				// Log cleanup error but continue - this is best-effort cleanup
+				if p.logger != nil {
+					p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+				}
 			}
-		}
 			continue
 		}
 
 		// Check if resource has been idle too long
 		if p.config.IdleTimeout > 0 && now.Sub(resource.LastUsed()) > p.config.IdleTimeout {
 			if err := resource.Cleanup(); err != nil {
-			// Log cleanup error but continue - this is best-effort cleanup
-			if p.logger != nil {
-				p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+				// Log cleanup error but continue - this is best-effort cleanup
+				if p.logger != nil {
+					p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+				}
 			}
-		}
 			continue
 		}
 
@@ -401,11 +393,11 @@ func (p *DefaultConnectionPool) cleanup() {
 		if err := resource.HealthCheck(ctx); err != nil {
 			cancel()
 			if err := resource.Cleanup(); err != nil {
-			// Log cleanup error but continue - this is best-effort cleanup
-			if p.logger != nil {
-				p.logger.WithField("error", err).Warn("Failed to cleanup resource during health check")
+				// Log cleanup error but continue - this is best-effort cleanup
+				if p.logger != nil {
+					p.logger.WithField("error", err).Warn("Failed to cleanup resource during health check")
+				}
 			}
-		}
 			continue
 		}
 		cancel()

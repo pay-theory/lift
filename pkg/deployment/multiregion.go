@@ -11,44 +11,29 @@ import (
 // MultiRegionDeployer orchestrates deployments across multiple regions
 // Memory optimized: 1032 → 984 bytes (48 bytes saved)
 type MultiRegionDeployer struct {
-	// Large struct first
-	config           InfrastructureConfig
-	// Slice (24 bytes)
-	regions          []string
-	// Maps (24 bytes each)
 	deployers        map[string]*PulumiDeployer
 	healthCheckers   map[string]*RegionHealthChecker
 	deploymentStatus map[string]RegionDeploymentStatus
-	// Pointers (8 bytes each)
 	dnsManager       *DNSManager
 	loadBalancer     *GlobalLoadBalancer
-	// Sync primitive (24 bytes)
-	mu               sync.RWMutex
-	// Strings (16 bytes each)
 	primaryRegion    string
 	applicationName  string
 	environment      string
+	regions          []string
+	config           InfrastructureConfig
+	mu               sync.RWMutex
 }
 
 // RegionDeploymentStatus represents the deployment status of a region
 type RegionDeploymentStatus struct {
-	// Time structs (24 bytes each) - largest first
-	LastDeployed    time.Time `json:"last_deployed"`
-	LastHealthCheck time.Time `json:"last_health_check"`
-	
-	// Structs (size varies)
-	Metrics RegionMetrics `json:"metrics"`
-	
-	// Maps (8 bytes)
-	Endpoints map[string]string `json:"endpoints"`
-	
-	// Strings (16 bytes each)
-	Region string `json:"region"`
-	Error  string `json:"error,omitempty"`
-	
-	// Enums (8 bytes each)
-	Status DeploymentStatusType `json:"status"`
-	Health HealthStatus         `json:"health"`
+	LastDeployed    time.Time            `json:"last_deployed"`
+	LastHealthCheck time.Time            `json:"last_health_check"`
+	Endpoints       map[string]string    `json:"endpoints"`
+	Region          string               `json:"region"`
+	Error           string               `json:"error,omitempty"`
+	Status          DeploymentStatusType `json:"status"`
+	Health          HealthStatus         `json:"health"`
+	Metrics         RegionMetrics        `json:"metrics"`
 }
 
 // DeploymentStatusType represents deployment status
@@ -77,7 +62,7 @@ const (
 // Memory optimized: 56 → 24 bytes (32 bytes saved)
 type RegionMetrics struct {
 	// Time struct first (24 bytes)
-	LastUpdated  time.Time     `json:"last_updated"`
+	LastUpdated time.Time `json:"last_updated"`
 	// 8-byte values
 	Latency      time.Duration `json:"latency"`
 	ErrorRate    float64       `json:"error_rate"`
@@ -101,24 +86,24 @@ type MultiRegionConfig struct {
 type FailoverStrategy struct {
 	// Strings (16 bytes) - largest first
 	Type string `json:"type"` // automatic, manual
-	
+
 	// Durations (8 bytes each)
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
 	FailbackDelay       time.Duration `json:"failback_delay"`
-	
+
 	// Ints (4 bytes each)
 	FailureThreshold  int `json:"failure_threshold"`
 	RecoveryThreshold int `json:"recovery_threshold"`
-	
+
 	// Bool (1 byte) - smallest last
 	AutoFailback bool `json:"auto_failback"`
 }
 
 // HealthCheckConfig defines health check configuration
 type HealthCheckConfig struct {
-	ExpectedCodes      []int         `json:"expected_codes"`
 	Path               string        `json:"path"`
 	Protocol           string        `json:"protocol"`
+	ExpectedCodes      []int         `json:"expected_codes"`
 	Interval           time.Duration `json:"interval"`
 	Timeout            time.Duration `json:"timeout"`
 	HealthyThreshold   int           `json:"healthy_threshold"`
@@ -129,14 +114,14 @@ type HealthCheckConfig struct {
 
 // DNSConfig defines DNS configuration
 type DNSConfig struct {
+	Geolocation   GeolocationConfig `json:"geolocation,omitempty"`
 	DomainName    string            `json:"domain_name"`
 	HostedZoneId  string            `json:"hosted_zone_id"`
-	TTL           int               `json:"ttl"`
-	RoutingPolicy string            `json:"routing_policy"` // weighted, latency, geolocation, failover
+	RoutingPolicy string            `json:"routing_policy"`
 	HealthCheckId string            `json:"health_check_id,omitempty"`
 	SetIdentifier string            `json:"set_identifier,omitempty"`
+	TTL           int               `json:"ttl"`
 	Weight        int               `json:"weight,omitempty"`
-	Geolocation   GeolocationConfig `json:"geolocation,omitempty"`
 }
 
 // GeolocationConfig defines geolocation routing
@@ -148,46 +133,46 @@ type GeolocationConfig struct {
 
 // LoadBalancingConfig defines load balancing configuration
 type LoadBalancingConfig struct {
-	Type               string                  `json:"type"`            // application, network, classic
-	Scheme             string                  `json:"scheme"`          // internet-facing, internal
-	IpAddressType      string                  `json:"ip_address_type"` // ipv4, dualstack
-	CrossZoneEnabled   bool                    `json:"cross_zone_enabled"`
-	DeletionProtection bool                    `json:"deletion_protection"`
-	HealthCheck        LoadBalancerHealthCheck `json:"health_check"`
+	Type               string                  `json:"type"`
+	Scheme             string                  `json:"scheme"`
+	IpAddressType      string                  `json:"ip_address_type"`
 	Listeners          []LoadBalancerListener  `json:"listeners"`
 	TargetGroups       []TargetGroupConfig     `json:"target_groups"`
+	HealthCheck        LoadBalancerHealthCheck `json:"health_check"`
+	CrossZoneEnabled   bool                    `json:"cross_zone_enabled"`
+	DeletionProtection bool                    `json:"deletion_protection"`
 }
 
 // LoadBalancerHealthCheck defines load balancer health check
 type LoadBalancerHealthCheck struct {
-	Enabled            bool          `json:"enabled"`
-	HealthyThreshold   int           `json:"healthy_threshold"`
-	UnhealthyThreshold int           `json:"unhealthy_threshold"`
-	Timeout            time.Duration `json:"timeout"`
-	Interval           time.Duration `json:"interval"`
 	Path               string        `json:"path"`
 	Port               string        `json:"port"`
 	Protocol           string        `json:"protocol"`
 	Matcher            string        `json:"matcher"`
+	HealthyThreshold   int           `json:"healthy_threshold"`
+	UnhealthyThreshold int           `json:"unhealthy_threshold"`
+	Timeout            time.Duration `json:"timeout"`
+	Interval           time.Duration `json:"interval"`
+	Enabled            bool          `json:"enabled"`
 }
 
 // LoadBalancerListener defines load balancer listener
 type LoadBalancerListener struct {
-	Port           int              `json:"port"`
 	Protocol       string           `json:"protocol"`
 	SSLPolicy      string           `json:"ssl_policy,omitempty"`
 	CertificateArn string           `json:"certificate_arn,omitempty"`
 	DefaultActions []ListenerAction `json:"default_actions"`
 	Rules          []ListenerRule   `json:"rules,omitempty"`
+	Port           int              `json:"port"`
 }
 
 // ListenerAction defines listener action
 type ListenerAction struct {
-	Type           string                `json:"type"`
-	TargetGroupArn string                `json:"target_group_arn,omitempty"`
 	RedirectConfig *RedirectActionConfig `json:"redirect_config,omitempty"`
 	FixedResponse  *FixedResponseConfig  `json:"fixed_response,omitempty"`
 	ForwardConfig  *ForwardActionConfig  `json:"forward_config,omitempty"`
+	Type           string                `json:"type"`
+	TargetGroupArn string                `json:"target_group_arn,omitempty"`
 }
 
 // RedirectActionConfig defines redirect action
@@ -220,9 +205,9 @@ type TargetGroupWeight struct {
 
 // ListenerRule defines listener rule
 type ListenerRule struct {
-	Priority   int              `json:"priority"`
 	Conditions []RuleCondition  `json:"conditions"`
 	Actions    []ListenerAction `json:"actions"`
+	Priority   int              `json:"priority"`
 }
 
 // RuleCondition defines rule condition
@@ -233,13 +218,13 @@ type RuleCondition struct {
 
 // TargetGroupConfig defines target group configuration
 type TargetGroupConfig struct {
+	Attributes  map[string]string       `json:"attributes"`
 	Name        string                  `json:"name"`
-	Port        int                     `json:"port"`
 	Protocol    string                  `json:"protocol"`
 	TargetType  string                  `json:"target_type"`
-	HealthCheck LoadBalancerHealthCheck `json:"health_check"`
 	Targets     []TargetConfig          `json:"targets"`
-	Attributes  map[string]string       `json:"attributes"`
+	HealthCheck LoadBalancerHealthCheck `json:"health_check"`
+	Port        int                     `json:"port"`
 }
 
 // TargetConfig defines target configuration
@@ -250,12 +235,12 @@ type TargetConfig struct {
 
 // DataReplicationConfig defines data replication configuration
 type DataReplicationConfig struct {
-	Enabled            bool                     `json:"enabled"`
-	Strategy           string                   `json:"strategy"` // active-active, active-passive, multi-master
-	ReplicationLag     time.Duration            `json:"replication_lag"`
-	ConflictResolution string                   `json:"conflict_resolution"` // last-write-wins, custom
+	Strategy           string                   `json:"strategy"`
+	ConflictResolution string                   `json:"conflict_resolution"`
 	Tables             []TableReplicationConfig `json:"tables"`
 	S3Buckets          []S3ReplicationConfig    `json:"s3_buckets"`
+	ReplicationLag     time.Duration            `json:"replication_lag"`
+	Enabled            bool                     `json:"enabled"`
 }
 
 // TableReplicationConfig defines table replication

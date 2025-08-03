@@ -10,12 +10,12 @@ import (
 
 // SOC2TypeIICompliance provides comprehensive SOC 2 Type II compliance validation
 type SOC2TypeIICompliance struct {
-	auditPeriod   time.Duration
-	controls      []SOC2Control
 	validator     *ComplianceValidator
 	reporter      *ComplianceReporter
 	monitor       *ContinuousMonitor
 	evidenceStore *EvidenceStore
+	controls      []SOC2Control
+	auditPeriod   time.Duration
 }
 
 // SOC2Control represents a SOC 2 control requirement
@@ -23,32 +23,32 @@ type SOC2Control struct {
 	ID          string                `json:"id"`
 	Category    SOC2Category          `json:"category"`
 	Description string                `json:"description"`
+	Frequency   TestFrequency         `json:"frequency"`
+	Status      ControlStatus         `json:"status"`
 	Criteria    []ControlCriteria     `json:"criteria"`
 	Tests       []ControlTest         `json:"tests"`
 	Evidence    []EvidenceRequirement `json:"evidence"`
-	Frequency   TestFrequency         `json:"frequency"`
-	Status      ControlStatus         `json:"status"`
 }
 
 // SOC2Category and constants are defined in types.go
 
 // ControlCriteria defines specific criteria for a control
 type ControlCriteria struct {
-	ID          string             `json:"id"`
-	Description string             `json:"description"`
 	Metrics     map[string]string  `json:"metrics"`
 	Thresholds  map[string]float64 `json:"thresholds"`
+	ID          string             `json:"id"`
+	Description string             `json:"description"`
 }
 
 // ControlTest defines how to test a control
 type ControlTest struct {
+	Expected   any            `json:"expected"`
+	Parameters map[string]any `json:"parameters"`
 	ID         string         `json:"id"`
 	Type       TestType       `json:"type"`
 	Procedure  string         `json:"procedure"`
 	Frequency  TestFrequency  `json:"frequency"`
 	Automated  bool           `json:"automated"`
-	Parameters map[string]any `json:"parameters"`
-	Expected   any            `json:"expected"`
 }
 
 // TestType is now defined in types.go
@@ -61,8 +61,8 @@ type ControlTest struct {
 type EvidenceRequirement struct {
 	Type        EvidenceType  `json:"type"`
 	Description string        `json:"description"`
-	Retention   time.Duration `json:"retention"`
 	Location    string        `json:"location"`
+	Retention   time.Duration `json:"retention"`
 	Automated   bool          `json:"automated"`
 }
 

@@ -11,8 +11,8 @@ import (
 
 // MockLiftContext implements LiftContext for testing
 type MockLiftContext struct {
-	mock.Mock
 	values map[string]any
+	mock.Mock
 }
 
 func NewMockLiftContext() *MockLiftContext {

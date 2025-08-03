@@ -37,7 +37,7 @@ type CachedSecret struct {
 	// time.Time (24 bytes)
 	ExpiresAt time.Time
 	// string (16 bytes)
-	Value     string
+	Value string
 }
 
 // NewAWSSecretsManager creates a new AWS Secrets Manager provider with plain text cache (deprecated)
@@ -338,23 +338,22 @@ func (c *SecretCache) CleanupExpired() {
 
 // FileSecretsProvider implements SecretsProvider for local file-based secrets (development only)
 type FileSecretsProvider struct {
-	basePath string
-	cache    map[string]string
-	mu       sync.RWMutex
-	// Rotation simulation
+	cache           map[string]string
 	rotationHistory map[string][]RotationRecord
+	basePath        string
+	mu              sync.RWMutex
 	enableRotation  bool
 }
 
 // RotationRecord tracks rotation events for testing
 type RotationRecord struct {
 	Timestamp  time.Time `json:"timestamp"`
-	OldValue   string    `json:"old_value,omitempty"` // For testing only
-	NewValue   string    `json:"new_value,omitempty"` // For testing only
+	OldValue   string    `json:"old_value,omitempty"`
+	NewValue   string    `json:"new_value,omitempty"`
 	RotationID string    `json:"rotation_id"`
 	Method     string    `json:"method"`
-	Success    bool      `json:"success"`
 	Error      string    `json:"error,omitempty"`
+	Success    bool      `json:"success"`
 }
 
 // NewFileSecretsProvider creates a file-based secrets provider for development

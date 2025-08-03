@@ -21,7 +21,6 @@ type MultiRegionChaosOrchestrator struct {
 
 // DistributedConfig configures distributed chaos experiments
 type DistributedConfig struct {
-	Regions          []*RegionConfig            `json:"regions"`
 	NetworkTopology  *NetworkTopology           `json:"network_topology"`
 	FailoverPolicy   *FailoverPolicy            `json:"failover_policy"`
 	LoadBalancing    *LoadBalancingConfig       `json:"load_balancing"`
@@ -31,22 +30,23 @@ type DistributedConfig struct {
 	CoordinationMode CoordinationMode           `json:"coordination_mode"`
 	ConsistencyLevel ConsistencyLevel           `json:"consistency_level"`
 	ReplicationMode  ReplicationMode            `json:"replication_mode"`
+	Regions          []*RegionConfig            `json:"regions"`
 }
 
 // RegionConfig configures a specific region
 type RegionConfig struct {
 	Metadata          map[string]any       `json:"metadata"`
-	Name              string               `json:"name"`
-	Code              string               `json:"code"`
-	Endpoint          string               `json:"endpoint"`
-	AvailabilityZones []string             `json:"availability_zones"`
 	Credentials       *RegionCredentials   `json:"credentials"`
 	Resources         *RegionResources     `json:"resources"`
 	NetworkConfig     *RegionNetworkConfig `json:"network_config"`
+	Name              string               `json:"name"`
+	Code              string               `json:"code"`
+	Endpoint          string               `json:"endpoint"`
+	Status            RegionStatus         `json:"status"`
+	AvailabilityZones []string             `json:"availability_zones"`
 	Latency           time.Duration        `json:"latency"`
 	Bandwidth         int64                `json:"bandwidth"`
 	Priority          int                  `json:"priority"`
-	Status            RegionStatus         `json:"status"`
 }
 
 // RegionCredentials holds region-specific credentials
@@ -151,11 +151,11 @@ const (
 type Connection struct {
 	Source      string           `json:"source"`
 	Target      string           `json:"target"`
+	Status      ConnectionStatus `json:"status"`
 	Latency     time.Duration    `json:"latency"`
 	Bandwidth   int64            `json:"bandwidth"`
 	Reliability float64          `json:"reliability"`
 	Cost        float64          `json:"cost"`
-	Status      ConnectionStatus `json:"status"`
 }
 
 // ConnectionStatus defines connection status
@@ -170,12 +170,12 @@ const (
 
 // DistributedNetworkPartition defines network partition configuration
 type DistributedNetworkPartition struct {
-	Name        string                     `json:"name"`
-	Regions     []string                   `json:"regions"`
 	Recovery    *DistributedRecoveryConfig `json:"recovery"`
+	Name        string                     `json:"name"`
+	Type        PartitionType              `json:"type"`
+	Regions     []string                   `json:"regions"`
 	Duration    time.Duration              `json:"duration"`
 	Probability float64                    `json:"probability"`
-	Type        PartitionType              `json:"type"`
 }
 
 // PartitionType defines partition types
@@ -190,10 +190,10 @@ const (
 
 // DistributedRecoveryConfig defines partition recovery settings
 type DistributedRecoveryConfig struct {
-	Timeout     time.Duration           `json:"timeout"`
-	RetryCount  int                     `json:"retry_count"`
 	Mode        DistributedRecoveryMode `json:"mode"`
 	BackoffMode BackoffMode             `json:"backoff_mode"`
+	Timeout     time.Duration           `json:"timeout"`
+	RetryCount  int                     `json:"retry_count"`
 	Validation  bool                    `json:"validation"`
 }
 
@@ -219,12 +219,12 @@ const (
 
 // FailoverPolicy defines failover behavior
 type FailoverPolicy struct {
+	Threshold     *FailoverThreshold        `json:"threshold"`
+	Mode          FailoverMode              `json:"mode"`
 	Priority      []string                  `json:"priority"`
 	HealthChecks  []*DistributedHealthCheck `json:"health_checks"`
 	Notifications []*Notification           `json:"notifications"`
-	Threshold     *FailoverThreshold        `json:"threshold"`
 	FailbackDelay time.Duration             `json:"failback_delay"`
-	Mode          FailoverMode              `json:"mode"`
 	AutoFailback  bool                      `json:"auto_failback"`
 }
 
@@ -253,11 +253,11 @@ type DistributedHealthCheck struct {
 	Expected  any             `json:"expected"`
 	Name      string          `json:"name"`
 	Endpoint  string          `json:"endpoint"`
+	Type      HealthCheckType `json:"type"`
 	Interval  time.Duration   `json:"interval"`
 	Timeout   time.Duration   `json:"timeout"`
 	Threshold float64         `json:"threshold"`
 	Retries   int             `json:"retries"`
-	Type      HealthCheckType `json:"type"`
 }
 
 // HealthCheckType defines health check types
@@ -302,12 +302,12 @@ const (
 
 // LoadBalancingConfig defines load balancing settings
 type LoadBalancingConfig struct {
+	Weights       map[string]int            `json:"weights"`
 	Algorithm     LoadBalancingAlgorithm    `json:"algorithm"`
 	HealthChecks  []*DistributedHealthCheck `json:"health_checks"`
-	StickySession bool                      `json:"sticky_session"`
-	Weights       map[string]int            `json:"weights"`
-	Failover      bool                      `json:"failover"`
 	Timeout       time.Duration             `json:"timeout"`
+	StickySession bool                      `json:"sticky_session"`
+	Failover      bool                      `json:"failover"`
 }
 
 // LoadBalancingAlgorithm defines load balancing algorithms
@@ -336,20 +336,20 @@ type ChaosCoordinator struct {
 
 // DistributedExperiment defines a multi-region chaos experiment
 type DistributedExperiment struct {
-	ID           string                        `json:"id"`
+	StartTime    time.Time                     `json:"start_time"`
+	Metadata     map[string]any                `json:"metadata"`
+	Results      *DistributedExperimentResults `json:"results,omitempty"`
+	EndTime      *time.Time                    `json:"end_time,omitempty"`
+	Monitoring   *ExperimentMonitoring         `json:"monitoring"`
 	Name         string                        `json:"name"`
 	Type         DistributedExperimentType     `json:"type"`
-	Regions      []string                      `json:"regions"`
+	ID           string                        `json:"id"`
 	Coordination CoordinationMode              `json:"coordination"`
-	Phases       []*ExperimentPhase            `json:"phases"`
-	Dependencies []*ExperimentDependency       `json:"dependencies"`
-	Constraints  []*ExperimentConstraint       `json:"constraints"`
-	Monitoring   *ExperimentMonitoring         `json:"monitoring"`
 	Status       ExperimentStatus              `json:"status"`
-	StartTime    time.Time                     `json:"start_time"`
-	EndTime      *time.Time                    `json:"end_time,omitempty"`
-	Results      *DistributedExperimentResults `json:"results,omitempty"`
-	Metadata     map[string]any                `json:"metadata"`
+	Regions      []string                      `json:"regions"`
+	Constraints  []*ExperimentConstraint       `json:"constraints"`
+	Dependencies []*ExperimentDependency       `json:"dependencies"`
+	Phases       []*ExperimentPhase            `json:"phases"`
 }
 
 // DistributedExperimentType defines experiment types
@@ -368,15 +368,15 @@ const (
 
 // ExperimentPhase defines experiment execution phase
 type ExperimentPhase struct {
-	Name       string            `json:"name"`
-	Type       PhaseType         `json:"type"`
-	Duration   time.Duration     `json:"duration"`
-	Actions    []*PhaseAction    `json:"actions"`
-	Conditions []*PhaseCondition `json:"conditions"`
-	Parallel   bool              `json:"parallel"`
-	Timeout    time.Duration     `json:"timeout"`
 	Rollback   *RollbackConfig   `json:"rollback,omitempty"`
 	Metadata   map[string]any    `json:"metadata"`
+	Name       string            `json:"name"`
+	Type       PhaseType         `json:"type"`
+	Actions    []*PhaseAction    `json:"actions"`
+	Conditions []*PhaseCondition `json:"conditions"`
+	Duration   time.Duration     `json:"duration"`
+	Timeout    time.Duration     `json:"timeout"`
+	Parallel   bool              `json:"parallel"`
 }
 
 // PhaseType defines phase types
@@ -393,13 +393,13 @@ const (
 
 // PhaseAction defines actions within a phase
 type PhaseAction struct {
+	Parameters map[string]any        `json:"parameters"`
+	Retry      *RetryConfig          `json:"retry,omitempty"`
 	Name       string                `json:"name"`
 	Type       DistributedActionType `json:"type"`
 	Target     string                `json:"target"`
-	Parameters map[string]any        `json:"parameters"`
-	Timeout    time.Duration         `json:"timeout"`
-	Retry      *RetryConfig          `json:"retry,omitempty"`
 	Condition  string                `json:"condition,omitempty"`
+	Timeout    time.Duration         `json:"timeout"`
 }
 
 // DistributedActionType defines action types
@@ -418,11 +418,11 @@ const (
 
 // PhaseCondition defines phase execution conditions
 type PhaseCondition struct {
+	Value    any                      `json:"value"`
+	Retry    *RetryConfig             `json:"retry,omitempty"`
 	Type     DistributedConditionType `json:"type"`
 	Operator string                   `json:"operator"`
-	Value    any                      `json:"value"`
 	Timeout  time.Duration            `json:"timeout"`
-	Retry    *RetryConfig             `json:"retry,omitempty"`
 }
 
 // DistributedConditionType defines condition types
@@ -438,18 +438,18 @@ const (
 
 // RetryConfig defines retry behavior
 type RetryConfig struct {
+	BackoffMode BackoffMode   `json:"backoff_mode"`
 	MaxAttempts int           `json:"max_attempts"`
 	Delay       time.Duration `json:"delay"`
-	BackoffMode BackoffMode   `json:"backoff_mode"`
 	MaxDelay    time.Duration `json:"max_delay"`
 }
 
 // RollbackConfig defines rollback behavior
 type RollbackConfig struct {
-	Enabled    bool           `json:"enabled"`
 	Trigger    string         `json:"trigger"`
 	Actions    []*PhaseAction `json:"actions"`
 	Timeout    time.Duration  `json:"timeout"`
+	Enabled    bool           `json:"enabled"`
 	Validation bool           `json:"validation"`
 }
 
@@ -498,23 +498,23 @@ const (
 
 // ExperimentMonitoring defines experiment monitoring configuration
 type ExperimentMonitoring struct {
-	Metrics    []*DistributedMetricConfig `json:"metrics"`
-	Alerts     []*DistributedAlertConfig  `json:"alerts"`
-	Dashboards []*DashboardConfig         `json:"dashboards"`
 	Logs       *LogConfig                 `json:"logs"`
 	Traces     *TraceConfig               `json:"traces"`
 	Sampling   *SamplingConfig            `json:"sampling"`
+	Metrics    []*DistributedMetricConfig `json:"metrics"`
+	Alerts     []*DistributedAlertConfig  `json:"alerts"`
+	Dashboards []*DashboardConfig         `json:"dashboards"`
 }
 
 // DistributedMetricConfig defines metric collection configuration
 type DistributedMetricConfig struct {
+	Labels      map[string]string     `json:"labels"`
 	Name        string                `json:"name"`
 	Type        DistributedMetricType `json:"type"`
 	Source      string                `json:"source"`
 	Query       string                `json:"query"`
-	Interval    time.Duration         `json:"interval"`
 	Aggregation string                `json:"aggregation"`
-	Labels      map[string]string     `json:"labels"`
+	Interval    time.Duration         `json:"interval"`
 }
 
 // DistributedMetricType defines metric types
@@ -531,10 +531,10 @@ const (
 type DistributedAlertConfig struct {
 	Name        string                   `json:"name"`
 	Condition   string                   `json:"condition"`
-	Threshold   float64                  `json:"threshold"`
-	Duration    time.Duration            `json:"duration"`
 	Severity    DistributedAlertSeverity `json:"severity"`
 	Actions     []string                 `json:"actions"`
+	Threshold   float64                  `json:"threshold"`
+	Duration    time.Duration            `json:"duration"`
 	Suppression time.Duration            `json:"suppression"`
 }
 
@@ -550,12 +550,12 @@ const (
 
 // DashboardConfig defines dashboard configuration
 type DashboardConfig struct {
+	TimeRange *TimeRangeConfig `json:"time_range"`
+	Variables map[string]any   `json:"variables"`
 	Name      string           `json:"name"`
 	Type      DashboardType    `json:"type"`
 	Panels    []*PanelConfig   `json:"panels"`
 	Refresh   time.Duration    `json:"refresh"`
-	TimeRange *TimeRangeConfig `json:"time_range"`
-	Variables map[string]any   `json:"variables"`
 }
 
 // DashboardType defines dashboard types
@@ -570,11 +570,11 @@ const (
 
 // PanelConfig defines dashboard panel configuration
 type PanelConfig struct {
+	Options       map[string]any `json:"options"`
 	Name          string         `json:"name"`
 	Type          PanelType      `json:"type"`
 	Query         string         `json:"query"`
 	Visualization string         `json:"visualization"`
-	Options       map[string]any `json:"options"`
 }
 
 // PanelType defines panel types
@@ -624,19 +624,19 @@ const (
 
 // TraceConfig defines trace collection configuration
 type TraceConfig struct {
-	Enabled   bool              `json:"enabled"`
-	Sampling  float64           `json:"sampling"`
-	Endpoint  string            `json:"endpoint"`
 	Headers   map[string]string `json:"headers"`
+	Endpoint  string            `json:"endpoint"`
+	Sampling  float64           `json:"sampling"`
 	Timeout   time.Duration     `json:"timeout"`
 	BatchSize int               `json:"batch_size"`
+	Enabled   bool              `json:"enabled"`
 }
 
 // SamplingConfig defines sampling configuration
 type SamplingConfig struct {
+	Rules        []*SamplingRule `json:"rules"`
 	Rate         float64         `json:"rate"`
 	MaxPerSecond int             `json:"max_per_second"`
-	Rules        []*SamplingRule `json:"rules"`
 }
 
 // SamplingRule defines sampling rule
@@ -703,13 +703,13 @@ const (
 // DistributedFailure defines distributed failure
 type DistributedFailure struct {
 	Timestamp  time.Time              `json:"timestamp"`
+	Data       map[string]any         `json:"data"`
 	Type       DistributedFailureType `json:"type"`
 	Component  string                 `json:"component"`
 	Message    string                 `json:"message"`
 	Cause      string                 `json:"cause"`
 	Impact     FailureImpact          `json:"impact"`
 	Resolution string                 `json:"resolution"`
-	Data       map[string]any         `json:"data"`
 }
 
 // DistributedFailureType defines failure types
@@ -765,11 +765,11 @@ type ThroughputResults struct {
 
 // ErrorRateResults defines error rate metrics
 type ErrorRateResults struct {
-	Overall   float64            `json:"overall"`
 	ByType    map[string]float64 `json:"by_type"`
 	ByRegion  map[string]float64 `json:"by_region"`
 	ByService map[string]float64 `json:"by_service"`
 	Trend     []float64          `json:"trend"`
+	Overall   float64            `json:"overall"`
 }
 
 // ResourceResults defines resource utilization metrics
@@ -790,10 +790,10 @@ type ResourceUtilization struct {
 
 // ScalabilityResults defines scalability test results
 type ScalabilityResults struct {
+	BottleneckAnalysis string  `json:"bottleneck_analysis"`
 	MaxConcurrentUsers int     `json:"max_concurrent_users"`
 	BreakingPoint      int     `json:"breaking_point"`
 	ScalabilityFactor  float64 `json:"scalability_factor"`
-	BottleneckAnalysis string  `json:"bottleneck_analysis"`
 }
 
 // DistributedComplianceResults defines compliance results
@@ -839,10 +839,10 @@ type Recommendation struct {
 	Priority    RecommendationPriority `json:"priority"`
 	Title       string                 `json:"title"`
 	Description string                 `json:"description"`
-	Actions     []string               `json:"actions"`
 	Impact      string                 `json:"impact"`
 	Effort      string                 `json:"effort"`
 	Timeline    string                 `json:"timeline"`
+	Actions     []string               `json:"actions"`
 }
 
 // RecommendationType defines recommendation types
@@ -983,15 +983,15 @@ func (m *MultiRegionChaosOrchestrator) validateExperimentSpec(spec *DistributedE
 
 // DistributedExperimentSpec defines experiment specification
 type DistributedExperimentSpec struct {
+	Monitoring   *ExperimentMonitoring     `json:"monitoring"`
+	Metadata     map[string]any            `json:"metadata"`
 	Name         string                    `json:"name"`
 	Type         DistributedExperimentType `json:"type"`
-	Regions      []string                  `json:"regions"`
 	Coordination CoordinationMode          `json:"coordination"`
+	Regions      []string                  `json:"regions"`
 	Phases       []*ExperimentPhase        `json:"phases"`
 	Dependencies []*ExperimentDependency   `json:"dependencies"`
 	Constraints  []*ExperimentConstraint   `json:"constraints"`
-	Monitoring   *ExperimentMonitoring     `json:"monitoring"`
-	Metadata     map[string]any            `json:"metadata"`
 }
 
 // NewRegionManager creates a new region manager

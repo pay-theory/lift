@@ -4,21 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/pay-theory/dynamorm"
 	"github.com/pay-theory/dynamorm/pkg/core"
 	"github.com/pay-theory/dynamorm/pkg/session"
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
-// initDynamORM initializes a DynamORM database connection
-// This is a test helper function used by integration tests
-func initDynamORM() (core.ExtendedDB, error) {
-	// Initialize with default test configuration
-	return dynamorm.New(session.Config{
-		Region: "us-east-1",
-		// Add other test-specific configuration as needed
-	})
-}
 
 // DynamORMConfig holds configuration for DynamORM integration
 type DynamORMConfig struct {
@@ -204,8 +194,6 @@ func initDynamORMWithFactory(config *DynamORMConfig, factory DBFactory) (*DynamO
 	return wrapper, nil
 }
 
-
-
 // DynamORMWrapper wraps the DynamORM client with Lift-specific functionality
 type DynamORMWrapper struct {
 	db        core.ExtendedDB
@@ -316,9 +304,9 @@ type Transaction struct {
 
 // TransactionOperation represents an operation to be executed in a transaction
 type TransactionOperation struct {
-	Type string // "put", "delete", etc. (16 bytes - largest first)
-	Item any    // 16 bytes (interface)
-	Key  any    // 16 bytes (interface)
+	Item any
+	Key  any
+	Type string
 }
 
 // Put adds a put operation to the transaction
@@ -393,18 +381,18 @@ func (t *Transaction) Rollback() error {
 
 // Query represents a DynamORM query
 type Query struct {
-	Filters      map[string]any // 24 bytes (map first)
-	IndexName    string         // 16 bytes (string)
-	PartitionKey any            // 16 bytes (interface)
-	SortKey      any            // 16 bytes (interface)
-	Limit        int            // 4 bytes
-	Ascending    bool           // 1 byte (smallest last)
+	PartitionKey any
+	SortKey      any
+	Filters      map[string]any
+	IndexName    string
+	Limit        int
+	Ascending    bool
 }
 
 // QueryResult represents the result of a query operation
 type QueryResult struct {
-	Items        []any // 24 bytes (slice first)
-	LastKey      any   // 16 bytes (interface)
-	Count        int   // 4 bytes
-	ScannedCount int   // 4 bytes
+	LastKey      any
+	Items        []any
+	Count        int
+	ScannedCount int
 }

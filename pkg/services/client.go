@@ -29,13 +29,13 @@ type (
 // Memory optimized: 24 → 8 bytes (16 bytes saved)
 type ServiceClient struct {
 	// Pointers and interfaces (8 bytes each)
-	registry       *ServiceRegistry      // 8 bytes
-	circuitBreaker CircuitBreaker        // 8 bytes
-	retryPolicy    *RetryPolicy          // 8 bytes
-	metrics        MetricsCollector      // 8 bytes
-	httpClient     HTTPClient            // 8 bytes
+	registry       *ServiceRegistry // 8 bytes
+	circuitBreaker CircuitBreaker   // 8 bytes
+	retryPolicy    *RetryPolicy     // 8 bytes
+	metrics        MetricsCollector // 8 bytes
+	httpClient     HTTPClient       // 8 bytes
 	// Struct last (varies)
-	config         ServiceClientConfig   // struct
+	config ServiceClientConfig // struct
 }
 
 // ServiceClientConfig configures the service client
@@ -43,14 +43,14 @@ type ServiceClient struct {
 type ServiceClientConfig struct {
 	// Strings (16 bytes) - largest first
 	UserAgent string `json:"user_agent"`
-	
+
 	// 8-byte types
 	DefaultTimeout time.Duration `json:"default_timeout"`
 	RetryBackoff   time.Duration `json:"retry_backoff"`
-	
+
 	// 4-byte types
 	MaxRetries int `json:"max_retries"`
-	
+
 	// Booleans (1 byte each) - smallest last
 	EnableTracing        bool `json:"enable_tracing"`
 	EnableMetrics        bool `json:"enable_metrics"`
@@ -61,45 +61,37 @@ type ServiceClientConfig struct {
 // ServiceRequest represents a service call request
 // Memory optimized: 144 → 136 bytes (8 bytes saved)
 type ServiceRequest struct {
-	// Interface first (24 bytes)
 	Body                any                 `json:"body"`
-	// Maps (8 bytes each)
 	Headers             map[string]string   `json:"headers"`
 	Metadata            map[string]any      `json:"metadata"`
-	// 8-byte types (duration, enum)
-	Timeout             time.Duration       `json:"timeout"`
 	LoadBalanceStrategy LoadBalanceStrategy `json:"load_balance_strategy"`
-	
-	// Strings (16 bytes each)
-	ServiceName string `json:"service_name"`
-	Method      string `json:"method"`
-	Path        string `json:"path"`
-	TenantID    string `json:"tenant_id,omitempty"`
-	UserID      string `json:"user_id,omitempty"`
-	RequestID   string `json:"request_id,omitempty"`
+	ServiceName         string              `json:"service_name"`
+	Method              string              `json:"method"`
+	Path                string              `json:"path"`
+	TenantID            string              `json:"tenant_id,omitempty"`
+	UserID              string              `json:"user_id,omitempty"`
+	RequestID           string              `json:"request_id,omitempty"`
+	Timeout             time.Duration       `json:"timeout"`
 }
 
 // ServiceResponse represents a service call response
 type ServiceResponse struct {
-	// 8-byte types first (maps, slices, pointers, durations)
-	Headers  map[string]string `json:"headers"`
-	Metadata map[string]any    `json:"metadata"`
-	Body     []byte            `json:"body"`
-	Duration time.Duration     `json:"duration"`
-	Instance *ServiceInstance  `json:"instance"`
-	
-	// 4-byte types
-	StatusCode int `json:"status_code"`
+	Headers    map[string]string `json:"headers"`
+	Metadata   map[string]any    `json:"metadata"`
+	Instance   *ServiceInstance  `json:"instance"`
+	Body       []byte            `json:"body"`
+	Duration   time.Duration     `json:"duration"`
+	StatusCode int               `json:"status_code"`
 }
 
 // RetryPolicy defines retry behavior
 type RetryPolicy struct {
+	RetryableStatusCodes []int         `json:"retryable_status_codes"`
+	RetryableErrors      []string      `json:"retryable_errors"`
 	MaxRetries           int           `json:"max_retries"`
 	InitialBackoff       time.Duration `json:"initial_backoff"`
 	MaxBackoff           time.Duration `json:"max_backoff"`
 	BackoffMultiplier    float64       `json:"backoff_multiplier"`
-	RetryableStatusCodes []int         `json:"retryable_status_codes"`
-	RetryableErrors      []string      `json:"retryable_errors"`
 }
 
 // HTTPClient defines the interface for HTTP operations
@@ -453,21 +445,21 @@ type UserService interface {
 
 // User represents a user entity
 type User struct {
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
+	Metadata  map[string]string `json:"metadata"`
 	ID        string            `json:"id"`
 	Email     string            `json:"email"`
 	Name      string            `json:"name"`
 	TenantID  string            `json:"tenant_id"`
-	Metadata  map[string]string `json:"metadata"`
-	CreatedAt time.Time         `json:"created_at"`
-	UpdatedAt time.Time         `json:"updated_at"`
 }
 
 // CreateUserRequest represents a user creation request
 type CreateUserRequest struct {
+	Metadata map[string]string `json:"metadata"`
 	Email    string            `json:"email"`
 	Name     string            `json:"name"`
 	TenantID string            `json:"tenant_id"`
-	Metadata map[string]string `json:"metadata"`
 }
 
 // UpdateUserRequest represents a user update request

@@ -7,10 +7,10 @@ import (
 
 func TestNonHTTPEventRouting(t *testing.T) {
 	tests := []struct {
+		event      any
 		name       string
 		method     string
 		path       string
-		event      any
 		wantStatus int
 		wantCalled bool
 	}{

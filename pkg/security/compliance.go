@@ -60,15 +60,11 @@ type ComplianceFramework struct {
 // ComplianceConfig holds configuration for compliance frameworks
 // Memory optimized: 80 → 64 bytes (16 bytes saved)
 type ComplianceConfig struct {
-	// Slices first (24 bytes each)
+	DataClassification map[string]string `json:"data_classification"`
 	EnabledFrameworks  []string          `json:"enabled_frameworks"`
 	RegionRestrictions []string          `json:"region_restrictions"`
 	CustomRules        []ComplianceRule  `json:"custom_rules"`
-	// Map (24 bytes)
-	DataClassification map[string]string `json:"data_classification"`
-	// Duration (8 bytes)
 	AuditRetention     time.Duration     `json:"audit_retention"`
-	// Bool last (1 byte)
 	EncryptionRequired bool              `json:"encryption_required"`
 }
 
@@ -113,48 +109,40 @@ type AuditRequest struct {
 	Headers     map[string]string `json:"headers,omitempty"`
 	QueryParams map[string]string `json:"query_params,omitempty"`
 	// Time struct (24 bytes)
-	Timestamp   time.Time         `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp"`
 	// Strings (16 bytes each)
-	UserID      string            `json:"user_id"`
-	TenantID    string            `json:"tenant_id"`
-	Action      string            `json:"action"`
-	Resource    string            `json:"resource"`
-	IPAddress   string            `json:"ip_address"`
-	UserAgent   string            `json:"user_agent"`
-	ContentType string            `json:"content_type"`
-	SessionID   string            `json:"session_id,omitempty"`
+	UserID      string `json:"user_id"`
+	TenantID    string `json:"tenant_id"`
+	Action      string `json:"action"`
+	Resource    string `json:"resource"`
+	IPAddress   string `json:"ip_address"`
+	UserAgent   string `json:"user_agent"`
+	ContentType string `json:"content_type"`
+	SessionID   string `json:"session_id,omitempty"`
 	// Int64 last (8 bytes)
-	RequestSize int64             `json:"request_size"`
+	RequestSize int64 `json:"request_size"`
 }
 
 // AuditResponse represents an auditable response
 // Memory optimized: 72 → 48 bytes (24 bytes saved)
 type AuditResponse struct {
-	// Slices first (24 bytes each)
+	Error        error         `json:"error,omitempty"`
 	DataAccess   []string      `json:"data_access,omitempty"`
 	Warnings     []string      `json:"warnings,omitempty"`
-	// Interface (24 bytes)
-	Error        error         `json:"error,omitempty"`
-	// Int64 (8 bytes)
 	ResponseSize int64         `json:"response_size"`
 	Duration     time.Duration `json:"duration"`
-	// Int last (4 bytes)
 	StatusCode   int           `json:"status_code"`
 }
 
 // DataAccessLog represents data access for audit trails
 // Memory optimized: 112 → 96 bytes (16 bytes saved)
 type DataAccessLog struct {
-	// Slice first (24 bytes)
-	Fields         []string  `json:"fields,omitempty"`
-	// Time struct (24 bytes)
 	Timestamp      time.Time `json:"timestamp"`
-	// Strings (16 bytes each)
 	DataType       string    `json:"data_type"`
 	Classification string    `json:"classification"`
-	Action         string    `json:"action"` // read, write, delete, export
+	Action         string    `json:"action"`
 	Purpose        string    `json:"purpose,omitempty"`
-	// Int last (4 bytes)
+	Fields         []string  `json:"fields,omitempty"`
 	RecordCount    int       `json:"record_count"`
 }
 
@@ -162,30 +150,25 @@ type DataAccessLog struct {
 // Memory optimized: 80 → 72 bytes (8 bytes saved)
 type SecurityEvent struct {
 	// Map first (24 bytes)
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 	// Time struct (24 bytes)
-	Timestamp   time.Time      `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp"`
 	// Strings (16 bytes each)
-	EventType   string         `json:"event_type"`
-	Severity    string         `json:"severity"`
-	Description string         `json:"description"`
+	EventType   string `json:"event_type"`
+	Severity    string `json:"severity"`
+	Description string `json:"description"`
 	// Bool last (1 byte)
-	Resolved    bool           `json:"resolved"`
+	Resolved bool `json:"resolved"`
 }
 
 // ComplianceResult represents the result of compliance validation
 // Memory optimized: 104 → 80 bytes (24 bytes saved)
 type ComplianceResult struct {
-	// Map first (24 bytes)
+	Timestamp  time.Time             `json:"timestamp"`
 	Metadata   map[string]any        `json:"metadata,omitempty"`
-	// Slices (24 bytes each)
+	Framework  string                `json:"framework"`
 	Violations []ComplianceViolation `json:"violations,omitempty"`
 	Warnings   []string              `json:"warnings,omitempty"`
-	// Time struct (24 bytes)
-	Timestamp  time.Time             `json:"timestamp"`
-	// String (16 bytes)
-	Framework  string                `json:"framework"`
-	// Bool last (1 byte)
 	Compliant  bool                  `json:"compliant"`
 }
 
@@ -193,34 +176,29 @@ type ComplianceResult struct {
 // Memory optimized: 160 → 152 bytes (8 bytes saved)
 type ComplianceViolation struct {
 	// Map first (24 bytes)
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 	// Time struct (24 bytes)
-	Timestamp   time.Time      `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp"`
 	// Strings (16 bytes each)
-	ID          string         `json:"id"`
-	RuleID      string         `json:"rule_id"`
-	Framework   string         `json:"framework"`
-	Severity    string         `json:"severity"`
-	Description string         `json:"description"`
-	UserID      string         `json:"user_id,omitempty"`
-	TenantID    string         `json:"tenant_id,omitempty"`
-	Resource    string         `json:"resource,omitempty"`
+	ID          string `json:"id"`
+	RuleID      string `json:"rule_id"`
+	Framework   string `json:"framework"`
+	Severity    string `json:"severity"`
+	Description string `json:"description"`
+	UserID      string `json:"user_id,omitempty"`
+	TenantID    string `json:"tenant_id,omitempty"`
+	Resource    string `json:"resource,omitempty"`
 	// Bool last (1 byte)
-	Resolved    bool           `json:"resolved"`
+	Resolved bool `json:"resolved"`
 }
 
 // ComplianceReport represents a compliance report
 // Memory optimized: 152 → 136 bytes (16 bytes saved)
 type ComplianceReport struct {
-	// Slice first (24 bytes)
-	Violations    []ComplianceViolation `json:"violations"`
-	// Time struct (24 bytes)
 	GeneratedAt   time.Time             `json:"generated_at"`
-	// Struct (varies)
-	Summary       ComplianceSummary     `json:"summary"`
-	// String (16 bytes)
 	Framework     string                `json:"framework"`
-	// Int64 (8 bytes)
+	Violations    []ComplianceViolation `json:"violations"`
+	Summary       ComplianceSummary     `json:"summary"`
 	TotalRequests int64                 `json:"total_requests"`
 	Period        time.Duration         `json:"period"`
 }
@@ -229,13 +207,13 @@ type ComplianceReport struct {
 // Memory optimized: 72 → 64 bytes (8 bytes saved)
 type ComplianceSummary struct {
 	// Map first (24 bytes)
-	ViolationsByType map[string]int    `json:"violations_by_type"`
+	ViolationsByType map[string]int `json:"violations_by_type"`
 	// Slices (24 bytes each)
-	TopViolations    []string          `json:"top_violations"`
-	TrendData        []ComplianceTrend `json:"trend_data"`
-	Recommendations  []string          `json:"recommendations"`
+	TopViolations   []string          `json:"top_violations"`
+	TrendData       []ComplianceTrend `json:"trend_data"`
+	Recommendations []string          `json:"recommendations"`
 	// Float64 last (8 bytes)
-	ComplianceRate   float64           `json:"compliance_rate"`
+	ComplianceRate float64 `json:"compliance_rate"`
 }
 
 // ComplianceTrend represents compliance trend data
@@ -249,16 +227,16 @@ type ComplianceTrend struct {
 // Memory optimized: 128 → 120 bytes (8 bytes saved)
 type AuditEntry struct {
 	// Map first (24 bytes)
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 	// Time struct (24 bytes)
-	Timestamp time.Time      `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp"`
 	// Strings (16 bytes each)
-	ID        string         `json:"id"`
-	UserID    string         `json:"user_id"`
-	TenantID  string         `json:"tenant_id"`
-	Action    string         `json:"action"`
-	Resource  string         `json:"resource"`
-	Result    string         `json:"result"`
+	ID       string `json:"id"`
+	UserID   string `json:"user_id"`
+	TenantID string `json:"tenant_id"`
+	Action   string `json:"action"`
+	Resource string `json:"resource"`
+	Result   string `json:"result"`
 }
 
 // NewComplianceFramework creates a new compliance framework
@@ -392,8 +370,6 @@ func (cf *ComplianceFramework) ComplianceAudit() LiftMiddleware {
 	}
 }
 
-
-
 // hasCriticalViolations checks if there are any critical compliance violations
 func (cf *ComplianceFramework) hasCriticalViolations(violations []ComplianceViolation) bool {
 	for _, violation := range violations {
@@ -456,7 +432,8 @@ func (cf *ComplianceFramework) sanitizeHeaders(headers map[string][]string) map[
 			// Convert to lowercase for case-insensitive comparison
 			lowerKey := strings.ToLower(key)
 			// Redact sensitive headers
-			if strings.Contains(lowerKey, "auth") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") {
+			if strings.Contains(lowerKey, "auth") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || 
+			   strings.Contains(lowerKey, "cookie") || strings.Contains(lowerKey, "key") {
 				sanitized[key] = "[REDACTED]"
 			} else {
 				sanitized[key] = values[0]
@@ -475,8 +452,8 @@ func (cf *ComplianceFramework) sanitizeQueryParams(params map[string][]string) m
 			// Convert to lowercase for case-insensitive comparison
 			lowerKey := strings.ToLower(key)
 			// Redact sensitive parameters
-			if strings.Contains(lowerKey, "password") || strings.Contains(lowerKey, "token") || 
-			   strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "key") {
+			if strings.Contains(lowerKey, "password") || strings.Contains(lowerKey, "token") ||
+				strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "key") {
 				sanitized[key] = "[REDACTED]"
 			} else {
 				sanitized[key] = values[0]

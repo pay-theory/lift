@@ -17,17 +17,17 @@ import (
 
 // DevServerConfig configures the development server
 type DevServerConfig struct {
+	BuildCommand  string        `json:"build_command"`
+	LogLevel      string        `json:"log_level"`
+	WatchPaths    []string      `json:"watch_paths"`
 	Port          int           `json:"port"`
-	HotReload     bool          `json:"hot_reload"`
-	DebugMode     bool          `json:"debug_mode"`
 	ProfilerPort  int           `json:"profiler_port"`
 	DashboardPort int           `json:"dashboard_port"`
-	WatchPaths    []string      `json:"watch_paths"`
 	WatchInterval time.Duration `json:"watch_interval"`
-	BuildCommand  string        `json:"build_command"`
 	RestartDelay  time.Duration `json:"restart_delay"`
+	HotReload     bool          `json:"hot_reload"`
+	DebugMode     bool          `json:"debug_mode"`
 	EnableCORS    bool          `json:"enable_cors"`
-	LogLevel      string        `json:"log_level"`
 }
 
 // DefaultDevServerConfig returns sensible defaults for development
@@ -49,31 +49,27 @@ func DefaultDevServerConfig() *DevServerConfig {
 
 // DevServer provides development server with hot reload and debugging
 type DevServer struct {
-	app       *lift.App
-	config    *DevServerConfig
+	startTime time.Time
+	server    *http.Server
 	profiler  *ProfilerServer
 	dashboard *DevDashboard
 	watcher   *FileWatcher
 	features  *features.FeatureFlags
-
-	// Server state
-	server    *http.Server
-	running   bool
+	app       *lift.App
 	restartCh chan struct{}
 	stopCh    chan struct{}
-	mu        sync.RWMutex
-
-	// Statistics
 	stats     *DevStats
-	startTime time.Time
+	config    *DevServerConfig
+	mu        sync.RWMutex
+	running   bool
 }
 
 // DevStats holds internal development server statistics (with mutex)
 type DevStats struct {
+	LastRestart    time.Time     `json:"last_restart"`
 	Requests       int64         `json:"requests"`
 	Errors         int64         `json:"errors"`
 	Restarts       int64         `json:"restarts"`
-	LastRestart    time.Time     `json:"last_restart"`
 	AverageLatency time.Duration `json:"average_latency"`
 	Uptime         time.Duration `json:"uptime"`
 	HotReloads     int64         `json:"hot_reloads"`
@@ -83,10 +79,10 @@ type DevStats struct {
 
 // SafeDevStats holds development server statistics without mutex (safe for copying)
 type SafeDevStats struct {
+	LastRestart    time.Time     `json:"last_restart"`
 	Requests       int64         `json:"requests"`
 	Errors         int64         `json:"errors"`
 	Restarts       int64         `json:"restarts"`
-	LastRestart    time.Time     `json:"last_restart"`
 	AverageLatency time.Duration `json:"average_latency"`
 	Uptime         time.Duration `json:"uptime"`
 	HotReloads     int64         `json:"hot_reloads"`
@@ -473,8 +469,8 @@ func (s *DevServer) GetStats() SafeDevStats {
 
 // ProfilerServer provides pprof endpoints for performance profiling
 type ProfilerServer struct {
-	port   int
 	server *http.Server
+	port   int
 }
 
 // NewProfilerServer creates a new profiler server
@@ -524,19 +520,19 @@ func (p *ProfilerServer) Stop() error {
 
 // FileWatcher monitors file changes
 type FileWatcher struct {
-	paths    []string
-	interval time.Duration
 	events   chan FileEvent
 	stop     chan struct{}
 	lastMod  map[string]time.Time
+	paths    []string
+	interval time.Duration
 	mu       sync.RWMutex
 }
 
 // FileEvent represents a file change event
 type FileEvent struct {
+	Timestamp time.Time `json:"timestamp"`
 	Path      string    `json:"path"`
 	Type      string    `json:"type"`
-	Timestamp time.Time `json:"timestamp"`
 }
 
 // NewFileWatcher creates a new file watcher

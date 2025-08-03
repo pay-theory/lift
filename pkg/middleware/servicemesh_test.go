@@ -91,12 +91,12 @@ func (m *mockServiceMeshLogger) WithRequestID(_ string) observability.Structured
 func (m *mockServiceMeshLogger) WithTenantID(_ string) observability.StructuredLogger {
 	return m
 }
-func (m *mockServiceMeshLogger) WithUserID(_ string) observability.StructuredLogger   { return m }
+func (m *mockServiceMeshLogger) WithUserID(_ string) observability.StructuredLogger  { return m }
 func (m *mockServiceMeshLogger) WithTraceID(_ string) observability.StructuredLogger { return m }
-func (m *mockServiceMeshLogger) WithSpanID(_ string) observability.StructuredLogger   { return m }
-func (m *mockServiceMeshLogger) Flush(_ context.Context) error                           { return nil }
-func (m *mockServiceMeshLogger) Close() error                                              { return nil }
-func (m *mockServiceMeshLogger) IsHealthy() bool                                           { return true }
+func (m *mockServiceMeshLogger) WithSpanID(_ string) observability.StructuredLogger  { return m }
+func (m *mockServiceMeshLogger) Flush(_ context.Context) error                       { return nil }
+func (m *mockServiceMeshLogger) Close() error                                        { return nil }
+func (m *mockServiceMeshLogger) IsHealthy() bool                                     { return true }
 func (m *mockServiceMeshLogger) GetStats() observability.LoggerStats {
 	return observability.LoggerStats{}
 }
@@ -145,7 +145,7 @@ func (m *mockServiceMeshMetrics) WithTag(key, value string) observability.Metric
 }
 
 func (m *mockServiceMeshMetrics) RecordBatch(_ []*observability.MetricEntry) error { return nil }
-func (m *mockServiceMeshMetrics) Close() error                                           { return nil }
+func (m *mockServiceMeshMetrics) Close() error                                     { return nil }
 func (m *mockServiceMeshMetrics) GetStats() observability.MetricsStats {
 	return observability.MetricsStats{}
 }
@@ -274,9 +274,9 @@ func (g *mockServiceMeshGauge) Add(value float64) {
 func TestCircuitBreakerMiddleware(t *testing.T) {
 	tests := []struct {
 		name           string
-		config         CircuitBreakerConfig
-		requests       []bool // true = success, false = failure
+		requests       []bool
 		expectedStates []CircuitBreakerState
+		config         CircuitBreakerConfig
 	}{
 		{
 			name: "basic circuit breaker flow",
@@ -436,8 +436,8 @@ func TestBulkheadMiddleware(t *testing.T) {
 func TestRetryMiddleware(t *testing.T) {
 	tests := []struct {
 		name             string
+		failurePattern   []bool
 		config           RetryConfig
-		failurePattern   []bool // true = fail, false = succeed
 		expectedAttempts int
 		expectSuccess    bool
 	}{

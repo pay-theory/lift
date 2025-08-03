@@ -15,10 +15,10 @@ import (
 
 // MockCloudWatchMetricsClient implements CloudWatchMetricsClient for testing
 type MockCloudWatchMetricsClient struct {
-	mu            sync.Mutex
-	putMetricData []cloudwatch.PutMetricDataInput
 	errors        map[int]error
+	putMetricData []cloudwatch.PutMetricDataInput
 	callCount     int
+	mu            sync.Mutex
 }
 
 func NewMockCloudWatchMetricsClient() *MockCloudWatchMetricsClient {

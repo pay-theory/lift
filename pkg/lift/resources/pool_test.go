@@ -11,10 +11,10 @@ import (
 
 // Mock resource for testing
 type mockResource struct {
-	id       int
-	valid    bool
 	lastUsed time.Time
+	id       int
 	mu       sync.Mutex
+	valid    bool
 }
 
 func (r *mockResource) Initialize(_ context.Context) error {

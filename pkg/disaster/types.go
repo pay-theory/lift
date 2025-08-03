@@ -9,10 +9,10 @@ import (
 type DNSConfig struct {
 	DomainName    string `json:"domain_name"`
 	HostedZoneId  string `json:"hosted_zone_id"`
-	TTL           int    `json:"ttl"`
 	RoutingPolicy string `json:"routing_policy"`
 	HealthCheckId string `json:"health_check_id,omitempty"`
 	SetIdentifier string `json:"set_identifier,omitempty"`
+	TTL           int    `json:"ttl"`
 	Weight        int    `json:"weight,omitempty"`
 }
 
@@ -27,24 +27,24 @@ type LoadBalancingConfig struct {
 
 // HealthEvent represents a health monitoring event
 type HealthEvent struct {
+	Timestamp           time.Time     `json:"timestamp"`
 	Region              string        `json:"region"`
 	Status              HealthStatus  `json:"status"`
-	Timestamp           time.Time     `json:"timestamp"`
+	Error               string        `json:"error,omitempty"`
 	ResponseTime        time.Duration `json:"response_time"`
 	ErrorRate           float64       `json:"error_rate"`
 	Availability        float64       `json:"availability"`
 	ConsecutiveFailures int           `json:"consecutive_failures"`
-	Error               string        `json:"error,omitempty"`
 }
 
 // SyncEvent represents a data synchronization event
 type SyncEvent struct {
-	Status         SyncStatus      `json:"status"`
 	Timestamp      time.Time       `json:"timestamp"`
-	ReplicationLag time.Duration   `json:"replication_lag"`
-	Errors         []SyncError     `json:"errors"`
 	TablesInSync   map[string]bool `json:"tables_in_sync"`
 	BucketsInSync  map[string]bool `json:"buckets_in_sync"`
+	Status         SyncStatus      `json:"status"`
+	Errors         []SyncError     `json:"errors"`
+	ReplicationLag time.Duration   `json:"replication_lag"`
 }
 
 // HealthMonitor monitors region health

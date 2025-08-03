@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	connectMethod = "CONNECT"
-	messageMethod = "MESSAGE"
+	connectMethod    = "CONNECT"
+	messageMethod    = "MESSAGE"
 	disconnectMethod = "DISCONNECT"
 )
 
@@ -15,8 +15,8 @@ func TestWebSocketAdapter_CanHandle(t *testing.T) {
 	adapter := NewWebSocketAdapter()
 
 	tests := []struct {
-		name     string
 		event    any
+		name     string
 		expected bool
 	}{
 		{
@@ -89,10 +89,10 @@ func TestWebSocketAdapter_Adapt(t *testing.T) {
 	adapter := NewWebSocketAdapter()
 
 	tests := []struct {
-		name        string
 		event       any
-		wantErr     bool
 		checkResult func(*testing.T, *Request)
+		name        string
+		wantErr     bool
 	}{
 		{
 			name: "Connect event with query parameters",
@@ -307,10 +307,10 @@ func TestWebSocketQueryParameterBugFix(t *testing.T) {
 // map[string]string and map[string]any input types
 func TestExtractStringMapFieldBothTypes(t *testing.T) {
 	tests := []struct {
-		name     string
 		data     map[string]any
-		key      string
 		expected map[string]string
+		name     string
+		key      string
 	}{
 		{
 			name: "map[string]string input",
@@ -392,10 +392,10 @@ func TestWebSocketAdapter_EdgeCases(t *testing.T) {
 	adapter := NewWebSocketAdapter()
 
 	tests := []struct {
-		name        string
 		event       any
-		wantErr     bool
 		checkResult func(*testing.T, *Request)
+		name        string
+		wantErr     bool
 	}{
 		{
 			name: "extremely large message body",

@@ -521,15 +521,15 @@ func createLogProcessingFunction(scope constructs.Construct, props *AuditingProp
 	roleInterface := function.Role()
 	if role, ok := roleInterface.(awsiam.Role); ok {
 		role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Effect: awsiam.Effect_ALLOW,
-		Actions: &[]*string{
-			jsii.String("kinesis:DescribeStream"),
-			jsii.String("kinesis:GetShardIterator"),
-			jsii.String("kinesis:GetRecords"),
-			jsii.String("kinesis:ListShards"),
-		},
-		Resources: &[]*string{stream.StreamArn()},
-	}))
+			Effect: awsiam.Effect_ALLOW,
+			Actions: &[]*string{
+				jsii.String("kinesis:DescribeStream"),
+				jsii.String("kinesis:GetShardIterator"),
+				jsii.String("kinesis:GetRecords"),
+				jsii.String("kinesis:ListShards"),
+			},
+			Resources: &[]*string{stream.StreamArn()},
+		}))
 
 		role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 			Effect: awsiam.Effect_ALLOW,
@@ -652,8 +652,8 @@ func createAuditDashboard(scope constructs.Construct, props *AuditingProps, appL
 
 // createLogMetricAlarm creates a CloudWatch alarm for log metrics
 func createLogMetricAlarm(scope constructs.Construct, id string, _ *AuditingProps, config struct {
-	AlarmName         string
 	LogGroupName      *string
+	AlarmName         string
 	Threshold         float64
 	PeriodMinutes     int
 	EvaluationPeriods int
@@ -683,17 +683,17 @@ func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogG
 
 	// Failed login attempts alarm
 	failedLoginAlarm := createLogMetricAlarm(scope, "FailedLoginAlarm", props, struct {
-		AlarmName         string
 		LogGroupName      *string
+		AlarmName         string
 		Threshold         float64
 		PeriodMinutes     int
 		EvaluationPeriods int
 		DatapointsToAlarm int
 	}{
-		AlarmName:       fmt.Sprintf("%s-failed-login-attempts", *props.AppName),
-		LogGroupName:    appLogGroup.LogGroupName(),
-		PeriodMinutes:   5,
-		Threshold:       10,
+		AlarmName:         fmt.Sprintf("%s-failed-login-attempts", *props.AppName),
+		LogGroupName:      appLogGroup.LogGroupName(),
+		PeriodMinutes:     5,
+		Threshold:         10,
 		EvaluationPeriods: 1,
 		DatapointsToAlarm: 1,
 	})
@@ -701,17 +701,17 @@ func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogG
 
 	// Suspicious activity alarm
 	suspiciousActivityAlarm := createLogMetricAlarm(scope, "SuspiciousActivityAlarm", props, struct {
-		AlarmName         string
 		LogGroupName      *string
+		AlarmName         string
 		Threshold         float64
 		PeriodMinutes     int
 		EvaluationPeriods int
 		DatapointsToAlarm int
 	}{
-		AlarmName:       fmt.Sprintf("%s-suspicious-activity", *props.AppName),
-		LogGroupName:    auditLogGroup.LogGroupName(),
-		PeriodMinutes:   15,
-		Threshold:       100,
+		AlarmName:         fmt.Sprintf("%s-suspicious-activity", *props.AppName),
+		LogGroupName:      auditLogGroup.LogGroupName(),
+		PeriodMinutes:     15,
+		Threshold:         100,
 		EvaluationPeriods: 2,
 		DatapointsToAlarm: 2,
 	})

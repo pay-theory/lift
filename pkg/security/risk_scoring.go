@@ -18,30 +18,24 @@ const (
 
 // MLRiskScorer implements ML-based risk scoring
 type MLRiskScorer struct {
-	config      RiskScoringConfig
 	model       RiskModel
 	riskFactors []RiskFactor
 	feedback    []RiskFeedback
+	config      RiskScoringConfig
 	mu          sync.RWMutex
 }
 
 // RiskScoringConfig configuration for risk scoring
 type RiskScoringConfig struct {
-	// map (24 bytes)
 	RiskFactorWeights  map[string]float64  `json:"risk_factor_weights"`
-	// slices (24 bytes each)
+	ModelType          string              `json:"model_type"`
 	ContextualFactors  []string            `json:"contextual_factors"`
 	TemporalFactors    []string            `json:"temporal_factors"`
 	BehavioralFactors  []string            `json:"behavioral_factors"`
-	// struct
 	ThresholdConfig    RiskThresholdConfig `json:"threshold_config"`
-	// string (16 bytes)
-	ModelType          string              `json:"model_type"` // "linear", "neural", "ensemble"
-	// 8-byte aligned fields
 	BaselineUpdateFreq time.Duration       `json:"baseline_update_freq"`
 	LearningRate       float64             `json:"learning_rate"`
 	FeedbackWeight     float64             `json:"feedback_weight"`
-	// bool fields (1 byte each)
 	Enabled            bool                `json:"enabled"`
 	AdaptiveLearning   bool                `json:"adaptive_learning"`
 }
@@ -65,44 +59,44 @@ type RiskModel interface {
 
 // TrainingExample represents a training example for the risk model
 type TrainingExample struct {
+	Metadata map[string]any `json:"metadata"`
 	Features []float64      `json:"features"`
 	Label    float64        `json:"label"`
 	Weight   float64        `json:"weight"`
-	Metadata map[string]any `json:"metadata"`
 }
 
 // ModelMetrics represents metrics for the risk model
 type ModelMetrics struct {
+	LastUpdated       time.Time          `json:"last_updated"`
+	FeatureImportance map[string]float64 `json:"feature_importance"`
 	Accuracy          float64            `json:"accuracy"`
 	Precision         float64            `json:"precision"`
 	Recall            float64            `json:"recall"`
 	F1Score           float64            `json:"f1_score"`
 	AUC               float64            `json:"auc"`
 	RMSE              float64            `json:"rmse"`
-	LastUpdated       time.Time          `json:"last_updated"`
 	TrainingExamples  int                `json:"training_examples"`
-	FeatureImportance map[string]float64 `json:"feature_importance"`
 }
 
 // RiskBaseline represents baseline risk metrics
 type RiskBaseline struct {
-	AverageRisk      float64            `json:"average_risk"`
+	UpdatedAt        time.Time          `json:"updated_at"`
 	RiskDistribution map[string]float64 `json:"risk_distribution"`
 	FactorBaselines  map[string]float64 `json:"factor_baselines"`
 	TemporalPatterns map[string]float64 `json:"temporal_patterns"`
-	UpdatedAt        time.Time          `json:"updated_at"`
-	SampleSize       int                `json:"sample_size"`
 	Metadata         map[string]any     `json:"metadata"`
+	AverageRisk      float64            `json:"average_risk"`
+	SampleSize       int                `json:"sample_size"`
 }
 
 // ContextualRiskFactor represents a contextual risk factor
 type ContextualRiskFactor struct {
-	RiskFactor
-	Context    string         `json:"context"`
 	Conditions map[string]any `json:"conditions"`
-	Multiplier float64        `json:"multiplier"`
-	Temporal   bool           `json:"temporal"`
-	Behavioral bool           `json:"behavioral"`
+	Context    string         `json:"context"`
+	RiskFactor
+	Multiplier float64 `json:"multiplier"`
+	Temporal   bool    `json:"temporal"`
+	Behavioral bool    `json:"behavioral"`
 }
 
 // RiskFeatureExtractor extracts features from audit events
@@ -111,13 +105,13 @@ type RiskFeatureExtractor struct {
 
 // FeatureExtractionConfig configuration for feature extraction
 type FeatureExtractionConfig struct {
+	FeatureWeights      map[string]float64 `json:"feature_weights"`
+	Metadata            map[string]any     `json:"metadata"`
+	NormalizationMethod string             `json:"normalization_method"`
 	EnabledFeatures     []string           `json:"enabled_features"`
 	TemporalWindow      time.Duration      `json:"temporal_window"`
 	BehavioralWindow    time.Duration      `json:"behavioral_window"`
 	ContextualDepth     int                `json:"contextual_depth"`
-	FeatureWeights      map[string]float64 `json:"feature_weights"`
-	NormalizationMethod string             `json:"normalization_method"`
-	Metadata            map[string]any     `json:"metadata"`
 }
 
 // FeatureExtractor interface for extracting specific features
@@ -130,39 +124,39 @@ type FeatureExtractor interface {
 
 // RiskContext provides context for risk assessment
 type RiskContext struct {
-	UserHistory   []*AuditEvent       `json:"user_history"`
-	TenantHistory []*AuditEvent       `json:"tenant_history"`
-	RecentEvents  []*AuditEvent       `json:"recent_events"`
 	TimeOfDay     time.Time           `json:"time_of_day"`
-	DayOfWeek     time.Weekday        `json:"day_of_week"`
 	UserProfile   *UserRiskProfile    `json:"user_profile"`
 	TenantProfile *TenantRiskProfile  `json:"tenant_profile"`
 	ThreatIntel   *ThreatIntelligence `json:"threat_intel"`
 	Metadata      map[string]any      `json:"metadata"`
+	UserHistory   []*AuditEvent       `json:"user_history"`
+	TenantHistory []*AuditEvent       `json:"tenant_history"`
+	RecentEvents  []*AuditEvent       `json:"recent_events"`
+	DayOfWeek     time.Weekday        `json:"day_of_week"`
 }
 
 // UserRiskProfile represents a user's risk profile
 type UserRiskProfile struct {
-	UserID           string             `json:"user_id"`
-	BaselineRisk     float64            `json:"baseline_risk"`
-	RiskTrend        string             `json:"risk_trend"`
+	LastUpdated      time.Time          `json:"last_updated"`
 	BehaviorPatterns map[string]float64 `json:"behavior_patterns"`
 	AccessPatterns   map[string]float64 `json:"access_patterns"`
-	AnomalyHistory   []AnomalyRecord    `json:"anomaly_history"`
-	LastUpdated      time.Time          `json:"last_updated"`
 	Metadata         map[string]any     `json:"metadata"`
+	UserID           string             `json:"user_id"`
+	RiskTrend        string             `json:"risk_trend"`
+	AnomalyHistory   []AnomalyRecord    `json:"anomaly_history"`
+	BaselineRisk     float64            `json:"baseline_risk"`
 }
 
 // TenantRiskProfile represents a tenant's risk profile
 type TenantRiskProfile struct {
-	TenantID        string             `json:"tenant_id"`
-	BaselineRisk    float64            `json:"baseline_risk"`
-	RiskTrend       string             `json:"risk_trend"`
-	ComplianceScore float64            `json:"compliance_score"`
-	SecurityPosture map[string]float64 `json:"security_posture"`
-	IncidentHistory []IncidentRecord   `json:"incident_history"`
 	LastUpdated     time.Time          `json:"last_updated"`
+	SecurityPosture map[string]float64 `json:"security_posture"`
 	Metadata        map[string]any     `json:"metadata"`
+	TenantID        string             `json:"tenant_id"`
+	RiskTrend       string             `json:"risk_trend"`
+	IncidentHistory []IncidentRecord   `json:"incident_history"`
+	BaselineRisk    float64            `json:"baseline_risk"`
+	ComplianceScore float64            `json:"compliance_score"`
 }
 
 // AnomalyRecord represents an anomaly record
@@ -170,9 +164,9 @@ type AnomalyRecord struct {
 	Timestamp   time.Time `json:"timestamp"`
 	Type        string    `json:"type"`
 	Severity    string    `json:"severity"`
+	Description string    `json:"description"`
 	Score       float64   `json:"score"`
 	Resolved    bool      `json:"resolved"`
-	Description string    `json:"description"`
 }
 
 // IncidentRecord represents an incident record
@@ -181,40 +175,40 @@ type IncidentRecord struct {
 	Type       string    `json:"type"`
 	Severity   string    `json:"severity"`
 	Impact     string    `json:"impact"`
-	Resolved   bool      `json:"resolved"`
 	Resolution string    `json:"resolution"`
+	Resolved   bool      `json:"resolved"`
 }
 
 // ThreatIntelligence represents threat intelligence data
 type ThreatIntelligence struct {
+	LastUpdated     time.Time          `json:"last_updated"`
+	GeographicRisks map[string]float64 `json:"geographic_risks"`
+	Metadata        map[string]any     `json:"metadata"`
 	ThreatLevel     string             `json:"threat_level"`
 	ActiveThreats   []ThreatIndicator  `json:"active_threats"`
 	RiskFactors     []ThreatRiskFactor `json:"risk_factors"`
-	GeographicRisks map[string]float64 `json:"geographic_risks"`
 	IndustryThreats []string           `json:"industry_threats"`
-	LastUpdated     time.Time          `json:"last_updated"`
-	Metadata        map[string]any     `json:"metadata"`
 }
 
 // ThreatIndicator represents a threat indicator
 type ThreatIndicator struct {
-	Type        string    `json:"type"`
-	Value       string    `json:"value"`
-	Confidence  float64   `json:"confidence"`
-	Severity    string    `json:"severity"`
-	Source      string    `json:"source"`
 	FirstSeen   time.Time `json:"first_seen"`
 	LastSeen    time.Time `json:"last_seen"`
+	Type        string    `json:"type"`
+	Value       string    `json:"value"`
+	Severity    string    `json:"severity"`
+	Source      string    `json:"source"`
 	Description string    `json:"description"`
+	Confidence  float64   `json:"confidence"`
 }
 
 // ThreatRiskFactor represents a threat-based risk factor
 type ThreatRiskFactor struct {
+	ThreatType string `json:"threat_type"`
+	Mitigation string `json:"mitigation"`
 	RiskFactor
-	ThreatType    string  `json:"threat_type"`
 	Prevalence    float64 `json:"prevalence"`
 	Effectiveness float64 `json:"effectiveness"`
-	Mitigation    string  `json:"mitigation"`
 }
 
 // NewMLRiskScorer creates a new ML-based risk scorer

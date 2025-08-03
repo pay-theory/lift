@@ -26,17 +26,17 @@ type InfrastructureTemplate struct {
 	// Time structs (24 bytes each) - largest first
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	
+
 	// Maps (8 bytes each)
 	Resources  map[string]Resource  `json:"resources"`
 	Outputs    map[string]Output    `json:"outputs"`
 	Parameters map[string]Parameter `json:"parameters"`
 	Metadata   map[string]any       `json:"metadata"`
 	Tags       map[string]string    `json:"tags"`
-	
+
 	// Enums/constants (8 bytes)
 	Provider InfrastructureProvider `json:"provider"`
-	
+
 	// Strings (16 bytes each)
 	Name        string `json:"name"`
 	Version     string `json:"version"`
@@ -74,28 +74,19 @@ type Parameter struct {
 
 // InfrastructureConfig holds configuration for infrastructure generation
 type InfrastructureConfig struct {
-	// Maps (8 bytes each) - largest first
-	Metadata map[string]any    `json:"metadata"`
-	Tags     map[string]string `json:"tags"`
-	
-	// Slices (24 bytes)
-	Regions []string `json:"regions,omitempty"`
-	
-	// Structs - ordered by size
-	APIGateway  APIGatewayConfig `json:"api_gateway"`
-	Lambda      LambdaConfig     `json:"lambda"`
-	Monitoring  MonitoringConfig `json:"monitoring"`
-	Security    SecurityConfig   `json:"security"`
-	Database    DatabaseConfig   `json:"database"`
-	Networking  NetworkingConfig `json:"networking"`
-	
-	// Strings (16 bytes each)
-	Environment     string `json:"environment"`
-	Region          string `json:"region"`
-	ApplicationName string `json:"application_name"`
-	
-	// Boolean (1 byte) - smallest last
-	MultiRegion bool `json:"multi_region"`
+	Metadata        map[string]any    `json:"metadata"`
+	Tags            map[string]string `json:"tags"`
+	ApplicationName string            `json:"application_name"`
+	Region          string            `json:"region"`
+	Environment     string            `json:"environment"`
+	Security        SecurityConfig    `json:"security"`
+	Regions         []string          `json:"regions,omitempty"`
+	Monitoring      MonitoringConfig  `json:"monitoring"`
+	Database        DatabaseConfig    `json:"database"`
+	Networking      NetworkingConfig  `json:"networking"`
+	Lambda          LambdaConfig      `json:"lambda"`
+	APIGateway      APIGatewayConfig  `json:"api_gateway"`
+	MultiRegion     bool              `json:"multi_region"`
 }
 
 // LambdaConfig holds Lambda function configuration
@@ -372,8 +363,8 @@ type InlinePolicyConfig struct {
 
 // InfrastructureGenerator generates infrastructure templates
 type InfrastructureGenerator struct {
-	config   InfrastructureConfig
 	provider InfrastructureProvider
+	config   InfrastructureConfig
 	mu       sync.RWMutex
 }
 

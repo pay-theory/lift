@@ -60,41 +60,36 @@ const (
 // DynamORMEventStoreProps defines properties for DynamORM event store
 // Memory optimized: 304 → 296 bytes (8 bytes saved)
 type DynamORMEventStoreProps struct {
-	// Interface first (24 bytes)
-	ArchivalBucket awss3.IBucket
-	// Slice (24 bytes)
-	ProjectionQueries []string
-	// Duration structs (16 bytes each) - moved up for better alignment
+	ArchivalAfter          awscdk.Duration
+	ArchivalBucket         awss3.IBucket
 	EventTTL               awscdk.Duration
-	SnapshotTimeInterval awscdk.Duration
-	SnapshotRetention    awscdk.Duration
-	ArchivalAfter  awscdk.Duration
-	// Pointers (8 bytes each)
-	AlertThresholds       *EventStoreAlertThresholds
-	Tags *map[string]*string
-	EventTableName    *string
-	SnapshotTableName *string
-	TenantAttribute   *string
-	KMSKey           *string
-	ReadCapacity          *float64
-	WriteCapacity         *float64
-	SnapshotFrequency    *int
-	SnapshotSizeLimit    *int
-	EnableMultiTenant *bool
-	EnableEventVersioning  *bool
+	SnapshotTimeInterval   awscdk.Duration
+	SnapshotRetention      awscdk.Duration
+	SnapshotFrequency      *int
 	EnableEventEncryption  *bool
+	Tags                   *map[string]*string
+	EventTableName         *string
+	SnapshotTableName      *string
+	TenantAttribute        *string
+	KMSKey                 *string
+	ReadCapacity           *float64
+	WriteCapacity          *float64
+	EnableGSIs             *bool
+	SnapshotSizeLimit      *int
+	EnableMultiTenant      *bool
+	EnableEventVersioning  *bool
+	AlertThresholds        *EventStoreAlertThresholds
 	EnableEventCompression *bool
-	EventStreamEnabled    *bool
-	SnapshotStreamEnabled *bool
-	EnableAutoScaling     *bool
-	EnableArchival *bool
-	EnableMetrics         *bool
-	EnableDetailedMetrics *bool
-	EnableEncryption *bool
-	EnableGSIs        *bool
-	// Enums/smaller types grouped together
-	Pattern EventStorePattern
-	SnapshotStrategy     SnapshotStrategy
+	EventStreamEnabled     *bool
+	SnapshotStreamEnabled  *bool
+	EnableAutoScaling      *bool
+	EnableArchival         *bool
+	EnableMetrics          *bool
+	EnableDetailedMetrics  *bool
+	EnableEncryption       *bool
+	Pattern                EventStorePattern
+	SnapshotStrategy       SnapshotStrategy
+	ProjectionQueries      []string
 }
 
 // EventStoreAlertThresholds defines alert thresholds for event store monitoring

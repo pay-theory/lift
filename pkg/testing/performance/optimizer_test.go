@@ -90,8 +90,8 @@ func TestPerformanceOptimizer_OptimizePerformance(t *testing.T) {
 
 // Test Performance Monitor Implementation
 type TestPerformanceMonitor struct {
-	monitoring bool
 	metrics    PerformanceMetrics
+	monitoring bool
 }
 
 func NewTestPerformanceMonitor() *TestPerformanceMonitor {
@@ -570,7 +570,7 @@ func TestPerformanceConfig(t *testing.T) {
 			MemoryUsage:  0.8,
 			CPUUsage:     0.8,
 		},
-		OptimizationLevel:   OptimizationLevelStandard,
+		OptimizationLevel: OptimizationLevelStandard,
 	}
 
 	if config.MonitoringInterval <= 0 {

@@ -20,26 +20,21 @@ const (
 
 // Request represents a normalized request from any event source
 type Request struct {
-	// 8-byte aligned fields (interfaces, slices, maps)
 	RawEvent    any               `json:"raw_event,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
-	QueryParams map[string]string `json:"query_params,omitempty"`
-	PathParams  map[string]string `json:"path_params,omitempty"`
-	Records     []any             `json:"records,omitempty"`
-	Detail      map[string]any    `json:"detail,omitempty"`
 	Metadata    map[string]any    `json:"metadata,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	PathParams  map[string]string `json:"path_params,omitempty"`
+	QueryParams map[string]string `json:"query_params,omitempty"`
+	Detail      map[string]any    `json:"detail,omitempty"`
+	EventID     string            `json:"event_id,omitempty"`
+	Timestamp   string            `json:"timestamp,omitempty"`
+	Method      string            `json:"method,omitempty"`
+	Path        string            `json:"path,omitempty"`
+	Source      string            `json:"source,omitempty"`
+	DetailType  string            `json:"detail_type,omitempty"`
+	TriggerType TriggerType       `json:"trigger_type"`
 	Body        []byte            `json:"body,omitempty"`
-
-	// Strings (16 bytes each)
-	EventID     string `json:"event_id,omitempty"`
-	Timestamp   string `json:"timestamp,omitempty"`
-	Method      string `json:"method,omitempty"`
-	Path        string `json:"path,omitempty"`
-	Source      string `json:"source,omitempty"`
-	DetailType  string `json:"detail_type,omitempty"`
-
-	// Smaller types
-	TriggerType TriggerType `json:"trigger_type"`
+	Records     []any             `json:"records,omitempty"`
 }
 
 // EventAdapter defines the interface for converting Lambda events to normalized requests

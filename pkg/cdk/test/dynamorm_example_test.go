@@ -276,8 +276,8 @@ func BenchmarkPutItem_WithMocks(b *testing.B) {
 
 // Example test suite using the integration suite base
 type PaymentServiceTestSuite struct {
-	DynamORMIntegrationSuite
 	paymentsTable string
+	DynamORMIntegrationSuite
 }
 
 func (s *PaymentServiceTestSuite) SetupSuite() {

@@ -206,7 +206,6 @@ func (m *MockPrivacyImpactAssessment) GetRiskAssessment(ctx context.Context, act
 
 // Test helper functions are in gdpr_test_utils.go
 
-
 // Unit Tests
 
 func TestGDPRConsentManager_RecordConsent(t *testing.T) {
@@ -749,7 +748,7 @@ func TestGDPRConsentManager_ErrorHandling(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name: "consent store not set",
+			name:         "consent store not set",
 			setupManager: createTestGDPRManager,
 			operation: func(m *GDPRConsentManager) error {
 				return m.RecordConsent(context.Background(), createTestConsentRecord())
@@ -757,7 +756,7 @@ func TestGDPRConsentManager_ErrorHandling(t *testing.T) {
 			expectedError: "consent store not configured",
 		},
 		{
-			name: "data subject rights handler not set",
+			name:         "data subject rights handler not set",
 			setupManager: createTestGDPRManager,
 			operation: func(m *GDPRConsentManager) error {
 				request := &DataAccessRequest{
@@ -900,8 +899,8 @@ func TestGDPRConsentManager_Utilities(t *testing.T) {
 func TestGDPRConfig_Validation(t *testing.T) {
 	tests := []struct {
 		name          string
-		config        GDPRConfig
 		expectedError string
+		config        GDPRConfig
 	}{
 		{
 			name: "valid config",

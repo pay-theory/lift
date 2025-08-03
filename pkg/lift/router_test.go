@@ -74,9 +74,9 @@ func TestExtractParams(t *testing.T) {
 
 func TestMatchPattern(t *testing.T) {
 	tests := []struct {
+		expected    map[string]string
 		pattern     string
 		path        string
-		expected    map[string]string
 		shouldMatch bool
 	}{
 		{

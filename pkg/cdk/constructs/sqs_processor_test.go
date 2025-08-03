@@ -39,7 +39,7 @@ func TestSQSProcessor_DefaultConfiguration(t *testing.T) {
 	}
 
 	// Synthesize to verify template
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify SQS queue exists
 	assertResourceExists(t, template, "AWS::SQS::Queue")
@@ -80,7 +80,7 @@ func TestSQSProcessor_CustomConfiguration(t *testing.T) {
 		t.Fatal("Processor should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify custom configuration is applied
 	assertResourceExists(t, template, "AWS::SQS::Queue")
@@ -108,7 +108,7 @@ func TestSQSProcessor_FIFOQueue(t *testing.T) {
 		t.Fatal("Processor should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify FIFO queue configuration
 	assertResourceExists(t, template, "AWS::SQS::Queue")
@@ -144,7 +144,7 @@ func TestSQSProcessor_ExistingQueue(t *testing.T) {
 		t.Error("Should use existing queue")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Should still create Lambda and event source mapping
 	assertResourceExists(t, template, "AWS::Lambda::Function")
@@ -174,7 +174,7 @@ func TestSQSProcessor_DisabledDLQ(t *testing.T) {
 		t.Error("Dead letter queue should not be created when disabled")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Count SQS queues - should only be 1 (main queue, no DLQ)
 	assertResourceCount(t, template, "AWS::SQS::Queue", 1)
@@ -198,7 +198,7 @@ func TestSQSProcessor_LongPolling(t *testing.T) {
 		t.Fatal("Processor should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify long polling configuration
 	assertResourceExists(t, template, "AWS::SQS::Queue")
@@ -224,7 +224,7 @@ func TestSQSProcessor_EnvironmentVariables(t *testing.T) {
 		t.Fatal("Processor should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify environment variables are set (including SQS-specific ones)
 	functions := findResourcesByType(template, "AWS::Lambda::Function")
@@ -294,7 +294,7 @@ func TestSQSProcessor_GrantPermissions(t *testing.T) {
 	processor.GrantSendMessages(anotherFunction)
 	processor.GrantConsumeMessages(anotherFunction)
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify IAM policies are created
 	policies := findResourcesByType(template, "AWS::IAM::Policy")
@@ -326,7 +326,7 @@ func TestSQSProcessor_CustomEventSourceProps(t *testing.T) {
 		t.Fatal("Processor should be created")
 	}
 
-	template := synthesizeTemplate(stack)
+	template := synthesizeTemplate(t, stack)
 
 	// Verify custom event source configuration
 	assertResourceExists(t, template, "AWS::Lambda::EventSourceMapping")

@@ -172,9 +172,9 @@ func TestHTTPClientSecurity(t *testing.T) {
 		// Test various HTTP client configurations
 		testCases := []struct {
 			name         string
+			description  string
 			timeout      time.Duration
 			expectSecure bool
-			description  string
 		}{
 			{
 				name:         "No timeout - insecure",

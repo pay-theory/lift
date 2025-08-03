@@ -11,29 +11,22 @@ import (
 
 // PerformanceOptimizer provides comprehensive performance monitoring and optimization
 type PerformanceOptimizer struct {
-	// Mutex (24 bytes, 8-byte aligned) - should be first
-	mu         sync.RWMutex
-	// Slices (24 bytes each, 8-byte aligned)
 	monitors   []PerformanceMonitor
 	benchmarks []Benchmark
 	analyzers  []PerformanceAnalyzer
 	optimizers []Optimizer
-	// Struct last
 	config     PerformanceConfig
+	mu         sync.RWMutex
 }
 
 // PerformanceConfig configures performance optimization behavior
 type PerformanceConfig struct {
-	// Struct first (size depends on AlertThresholds)
-	AlertThresholds     AlertThresholds
-	// String field (16 bytes on 64-bit)
 	OptimizationLevel   OptimizationLevel
-	// 8-byte aligned fields
+	AlertThresholds     AlertThresholds
 	MonitoringInterval  time.Duration
 	BenchmarkTimeout    time.Duration
 	TrendAnalysisWindow time.Duration
 	RegressionThreshold float64
-	// Bool fields last (1 byte each, grouped)
 	EnablePredictive    bool
 	EnableAutoOptimize  bool
 }
@@ -59,16 +52,12 @@ type AlertThresholds struct {
 
 // Core performance types
 type PerformanceMetrics struct {
-	// map (24 bytes)
-	CustomMetrics  map[string]float64
-	// time.Time (24 bytes)
 	Timestamp      time.Time
-	// structs
-	MemoryUsage    MemoryMetrics
+	CustomMetrics  map[string]float64
 	CPUUsage       CPUMetrics
+	MemoryUsage    MemoryMetrics
 	DiskUsage      DiskMetrics
 	NetworkMetrics NetworkMetrics
-	// 8-byte aligned fields
 	ResponseTime   time.Duration
 	RequestCount   int64
 	ErrorCount     int64
@@ -145,16 +134,16 @@ type Benchmark interface {
 
 type BenchmarkConfig struct {
 	// Slices first (24 bytes each)
-	Scenarios        []BenchmarkScenario
-	Targets          []string
+	Scenarios []BenchmarkScenario
+	Targets   []string
 	// 8-byte aligned fields
 	Duration         time.Duration
 	RequestRate      float64
 	WarmupDuration   time.Duration
 	CooldownDuration time.Duration
 	// 4-byte fields grouped
-	Concurrency      int
-	PayloadSize      int
+	Concurrency int
+	PayloadSize int
 }
 
 type BenchmarkScenario struct {
@@ -213,19 +202,15 @@ const (
 )
 
 type BenchmarkResult struct {
-	// map (24 bytes)
-	CustomMetrics  map[string]any
-	// time.Time (24 bytes each, aligned to 8 bytes)
 	StartTime      time.Time
 	EndTime        time.Time
-	// Large embedded structs
-	Config         BenchmarkConfig
+	CustomMetrics  map[string]any
 	ErrorStats     ErrorStats
+	Config         BenchmarkConfig
 	ResourceUsage  ResourceUsageStats
 	ResponseTimes  ResponseTimeStats
 	Percentiles    PercentileStats
 	Throughput     ThroughputStats
-	// 8-byte aligned fields
 	Duration       time.Duration
 	FailedRequests int64
 	SuccessfulReqs int64
@@ -283,7 +268,7 @@ type CPUUsageStats struct {
 	Average float64
 	Minimum float64
 	// 4-byte field last
-	Cores   int
+	Cores int
 }
 
 type DiskUsageStats struct {
@@ -296,10 +281,10 @@ type DiskUsageStats struct {
 
 type NetworkUsageStats struct {
 	// 8-byte aligned fields first
-	BytesIn     uint64
-	BytesOut    uint64
-	PacketsIn   uint64
-	PacketsOut  uint64
+	BytesIn    uint64
+	BytesOut   uint64
+	PacketsIn  uint64
+	PacketsOut uint64
 	// 4-byte field last
 	Connections int
 }
@@ -314,16 +299,13 @@ type PercentileStats struct {
 }
 
 type ComparisonResult struct {
-	// slices (24 bytes each)
+	OverallChange   PerformanceChange
 	Improvements    []Improvement
 	Regressions     []Regression
 	Recommendations []string
-	// large structs
+	Significance    StatisticalSignificance
 	Baseline        BenchmarkResult
 	Current         BenchmarkResult
-	Significance    StatisticalSignificance
-	// smaller structs/fields
-	OverallChange   PerformanceChange
 }
 
 type Improvement struct {
@@ -370,16 +352,12 @@ type StatisticalSignificance struct {
 }
 
 type BenchmarkReport struct {
-	// slices (24 bytes each)
+	Timestamp   time.Time
+	Version     string
 	Results     []BenchmarkResult
 	Comparisons []ComparisonResult
-	// time.Time (24 bytes)
-	Timestamp   time.Time
-	// large structs
 	Trends      TrendAnalysis
 	Summary     BenchmarkSummary
-	// string (16 bytes)
-	Version     string
 }
 
 type BenchmarkSummary struct {
@@ -398,19 +376,15 @@ type PerformanceAnalyzer interface {
 }
 
 type AnalysisResult struct {
-	// slices (24 bytes each)
+	Timestamp       time.Time
+	AnalysisType    AnalysisType
 	Bottlenecks     []Bottleneck
 	Patterns        []PerformancePattern
 	Anomalies       []Anomaly
 	Trends          []Trend
 	Predictions     []Prediction
 	Recommendations []Recommendation
-	// time.Time (24 bytes)
-	Timestamp       time.Time
-	// structs
 	Score           PerformanceScore
-	// smaller fields
-	AnalysisType    AnalysisType
 }
 
 type AnalysisType string
@@ -590,20 +564,16 @@ type PerformanceScore struct {
 }
 
 type Recommendation struct {
-	// slices (24 bytes each)
-	Steps       []RecommendationStep
-	References  []string
-	Tags        []string
-	// structs
-	Effort      EffortEstimate
-	Impact      ImpactEstimate
-	// strings (16 bytes each)
 	ID          string
 	Title       string
 	Description string
-	// smaller fields
 	Type        RecommendationType
 	Priority    RecommendationPriority
+	Steps       []RecommendationStep
+	References  []string
+	Tags        []string
+	Effort      EffortEstimate
+	Impact      ImpactEstimate
 }
 
 type RecommendationType string
@@ -659,13 +629,11 @@ type RecommendationStep struct {
 }
 
 type ScalingPrediction struct {
-	// slice (24 bytes)
 	Recommendations []ScalingRecommendation
-	// structs
-	CurrentCapacity CapacityMetrics
-	PredictedDemand DemandForecast
-	ScalingNeeds    ScalingRequirements
 	Timeline        ScalingTimeline
+	PredictedDemand DemandForecast
+	CurrentCapacity CapacityMetrics
+	ScalingNeeds    ScalingRequirements
 	CostEstimate    CostEstimate
 }
 
@@ -771,9 +739,9 @@ const (
 
 type ResourceRecommendation struct {
 	Type     ResourceType
+	Reason   string
 	Current  ResourceSpec
 	Proposed ResourceSpec
-	Reason   string
 }
 
 type ResourceType string
@@ -1077,13 +1045,13 @@ type TrendAnalyzer interface {
 
 type TrendAnalysis struct {
 	// slices (24 bytes each)
-	Trends     []Trend
-	Patterns   []PerformancePattern
-	Anomalies  []Anomaly
+	Trends    []Trend
+	Patterns  []PerformancePattern
+	Anomalies []Anomaly
 	// time.Time (24 bytes)
-	Timestamp  time.Time
+	Timestamp time.Time
 	// struct
-	Summary    TrendSummary
+	Summary TrendSummary
 	// 8-byte aligned fields
 	Period     time.Duration
 	Confidence float64
@@ -1107,14 +1075,11 @@ type TrendPrediction struct {
 }
 
 type TrendReport struct {
-	// slices (24 bytes each)
+	Timestamp       time.Time
 	Insights        []TrendInsight
 	Recommendations []Recommendation
-	// time.Time (24 bytes)
-	Timestamp       time.Time
-	// structs
-	Analysis        TrendAnalysis
 	Predictions     TrendPrediction
+	Analysis        TrendAnalysis
 }
 
 type TrendInsight struct {
@@ -1315,20 +1280,14 @@ func (po *PerformanceOptimizer) calculatePerformanceScore(result *PerformanceOpt
 
 // PerformanceOptimizationResult contains comprehensive optimization results
 type PerformanceOptimizationResult struct {
-	// maps (24 bytes each)
+	StartTime        time.Time
+	EndTime          time.Time
 	Monitoring       map[string]PerformanceMetrics
 	Benchmarks       map[string]BenchmarkResult
 	Analysis         map[string]AnalysisResult
 	Optimizations    map[string]OptimizationResult
-	// slice (24 bytes)
-	Errors           []string
-	// time.Time (24 bytes each)
-	StartTime        time.Time
-	EndTime          time.Time
-	// struct
-	PerformanceScore PerformanceScore
-	// string (16 bytes)
 	Target           string
-	// 8-byte aligned field
+	Errors           []string
+	PerformanceScore PerformanceScore
 	Duration         time.Duration
 }

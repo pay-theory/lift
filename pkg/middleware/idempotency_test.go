@@ -14,8 +14,8 @@ import (
 
 type TestPaymentIntent struct {
 	ID     string `json:"id"`
-	Amount int    `json:"amount"`
 	Status string `json:"status"`
+	Amount int    `json:"amount"`
 }
 
 // createIdempotencyTestContext creates a test context for idempotency tests

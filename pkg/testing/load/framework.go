@@ -15,36 +15,31 @@ import (
 
 // LoadTest represents a load testing configuration and execution
 type LoadTest struct {
-	// mutex first (24 bytes)
-	mu          sync.RWMutex
-	// slices (24 bytes each)
-	Scenarios   []Scenario
-	// struct
-	Config      LoadTestConfig
-	// pointers (8 bytes each)
 	App         *lift.App
 	results     *Results
-	// strings (16 bytes each)
 	Name        string
 	Description string
+	Scenarios   []Scenario
+	Config      LoadTestConfig
+	mu          sync.RWMutex
 }
 
 // LoadTestConfig holds configuration for load testing
 type LoadTestConfig struct {
 	// slice (24 bytes)
-	Percentiles       []float64
+	Percentiles []float64
 	// time.Duration fields (8 bytes each)
-	Duration          time.Duration
-	RampUpTime        time.Duration
-	RampDownTime      time.Duration
-	ThinkTime         time.Duration
-	Timeout           time.Duration
-	ReportInterval    time.Duration
+	Duration       time.Duration
+	RampUpTime     time.Duration
+	RampDownTime   time.Duration
+	ThinkTime      time.Duration
+	Timeout        time.Duration
+	ReportInterval time.Duration
 	// 8-byte aligned fields
 	MaxRequests       int64
 	RequestsPerSecond float64
 	// 4-byte field
-	Concurrent        int
+	Concurrent int
 }
 
 // Scenario represents a test scenario with weight
@@ -72,22 +67,17 @@ type ScenarioResult struct {
 
 // Results contains the aggregated results of a load test
 type Results struct {
-	// maps (24 bytes each)
+	StartTime      time.Time                 `json:"start_time"`
+	EndTime        time.Time                 `json:"end_time"`
 	Percentiles    map[string]time.Duration  `json:"percentiles"`
 	ScenarioStats  map[string]*ScenarioStats `json:"scenario_stats"`
 	ErrorsByStatus map[int]int64             `json:"errors_by_status"`
 	ErrorsByType   map[string]int64          `json:"errors_by_type"`
-	// slice (24 bytes)
-	Latencies      []time.Duration           `json:"-"`
-	// time.Time (24 bytes each)
-	StartTime      time.Time                 `json:"start_time"`
-	EndTime        time.Time                 `json:"end_time"`
-	// string (16 bytes)
 	TestName       string                    `json:"test_name"`
-	// 8-byte aligned fields
-	Duration       time.Duration             `json:"duration"`
-	MaxLatency     time.Duration             `json:"max_latency"`
+	Latencies      []time.Duration           `json:"-"`
 	MeanLatency    time.Duration             `json:"mean_latency"`
+	MaxLatency     time.Duration             `json:"max_latency"`
+	Duration       time.Duration             `json:"duration"`
 	MedianLatency  time.Duration             `json:"median_latency"`
 	MinLatency     time.Duration             `json:"min_latency"`
 	SuccessCount   int64                     `json:"success_count"`

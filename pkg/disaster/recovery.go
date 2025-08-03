@@ -11,43 +11,32 @@ import (
 
 // DisasterRecoveryManager manages disaster recovery operations
 type DisasterRecoveryManager struct {
-	// mutex first (24 bytes)
-	mu              sync.RWMutex
-	// slices (24 bytes each)
-	backupRegions   []string
-	failoverHistory []FailoverEvent
-	// pointers (8 bytes each)
 	healthMonitor   *HealthMonitor
 	dataSync        *DataSynchronizer
 	notificationMgr *NotificationManager
-	// structs
-	config          DRConfig
-	currentState    DRState
-	metrics         DRMetrics
-	// string (16 bytes)
 	primaryRegion   string
+	currentState    DRState
+	backupRegions   []string
+	failoverHistory []FailoverEvent
+	metrics         DRMetrics
+	config          DRConfig
+	mu              sync.RWMutex
 }
 
 // DRConfig holds disaster recovery configuration
 type DRConfig struct {
-	// slice (24 bytes)
-	BackupRegions    []string              `json:"backup_regions"`
-	// structs (ordered by importance)
-	HealthCheck      HealthCheckConfig     `json:"health_check"`
-	DataReplication  DataReplicationConfig `json:"data_replication"`
-	Notifications    NotificationConfig    `json:"notifications"`
-	BackupRetention  BackupRetentionConfig `json:"backup_retention"`
-	TestingSchedule  TestingScheduleConfig `json:"testing_schedule"`
-	// strings (16 bytes each)
-	ApplicationName  string                `json:"application_name"`
 	Environment      string                `json:"environment"`
-	PrimaryRegion    string                `json:"primary_region"`
-	// 8-byte aligned fields
-	RPO              time.Duration         `json:"rpo"` // Recovery Point Objective
-	RTO              time.Duration         `json:"rto"` // Recovery Time Objective
-	// smaller fields
 	FailoverStrategy FailoverStrategyType  `json:"failover_strategy"`
-	// bool fields (1 byte each)
+	PrimaryRegion    string                `json:"primary_region"`
+	ApplicationName  string                `json:"application_name"`
+	DataReplication  DataReplicationConfig `json:"data_replication"`
+	TestingSchedule  TestingScheduleConfig `json:"testing_schedule"`
+	BackupRegions    []string              `json:"backup_regions"`
+	Notifications    NotificationConfig    `json:"notifications"`
+	HealthCheck      HealthCheckConfig     `json:"health_check"`
+	BackupRetention  BackupRetentionConfig `json:"backup_retention"`
+	RPO              time.Duration         `json:"rpo"`
+	RTO              time.Duration         `json:"rto"`
 	AutoFailover     bool                  `json:"auto_failover"`
 	AutoFailback     bool                  `json:"auto_failback"`
 }
@@ -64,19 +53,14 @@ const (
 
 // DRState represents the current disaster recovery state
 type DRState struct {
-	// slice (24 bytes)
-	StandbyRegions  []string                `json:"standby_regions"`
-	// map (24 bytes)
-	RegionHealth    map[string]RegionHealth `json:"region_health"`
-	// time.Time (24 bytes each)
 	LastFailover    time.Time               `json:"last_failover"`
 	LastFailback    time.Time               `json:"last_failback"`
 	LastHealthCheck time.Time               `json:"last_health_check"`
-	// strings (16 bytes each)
+	RegionHealth    map[string]RegionHealth `json:"region_health"`
 	ActiveRegion    string                  `json:"active_region"`
 	FailoverReason  string                  `json:"failover_reason,omitempty"`
-	// smaller fields
 	Status          DRStatus                `json:"status"`
+	StandbyRegions  []string                `json:"standby_regions"`
 	DataSyncStatus  DataSyncStatus          `json:"data_sync_status"`
 }
 
@@ -94,14 +78,14 @@ const (
 
 // RegionHealth represents the health of a region
 type RegionHealth struct {
+	LastCheck           time.Time     `json:"last_check"`
 	Region              string        `json:"region"`
 	LastError           string        `json:"last_error,omitempty"`
-	LastCheck           time.Time     `json:"last_check"`
+	Status              HealthStatus  `json:"status"`
 	ResponseTime        time.Duration `json:"response_time"`
 	ErrorRate           float64       `json:"error_rate"`
 	Availability        float64       `json:"availability"`
 	ConsecutiveFailures int           `json:"consecutive_failures"`
-	Status              HealthStatus  `json:"status"`
 }
 
 // HealthStatus represents health status
@@ -116,12 +100,12 @@ const (
 
 // DataSyncStatus represents data synchronization status
 type DataSyncStatus struct {
+	LastSync       time.Time       `json:"last_sync"`
 	TablesInSync   map[string]bool `json:"tables_in_sync"`
 	BucketsInSync  map[string]bool `json:"buckets_in_sync"`
-	SyncErrors     []SyncError     `json:"sync_errors"`
-	LastSync       time.Time       `json:"last_sync"`
-	ReplicationLag time.Duration   `json:"replication_lag"`
 	Status         SyncStatus      `json:"status"`
+	SyncErrors     []SyncError     `json:"sync_errors"`
+	ReplicationLag time.Duration   `json:"replication_lag"`
 }
 
 // SyncStatus represents synchronization status
@@ -144,18 +128,18 @@ type SyncError struct {
 
 // FailoverEvent represents a failover event
 type FailoverEvent struct {
-	Impact       FailoverImpact  `json:"impact"`
+	Timestamp    time.Time       `json:"timestamp"`
+	RollbackPlan *RollbackPlan   `json:"rollback_plan,omitempty"`
 	ID           string          `json:"id"`
 	FromRegion   string          `json:"from_region"`
 	ToRegion     string          `json:"to_region"`
 	Reason       string          `json:"reason"`
-	Steps        []FailoverStep  `json:"steps"`
-	RollbackPlan *RollbackPlan   `json:"rollback_plan,omitempty"`
-	Timestamp    time.Time       `json:"timestamp"`
-	Duration     time.Duration   `json:"duration"`
 	Type         FailoverType    `json:"type"`
 	Trigger      FailoverTrigger `json:"trigger"`
 	Status       FailoverStatus  `json:"status"`
+	Steps        []FailoverStep  `json:"steps"`
+	Impact       FailoverImpact  `json:"impact"`
+	Duration     time.Duration   `json:"duration"`
 }
 
 // FailoverType represents the type of failover
@@ -190,14 +174,14 @@ const (
 
 // FailoverStep represents a step in the failover process
 type FailoverStep struct {
+	StartTime   time.Time     `json:"start_time"`
+	EndTime     time.Time     `json:"end_time"`
 	ID          string        `json:"id"`
 	Name        string        `json:"name"`
 	Description string        `json:"description"`
 	Status      StepStatus    `json:"status"`
-	StartTime   time.Time     `json:"start_time"`
-	EndTime     time.Time     `json:"end_time"`
-	Duration    time.Duration `json:"duration"`
 	Error       string        `json:"error,omitempty"`
+	Duration    time.Duration `json:"duration"`
 	Retries     int           `json:"retries"`
 }
 
@@ -268,20 +252,20 @@ type HealthEndpoint struct {
 
 // CustomHealthCheck defines a custom health check
 type CustomHealthCheck struct {
+	Config   map[string]any `json:"config"`
 	Name     string         `json:"name"`
 	Type     string         `json:"type"`
-	Config   map[string]any `json:"config"`
 	Critical bool           `json:"critical"`
 }
 
 // DataReplicationConfig defines data replication configuration
 type DataReplicationConfig struct {
-	Enabled           bool                        `json:"enabled"`
 	Strategy          ReplicationStrategy         `json:"strategy"`
-	MaxReplicationLag time.Duration               `json:"max_replication_lag"`
 	Tables            []TableReplicationConfig    `json:"tables"`
 	S3Buckets         []S3ReplicationConfig       `json:"s3_buckets"`
 	Databases         []DatabaseReplicationConfig `json:"databases"`
+	MaxReplicationLag time.Duration               `json:"max_replication_lag"`
+	Enabled           bool                        `json:"enabled"`
 }
 
 // ReplicationStrategy defines replication strategy
@@ -331,10 +315,10 @@ type DatabaseReplicationConfig struct {
 
 // NotificationConfig defines notification configuration
 type NotificationConfig struct {
-	Enabled    bool                  `json:"enabled"`
-	Channels   []NotificationChannel `json:"channels"`
 	Templates  map[string]string     `json:"templates"`
+	Channels   []NotificationChannel `json:"channels"`
 	Escalation EscalationConfig      `json:"escalation"`
+	Enabled    bool                  `json:"enabled"`
 }
 
 // NotificationChannel defines a notification channel
@@ -347,37 +331,37 @@ type NotificationChannel struct {
 
 // EscalationConfig defines escalation configuration
 type EscalationConfig struct {
-	Enabled bool              `json:"enabled"`
 	Levels  []EscalationLevel `json:"levels"`
 	Timeout time.Duration     `json:"timeout"`
+	Enabled bool              `json:"enabled"`
 }
 
 // EscalationLevel defines an escalation level
 type EscalationLevel struct {
-	Level      int           `json:"level"`
-	Delay      time.Duration `json:"delay"`
 	Recipients []string      `json:"recipients"`
 	Channels   []string      `json:"channels"`
+	Level      int           `json:"level"`
+	Delay      time.Duration `json:"delay"`
 }
 
 // BackupRetentionConfig defines backup retention configuration
 type BackupRetentionConfig struct {
-	Enabled          bool `json:"enabled"`
 	DailyRetention   int  `json:"daily_retention"`
 	WeeklyRetention  int  `json:"weekly_retention"`
 	MonthlyRetention int  `json:"monthly_retention"`
 	YearlyRetention  int  `json:"yearly_retention"`
+	Enabled          bool `json:"enabled"`
 	CrossRegion      bool `json:"cross_region"`
 	Encryption       bool `json:"encryption"`
 }
 
 // TestingScheduleConfig defines DR testing schedule
 type TestingScheduleConfig struct {
-	Enabled           bool          `json:"enabled"`
-	Frequency         time.Duration `json:"frequency"`
-	TestTypes         []string      `json:"test_types"`
 	MaintenanceWindow string        `json:"maintenance_window"`
+	TestTypes         []string      `json:"test_types"`
+	Frequency         time.Duration `json:"frequency"`
 	NotifyBefore      time.Duration `json:"notify_before"`
+	Enabled           bool          `json:"enabled"`
 }
 
 // NewDisasterRecoveryManager creates a new disaster recovery manager

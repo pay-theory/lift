@@ -10,43 +10,43 @@ import (
 
 const (
 	statusExcellent = "excellent"
-	statusGood = "good"
-	statusFair = "fair"
-	statusPoor = "poor"
+	statusGood      = "good"
+	statusFair      = "fair"
+	statusPoor      = "poor"
 )
 
 // ComplianceDashboard provides real-time compliance visibility
 // Memory optimized: 152 → 64 bytes (88 bytes saved)
 type ComplianceDashboard struct {
 	// Interfaces grouped together (24 bytes each)
-	metricsEngine  MetricsEngine          
-	dataAggregator DataAggregator         
-	alertManager   DashboardAlertManager  
-	cache          DashboardCache         
+	metricsEngine  MetricsEngine
+	dataAggregator DataAggregator
+	alertManager   DashboardAlertManager
+	cache          DashboardCache
 	// Sync primitive (24 bytes)
-	mu             sync.RWMutex           
+	mu sync.RWMutex
 	// Struct (varies)
-	config         DashboardConfig        
+	config DashboardConfig
 	// Bool last (1 byte)
-	running        bool                   
+	running bool
 }
 
 // DashboardConfig configuration for compliance dashboard
 // Memory optimized: 64 → 40 bytes (24 bytes saved)
 type DashboardConfig struct {
 	// 8-byte aligned fields first
-	RefreshInterval      time.Duration `json:"refresh_interval"`
-	CacheTTL             time.Duration `json:"cache_ttl"`
+	RefreshInterval time.Duration `json:"refresh_interval"`
+	CacheTTL        time.Duration `json:"cache_ttl"`
 	// 4-byte aligned fields
-	HistoricalDataDays   int           `json:"historical_data_days"`
-	MaxDataPoints        int           `json:"max_data_points"`
+	HistoricalDataDays int `json:"historical_data_days"`
+	MaxDataPoints      int `json:"max_data_points"`
 	// Bools grouped together (1 byte each)
-	Enabled              bool          `json:"enabled"`
-	CacheEnabled         bool          `json:"cache_enabled"`
-	RealTimeUpdates      bool          `json:"real_time_updates"`
-	AlertingEnabled      bool          `json:"alerting_enabled"`
-	ExportEnabled        bool          `json:"export_enabled"`
-	CustomMetricsEnabled bool          `json:"custom_metrics_enabled"`
+	Enabled              bool `json:"enabled"`
+	CacheEnabled         bool `json:"cache_enabled"`
+	RealTimeUpdates      bool `json:"real_time_updates"`
+	AlertingEnabled      bool `json:"alerting_enabled"`
+	ExportEnabled        bool `json:"export_enabled"`
+	CustomMetricsEnabled bool `json:"custom_metrics_enabled"`
 }
 
 // MetricsEngine interface for metrics calculation
@@ -85,63 +85,49 @@ type DashboardCache interface {
 // DashboardMetrics represents comprehensive dashboard metrics
 // Memory optimized: 112 → 96 bytes (16 bytes saved)
 type DashboardMetrics struct {
-	// Slice first (24 bytes)
-	CustomMetrics      []*CustomMetric     `json:"custom_metrics"`
-	Alerts             []*DashboardAlert   `json:"alerts"`
-	// Time struct (24 bytes)
 	Timestamp          time.Time           `json:"timestamp"`
-	// Pointers (8 bytes each)
 	ComplianceMetrics  *ComplianceMetrics  `json:"compliance_metrics"`
 	RiskMetrics        *RiskMetrics        `json:"risk_metrics"`
 	AuditMetrics       *AuditMetrics       `json:"audit_metrics"`
 	PerformanceMetrics *PerformanceMetrics `json:"performance_metrics"`
 	Summary            *DashboardSummary   `json:"summary"`
+	CustomMetrics      []*CustomMetric     `json:"custom_metrics"`
+	Alerts             []*DashboardAlert   `json:"alerts"`
 }
 
 // ComplianceMetrics represents compliance-specific metrics
 // Memory optimized: 176 → 152 bytes (24 bytes saved)
 type ComplianceMetrics struct {
-	// Maps first (24 bytes each)
-	FrameworkScores      map[string]float64         `json:"framework_scores"`
+	LastAuditDate        time.Time                  `json:"last_audit_date"`
+	NextAuditDate        time.Time                  `json:"next_audit_date"`
 	ControlEffectiveness map[string]float64         `json:"control_effectiveness"`
 	ViolationsByType     map[string]int             `json:"violations_by_type"`
 	ViolationsBySeverity map[string]int             `json:"violations_by_severity"`
-	// Slices (24 bytes each)
-	CertificationStatus  []CertificationStatus      `json:"certification_status"`
-	Recommendations      []ComplianceRecommendation `json:"recommendations"`
-	HistoricalData       []ComplianceDataPoint      `json:"historical_data"`
-	// Time structs (24 bytes each)
-	LastAuditDate        time.Time                  `json:"last_audit_date"`
-	NextAuditDate        time.Time                  `json:"next_audit_date"`
-	// String (16 bytes)
+	FrameworkScores      map[string]float64         `json:"framework_scores"`
 	TrendDirection       string                     `json:"trend_direction"`
-	// Float64s (8 bytes each)
+	HistoricalData       []ComplianceDataPoint      `json:"historical_data"`
+	Recommendations      []ComplianceRecommendation `json:"recommendations"`
+	CertificationStatus  []CertificationStatus      `json:"certification_status"`
 	OverallScore         float64                    `json:"overall_score"`
 	ComplianceRate       float64                    `json:"compliance_rate"`
-	// Int last (4 bytes)
 	ViolationCount       int                        `json:"violation_count"`
 }
 
 // RiskMetrics represents risk-specific metrics
 // Memory optimized: 152 → 112 bytes (40 bytes saved)
 type RiskMetrics struct {
-	// Maps first (24 bytes each)
 	RiskDistribution    map[string]int     `json:"risk_distribution"`
 	IncidentsByType     map[string]int     `json:"incidents_by_type"`
 	IncidentsBySeverity map[string]int     `json:"incidents_by_severity"`
 	MitigationProgress  map[string]float64 `json:"mitigation_progress"`
-	// Slices (24 bytes each)
-	TopRiskFactors      []RiskFactor       `json:"top_risk_factors"`
-	HistoricalData      []RiskDataPoint    `json:"historical_data"`
-	// Strings (16 bytes each)
 	RiskLevel           string             `json:"risk_level"`
 	RiskTrend           string             `json:"risk_trend"`
 	ThreatLevel         string             `json:"threat_level"`
-	// Float64s (8 bytes each)
+	HistoricalData      []RiskDataPoint    `json:"historical_data"`
+	TopRiskFactors      []RiskFactor       `json:"top_risk_factors"`
 	OverallRiskScore    float64            `json:"overall_risk_score"`
 	RiskAppetite        float64            `json:"risk_appetite"`
 	RiskTolerance       float64            `json:"risk_tolerance"`
-	// Ints last (4 bytes each)
 	IncidentCount       int                `json:"incident_count"`
 	VulnerabilityCount  int                `json:"vulnerability_count"`
 }
@@ -149,22 +135,17 @@ type RiskMetrics struct {
 // AuditMetrics represents audit-specific metrics
 // Memory optimized: 120 → 56 bytes (64 bytes saved)
 type AuditMetrics struct {
-	// Maps first (24 bytes each)
 	EventsByType        map[string]int   `json:"events_by_type"`
 	EventsBySeverity    map[string]int   `json:"events_by_severity"`
 	EventsBySource      map[string]int   `json:"events_by_source"`
 	AnomaliesByType     map[string]int   `json:"anomalies_by_type"`
-	// Slice (24 bytes)
-	HistoricalData      []AuditDataPoint `json:"historical_data"`
-	// String (16 bytes)
 	EventTrend          string           `json:"event_trend"`
-	// Float64s (8 bytes each)
+	HistoricalData      []AuditDataPoint `json:"historical_data"`
 	FailureRate         float64          `json:"failure_rate"`
 	AverageEventSize    float64          `json:"average_event_size"`
 	DataIntegrityScore  float64          `json:"data_integrity_score"`
 	LogCompleteness     float64          `json:"log_completeness"`
 	RetentionCompliance float64          `json:"retention_compliance"`
-	// Ints last (4 bytes each)
 	TotalEvents         int              `json:"total_events"`
 	AnomalyCount        int              `json:"anomaly_count"`
 	FailedEvents        int              `json:"failed_events"`
@@ -174,57 +155,51 @@ type AuditMetrics struct {
 // Memory optimized: 136 → 120 bytes (16 bytes saved)
 type CustomMetric struct {
 	// Map first (24 bytes)
-	Metadata    map[string]any `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 	// Time struct (24 bytes)
-	Timestamp   time.Time      `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp"`
 	// Strings (16 bytes each)
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Unit        string         `json:"unit"`
-	Type        string         `json:"type"`
-	Category    string         `json:"category"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Unit        string `json:"unit"`
+	Type        string `json:"type"`
+	Category    string `json:"category"`
 	// Float64 last (8 bytes)
-	Value       float64        `json:"value"`
+	Value float64 `json:"value"`
 }
 
 // CustomMetricQuery represents a query for custom metrics
 // Memory optimized: 136 → 128 bytes (8 bytes saved)
 type CustomMetricQuery struct {
 	// Map first (24 bytes)
-	Parameters  map[string]any `json:"parameters"`
+	Parameters map[string]any `json:"parameters"`
 	// Struct (varies)
-	TimeRange   TimeRange      `json:"time_range"`
+	TimeRange TimeRange `json:"time_range"`
 	// Strings (16 bytes each)
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	Query       string         `json:"query"`
-	Type        string         `json:"type"`
-	Aggregation string         `json:"aggregation"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Query       string `json:"query"`
+	Type        string `json:"type"`
+	Aggregation string `json:"aggregation"`
 }
 
 // DashboardAlert represents a dashboard alert
 // Memory optimized: 216 → 184 bytes (32 bytes saved)
 type DashboardAlert struct {
-	// Map first (24 bytes)
-	Metadata       map[string]any `json:"metadata"`
-	// Slice (24 bytes)
-	Actions        []AlertAction  `json:"actions"`
-	// Time struct (24 bytes)
 	Timestamp      time.Time      `json:"timestamp"`
-	// Strings (16 bytes each)
-	ID             string         `json:"id"`
-	Type           string         `json:"type"`
-	Severity       string         `json:"severity"`
+	Metadata       map[string]any `json:"metadata"`
+	ResolvedAt     *time.Time     `json:"resolved_at,omitempty"`
+	AcknowledgedAt *time.Time     `json:"acknowledged_at,omitempty"`
 	Title          string         `json:"title"`
+	Severity       string         `json:"severity"`
+	Type           string         `json:"type"`
 	Description    string         `json:"description"`
 	Metric         string         `json:"metric"`
 	Status         string         `json:"status"`
 	AcknowledgedBy string         `json:"acknowledged_by,omitempty"`
-	// Pointers (8 bytes each)
-	AcknowledgedAt *time.Time     `json:"acknowledged_at,omitempty"`
-	ResolvedAt     *time.Time     `json:"resolved_at,omitempty"`
-	// Float64s last (8 bytes each)
+	ID             string         `json:"id"`
+	Actions        []AlertAction  `json:"actions"`
 	Threshold      float64        `json:"threshold"`
 	CurrentValue   float64        `json:"current_value"`
 }
@@ -233,33 +208,28 @@ type DashboardAlert struct {
 // Memory optimized: 80 → 64 bytes (16 bytes saved)
 type AlertAction struct {
 	// Map first (24 bytes)
-	Parameters  map[string]any `json:"parameters"`
+	Parameters map[string]any `json:"parameters"`
 	// Strings (16 bytes each)
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	Type        string         `json:"type"`
-	Description string         `json:"description"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
 	// Bool last (1 byte)
-	Automated   bool           `json:"automated"`
+	Automated bool `json:"automated"`
 }
 
 // DashboardSummary represents a summary of dashboard data
 // Memory optimized: 160 → 128 bytes (32 bytes saved)
 type DashboardSummary struct {
-	// Maps first (24 bytes each)
+	LastUpdated      time.Time          `json:"last_updated"`
 	KeyMetrics       map[string]float64 `json:"key_metrics"`
 	Metadata         map[string]any     `json:"metadata"`
-	// Slice (24 bytes)
-	Recommendations  []string           `json:"recommendations"`
-	// Time struct (24 bytes)
-	LastUpdated      time.Time          `json:"last_updated"`
-	// Strings (16 bytes each)
 	OverallHealth    string             `json:"overall_health"`
 	ComplianceStatus string             `json:"compliance_status"`
 	RiskStatus       string             `json:"risk_status"`
 	AuditStatus      string             `json:"audit_status"`
 	TrendDirection   string             `json:"trend_direction"`
-	// Ints last (4 bytes each)
+	Recommendations  []string           `json:"recommendations"`
 	ActiveAlerts     int                `json:"active_alerts"`
 	CriticalIssues   int                `json:"critical_issues"`
 }
@@ -267,42 +237,43 @@ type DashboardSummary struct {
 // ComplianceDataPoint represents a compliance data point
 type ComplianceDataPoint struct {
 	Timestamp       time.Time      `json:"timestamp"`
+	Metadata        map[string]any `json:"metadata"`
+	Framework       string         `json:"framework"`
 	ComplianceScore float64        `json:"compliance_score"`
 	ViolationCount  int            `json:"violation_count"`
 	ControlCount    int            `json:"control_count"`
-	Framework       string         `json:"framework"`
-	Metadata        map[string]any `json:"metadata"`
 }
 
 // RiskDataPoint represents a risk data point
 type RiskDataPoint struct {
 	Timestamp     time.Time      `json:"timestamp"`
+	Metadata      map[string]any `json:"metadata"`
+	ThreatLevel   string         `json:"threat_level"`
 	RiskScore     float64        `json:"risk_score"`
 	IncidentCount int            `json:"incident_count"`
-	ThreatLevel   string         `json:"threat_level"`
-	Metadata      map[string]any `json:"metadata"`
 }
 
 // AuditDataPoint represents an audit data point
 type AuditDataPoint struct {
 	Timestamp    time.Time      `json:"timestamp"`
+	Metadata     map[string]any `json:"metadata"`
 	EventCount   int            `json:"event_count"`
 	AnomalyCount int            `json:"anomaly_count"`
 	FailureRate  float64        `json:"failure_rate"`
-	Metadata     map[string]any `json:"metadata"`
 }
 
 // DataPoint represents a generic data point
 type DataPoint struct {
 	Timestamp time.Time         `json:"timestamp"`
-	Value     float64           `json:"value"`
 	Labels    map[string]string `json:"labels"`
 	Metadata  map[string]any    `json:"metadata"`
+	Value     float64           `json:"value"`
 }
 
 // AggregatedDataPoint represents an aggregated data point
 type AggregatedDataPoint struct {
 	Timestamp time.Time      `json:"timestamp"`
+	Metadata  map[string]any `json:"metadata"`
 	Value     float64        `json:"value"`
 	Count     int            `json:"count"`
 	Min       float64        `json:"min"`
@@ -310,17 +281,16 @@ type AggregatedDataPoint struct {
 	Average   float64        `json:"average"`
 	Sum       float64        `json:"sum"`
 	StdDev    float64        `json:"std_dev"`
-	Metadata  map[string]any `json:"metadata"`
 }
 
 // TrendAnalysis represents trend analysis results
 type TrendAnalysis struct {
+	Metadata    map[string]any  `json:"metadata"`
 	Direction   string          `json:"direction"`
+	Forecast    []ForecastPoint `json:"forecast"`
 	Magnitude   float64         `json:"magnitude"`
 	Confidence  float64         `json:"confidence"`
 	Seasonality bool            `json:"seasonality"`
-	Forecast    []ForecastPoint `json:"forecast"`
-	Metadata    map[string]any  `json:"metadata"`
 }
 
 // ForecastPoint represents a forecast point
@@ -334,28 +304,28 @@ type ForecastPoint struct {
 
 // DataSummary represents a summary of data
 type DataSummary struct {
+	Percentiles map[string]float64 `json:"percentiles"`
+	Metadata    map[string]any     `json:"metadata"`
 	Count       int                `json:"count"`
 	Min         float64            `json:"min"`
 	Max         float64            `json:"max"`
 	Average     float64            `json:"average"`
 	Median      float64            `json:"median"`
 	StdDev      float64            `json:"std_dev"`
-	Percentiles map[string]float64 `json:"percentiles"`
-	Metadata    map[string]any     `json:"metadata"`
 }
 
 // DashboardWidget represents a dashboard widget
 type DashboardWidget struct {
+	LastUpdated time.Time      `json:"last_updated"`
+	Data        any            `json:"data"`
+	Metadata    map[string]any `json:"metadata"`
 	ID          string         `json:"id"`
 	Type        string         `json:"type"`
 	Title       string         `json:"title"`
 	Description string         `json:"description"`
+	Config      WidgetConfig   `json:"config"`
 	Position    WidgetPosition `json:"position"`
 	Size        WidgetSize     `json:"size"`
-	Config      WidgetConfig   `json:"config"`
-	Data        any            `json:"data"`
-	LastUpdated time.Time      `json:"last_updated"`
-	Metadata    map[string]any `json:"metadata"`
 }
 
 // WidgetPosition represents widget position
@@ -372,28 +342,28 @@ type WidgetSize struct {
 
 // WidgetConfig represents widget configuration
 type WidgetConfig struct {
-	ChartType   string             `json:"chart_type"`
-	DataSource  string             `json:"data_source"`
-	RefreshRate time.Duration      `json:"refresh_rate"`
-	Filters     map[string]any     `json:"filters"`
-	Aggregation string             `json:"aggregation"`
 	TimeRange   TimeRange          `json:"time_range"`
+	Filters     map[string]any     `json:"filters"`
 	Thresholds  map[string]float64 `json:"thresholds"`
 	Colors      map[string]string  `json:"colors"`
 	Metadata    map[string]any     `json:"metadata"`
+	ChartType   string             `json:"chart_type"`
+	DataSource  string             `json:"data_source"`
+	Aggregation string             `json:"aggregation"`
+	RefreshRate time.Duration      `json:"refresh_rate"`
 }
 
 // DashboardLayout represents dashboard layout
 type DashboardLayout struct {
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 	ID          string            `json:"id"`
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
-	Widgets     []DashboardWidget `json:"widgets"`
 	CreatedBy   string            `json:"created_by"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
-	IsDefault   bool              `json:"is_default"`
+	Widgets     []DashboardWidget `json:"widgets"`
 	Permissions []string          `json:"permissions"`
+	IsDefault   bool              `json:"is_default"`
 }
 
 // NewComplianceDashboard creates a new compliance dashboard
@@ -678,7 +648,7 @@ func (cd *ComplianceDashboard) refreshCache(ctx context.Context) {
 
 	for _, timeRange := range timeRanges {
 		if _, err := cd.GetDashboardMetrics(ctx, timeRange); err != nil {
-			log.Printf("Warning: failed to get dashboard metrics for time range %v-%v: %v", 
+			log.Printf("Warning: failed to get dashboard metrics for time range %v-%v: %v",
 				timeRange.Start, timeRange.End, err)
 		}
 	}

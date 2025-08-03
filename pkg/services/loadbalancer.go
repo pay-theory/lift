@@ -10,13 +10,11 @@ import (
 // DefaultLoadBalancer implements multiple load balancing strategies
 // Memory optimized: 56 → 32 bytes (24 bytes saved)
 type DefaultLoadBalancer struct {
-	// Mutex first (24 bytes)
-	mu                 sync.RWMutex         // 24 bytes
-	// Maps and pointers (8 bytes each)
-	roundRobinCounters map[string]*int64    // 8 bytes
-	connectionCounts   map[string]*int64    // 8 bytes
-	stats              *LoadBalancerMetrics // 8 bytes
-	rand               *rand.Rand           // 8 bytes
+	roundRobinCounters map[string]*int64
+	connectionCounts   map[string]*int64
+	stats              *LoadBalancerMetrics
+	rand               *rand.Rand
+	mu                 sync.RWMutex
 }
 
 // LoadBalancerMetrics tracks load balancer performance
@@ -341,11 +339,9 @@ func (h *HealthAwareLoadBalancer) GetStats() LoadBalancerStats {
 // WeightedLoadBalancer implements weighted load balancing with dynamic weight adjustment
 // Memory optimized: 48 → 24 bytes (24 bytes saved)
 type WeightedLoadBalancer struct {
-	// Mutex first (24 bytes)
-	mu       sync.RWMutex   // 24 bytes
-	// Map and interface (8 bytes each)
-	weights  map[string]int // 8 bytes
-	delegate LoadBalancer   // 8 bytes
+	delegate LoadBalancer
+	weights  map[string]int
+	mu       sync.RWMutex
 }
 
 // NewWeightedLoadBalancer creates a weighted load balancer

@@ -26,13 +26,13 @@ const (
 
 // DataProtectionConfig holds configuration for data protection
 type DataProtectionConfig struct {
-	DefaultClassification DataClassification                   `json:"default_classification"`
 	FieldClassifications  map[string]DataClassification        `json:"field_classifications"`
-	EncryptionKey         string                               `json:"encryption_key"`
 	RegionRestrictions    map[DataClassification][]string      `json:"region_restrictions"`
 	RetentionPolicies     map[DataClassification]time.Duration `json:"retention_policies"`
 	AccessControls        map[DataClassification][]string      `json:"access_controls"`
 	MaskingRules          map[string]MaskingRule               `json:"masking_rules"`
+	DefaultClassification DataClassification                   `json:"default_classification"`
+	EncryptionKey         string                               `json:"encryption_key"`
 }
 
 // MaskingRule defines how to mask sensitive data
@@ -44,9 +44,9 @@ type MaskingRule struct {
 
 // DataProtectionManager handles data classification and protection
 type DataProtectionManager struct {
-	config    DataProtectionConfig
 	encryptor *AESEncryptor
 	tokenizer *DataTokenizer
+	config    DataProtectionConfig
 	mu        sync.RWMutex
 }
 
@@ -65,6 +65,7 @@ type DataContext struct {
 
 // DataProtectionRequest represents a request to access protected data
 type DataProtectionRequest struct {
+	Metadata       map[string]any     `json:"metadata"`
 	UserID         string             `json:"user_id"`
 	TenantID       string             `json:"tenant_id"`
 	DataType       string             `json:"data_type"`
@@ -72,19 +73,18 @@ type DataProtectionRequest struct {
 	Purpose        string             `json:"purpose"`
 	Region         string             `json:"region"`
 	Fields         []string           `json:"fields"`
-	Metadata       map[string]any     `json:"metadata"`
 }
 
 // DataAccessResult represents the result of a data access request
 type DataAccessResult struct {
-	Allowed       bool           `json:"allowed"`
+	ExpiresAt     time.Time      `json:"expires_at,omitempty"`
 	Data          any            `json:"data,omitempty"`
 	MaskedData    any            `json:"masked_data,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 	Restrictions  []string       `json:"restrictions,omitempty"`
 	Violations    []string       `json:"violations,omitempty"`
+	Allowed       bool           `json:"allowed"`
 	AuditRequired bool           `json:"audit_required"`
-	ExpiresAt     time.Time      `json:"expires_at,omitempty"`
-	Metadata      map[string]any `json:"metadata,omitempty"`
 }
 
 // AESEncryptor handles AES encryption/decryption
@@ -229,13 +229,13 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 	if fieldLower == "ip" {
 		return DataPublic
 	}
-	
+
 	// Check for IP-related field names with word boundaries
-	if strings.HasSuffix(fieldLower, "_ip") || strings.HasPrefix(fieldLower, "ip_") || 
-	   strings.Contains(fieldLower, "_ip_") {
+	if strings.HasSuffix(fieldLower, "_ip") || strings.HasPrefix(fieldLower, "ip_") ||
+		strings.Contains(fieldLower, "_ip_") {
 		return DataPublic
 	}
-	
+
 	// Check for specific IP header patterns
 	if strings.Contains(fieldLower, "forwarded") && strings.Contains(fieldLower, "ip") {
 		return DataPublic
@@ -287,8 +287,6 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 			return DataRestricted
 		}
 	}
-
-	
 
 	// Additional confidential data patterns
 	confidentialPatterns := []string{

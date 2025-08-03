@@ -29,18 +29,18 @@ type BankingComplianceTemplate struct {
 
 // BankingComplianceConfig configuration for banking compliance
 type BankingComplianceConfig struct {
-	PCIDSSLevel         string   `json:"pci_dss_level"` // "1", "2", "3", "4"
-	SOXCompliance       bool     `json:"sox_compliance"`
-	BSACompliance       bool     `json:"bsa_compliance"`  // Bank Secrecy Act
-	GLBACompliance      bool     `json:"glba_compliance"` // Gramm-Leach-Bliley Act
-	FedRAMPRequired     bool     `json:"fedramp_required"`
+	PCIDSSLevel         string   `json:"pci_dss_level"`
+	FraudDetectionLevel string   `json:"fraud_detection_level"`
+	AuditFrequency      string   `json:"audit_frequency"`
 	RegulatedCountries  []string `json:"regulated_countries"`
 	DataResidencyRules  []string `json:"data_residency_rules"`
-	AMLRequired         bool     `json:"aml_required"` // Anti-Money Laundering
-	KYCRequired         bool     `json:"kyc_required"` // Know Your Customer
-	FraudDetectionLevel string   `json:"fraud_detection_level"`
 	EncryptionStandards []string `json:"encryption_standards"`
-	AuditFrequency      string   `json:"audit_frequency"`
+	SOXCompliance       bool     `json:"sox_compliance"`
+	BSACompliance       bool     `json:"bsa_compliance"`
+	GLBACompliance      bool     `json:"glba_compliance"`
+	FedRAMPRequired     bool     `json:"fedramp_required"`
+	AMLRequired         bool     `json:"aml_required"`
+	KYCRequired         bool     `json:"kyc_required"`
 }
 
 // HealthcareComplianceTemplate for healthcare compliance
@@ -50,17 +50,17 @@ type HealthcareComplianceTemplate struct {
 
 // HealthcareComplianceConfig configuration for healthcare compliance
 type HealthcareComplianceConfig struct {
-	HIPAARequired        bool     `json:"hipaa_required"`
-	HITECHRequired       bool     `json:"hitech_required"`
-	FDACompliance        bool     `json:"fda_compliance"`
-	DEACompliance        bool     `json:"dea_compliance"`
 	PHIProtectionLevel   string   `json:"phi_protection_level"`
-	BAAAgreements        bool     `json:"baa_agreements"` // Business Associate Agreements
+	InteroperabilityStds []string `json:"interoperability_standards"`
 	BreachNotification   bool     `json:"breach_notification"`
+	DEACompliance        bool     `json:"dea_compliance"`
+	FDACompliance        bool     `json:"fda_compliance"`
+	BAAAgreements        bool     `json:"baa_agreements"`
+	HIPAARequired        bool     `json:"hipaa_required"`
 	AccessLogging        bool     `json:"access_logging"`
 	DataMinimization     bool     `json:"data_minimization"`
 	ConsentManagement    bool     `json:"consent_management"`
-	InteroperabilityStds []string `json:"interoperability_standards"`
+	HITECHRequired       bool     `json:"hitech_required"`
 	ClinicalTrialData    bool     `json:"clinical_trial_data"`
 	MedicalDeviceData    bool     `json:"medical_device_data"`
 }
@@ -72,19 +72,19 @@ type EcommerceComplianceTemplate struct {
 
 // EcommerceComplianceConfig configuration for e-commerce compliance
 type EcommerceComplianceConfig struct {
-	PCIDSSRequired     bool     `json:"pci_dss_required"`
-	GDPRRequired       bool     `json:"gdpr_required"`
-	CCPARequired       bool     `json:"ccpa_required"`
-	COPPARequired      bool     `json:"coppa_required"`          // Children's Online Privacy Protection Act
-	AccessibilityStds  []string `json:"accessibility_standards"` // WCAG, ADA
+	PaymentSecurity    string   `json:"payment_security_level"`
+	AccessibilityStds  []string `json:"accessibility_standards"`
+	CrossBorderRules   []string `json:"cross_border_rules"`
+	TaxCompliance      []string `json:"tax_compliance"`
+	COPPARequired      bool     `json:"coppa_required"`
 	ConsumerProtection bool     `json:"consumer_protection"`
 	DataPortability    bool     `json:"data_portability"`
 	CookieConsent      bool     `json:"cookie_consent"`
 	MarketingConsent   bool     `json:"marketing_consent"`
-	PaymentSecurity    string   `json:"payment_security_level"`
+	PCIDSSRequired     bool     `json:"pci_dss_required"`
 	FraudPrevention    bool     `json:"fraud_prevention"`
-	TaxCompliance      []string `json:"tax_compliance"`
-	CrossBorderRules   []string `json:"cross_border_rules"`
+	CCPARequired       bool     `json:"ccpa_required"`
+	GDPRRequired       bool     `json:"gdpr_required"`
 }
 
 // GovernmentComplianceTemplate for government sector compliance
@@ -94,16 +94,16 @@ type GovernmentComplianceTemplate struct {
 
 // GovernmentComplianceConfig configuration for government compliance
 type GovernmentComplianceConfig struct {
-	FedRAMPLevel         string `json:"fedramp_level"` // "Low", "Moderate", "High"
+	ILLevel              string `json:"il_level"`
+	FedRAMPLevel         string `json:"fedramp_level"`
+	NISTFramework        string `json:"nist_framework"`
+	CUIHandling          bool   `json:"cui_handling"`
+	STIGCompliance       bool   `json:"stig_compliance"`
+	ATORequired          bool   `json:"ato_required"`
 	FISMARequired        bool   `json:"fisma_required"`
-	NISTFramework        string `json:"nist_framework"`  // "800-53", "800-171", "CSF"
-	ATORequired          bool   `json:"ato_required"`    // Authority to Operate
-	STIGCompliance       bool   `json:"stig_compliance"` // Security Technical Implementation Guides
-	ILLevel              string `json:"il_level"`        // Impact Level
-	CUIHandling          bool   `json:"cui_handling"`    // Controlled Unclassified Information
 	PIIProtection        bool   `json:"pii_protection"`
-	Section508           bool   `json:"section_508"` // Accessibility
-	FOIA                 bool   `json:"foia"`        // Freedom of Information Act
+	Section508           bool   `json:"section_508"`
+	FOIA                 bool   `json:"foia"`
 	RecordsManagement    bool   `json:"records_management"`
 	IncidentReporting    bool   `json:"incident_reporting"`
 	ContinuousMonitoring bool   `json:"continuous_monitoring"`
@@ -111,71 +111,71 @@ type GovernmentComplianceConfig struct {
 
 // IndustryComplianceReport represents an industry-specific compliance report
 type IndustryComplianceReport struct {
+	NextAuditDate       time.Time                  `json:"next_audit_date"`
+	GeneratedAt         time.Time                  `json:"generated_at"`
+	RiskAssessment      *IndustryRiskAssessment    `json:"risk_assessment"`
 	Industry            string                     `json:"industry"`
-	Regulations         []RegulationCompliance     `json:"regulations"`
-	OverallScore        float64                    `json:"overall_score"`
 	ComplianceStatus    string                     `json:"compliance_status"`
+	Regulations         []RegulationCompliance     `json:"regulations"`
 	CriticalFindings    []ComplianceFinding        `json:"critical_findings"`
 	Recommendations     []ComplianceRecommendation `json:"recommendations"`
-	NextAuditDate       time.Time                  `json:"next_audit_date"`
 	CertificationStatus []CertificationStatus      `json:"certification_status"`
-	RiskAssessment      *IndustryRiskAssessment    `json:"risk_assessment"`
-	GeneratedAt         time.Time                  `json:"generated_at"`
+	OverallScore        float64                    `json:"overall_score"`
 }
 
 // RegulationCompliance represents compliance with a specific regulation
 type RegulationCompliance struct {
-	Regulation          string              `json:"regulation"`
-	Status              string              `json:"status"`
-	Score               float64             `json:"score"`
-	RequiredControls    int                 `json:"required_controls"`
-	ImplementedControls int                 `json:"implemented_controls"`
-	Findings            []ComplianceFinding `json:"findings"`
 	LastAssessment      time.Time           `json:"last_assessment"`
 	NextAssessment      time.Time           `json:"next_assessment"`
 	Metadata            map[string]any      `json:"metadata"`
+	Regulation          string              `json:"regulation"`
+	Status              string              `json:"status"`
+	Findings            []ComplianceFinding `json:"findings"`
+	Score               float64             `json:"score"`
+	RequiredControls    int                 `json:"required_controls"`
+	ImplementedControls int                 `json:"implemented_controls"`
 }
 
 // ComplianceRecommendation represents a compliance recommendation
 type ComplianceRecommendation struct {
+	DueDate     time.Time `json:"due_date"`
 	ID          string    `json:"id"`
 	Priority    string    `json:"priority"`
 	Category    string    `json:"category"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
-	Actions     []string  `json:"actions"`
 	Timeline    string    `json:"timeline"`
 	Cost        string    `json:"cost"`
 	Impact      string    `json:"impact"`
 	Owner       string    `json:"owner"`
-	DueDate     time.Time `json:"due_date"`
 	Status      string    `json:"status"`
+	Actions     []string  `json:"actions"`
 }
 
 // CertificationStatus represents certification status
 type CertificationStatus struct {
-	Certification  string    `json:"certification"`
-	Status         string    `json:"status"`
 	ValidFrom      time.Time `json:"valid_from"`
 	ValidUntil     time.Time `json:"valid_until"`
+	NextReview     time.Time `json:"next_review"`
+	Certification  string    `json:"certification"`
+	Status         string    `json:"status"`
 	CertifyingBody string    `json:"certifying_body"`
 	Scope          []string  `json:"scope"`
 	Conditions     []string  `json:"conditions"`
-	NextReview     time.Time `json:"next_review"`
 }
 
 // IndustryRiskAssessment represents industry-specific risk assessment
 type IndustryRiskAssessment struct {
+	AssessmentDate  time.Time            `json:"assessment_date"`
+	NextAssessment  time.Time            `json:"next_assessment"`
 	Industry        string               `json:"industry"`
 	RiskLevel       string               `json:"risk_level"`
-	RiskScore       float64              `json:"risk_score"`
 	RiskFactors     []IndustryRiskFactor `json:"risk_factors"`
 	ThreatLandscape []ThreatVector       `json:"threat_landscape"`
 	Vulnerabilities []Vulnerability      `json:"vulnerabilities"`
 	Mitigations     []RiskMitigation     `json:"mitigations"`
+	RiskScore       float64              `json:"risk_score"`
 	ResidualRisk    float64              `json:"residual_risk"`
-	AssessmentDate  time.Time            `json:"assessment_date"`
-	NextAssessment  time.Time            `json:"next_assessment"`
 }
 
 // IndustryRiskFactor represents an industry-specific risk factor
@@ -186,9 +186,9 @@ type IndustryRiskFactor struct {
 	Description string  `json:"description"`
 	Impact      string  `json:"impact"`
 	Likelihood  string  `json:"likelihood"`
-	Score       float64 `json:"score"`
 	Trend       string  `json:"trend"`
 	Mitigation  string  `json:"mitigation"`
+	Score       float64 `json:"score"`
 }
 
 // ThreatVector represents a threat vector
@@ -209,15 +209,16 @@ type Vulnerability struct {
 	Name        string   `json:"name"`
 	Type        string   `json:"type"`
 	Severity    string   `json:"severity"`
-	CVSS        float64  `json:"cvss"`
 	Description string   `json:"description"`
 	Impact      string   `json:"impact"`
-	Remediation []string `json:"remediation"`
 	Status      string   `json:"status"`
+	Remediation []string `json:"remediation"`
+	CVSS        float64  `json:"cvss"`
 }
 
 // RiskMitigation represents a risk mitigation
 type RiskMitigation struct {
+	DueDate       time.Time `json:"due_date"`
 	ID            string    `json:"id"`
 	Name          string    `json:"name"`
 	Type          string    `json:"type"`
@@ -227,22 +228,21 @@ type RiskMitigation struct {
 	Timeline      string    `json:"timeline"`
 	Owner         string    `json:"owner"`
 	Status        string    `json:"status"`
-	DueDate       time.Time `json:"due_date"`
 }
 
 // RiskAssessmentTemplate represents a risk assessment template
 type RiskAssessmentTemplate struct {
+	Metadata         map[string]any `json:"metadata"`
 	ID               string         `json:"id"`
 	Name             string         `json:"name"`
 	Industry         string         `json:"industry"`
+	Methodology      string         `json:"methodology"`
 	Scope            []string       `json:"scope"`
 	RiskFactors      []RiskFactor   `json:"risk_factors"`
 	ThreatSources    []string       `json:"threat_sources"`
 	AssetCategories  []string       `json:"asset_categories"`
 	ImpactCategories []string       `json:"impact_categories"`
-	Methodology      string         `json:"methodology"`
 	Frequency        time.Duration  `json:"frequency"`
-	Metadata         map[string]any `json:"metadata"`
 }
 
 // Helper functions for reducing duplication in risk assessments
@@ -301,7 +301,7 @@ func createHealthcareRiskAssessment() RiskAssessmentTemplate {
 
 	return createStandardRiskAssessment(
 		"HC-RISK-001",
-		"Healthcare Risk Assessment", 
+		"Healthcare Risk Assessment",
 		"healthcare",
 		[]string{"phi_handling", "medical_devices", "clinical_systems"},
 		customRiskFactors,

@@ -20,74 +20,72 @@ type EnhancedComplianceFramework struct {
 // EnhancedComplianceConfig holds advanced configuration
 // Memory optimized: 328 → 304 bytes (24 bytes saved)
 type EnhancedComplianceConfig struct {
-	// Embedded struct first
+	IndustryTemplate IndustryTemplate `json:"industry_template"`
 	ComplianceConfig
-	// Larger structs 
-	SOC2TypeII       SOC2TypeIIConfig    `json:"soc2_type_ii"`
-	GDPR             GDPRConfig          `json:"gdpr"`
-	IndustryTemplate IndustryTemplate    `json:"industry_template"`
-	AuditEnhanced    EnhancedAuditConfig `json:"audit_enhanced"`
+	GDPR          GDPRConfig          `json:"gdpr"`
+	SOC2TypeII    SOC2TypeIIConfig    `json:"soc2_type_ii"`
+	AuditEnhanced EnhancedAuditConfig `json:"audit_enhanced"`
 }
 
 // SOC2TypeIIConfig for SOC 2 Type II compliance automation
 // Memory optimized: 72 → 64 bytes (8 bytes saved)
 type SOC2TypeIIConfig struct {
 	// Slice first (24 bytes)
-	ControlObjectives      []string      `json:"control_objectives"`
+	ControlObjectives []string `json:"control_objectives"`
 	// Duration (8 bytes)
-	ReportingFrequency     time.Duration `json:"reporting_frequency"`
+	ReportingFrequency time.Duration `json:"reporting_frequency"`
 	// Ints (4 bytes each)
-	ControlPeriodMonths    int           `json:"control_period_months"`
-	ExceptionThreshold     int           `json:"exception_threshold"`
-	EvidenceRetentionYears int           `json:"evidence_retention_years"`
+	ControlPeriodMonths    int `json:"control_period_months"`
+	ExceptionThreshold     int `json:"exception_threshold"`
+	EvidenceRetentionYears int `json:"evidence_retention_years"`
 	// Bools last (1 byte each)
-	Enabled                bool          `json:"enabled"`
-	ContinuousMonitoring   bool          `json:"continuous_monitoring"`
-	AutomatedTesting       bool          `json:"automated_testing"`
+	Enabled              bool `json:"enabled"`
+	ContinuousMonitoring bool `json:"continuous_monitoring"`
+	AutomatedTesting     bool `json:"automated_testing"`
 }
 
 // GDPRConfig for GDPR privacy compliance
 // Memory optimized: 64 → 48 bytes (16 bytes saved)
 type GDPRConfig struct {
 	// Map first (24 bytes)
-	DataRetentionPolicies   map[string]time.Duration `json:"data_retention_policies"`
+	DataRetentionPolicies map[string]time.Duration `json:"data_retention_policies"`
 	// Slice (24 bytes)
-	DataProcessingBasis     []string                 `json:"data_processing_basis"`
+	DataProcessingBasis []string `json:"data_processing_basis"`
 	// Int (4 bytes)
-	BreachNotificationHours int                      `json:"breach_notification_hours"`
+	BreachNotificationHours int `json:"breach_notification_hours"`
 	// Bools grouped together (1 byte each)
-	Enabled                 bool                     `json:"enabled"`
-	ConsentManagement       bool                     `json:"consent_management"`
-	DataMinimization        bool                     `json:"data_minimization"`
-	RightToBeForgotten      bool                     `json:"right_to_be_forgotten"`
-	DataPortability         bool                     `json:"data_portability"`
-	DPORequired             bool                     `json:"dpo_required"`
-	PIARequired             bool                     `json:"pia_required"`
+	Enabled            bool `json:"enabled"`
+	ConsentManagement  bool `json:"consent_management"`
+	DataMinimization   bool `json:"data_minimization"`
+	RightToBeForgotten bool `json:"right_to_be_forgotten"`
+	DataPortability    bool `json:"data_portability"`
+	DPORequired        bool `json:"dpo_required"`
+	PIARequired        bool `json:"pia_required"`
 }
 
 // IndustryTemplate for industry-specific compliance
 type IndustryTemplate struct {
-	Industry    string              `json:"industry"` // "banking", "healthcare", "retail", "government"
+	Metadata    map[string]any      `json:"metadata"`
+	Industry    string              `json:"industry"`
 	Regulations []string            `json:"regulations"`
 	Controls    []ComplianceControl `json:"controls"`
 	Audits      []AuditRequirement  `json:"audits"`
-	Metadata    map[string]any      `json:"metadata"`
 }
 
 // ComplianceControl defines a specific control
 type ComplianceControl struct {
+	Metadata    map[string]any        `json:"metadata"`
 	ID          string                `json:"id"`
 	Name        string                `json:"name"`
 	Description string                `json:"description"`
 	Framework   string                `json:"framework"`
 	Category    string                `json:"category"`
 	Severity    string                `json:"severity"`
-	Automated   bool                  `json:"automated"`
-	Frequency   time.Duration         `json:"frequency"`
+	Remediation string                `json:"remediation"`
 	Evidence    []EvidenceRequirement `json:"evidence"`
 	Tests       []ComplianceTest      `json:"tests"`
-	Remediation string                `json:"remediation"`
-	Metadata    map[string]any        `json:"metadata"`
+	Frequency   time.Duration         `json:"frequency"`
+	Automated   bool                  `json:"automated"`
 }
 
 // EvidenceRequirement defines required evidence
@@ -100,13 +98,13 @@ type EvidenceRequirement struct {
 
 // ComplianceTest defines automated compliance tests
 type ComplianceTest struct {
-	ID         string             `json:"id"`
-	Name       string             `json:"name"`
-	Type       string             `json:"type"` // "technical", "administrative", "physical"
-	Automated  bool               `json:"automated"`
-	Frequency  time.Duration      `json:"frequency"`
 	Parameters map[string]any     `json:"parameters"`
 	Thresholds map[string]float64 `json:"thresholds"`
+	ID         string             `json:"id"`
+	Name       string             `json:"name"`
+	Type       string             `json:"type"`
+	Frequency  time.Duration      `json:"frequency"`
+	Automated  bool               `json:"automated"`
 }
 
 // AuditRequirement defines audit requirements
@@ -114,20 +112,20 @@ type AuditRequirement struct {
 	ID        string        `json:"id"`
 	Name      string        `json:"name"`
 	Type      string        `json:"type"`
-	Frequency time.Duration `json:"frequency"`
 	Scope     []string      `json:"scope"`
+	Frequency time.Duration `json:"frequency"`
 	Automated bool          `json:"automated"`
 	External  bool          `json:"external"`
 }
 
 // EnhancedAuditConfig for advanced audit capabilities
 type EnhancedAuditConfig struct {
+	RetentionPeriod     time.Duration `json:"retention_period"`
 	DetailedLogging     bool          `json:"detailed_logging"`
 	RealTimeMonitoring  bool          `json:"real_time_monitoring"`
 	AnomalyDetection    bool          `json:"anomaly_detection"`
 	ThreatIntelligence  bool          `json:"threat_intelligence"`
 	AutomatedResponse   bool          `json:"automated_response"`
-	RetentionPeriod     time.Duration `json:"retention_period"`
 	EncryptionRequired  bool          `json:"encryption_required"`
 	IntegrityValidation bool          `json:"integrity_validation"`
 }
@@ -167,14 +165,14 @@ type SOC2Controls struct {
 
 // AccessControlData for access control monitoring
 type AccessControlData struct {
+	LastLogin        time.Time `json:"last_login"`
 	UserID           string    `json:"user_id"`
 	Role             string    `json:"role"`
-	Permissions      []string  `json:"permissions"`
 	AuthMethod       string    `json:"auth_method"`
-	MFAEnabled       bool      `json:"mfa_enabled"`
-	LastLogin        time.Time `json:"last_login"`
+	Permissions      []string  `json:"permissions"`
 	FailedAttempts   int       `json:"failed_attempts"`
 	SessionTimeout   int       `json:"session_timeout"`
+	MFAEnabled       bool      `json:"mfa_enabled"`
 	PrivilegedAccess bool      `json:"privileged_access"`
 }
 
@@ -194,10 +192,10 @@ type DataProtectionData struct {
 
 // SystemMonitoringData for system monitoring controls
 type SystemMonitoringData struct {
+	LogRetention       time.Duration `json:"log_retention"`
 	LoggingEnabled     bool          `json:"logging_enabled"`
 	MonitoringEnabled  bool          `json:"monitoring_enabled"`
 	AlertingEnabled    bool          `json:"alerting_enabled"`
-	LogRetention       time.Duration `json:"log_retention"`
 	LogIntegrity       bool          `json:"log_integrity"`
 	RealTimeMonitoring bool          `json:"real_time_monitoring"`
 	AnomalyDetection   bool          `json:"anomaly_detection"`
@@ -207,12 +205,12 @@ type SystemMonitoringData struct {
 
 // ChangeManagementData for change management controls
 type ChangeManagementData struct {
+	ApprovalDate         time.Time `json:"approval_date"`
+	ImplementationDate   time.Time `json:"implementation_date"`
 	ChangeID             string    `json:"change_id"`
 	ChangeType           string    `json:"change_type"`
 	Requestor            string    `json:"requestor"`
 	Approver             string    `json:"approver"`
-	ApprovalDate         time.Time `json:"approval_date"`
-	ImplementationDate   time.Time `json:"implementation_date"`
 	TestingCompleted     bool      `json:"testing_completed"`
 	RollbackPlan         bool      `json:"rollback_plan"`
 	DocumentationUpdated bool      `json:"documentation_updated"`
@@ -220,29 +218,29 @@ type ChangeManagementData struct {
 
 // RiskAssessmentData for risk assessment controls
 type RiskAssessmentData struct {
-	AssessmentID    string    `json:"assessment_id"`
 	AssessmentDate  time.Time `json:"assessment_date"`
+	AssessmentID    string    `json:"assessment_id"`
 	RiskLevel       string    `json:"risk_level"`
 	RiskCategory    string    `json:"risk_category"`
-	ThreatSources   []string  `json:"threat_sources"`
-	Vulnerabilities []string  `json:"vulnerabilities"`
 	Impact          string    `json:"impact"`
 	Likelihood      string    `json:"likelihood"`
 	MitigationPlan  string    `json:"mitigation_plan"`
 	ResidualRisk    string    `json:"residual_risk"`
+	ThreatSources   []string  `json:"threat_sources"`
+	Vulnerabilities []string  `json:"vulnerabilities"`
 }
 
 // IncidentResponseData for incident response controls
 type IncidentResponseData struct {
-	IncidentID       string    `json:"incident_id"`
-	IncidentType     string    `json:"incident_type"`
-	Severity         string    `json:"severity"`
 	DetectionTime    time.Time `json:"detection_time"`
 	ResponseTime     time.Time `json:"response_time"`
 	ContainmentTime  time.Time `json:"containment_time"`
 	ResolutionTime   time.Time `json:"resolution_time"`
-	NotificationSent bool      `json:"notification_sent"`
+	IncidentID       string    `json:"incident_id"`
+	IncidentType     string    `json:"incident_type"`
+	Severity         string    `json:"severity"`
 	LessonsLearned   string    `json:"lessons_learned"`
+	NotificationSent bool      `json:"notification_sent"`
 }
 
 // VendorManagementData for vendor management controls
@@ -260,36 +258,39 @@ type VendorManagementData struct {
 
 // BusinessContinuityData for business continuity controls
 type BusinessContinuityData struct {
-	PlanID            string        `json:"plan_id"`
 	LastTested        time.Time     `json:"last_tested"`
+	PlanID            string        `json:"plan_id"`
 	TestResults       string        `json:"test_results"`
-	RPO               time.Duration `json:"rpo"` // Recovery Point Objective
-	RTO               time.Duration `json:"rto"` // Recovery Time Objective
 	BackupStrategy    string        `json:"backup_strategy"`
+	RPO               time.Duration `json:"rpo"`
+	RTO               time.Duration `json:"rto"`
 	DisasterRecovery  bool          `json:"disaster_recovery"`
 	CommunicationPlan bool          `json:"communication_plan"`
 }
 
 // GDPREvent represents GDPR-related events
 type GDPREvent struct {
-	EventType        string         `json:"event_type"`
+	Timestamp        time.Time      `json:"timestamp"`
+	Metadata         map[string]any `json:"metadata"`
 	DataSubject      string         `json:"data_subject"`
 	DataController   string         `json:"data_controller"`
 	DataProcessor    string         `json:"data_processor"`
 	ProcessingBasis  string         `json:"processing_basis"`
-	DataCategories   []string       `json:"data_categories"`
+	EventType        string         `json:"event_type"`
 	Recipients       []string       `json:"recipients"`
+	DataCategories   []string       `json:"data_categories"`
 	RetentionPeriod  time.Duration  `json:"retention_period"`
 	ConsentGiven     bool           `json:"consent_given"`
 	ConsentWithdrawn bool           `json:"consent_withdrawn"`
 	DataPortability  bool           `json:"data_portability"`
 	RightToErasure   bool           `json:"right_to_erasure"`
-	Metadata         map[string]any `json:"metadata"`
-	Timestamp        time.Time      `json:"timestamp"`
 }
 
 // DataProcessingLog for GDPR data processing logging
 type DataProcessingLog struct {
+	Timestamp         time.Time      `json:"timestamp"`
+	ConsentDetails    *ConsentData   `json:"consent_details"`
+	Metadata          map[string]any `json:"metadata"`
 	ProcessingID      string         `json:"processing_id"`
 	DataSubject       string         `json:"data_subject"`
 	ProcessingPurpose string         `json:"processing_purpose"`
@@ -297,25 +298,22 @@ type DataProcessingLog struct {
 	DataCategories    []string       `json:"data_categories"`
 	Recipients        []string       `json:"recipients"`
 	ThirdCountries    []string       `json:"third_countries"`
-	RetentionPeriod   time.Duration  `json:"retention_period"`
 	SecurityMeasures  []string       `json:"security_measures"`
-	ConsentDetails    *ConsentData   `json:"consent_details"`
-	Metadata          map[string]any `json:"metadata"`
-	Timestamp         time.Time      `json:"timestamp"`
+	RetentionPeriod   time.Duration  `json:"retention_period"`
 }
 
 // ConsentData for GDPR consent management
 type ConsentData struct {
-	ConsentID        string     `json:"consent_id"`
-	DataSubject      string     `json:"data_subject"`
-	ConsentGiven     bool       `json:"consent_given"`
 	ConsentDate      time.Time  `json:"consent_date"`
-	ConsentMethod    string     `json:"consent_method"`
-	ConsentScope     []string   `json:"consent_scope"`
-	ConsentVersion   string     `json:"consent_version"`
-	WithdrawalDate   *time.Time `json:"withdrawal_date,omitempty"`
-	WithdrawalMethod string     `json:"withdrawal_method,omitempty"`
 	ExpiryDate       *time.Time `json:"expiry_date,omitempty"`
+	WithdrawalDate   *time.Time `json:"withdrawal_date,omitempty"`
+	DataSubject      string     `json:"data_subject"`
+	ConsentMethod    string     `json:"consent_method"`
+	ConsentVersion   string     `json:"consent_version"`
+	WithdrawalMethod string     `json:"withdrawal_method,omitempty"`
+	ConsentID        string     `json:"consent_id"`
+	ConsentScope     []string   `json:"consent_scope"`
+	ConsentGiven     bool       `json:"consent_given"`
 	Granular         bool       `json:"granular"`
 	Specific         bool       `json:"specific"`
 	Informed         bool       `json:"informed"`
@@ -324,37 +322,40 @@ type ConsentData struct {
 
 // Evidence represents compliance evidence
 type Evidence struct {
+	Timestamp   time.Time      `json:"timestamp"`
+	Data        map[string]any `json:"data"`
 	ID          string         `json:"id"`
 	Type        string         `json:"type"`
 	Description string         `json:"description"`
 	Source      string         `json:"source"`
-	Timestamp   time.Time      `json:"timestamp"`
-	Data        map[string]any `json:"data"`
 	Verified    bool           `json:"verified"`
 }
 
 // ComplianceTestResult for automated compliance testing
 type ComplianceTestResult struct {
-	TestID          string              `json:"test_id"`
+	ExecutionTime   time.Time           `json:"execution_time"`
+	Metadata        map[string]any      `json:"metadata"`
 	TestName        string              `json:"test_name"`
 	Framework       string              `json:"framework"`
 	ControlID       string              `json:"control_id"`
 	TestType        string              `json:"test_type"`
-	ExecutionTime   time.Time           `json:"execution_time"`
-	Duration        time.Duration       `json:"duration"`
-	Status          string              `json:"status"` // "pass", "fail", "warning", "error"
-	Score           float64             `json:"score"`
-	Threshold       float64             `json:"threshold"`
-	Evidence        []Evidence          `json:"evidence"`
+	TestID          string              `json:"test_id"`
+	Status          string              `json:"status"`
 	Findings        []ComplianceFinding `json:"findings"`
 	Recommendations []string            `json:"recommendations"`
-	Metadata        map[string]any      `json:"metadata"`
+	Evidence        []Evidence          `json:"evidence"`
+	Duration        time.Duration       `json:"duration"`
+	Threshold       float64             `json:"threshold"`
+	Score           float64             `json:"score"`
 }
 
 // ComplianceFinding represents a compliance finding
 type ComplianceFinding struct {
+	DueDate     time.Time `json:"due_date"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 	ID          string    `json:"id"`
-	Type        string    `json:"type"` // "violation", "weakness", "observation"
+	Type        string    `json:"type"`
 	Severity    string    `json:"severity"`
 	Description string    `json:"description"`
 	Evidence    string    `json:"evidence"`
@@ -362,9 +363,6 @@ type ComplianceFinding struct {
 	Remediation string    `json:"remediation"`
 	Status      string    `json:"status"`
 	AssignedTo  string    `json:"assigned_to"`
-	DueDate     time.Time `json:"due_date"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // NewEnhancedComplianceFramework creates a new enhanced compliance framework
@@ -807,25 +805,25 @@ type DataDeletionProvider interface {
 
 // DataDeletionRequest represents a request to delete user data
 type DataDeletionRequest struct {
+	Timestamp      time.Time `json:"timestamp"`
 	DataSubjectID  string    `json:"data_subject_id"`
 	TenantID       string    `json:"tenant_id"`
+	RequestID      string    `json:"request_id"`
 	ErasureScope   []string  `json:"erasure_scope"`
 	RetainForLegal bool      `json:"retain_for_legal"`
-	RequestID      string    `json:"request_id"`
-	Timestamp      time.Time `json:"timestamp"`
 }
 
 // DataDeletionResult represents the result of a data deletion operation
 type DataDeletionResult struct {
 	ProviderName      string        `json:"provider_name"`
-	DeletedRecords    int           `json:"deleted_records"`
-	RetainedRecords   int           `json:"retained_records"`
+	ErrorMessage      string        `json:"error_message,omitempty"`
 	DeletedDataTypes  []string      `json:"deleted_data_types"`
 	RetainedDataTypes []string      `json:"retained_data_types"`
 	RetentionReasons  []string      `json:"retention_reasons"`
+	DeletedRecords    int           `json:"deleted_records"`
+	RetainedRecords   int           `json:"retained_records"`
 	ProcessingTime    time.Duration `json:"processing_time"`
 	Success           bool          `json:"success"`
-	ErrorMessage      string        `json:"error_message,omitempty"`
 }
 
 // Helper methods for data deletion implementation

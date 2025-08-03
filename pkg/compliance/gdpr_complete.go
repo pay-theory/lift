@@ -31,27 +31,20 @@ const (
 // GDPRCompleteService provides comprehensive GDPR compliance implementation
 // Memory optimized: 328 → 280 bytes (48 bytes saved)
 type GDPRCompleteService struct {
-	// Pointers first (8 bytes each)
 	db            *dynamorm.DynamORMWrapper
 	s3Client      *s3.Client
 	sesClient     *ses.Client
 	snsClient     *sns.Client
 	auditLogger   *GDPRAuditLogger
-	// Slice (24 bytes)
 	encryptionKey []byte
-	// Sync primitive (24 bytes)
-	mu            sync.RWMutex
-	// Large struct last
 	config        GDPRCompleteConfig
+	mu            sync.RWMutex
 }
 
 // GDPRCompleteConfig defines complete GDPR configuration
 // Memory optimized: 328 → 272 bytes (56 bytes saved)
 type GDPRCompleteConfig struct {
-	// Slices first (24 bytes each)
-	DefaultSafeguards       []string `json:"default_safeguards"`
-	ProhibitedCountries     []string `json:"prohibited_countries"`
-	// Strings (16 bytes each)
+	NotificationTopicArn    string   `json:"notification_topic_arn"`
 	FromEmailAddress        string   `json:"from_email_address"`
 	Environment             string   `json:"environment"`
 	ConsentTableName        string   `json:"consent_table_name"`
@@ -62,15 +55,14 @@ type GDPRCompleteConfig struct {
 	AuditLogBucket          string   `json:"audit_log_bucket"`
 	ComplianceOfficerEmail  string   `json:"compliance_officer_email"`
 	Region                  string   `json:"region"`
-	NotificationTopicArn    string   `json:"notification_topic_arn"`
-	// Ints (4 bytes each)
-	ConsentExpiryDays       int      `json:"consent_expiry_days"`
-	AuditRetentionDays      int      `json:"audit_retention_days"`
-	MaxExportSizeMB         int      `json:"max_export_size_mb"`
+	DefaultSafeguards       []string `json:"default_safeguards"`
+	ProhibitedCountries     []string `json:"prohibited_countries"`
 	RequestProcessingDays   int      `json:"request_processing_days"`
+	ConsentExpiryDays       int      `json:"consent_expiry_days"`
+	MaxExportSizeMB         int      `json:"max_export_size_mb"`
+	AuditRetentionDays      int      `json:"audit_retention_days"`
 	DataRetentionDays       int      `json:"data_retention_days"`
 	BreachNotificationHours int      `json:"breach_notification_hours"`
-	// Bools grouped together (1 byte each, 3 bytes padding)
 	EnableCrossBorderRules  bool     `json:"enable_cross_border_rules"`
 	Enabled                 bool     `json:"enabled"`
 	RequireExplicitConsent  bool     `json:"require_explicit_consent"`
@@ -115,26 +107,25 @@ type DataDeletionRecord struct {
 
 // ConsentRecordComplete extends security.ConsentRecord with DynamoDB integration
 type ConsentRecordComplete struct {
-	security.ConsentRecord
 	PK         string `json:"pk" `
 	SK         string `json:"sk" `
 	GSI1PK     string `json:"gsi1pk" `
 	GSI1SK     string `json:"gsi1sk" `
 	EntityType string `json:"entity_type" `
-	TTL        int64  `json:"ttl" `
+	security.ConsentRecord
+	TTL int64 `json:"ttl" `
 }
 
 // PIARecordComplete extends security.PIAResult with DynamoDB integration
 type PIARecordComplete struct {
-	security.PIAResult
 	PK         string `json:"pk" `
 	SK         string `json:"sk" `
 	EntityType string `json:"entity_type" `
+	security.PIAResult
 }
 
 // DataSubjectRequestComplete represents a complete data subject request
 type DataSubjectRequestComplete struct {
-	security.DataAccessRequest
 	CompletedAt *time.Time `json:"completed_at,omitempty" `
 	PK          string     `json:"pk" `
 	SK          string     `json:"sk" `
@@ -142,6 +133,7 @@ type DataSubjectRequestComplete struct {
 	GSI1SK      string     `json:"gsi1sk" `
 	EntityType  string     `json:"entity_type" `
 	ProcessedBy string     `json:"processed_by" `
+	security.DataAccessRequest
 }
 
 // GDPRAuditLogger provides comprehensive audit logging
@@ -954,4 +946,3 @@ func (al *GDPRAuditLogger) LogPrivacyBreach(_ context.Context, breach *security.
 	log.Printf("Privacy breach: %s (severity: %s)", breach.BreachType, breach.Severity)
 	return nil
 }
-

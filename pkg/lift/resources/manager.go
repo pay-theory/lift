@@ -14,17 +14,12 @@ import (
 // ResourceManager coordinates multiple resource pools and provides lifecycle management
 // Memory optimized: 64 → 32 bytes (32 bytes saved)
 type ResourceManager struct {
-	// Maps first (24 bytes each)
-	pools      map[string]ConnectionPool
-	preWarmers map[string]PreWarmer
-	// Sync primitive (24 bytes)
-	mu         sync.RWMutex
-	// Interface (24 bytes)
-	logger     lift.Logger
-	// Duration (8 bytes)
+	logger          lift.Logger
+	pools           map[string]ConnectionPool
+	preWarmers      map[string]PreWarmer
 	shutdownTimeout time.Duration
-	// Bool last (1 byte)
-	closed     bool
+	mu              sync.RWMutex
+	closed          bool
 }
 
 // PreWarmer defines how to pre-warm a resource pool

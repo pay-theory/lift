@@ -40,38 +40,30 @@ type AuditStorage interface {
 // Memory optimized: 112 → 104 bytes (8 bytes saved)
 type AuditFilter struct {
 	// Time structs first (24 bytes each)
-	Since     time.Time `json:"since,omitempty"`
-	Until     time.Time `json:"until,omitempty"`
+	Since time.Time `json:"since,omitempty"`
+	Until time.Time `json:"until,omitempty"`
 	// Strings (16 bytes each)
-	UserID    string    `json:"user_id,omitempty"`
-	TenantID  string    `json:"tenant_id,omitempty"`
-	AuditID   string    `json:"audit_id,omitempty"`
-	EntryType string    `json:"entry_type,omitempty"`
+	UserID    string `json:"user_id,omitempty"`
+	TenantID  string `json:"tenant_id,omitempty"`
+	AuditID   string `json:"audit_id,omitempty"`
+	EntryType string `json:"entry_type,omitempty"`
 	// Int last (4 bytes)
-	Limit     int       `json:"limit,omitempty"`
+	Limit int `json:"limit,omitempty"`
 }
 
 // BufferedAuditLogger implements AuditLogger with buffering for performance
 // Memory optimized: 160 → 112 bytes (48 bytes saved)
 type BufferedAuditLogger struct {
-	// Interface first (24 bytes)
 	storage      AuditStorage
-	// Slice (24 bytes)
-	buffer       []AuditLogEntry
-	// Channel (8 bytes)
 	stopCh       chan struct{}
-	// Pointer (8 bytes)
 	flushTicker  *time.Ticker
-	// Duration (8 bytes)
-	flushTimeout time.Duration
-	// Sync primitives (24 bytes each)
-	bufferMu     sync.Mutex
-	wg           sync.WaitGroup
-	metricsMu    sync.RWMutex
-	// Large struct
+	buffer       []AuditLogEntry
 	metrics      AuditLoggerMetrics
-	// Int last (4 bytes)
+	wg           sync.WaitGroup
+	flushTimeout time.Duration
 	bufferSize   int
+	metricsMu    sync.RWMutex
+	bufferMu     sync.Mutex
 }
 
 // AuditLogEntry represents a complete audit log entry
@@ -83,28 +75,25 @@ type AuditLogEntry struct {
 	DataAccess    *DataAccessLog `json:"data_access,omitempty"`
 	SecurityEvent *SecurityEvent `json:"security_event,omitempty"`
 	// Map (24 bytes)
-	Metadata      map[string]any `json:"metadata,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 	// Time struct (24 bytes)
-	Timestamp     time.Time      `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp"`
 	// Strings (16 bytes each)
-	ID            string         `json:"id"`
-	AuditID       string         `json:"audit_id"`
-	TenantID      string         `json:"tenant_id"`
-	UserID        string         `json:"user_id"`
-	EntryType     string         `json:"entry_type"`
-	Checksum      string         `json:"checksum"`
+	ID        string `json:"id"`
+	AuditID   string `json:"audit_id"`
+	TenantID  string `json:"tenant_id"`
+	UserID    string `json:"user_id"`
+	EntryType string `json:"entry_type"`
+	Checksum  string `json:"checksum"`
 	// Int64 last (8 bytes)
-	TTL           int64          `json:"ttl"`
+	TTL int64 `json:"ttl"`
 }
 
 // AuditQueryResult represents the result of an audit query
 // Memory optimized: 32 → 24 bytes (8 bytes saved)
 type AuditQueryResult struct {
-	// Slice first (24 bytes)
-	Entries    []AuditLogEntry `json:"entries"`
-	// String (16 bytes)
 	NextToken  string          `json:"next_token,omitempty"`
-	// Int last (4 bytes)
+	Entries    []AuditLogEntry `json:"entries"`
 	TotalCount int             `json:"total_count"`
 }
 
@@ -112,7 +101,7 @@ type AuditQueryResult struct {
 // Memory optimized: 64 → 24 bytes (40 bytes saved)
 type AuditLoggerMetrics struct {
 	// Time struct first (24 bytes)
-	LastFlush         time.Time     `json:"last_flush"`
+	LastFlush time.Time `json:"last_flush"`
 	// 8-byte values grouped
 	TotalEntries      int64         `json:"total_entries"`
 	FlushCount        int64         `json:"flush_count"`
@@ -120,7 +109,7 @@ type AuditLoggerMetrics struct {
 	AverageLatency    time.Duration `json:"average_latency"`
 	BufferUtilization float64       `json:"buffer_utilization"`
 	// Int last (4 bytes)
-	BufferedEntries   int           `json:"buffered_entries"`
+	BufferedEntries int `json:"buffered_entries"`
 }
 
 // NewBufferedAuditLogger creates a new buffered audit logger

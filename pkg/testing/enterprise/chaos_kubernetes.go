@@ -19,16 +19,16 @@ type ChaosMeshIntegration struct {
 
 // KubernetesConfig defines Kubernetes cluster configuration
 type KubernetesConfig struct {
+	RBAC           *RBACConfig       `json:"rbac"`
+	Labels         map[string]string `json:"labels"`
+	Annotations    map[string]string `json:"annotations"`
+	NodeSelector   map[string]string `json:"node_selector"`
+	ResourceLimits *ResourceLimits   `json:"resource_limits"`
 	ClusterName    string            `json:"cluster_name"`
 	Namespace      string            `json:"namespace"`
 	KubeConfig     string            `json:"kube_config"`
 	ServiceAccount string            `json:"service_account"`
-	RBAC           *RBACConfig       `json:"rbac"`
-	Labels         map[string]string `json:"labels"`
-	Annotations    map[string]string `json:"annotations"`
 	Tolerations    []Toleration      `json:"tolerations"`
-	NodeSelector   map[string]string `json:"node_selector"`
-	ResourceLimits *ResourceLimits   `json:"resource_limits"`
 }
 
 // RBACConfig defines role-based access control settings
@@ -84,17 +84,17 @@ const (
 
 // ChaosExperimentSpec defines Kubernetes-specific experiment specification
 type ChaosExperimentSpec struct {
+	TargetSelector *TargetSelector     `json:"target_selector"`
+	FaultConfig    map[string]any      `json:"fault_config"`
+	Schedule       *ChaosSchedule      `json:"schedule,omitempty"`
+	Annotations    map[string]string   `json:"annotations,omitempty"`
+	Labels         map[string]string   `json:"labels,omitempty"`
 	Name           string              `json:"name"`
 	Namespace      string              `json:"namespace"`
 	ControllerType ChaosControllerType `json:"controller_type"`
 	FaultType      FaultType           `json:"fault_type"`
-	TargetSelector *TargetSelector     `json:"target_selector"`
-	FaultConfig    map[string]any      `json:"fault_config"`
-	Duration       time.Duration       `json:"duration"`
-	Schedule       *ChaosSchedule      `json:"schedule,omitempty"`
 	Conditions     []ChaosCondition    `json:"conditions,omitempty"`
-	Annotations    map[string]string   `json:"annotations,omitempty"`
-	Labels         map[string]string   `json:"labels,omitempty"`
+	Duration       time.Duration       `json:"duration"`
 }
 
 // TargetSelector defines target selection criteria
@@ -111,10 +111,10 @@ type TargetSelector struct {
 
 // PodSelector defines pod-specific selection
 type PodSelector struct {
-	Names       []string          `json:"names,omitempty"`
-	Phases      []string          `json:"phases,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
 	Annotations map[string]string `json:"annotations,omitempty"`
+	Names       []string          `json:"names,omitempty"`
+	Phases      []string          `json:"phases,omitempty"`
 }
 
 // ServiceSelector defines service-specific selection
@@ -157,32 +157,32 @@ type ChaosCondition struct {
 
 // PodChaosController implements pod-level chaos operations
 type PodChaosController struct {
-	name   string
 	config *KubernetesConfig
+	name   string
 }
 
 // NetworkChaosController implements network-level chaos operations
 type NetworkChaosController struct {
-	name   string
 	config *KubernetesConfig
+	name   string
 }
 
 // StressChaosController implements resource stress testing
 type StressChaosController struct {
-	name   string
 	config *KubernetesConfig
+	name   string
 }
 
 // IOChaosController implements I/O fault injection
 type IOChaosController struct {
-	name   string
 	config *KubernetesConfig
+	name   string
 }
 
 // TimeChaosController implements time-based chaos scenarios
 type TimeChaosController struct {
-	name   string
 	config *KubernetesConfig
+	name   string
 }
 
 // ChaosOperatorManager manages Kubernetes operator patterns
@@ -192,23 +192,23 @@ type ChaosOperatorManager struct {
 
 // ChaosOperator defines a Kubernetes operator for chaos engineering
 type ChaosOperator struct {
+	RBAC          *RBACConfig                 `json:"rbac"`
+	Configuration map[string]any              `json:"configuration"`
 	Name          string                      `json:"name"`
 	Version       string                      `json:"version"`
+	Status        OperatorStatus              `json:"status"`
 	CRDs          []*CustomResourceDefinition `json:"crds"`
 	Controllers   []ChaosController           `json:"controllers"`
 	Webhooks      []*AdmissionWebhook         `json:"webhooks"`
-	RBAC          *RBACConfig                 `json:"rbac"`
-	Configuration map[string]any              `json:"configuration"`
-	Status        OperatorStatus              `json:"status"`
 }
 
 // CustomResourceDefinition defines CRD specifications
 type CustomResourceDefinition struct {
-	APIVersion string         `json:"api_version"`
-	Kind       string         `json:"kind"`
 	Metadata   map[string]any `json:"metadata"`
 	Spec       *CRDSpec       `json:"spec"`
 	Status     *CRDStatus     `json:"status"`
+	APIVersion string         `json:"api_version"`
+	Kind       string         `json:"kind"`
 }
 
 // CRDSpec defines CRD specification
@@ -221,10 +221,10 @@ type CRDSpec struct {
 
 // CRDVersion defines CRD version
 type CRDVersion struct {
+	Schema  map[string]any `json:"schema"`
 	Name    string         `json:"name"`
 	Served  bool           `json:"served"`
 	Storage bool           `json:"storage"`
-	Schema  map[string]any `json:"schema"`
 }
 
 // CRDNames defines CRD naming
@@ -253,13 +253,13 @@ type CRDCondition struct {
 
 // AdmissionWebhook defines admission webhook configuration
 type AdmissionWebhook struct {
+	ClientConfig            *WebhookClientConfig `json:"client_config"`
 	Name                    string               `json:"name"`
 	Type                    WebhookType          `json:"type"`
-	Rules                   []WebhookRule        `json:"rules"`
-	ClientConfig            *WebhookClientConfig `json:"client_config"`
-	AdmissionReviewVersions []string             `json:"admission_review_versions"`
 	SideEffects             string               `json:"side_effects"`
 	FailurePolicy           string               `json:"failure_policy"`
+	Rules                   []WebhookRule        `json:"rules"`
+	AdmissionReviewVersions []string             `json:"admission_review_versions"`
 }
 
 // WebhookType defines webhook types
@@ -313,38 +313,38 @@ type KubernetesMetricsCollector struct {
 
 // PodMetrics defines pod-level metrics
 type PodMetrics struct {
-	Name              string            `json:"name"`
+	LastUpdated       time.Time         `json:"last_updated"`
+	CreationTimestamp time.Time         `json:"creation_timestamp"`
+	Labels            map[string]string `json:"labels"`
+	Annotations       map[string]string `json:"annotations"`
 	Namespace         string            `json:"namespace"`
 	Phase             string            `json:"phase"`
-	CPUUsage          float64           `json:"cpu_usage"`
-	MemoryUsage       float64           `json:"memory_usage"`
-	NetworkRX         int64             `json:"network_rx"`
+	Name              string            `json:"name"`
 	NetworkTX         int64             `json:"network_tx"`
+	NetworkRX         int64             `json:"network_rx"`
+	MemoryUsage       float64           `json:"memory_usage"`
+	CPUUsage          float64           `json:"cpu_usage"`
 	RestartCount      int32             `json:"restart_count"`
 	ReadinessProbe    bool              `json:"readiness_probe"`
 	LivenessProbe     bool              `json:"liveness_probe"`
-	Labels            map[string]string `json:"labels"`
-	Annotations       map[string]string `json:"annotations"`
-	CreationTimestamp time.Time         `json:"creation_timestamp"`
-	LastUpdated       time.Time         `json:"last_updated"`
 }
 
 // NodeMetrics defines node-level metrics
 type NodeMetrics struct {
+	LastUpdated       time.Time          `json:"last_updated"`
+	Annotations       map[string]string  `json:"annotations"`
+	Labels            map[string]string  `json:"labels"`
 	Name              string             `json:"name"`
-	CPUCapacity       float64            `json:"cpu_capacity"`
-	MemoryCapacity    int64              `json:"memory_capacity"`
-	CPUUsage          float64            `json:"cpu_usage"`
-	MemoryUsage       int64              `json:"memory_usage"`
-	PodCount          int                `json:"pod_count"`
-	PodCapacity       int                `json:"pod_capacity"`
-	DiskUsage         int64              `json:"disk_usage"`
-	DiskCapacity      int64              `json:"disk_capacity"`
 	NetworkInterfaces []NetworkInterface `json:"network_interfaces"`
 	Conditions        []NodeCondition    `json:"conditions"`
-	Labels            map[string]string  `json:"labels"`
-	Annotations       map[string]string  `json:"annotations"`
-	LastUpdated       time.Time          `json:"last_updated"`
+	CPUUsage          float64            `json:"cpu_usage"`
+	DiskUsage         int64              `json:"disk_usage"`
+	DiskCapacity      int64              `json:"disk_capacity"`
+	PodCapacity       int                `json:"pod_capacity"`
+	PodCount          int                `json:"pod_count"`
+	MemoryUsage       int64              `json:"memory_usage"`
+	MemoryCapacity    int64              `json:"memory_capacity"`
+	CPUCapacity       float64            `json:"cpu_capacity"`
 }
 
 // NetworkInterface defines network interface metrics
@@ -368,39 +368,39 @@ type NodeCondition struct {
 
 // ServiceMetrics defines service-level metrics
 type ServiceMetrics struct {
-	Name          string            `json:"name"`
+	LastUpdated   time.Time         `json:"last_updated"`
+	Labels        map[string]string `json:"labels"`
+	Annotations   map[string]string `json:"annotations"`
 	Namespace     string            `json:"namespace"`
 	Type          string            `json:"type"`
 	ClusterIP     string            `json:"cluster_ip"`
+	Name          string            `json:"name"`
 	ExternalIPs   []string          `json:"external_ips"`
 	Ports         []ServicePort     `json:"ports"`
 	EndpointCount int               `json:"endpoint_count"`
-	RequestCount  int64             `json:"request_count"`
-	ErrorCount    int64             `json:"error_count"`
 	ResponseTime  time.Duration     `json:"response_time"`
-	Labels        map[string]string `json:"labels"`
-	Annotations   map[string]string `json:"annotations"`
-	LastUpdated   time.Time         `json:"last_updated"`
+	ErrorCount    int64             `json:"error_count"`
+	RequestCount  int64             `json:"request_count"`
 }
 
 // ServicePort defines service port
 type ServicePort struct {
 	Name       string `json:"name"`
 	Protocol   string `json:"protocol"`
-	Port       int32  `json:"port"`
 	TargetPort string `json:"target_port"`
+	Port       int32  `json:"port"`
 	NodePort   int32  `json:"node_port,omitempty"`
 }
 
 // ClusterMetrics defines cluster-level metrics
 type ClusterMetrics struct {
-	Version           string        `json:"version"`
 	LastUpdated       time.Time     `json:"last_updated"`
-	APIServerLatency  time.Duration `json:"api_server_latency"`
+	Version           string        `json:"version"`
+	StorageCapacity   int64         `json:"storage_capacity"`
 	ETCDLatency       time.Duration `json:"etcd_latency"`
 	MemoryCapacity    int64         `json:"memory_capacity"`
 	MemoryUsage       int64         `json:"memory_usage"`
-	StorageCapacity   int64         `json:"storage_capacity"`
+	APIServerLatency  time.Duration `json:"api_server_latency"`
 	StorageUsage      int64         `json:"storage_usage"`
 	NetworkThroughput int64         `json:"network_throughput"`
 	CPUCapacity       float64       `json:"cpu_capacity"`
@@ -419,15 +419,15 @@ type ChaosEventBus struct {
 
 // ChaosEvent defines chaos engineering event
 type ChaosEvent struct {
+	Timestamp time.Time         `json:"timestamp"`
+	Data      map[string]any    `json:"data"`
+	Metadata  map[string]string `json:"metadata"`
 	ID        string            `json:"id"`
 	Type      ChaosEventType    `json:"type"`
 	Source    string            `json:"source"`
 	Target    string            `json:"target"`
-	Timestamp time.Time         `json:"timestamp"`
-	Data      map[string]any    `json:"data"`
 	Severity  EventSeverity     `json:"severity"`
 	Tags      []string          `json:"tags"`
-	Metadata  map[string]string `json:"metadata"`
 }
 
 // ChaosEventType defines event types
@@ -462,12 +462,12 @@ type EventSubscriber interface {
 
 // EventFilter defines event filtering criteria
 type EventFilter struct {
+	Metadata   map[string]string `json:"metadata"`
 	EventTypes []ChaosEventType  `json:"event_types"`
 	Sources    []string          `json:"sources"`
 	Targets    []string          `json:"targets"`
 	Severities []EventSeverity   `json:"severities"`
 	Tags       []string          `json:"tags"`
-	Metadata   map[string]string `json:"metadata"`
 }
 
 // NewChaosMeshIntegration creates a new Kubernetes chaos engineering integration
@@ -1020,9 +1020,9 @@ func (t *TimeChaosController) Cleanup(_ context.Context) error {
 
 // ExperimentStatusInfo represents the status information of a chaos experiment
 type ExperimentStatusInfo struct {
+	LastUpdated  time.Time        `json:"last_updated"`
+	Metadata     map[string]any   `json:"metadata"`
 	ExperimentID string           `json:"experiment_id"`
 	Status       ExperimentStatus `json:"status"`
 	Progress     float64          `json:"progress"`
-	LastUpdated  time.Time        `json:"last_updated"`
-	Metadata     map[string]any   `json:"metadata"`
 }

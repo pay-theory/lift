@@ -59,27 +59,20 @@ type CacheStats struct {
 
 // CacheConfig configures the caching middleware
 type CacheConfig struct {
-	// slices (24 bytes each)
-	InvalidateOn      []string // HTTP methods that invalidate cache
-	Tags              []string
-	// functions (8 bytes each)
+	Store             CacheStore
+	Serializer        CacheSerializer
 	KeyFunc           func(*lift.Context) string
 	ShouldCache       func(*lift.Context, any) bool
 	ShouldInvalidate  func(*lift.Context) bool
-	// structs/interfaces
-	Store             CacheStore
-	Strategy          CacheStrategy
-	Serializer        CacheSerializer
-	// strings (16 bytes each)
 	InvalidatePattern string
+	Strategy          CacheStrategy
 	Namespace         string
 	EvictionPolicy    string
-	// 8-byte aligned fields
+	Tags              []string
+	InvalidateOn      []string
 	DefaultTTL        time.Duration
 	MaxSize           int64
-	// 4-byte field
 	Serialization     SerializationType
-	// bool fields (1 byte each)
 	EnableMetrics     bool
 	TenantIsolation   bool
 	Compression       bool
@@ -103,9 +96,9 @@ type CacheSerializer interface {
 
 // CacheMiddleware provides intelligent caching capabilities
 type CacheMiddleware struct {
-	config  CacheConfig
 	store   CacheStore
 	metrics *CacheMetrics
+	config  CacheConfig
 }
 
 // CacheMetrics tracks cache performance

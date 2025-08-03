@@ -20,28 +20,23 @@ type SLAMonitor struct {
 
 // SLAConfig holds SLA configuration
 type SLAConfig struct {
-	SLOs            []SLO           `json:"slos"`        // slice = 24 bytes
-	AlertRules      []AlertRule     `json:"alert_rules"` // slice = 24 bytes
-	Reporting       ReportConfig    `json:"reporting"`   // struct
-	Thresholds      ThresholdConfig `json:"thresholds"`  // struct
 	ApplicationName string          `json:"application_name"`
 	Environment     string          `json:"environment"`
+	SLOs            []SLO           `json:"slos"`
+	AlertRules      []AlertRule     `json:"alert_rules"`
+	Reporting       ReportConfig    `json:"reporting"`
+	Thresholds      ThresholdConfig `json:"thresholds"`
 }
 
 // SLO represents a Service Level Objective
 type SLO struct {
-	// 8-byte types first
-	Target float64       `json:"target"`
-	Window time.Duration `json:"window"`
-	Type   SLOType       `json:"type"`
-	
-	// Strings (16 bytes each)
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	
-	// Booleans (1 byte each) - smallest last
-	Critical bool `json:"critical"`
-	Enabled  bool `json:"enabled"`
+	Type        SLOType       `json:"type"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Target      float64       `json:"target"`
+	Window      time.Duration `json:"window"`
+	Critical    bool          `json:"critical"`
+	Enabled     bool          `json:"enabled"`
 }
 
 // SLOType defines types of SLOs

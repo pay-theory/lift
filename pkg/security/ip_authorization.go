@@ -15,10 +15,8 @@ import (
 
 // IPAuthorizationConfig holds configuration for IP authorization
 type IPAuthorizationConfig struct {
-	// AllowedIPs is a list of IP addresses that are authorized
-	AllowedIPs []string
-	// AllowedIPList is a comma-separated string of allowed IPs (alternative format)
 	AllowedIPList string
+	AllowedIPs    []string
 }
 
 // IsAuthorizedIP checks if the given IP address is authorized based on the configuration

@@ -10,11 +10,11 @@ import (
 
 func TestWebSocketContext_AsWebSocket(t *testing.T) {
 	tests := []struct {
-		name           string
 		setupContext   func() *Context
-		expectError    bool
+		name           string
 		expectedConnID string
 		expectedStage  string
+		expectError    bool
 	}{
 		{
 			name: "successful conversion from websocket event",
@@ -85,7 +85,7 @@ func TestWebSocketContext_AsWebSocket(t *testing.T) {
 				assert.Error(t, err)
 				assert.Nil(t, wsCtx)
 			} else {
-		assert.NoError(t, err)
+				assert.NoError(t, err)
 				assert.NotNil(t, wsCtx)
 				assert.Equal(t, tt.expectedConnID, wsCtx.ConnectionID())
 				assert.Equal(t, tt.expectedStage, wsCtx.Stage())
@@ -133,7 +133,7 @@ func TestWebSocketContext_GetRegion(t *testing.T) {
 				}
 				ctx := NewContext(context.Background(), req)
 				wsCtx, err := ctx.AsWebSocket()
-		assert.NoError(t, err)
+				assert.NoError(t, err)
 				wsCtx.WithRegion("eu-west-1")
 				return wsCtx
 			},
@@ -152,7 +152,7 @@ func TestWebSocketContext_GetRegion(t *testing.T) {
 				}
 				ctx := NewContext(context.Background(), req)
 				wsCtx, err := ctx.AsWebSocket()
-		assert.NoError(t, err)
+				assert.NoError(t, err)
 				return wsCtx
 			},
 			expectedRegion: "us-east-1",
@@ -219,7 +219,7 @@ func TestWebSocketContext_HelperMethods(t *testing.T) {
 			}
 			ctx := NewContext(context.Background(), req)
 			wsCtx, err := ctx.AsWebSocket()
-		assert.NoError(t, err)
+			assert.NoError(t, err)
 
 			assert.Equal(t, tt.expectedIsConnect, wsCtx.IsConnectEvent())
 			assert.Equal(t, tt.expectedIsDisconnect, wsCtx.IsDisconnectEvent())
@@ -253,7 +253,7 @@ func TestWebSocketContext_GetAuthorizationFromQuery(t *testing.T) {
 				}
 				ctx := NewContext(context.Background(), req)
 				wsCtx, err := ctx.AsWebSocket()
-		assert.NoError(t, err)
+				assert.NoError(t, err)
 				return wsCtx
 			},
 			expectedAuth: "Bearer token123",
@@ -277,7 +277,7 @@ func TestWebSocketContext_GetAuthorizationFromQuery(t *testing.T) {
 				}
 				ctx := NewContext(context.Background(), req)
 				wsCtx, err := ctx.AsWebSocket()
-		assert.NoError(t, err)
+				assert.NoError(t, err)
 				return wsCtx
 			},
 			expectedAuth: "",
@@ -343,7 +343,7 @@ func TestWebSocketContext_EndpointMethods(t *testing.T) {
 			}
 			ctx := NewContext(context.Background(), req)
 			wsCtx, err := ctx.AsWebSocket()
-		assert.NoError(t, err)
+			assert.NoError(t, err)
 
 			assert.Equal(t, tt.expectedConnID, wsCtx.ConnectionID())
 			assert.Equal(t, tt.expectedRouteKey, wsCtx.RouteKey())
@@ -555,7 +555,7 @@ func TestWebSocketContext_ConcurrentSafety(t *testing.T) {
 	}
 	ctx := NewContext(context.Background(), req)
 	wsCtx, err := ctx.AsWebSocket()
-		assert.NoError(t, err)
+	assert.NoError(t, err)
 
 	// Test concurrent reads
 	done := make(chan bool, 10)
@@ -580,8 +580,8 @@ func TestWebSocketContext_ConcurrentSafety(t *testing.T) {
 // Test malformed events
 func TestWebSocketContext_MalformedEvents(t *testing.T) {
 	tests := []struct {
-		name      string
 		event     any
+		name      string
 		expectErr bool
 	}{
 		{

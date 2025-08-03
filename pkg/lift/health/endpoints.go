@@ -14,11 +14,9 @@ import (
 
 // HealthEndpoints provides HTTP endpoints for health checks
 type HealthEndpoints struct {
-	corsOrigins          []string      // 24 bytes (slice first)
-	manager              HealthManager // 8 bytes (interface)
-	timeout              time.Duration // 8 bytes
-
-	// Configuration (bools last)
+	manager              HealthManager
+	corsOrigins          []string
+	timeout              time.Duration
 	enableDetailedErrors bool
 	enableCORS           bool
 }
@@ -332,20 +330,15 @@ func (he *HealthEndpoints) wantsPlainText(r *http.Request) bool {
 
 // HealthMiddleware provides middleware for automatic health monitoring
 type HealthMiddleware struct {
-	manager HealthManager
-
-	// Configuration
-	enableHealthHeader bool
+	manager            HealthManager
 	headerName         string
+	enableHealthHeader bool
 }
 
 // HealthMiddlewareConfig configures health middleware
 type HealthMiddlewareConfig struct {
-	// EnableHealthHeader whether to add health status to response headers
+	HeaderName         string
 	EnableHealthHeader bool
-
-	// HeaderName name of the health header
-	HeaderName string
 }
 
 // NewHealthMiddleware creates new health middleware

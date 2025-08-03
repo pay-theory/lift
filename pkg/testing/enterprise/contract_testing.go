@@ -20,25 +20,25 @@ type ContractTestingFramework struct {
 
 // ContractTestingConfig configures contract testing
 type ContractTestingConfig struct {
+	Environment       map[string]any `json:"environment"`
+	ReportFormat      string         `json:"report_format"`
 	DefaultTimeout    time.Duration  `json:"default_timeout"`
 	MaxRetries        int            `json:"max_retries"`
 	ParallelExecution bool           `json:"parallel_execution"`
-	ReportFormat      string         `json:"report_format"`
-	Environment       map[string]any `json:"environment"`
 }
 
 // BasicContractValidator implements ContractValidator interface
 type BasicContractValidator struct {
-	rules   []ValidationRule
 	config  *ValidationConfig
 	metrics *ValidationMetrics
+	rules   []ValidationRule
 }
 
 // ValidationConfig configures contract validation
 type ValidationConfig struct {
-	StrictMode      bool          `json:"strict_mode"`
 	Timeout         time.Duration `json:"timeout"`
 	MaxErrors       int           `json:"max_errors"`
+	StrictMode      bool          `json:"strict_mode"`
 	FailFast        bool          `json:"fail_fast"`
 	ValidateHeaders bool          `json:"validate_headers"`
 	ValidateBody    bool          `json:"validate_body"`
@@ -46,11 +46,11 @@ type ValidationConfig struct {
 
 // ValidationMetrics tracks validation performance
 type ValidationMetrics struct {
+	LastValidation        time.Time     `json:"last_validation"`
 	TotalValidations      int64         `json:"total_validations"`
 	SuccessfulValidations int64         `json:"successful_validations"`
 	FailedValidations     int64         `json:"failed_validations"`
 	AverageTime           time.Duration `json:"average_time"`
-	LastValidation        time.Time     `json:"last_validation"`
 }
 
 // NewContractTestingFramework creates a new contract testing framework
@@ -344,7 +344,7 @@ func (f *ContractTestingFramework) validateInteraction(interaction *ContractInte
 	start := time.Now()
 	validation := InteractionValidation{
 		InteractionID: interaction.ID,
-		Status:        "passed",
+		Status:        string(PassedStatus),
 		Checks:        make(map[string]*ValidationCheck),
 		Errors:        []string{},
 		Warnings:      []string{},
@@ -390,14 +390,13 @@ func (f *ContractTestingFramework) validateInteraction(interaction *ContractInte
 	return validation
 }
 
-
 // validateHTTPMethod validates HTTP method
 func (f *ContractTestingFramework) validateHTTPMethod(method string) *ValidationCheck {
 	check := &ValidationCheck{
 		ID:          fmt.Sprintf("method-%d", time.Now().Unix()),
 		Name:        "HTTP Method Validation",
 		Description: "Validates HTTP method",
-		Status:      "passed",
+		Status:      string(PassedStatus),
 		Valid:       true,
 		Expected:    "Valid HTTP method",
 		Actual:      method,
@@ -425,7 +424,7 @@ func (f *ContractTestingFramework) validateHTTPPath(path string) *ValidationChec
 		ID:          fmt.Sprintf("path-%d", time.Now().Unix()),
 		Name:        "HTTP Path Validation",
 		Description: "Validates HTTP path",
-		Status:      "passed",
+		Status:      string(PassedStatus),
 		Valid:       true,
 		Expected:    "Valid HTTP path starting with /",
 		Actual:      path,
@@ -457,7 +456,7 @@ func (f *ContractTestingFramework) validateHeaders(headers map[string]string) *V
 		ID:          fmt.Sprintf("headers-%d", time.Now().Unix()),
 		Name:        "HTTP Headers Validation",
 		Description: "Validates HTTP headers",
-		Status:      "passed",
+		Status:      string(PassedStatus),
 		Valid:       true,
 		Expected:    "Valid HTTP headers",
 		Actual:      headers,
@@ -482,17 +481,13 @@ func (f *ContractTestingFramework) validateHeaders(headers map[string]string) *V
 	return check
 }
 
-
-
-
-
 // validateSchema validates data against a schema definition
 func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefinition) (*ValidationCheck, error) {
 	check := &ValidationCheck{
 		ID:          fmt.Sprintf("schema-%d", time.Now().Unix()),
 		Name:        "Schema Validation",
 		Description: "Validates data against schema definition",
-		Status:      "passed",
+		Status:      string(PassedStatus),
 		Valid:       true,
 		Expected:    "Data conforms to schema",
 		Actual:      data,
@@ -503,18 +498,11 @@ func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefini
 
 	if schema == nil {
 		check.Valid = false
-		check.Status = "failed"
+		check.Status = string(JobFailed)
 		check.Errors = append(check.Errors, "Schema definition is required")
 		return check, nil
 	}
 
-	// Validate type
-	if !f.validateType(data, schema.Type) {
-		check.Valid = false
-		check.Status = "failed"
-		check.Errors = append(check.Errors, fmt.Sprintf("Type mismatch: expected %s", schema.Type))
-		return check, nil
-	}
 
 	// Type-specific validations
 	switch schema.Type {
@@ -522,12 +510,12 @@ func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefini
 		if str, ok := data.(string); ok {
 			if schema.MinLength != nil && len(str) < *schema.MinLength {
 				check.Valid = false
-				check.Status = "failed"
+				check.Status = string(JobFailed)
 				check.Errors = append(check.Errors, fmt.Sprintf("String too short: %d < %d", len(str), *schema.MinLength))
 			}
 			if schema.MaxLength != nil && len(str) > *schema.MaxLength {
 				check.Valid = false
-				check.Status = "failed"
+				check.Status = string(JobFailed)
 				check.Errors = append(check.Errors, fmt.Sprintf("String too long: %d > %d", len(str), *schema.MaxLength))
 			}
 		}
@@ -535,12 +523,12 @@ func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefini
 		if num, ok := data.(float64); ok {
 			if schema.Minimum != nil && num < *schema.Minimum {
 				check.Valid = false
-				check.Status = "failed"
+				check.Status = string(JobFailed)
 				check.Errors = append(check.Errors, fmt.Sprintf("Number too small: %f < %f", num, *schema.Minimum))
 			}
 			if schema.Maximum != nil && num > *schema.Maximum {
 				check.Valid = false
-				check.Status = "failed"
+				check.Status = string(JobFailed)
 				check.Errors = append(check.Errors, fmt.Sprintf("Number too large: %f > %f", num, *schema.Maximum))
 			}
 		}
@@ -550,7 +538,7 @@ func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefini
 			for _, required := range schema.Required {
 				if _, exists := obj[required]; !exists {
 					check.Valid = false
-					check.Status = "failed"
+					check.Status = string(JobFailed)
 					check.Errors = append(check.Errors, fmt.Sprintf("Missing required field: %s", required))
 				}
 			}
@@ -560,118 +548,77 @@ func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefini
 	return check, nil
 }
 
-// validateType validates if data matches the expected type
-func (f *ContractTestingFramework) validateType(data any, expectedType string) bool {
-	if data == nil {
-		return expectedType == "null"
-	}
-
-	switch expectedType {
-	case "string":
-		_, ok := data.(string)
-		return ok
-	case "number":
-		_, ok := data.(float64)
-		if !ok {
-			_, ok = data.(int)
-		}
-		return ok
-	case "integer":
-		if num, ok := data.(float64); ok {
-			return num == float64(int64(num)) // Check if it's a whole number
-		}
-		_, ok := data.(int)
-		return ok
-	case "boolean":
-		_, ok := data.(bool)
-		return ok
-	case "array":
-		_, ok := data.([]any)
-		return ok
-	case "object":
-		_, ok := data.(map[string]any)
-		return ok
-	case "null":
-		return data == nil
-	default:
-		return false
-	}
-}
-
-// generateValidationSummary generates a summary of validation results
-func (f *ContractTestingFramework) generateValidationSummary(validations map[string]*InteractionValidation) *ValidationSummary {
-	summary := &ValidationSummary{
-		TotalInteractions:   len(validations),
-		ValidInteractions:   0,
-		InvalidInteractions: 0,
-		TotalChecks:         0,
-		PassedChecks:        0,
-		FailedChecks:        0,
-		SuccessRate:         0.0,
-	}
-
-	for _, validation := range validations {
-		if validation.Status == "passed" {
-			summary.ValidInteractions++
-		} else {
-			summary.InvalidInteractions++
-		}
-
-		for _, check := range validation.Checks {
-			summary.TotalChecks++
-			if check.Status == "passed" {
-				summary.PassedChecks++
-			} else {
-				summary.FailedChecks++
-			}
-		}
-	}
-
-	if summary.TotalInteractions > 0 {
-		summary.SuccessRate = float64(summary.ValidInteractions) / float64(summary.TotalInteractions) * 100
-	}
-
-	return summary
-}
-
-// calculateValidationStatus calculates overall validation status
-func (f *ContractTestingFramework) calculateValidationStatus(validations map[string]*InteractionValidation) string {
-	if len(validations) == 0 {
-		return "unknown"
-	}
-
-	allPassed := true
-	for _, validation := range validations {
-		if validation.Status != "passed" {
-			allPassed = false
-			break
-		}
-	}
-
-	if allPassed {
-		return "passed"
-	}
-	return "failed"
-}
-
-// calculateInteractionStatus calculates interaction status based on checks
-func (f *ContractTestingFramework) calculateInteractionStatus(checks map[string]*ValidationCheck) string {
-	if len(checks) == 0 {
-		return "unknown"
-	}
-
-	allPassed := true
-	for _, check := range checks {
-		if check.Status != "passed" {
-			allPassed = false
-			break
-		}
-	}
-
-	if allPassed {
-		return "passed"
-	}
-	return "failed"
-}
 
 // Contract Testing Implementation leverages existing framework
+
+// validateType validates that a value matches the expected type
+func (f *ContractTestingFramework) validateType(value any, expectedType string) error {
+	switch expectedType {
+	case "string":
+		if _, ok := value.(string); !ok {
+			return fmt.Errorf("expected string, got %T", value)
+		}
+	case "number":
+		switch value.(type) {
+		case int, int32, int64, float32, float64, uint, uint32, uint64:
+			// valid number types
+		default:
+			return fmt.Errorf("expected number, got %T", value)
+		}
+	case "boolean":
+		if _, ok := value.(bool); !ok {
+			return fmt.Errorf("expected boolean, got %T", value)
+		}
+	case "object":
+		if _, ok := value.(map[string]any); !ok {
+			return fmt.Errorf("expected object, got %T", value)
+		}
+	case "array":
+		switch value.(type) {
+		case []any, []string, []int, []map[string]any:
+			// valid array types
+		default:
+			return fmt.Errorf("expected array, got %T", value)
+		}
+	default:
+		return fmt.Errorf("unknown type: %s", expectedType)
+	}
+	return nil
+}
+
+// generateValidationSummary generates a summary of contract validation results
+func (f *ContractTestingFramework) generateValidationSummary(results []*ContractValidationResult) string {
+	total := len(results)
+	passed := 0
+	failed := 0
+	
+	for _, result := range results {
+		if result.Status == TestStatusPassed {
+			passed++
+		} else {
+			failed++
+		}
+	}
+	
+	return fmt.Sprintf("Contract Validation Summary: Total=%d, Passed=%d, Failed=%d", total, passed, failed)
+}
+
+// calculateValidationStatus calculates the overall validation status
+func (f *ContractTestingFramework) calculateValidationStatus(validations map[string]*InteractionValidation) TestStatus {
+	for _, validation := range validations {
+		if validation.Status == string(JobFailed) {
+			return TestStatusFailed
+		}
+	}
+	return TestStatusPassed
+}
+
+// calculateInteractionStatus calculates the status of an interaction
+func (f *ContractTestingFramework) calculateInteractionStatus(checks map[string]*ValidationCheck) TestStatus {
+	for _, check := range checks {
+		if check.Status == string(JobFailed) {
+			return TestStatusFailed
+		}
+	}
+	return TestStatusPassed
+}

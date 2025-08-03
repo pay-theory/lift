@@ -30,33 +30,29 @@ type WebSocketRouteConfig struct {
 	Authorizer awsapigatewayv2.IWebSocketRouteAuthorizer
 }
 
-// WebSocketAPIProps defines properties for a WebSocket API  
+// WebSocketAPIProps defines properties for a WebSocket API
 // Memory optimized: 216 → 200 bytes (16 bytes saved)
 type WebSocketAPIProps struct {
-	// Slice first (24 bytes)
-	Routes []*WebSocketRouteConfig
-	// Pointer to struct (8 bytes)
-	ConnectionTableProps *ConnectionTableProps
-	// Interfaces (24 bytes each)
-	DefaultRouteFunction awslambda.IFunction
-	ConnectRouteFunction awslambda.IFunction
-	DisconnectRouteFunction awslambda.IFunction
-	AccessLogGroup      awslogs.ILogGroup
-	DefaultAuthorizer awsapigatewayv2.IWebSocketRouteAuthorizer
-	// String pointers (8 bytes each)
-	ApiName *string
-	Description *string
-	RouteSelectionExpression *string
-	StageName *string
-	ThrottleRateLimit  *float64
-	ThrottleBurstLimit *float64
+	AccessLogGroup             awslogs.ILogGroup
+	DefaultAuthorizer          awsapigatewayv2.IWebSocketRouteAuthorizer
+	DefaultRouteFunction       awslambda.IFunction
+	ConnectRouteFunction       awslambda.IFunction
+	DisconnectRouteFunction    awslambda.IFunction
+	StageName                  *string
+	ThrottleBurstLimit         *float64
+	ApiName                    *string
+	Description                *string
+	RouteSelectionExpression   *string
+	EnableDeadLetterQueue      *bool
+	ThrottleRateLimit          *float64
+	ConnectionTableProps       *ConnectionTableProps
 	EnableConnectionManagement *bool
-	AutoDeploy *bool
-	EnableAccessLogging *bool
-	EnableTracing         *bool
-	EnableMultiTenant     *bool
-	EnableMonitoring      *bool
-	EnableDeadLetterQueue *bool
+	AutoDeploy                 *bool
+	EnableAccessLogging        *bool
+	EnableTracing              *bool
+	EnableMultiTenant          *bool
+	EnableMonitoring           *bool
+	Routes                     []*WebSocketRouteConfig
 }
 
 // WebSocketAPI represents a WebSocket API Gateway with Lambda integration

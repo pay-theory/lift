@@ -7,15 +7,14 @@ import (
 	"github.com/pay-theory/lift/pkg/security"
 )
 
-
 func TestSanitizeFieldValue(t *testing.T) {
 	s := Default()
 
 	tests := []struct {
-		name     string
-		key      string
 		value    any
 		expected any
+		name     string
+		key      string
 	}{
 		// Allowed fields
 		{
@@ -405,10 +404,10 @@ func TestCustomDataProtectionManager(t *testing.T) {
 	s := New(dpm)
 
 	tests := []struct {
-		name     string
-		key      string
 		value    any
 		expected any
+		name     string
+		key      string
 	}{
 		{
 			name:     "custom allowed field",

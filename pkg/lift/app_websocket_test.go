@@ -11,9 +11,9 @@ import (
 
 func TestWebSocketRouting(t *testing.T) {
 	tests := []struct {
+		handler   WebSocketHandler
 		name      string
 		routeKey  string
-		handler   WebSocketHandler
 		wantError bool
 	}{
 		{
@@ -383,10 +383,10 @@ func TestWebSocketHandleRequest(t *testing.T) {
 	})
 
 	tests := []struct {
-		name      string
 		event     map[string]any
-		wantError bool
 		checkFunc func()
+		name      string
+		wantError bool
 	}{
 		{
 			name: "$connect event through HandleRequest",

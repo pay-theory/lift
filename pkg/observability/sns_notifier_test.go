@@ -14,8 +14,8 @@ import (
 
 // mockSNSClient implements a mock SNS client for testing
 type mockSNSClient struct {
-	publishCalls []sns.PublishInput
 	publishErr   error
+	publishCalls []sns.PublishInput
 }
 
 func (m *mockSNSClient) Publish(_ context.Context, params *sns.PublishInput, _ ...func(*sns.Options)) (*sns.PublishOutput, error) {
@@ -30,11 +30,11 @@ func (m *mockSNSClient) Publish(_ context.Context, params *sns.PublishInput, _ .
 
 func TestSNSNotifier_NotifyError(t *testing.T) {
 	tests := []struct {
-		name          string
 		logEntry      *LogEntry
+		validateMsg   func(t *testing.T, msg SNSNotificationMessage)
+		name          string
 		topicARN      string
 		expectedCalls int
-		validateMsg   func(t *testing.T, msg SNSNotificationMessage)
 	}{
 		{
 			name: "error log triggers notification",

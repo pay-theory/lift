@@ -159,8 +159,8 @@ func TestIsLambda(t *testing.T) {
 	app := New()
 
 	testCases := []struct {
-		name     string
 		envVars  map[string]string
+		name     string
 		expected bool
 	}{
 		{

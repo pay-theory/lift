@@ -35,9 +35,9 @@ func (e mockAPIError) ErrorFault() smithy.ErrorFault {
 
 func TestExtractAWSErrorDetails(t *testing.T) {
 	tests := []struct {
-		name     string
 		err      error
 		expected map[string]any
+		name     string
 	}{
 		{
 			name:     "nil error returns nil",
@@ -142,8 +142,8 @@ func TestIsAWSErrorCode(t *testing.T) {
 
 func TestIsRetryableAWSError(t *testing.T) {
 	tests := []struct {
-		name     string
 		err      error
+		name     string
 		expected bool
 	}{
 		{
