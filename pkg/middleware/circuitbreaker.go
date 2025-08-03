@@ -57,7 +57,20 @@ type CircuitBreakerStats struct {
 
 // CircuitBreakerMiddleware creates a circuit breaker middleware
 func CircuitBreakerMiddleware(config CircuitBreakerConfig) lift.Middleware {
-	// Set defaults
+	// Apply default configuration
+	config = applyCircuitBreakerDefaults(config)
+	
+	manager := newCircuitBreakerManager(config)
+	
+	return func(next lift.Handler) lift.Handler {
+		return lift.HandlerFunc(func(ctx *lift.Context) error {
+			return manager.handleRequest(ctx, next)
+		})
+	}
+}
+
+// applyCircuitBreakerDefaults applies default values to the configuration
+func applyCircuitBreakerDefaults(config CircuitBreakerConfig) CircuitBreakerConfig {
 	if config.FailureThreshold == 0 {
 		config.FailureThreshold = 5
 	}
@@ -91,111 +104,230 @@ func CircuitBreakerMiddleware(config CircuitBreakerConfig) lift.Middleware {
 	if config.FallbackHandler == nil {
 		config.FallbackHandler = defaultFallbackHandler
 	}
+	return config
+}
 
-	manager := &circuitBreakerManager{
+// newCircuitBreakerManager creates a new circuit breaker manager
+func newCircuitBreakerManager(config CircuitBreakerConfig) *circuitBreakerManager {
+	return &circuitBreakerManager{
 		config:   config,
 		breakers: make(map[string]*circuitBreaker),
 	}
+}
 
-	return func(next lift.Handler) lift.Handler {
-		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			// Get or create circuit breaker for this context
-			breaker := manager.getBreakerForContext(ctx)
+// handleRequest processes a request through the circuit breaker
+func (m *circuitBreakerManager) handleRequest(ctx *lift.Context, next lift.Handler) error {
+	// Get or create circuit breaker for this context
+	breaker := m.getBreakerForContext(ctx)
+	
+	// Create request handler
+	handler := newCircuitBreakerRequestHandler(m.config, breaker, ctx)
+	
+	// Process the request
+	return handler.handle(next)
+}
 
-			// Check if circuit breaker allows the request
-			if !breaker.allowRequest() {
-				// Circuit is open, execute fallback
-				if config.Logger != nil {
-					config.Logger.Warn("Circuit breaker open, executing fallback", map[string]any{
-						"breaker_name": breaker.name,
-						"state":        breaker.getState(),
-						"tenant_id":    ctx.TenantID(),
-						"operation":    ctx.Request.Path,
-					})
-				}
+// circuitBreakerRequestHandler handles a single request through the circuit breaker
+type circuitBreakerRequestHandler struct {
+	config  CircuitBreakerConfig
+	breaker *circuitBreaker
+	ctx     *lift.Context
+}
 
-				// Record metrics
-				if config.EnableMetrics && config.Metrics != nil {
-					tags := map[string]string{
-						"breaker_name": breaker.name,
-						"state":        string(breaker.getState()),
-						"action":       "fallback",
-					}
-					if config.PerTenant || config.EnableTenantIsolation {
-						tags["tenant_id"] = ctx.TenantID()
-					}
+// newCircuitBreakerRequestHandler creates a new request handler
+func newCircuitBreakerRequestHandler(config CircuitBreakerConfig, breaker *circuitBreaker, ctx *lift.Context) *circuitBreakerRequestHandler {
+	return &circuitBreakerRequestHandler{
+		config:  config,
+		breaker: breaker,
+		ctx:     ctx,
+	}
+}
 
-					metrics := config.Metrics.WithTags(tags)
-					counter := metrics.Counter("circuit_breaker.fallback.total")
-					counter.Inc()
-				}
+// handle processes the request
+func (h *circuitBreakerRequestHandler) handle(next lift.Handler) error {
+	// Check if circuit breaker allows the request
+	if !h.breaker.allowRequest() {
+		return h.handleOpenCircuit()
+	}
+	
+	// Execute and monitor the request
+	return h.executeAndMonitor(next)
+}
 
-				return config.FallbackHandler(ctx)
-			}
+// handleOpenCircuit handles requests when the circuit is open
+func (h *circuitBreakerRequestHandler) handleOpenCircuit() error {
+	// Log the event
+	h.logOpenCircuit()
+	
+	// Record fallback metrics
+	h.recordFallbackMetrics()
+	
+	// Execute fallback handler
+	return h.config.FallbackHandler(h.ctx)
+}
 
-			// Execute the request
-			start := time.Now()
-			err := next.Handle(ctx)
-			duration := time.Since(start)
-
-			// Record the result
-			if err != nil && config.ShouldTrip(err) {
-				breaker.recordFailure()
-
-				if config.Logger != nil {
-					config.Logger.Error("Circuit breaker recorded failure", map[string]any{
-						"breaker_name": breaker.name,
-						"error":        "[REDACTED_ERROR_DETAIL]", // Sanitized for security
-						"duration":     duration.String(),
-						"tenant_id":    ctx.TenantID(),
-					})
-				}
-			} else {
-				breaker.recordSuccess()
-
-				if config.Logger != nil {
-					config.Logger.Debug("Circuit breaker recorded success", map[string]any{
-						"breaker_name": breaker.name,
-						"duration":     duration.String(),
-						"tenant_id":    ctx.TenantID(),
-					})
-				}
-			}
-
-			// Record metrics
-			if config.EnableMetrics && config.Metrics != nil {
-				tags := map[string]string{
-					"breaker_name": breaker.name,
-					"state":        string(breaker.getState()),
-					"result":       map[bool]string{true: "success", false: "failure"}[err == nil],
-				}
-				if config.PerTenant || config.EnableTenantIsolation {
-					tags["tenant_id"] = ctx.TenantID()
-				}
-
-				metrics := config.Metrics.WithTags(tags)
-
-				// Record request
-				counter := metrics.Counter("circuit_breaker.requests.total")
-				counter.Inc()
-
-				// Record duration
-				histogram := metrics.Histogram("circuit_breaker.request.duration")
-				histogram.Observe(float64(duration.Milliseconds()))
-
-				// Record state
-				gauge := metrics.Gauge("circuit_breaker.state")
-				stateValue := map[CircuitBreakerState]float64{
-					CircuitBreakerClosed:   0,
-					CircuitBreakerOpen:     1,
-					CircuitBreakerHalfOpen: 0.5,
-				}
-				gauge.Set(stateValue[breaker.getState()])
-			}
-
-			return err
+// logOpenCircuit logs when circuit is open
+func (h *circuitBreakerRequestHandler) logOpenCircuit() {
+	if h.config.Logger != nil {
+		h.config.Logger.Warn("Circuit breaker open, executing fallback", map[string]any{
+			"breaker_name": h.breaker.name,
+			"state":        h.breaker.getState(),
+			"tenant_id":    h.ctx.TenantID(),
+			"operation":    h.ctx.Request.Path,
 		})
 	}
+}
+
+// recordFallbackMetrics records metrics for fallback execution
+func (h *circuitBreakerRequestHandler) recordFallbackMetrics() {
+	if !h.config.EnableMetrics || h.config.Metrics == nil {
+		return
+	}
+	
+	tags := h.buildMetricTags("fallback")
+	metrics := h.config.Metrics.WithTags(tags)
+	counter := metrics.Counter("circuit_breaker.fallback.total")
+	counter.Inc()
+}
+
+// executeAndMonitor executes the request and monitors the result
+func (h *circuitBreakerRequestHandler) executeAndMonitor(next lift.Handler) error {
+	// Execute the request
+	start := time.Now()
+	err := next.Handle(h.ctx)
+	duration := time.Since(start)
+	
+	// Record the result
+	h.recordResult(err, duration)
+	
+	// Record metrics
+	h.recordRequestMetrics(err, duration)
+	
+	return err
+}
+
+// recordResult records the request result in the circuit breaker
+func (h *circuitBreakerRequestHandler) recordResult(err error, duration time.Duration) {
+	if err != nil && h.config.ShouldTrip(err) {
+		h.breaker.recordFailure()
+		h.logFailure(duration)
+	} else {
+		h.breaker.recordSuccess()
+		h.logSuccess(duration)
+	}
+}
+
+// logFailure logs a request failure
+func (h *circuitBreakerRequestHandler) logFailure(duration time.Duration) {
+	if h.config.Logger != nil {
+		h.config.Logger.Error("Circuit breaker recorded failure", map[string]any{
+			"breaker_name": h.breaker.name,
+			"error":        "[REDACTED_ERROR_DETAIL]", // Sanitized for security
+			"duration":     duration.String(),
+			"tenant_id":    h.ctx.TenantID(),
+		})
+	}
+}
+
+// logSuccess logs a request success
+func (h *circuitBreakerRequestHandler) logSuccess(duration time.Duration) {
+	if h.config.Logger != nil {
+		h.config.Logger.Debug("Circuit breaker recorded success", map[string]any{
+			"breaker_name": h.breaker.name,
+			"duration":     duration.String(),
+			"tenant_id":    h.ctx.TenantID(),
+		})
+	}
+}
+
+// recordRequestMetrics records detailed request metrics
+func (h *circuitBreakerRequestHandler) recordRequestMetrics(err error, duration time.Duration) {
+	if !h.config.EnableMetrics || h.config.Metrics == nil {
+		return
+	}
+	
+	recorder := newCircuitBreakerMetricsRecorder(h.config, h.breaker, h.ctx)
+	recorder.recordRequest(err, duration)
+}
+
+// buildMetricTags builds tags for metrics
+func (h *circuitBreakerRequestHandler) buildMetricTags(action string) map[string]string {
+	tags := map[string]string{
+		"breaker_name": h.breaker.name,
+		"state":        string(h.breaker.getState()),
+		"action":       action,
+	}
+	if h.config.PerTenant || h.config.EnableTenantIsolation {
+		tags["tenant_id"] = h.ctx.TenantID()
+	}
+	return tags
+}
+
+// circuitBreakerMetricsRecorder handles metrics recording
+type circuitBreakerMetricsRecorder struct {
+	config  CircuitBreakerConfig
+	breaker *circuitBreaker
+	ctx     *lift.Context
+}
+
+// newCircuitBreakerMetricsRecorder creates a new metrics recorder
+func newCircuitBreakerMetricsRecorder(config CircuitBreakerConfig, breaker *circuitBreaker, ctx *lift.Context) *circuitBreakerMetricsRecorder {
+	return &circuitBreakerMetricsRecorder{
+		config:  config,
+		breaker: breaker,
+		ctx:     ctx,
+	}
+}
+
+// recordRequest records request metrics
+func (r *circuitBreakerMetricsRecorder) recordRequest(err error, duration time.Duration) {
+	tags := r.buildTags(err)
+	metrics := r.config.Metrics.WithTags(tags)
+	
+	// Record request count
+	r.recordRequestCount(metrics)
+	
+	// Record duration
+	r.recordDuration(metrics, duration)
+	
+	// Record state
+	r.recordState(metrics)
+}
+
+// buildTags builds metric tags
+func (r *circuitBreakerMetricsRecorder) buildTags(err error) map[string]string {
+	tags := map[string]string{
+		"breaker_name": r.breaker.name,
+		"state":        string(r.breaker.getState()),
+		"result":       map[bool]string{true: "success", false: "failure"}[err == nil],
+	}
+	if r.config.PerTenant || r.config.EnableTenantIsolation {
+		tags["tenant_id"] = r.ctx.TenantID()
+	}
+	return tags
+}
+
+// recordRequestCount records the request count metric
+func (r *circuitBreakerMetricsRecorder) recordRequestCount(metrics observability.MetricsCollector) {
+	counter := metrics.Counter("circuit_breaker.requests.total")
+	counter.Inc()
+}
+
+// recordDuration records the request duration metric
+func (r *circuitBreakerMetricsRecorder) recordDuration(metrics observability.MetricsCollector, duration time.Duration) {
+	histogram := metrics.Histogram("circuit_breaker.request.duration")
+	histogram.Observe(float64(duration.Milliseconds()))
+}
+
+// recordState records the circuit breaker state metric
+func (r *circuitBreakerMetricsRecorder) recordState(metrics observability.MetricsCollector) {
+	gauge := metrics.Gauge("circuit_breaker.state")
+	stateValue := map[CircuitBreakerState]float64{
+		CircuitBreakerClosed:   0,
+		CircuitBreakerOpen:     1,
+		CircuitBreakerHalfOpen: 0.5,
+	}
+	gauge.Set(stateValue[r.breaker.getState()])
 }
 
 // circuitBreakerManager manages multiple circuit breakers
