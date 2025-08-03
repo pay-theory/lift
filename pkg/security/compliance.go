@@ -270,102 +270,11 @@ func (cf *ComplianceFramework) SetReporter(reporter ComplianceReporter) {
 
 // ComplianceAudit creates middleware for compliance auditing
 func (cf *ComplianceFramework) ComplianceAudit() LiftMiddleware {
+	handler := newComplianceAuditHandler(cf)
+	
 	return func(next LiftHandler) LiftHandler {
 		return LiftHandlerFunc(func(ctx LiftContext) error {
-			start := time.Now()
-
-			// Start audit trail
-			auditID := ""
-			if cf.auditor != nil {
-				auditID = cf.auditor.StartAudit(ctx)
-			}
-
-			// Create audit request
-			auditRequest := &AuditRequest{
-				UserID:      ctx.UserID(),
-				TenantID:    ctx.TenantID(),
-				Action:      fmt.Sprintf("%s %s", "GET", "/path"), // Simplified for interface
-				Resource:    "/path",
-				Timestamp:   start,
-				IPAddress:   ctx.ClientIP(),
-				UserAgent:   "user-agent",
-				RequestSize: 0,
-				ContentType: "application/json",
-				SessionID:   "",
-			}
-
-			// Log sanitized headers and query params
-			auditRequest.Headers = make(map[string]string)
-			auditRequest.QueryParams = make(map[string]string)
-
-			// Log request
-			if cf.auditor != nil && auditID != "" {
-				if err := cf.auditor.LogRequest(auditID, auditRequest); err != nil {
-					// Log error but don't fail the request
-					ctx.Logger().Error("Failed to log audit request", "error", err)
-				}
-			}
-
-			// Validate compliance
-			if cf.validator != nil {
-				for _, framework := range cf.config.EnabledFrameworks {
-					result, err := cf.validator.ValidateRequest(ctx, framework)
-					if err != nil {
-						ctx.Logger().Error("Compliance validation failed", "framework", framework, "error", err)
-						continue
-					}
-
-					if !result.Compliant {
-						// Log violations
-						for _, violation := range result.Violations {
-							if cf.auditor != nil && auditID != "" {
-								securityEvent := &SecurityEvent{
-									EventType:   "compliance_violation",
-									Severity:    violation.Severity,
-									Description: violation.Description,
-									Metadata: map[string]any{
-										"framework":    framework,
-										"rule_id":      violation.RuleID,
-										"violation_id": violation.ID,
-									},
-									Timestamp: time.Now(),
-									Resolved:  false,
-								}
-								if err := cf.auditor.LogSecurityEvent(auditID, securityEvent); err != nil {
-									log.Printf("Warning: failed to log security event: %v", err)
-								}
-							}
-						}
-
-						// Handle critical violations
-						if cf.hasCriticalViolations(result.Violations) {
-							return fmt.Errorf("request violates compliance requirements")
-						}
-					}
-				}
-			}
-
-			// Execute handler
-			err := next.Handle(ctx)
-			duration := time.Since(start)
-
-			// Create audit response
-			auditResponse := &AuditResponse{
-				StatusCode:   200, // Simplified for interface
-				Duration:     duration,
-				ResponseSize: 0,
-				Error:        err,
-				DataAccess:   ctx.GetDataAccessLog(),
-			}
-
-			// Log response
-			if cf.auditor != nil && auditID != "" {
-				if logErr := cf.auditor.LogResponse(auditID, auditResponse); logErr != nil {
-					ctx.Logger().Error("Failed to log audit response", "error", logErr)
-				}
-			}
-
-			return err
+			return handler.handle(ctx, next)
 		})
 	}
 }
@@ -519,4 +428,177 @@ func (cf *ComplianceFramework) MarshalJSON() ([]byte, error) {
 		"framework": cf.framework,
 		"config":    cf.config,
 	})
+}
+
+// complianceAuditHandler handles the compliance audit process
+type complianceAuditHandler struct {
+	framework *ComplianceFramework
+}
+
+// newComplianceAuditHandler creates a new compliance audit handler
+func newComplianceAuditHandler(framework *ComplianceFramework) *complianceAuditHandler {
+	return &complianceAuditHandler{
+		framework: framework,
+	}
+}
+
+// handle processes a request with compliance auditing
+func (h *complianceAuditHandler) handle(ctx LiftContext, next LiftHandler) error {
+	start := time.Now()
+	
+	// Start audit session
+	session := h.startAuditSession(ctx, start)
+	
+	// Validate compliance before processing
+	if err := h.validateCompliance(ctx, session); err != nil {
+		return err
+	}
+	
+	// Execute handler
+	err := next.Handle(ctx)
+	
+	// Complete audit session
+	h.completeAuditSession(ctx, session, start, err)
+	
+	return err
+}
+
+// startAuditSession begins an audit session and logs the request
+func (h *complianceAuditHandler) startAuditSession(ctx LiftContext, start time.Time) *auditSession {
+	session := &auditSession{
+		id:        h.generateAuditID(),
+		startTime: start,
+	}
+	
+	if h.framework.auditor != nil {
+		session.id = h.framework.auditor.StartAudit(ctx)
+		
+		auditRequest := h.createAuditRequest(ctx, start)
+		if err := h.framework.auditor.LogRequest(session.id, auditRequest); err != nil {
+			ctx.Logger().Error("Failed to log audit request", "error", err)
+		}
+	}
+	
+	return session
+}
+
+// validateCompliance checks compliance across all enabled frameworks
+func (h *complianceAuditHandler) validateCompliance(ctx LiftContext, session *auditSession) error {
+	if h.framework.validator == nil {
+		return nil
+	}
+	
+	for _, framework := range h.framework.config.EnabledFrameworks {
+		if err := h.validateFramework(ctx, session, framework); err != nil {
+			return err
+		}
+	}
+	
+	return nil
+}
+
+// validateFramework validates compliance for a specific framework
+func (h *complianceAuditHandler) validateFramework(ctx LiftContext, session *auditSession, framework string) error {
+	result, err := h.framework.validator.ValidateRequest(ctx, framework)
+	if err != nil {
+		ctx.Logger().Error("Compliance validation failed", "framework", framework, "error", err)
+		return nil // Continue processing despite validation errors
+	}
+	
+	if !result.Compliant {
+		return h.handleViolations(ctx, session, framework, result.Violations)
+	}
+	
+	return nil
+}
+
+// handleViolations processes compliance violations
+func (h *complianceAuditHandler) handleViolations(ctx LiftContext, session *auditSession, framework string, violations []ComplianceViolation) error {
+	// Log all violations
+	for _, violation := range violations {
+		h.logViolation(ctx, session, framework, violation)
+	}
+	
+	// Check for critical violations
+	if h.framework.hasCriticalViolations(violations) {
+		return fmt.Errorf("request violates compliance requirements")
+	}
+	
+	return nil
+}
+
+// logViolation logs a specific compliance violation
+func (h *complianceAuditHandler) logViolation(ctx LiftContext, session *auditSession, framework string, violation ComplianceViolation) {
+	if h.framework.auditor == nil || session.id == "" {
+		return
+	}
+	
+	securityEvent := &SecurityEvent{
+		EventType:   "compliance_violation",
+		Severity:    violation.Severity,
+		Description: violation.Description,
+		Metadata: map[string]any{
+			"framework":    framework,
+			"rule_id":      violation.RuleID,
+			"violation_id": violation.ID,
+		},
+		Timestamp: time.Now(),
+		Resolved:  false,
+	}
+	
+	if err := h.framework.auditor.LogSecurityEvent(session.id, securityEvent); err != nil {
+		log.Printf("Warning: failed to log security event: %v", err)
+	}
+}
+
+// completeAuditSession finalizes the audit session and logs the response
+func (h *complianceAuditHandler) completeAuditSession(ctx LiftContext, session *auditSession, start time.Time, err error) {
+	if h.framework.auditor == nil || session.id == "" {
+		return
+	}
+	
+	auditResponse := h.createAuditResponse(ctx, start, err)
+	if logErr := h.framework.auditor.LogResponse(session.id, auditResponse); logErr != nil {
+		ctx.Logger().Error("Failed to log audit response", "error", logErr)
+	}
+}
+
+// createAuditRequest creates an audit request record
+func (h *complianceAuditHandler) createAuditRequest(ctx LiftContext, start time.Time) *AuditRequest {
+	return &AuditRequest{
+		UserID:      ctx.UserID(),
+		TenantID:    ctx.TenantID(),
+		Action:      fmt.Sprintf("%s %s", "GET", "/path"), // Simplified for interface
+		Resource:    "/path",
+		Timestamp:   start,
+		IPAddress:   ctx.ClientIP(),
+		UserAgent:   "user-agent",
+		RequestSize: 0,
+		ContentType: "application/json",
+		SessionID:   "",
+		Headers:     make(map[string]string),
+		QueryParams: make(map[string]string),
+	}
+}
+
+// createAuditResponse creates an audit response record
+func (h *complianceAuditHandler) createAuditResponse(ctx LiftContext, start time.Time, err error) *AuditResponse {
+	return &AuditResponse{
+		StatusCode:   200, // Simplified for interface
+		Duration:     time.Since(start),
+		ResponseSize: 0,
+		Error:        err,
+		DataAccess:   ctx.GetDataAccessLog(),
+	}
+}
+
+// generateAuditID generates a unique audit ID
+func (h *complianceAuditHandler) generateAuditID() string {
+	return fmt.Sprintf("audit_%d", time.Now().UnixNano())
+}
+
+// auditSession represents an active audit session
+type auditSession struct {
+	id        string
+	startTime time.Time
 }
