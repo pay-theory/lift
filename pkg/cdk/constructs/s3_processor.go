@@ -114,234 +114,458 @@ func NewS3Processor(scope constructs.Construct, id *string, props *S3ProcessorPr
 		props = &S3ProcessorProps{}
 	}
 
-	// Default values for future use
-	// batchSize and maxBatchingWindow are not used in S3 events but kept for potential future use
+	builder := newS3ProcessorBuilder(this, props)
+	return builder.build()
+}
 
-	enableDLQ := true
+// s3ProcessorBuilder builds S3 processor components
+type s3ProcessorBuilder struct {
+	processor *S3Processor
+	props     *S3ProcessorProps
+	config    *s3ProcessorConfig
+}
+
+// s3ProcessorConfig holds resolved configuration values
+type s3ProcessorConfig struct {
+	enableDLQ            bool
+	enableVersioning     bool
+	enableLifecycleRules bool
+	enableAccessLogging  bool
+	eventTypes           []awss3.EventType
+}
+
+// newS3ProcessorBuilder creates a new S3 processor builder
+func newS3ProcessorBuilder(processor *S3Processor, props *S3ProcessorProps) *s3ProcessorBuilder {
+	return &s3ProcessorBuilder{
+		processor: processor,
+		props:     props,
+		config:    buildS3ProcessorConfig(props),
+	}
+}
+
+// buildS3ProcessorConfig resolves configuration values with defaults
+func buildS3ProcessorConfig(props *S3ProcessorProps) *s3ProcessorConfig {
+	config := &s3ProcessorConfig{
+		enableDLQ:            true,
+		enableVersioning:     false,
+		enableLifecycleRules: false,
+		enableAccessLogging:  false,
+		eventTypes:           []awss3.EventType{awss3.EventType_OBJECT_CREATED},
+	}
+
+	// Apply provided values
 	if props.EnableDeadLetterQueue != nil {
-		enableDLQ = *props.EnableDeadLetterQueue
+		config.enableDLQ = *props.EnableDeadLetterQueue
 	}
-
-	enableVersioning := false
 	if props.EnableVersioning != nil {
-		enableVersioning = *props.EnableVersioning
+		config.enableVersioning = *props.EnableVersioning
 	}
-
-	enableLifecycleRules := false
 	if props.EnableLifecycleRules != nil {
-		enableLifecycleRules = *props.EnableLifecycleRules
+		config.enableLifecycleRules = *props.EnableLifecycleRules
 	}
-
-	enableAccessLogging := false
 	if props.EnableAccessLogging != nil {
-		enableAccessLogging = *props.EnableAccessLogging
+		config.enableAccessLogging = *props.EnableAccessLogging
 	}
-
-	// Default event types
-	eventTypes := []awss3.EventType{awss3.EventType_OBJECT_CREATED}
 	if props.EventTypes != nil {
-		eventTypes = *props.EventTypes
+		config.eventTypes = *props.EventTypes
 	}
 
+	return config
+}
+
+// build constructs the complete S3 processor
+func (b *s3ProcessorBuilder) build() *S3Processor {
 	// Create or use existing bucket
-	if props.ExistingBucket != nil {
-		this.Bucket = props.ExistingBucket
-	} else {
-		// Create bucket
-		bucketProps := &awss3.BucketProps{
-			Versioned:          jsii.Bool(enableVersioning),
-			BlockPublicAccess:  awss3.BlockPublicAccess_BLOCK_ALL(),
-			Encryption:         awss3.BucketEncryption_S3_MANAGED,
-			EnforceSSL:         jsii.Bool(true),
-			EventBridgeEnabled: jsii.Bool(true),
-		}
+	b.setupBucket()
+	
+	// Create dead letter queue if enabled
+	b.setupDeadLetterQueue()
+	
+	// Create Lambda function
+	b.setupFunction()
+	
+	// Configure event source
+	b.setupEventSource()
+	
+	// Setup permissions
+	b.setupPermissions()
+	
+	// Add monitoring if enabled
+	b.setupMonitoring()
 
-		// Override with user-provided props
-		if props.BucketProps != nil {
-			if props.BucketProps.BucketName != nil {
-				bucketProps.BucketName = props.BucketProps.BucketName
-			}
-			if props.BucketProps.Versioned != nil {
-				bucketProps.Versioned = props.BucketProps.Versioned
-			}
-			if props.BucketProps.BlockPublicAccess != nil {
-				bucketProps.BlockPublicAccess = props.BucketProps.BlockPublicAccess
-			}
-			if props.BucketProps.EncryptionKey != nil {
-				bucketProps.EncryptionKey = props.BucketProps.EncryptionKey
-			}
-		}
+	return b.processor
+}
 
-		// Set default bucket name if not provided
-		if bucketProps.BucketName == nil && props.FunctionProps.FunctionName != nil {
-			bucketProps.BucketName = jsii.String(*props.FunctionProps.FunctionName + "-bucket")
-		}
-
-		// Configure access logging
-		if enableAccessLogging && props.AccessLogsBucket != nil {
-			bucketProps.ServerAccessLogsBucket = props.AccessLogsBucket
-			if props.AccessLogsPrefix != nil {
-				bucketProps.ServerAccessLogsPrefix = props.AccessLogsPrefix
-			}
-		}
-
-		// Configure lifecycle rules
-		if enableLifecycleRules && props.LifecycleRules != nil {
-			bucketProps.LifecycleRules = props.LifecycleRules
-		} else if enableLifecycleRules {
-			// Default lifecycle rules
-			defaultLifecycleRules := []*awss3.LifecycleRule{
-				{
-					Id:                                  jsii.String("DeleteIncompleteMultipartUploads"),
-					Enabled:                             jsii.Bool(true),
-					AbortIncompleteMultipartUploadAfter: awscdk.Duration_Days(jsii.Number(1)),
-				},
-				{
-					Id:      jsii.String("TransitionToIA"),
-					Enabled: jsii.Bool(true),
-					Transitions: &[]*awss3.Transition{
-						{
-							StorageClass:    awss3.StorageClass_INFREQUENT_ACCESS(),
-							TransitionAfter: awscdk.Duration_Days(jsii.Number(30)),
-						},
-					},
-				},
-			}
-			bucketProps.LifecycleRules = &defaultLifecycleRules
-		}
-
-		this.Bucket = awss3.NewBucket(this, jsii.String("Bucket"), bucketProps)
-
-		// Configure cross-region replication if enabled
-		if props.CrossRegionReplication != nil && *props.CrossRegionReplication {
-			if props.ReplicationBucket != nil {
-				this.ReplicationBucket = props.ReplicationBucket
-				this.enableCrossRegionReplication()
-			}
-		}
+// setupBucket creates or configures the S3 bucket
+func (b *s3ProcessorBuilder) setupBucket() {
+	if b.props.ExistingBucket != nil {
+		b.processor.Bucket = b.props.ExistingBucket
+		return
 	}
 
-	// Create dead letter queue if enabled
-	if enableDLQ {
-		dlqProps := &awssqs.QueueProps{}
-		if props.DeadLetterQueueProps != nil {
-			dlqProps = props.DeadLetterQueueProps
-		}
+	bucketBuilder := newS3BucketBuilder(b.processor, b.props, b.config)
+	b.processor.Bucket, b.processor.ReplicationBucket = bucketBuilder.build()
+}
 
-		// Set DLQ defaults
+// setupDeadLetterQueue creates the dead letter queue if enabled
+func (b *s3ProcessorBuilder) setupDeadLetterQueue() {
+	if !b.config.enableDLQ {
+		return
+	}
+
+	dlqProps := &awssqs.QueueProps{
+		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
+	}
+	
+	if b.props.DeadLetterQueueProps != nil {
+		dlqProps = b.props.DeadLetterQueueProps
 		if dlqProps.RetentionPeriod == nil {
 			dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
 		}
-		if dlqProps.QueueName == nil && props.FunctionProps.FunctionName != nil {
-			dlqProps.QueueName = jsii.String(*props.FunctionProps.FunctionName + "-s3-dlq")
-		}
-
-		this.DeadLetterQueue = awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), dlqProps)
 	}
 
-	// Create Lambda function with S3 environment variables
+	// Set DLQ name if not provided
+	if dlqProps.QueueName == nil && b.props.FunctionProps.FunctionName != nil {
+		dlqProps.QueueName = jsii.String(*b.props.FunctionProps.FunctionName + "-s3-dlq")
+	}
+
+	b.processor.DeadLetterQueue = awssqs.NewQueue(b.processor, jsii.String("DeadLetterQueue"), dlqProps)
+}
+
+// setupFunction creates the Lambda function with S3 environment variables
+func (b *s3ProcessorBuilder) setupFunction() {
+	functionBuilder := newS3FunctionBuilder(b.processor, b.props)
+	b.processor.Function = functionBuilder.build()
+}
+
+// setupEventSource configures the S3 event source
+func (b *s3ProcessorBuilder) setupEventSource() {
+	eventSourceBuilder := newS3EventSourceBuilder(b.processor, b.props, b.config)
+	b.processor.EventSource = eventSourceBuilder.build()
+}
+
+// setupPermissions grants necessary permissions
+func (b *s3ProcessorBuilder) setupPermissions() {
+	b.processor.Bucket.GrantRead(b.processor.Function.Function, jsii.String("*"))
+	b.processor.Bucket.GrantWrite(b.processor.Function.Function, jsii.String("*"), nil)
+	if b.processor.DeadLetterQueue != nil {
+		b.processor.DeadLetterQueue.GrantSendMessages(b.processor.Function.Function)
+	}
+	if b.processor.ReplicationBucket != nil {
+		b.processor.ReplicationBucket.GrantWrite(b.processor.Function.Function, jsii.String("*"), nil)
+	}
+}
+
+// setupMonitoring adds monitoring if enabled
+func (b *s3ProcessorBuilder) setupMonitoring() {
+	if b.props.EnableMonitoring != nil && *b.props.EnableMonitoring {
+		b.processor.enableMonitoring()
+	}
+}
+
+// s3BucketBuilder builds S3 bucket components
+type s3BucketBuilder struct {
+	processor *S3Processor
+	props     *S3ProcessorProps
+	config    *s3ProcessorConfig
+}
+
+// newS3BucketBuilder creates a new S3 bucket builder
+func newS3BucketBuilder(processor *S3Processor, props *S3ProcessorProps, config *s3ProcessorConfig) *s3BucketBuilder {
+	return &s3BucketBuilder{
+		processor: processor,
+		props:     props,
+		config:    config,
+	}
+}
+
+// build creates the main bucket and optional replication bucket
+func (bb *s3BucketBuilder) build() (awss3.IBucket, awss3.IBucket) {
+	// Create main bucket
+	mainBucket := bb.createMainBucket()
+	
+	// Create replication bucket if needed
+	var replicationBucket awss3.IBucket
+	if bb.shouldEnableReplication() {
+		replicationBucket = bb.props.ReplicationBucket
+		bb.enableCrossRegionReplication(mainBucket)
+	}
+	
+	return mainBucket, replicationBucket
+}
+
+// createMainBucket creates the main S3 bucket
+func (bb *s3BucketBuilder) createMainBucket() awss3.IBucket {
+	bucketProps := bb.createBaseBucketProps()
+	
+	// Apply user-provided bucket props
+	bb.applyUserBucketProps(bucketProps)
+	
+	// Set default bucket name if needed
+	bb.setDefaultBucketName(bucketProps)
+	
+	// Configure access logging
+	bb.configureAccessLogging(bucketProps)
+	
+	// Configure lifecycle rules
+	bb.configureLifecycleRules(bucketProps)
+	
+	return awss3.NewBucket(bb.processor, jsii.String("Bucket"), bucketProps)
+}
+
+// createBaseBucketProps creates base bucket properties with security defaults
+func (bb *s3BucketBuilder) createBaseBucketProps() *awss3.BucketProps {
+	return &awss3.BucketProps{
+		Versioned:          jsii.Bool(bb.config.enableVersioning),
+		BlockPublicAccess:  awss3.BlockPublicAccess_BLOCK_ALL(),
+		Encryption:         awss3.BucketEncryption_S3_MANAGED,
+		EnforceSSL:         jsii.Bool(true),
+		EventBridgeEnabled: jsii.Bool(true),
+	}
+}
+
+// applyUserBucketProps applies user-provided bucket properties
+func (bb *s3BucketBuilder) applyUserBucketProps(bucketProps *awss3.BucketProps) {
+	if bb.props.BucketProps == nil {
+		return
+	}
+	
+	if bb.props.BucketProps.BucketName != nil {
+		bucketProps.BucketName = bb.props.BucketProps.BucketName
+	}
+	if bb.props.BucketProps.Versioned != nil {
+		bucketProps.Versioned = bb.props.BucketProps.Versioned
+	}
+	if bb.props.BucketProps.BlockPublicAccess != nil {
+		bucketProps.BlockPublicAccess = bb.props.BucketProps.BlockPublicAccess
+	}
+	if bb.props.BucketProps.EncryptionKey != nil {
+		bucketProps.EncryptionKey = bb.props.BucketProps.EncryptionKey
+	}
+}
+
+// setDefaultBucketName sets a default bucket name if none provided
+func (bb *s3BucketBuilder) setDefaultBucketName(bucketProps *awss3.BucketProps) {
+	if bucketProps.BucketName != nil || bb.props.FunctionProps.FunctionName == nil {
+		return
+	}
+	bucketProps.BucketName = jsii.String(*bb.props.FunctionProps.FunctionName + "-bucket")
+}
+
+// configureAccessLogging configures S3 access logging if enabled
+func (bb *s3BucketBuilder) configureAccessLogging(bucketProps *awss3.BucketProps) {
+	if !bb.config.enableAccessLogging || bb.props.AccessLogsBucket == nil {
+		return
+	}
+	
+	bucketProps.ServerAccessLogsBucket = bb.props.AccessLogsBucket
+	if bb.props.AccessLogsPrefix != nil {
+		bucketProps.ServerAccessLogsPrefix = bb.props.AccessLogsPrefix
+	}
+}
+
+// configureLifecycleRules configures S3 lifecycle rules if enabled
+func (bb *s3BucketBuilder) configureLifecycleRules(bucketProps *awss3.BucketProps) {
+	if !bb.config.enableLifecycleRules {
+		return
+	}
+	
+	if bb.props.LifecycleRules != nil {
+		bucketProps.LifecycleRules = bb.props.LifecycleRules
+	} else {
+		bucketProps.LifecycleRules = bb.createDefaultLifecycleRules()
+	}
+}
+
+// createDefaultLifecycleRules creates default lifecycle rules
+func (bb *s3BucketBuilder) createDefaultLifecycleRules() *[]*awss3.LifecycleRule {
+	defaultRules := []*awss3.LifecycleRule{
+		{
+			Id:                                  jsii.String("DeleteIncompleteMultipartUploads"),
+			Enabled:                             jsii.Bool(true),
+			AbortIncompleteMultipartUploadAfter: awscdk.Duration_Days(jsii.Number(1)),
+		},
+		{
+			Id:      jsii.String("TransitionToIA"),
+			Enabled: jsii.Bool(true),
+			Transitions: &[]*awss3.Transition{
+				{
+					StorageClass:    awss3.StorageClass_INFREQUENT_ACCESS(),
+					TransitionAfter: awscdk.Duration_Days(jsii.Number(30)),
+				},
+			},
+		},
+	}
+	return &defaultRules
+}
+
+// shouldEnableReplication checks if cross-region replication should be enabled
+func (bb *s3BucketBuilder) shouldEnableReplication() bool {
+	return bb.props.CrossRegionReplication != nil && *bb.props.CrossRegionReplication && bb.props.ReplicationBucket != nil
+}
+
+// enableCrossRegionReplication enables cross-region replication
+func (bb *s3BucketBuilder) enableCrossRegionReplication(mainBucket awss3.IBucket) {
+	bb.processor.enableCrossRegionReplication()
+}
+
+// s3FunctionBuilder builds Lambda function components
+type s3FunctionBuilder struct {
+	processor *S3Processor
+	props     *S3ProcessorProps
+}
+
+// newS3FunctionBuilder creates a new S3 function builder
+func newS3FunctionBuilder(processor *S3Processor, props *S3ProcessorProps) *s3FunctionBuilder {
+	return &s3FunctionBuilder{
+		processor: processor,
+		props:     props,
+	}
+}
+
+// build creates the Lambda function with S3 environment variables
+func (fb *s3FunctionBuilder) build() *LiftFunction {
+	// Prepare environment variables
+	functionEnv := fb.prepareFunctionEnvironment()
+	
+	// Create LiftFunction properties
+	liftProps := &LiftFunctionProps{
+		FunctionProps: fb.props.FunctionProps,
+	}
+	
+	// Set environment variables
+	liftProps.FunctionProps.Environment = &functionEnv
+	
+	// Set Lift-specific properties
+	if fb.props.EnableTracing != nil {
+		liftProps.EnableTracing = fb.props.EnableTracing
+	}
+	if fb.props.EnableMultiTenant != nil {
+		liftProps.EnableMultiTenant = fb.props.EnableMultiTenant
+	}
+	
+	return NewLiftFunction(fb.processor, jsii.String("Function"), liftProps)
+}
+
+// prepareFunctionEnvironment prepares environment variables for the function
+func (fb *s3FunctionBuilder) prepareFunctionEnvironment() map[string]*string {
 	functionEnv := make(map[string]*string)
-	if props.FunctionProps.Environment != nil {
-		for k, v := range *props.FunctionProps.Environment {
+	
+	// Copy existing environment variables
+	if fb.props.FunctionProps.Environment != nil {
+		for k, v := range *fb.props.FunctionProps.Environment {
 			functionEnv[k] = v
 		}
 	}
-
+	
 	// Add S3-specific environment variables
-	functionEnv["S3_BUCKET_NAME"] = this.Bucket.BucketName()
-	functionEnv["S3_BUCKET_ARN"] = this.Bucket.BucketArn()
-	if this.DeadLetterQueue != nil {
-		functionEnv["S3_DLQ_URL"] = this.DeadLetterQueue.QueueUrl()
+	functionEnv["S3_BUCKET_NAME"] = fb.processor.Bucket.BucketName()
+	functionEnv["S3_BUCKET_ARN"] = fb.processor.Bucket.BucketArn()
+	if fb.processor.DeadLetterQueue != nil {
+		functionEnv["S3_DLQ_URL"] = fb.processor.DeadLetterQueue.QueueUrl()
 	}
-	if this.ReplicationBucket != nil {
-		functionEnv["S3_REPLICATION_BUCKET_NAME"] = this.ReplicationBucket.BucketName()
+	if fb.processor.ReplicationBucket != nil {
+		functionEnv["S3_REPLICATION_BUCKET_NAME"] = fb.processor.ReplicationBucket.BucketName()
 	}
+	
+	return functionEnv
+}
 
-	// Create LiftFunction with enhanced properties
-	liftProps := &LiftFunctionProps{
-		FunctionProps: props.FunctionProps,
+// s3EventSourceBuilder builds S3 event source components
+type s3EventSourceBuilder struct {
+	processor *S3Processor
+	props     *S3ProcessorProps
+	config    *s3ProcessorConfig
+}
+
+// newS3EventSourceBuilder creates a new S3 event source builder
+func newS3EventSourceBuilder(processor *S3Processor, props *S3ProcessorProps, config *s3ProcessorConfig) *s3EventSourceBuilder {
+	return &s3EventSourceBuilder{
+		processor: processor,
+		props:     props,
+		config:    config,
 	}
+}
 
-	// Override environment
-	liftProps.Environment = &functionEnv
-
-	// Set Lift-specific properties
-	if props.EnableTracing != nil {
-		liftProps.EnableTracing = props.EnableTracing
-	}
-	if props.EnableMultiTenant != nil {
-		liftProps.EnableMultiTenant = props.EnableMultiTenant
-	}
-
-	// S3 processor handles its own DLQ through SQS, no need for Lambda DLQ
-
-	this.Function = NewLiftFunction(this, jsii.String("Function"), liftProps)
-
-	// Configure S3 event source
+// build creates and configures the S3 event source
+func (esb *s3EventSourceBuilder) build() awslambdaeventsources.S3EventSource {
+	// Create base event source properties
 	eventSourceProps := &awslambdaeventsources.S3EventSourceProps{
-		Events: &eventTypes,
+		Events: &esb.config.eventTypes,
 	}
-
+	
 	// Add key filters if provided
+	esb.addKeyFilters(eventSourceProps)
+	
+	// Apply user-provided event source properties
+	esb.applyUserEventSourceProps(eventSourceProps)
+	
+	// Create event source
+	return esb.createEventSource(eventSourceProps)
+}
+
+// addKeyFilters adds key prefix and suffix filters
+func (esb *s3EventSourceBuilder) addKeyFilters(eventSourceProps *awslambdaeventsources.S3EventSourceProps) {
 	filters := []*awss3.NotificationKeyFilter{}
-	if props.KeyPrefix != nil {
+	
+	if esb.props.KeyPrefix != nil {
 		filters = append(filters, &awss3.NotificationKeyFilter{
-			Prefix: props.KeyPrefix,
+			Prefix: esb.props.KeyPrefix,
 		})
 	}
-	if props.KeySuffix != nil {
+	if esb.props.KeySuffix != nil {
 		filters = append(filters, &awss3.NotificationKeyFilter{
-			Suffix: props.KeySuffix,
+			Suffix: esb.props.KeySuffix,
 		})
 	}
+	
 	if len(filters) > 0 {
 		eventSourceProps.Filters = &filters
 	}
+}
 
-	// Override with user-provided event source props
-	if props.EventSourceProps != nil {
-		if props.EventSourceProps.Events != nil {
-			eventSourceProps.Events = props.EventSourceProps.Events
-		}
-		if props.EventSourceProps.Filters != nil {
-			eventSourceProps.Filters = props.EventSourceProps.Filters
-		}
+// applyUserEventSourceProps applies user-provided event source properties
+func (esb *s3EventSourceBuilder) applyUserEventSourceProps(eventSourceProps *awslambdaeventsources.S3EventSourceProps) {
+	if esb.props.EventSourceProps == nil {
+		return
 	}
+	
+	if esb.props.EventSourceProps.Events != nil {
+		eventSourceProps.Events = esb.props.EventSourceProps.Events
+	}
+	if esb.props.EventSourceProps.Filters != nil {
+		eventSourceProps.Filters = esb.props.EventSourceProps.Filters
+	}
+}
 
-	// Create and add event source
-	if bucket, ok := this.Bucket.(awss3.Bucket); ok {
-		this.EventSource = awslambdaeventsources.NewS3EventSource(bucket, eventSourceProps)
-		this.Function.Function.AddEventSource(this.EventSource)
-	} else if props.ExternalBucket != nil {
-		// For external buckets, we need to handle event source differently
-		// External buckets require bucket notification configuration
-		// Add bucket notification for external bucket
-		bucket.AddEventNotification(
-			awss3.EventType_OBJECT_CREATED,
-			awss3notifications.NewLambdaDestination(this.Function.Function),
-			&awss3.NotificationKeyFilter{
-				Prefix: props.EventFilter.Prefix,
-				Suffix: props.EventFilter.Suffix,
-			},
-		)
+// createEventSource creates the appropriate event source based on bucket type
+func (esb *s3EventSourceBuilder) createEventSource(eventSourceProps *awslambdaeventsources.S3EventSourceProps) awslambdaeventsources.S3EventSource {
+	if bucket, ok := esb.processor.Bucket.(awss3.Bucket); ok {
+		eventSource := awslambdaeventsources.NewS3EventSource(bucket, eventSourceProps)
+		esb.processor.Function.Function.AddEventSource(eventSource)
+		return eventSource
+	} else if esb.props.ExternalBucket != nil {
+		// Handle external bucket notifications
+		esb.configureExternalBucketNotification()
+		return nil // External buckets don't return S3EventSource
 	}
+	return nil
+}
 
-	// Grant permissions
-	this.Bucket.GrantRead(this.Function.Function, jsii.String("*"))
-	this.Bucket.GrantWrite(this.Function.Function, jsii.String("*"), nil)
-	if this.DeadLetterQueue != nil {
-		this.DeadLetterQueue.GrantSendMessages(this.Function.Function)
+// configureExternalBucketNotification configures notifications for external buckets
+func (esb *s3EventSourceBuilder) configureExternalBucketNotification() {
+	if esb.props.ExternalBucket == nil {
+		return
 	}
-	if this.ReplicationBucket != nil {
-		this.ReplicationBucket.GrantWrite(this.Function.Function, jsii.String("*"), nil)
-	}
-
-	// Add monitoring if enabled
-	if props.EnableMonitoring != nil && *props.EnableMonitoring {
-		this.enableMonitoring()
-	}
-
-	return this
+	
+	esb.props.ExternalBucket.AddEventNotification(
+		awss3.EventType_OBJECT_CREATED,
+		awss3notifications.NewLambdaDestination(esb.processor.Function.Function),
+		&awss3.NotificationKeyFilter{
+			Prefix: esb.props.EventFilter.Prefix,
+			Suffix: esb.props.EventFilter.Suffix,
+		},
+	)
 }
 
 // enableMonitoring adds CloudWatch alarms and metrics for the S3 processor
