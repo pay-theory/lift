@@ -88,193 +88,306 @@ func NewEventBridgeHandler(scope constructs.Construct, id *string, props *EventB
 	this := &EventBridgeHandler{}
 	constructs.NewConstruct_Override(this, scope, id)
 
-	// Set defaults
+	builder := newEventBridgeHandlerBuilder(this, props)
+	return builder.build()
+}
+
+// eventBridgeHandlerBuilder builds EventBridge handler components
+type eventBridgeHandlerBuilder struct {
+	handler *EventBridgeHandler
+	props   *EventBridgeHandlerProps
+	config  *eventBridgeHandlerConfig
+}
+
+// eventBridgeHandlerConfig holds resolved configuration values
+type eventBridgeHandlerConfig struct {
+	maxEventAge    awscdk.Duration
+	retryAttempts  float64
+	enableDLQ      bool
+}
+
+// newEventBridgeHandlerBuilder creates a new EventBridge handler builder
+func newEventBridgeHandlerBuilder(handler *EventBridgeHandler, props *EventBridgeHandlerProps) *eventBridgeHandlerBuilder {
+	return &eventBridgeHandlerBuilder{
+		handler: handler,
+		props:   props,
+		config:  buildEventBridgeHandlerConfig(props),
+	}
+}
+
+// buildEventBridgeHandlerConfig resolves configuration values with defaults
+func buildEventBridgeHandlerConfig(props *EventBridgeHandlerProps) *eventBridgeHandlerConfig {
 	if props == nil {
 		props = &EventBridgeHandlerProps{}
 	}
+	
+	config := &eventBridgeHandlerConfig{
+		maxEventAge:   awscdk.Duration_Hours(jsii.Number(1)),
+		retryAttempts: float64(3),
+		enableDLQ:     true,
+	}
 
-	// Default values
-	maxEventAge := awscdk.Duration_Hours(jsii.Number(1))
+	// Apply provided values
 	if props.MaxEventAge != nil {
-		maxEventAge = props.MaxEventAge
+		config.maxEventAge = props.MaxEventAge
 	}
-
-	retryAttempts := float64(3)
 	if props.RetryAttempts != nil {
-		retryAttempts = *props.RetryAttempts
+		config.retryAttempts = *props.RetryAttempts
 	}
-
-	enableDLQ := true
 	if props.EnableDeadLetterQueue != nil {
-		enableDLQ = *props.EnableDeadLetterQueue
+		config.enableDLQ = *props.EnableDeadLetterQueue
 	}
 
-	// Create or use existing event bus
+	return config
+}
+
+// build constructs the complete EventBridge handler
+func (b *eventBridgeHandlerBuilder) build() (*EventBridgeHandler, error) {
+	// Setup event bus
+	b.setupEventBus()
+	
+	// Setup dead letter queue
+	b.setupDeadLetterQueue()
+	
+	// Setup Lambda function
+	b.setupFunction()
+	
+	// Setup EventBridge rule
+	if err := b.setupRule(); err != nil {
+		return nil, err
+	}
+	
+	// Setup Lambda target
+	b.setupTarget()
+	
+	// Grant permissions
+	b.setupPermissions()
+	
+	// Setup monitoring
+	b.setupMonitoring()
+
+	return b.handler, nil
+}
+
+// setupEventBus creates or configures the event bus
+func (b *eventBridgeHandlerBuilder) setupEventBus() {
 	switch {
-	case props.ExistingEventBus != nil:
-		this.EventBus = props.ExistingEventBus
-	case props.EventBusProps != nil:
-		this.EventBus = awsevents.NewEventBus(this, jsii.String("EventBus"), props.EventBusProps)
-	case props.CrossAccountEventBusArn != nil:
+	case b.props.ExistingEventBus != nil:
+		b.handler.EventBus = b.props.ExistingEventBus
+	case b.props.EventBusProps != nil:
+		b.handler.EventBus = awsevents.NewEventBus(b.handler, jsii.String("EventBus"), b.props.EventBusProps)
+	case b.props.CrossAccountEventBusArn != nil:
 		// Reference cross-account event bus
-		this.EventBus = awsevents.EventBus_FromEventBusArn(this, jsii.String("CrossAccountEventBus"), props.CrossAccountEventBusArn)
+		b.handler.EventBus = awsevents.EventBus_FromEventBusArn(b.handler, jsii.String("CrossAccountEventBus"), b.props.CrossAccountEventBusArn)
 	default:
 		// Use default event bus
-		this.EventBus = awsevents.EventBus_FromEventBusName(this, jsii.String("DefaultEventBus"), jsii.String("default"))
+		b.handler.EventBus = awsevents.EventBus_FromEventBusName(b.handler, jsii.String("DefaultEventBus"), jsii.String("default"))
+	}
+}
+
+// setupDeadLetterQueue creates the dead letter queue if enabled
+func (b *eventBridgeHandlerBuilder) setupDeadLetterQueue() {
+	if !b.config.enableDLQ {
+		return
+	}
+	
+	dlqProps := &awssqs.QueueProps{}
+	if b.props.DeadLetterQueueProps != nil {
+		dlqProps = b.props.DeadLetterQueueProps
 	}
 
-	// Create dead letter queue if enabled
-	if enableDLQ {
-		dlqProps := &awssqs.QueueProps{}
-		if props.DeadLetterQueueProps != nil {
-			dlqProps = props.DeadLetterQueueProps
-		}
-
-		// Set DLQ defaults
-		if dlqProps.RetentionPeriod == nil {
-			dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
-		}
-		if dlqProps.QueueName == nil && props.FunctionProps.FunctionName != nil {
-			dlqProps.QueueName = jsii.String(*props.FunctionProps.FunctionName + "-eventbridge-dlq")
-		}
-
-		this.DeadLetterQueue = awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), dlqProps)
+	// Set DLQ defaults
+	if dlqProps.RetentionPeriod == nil {
+		dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
+	}
+	if dlqProps.QueueName == nil && b.props.FunctionProps.FunctionName != nil {
+		dlqProps.QueueName = jsii.String(*b.props.FunctionProps.FunctionName + "-eventbridge-dlq")
 	}
 
-	// Create Lambda function with EventBridge environment variables
+	b.handler.DeadLetterQueue = awssqs.NewQueue(b.handler, jsii.String("DeadLetterQueue"), dlqProps)
+}
+
+// setupFunction creates the Lambda function with EventBridge environment variables
+func (b *eventBridgeHandlerBuilder) setupFunction() {
+	// Create environment variables
 	functionEnv := make(map[string]*string)
-	if props.FunctionProps.Environment != nil {
-		for k, v := range *props.FunctionProps.Environment {
+	if b.props.FunctionProps.Environment != nil {
+		for k, v := range *b.props.FunctionProps.Environment {
 			functionEnv[k] = v
 		}
 	}
 
 	// Add EventBridge-specific environment variables
-	functionEnv["EVENT_BUS_NAME"] = this.EventBus.EventBusName()
-	functionEnv["EVENT_BUS_ARN"] = this.EventBus.EventBusArn()
-	if this.DeadLetterQueue != nil {
-		functionEnv["EVENTBRIDGE_DLQ_URL"] = this.DeadLetterQueue.QueueUrl()
+	functionEnv["EVENT_BUS_NAME"] = b.handler.EventBus.EventBusName()
+	functionEnv["EVENT_BUS_ARN"] = b.handler.EventBus.EventBusArn()
+	if b.handler.DeadLetterQueue != nil {
+		functionEnv["EVENTBRIDGE_DLQ_URL"] = b.handler.DeadLetterQueue.QueueUrl()
 	}
 
 	// Create LiftFunction with enhanced properties
 	liftProps := &LiftFunctionProps{
-		FunctionProps: props.FunctionProps,
+		FunctionProps: b.props.FunctionProps,
 	}
 
 	// Override environment
-	liftProps.Environment = &functionEnv
+	liftProps.FunctionProps.Environment = &functionEnv
 
 	// Set Lift-specific properties
-	if props.EnableTracing != nil {
-		liftProps.EnableTracing = props.EnableTracing
+	if b.props.EnableTracing != nil {
+		liftProps.EnableTracing = b.props.EnableTracing
 	}
-	if props.EnableMultiTenant != nil {
-		liftProps.EnableMultiTenant = props.EnableMultiTenant
-	}
-
-	// EventBridge handles its own DLQ through SQS, no need for Lambda DLQ
-
-	this.Function = NewLiftFunction(this, jsii.String("Function"), liftProps)
-
-	// Create or use existing rule
-	if props.ExistingRule != nil {
-		this.Rule = props.ExistingRule
-	} else {
-		// Create new rule
-		ruleProps := &awsevents.RuleProps{}
-
-		// Override with user-provided props
-		if props.RuleProps != nil {
-			if props.RuleProps.RuleName != nil {
-				ruleProps.RuleName = props.RuleProps.RuleName
-			}
-			if props.RuleProps.Description != nil {
-				ruleProps.Description = props.RuleProps.Description
-			}
-			if props.RuleProps.Enabled != nil {
-				ruleProps.Enabled = props.RuleProps.Enabled
-			}
-		}
-
-		// Set event pattern or schedule
-		if props.EventPattern != nil && props.ScheduleExpression != nil {
-			return nil, fmt.Errorf("EventPattern and ScheduleExpression cannot both be specified")
-		}
-
-		switch {
-		case props.EventPattern != nil:
-			ruleProps.EventPattern = props.EventPattern
-			// Only set event bus for event pattern rules
-			ruleProps.EventBus = this.EventBus
-		case props.ScheduleExpression != nil:
-			ruleProps.Schedule = awsevents.Schedule_Expression(props.ScheduleExpression)
-			// Scheduled rules don't use event buses
-		default:
-			// Default to match all events if neither pattern nor schedule is provided
-			ruleProps.EventPattern = &awsevents.EventPattern{
-				Source: &[]*string{jsii.String("*")},
-			}
-			ruleProps.EventBus = this.EventBus
-		}
-
-		// Set default rule name if not provided
-		if ruleProps.RuleName == nil && props.FunctionProps.FunctionName != nil {
-			ruleProps.RuleName = jsii.String(*props.FunctionProps.FunctionName + "-rule")
-		}
-
-		this.Rule = awsevents.NewRule(this, jsii.String("Rule"), ruleProps)
+	if b.props.EnableMultiTenant != nil {
+		liftProps.EnableMultiTenant = b.props.EnableMultiTenant
 	}
 
-	// Configure Lambda target
+	b.handler.Function = NewLiftFunction(b.handler, jsii.String("Function"), liftProps)
+}
+
+// setupRule creates or uses existing EventBridge rule
+func (b *eventBridgeHandlerBuilder) setupRule() error {
+	if b.props.ExistingRule != nil {
+		b.handler.Rule = b.props.ExistingRule
+		return nil
+	}
+	
+	// Validate event pattern and schedule
+	if b.props.EventPattern != nil && b.props.ScheduleExpression != nil {
+		return fmt.Errorf("EventPattern and ScheduleExpression cannot both be specified")
+	}
+	
+	// Create new rule
+	ruleBuilder := newEventBridgeRuleBuilder(b.handler, b.props)
+	b.handler.Rule = ruleBuilder.build()
+	
+	return nil
+}
+
+// setupTarget configures the Lambda target
+func (b *eventBridgeHandlerBuilder) setupTarget() {
 	targetProps := &awseventstargets.LambdaFunctionProps{
-		MaxEventAge:   maxEventAge,
-		RetryAttempts: jsii.Number(retryAttempts),
+		MaxEventAge:   b.config.maxEventAge,
+		RetryAttempts: jsii.Number(b.config.retryAttempts),
 	}
 
 	// Add dead letter queue to target if enabled
-	if this.DeadLetterQueue != nil {
-		targetProps.DeadLetterQueue = this.DeadLetterQueue
+	if b.handler.DeadLetterQueue != nil {
+		targetProps.DeadLetterQueue = b.handler.DeadLetterQueue
 	}
 
 	// Override with user-provided target props
-	if props.TargetProps != nil {
-		if props.TargetProps.Event != nil {
-			targetProps.Event = props.TargetProps.Event
-		}
-		if props.TargetProps.MaxEventAge != nil {
-			targetProps.MaxEventAge = props.TargetProps.MaxEventAge
-		}
-		if props.TargetProps.RetryAttempts != nil {
-			targetProps.RetryAttempts = props.TargetProps.RetryAttempts
-		}
-		if props.TargetProps.DeadLetterQueue != nil {
-			targetProps.DeadLetterQueue = props.TargetProps.DeadLetterQueue
-		}
-	}
+	b.applyUserTargetProps(targetProps)
 
 	// Apply input transformation if provided
-	if props.InputTransformation != nil {
-		targetProps.Event = *props.InputTransformation
+	if b.props.InputTransformation != nil {
+		targetProps.Event = *b.props.InputTransformation
 	}
 
 	// Create and add target
-	this.Target = awseventstargets.NewLambdaFunction(this.Function.Function, targetProps)
+	b.handler.Target = awseventstargets.NewLambdaFunction(b.handler.Function.Function, targetProps)
+	b.handler.Rule.AddTarget(b.handler.Target)
+}
 
-	// Add target to rule
-	this.Rule.AddTarget(this.Target)
+// applyUserTargetProps applies user-provided target properties
+func (b *eventBridgeHandlerBuilder) applyUserTargetProps(targetProps *awseventstargets.LambdaFunctionProps) {
+	if b.props.TargetProps == nil {
+		return
+	}
+	
+	if b.props.TargetProps.Event != nil {
+		targetProps.Event = b.props.TargetProps.Event
+	}
+	if b.props.TargetProps.MaxEventAge != nil {
+		targetProps.MaxEventAge = b.props.TargetProps.MaxEventAge
+	}
+	if b.props.TargetProps.RetryAttempts != nil {
+		targetProps.RetryAttempts = b.props.TargetProps.RetryAttempts
+	}
+	if b.props.TargetProps.DeadLetterQueue != nil {
+		targetProps.DeadLetterQueue = b.props.TargetProps.DeadLetterQueue
+	}
+}
 
-	// Grant permissions
-	this.EventBus.GrantPutEventsTo(this.Function.Function, jsii.String("eventbridge"))
-	if this.DeadLetterQueue != nil {
-		this.DeadLetterQueue.GrantSendMessages(this.Function.Function)
+// setupPermissions grants necessary permissions
+func (b *eventBridgeHandlerBuilder) setupPermissions() {
+	b.handler.EventBus.GrantPutEventsTo(b.handler.Function.Function, jsii.String("eventbridge"))
+	if b.handler.DeadLetterQueue != nil {
+		b.handler.DeadLetterQueue.GrantSendMessages(b.handler.Function.Function)
+	}
+}
+
+// setupMonitoring adds monitoring if enabled
+func (b *eventBridgeHandlerBuilder) setupMonitoring() {
+	if b.props.EnableMonitoring != nil && *b.props.EnableMonitoring {
+		b.handler.enableMonitoring()
+	}
+}
+
+// eventBridgeRuleBuilder builds EventBridge rule components
+type eventBridgeRuleBuilder struct {
+	handler *EventBridgeHandler
+	props   *EventBridgeHandlerProps
+}
+
+// newEventBridgeRuleBuilder creates a new EventBridge rule builder
+func newEventBridgeRuleBuilder(handler *EventBridgeHandler, props *EventBridgeHandlerProps) *eventBridgeRuleBuilder {
+	return &eventBridgeRuleBuilder{
+		handler: handler,
+		props:   props,
+	}
+}
+
+// build creates the EventBridge rule
+func (rb *eventBridgeRuleBuilder) build() awsevents.Rule {
+	ruleProps := &awsevents.RuleProps{}
+
+	// Apply user-provided rule props
+	rb.applyUserRuleProps(ruleProps)
+	
+	// Configure event pattern or schedule
+	rb.configureRulePattern(ruleProps)
+
+	// Set default rule name if not provided
+	if ruleProps.RuleName == nil && rb.props.FunctionProps.FunctionName != nil {
+		ruleProps.RuleName = jsii.String(*rb.props.FunctionProps.FunctionName + "-rule")
 	}
 
-	// Add monitoring if enabled
-	if props.EnableMonitoring != nil && *props.EnableMonitoring {
-		this.enableMonitoring()
-	}
+	return awsevents.NewRule(rb.handler, jsii.String("Rule"), ruleProps)
+}
 
-	return this, nil
+// applyUserRuleProps applies user-provided rule properties
+func (rb *eventBridgeRuleBuilder) applyUserRuleProps(ruleProps *awsevents.RuleProps) {
+	if rb.props.RuleProps == nil {
+		return
+	}
+	
+	if rb.props.RuleProps.RuleName != nil {
+		ruleProps.RuleName = rb.props.RuleProps.RuleName
+	}
+	if rb.props.RuleProps.Description != nil {
+		ruleProps.Description = rb.props.RuleProps.Description
+	}
+	if rb.props.RuleProps.Enabled != nil {
+		ruleProps.Enabled = rb.props.RuleProps.Enabled
+	}
+}
+
+// configureRulePattern configures the rule's event pattern or schedule
+func (rb *eventBridgeRuleBuilder) configureRulePattern(ruleProps *awsevents.RuleProps) {
+	switch {
+	case rb.props.EventPattern != nil:
+		ruleProps.EventPattern = rb.props.EventPattern
+		// Only set event bus for event pattern rules
+		ruleProps.EventBus = rb.handler.EventBus
+	case rb.props.ScheduleExpression != nil:
+		ruleProps.Schedule = awsevents.Schedule_Expression(rb.props.ScheduleExpression)
+		// Scheduled rules don't use event buses
+	default:
+		// Default to match all events if neither pattern nor schedule is provided
+		ruleProps.EventPattern = &awsevents.EventPattern{
+			Source: &[]*string{jsii.String("*")},
+		}
+		ruleProps.EventBus = rb.handler.EventBus
+	}
 }
 
 // enableMonitoring adds CloudWatch alarms and metrics for the EventBridge handler
