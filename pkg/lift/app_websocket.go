@@ -80,125 +80,190 @@ func WithWebSocketSupport(options ...WebSocketOptions) AppOption {
 // WebSocketHandler returns a Lambda handler for WebSocket events
 func (a *App) WebSocketHandler() any {
 	return func(ctx context.Context, event events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
-		// Convert to generic event format for adapter
-		genericEvent := convertWebSocketEventToGeneric(event)
+		processor := newWebSocketEventProcessor(a)
+		return processor.process(ctx, event)
+	}
+}
 
-		// Use existing adapter infrastructure
-		req, err := a.parseEvent(genericEvent)
-		if err != nil {
-			return events.APIGatewayProxyResponse{
-				StatusCode: 500,
-				Body:       fmt.Sprintf(`{"error": "Failed to parse event: %v"}`, err),
-			}, nil
+// webSocketEventProcessor handles WebSocket event processing
+type webSocketEventProcessor struct {
+	app *App
+}
+
+// newWebSocketEventProcessor creates a new WebSocket event processor
+func newWebSocketEventProcessor(app *App) *webSocketEventProcessor {
+	return &webSocketEventProcessor{app: app}
+}
+
+// process handles the WebSocket event
+func (p *webSocketEventProcessor) process(ctx context.Context, event events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Parse the event
+	req, err := p.parseWebSocketEvent(event)
+	if err != nil {
+		return p.errorResponse(500, fmt.Sprintf("Failed to parse event: %v", err)), nil
+	}
+	
+	// Create and configure Lift context
+	liftCtx := p.createLiftContext(ctx, req)
+	
+	// Route and handle the request
+	if req.TriggerType == adapters.TriggerWebSocket {
+		return p.handleWebSocketRequest(liftCtx, req)
+	}
+	
+	return p.handleNonWebSocketRequest(liftCtx)
+}
+
+// parseWebSocketEvent parses the WebSocket event
+func (p *webSocketEventProcessor) parseWebSocketEvent(event events.APIGatewayWebsocketProxyRequest) (*Request, error) {
+	genericEvent := convertWebSocketEventToGeneric(event)
+	return p.app.parseEvent(genericEvent)
+}
+
+// createLiftContext creates and configures the Lift context
+func (p *webSocketEventProcessor) createLiftContext(ctx context.Context, req *Request) *Context {
+	liftCtx := NewContext(ctx, req)
+	
+	// Set dependencies
+	if p.app.logger != nil {
+		liftCtx.Logger = p.app.logger
+	}
+	if p.app.metrics != nil {
+		liftCtx.Metrics = p.app.metrics
+	}
+	if p.app.db != nil {
+		liftCtx.DB = p.app.db
+	}
+	
+	return liftCtx
+}
+
+// handleWebSocketRequest handles WebSocket-specific requests
+func (p *webSocketEventProcessor) handleWebSocketRequest(liftCtx *Context, req *Request) (events.APIGatewayProxyResponse, error) {
+	// Extract route key
+	routeKey := p.extractRouteKey(req)
+	
+	// Find handler
+	handler := p.app.RouteWebSocket(routeKey)
+	if handler == nil {
+		return p.errorResponse(404, fmt.Sprintf("No handler for route: %s", routeKey)), nil
+	}
+	
+	// Prepare and execute handler
+	finalHandler := p.prepareHandler(handler)
+	
+	// Execute handler
+	if err := finalHandler.Handle(liftCtx); err != nil {
+		return p.handleExecutionError(err), nil
+	}
+	
+	return p.successResponse(), nil
+}
+
+// extractRouteKey extracts the route key from request metadata
+func (p *webSocketEventProcessor) extractRouteKey(req *Request) string {
+	if metadata, ok := req.Metadata["routeKey"].(string); ok {
+		return metadata
+	}
+	return ""
+}
+
+// prepareHandler applies middleware and connection management
+func (p *webSocketEventProcessor) prepareHandler(handler Handler) Handler {
+	// Apply middleware
+	finalHandler := handler
+	for i := len(p.app.middleware) - 1; i >= 0; i-- {
+		finalHandler = p.app.middleware[i](finalHandler)
+	}
+	
+	// Add connection management if enabled
+	if p.shouldEnableConnectionManagement() {
+		finalHandler = wrapWithConnectionManagement(finalHandler, p.app.wsOptions.ConnectionStore)
+	}
+	
+	return finalHandler
+}
+
+// shouldEnableConnectionManagement checks if connection management is enabled
+func (p *webSocketEventProcessor) shouldEnableConnectionManagement() bool {
+	return p.app.wsOptions != nil && p.app.wsOptions.EnableAutoConnectionManagement
+}
+
+// handleExecutionError handles errors from handler execution
+func (p *webSocketEventProcessor) handleExecutionError(err error) events.APIGatewayProxyResponse {
+	if liftErr, ok := err.(*LiftError); ok {
+		return p.errorResponse(liftErr.StatusCode, liftErr.Message)
+	}
+	return p.errorResponse(500, fmt.Sprintf("%v", err))
+}
+
+// handleNonWebSocketRequest handles non-WebSocket requests
+func (p *webSocketEventProcessor) handleNonWebSocketRequest(liftCtx *Context) (events.APIGatewayProxyResponse, error) {
+	// Use regular routing
+	if err := p.app.router.Handle(liftCtx); err != nil {
+		return p.handleRoutingError(liftCtx, err)
+	}
+	
+	// Convert response
+	return p.convertResponse(liftCtx), nil
+}
+
+// handleRoutingError handles errors from routing
+func (p *webSocketEventProcessor) handleRoutingError(liftCtx *Context, err error) (events.APIGatewayProxyResponse, error) {
+	resp, handleErr := p.app.handleError(liftCtx, err)
+	if handleErr != nil {
+		return p.errorResponse(500, "Internal server error"), nil
+	}
+	
+	if apiResp, ok := resp.(events.APIGatewayProxyResponse); ok {
+		return apiResp, nil
+	}
+	
+	return p.errorResponse(500, "Internal server error"), nil
+}
+
+// convertResponse converts Lift response to API Gateway format
+func (p *webSocketEventProcessor) convertResponse(liftCtx *Context) events.APIGatewayProxyResponse {
+	if liftCtx.Response == nil || liftCtx.Response.StatusCode == 0 {
+		return p.successResponse()
+	}
+	
+	return events.APIGatewayProxyResponse{
+		StatusCode: liftCtx.Response.StatusCode,
+		Body:       p.convertResponseBody(liftCtx.Response.Body),
+		Headers:    liftCtx.Response.Headers,
+	}
+}
+
+// convertResponseBody converts response body to string
+func (p *webSocketEventProcessor) convertResponseBody(body any) string {
+	switch v := body.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	default:
+		// Try to marshal as JSON
+		if data, err := json.Marshal(v); err == nil {
+			return string(data)
 		}
+		return ""
+	}
+}
 
-		// Create Lift context
-		liftCtx := NewContext(ctx, req)
+// errorResponse creates an error response
+func (p *webSocketEventProcessor) errorResponse(statusCode int, message string) events.APIGatewayProxyResponse {
+	return events.APIGatewayProxyResponse{
+		StatusCode: statusCode,
+		Body:       fmt.Sprintf(`{"error": "%s"}`, message),
+	}
+}
 
-		// Set dependencies
-		if a.logger != nil {
-			liftCtx.Logger = a.logger
-		}
-		if a.metrics != nil {
-			liftCtx.Metrics = a.metrics
-		}
-		if a.db != nil {
-			liftCtx.DB = a.db
-		}
-
-		// For WebSocket events, route based on route key instead of HTTP method/path
-		if req.TriggerType == adapters.TriggerWebSocket {
-			routeKey := ""
-			if metadata, ok := req.Metadata["routeKey"].(string); ok {
-				routeKey = metadata
-			}
-
-			handler := a.RouteWebSocket(routeKey)
-			if handler == nil {
-				return events.APIGatewayProxyResponse{
-					StatusCode: 404,
-					Body:       fmt.Sprintf(`{"error": "No handler for route: %s"}`, routeKey),
-				}, nil
-			}
-
-			// Apply middleware and execute handler
-			finalHandler := handler
-			for i := len(a.middleware) - 1; i >= 0; i-- {
-				finalHandler = a.middleware[i](finalHandler)
-			}
-
-			// Execute with automatic connection management if enabled
-			if a.wsOptions != nil && a.wsOptions.EnableAutoConnectionManagement {
-				finalHandler = wrapWithConnectionManagement(finalHandler, a.wsOptions.ConnectionStore)
-			}
-
-			if err := finalHandler.Handle(liftCtx); err != nil {
-				// Check if it's a LiftError with status code
-				if liftErr, ok := err.(*LiftError); ok {
-					return events.APIGatewayProxyResponse{
-						StatusCode: liftErr.StatusCode,
-						Body:       fmt.Sprintf(`{"error": "%s"}`, liftErr.Message),
-					}, nil
-				}
-
-				return events.APIGatewayProxyResponse{
-					StatusCode: 500,
-					Body:       fmt.Sprintf(`{"error": "%v"}`, err),
-				}, nil
-			}
-
-			// Return success response
-			return events.APIGatewayProxyResponse{
-				StatusCode: 200,
-				Body:       "OK",
-			}, nil
-		}
-
-		// Non-WebSocket event, use regular routing
-		if err := a.router.Handle(liftCtx); err != nil {
-			resp, handleErr := a.handleError(liftCtx, err)
-			if handleErr != nil {
-				// Log error but continue with fallback response
-				return events.APIGatewayProxyResponse{
-					StatusCode: 500,
-					Body:       `{"error": "Internal server error"}`,
-				}, nil
-			}
-			if apiResp, ok := resp.(events.APIGatewayProxyResponse); ok {
-				return apiResp, nil
-			}
-			return events.APIGatewayProxyResponse{
-				StatusCode: 500,
-				Body:       `{"error": "Internal server error"}`,
-			}, nil
-		}
-
-		// Convert response to API Gateway format
-		if liftCtx.Response != nil && liftCtx.Response.StatusCode > 0 {
-			body := ""
-			switch v := liftCtx.Response.Body.(type) {
-			case string:
-				body = v
-			case []byte:
-				body = string(v)
-			default:
-				// Try to marshal as JSON
-				if data, err := json.Marshal(v); err == nil {
-					body = string(data)
-				}
-			}
-
-			return events.APIGatewayProxyResponse{
-				StatusCode: liftCtx.Response.StatusCode,
-				Body:       body,
-				Headers:    liftCtx.Response.Headers,
-			}, nil
-		}
-
-		return events.APIGatewayProxyResponse{
-			StatusCode: 200,
-			Body:       "OK",
-		}, nil
+// successResponse creates a success response
+func (p *webSocketEventProcessor) successResponse() events.APIGatewayProxyResponse {
+	return events.APIGatewayProxyResponse{
+		StatusCode: 200,
+		Body:       "OK",
 	}
 }
 
