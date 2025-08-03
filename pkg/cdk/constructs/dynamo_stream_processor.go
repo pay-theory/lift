@@ -67,108 +67,243 @@ func NewDynamoStreamProcessor(scope constructs.Construct, id *string, props *Dyn
 		props = &DynamoStreamProcessorProps{}
 	}
 
-	// Default values
-	batchSize := float64(10)
+	builder := newDynamoStreamProcessorBuilder(this, props)
+	return builder.build()
+}
+
+// dynamoStreamProcessorBuilder builds DynamoDB stream processor components
+type dynamoStreamProcessorBuilder struct {
+	processor *DynamoStreamProcessor
+	props     *DynamoStreamProcessorProps
+	config    *dynamoStreamProcessorConfig
+}
+
+// dynamoStreamProcessorConfig holds resolved configuration values
+type dynamoStreamProcessorConfig struct {
+	batchSize              float64
+	maxBatchingWindow      awscdk.Duration
+	startingPosition       awslambda.StartingPosition
+	maxRecordAge           awscdk.Duration
+	bisectBatchOnError     bool
+	retryAttempts          float64
+	reportBatchItemFailures bool
+	parallelizationFactor  float64
+	enableDLQ              bool
+}
+
+// newDynamoStreamProcessorBuilder creates a new DynamoDB stream processor builder
+func newDynamoStreamProcessorBuilder(processor *DynamoStreamProcessor, props *DynamoStreamProcessorProps) *dynamoStreamProcessorBuilder {
+	return &dynamoStreamProcessorBuilder{
+		processor: processor,
+		props:     props,
+		config:    buildDynamoStreamProcessorConfig(props),
+	}
+}
+
+// buildDynamoStreamProcessorConfig resolves configuration values with defaults
+func buildDynamoStreamProcessorConfig(props *DynamoStreamProcessorProps) *dynamoStreamProcessorConfig {
+	config := &dynamoStreamProcessorConfig{
+		batchSize:              float64(10),
+		maxBatchingWindow:      awscdk.Duration_Seconds(jsii.Number(5)),
+		startingPosition:       awslambda.StartingPosition_LATEST,
+		maxRecordAge:           awscdk.Duration_Hours(jsii.Number(24)),
+		bisectBatchOnError:     false,
+		retryAttempts:          float64(10000),
+		reportBatchItemFailures: true,
+		parallelizationFactor:  float64(1),
+		enableDLQ:              true,
+	}
+
+	// Apply provided values
 	if props.BatchSize != nil {
-		batchSize = *props.BatchSize
+		config.batchSize = *props.BatchSize
 	}
-
-	maxBatchingWindow := awscdk.Duration_Seconds(jsii.Number(5))
 	if props.MaxBatchingWindow != nil {
-		maxBatchingWindow = props.MaxBatchingWindow
+		config.maxBatchingWindow = props.MaxBatchingWindow
 	}
-
-	startingPosition := awslambda.StartingPosition_LATEST
 	if props.StartingPosition != "" {
-		startingPosition = props.StartingPosition
+		config.startingPosition = props.StartingPosition
 	}
-
-	maxRecordAge := awscdk.Duration_Hours(jsii.Number(24))
 	if props.MaxRecordAge != nil {
-		maxRecordAge = props.MaxRecordAge
+		config.maxRecordAge = props.MaxRecordAge
 	}
-
-	bisectBatchOnError := false
 	if props.BisectBatchOnError != nil {
-		bisectBatchOnError = *props.BisectBatchOnError
+		config.bisectBatchOnError = *props.BisectBatchOnError
 	}
-
-	retryAttempts := float64(10000)
 	if props.RetryAttempts != nil {
-		retryAttempts = *props.RetryAttempts
+		config.retryAttempts = *props.RetryAttempts
 	}
-
-	reportBatchItemFailures := true
 	if props.ReportBatchItemFailures != nil {
-		reportBatchItemFailures = *props.ReportBatchItemFailures
+		config.reportBatchItemFailures = *props.ReportBatchItemFailures
 	}
-
-	parallelizationFactor := float64(1)
 	if props.ParallelizationFactor != nil {
-		parallelizationFactor = *props.ParallelizationFactor
+		config.parallelizationFactor = *props.ParallelizationFactor
 	}
-
-	enableDLQ := true
 	if props.EnableDeadLetterQueue != nil {
-		enableDLQ = *props.EnableDeadLetterQueue
+		config.enableDLQ = *props.EnableDeadLetterQueue
 	}
 
-	// Create DynamORM streaming table
+	return config
+}
+
+// build constructs the complete DynamoDB stream processor
+func (b *dynamoStreamProcessorBuilder) build() *DynamoStreamProcessor {
+	// Create streaming table
+	b.setupStreamingTable()
+	
+	// Create dead letter queue if enabled
+	b.setupDeadLetterQueue()
+	
+	// Create Lambda function
+	b.setupFunction()
+	
+	// Configure event source
+	b.setupEventSource()
+	
+	// Setup permissions
+	b.setupPermissions()
+	
+	// Add monitoring if enabled
+	b.setupMonitoring()
+
+	return b.processor
+}
+
+// setupStreamingTable creates the DynamORM streaming table
+func (b *dynamoStreamProcessorBuilder) setupStreamingTable() {
 	streamingTableProps := &StreamingTableProps{}
-	if props.StreamingTableProps != nil {
-		streamingTableProps = props.StreamingTableProps
+	if b.props.StreamingTableProps != nil {
+		streamingTableProps = b.props.StreamingTableProps
 	}
 
 	// Set table name based on function name if not provided
-	if streamingTableProps.TableName == nil && props.FunctionProps.FunctionName != nil {
-		streamingTableProps.TableName = jsii.String(*props.FunctionProps.FunctionName + "-table")
+	if streamingTableProps.TableName == nil && b.props.FunctionProps.FunctionName != nil {
+		streamingTableProps.TableName = jsii.String(*b.props.FunctionProps.FunctionName + "-table")
 	}
 
-	// Create the DynamORM-based streaming table
-	this.StreamingTable = NewStreamingTable(this, jsii.String("StreamingTable"), streamingTableProps)
+	b.processor.StreamingTable = NewStreamingTable(b.processor, jsii.String("StreamingTable"), streamingTableProps)
+}
 
-	// Create dead letter queue if enabled
-	if enableDLQ {
-		dlqProps := &awssqs.QueueProps{}
-		if props.DeadLetterQueueProps != nil {
-			dlqProps = props.DeadLetterQueueProps
-		}
+// setupDeadLetterQueue creates the dead letter queue if enabled
+func (b *dynamoStreamProcessorBuilder) setupDeadLetterQueue() {
+	if !b.config.enableDLQ {
+		return
+	}
 
-		// Set DLQ defaults
+	dlqProps := &awssqs.QueueProps{
+		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
+	}
+	
+	if b.props.DeadLetterQueueProps != nil {
+		dlqProps = b.props.DeadLetterQueueProps
 		if dlqProps.RetentionPeriod == nil {
 			dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
 		}
-		if dlqProps.QueueName == nil && props.FunctionProps.FunctionName != nil {
-			dlqProps.QueueName = jsii.String(*props.FunctionProps.FunctionName + "-stream-dlq")
-		}
-
-		this.DeadLetterQueue = awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), dlqProps)
 	}
 
-	// Create Lambda function with DynamoDB environment variables
+	// Set DLQ name if not provided
+	if dlqProps.QueueName == nil && b.props.FunctionProps.FunctionName != nil {
+		dlqProps.QueueName = jsii.String(*b.props.FunctionProps.FunctionName + "-stream-dlq")
+	}
+
+	b.processor.DeadLetterQueue = awssqs.NewQueue(b.processor, jsii.String("DeadLetterQueue"), dlqProps)
+}
+
+// setupFunction creates the Lambda function with DynamoDB environment variables
+func (b *dynamoStreamProcessorBuilder) setupFunction() {
+	functionBuilder := newDynamoStreamFunctionBuilder(b.processor, b.props)
+	b.processor.Function = functionBuilder.build()
+}
+
+// setupEventSource configures the DynamoDB stream event source
+func (b *dynamoStreamProcessorBuilder) setupEventSource() {
+	eventSourceBuilder := newDynamoStreamEventSourceBuilder(b.processor, b.props, b.config)
+	b.processor.EventSource = eventSourceBuilder.build()
+}
+
+// setupPermissions grants necessary permissions
+func (b *dynamoStreamProcessorBuilder) setupPermissions() {
+	b.processor.StreamingTable.GrantStreamRead(b.processor.Function.Function)
+	b.processor.StreamingTable.GrantReadWrite(b.processor.Function.Function)
+	if b.processor.DeadLetterQueue != nil {
+		b.processor.DeadLetterQueue.GrantSendMessages(b.processor.Function.Function)
+	}
+}
+
+// setupMonitoring adds monitoring if enabled
+func (b *dynamoStreamProcessorBuilder) setupMonitoring() {
+	if b.props.EnableMonitoring != nil && *b.props.EnableMonitoring {
+		b.processor.enableMonitoring()
+	}
+}
+
+// dynamoStreamFunctionBuilder builds Lambda function components
+type dynamoStreamFunctionBuilder struct {
+	processor *DynamoStreamProcessor
+	props     *DynamoStreamProcessorProps
+}
+
+// newDynamoStreamFunctionBuilder creates a new DynamoDB stream function builder
+func newDynamoStreamFunctionBuilder(processor *DynamoStreamProcessor, props *DynamoStreamProcessorProps) *dynamoStreamFunctionBuilder {
+	return &dynamoStreamFunctionBuilder{
+		processor: processor,
+		props:     props,
+	}
+}
+
+// build creates the Lambda function with DynamoDB environment variables
+func (fb *dynamoStreamFunctionBuilder) build() *LiftFunction {
+	// Prepare environment variables
+	functionEnv := fb.prepareFunctionEnvironment()
+	
+	// Create LiftFunction properties
+	liftProps := &LiftFunctionProps{
+		FunctionProps: fb.props.FunctionProps,
+	}
+	
+	// Set default code and runtime if not provided
+	fb.setDefaultFunctionProps(liftProps)
+	
+	// Set environment variables
+	liftProps.FunctionProps.Environment = &functionEnv
+	
+	// Set Lift-specific properties
+	if fb.props.EnableTracing != nil {
+		liftProps.EnableTracing = fb.props.EnableTracing
+	}
+	if fb.props.EnableMultiTenant != nil {
+		liftProps.EnableMultiTenant = fb.props.EnableMultiTenant
+	}
+	
+	return NewLiftFunction(fb.processor, jsii.String("Function"), liftProps)
+}
+
+// prepareFunctionEnvironment prepares environment variables for the function
+func (fb *dynamoStreamFunctionBuilder) prepareFunctionEnvironment() map[string]*string {
 	functionEnv := make(map[string]*string)
-	if props.FunctionProps.Environment != nil {
-		for k, v := range *props.FunctionProps.Environment {
+	
+	// Copy existing environment variables
+	if fb.props.FunctionProps.Environment != nil {
+		for k, v := range *fb.props.FunctionProps.Environment {
 			functionEnv[k] = v
 		}
 	}
-
-	// Add DynamoDB-specific environment variables from DynamORM table
-	functionEnv["DYNAMODB_TABLE_NAME"] = this.StreamingTable.GetTableName()
-	functionEnv["DYNAMODB_TABLE_ARN"] = this.StreamingTable.GetTableArn()
-	if this.StreamingTable.GetStreamArn() != nil {
-		functionEnv["DYNAMODB_STREAM_ARN"] = this.StreamingTable.GetStreamArn()
+	
+	// Add DynamoDB-specific environment variables
+	functionEnv["DYNAMODB_TABLE_NAME"] = fb.processor.StreamingTable.GetTableName()
+	functionEnv["DYNAMODB_TABLE_ARN"] = fb.processor.StreamingTable.GetTableArn()
+	if fb.processor.StreamingTable.GetStreamArn() != nil {
+		functionEnv["DYNAMODB_STREAM_ARN"] = fb.processor.StreamingTable.GetStreamArn()
 	}
-	if this.DeadLetterQueue != nil {
-		functionEnv["DYNAMODB_DLQ_URL"] = this.DeadLetterQueue.QueueUrl()
+	if fb.processor.DeadLetterQueue != nil {
+		functionEnv["DYNAMODB_DLQ_URL"] = fb.processor.DeadLetterQueue.QueueUrl()
 	}
+	
+	return functionEnv
+}
 
-	// Create LiftFunction with enhanced properties
-	liftProps := &LiftFunctionProps{
-		FunctionProps: props.FunctionProps,
-	}
-
-	// If no code is provided, use default inline code
+// setDefaultFunctionProps sets default function properties if not provided
+func (fb *dynamoStreamFunctionBuilder) setDefaultFunctionProps(liftProps *LiftFunctionProps) {
 	if liftProps.Code == nil {
 		liftProps.Code = awslambda.Code_FromInline(jsii.String("exports.handler = async (event) => { console.log('Stream event:', JSON.stringify(event)); };"))
 	}
@@ -178,93 +313,99 @@ func NewDynamoStreamProcessor(scope constructs.Construct, id *string, props *Dyn
 	if liftProps.Runtime == nil {
 		liftProps.Runtime = awslambda.Runtime_NODEJS_18_X()
 	}
+}
 
-	// Override environment
-	liftProps.Environment = &functionEnv
+// dynamoStreamEventSourceBuilder builds DynamoDB stream event source components
+type dynamoStreamEventSourceBuilder struct {
+	processor *DynamoStreamProcessor
+	props     *DynamoStreamProcessorProps
+	config    *dynamoStreamProcessorConfig
+}
 
-	// Set Lift-specific properties
-	if props.EnableTracing != nil {
-		liftProps.EnableTracing = props.EnableTracing
+// newDynamoStreamEventSourceBuilder creates a new DynamoDB stream event source builder
+func newDynamoStreamEventSourceBuilder(processor *DynamoStreamProcessor, props *DynamoStreamProcessorProps, config *dynamoStreamProcessorConfig) *dynamoStreamEventSourceBuilder {
+	return &dynamoStreamEventSourceBuilder{
+		processor: processor,
+		props:     props,
+		config:    config,
 	}
-	if props.EnableMultiTenant != nil {
-		liftProps.EnableMultiTenant = props.EnableMultiTenant
-	}
+}
 
-	// DynamoDB stream processor handles its own DLQ through SQS, no need for Lambda DLQ
-
-	this.Function = NewLiftFunction(this, jsii.String("Function"), liftProps)
-
-	// Configure DynamoDB Streams event source
-	eventSourceProps := &awslambdaeventsources.DynamoEventSourceProps{
-		StartingPosition:        startingPosition,
-		BatchSize:               jsii.Number(batchSize),
-		MaxBatchingWindow:       maxBatchingWindow,
-		MaxRecordAge:            maxRecordAge,
-		BisectBatchOnError:      jsii.Bool(bisectBatchOnError),
-		RetryAttempts:           jsii.Number(retryAttempts),
-		ReportBatchItemFailures: jsii.Bool(reportBatchItemFailures),
-		ParallelizationFactor:   jsii.Number(parallelizationFactor),
-	}
-
+// build creates and configures the DynamoDB stream event source
+func (esb *dynamoStreamEventSourceBuilder) build() awslambdaeventsources.DynamoEventSource {
+	// Create base event source properties
+	eventSourceProps := esb.createBaseEventSourceProps()
+	
 	// Set tumbling window if specified
+	if esb.props.TumblingWindow != nil {
+		eventSourceProps.TumblingWindow = esb.props.TumblingWindow
+	}
+	
+	// Apply user-provided event source properties
+	esb.applyUserEventSourceProps(eventSourceProps)
+	
+	// Create event source and add to function
+	eventSource := awslambdaeventsources.NewDynamoEventSource(esb.processor.StreamingTable.Table, eventSourceProps)
+	esb.processor.Function.Function.AddEventSource(eventSource)
+	
+	return eventSource
+}
+
+// createBaseEventSourceProps creates base event source properties from config
+func (esb *dynamoStreamEventSourceBuilder) createBaseEventSourceProps() *awslambdaeventsources.DynamoEventSourceProps {
+	return &awslambdaeventsources.DynamoEventSourceProps{
+		StartingPosition:        esb.config.startingPosition,
+		BatchSize:               jsii.Number(esb.config.batchSize),
+		MaxBatchingWindow:       esb.config.maxBatchingWindow,
+		MaxRecordAge:            esb.config.maxRecordAge,
+		BisectBatchOnError:      jsii.Bool(esb.config.bisectBatchOnError),
+		RetryAttempts:           jsii.Number(esb.config.retryAttempts),
+		ReportBatchItemFailures: jsii.Bool(esb.config.reportBatchItemFailures),
+		ParallelizationFactor:   jsii.Number(esb.config.parallelizationFactor),
+	}
+}
+
+// applyUserEventSourceProps applies user-provided event source properties
+func (esb *dynamoStreamEventSourceBuilder) applyUserEventSourceProps(eventSourceProps *awslambdaeventsources.DynamoEventSourceProps) {
+	if esb.props.EventSourceProps == nil {
+		return
+	}
+	
+	props := esb.props.EventSourceProps
+	
+	if props.StartingPosition != "" {
+		eventSourceProps.StartingPosition = props.StartingPosition
+	}
+	if props.BatchSize != nil {
+		eventSourceProps.BatchSize = props.BatchSize
+	}
+	if props.MaxBatchingWindow != nil {
+		eventSourceProps.MaxBatchingWindow = props.MaxBatchingWindow
+	}
+	if props.MaxRecordAge != nil {
+		eventSourceProps.MaxRecordAge = props.MaxRecordAge
+	}
+	if props.BisectBatchOnError != nil {
+		eventSourceProps.BisectBatchOnError = props.BisectBatchOnError
+	}
+	if props.RetryAttempts != nil {
+		eventSourceProps.RetryAttempts = props.RetryAttempts
+	}
+	if props.ReportBatchItemFailures != nil {
+		eventSourceProps.ReportBatchItemFailures = props.ReportBatchItemFailures
+	}
+	if props.ParallelizationFactor != nil {
+		eventSourceProps.ParallelizationFactor = props.ParallelizationFactor
+	}
 	if props.TumblingWindow != nil {
 		eventSourceProps.TumblingWindow = props.TumblingWindow
 	}
-
-	// Override with user-provided event source props
-	if props.EventSourceProps != nil {
-		if props.EventSourceProps.StartingPosition != "" {
-			eventSourceProps.StartingPosition = props.EventSourceProps.StartingPosition
-		}
-		if props.EventSourceProps.BatchSize != nil {
-			eventSourceProps.BatchSize = props.EventSourceProps.BatchSize
-		}
-		if props.EventSourceProps.MaxBatchingWindow != nil {
-			eventSourceProps.MaxBatchingWindow = props.EventSourceProps.MaxBatchingWindow
-		}
-		if props.EventSourceProps.MaxRecordAge != nil {
-			eventSourceProps.MaxRecordAge = props.EventSourceProps.MaxRecordAge
-		}
-		if props.EventSourceProps.BisectBatchOnError != nil {
-			eventSourceProps.BisectBatchOnError = props.EventSourceProps.BisectBatchOnError
-		}
-		if props.EventSourceProps.RetryAttempts != nil {
-			eventSourceProps.RetryAttempts = props.EventSourceProps.RetryAttempts
-		}
-		if props.EventSourceProps.ReportBatchItemFailures != nil {
-			eventSourceProps.ReportBatchItemFailures = props.EventSourceProps.ReportBatchItemFailures
-		}
-		if props.EventSourceProps.ParallelizationFactor != nil {
-			eventSourceProps.ParallelizationFactor = props.EventSourceProps.ParallelizationFactor
-		}
-		if props.EventSourceProps.TumblingWindow != nil {
-			eventSourceProps.TumblingWindow = props.EventSourceProps.TumblingWindow
-		}
-		if props.EventSourceProps.Enabled != nil {
-			eventSourceProps.Enabled = props.EventSourceProps.Enabled
-		}
-		if props.EventSourceProps.Filters != nil {
-			eventSourceProps.Filters = props.EventSourceProps.Filters
-		}
+	if props.Enabled != nil {
+		eventSourceProps.Enabled = props.Enabled
 	}
-
-	// Create and add event source
-	this.EventSource = awslambdaeventsources.NewDynamoEventSource(this.StreamingTable.Table, eventSourceProps)
-	this.Function.Function.AddEventSource(this.EventSource)
-
-	// Grant permissions
-	this.StreamingTable.GrantStreamRead(this.Function.Function)
-	this.StreamingTable.GrantReadWrite(this.Function.Function)
-	if this.DeadLetterQueue != nil {
-		this.DeadLetterQueue.GrantSendMessages(this.Function.Function)
+	if props.Filters != nil {
+		eventSourceProps.Filters = props.Filters
 	}
-
-	// Add monitoring if enabled
-	if props.EnableMonitoring != nil && *props.EnableMonitoring {
-		this.enableMonitoring()
-	}
-
-	return this
 }
 
 // enableMonitoring adds CloudWatch alarms and metrics for the DynamoDB stream processor
