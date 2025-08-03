@@ -292,75 +292,122 @@ func (vm *ValidationMiddleware) validateType(field string, value any, expectedTy
 }
 
 func (vm *ValidationMiddleware) validateRange(field string, value any, minVal, maxVal any) *ValidationError {
-	switch v := value.(type) {
+	validator := newRangeValidator(field, value, minVal, maxVal, vm)
+	return validator.validate()
+}
+
+// rangeValidator handles range validation for different value types
+type rangeValidator struct {
+	field   string
+	value   any
+	minVal  any
+	maxVal  any
+	vm      *ValidationMiddleware
+}
+
+// newRangeValidator creates a new range validator
+func newRangeValidator(field string, value, minVal, maxVal any, vm *ValidationMiddleware) *rangeValidator {
+	return &rangeValidator{
+		field:  field,
+		value:  value,
+		minVal: minVal,
+		maxVal: maxVal,
+		vm:     vm,
+	}
+}
+
+// validate performs range validation based on value type
+func (r *rangeValidator) validate() *ValidationError {
+	switch v := r.value.(type) {
 	case string:
-		length := len(v)
-		if minVal != nil {
-			if minLen, ok := minVal.(int); ok && length < minLen {
-				return &ValidationError{
-					Field:   field,
-					Message: fmt.Sprintf("String length must be at least %d", minLen),
-					Value:   value,
-					Code:    "MIN_LENGTH",
-				}
-			}
-		}
-		if maxVal != nil {
-			if maxLen, ok := maxVal.(int); ok && length > maxLen {
-				return &ValidationError{
-					Field:   field,
-					Message: fmt.Sprintf("String length must be at most %d", maxLen),
-					Value:   value,
-					Code:    "MAX_LENGTH",
-				}
-			}
-		}
+		return r.validateStringRange(v)
 	case int, int32, int64, float32, float64:
-		numValue := vm.toFloat64(v)
-		if minVal != nil {
-			if minValue := vm.toFloat64(minVal); numValue < minValue {
-				return &ValidationError{
-					Field:   field,
-					Message: fmt.Sprintf("Value must be at least %v", minVal),
-					Value:   value,
-					Code:    "MIN_VALUE",
-				}
-			}
-		}
-		if maxVal != nil {
-			if maxValue := vm.toFloat64(maxVal); numValue > maxValue {
-				return &ValidationError{
-					Field:   field,
-					Message: fmt.Sprintf("Value must be at most %v", maxVal),
-					Value:   value,
-					Code:    "MAX_VALUE",
-				}
-			}
-		}
+		return r.validateNumericRange(v)
 	case []any:
-		length := len(v)
-		if minVal != nil {
-			if minLen, ok := minVal.(int); ok && length < minLen {
-				return &ValidationError{
-					Field:   field,
-					Message: fmt.Sprintf("Array length must be at least %d", minLen),
-					Value:   value,
-					Code:    "MIN_ITEMS",
-				}
-			}
-		}
-		if maxVal != nil {
-			if maxLen, ok := maxVal.(int); ok && length > maxLen {
-				return &ValidationError{
-					Field:   field,
-					Message: fmt.Sprintf("Array length must be at most %d", maxLen),
-					Value:   value,
-					Code:    "MAX_ITEMS",
-				}
+		return r.validateArrayRange(v)
+	default:
+		return nil
+	}
+}
+
+// validateStringRange validates string length ranges
+func (r *rangeValidator) validateStringRange(str string) *ValidationError {
+	length := len(str)
+	
+	if err := r.checkMinLength(length, "String length must be at least %d", "MIN_LENGTH"); err != nil {
+		return err
+	}
+	
+	return r.checkMaxLength(length, "String length must be at most %d", "MAX_LENGTH")
+}
+
+// validateNumericRange validates numeric value ranges
+func (r *rangeValidator) validateNumericRange(num any) *ValidationError {
+	numValue := r.vm.toFloat64(num)
+	
+	if r.minVal != nil {
+		if minValue := r.vm.toFloat64(r.minVal); numValue < minValue {
+			return &ValidationError{
+				Field:   r.field,
+				Message: fmt.Sprintf("Value must be at least %v", r.minVal),
+				Value:   r.value,
+				Code:    "MIN_VALUE",
 			}
 		}
 	}
+	
+	if r.maxVal != nil {
+		if maxValue := r.vm.toFloat64(r.maxVal); numValue > maxValue {
+			return &ValidationError{
+				Field:   r.field,
+				Message: fmt.Sprintf("Value must be at most %v", r.maxVal),
+				Value:   r.value,
+				Code:    "MAX_VALUE",
+			}
+		}
+	}
+	
+	return nil
+}
 
+// validateArrayRange validates array length ranges
+func (r *rangeValidator) validateArrayRange(arr []any) *ValidationError {
+	length := len(arr)
+	
+	if err := r.checkMinLength(length, "Array length must be at least %d", "MIN_ITEMS"); err != nil {
+		return err
+	}
+	
+	return r.checkMaxLength(length, "Array length must be at most %d", "MAX_ITEMS")
+}
+
+// checkMinLength checks minimum length constraint
+func (r *rangeValidator) checkMinLength(length int, messageFormat, code string) *ValidationError {
+	if r.minVal != nil {
+		if minLen, ok := r.minVal.(int); ok && length < minLen {
+			return &ValidationError{
+				Field:   r.field,
+				Message: fmt.Sprintf(messageFormat, minLen),
+				Value:   r.value,
+				Code:    code,
+			}
+		}
+	}
+	return nil
+}
+
+// checkMaxLength checks maximum length constraint
+func (r *rangeValidator) checkMaxLength(length int, messageFormat, code string) *ValidationError {
+	if r.maxVal != nil {
+		if maxLen, ok := r.maxVal.(int); ok && length > maxLen {
+			return &ValidationError{
+				Field:   r.field,
+				Message: fmt.Sprintf(messageFormat, maxLen),
+				Value:   r.value,
+				Code:    code,
+			}
+		}
+	}
 	return nil
 }
 
