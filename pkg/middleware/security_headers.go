@@ -42,72 +42,163 @@ func DefaultSecurityHeadersConfig() SecurityHeadersConfig {
 
 // SecurityHeaders returns the security headers middleware
 func SecurityHeaders(config SecurityHeadersConfig) lift.Middleware {
+	applier := newSecurityHeaderApplier(config)
+	
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			// Skip in development if configured (check environment variable or context values)
-			if !config.IncludeInDevelopment {
-				if env := ctx.Get("environment"); env == "development" {
-					return next.Handle(ctx)
-				}
-			}
-
-			// Set Content Security Policy
-			if config.ContentSecurityPolicy != "" {
-				ctx.Response.Header("Content-Security-Policy", config.ContentSecurityPolicy)
-			}
-
-			// Set X-Frame-Options
-			if config.XFrameOptions != "" {
-				ctx.Response.Header("X-Frame-Options", config.XFrameOptions)
-			}
-
-			// Set X-Content-Type-Options
-			if config.XContentTypeOptions {
-				ctx.Response.Header("X-Content-Type-Options", "nosniff")
-			}
-
-			// Set X-XSS-Protection
-			if config.XXSSProtection != "" {
-				ctx.Response.Header("X-XSS-Protection", config.XXSSProtection)
-			}
-
-			// Set Strict-Transport-Security (check if HTTPS via headers or scheme)
-			if config.StrictTransportSecurity != "" {
-				// Check for HTTPS indicators
-				isSecure := ctx.Header("X-Forwarded-Proto") == schemeHTTPS ||
-					ctx.Header("CloudFront-Forwarded-Proto") == schemeHTTPS ||
-					ctx.Header("X-Forwarded-SSL") == "on"
-
-				if isSecure {
-					ctx.Response.Header("Strict-Transport-Security", config.StrictTransportSecurity)
-				}
-			}
-
-			// Set Referrer-Policy
-			if config.ReferrerPolicy != "" {
-				ctx.Response.Header("Referrer-Policy", config.ReferrerPolicy)
-			}
-
-			// Set Permissions-Policy
-			if config.PermissionsPolicy != "" {
-				ctx.Response.Header("Permissions-Policy", config.PermissionsPolicy)
-			}
-
-			// Set custom headers
-			for key, value := range config.CustomHeaders {
-				ctx.Response.Header(key, value)
-			}
-
-			// Add Cache-Control for sensitive endpoints (check path patterns)
-			if isSensitivePath(ctx.Request.Path) {
-				ctx.Response.Header("Cache-Control", "no-store, no-cache, must-revalidate, private")
-				ctx.Response.Header("Pragma", "no-cache")
-				ctx.Response.Header("Expires", "0")
-			}
-
-			return next.Handle(ctx)
+			return applier.apply(ctx, next)
 		})
 	}
+}
+
+// securityHeaderApplier applies security headers based on configuration
+type securityHeaderApplier struct {
+	config            SecurityHeadersConfig
+	headerSetters     []headerSetter
+	conditionalSetter *conditionalHeaderSetter
+}
+
+// newSecurityHeaderApplier creates a new security header applier
+func newSecurityHeaderApplier(config SecurityHeadersConfig) *securityHeaderApplier {
+	applier := &securityHeaderApplier{
+		config: config,
+	}
+	
+	// Initialize header setters
+	applier.initializeHeaderSetters()
+	
+	// Initialize conditional setter for HSTS
+	applier.conditionalSetter = newConditionalHeaderSetter(config)
+	
+	return applier
+}
+
+// initializeHeaderSetters creates all header setter functions
+func (sha *securityHeaderApplier) initializeHeaderSetters() {
+	sha.headerSetters = []headerSetter{
+		newSimpleHeaderSetter("Content-Security-Policy", sha.config.ContentSecurityPolicy),
+		newSimpleHeaderSetter("X-Frame-Options", sha.config.XFrameOptions),
+		newConditionalBoolHeaderSetter("X-Content-Type-Options", "nosniff", sha.config.XContentTypeOptions),
+		newSimpleHeaderSetter("X-XSS-Protection", sha.config.XXSSProtection),
+		newSimpleHeaderSetter("Referrer-Policy", sha.config.ReferrerPolicy),
+		newSimpleHeaderSetter("Permissions-Policy", sha.config.PermissionsPolicy),
+	}
+	
+	// Add custom headers
+	for key, value := range sha.config.CustomHeaders {
+		sha.headerSetters = append(sha.headerSetters, newSimpleHeaderSetter(key, value))
+	}
+}
+
+// apply applies security headers to the response
+func (sha *securityHeaderApplier) apply(ctx *lift.Context, next lift.Handler) error {
+	// Check development environment
+	if sha.shouldSkipInDevelopment(ctx) {
+		return next.Handle(ctx)
+	}
+	
+	// Apply all simple headers
+	for _, setter := range sha.headerSetters {
+		setter.setHeader(ctx)
+	}
+	
+	// Apply conditional headers (HSTS)
+	sha.conditionalSetter.applyConditionalHeaders(ctx)
+	
+	// Apply cache control for sensitive paths
+	sha.applyCacheControl(ctx)
+	
+	return next.Handle(ctx)
+}
+
+// shouldSkipInDevelopment checks if headers should be skipped in development
+func (sha *securityHeaderApplier) shouldSkipInDevelopment(ctx *lift.Context) bool {
+	if sha.config.IncludeInDevelopment {
+		return false
+	}
+	
+	env := ctx.Get("environment")
+	return env == "development"
+}
+
+// applyCacheControl applies cache control headers for sensitive paths
+func (sha *securityHeaderApplier) applyCacheControl(ctx *lift.Context) {
+	if isSensitivePath(ctx.Request.Path) {
+		ctx.Response.Header("Cache-Control", "no-store, no-cache, must-revalidate, private")
+		ctx.Response.Header("Pragma", "no-cache")
+		ctx.Response.Header("Expires", "0")
+	}
+}
+
+// headerSetter interface for setting headers
+type headerSetter interface {
+	setHeader(ctx *lift.Context)
+}
+
+// simpleHeaderSetter sets a header with a fixed value
+type simpleHeaderSetter struct {
+	name  string
+	value string
+}
+
+// newSimpleHeaderSetter creates a new simple header setter
+func newSimpleHeaderSetter(name, value string) headerSetter {
+	return &simpleHeaderSetter{name: name, value: value}
+}
+
+// setHeader sets the header if value is not empty
+func (shs *simpleHeaderSetter) setHeader(ctx *lift.Context) {
+	if shs.value != "" {
+		ctx.Response.Header(shs.name, shs.value)
+	}
+}
+
+// conditionalBoolHeaderSetter sets a header based on a boolean condition
+type conditionalBoolHeaderSetter struct {
+	name      string
+	value     string
+	condition bool
+}
+
+// newConditionalBoolHeaderSetter creates a new conditional bool header setter
+func newConditionalBoolHeaderSetter(name, value string, condition bool) headerSetter {
+	return &conditionalBoolHeaderSetter{
+		name:      name,
+		value:     value,
+		condition: condition,
+	}
+}
+
+// setHeader sets the header if condition is true
+func (cbhs *conditionalBoolHeaderSetter) setHeader(ctx *lift.Context) {
+	if cbhs.condition {
+		ctx.Response.Header(cbhs.name, cbhs.value)
+	}
+}
+
+// conditionalHeaderSetter handles headers that require runtime conditions
+type conditionalHeaderSetter struct {
+	config SecurityHeadersConfig
+}
+
+// newConditionalHeaderSetter creates a new conditional header setter
+func newConditionalHeaderSetter(config SecurityHeadersConfig) *conditionalHeaderSetter {
+	return &conditionalHeaderSetter{config: config}
+}
+
+// applyConditionalHeaders applies headers that require runtime checks
+func (chs *conditionalHeaderSetter) applyConditionalHeaders(ctx *lift.Context) {
+	// Apply HSTS only for HTTPS connections
+	if chs.config.StrictTransportSecurity != "" && chs.isSecureConnection(ctx) {
+		ctx.Response.Header("Strict-Transport-Security", chs.config.StrictTransportSecurity)
+	}
+}
+
+// isSecureConnection checks if the connection is over HTTPS
+func (chs *conditionalHeaderSetter) isSecureConnection(ctx *lift.Context) bool {
+	return ctx.Header("X-Forwarded-Proto") == schemeHTTPS ||
+		ctx.Header("CloudFront-Forwarded-Proto") == schemeHTTPS ||
+		ctx.Header("X-Forwarded-SSL") == "on"
 }
 
 // StrictSecurityHeaders returns a middleware with very strict security settings
