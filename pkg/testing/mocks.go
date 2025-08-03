@@ -1166,86 +1166,178 @@ func (m *MockCloudWatchMetricsClient) GetMetricStatistics(_ context.Context, nam
 		return nil, err
 	}
 
-	// Find matching metrics
-	namespaceMetrics, exists := m.metrics[namespace]
+	// Create metric query and execute
+	query := &metricQuery{
+		namespace:  namespace,
+		metricName: metricName,
+		dimensions: dimensions,
+		startTime:  startTime,
+		endTime:    endTime,
+	}
+	
+	matcher := newMetricMatcher(m.metrics)
+	values := matcher.findMatchingValues(query)
+	
+	if len(values) == 0 {
+		return make(map[Statistic]float64), nil
+	}
+	
+	// Calculate requested statistics
+	calculator := newStatisticsCalculator(values)
+	return calculator.calculate(statistics), nil
+}
+
+// metricQuery represents a query for metrics
+type metricQuery struct {
+	namespace  string
+	metricName string
+	dimensions map[string]string
+	startTime  time.Time
+	endTime    time.Time
+}
+
+// metricMatcher handles metric filtering and matching
+type metricMatcher struct {
+	metrics map[string][]*MockMetricDatum
+}
+
+// newMetricMatcher creates a new metric matcher
+func newMetricMatcher(metrics map[string][]*MockMetricDatum) *metricMatcher {
+	return &metricMatcher{metrics: metrics}
+}
+
+// findMatchingValues finds all metric values matching the query
+func (mm *metricMatcher) findMatchingValues(query *metricQuery) []float64 {
+	namespaceMetrics, exists := mm.metrics[query.namespace]
 	if !exists {
-		return make(map[Statistic]float64), nil
+		return nil
 	}
-
-	matchingMetrics := make([]*MockMetricDatum, 0, len(namespaceMetrics))
+	
+	var values []float64
 	for _, metric := range namespaceMetrics {
-		if metric.MetricName != metricName {
-			continue
+		if mm.matches(metric, query) {
+			values = append(values, metric.Value)
 		}
-
-		if metric.Timestamp.Before(startTime) || metric.Timestamp.After(endTime) {
-			continue
-		}
-
-		// Check dimensions match
-		if dimensions != nil {
-			match := true
-			for k, v := range dimensions {
-				if metric.Dimensions[k] != v {
-					match = false
-					break
-				}
-			}
-			if !match {
-				continue
-			}
-		}
-
-		matchingMetrics = append(matchingMetrics, metric)
 	}
+	
+	return values
+}
 
-	if len(matchingMetrics) == 0 {
-		return make(map[Statistic]float64), nil
+// matches checks if a metric matches the query criteria
+func (mm *metricMatcher) matches(metric *MockMetricDatum, query *metricQuery) bool {
+	// Check metric name
+	if metric.MetricName != query.metricName {
+		return false
 	}
+	
+	// Check time range
+	if metric.Timestamp.Before(query.startTime) || metric.Timestamp.After(query.endTime) {
+		return false
+	}
+	
+	// Check dimensions
+	return mm.dimensionsMatch(metric.Dimensions, query.dimensions)
+}
 
-	// Calculate statistics
+// dimensionsMatch checks if metric dimensions match the query dimensions
+func (mm *metricMatcher) dimensionsMatch(metricDims, queryDims map[string]string) bool {
+	if queryDims == nil {
+		return true
+	}
+	
+	for k, v := range queryDims {
+		if metricDims[k] != v {
+			return false
+		}
+	}
+	
+	return true
+}
+
+// statisticsCalculator handles statistics calculations
+type statisticsCalculator struct {
+	values []float64
+}
+
+// newStatisticsCalculator creates a new statistics calculator
+func newStatisticsCalculator(values []float64) *statisticsCalculator {
+	return &statisticsCalculator{values: values}
+}
+
+// calculate computes the requested statistics
+func (sc *statisticsCalculator) calculate(statistics []Statistic) map[Statistic]float64 {
 	result := make(map[Statistic]float64)
-	values := make([]float64, len(matchingMetrics))
-	for i, metric := range matchingMetrics {
-		values[i] = metric.Value
-	}
-
+	
 	for _, stat := range statistics {
-		switch stat {
-		case StatisticSampleCount:
-			result[stat] = float64(len(values))
-		case StatisticSum:
-			sum := 0.0
-			for _, v := range values {
-				sum += v
-			}
-			result[stat] = sum
-		case StatisticAverage:
-			sum := 0.0
-			for _, v := range values {
-				sum += v
-			}
-			result[stat] = sum / float64(len(values))
-		case StatisticMinimum:
-			minVal := values[0]
-			for _, v := range values {
-				if v < minVal {
-					minVal = v
-				}
-			}
-			result[stat] = minVal
-		case StatisticMaximum:
-			maxVal := values[0]
-			for _, v := range values {
-				if v > maxVal {
-					maxVal = v
-				}
-			}
-			result[stat] = maxVal
+		result[stat] = sc.computeStatistic(stat)
+	}
+	
+	return result
+}
+
+// computeStatistic computes a single statistic
+func (sc *statisticsCalculator) computeStatistic(stat Statistic) float64 {
+	switch stat {
+	case StatisticSampleCount:
+		return float64(len(sc.values))
+	case StatisticSum:
+		return sc.sum()
+	case StatisticAverage:
+		return sc.average()
+	case StatisticMinimum:
+		return sc.minimum()
+	case StatisticMaximum:
+		return sc.maximum()
+	default:
+		return 0
+	}
+}
+
+// sum calculates the sum of all values
+func (sc *statisticsCalculator) sum() float64 {
+	total := 0.0
+	for _, v := range sc.values {
+		total += v
+	}
+	return total
+}
+
+// average calculates the average of all values
+func (sc *statisticsCalculator) average() float64 {
+	if len(sc.values) == 0 {
+		return 0
+	}
+	return sc.sum() / float64(len(sc.values))
+}
+
+// minimum finds the minimum value
+func (sc *statisticsCalculator) minimum() float64 {
+	if len(sc.values) == 0 {
+		return 0
+	}
+	
+	min := sc.values[0]
+	for _, v := range sc.values[1:] {
+		if v < min {
+			min = v
 		}
 	}
+	return min
+}
 
-	return result, nil
+// maximum finds the maximum value
+func (sc *statisticsCalculator) maximum() float64 {
+	if len(sc.values) == 0 {
+		return 0
+	}
+	
+	max := sc.values[0]
+	for _, v := range sc.values[1:] {
+		if v > max {
+			max = v
+		}
+	}
+	return max
 }
 
 // MockCloudWatchAlarmsClient provides a mock implementation of CloudWatch Alarms
