@@ -39,7 +39,20 @@ func DefaultJWTConfig() JWTConfig {
 
 // JWTAuth creates a JWT authentication middleware
 func JWTAuth(config JWTConfig) lift.Middleware {
-	// Apply defaults
+	// Apply default configuration
+	config = applyJWTDefaults(config)
+	
+	processor := newJWTProcessor(config)
+	
+	return func(next lift.Handler) lift.Handler {
+		return lift.HandlerFunc(func(ctx *lift.Context) error {
+			return processor.process(ctx, next)
+		})
+	}
+}
+
+// applyJWTDefaults applies default values to JWT configuration
+func applyJWTDefaults(config JWTConfig) JWTConfig {
 	if config.Algorithm == "" {
 		config.Algorithm = algorithmHS256
 	}
@@ -49,66 +62,147 @@ func JWTAuth(config JWTConfig) lift.Middleware {
 	if config.ErrorHandler == nil {
 		config.ErrorHandler = DefaultJWTConfig().ErrorHandler
 	}
-
-	// Create token extractor if not provided
 	if config.Extractor == nil {
 		config.Extractor = createExtractor(config.TokenLookup)
 	}
+	return config
+}
 
-	return func(next lift.Handler) lift.Handler {
-		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			// Check if path should be skipped
-			path := ctx.Request.Path
-			for _, skipPath := range config.SkipPaths {
-				if path == skipPath || strings.HasPrefix(path, skipPath) {
-					return next.Handle(ctx)
-				}
-			}
+// jwtProcessor handles JWT processing logic
+type jwtProcessor struct {
+	config        JWTConfig
+	pathSkipper   *jwtPathSkipper
+	tokenHandler  *jwtTokenHandler
+	claimsHandler *jwtClaimsHandler
+}
 
-			// Extract token
-			tokenString, err := config.Extractor(ctx)
-			if err != nil {
-				return config.ErrorHandler(ctx, err)
-			}
-
-			// Parse token
-			token, err := parseToken(tokenString, config)
-			if err != nil {
-				return config.ErrorHandler(ctx, err)
-			}
-
-			// Validate token
-			if !token.Valid {
-				return config.ErrorHandler(ctx, fmt.Errorf("invalid token"))
-			}
-
-			// Extract claims
-			claims, ok := token.Claims.(jwt.MapClaims)
-			if !ok {
-				// Try to handle custom claims
-				if config.Claims != nil {
-					claims = jwt.MapClaims{}
-					// Convert custom claims to MapClaims
-					// This is a simplified version - in production you'd want more robust conversion
-				} else {
-					return config.ErrorHandler(ctx, fmt.Errorf("invalid claims type"))
-				}
-			}
-
-			// Validate claims if validator provided
-			if config.Validator != nil {
-				if err := config.Validator(claims); err != nil {
-					return config.ErrorHandler(ctx, err)
-				}
-			}
-
-			// Set claims in context
-			ctx.SetClaims(claims)
-
-			// Continue to next handler
-			return next.Handle(ctx)
-		})
+// newJWTProcessor creates a new JWT processor
+func newJWTProcessor(config JWTConfig) *jwtProcessor {
+	return &jwtProcessor{
+		config:        config,
+		pathSkipper:   newJWTPathSkipper(config.SkipPaths),
+		tokenHandler:  newJWTTokenHandler(config),
+		claimsHandler: newJWTClaimsHandler(config),
 	}
+}
+
+// process handles the JWT authentication process
+func (p *jwtProcessor) process(ctx *lift.Context, next lift.Handler) error {
+	// Check if path should be skipped
+	if p.pathSkipper.shouldSkip(ctx.Request.Path) {
+		return next.Handle(ctx)
+	}
+	
+	// Process token
+	token, err := p.tokenHandler.processToken(ctx)
+	if err != nil {
+		return p.config.ErrorHandler(ctx, err)
+	}
+	
+	// Process claims
+	if err := p.claimsHandler.processClaims(ctx, token); err != nil {
+		return p.config.ErrorHandler(ctx, err)
+	}
+	
+	// Continue to next handler
+	return next.Handle(ctx)
+}
+
+// jwtPathSkipper handles path skipping logic
+type jwtPathSkipper struct {
+	skipPaths []string
+}
+
+// newJWTPathSkipper creates a new path skipper
+func newJWTPathSkipper(skipPaths []string) *jwtPathSkipper {
+	return &jwtPathSkipper{skipPaths: skipPaths}
+}
+
+// shouldSkip checks if a path should skip JWT authentication
+func (ps *jwtPathSkipper) shouldSkip(path string) bool {
+	for _, skipPath := range ps.skipPaths {
+		if path == skipPath || strings.HasPrefix(path, skipPath) {
+			return true
+		}
+	}
+	return false
+}
+
+// jwtTokenHandler handles token extraction and parsing
+type jwtTokenHandler struct {
+	config JWTConfig
+}
+
+// newJWTTokenHandler creates a new token handler
+func newJWTTokenHandler(config JWTConfig) *jwtTokenHandler {
+	return &jwtTokenHandler{config: config}
+}
+
+// processToken extracts and parses the JWT token
+func (th *jwtTokenHandler) processToken(ctx *lift.Context) (*jwt.Token, error) {
+	// Extract token
+	tokenString, err := th.config.Extractor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Parse token
+	token, err := parseToken(tokenString, th.config)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Validate token
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+	
+	return token, nil
+}
+
+// jwtClaimsHandler handles claims extraction and validation
+type jwtClaimsHandler struct {
+	config JWTConfig
+}
+
+// newJWTClaimsHandler creates a new claims handler
+func newJWTClaimsHandler(config JWTConfig) *jwtClaimsHandler {
+	return &jwtClaimsHandler{config: config}
+}
+
+// processClaims extracts and validates JWT claims
+func (ch *jwtClaimsHandler) processClaims(ctx *lift.Context, token *jwt.Token) error {
+	// Extract claims
+	claims, err := ch.extractClaims(token)
+	if err != nil {
+		return err
+	}
+	
+	// Validate claims if validator provided
+	if ch.config.Validator != nil {
+		if err := ch.config.Validator(claims); err != nil {
+			return err
+		}
+	}
+	
+	// Set claims in context
+	ctx.SetClaims(claims)
+	return nil
+}
+
+// extractClaims extracts claims from the token
+func (ch *jwtClaimsHandler) extractClaims(token *jwt.Token) (jwt.MapClaims, error) {
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		// Try to handle custom claims
+		if ch.config.Claims != nil {
+			// Create empty MapClaims for custom claims handling
+			// This is a simplified version - in production you'd want more robust conversion
+			return jwt.MapClaims{}, nil
+		}
+		return nil, fmt.Errorf("invalid claims type")
+	}
+	return claims, nil
 }
 
 // createExtractor creates a token extractor based on the lookup string
