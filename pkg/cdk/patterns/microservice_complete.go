@@ -216,123 +216,233 @@ func NewMicroserviceComplete(scope constructs.Construct, id *string, props *Micr
 }
 
 func (m *MicroserviceComplete) setDefaults(props *MicroserviceCompleteProps) {
-	if props.ServiceName == nil {
-		props.ServiceName = jsii.String("microservice")
-	}
-	if props.Environment == nil {
-		props.Environment = jsii.String("production")
-	}
-	if props.EnableEnhancedMonitoring == nil {
-		props.EnableEnhancedMonitoring = jsii.Bool(true)
-	}
-	if props.EnableEnhancedSecurity == nil {
-		props.EnableEnhancedSecurity = jsii.Bool(true)
-	}
+	defaultsSetter := newMicroserviceDefaultsSetter(props)
+	defaultsSetter.applyAllDefaults()
+}
 
-	// Network defaults
-	if props.NetworkConfig == nil {
-		props.NetworkConfig = &NetworkConfig{}
-	}
-	if props.NetworkConfig.AssignPublicIP == nil {
-		props.NetworkConfig.AssignPublicIP = jsii.Bool(false)
-	}
-	if props.NetworkConfig.EnableContainerInsights == nil {
-		props.NetworkConfig.EnableContainerInsights = jsii.Bool(true)
-	}
+// microserviceDefaultsSetter applies default values to microservice configuration
+type microserviceDefaultsSetter struct {
+	props *MicroserviceCompleteProps
+}
 
-	// Container defaults
-	if props.ContainerConfig == nil {
-		props.ContainerConfig = &ContainerConfig{}
+// newMicroserviceDefaultsSetter creates a new defaults setter
+func newMicroserviceDefaultsSetter(props *MicroserviceCompleteProps) *microserviceDefaultsSetter {
+	return &microserviceDefaultsSetter{
+		props: props,
 	}
-	if props.ContainerConfig.Platform == "" {
-		props.ContainerConfig.Platform = awsecs.CpuArchitecture_ARM64()
-	}
-	if props.ContainerConfig.CPU == nil {
-		props.ContainerConfig.CPU = jsii.Number(256)
-	}
-	if props.ContainerConfig.Memory == nil {
-		props.ContainerConfig.Memory = jsii.Number(512)
-	}
-	if props.ContainerConfig.LogRetentionDays == "" {
-		props.ContainerConfig.LogRetentionDays = awslogs.RetentionDays_ONE_WEEK
-	}
-	if props.ContainerConfig.EnableXRayTracing == nil {
-		props.ContainerConfig.EnableXRayTracing = jsii.Bool(true)
-	}
+}
 
-	// Service discovery defaults
-	if props.ServiceDiscovery == nil {
-		props.ServiceDiscovery = &ServiceDiscoveryConfig{}
+// applyAllDefaults applies defaults to all configuration sections
+func (mds *microserviceDefaultsSetter) applyAllDefaults() {
+	mds.applyBasicDefaults()
+	mds.applyNetworkDefaults()
+	mds.applyContainerDefaults()
+	mds.applyServiceDiscoveryDefaults()
+	mds.applyAutoScalingDefaults()
+	mds.applyHealthCheckDefaults()
+}
+
+// applyBasicDefaults sets basic service defaults
+func (mds *microserviceDefaultsSetter) applyBasicDefaults() {
+	if mds.props.ServiceName == nil {
+		mds.props.ServiceName = jsii.String("microservice")
 	}
-	if props.ServiceDiscovery.Namespace == nil {
-		props.ServiceDiscovery.Namespace = jsii.String(fmt.Sprintf("%s.local", *props.ServiceName))
+	if mds.props.Environment == nil {
+		mds.props.Environment = jsii.String("production")
 	}
-	if props.ServiceDiscovery.ServiceName == nil {
-		props.ServiceDiscovery.ServiceName = props.ServiceName
+	if mds.props.EnableEnhancedMonitoring == nil {
+		mds.props.EnableEnhancedMonitoring = jsii.Bool(true)
 	}
-	if props.ServiceDiscovery.DNSRecordType == "" {
-		props.ServiceDiscovery.DNSRecordType = awsservicediscovery.DnsRecordType_A
+	if mds.props.EnableEnhancedSecurity == nil {
+		mds.props.EnableEnhancedSecurity = jsii.Bool(true)
 	}
-	if props.ServiceDiscovery.TTL == nil {
+}
+
+// applyNetworkDefaults sets network configuration defaults
+func (mds *microserviceDefaultsSetter) applyNetworkDefaults() {
+	if mds.props.NetworkConfig == nil {
+		mds.props.NetworkConfig = &NetworkConfig{}
+	}
+	if mds.props.NetworkConfig.AssignPublicIP == nil {
+		mds.props.NetworkConfig.AssignPublicIP = jsii.Bool(false)
+	}
+	if mds.props.NetworkConfig.EnableContainerInsights == nil {
+		mds.props.NetworkConfig.EnableContainerInsights = jsii.Bool(true)
+	}
+}
+
+// applyContainerDefaults sets container configuration defaults
+func (mds *microserviceDefaultsSetter) applyContainerDefaults() {
+	if mds.props.ContainerConfig == nil {
+		mds.props.ContainerConfig = &ContainerConfig{}
+	}
+	
+	containerSetter := newContainerDefaultsSetter(mds.props.ContainerConfig)
+	containerSetter.applyDefaults()
+}
+
+// applyServiceDiscoveryDefaults sets service discovery defaults
+func (mds *microserviceDefaultsSetter) applyServiceDiscoveryDefaults() {
+	if mds.props.ServiceDiscovery == nil {
+		mds.props.ServiceDiscovery = &ServiceDiscoveryConfig{}
+	}
+	
+	discoverySetter := newServiceDiscoveryDefaultsSetter(mds.props.ServiceDiscovery, mds.props.ServiceName)
+	discoverySetter.applyDefaults()
+}
+
+// applyAutoScalingDefaults sets auto scaling defaults
+func (mds *microserviceDefaultsSetter) applyAutoScalingDefaults() {
+	if mds.props.AutoScaling == nil {
+		mds.props.AutoScaling = &AutoScalingConfig{}
+	}
+	
+	scalingSetter := newAutoScalingDefaultsSetter(mds.props.AutoScaling)
+	scalingSetter.applyDefaults()
+}
+
+// applyHealthCheckDefaults sets health check defaults
+func (mds *microserviceDefaultsSetter) applyHealthCheckDefaults() {
+	if mds.props.HealthCheck == nil {
+		mds.props.HealthCheck = &HealthCheckConfig{}
+	}
+	
+	healthSetter := newHealthCheckDefaultsSetter(mds.props.HealthCheck)
+	healthSetter.applyDefaults()
+}
+
+// containerDefaultsSetter handles container-specific defaults
+type containerDefaultsSetter struct {
+	config *ContainerConfig
+}
+
+// newContainerDefaultsSetter creates a new container defaults setter
+func newContainerDefaultsSetter(config *ContainerConfig) *containerDefaultsSetter {
+	return &containerDefaultsSetter{config: config}
+}
+
+// applyDefaults sets container configuration defaults
+func (cds *containerDefaultsSetter) applyDefaults() {
+	if cds.config.Platform == "" {
+		cds.config.Platform = awsecs.CpuArchitecture_ARM64()
+	}
+	if cds.config.CPU == nil {
+		cds.config.CPU = jsii.Number(256)
+	}
+	if cds.config.Memory == nil {
+		cds.config.Memory = jsii.Number(512)
+	}
+	if cds.config.LogRetentionDays == "" {
+		cds.config.LogRetentionDays = awslogs.RetentionDays_ONE_WEEK
+	}
+	if cds.config.EnableXRayTracing == nil {
+		cds.config.EnableXRayTracing = jsii.Bool(true)
+	}
+}
+
+// serviceDiscoveryDefaultsSetter handles service discovery defaults
+type serviceDiscoveryDefaultsSetter struct {
+	config      *ServiceDiscoveryConfig
+	serviceName *string
+}
+
+// newServiceDiscoveryDefaultsSetter creates a new service discovery defaults setter
+func newServiceDiscoveryDefaultsSetter(config *ServiceDiscoveryConfig, serviceName *string) *serviceDiscoveryDefaultsSetter {
+	return &serviceDiscoveryDefaultsSetter{
+		config:      config,
+		serviceName: serviceName,
+	}
+}
+
+// applyDefaults sets service discovery defaults
+func (sdds *serviceDiscoveryDefaultsSetter) applyDefaults() {
+	if sdds.config.Namespace == nil {
+		sdds.config.Namespace = jsii.String(fmt.Sprintf("%s.local", *sdds.serviceName))
+	}
+	if sdds.config.ServiceName == nil {
+		sdds.config.ServiceName = sdds.serviceName
+	}
+	if sdds.config.DNSRecordType == "" {
+		sdds.config.DNSRecordType = awsservicediscovery.DnsRecordType_A
+	}
+	if sdds.config.TTL == nil {
 		ttl := awscdk.Duration_Seconds(jsii.Number(10))
-		props.ServiceDiscovery.TTL = &ttl
+		sdds.config.TTL = &ttl
 	}
+}
 
-	// Auto scaling defaults
-	if props.AutoScaling == nil {
-		props.AutoScaling = &AutoScalingConfig{}
-	}
-	if props.AutoScaling.MinCapacity == nil {
-		props.AutoScaling.MinCapacity = jsii.Number(2)
-	}
-	if props.AutoScaling.MaxCapacity == nil {
-		props.AutoScaling.MaxCapacity = jsii.Number(10)
-	}
-	if props.AutoScaling.TargetCPUUtilization == nil {
-		props.AutoScaling.TargetCPUUtilization = jsii.Number(70)
-	}
-	if props.AutoScaling.TargetMemoryUtilization == nil {
-		props.AutoScaling.TargetMemoryUtilization = jsii.Number(80)
-	}
-	if props.AutoScaling.ScaleInCooldown == nil {
-		cooldown := awscdk.Duration_Seconds(jsii.Number(300))
-		props.AutoScaling.ScaleInCooldown = &cooldown
-	}
-	if props.AutoScaling.ScaleOutCooldown == nil {
-		cooldown := awscdk.Duration_Seconds(jsii.Number(300))
-		props.AutoScaling.ScaleOutCooldown = &cooldown
-	}
+// autoScalingDefaultsSetter handles auto scaling defaults
+type autoScalingDefaultsSetter struct {
+	config *AutoScalingConfig
+}
 
-	// Health check defaults
-	if props.HealthCheck == nil {
-		props.HealthCheck = &HealthCheckConfig{}
+// newAutoScalingDefaultsSetter creates a new auto scaling defaults setter
+func newAutoScalingDefaultsSetter(config *AutoScalingConfig) *autoScalingDefaultsSetter {
+	return &autoScalingDefaultsSetter{config: config}
+}
+
+// applyDefaults sets auto scaling defaults
+func (asds *autoScalingDefaultsSetter) applyDefaults() {
+	if asds.config.MinCapacity == nil {
+		asds.config.MinCapacity = jsii.Number(2)
 	}
-	if props.HealthCheck.Path == nil {
-		props.HealthCheck.Path = jsii.String("/health")
+	if asds.config.MaxCapacity == nil {
+		asds.config.MaxCapacity = jsii.Number(10)
 	}
-	if props.HealthCheck.Port == nil {
-		props.HealthCheck.Port = jsii.Number(8080)
+	if asds.config.TargetCPUUtilization == nil {
+		asds.config.TargetCPUUtilization = jsii.Number(70)
 	}
-	if props.HealthCheck.Protocol == nil {
-		props.HealthCheck.Protocol = jsii.String("HTTP")
+	if asds.config.TargetMemoryUtilization == nil {
+		asds.config.TargetMemoryUtilization = jsii.Number(80)
 	}
-	if props.HealthCheck.Interval == nil {
+	if asds.config.ScaleInCooldown == nil {
+		cooldown := awscdk.Duration_Seconds(jsii.Number(300))
+		asds.config.ScaleInCooldown = &cooldown
+	}
+	if asds.config.ScaleOutCooldown == nil {
+		cooldown := awscdk.Duration_Seconds(jsii.Number(300))
+		asds.config.ScaleOutCooldown = &cooldown
+	}
+}
+
+// healthCheckDefaultsSetter handles health check defaults
+type healthCheckDefaultsSetter struct {
+	config *HealthCheckConfig
+}
+
+// newHealthCheckDefaultsSetter creates a new health check defaults setter
+func newHealthCheckDefaultsSetter(config *HealthCheckConfig) *healthCheckDefaultsSetter {
+	return &healthCheckDefaultsSetter{config: config}
+}
+
+// applyDefaults sets health check defaults
+func (hcds *healthCheckDefaultsSetter) applyDefaults() {
+	if hcds.config.Path == nil {
+		hcds.config.Path = jsii.String("/health")
+	}
+	if hcds.config.Port == nil {
+		hcds.config.Port = jsii.Number(8080)
+	}
+	if hcds.config.Protocol == nil {
+		hcds.config.Protocol = jsii.String("HTTP")
+	}
+	if hcds.config.Interval == nil {
 		interval := awscdk.Duration_Seconds(jsii.Number(30))
-		props.HealthCheck.Interval = &interval
+		hcds.config.Interval = &interval
 	}
-	if props.HealthCheck.Timeout == nil {
+	if hcds.config.Timeout == nil {
 		timeout := awscdk.Duration_Seconds(jsii.Number(5))
-		props.HealthCheck.Timeout = &timeout
+		hcds.config.Timeout = &timeout
 	}
-	if props.HealthCheck.HealthyThreshold == nil {
-		props.HealthCheck.HealthyThreshold = jsii.Number(2)
+	if hcds.config.HealthyThreshold == nil {
+		hcds.config.HealthyThreshold = jsii.Number(2)
 	}
-	if props.HealthCheck.UnhealthyThreshold == nil {
-		props.HealthCheck.UnhealthyThreshold = jsii.Number(3)
+	if hcds.config.UnhealthyThreshold == nil {
+		hcds.config.UnhealthyThreshold = jsii.Number(3)
 	}
-	if props.HealthCheck.GracePeriod == nil {
+	if hcds.config.GracePeriod == nil {
 		grace := awscdk.Duration_Seconds(jsii.Number(60))
-		props.HealthCheck.GracePeriod = &grace
+		hcds.config.GracePeriod = &grace
 	}
 }
 
