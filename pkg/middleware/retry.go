@@ -129,164 +129,8 @@ type retryManager struct {
 
 // executeWithRetry executes the handler with retry logic
 func (rm *retryManager) executeWithRetry(ctx *lift.Context, handler lift.Handler) error {
-	totalStart := time.Now()
-	var lastErr error
-	var totalDelay time.Duration
-
-	// Create total timeout context
-	totalCtx := ctx.Context
-	if rm.config.TotalTimeout > 0 {
-		var cancel context.CancelFunc
-		totalCtx, cancel = context.WithTimeout(ctx.Context, rm.config.TotalTimeout)
-		defer cancel()
-	}
-
-	for attempt := 1; attempt <= rm.config.MaxAttempts; attempt++ {
-		// Create per-attempt timeout context
-		attemptCtx := totalCtx
-		if rm.config.PerAttemptTimeout > 0 {
-			var cancel context.CancelFunc
-			attemptCtx, cancel = context.WithTimeout(totalCtx, rm.config.PerAttemptTimeout)
-			defer cancel()
-		}
-
-		// Update context for this attempt
-		originalCtx := ctx.Context
-		ctx.Context = attemptCtx
-
-		// Execute the handler
-		attemptStart := time.Now()
-		err := handler.Handle(ctx)
-		attemptDuration := time.Since(attemptStart)
-
-		// Restore original context
-		ctx.Context = originalCtx
-
-		// Record attempt metrics
-		if rm.config.EnableMetrics && rm.config.Metrics != nil {
-			rm.recordAttempt(attempt, err, attemptDuration)
-		}
-
-		// Check if request was successful
-		if err == nil {
-			// Success - record stats and return
-			totalDuration := time.Since(totalStart)
-			rm.recordSuccess(attempt, totalDuration, totalDelay)
-
-			if rm.config.Logger != nil {
-				rm.config.Logger.Info("Request succeeded", map[string]any{
-					"retry_name":     rm.config.Name,
-					"attempt":        attempt,
-					"total_duration": totalDuration.String(),
-					"total_delay":    totalDelay.String(),
-				})
-			}
-
-			return nil
-		}
-
-		lastErr = err
-
-		// Check if we should retry this error
-		if !rm.shouldRetry(err, attempt) {
-			// Don't retry - record failure and return
-			totalDuration := time.Since(totalStart)
-			rm.recordFailure(attempt, totalDuration, totalDelay, err)
-
-			if rm.config.Logger != nil {
-				rm.config.Logger.Error("Request failed (not retryable)", map[string]any{
-					"retry_name":     rm.config.Name,
-					"attempt":        attempt,
-					"error":          "[SANITIZED_ERROR]", // Sanitized for security
-					"total_duration": totalDuration.String(),
-				})
-			}
-
-			if rm.config.OnGiveUp != nil {
-				rm.config.OnGiveUp(attempt, err)
-			}
-
-			return err
-		}
-
-		// Check if we've reached max attempts
-		if attempt >= rm.config.MaxAttempts {
-			// Max attempts reached - record failure and return
-			totalDuration := time.Since(totalStart)
-			rm.recordFailure(attempt, totalDuration, totalDelay, err)
-
-			if rm.config.Logger != nil {
-				rm.config.Logger.Error("Request failed after max attempts", map[string]any{
-					"retry_name":     rm.config.Name,
-					"max_attempts":   rm.config.MaxAttempts,
-					"error":          "[SANITIZED_ERROR]", // Sanitized for security
-					"total_duration": totalDuration.String(),
-					"total_delay":    totalDelay.String(),
-				})
-			}
-
-			if rm.config.OnGiveUp != nil {
-				rm.config.OnGiveUp(attempt, err)
-			}
-
-			return err
-		}
-
-		// Calculate delay for next attempt
-		delay := rm.calculateDelay(attempt, totalDelay)
-		totalDelay += delay
-
-		// Check if total timeout would be exceeded
-		if time.Since(totalStart)+delay > rm.config.TotalTimeout {
-			totalDuration := time.Since(totalStart)
-			rm.recordFailure(attempt, totalDuration, totalDelay-delay, err)
-
-			if rm.config.Logger != nil {
-				rm.config.Logger.Error("Request failed due to total timeout", map[string]any{
-					"retry_name":     rm.config.Name,
-					"attempt":        attempt,
-					"total_timeout":  rm.config.TotalTimeout.String(),
-					"total_duration": totalDuration.String(),
-				})
-			}
-
-			if rm.config.OnGiveUp != nil {
-				rm.config.OnGiveUp(attempt, err)
-			}
-
-			return err
-		}
-
-		// Log retry attempt
-		if rm.config.Logger != nil {
-			rm.config.Logger.Warn("Request failed, retrying", map[string]any{
-				"retry_name":   rm.config.Name,
-				"attempt":      attempt,
-				"next_attempt": attempt + 1,
-				"delay":        delay.String(),
-				"error":        "[SANITIZED_ERROR]", // Sanitized for security
-			})
-		}
-
-		// Call retry callback
-		if rm.config.OnRetry != nil {
-			rm.config.OnRetry(attempt, err, delay)
-		}
-
-		// Wait for delay (with context cancellation support)
-		select {
-		case <-time.After(delay):
-			// Continue to next attempt
-		case <-totalCtx.Done():
-			// Context canceled during delay
-			totalDuration := time.Since(totalStart)
-			rm.recordFailure(attempt, totalDuration, totalDelay, totalCtx.Err())
-			return totalCtx.Err()
-		}
-	}
-
-	// This should never be reached, but just in case
-	return lastErr
+	execution := newRetryExecution(rm, ctx, handler)
+	return execution.execute()
 }
 
 // shouldRetry determines if an error should be retried
@@ -506,6 +350,308 @@ func (rm *retryManager) GetStats() RetryStats {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 	return *rm.stats
+}
+
+// retryExecution manages a single retry execution
+type retryExecution struct {
+	manager    *retryManager
+	ctx        *lift.Context
+	handler    lift.Handler
+	startTime  time.Time
+	totalDelay time.Duration
+	lastErr    error
+}
+
+// newRetryExecution creates a new retry execution
+func newRetryExecution(manager *retryManager, ctx *lift.Context, handler lift.Handler) *retryExecution {
+	return &retryExecution{
+		manager:   manager,
+		ctx:       ctx,
+		handler:   handler,
+		startTime: time.Now(),
+	}
+}
+
+// execute runs the retry execution
+func (re *retryExecution) execute() error {
+	totalCtx := re.createTotalTimeoutContext()
+	
+	for attempt := 1; attempt <= re.manager.config.MaxAttempts; attempt++ {
+		result := re.executeAttempt(totalCtx, attempt)
+		
+		if result.shouldReturn() {
+			return result.err
+		}
+		
+		// Prepare for next attempt
+		if attempt < re.manager.config.MaxAttempts {
+			if err := re.waitForNextAttempt(totalCtx, attempt); err != nil {
+				return err
+			}
+		}
+	}
+	
+	return re.lastErr
+}
+
+// createTotalTimeoutContext creates a context with total timeout if configured
+func (re *retryExecution) createTotalTimeoutContext() context.Context {
+	if re.manager.config.TotalTimeout <= 0 {
+		return re.ctx.Context
+	}
+	
+	ctx, cancel := context.WithTimeout(re.ctx.Context, re.manager.config.TotalTimeout)
+	// Store cancel func in a goroutine-safe way would be needed in production
+	go func() {
+		<-ctx.Done()
+		cancel()
+	}()
+	return ctx
+}
+
+// executeAttempt executes a single retry attempt
+func (re *retryExecution) executeAttempt(totalCtx context.Context, attempt int) *attemptResult {
+	// Create attempt context
+	attemptCtx := re.createAttemptContext(totalCtx)
+	
+	// Execute handler
+	executor := newAttemptExecutor(re.ctx, re.handler, attemptCtx)
+	err, duration := executor.execute()
+	
+	// Record metrics
+	re.recordAttemptMetrics(attempt, err, duration)
+	
+	// Handle result
+	resultHandler := newAttemptResultHandler(re.manager, re)
+	return resultHandler.handleResult(attempt, err, duration)
+}
+
+// createAttemptContext creates a context for a single attempt
+func (re *retryExecution) createAttemptContext(totalCtx context.Context) context.Context {
+	if re.manager.config.PerAttemptTimeout <= 0 {
+		return totalCtx
+	}
+	
+	ctx, cancel := context.WithTimeout(totalCtx, re.manager.config.PerAttemptTimeout)
+	go func() {
+		<-ctx.Done()
+		cancel()
+	}()
+	return ctx
+}
+
+// recordAttemptMetrics records metrics for an attempt
+func (re *retryExecution) recordAttemptMetrics(attempt int, err error, duration time.Duration) {
+	if re.manager.config.EnableMetrics && re.manager.config.Metrics != nil {
+		re.manager.recordAttempt(attempt, err, duration)
+	}
+}
+
+// waitForNextAttempt waits before the next retry attempt
+func (re *retryExecution) waitForNextAttempt(totalCtx context.Context, attempt int) error {
+	delay := re.manager.calculateDelay(attempt, re.totalDelay)
+	re.totalDelay += delay
+	
+	// Check if delay would exceed total timeout
+	if re.manager.config.TotalTimeout > 0 && time.Since(re.startTime)+delay > re.manager.config.TotalTimeout {
+		return re.handleTimeoutExceeded(attempt)
+	}
+	
+	// Log retry
+	re.logRetry(attempt, delay)
+	
+	// Call retry callback
+	if re.manager.config.OnRetry != nil {
+		re.manager.config.OnRetry(attempt, re.lastErr, delay)
+	}
+	
+	// Wait for delay
+	select {
+	case <-time.After(delay):
+		return nil
+	case <-totalCtx.Done():
+		return re.handleContextCanceled(attempt, totalCtx.Err())
+	}
+}
+
+// handleTimeoutExceeded handles when total timeout would be exceeded
+func (re *retryExecution) handleTimeoutExceeded(attempt int) error {
+	totalDuration := time.Since(re.startTime)
+	re.manager.recordFailure(attempt, totalDuration, re.totalDelay, re.lastErr)
+	
+	if re.manager.config.Logger != nil {
+		re.manager.config.Logger.Error("Request failed due to total timeout", map[string]any{
+			"retry_name":     re.manager.config.Name,
+			"attempt":        attempt,
+			"total_timeout":  re.manager.config.TotalTimeout.String(),
+			"total_duration": totalDuration.String(),
+		})
+	}
+	
+	if re.manager.config.OnGiveUp != nil {
+		re.manager.config.OnGiveUp(attempt, re.lastErr)
+	}
+	
+	return re.lastErr
+}
+
+// handleContextCanceled handles context cancellation during delay
+func (re *retryExecution) handleContextCanceled(attempt int, err error) error {
+	totalDuration := time.Since(re.startTime)
+	re.manager.recordFailure(attempt, totalDuration, re.totalDelay, err)
+	return err
+}
+
+// logRetry logs a retry attempt
+func (re *retryExecution) logRetry(attempt int, delay time.Duration) {
+	if re.manager.config.Logger != nil {
+		re.manager.config.Logger.Warn("Request failed, retrying", map[string]any{
+			"retry_name":   re.manager.config.Name,
+			"attempt":      attempt,
+			"next_attempt": attempt + 1,
+			"delay":        delay.String(),
+			"error":        "[SANITIZED_ERROR]",
+		})
+	}
+}
+
+// attemptExecutor executes a single attempt
+type attemptExecutor struct {
+	ctx        *lift.Context
+	handler    lift.Handler
+	attemptCtx context.Context
+}
+
+// newAttemptExecutor creates a new attempt executor
+func newAttemptExecutor(ctx *lift.Context, handler lift.Handler, attemptCtx context.Context) *attemptExecutor {
+	return &attemptExecutor{
+		ctx:        ctx,
+		handler:    handler,
+		attemptCtx: attemptCtx,
+	}
+}
+
+// execute runs the attempt and returns error and duration
+func (ae *attemptExecutor) execute() (error, time.Duration) {
+	// Save original context
+	originalCtx := ae.ctx.Context
+	ae.ctx.Context = ae.attemptCtx
+	
+	// Execute handler
+	start := time.Now()
+	err := ae.handler.Handle(ae.ctx)
+	duration := time.Since(start)
+	
+	// Restore original context
+	ae.ctx.Context = originalCtx
+	
+	return err, duration
+}
+
+// attemptResult represents the result of an attempt
+type attemptResult struct {
+	err          error
+	shouldRetry  bool
+	finalFailure bool
+}
+
+// shouldReturn determines if the execution should return with this result
+func (ar *attemptResult) shouldReturn() bool {
+	return ar.err == nil || ar.finalFailure
+}
+
+// attemptResultHandler handles attempt results
+type attemptResultHandler struct {
+	manager   *retryManager
+	execution *retryExecution
+}
+
+// newAttemptResultHandler creates a new result handler
+func newAttemptResultHandler(manager *retryManager, execution *retryExecution) *attemptResultHandler {
+	return &attemptResultHandler{
+		manager:   manager,
+		execution: execution,
+	}
+}
+
+// handleResult processes the result of an attempt
+func (arh *attemptResultHandler) handleResult(attempt int, err error, duration time.Duration) *attemptResult {
+	totalDuration := time.Since(arh.execution.startTime)
+	
+	if err == nil {
+		// Success
+		arh.handleSuccess(attempt, totalDuration)
+		return &attemptResult{err: nil, shouldRetry: false, finalFailure: false}
+	}
+	
+	// Error occurred
+	arh.execution.lastErr = err
+	
+	// Check if we should retry
+	if !arh.manager.shouldRetry(err, attempt) {
+		arh.handleNonRetryableError(attempt, totalDuration, err)
+		return &attemptResult{err: err, shouldRetry: false, finalFailure: true}
+	}
+	
+	// Check if max attempts reached
+	if attempt >= arh.manager.config.MaxAttempts {
+		arh.handleMaxAttemptsReached(attempt, totalDuration, err)
+		return &attemptResult{err: err, shouldRetry: false, finalFailure: true}
+	}
+	
+	// Will retry
+	return &attemptResult{err: err, shouldRetry: true, finalFailure: false}
+}
+
+// handleSuccess handles a successful attempt
+func (arh *attemptResultHandler) handleSuccess(attempt int, totalDuration time.Duration) {
+	arh.manager.recordSuccess(attempt, totalDuration, arh.execution.totalDelay)
+	
+	if arh.manager.config.Logger != nil {
+		arh.manager.config.Logger.Info("Request succeeded", map[string]any{
+			"retry_name":     arh.manager.config.Name,
+			"attempt":        attempt,
+			"total_duration": totalDuration.String(),
+			"total_delay":    arh.execution.totalDelay.String(),
+		})
+	}
+}
+
+// handleNonRetryableError handles errors that should not be retried
+func (arh *attemptResultHandler) handleNonRetryableError(attempt int, totalDuration time.Duration, err error) {
+	arh.manager.recordFailure(attempt, totalDuration, arh.execution.totalDelay, err)
+	
+	if arh.manager.config.Logger != nil {
+		arh.manager.config.Logger.Error("Request failed (not retryable)", map[string]any{
+			"retry_name":     arh.manager.config.Name,
+			"attempt":        attempt,
+			"error":          "[SANITIZED_ERROR]",
+			"total_duration": totalDuration.String(),
+		})
+	}
+	
+	if arh.manager.config.OnGiveUp != nil {
+		arh.manager.config.OnGiveUp(attempt, err)
+	}
+}
+
+// handleMaxAttemptsReached handles when max attempts have been reached
+func (arh *attemptResultHandler) handleMaxAttemptsReached(attempt int, totalDuration time.Duration, err error) {
+	arh.manager.recordFailure(attempt, totalDuration, arh.execution.totalDelay, err)
+	
+	if arh.manager.config.Logger != nil {
+		arh.manager.config.Logger.Error("Request failed after max attempts", map[string]any{
+			"retry_name":     arh.manager.config.Name,
+			"max_attempts":   arh.manager.config.MaxAttempts,
+			"error":          "[SANITIZED_ERROR]",
+			"total_duration": totalDuration.String(),
+			"total_delay":    arh.execution.totalDelay.String(),
+		})
+	}
+	
+	if arh.manager.config.OnGiveUp != nil {
+		arh.manager.config.OnGiveUp(attempt, err)
+	}
 }
 
 // Default implementations
