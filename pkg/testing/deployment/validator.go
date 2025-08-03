@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	// Deployment environment names
+	deploymentBlue  = "blue"
+	deploymentGreen = "green"
+)
+
 // DeploymentValidator validates deployment strategies
 type DeploymentValidator struct {
 	rollback     RollbackStrategy
@@ -205,7 +211,7 @@ func NewBlueGreenDeployment(blue, green *Environment, splitter TrafficSplitter, 
 		greenEnvironment: green,
 		trafficSplitter:  splitter,
 		validator:        validator,
-		currentActive:    "blue", // Default to blue as active
+		currentActive:    deploymentBlue, // Default to blue as active
 	}
 }
 
@@ -218,12 +224,12 @@ func (bg *BlueGreenDeployment) Deploy(ctx context.Context, newVersion string) er
 	var targetEnv *Environment
 	var targetName string
 
-	if bg.currentActive == "blue" {
+	if bg.currentActive == deploymentBlue {
 		targetEnv = bg.greenEnvironment
-		targetName = "green"
+		targetName = deploymentGreen
 	} else {
 		targetEnv = bg.blueEnvironment
-		targetName = "blue"
+		targetName = deploymentBlue
 	}
 
 	// Deploy to target environment
@@ -265,12 +271,12 @@ func (bg *BlueGreenDeployment) Rollback(ctx context.Context) error {
 	var rollbackEnv *Environment
 	var rollbackName string
 
-	if bg.currentActive == "blue" {
+	if bg.currentActive == deploymentBlue {
 		rollbackEnv = bg.greenEnvironment
-		rollbackName = "green"
+		rollbackName = deploymentGreen
 	} else {
 		rollbackEnv = bg.blueEnvironment
-		rollbackName = "blue"
+		rollbackName = deploymentBlue
 	}
 
 	// Validate rollback environment
@@ -291,7 +297,7 @@ func (bg *BlueGreenDeployment) Rollback(ctx context.Context) error {
 
 // getActiveEnvironment returns the currently active environment
 func (bg *BlueGreenDeployment) getActiveEnvironment() *Environment {
-	if bg.currentActive == "blue" {
+	if bg.currentActive == deploymentBlue {
 		return bg.blueEnvironment
 	}
 	return bg.greenEnvironment

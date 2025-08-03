@@ -761,7 +761,7 @@ func main() {
 	}
 
 	// Metrics and monitoring endpoints
-	app.GET("/metrics", func(ctx *lift.Context) error {
+	if err := app.GET("/metrics", func(ctx *lift.Context) error {
 		// Return application metrics
 		metrics := map[string]any{
 			"uptime":           time.Since(time.Now()).String(),
@@ -770,7 +770,9 @@ func main() {
 			"requests_per_min": "N/A", // Would implement actual request tracking
 		}
 		return ctx.JSON(metrics)
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /metrics: %v", err)
+	}
 
 	// Start the Lambda handler
 	lambda.Start(app.HandleRequest)

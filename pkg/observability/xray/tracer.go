@@ -77,7 +77,7 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 					if config.RecoverPanics {
 						ctx.Response.StatusCode = http.StatusInternalServerError
 						ctx.Response.Body = []byte(`{"error":"internal server error"}`)
-						ctx.Response.Headers["Content-Type"] = "application/json"
+						ctx.Response.Headers[lift.HeaderContentType] = lift.ContentTypeJSON
 
 						// Log the panic details for debugging
 						if ctx.Logger != nil {

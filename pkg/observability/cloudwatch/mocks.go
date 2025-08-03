@@ -174,7 +174,7 @@ func (m *MockCloudWatchLogsClient) DescribeLogGroups(_ context.Context, _ *cloud
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var logGroups []types.LogGroup
+	logGroups := make([]types.LogGroup, 0, len(m.logGroups))
 	for _, lg := range m.logGroups {
 		logGroups = append(logGroups, *lg)
 	}

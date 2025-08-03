@@ -78,7 +78,8 @@
       "Bash(dupl:*)",
       "Bash(staticcheck:*)",
       "Bash(go:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(errcheck:*)"
     ],
     "deny": []
   }

@@ -48,3 +48,32 @@ func createManagementTable(scope constructs.Construct, id *string, props *BaseMa
 func grantManagementPermissions(table *LiftTable, grantee awsiam.IGrantable) {
 	table.Table.GrantReadWriteData(grantee)
 }
+
+// ManagementTableConfig defines configuration for creating management tables
+type ManagementTableConfig struct {
+	DefaultTableName string
+	PermissionMethod string // e.g., "GrantConnectionManagement", "GrantEventManagement"
+}
+
+// createTypedManagementTable creates a management table with type-specific configuration
+func createTypedManagementTable(scope constructs.Construct, id *string, props interface{}, config ManagementTableConfig) *LiftTable {
+	baseProps := &BaseManagementTableProps{
+		DefaultTableName: config.DefaultTableName,
+	}
+	
+	// Extract common properties using type assertion
+	switch p := props.(type) {
+	case *ConnectionTableProps:
+		if p != nil {
+			baseProps.TableName = p.TableName
+			baseProps.TimeToLiveAttribute = p.TimeToLiveAttribute
+		}
+	case *EventRoutingTableProps:
+		if p != nil {
+			baseProps.TableName = p.TableName
+			baseProps.TimeToLiveAttribute = p.TimeToLiveAttribute
+		}
+	}
+
+	return createManagementTable(scope, id, baseProps)
+}

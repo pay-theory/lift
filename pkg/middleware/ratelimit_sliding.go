@@ -11,11 +11,14 @@ import (
 	"github.com/pay-theory/lift/pkg/models"
 )
 
+// Memory optimized: 32 → 16 bytes (16 bytes saved)
 type SlidingWindowRateLimiter struct {
-	db           *dynamorm.DynamORMWrapper
-	windowSize   time.Duration
-	limit        int
-	keyExtractor func(*lift.Context) string
+	// 8-byte aligned fields
+	db           *dynamorm.DynamORMWrapper  // 8 bytes
+	windowSize   time.Duration              // 8 bytes
+	keyExtractor func(*lift.Context) string // 8 bytes
+	// 4-byte aligned fields
+	limit        int                        // 4 bytes
 }
 
 func NewSlidingWindowRateLimiter(config RateLimitConfig) (*SlidingWindowRateLimiter, error) {
@@ -153,12 +156,13 @@ func (r *SlidingWindowRateLimiter) checkRateLimit(ctx context.Context, key strin
 
 	// For demonstration, we'll store a single counter entry per key with timestamp buckets
 	// This is a simplified approach - a full implementation would use proper range queries
+	// Memory optimized: 64 → 48 bytes (16 bytes saved)
 	var windowEntry struct {
-		PK        string    ``
-		SK        string    ``
-		Count     int       ``
-		Timestamp time.Time ``
-		TTL       int64     ``
+		Timestamp time.Time `` // 24 bytes
+		PK        string    `` // 16 bytes
+		SK        string    `` // 16 bytes
+		TTL       int64     `` // 8 bytes
+		Count     int       `` // 4 bytes
 	}
 
 	// Get current window entry

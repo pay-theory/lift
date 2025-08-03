@@ -291,12 +291,12 @@ func (vm *ValidationMiddleware) validateType(field string, value any, expectedTy
 	return nil
 }
 
-func (vm *ValidationMiddleware) validateRange(field string, value any, min, max any) *ValidationError {
+func (vm *ValidationMiddleware) validateRange(field string, value any, minVal, maxVal any) *ValidationError {
 	switch v := value.(type) {
 	case string:
 		length := len(v)
-		if min != nil {
-			if minLen, ok := min.(int); ok && length < minLen {
+		if minVal != nil {
+			if minLen, ok := minVal.(int); ok && length < minLen {
 				return &ValidationError{
 					Field:   field,
 					Message: fmt.Sprintf("String length must be at least %d", minLen),
@@ -305,8 +305,8 @@ func (vm *ValidationMiddleware) validateRange(field string, value any, min, max 
 				}
 			}
 		}
-		if max != nil {
-			if maxLen, ok := max.(int); ok && length > maxLen {
+		if maxVal != nil {
+			if maxLen, ok := maxVal.(int); ok && length > maxLen {
 				return &ValidationError{
 					Field:   field,
 					Message: fmt.Sprintf("String length must be at most %d", maxLen),
@@ -317,21 +317,21 @@ func (vm *ValidationMiddleware) validateRange(field string, value any, min, max 
 		}
 	case int, int32, int64, float32, float64:
 		numValue := vm.toFloat64(v)
-		if min != nil {
-			if minVal := vm.toFloat64(min); numValue < minVal {
+		if minVal != nil {
+			if minValue := vm.toFloat64(minVal); numValue < minValue {
 				return &ValidationError{
 					Field:   field,
-					Message: fmt.Sprintf("Value must be at least %v", min),
+					Message: fmt.Sprintf("Value must be at least %v", minVal),
 					Value:   value,
 					Code:    "MIN_VALUE",
 				}
 			}
 		}
-		if max != nil {
-			if maxVal := vm.toFloat64(max); numValue > maxVal {
+		if maxVal != nil {
+			if maxValue := vm.toFloat64(maxVal); numValue > maxValue {
 				return &ValidationError{
 					Field:   field,
-					Message: fmt.Sprintf("Value must be at most %v", max),
+					Message: fmt.Sprintf("Value must be at most %v", maxVal),
 					Value:   value,
 					Code:    "MAX_VALUE",
 				}
@@ -339,8 +339,8 @@ func (vm *ValidationMiddleware) validateRange(field string, value any, min, max 
 		}
 	case []any:
 		length := len(v)
-		if min != nil {
-			if minLen, ok := min.(int); ok && length < minLen {
+		if minVal != nil {
+			if minLen, ok := minVal.(int); ok && length < minLen {
 				return &ValidationError{
 					Field:   field,
 					Message: fmt.Sprintf("Array length must be at least %d", minLen),
@@ -349,8 +349,8 @@ func (vm *ValidationMiddleware) validateRange(field string, value any, min, max 
 				}
 			}
 		}
-		if max != nil {
-			if maxLen, ok := max.(int); ok && length > maxLen {
+		if maxVal != nil {
+			if maxLen, ok := maxVal.(int); ok && length > maxLen {
 				return &ValidationError{
 					Field:   field,
 					Message: fmt.Sprintf("Array length must be at most %d", maxLen),

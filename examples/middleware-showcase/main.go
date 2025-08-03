@@ -11,6 +11,11 @@ import (
 	"github.com/pay-theory/lift/pkg/security"
 )
 
+const (
+	// unknownValue is used as a fallback value when extraction fails
+	unknownValue = "unknown"
+)
+
 // LoggingMiddleware demonstrates request/response logging
 func LoggingMiddleware() lift.Middleware {
 	return func(next lift.Handler) lift.Handler {
@@ -274,7 +279,7 @@ func getClientIP(ctx *lift.Context) string {
 	clientIP, err := security.ExtractClientIP(ctx.Request.Headers, ctx.Request.RequestContext())
 	if err != nil {
 		// Fallback to a default if extraction fails
-		return "unknown"
+		return unknownValue
 	}
 	return clientIP
 }
@@ -323,8 +328,14 @@ func main() {
 	// Note: RouteGroup doesn't support Use() method directly - apply middleware at app level
 
 	if err := api.GET("/profile", func(ctx *lift.Context) error {
-		userID, _ := ctx.Get("user_id").(string)
-		userEmail, _ := ctx.Get("user_email").(string)
+		userID, ok := ctx.Get("user_id").(string)
+		if !ok {
+			userID = unknownValue
+		}
+		userEmail, ok := ctx.Get("user_email").(string)
+		if !ok {
+			userEmail = unknownValue
+		}
 
 		return ctx.JSON(map[string]any{
 			"user_id": userID,

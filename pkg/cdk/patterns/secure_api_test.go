@@ -97,7 +97,10 @@ func TestNewSecureAPI_DisableRateLimiting(t *testing.T) {
 	// No rate limiting table should exist
 	tables := 0
 	fnResource := template.ToJSON()
-	resources := (*fnResource)["Resources"].(map[string]interface{})
+	resources, ok := (*fnResource)["Resources"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Template should have Resources")
+	}
 
 	for _, resource := range resources {
 		if resMap, ok := resource.(map[string]interface{}); ok {

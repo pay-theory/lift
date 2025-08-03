@@ -16,8 +16,12 @@ func TestHealthEndpoints_HealthHandler(t *testing.T) {
 	endpoints := NewHealthEndpoints(manager, config)
 
 	// Register some checkers
-	manager.RegisterChecker("healthy", NewAlwaysHealthyChecker("healthy"))
-	manager.RegisterChecker("unhealthy", NewAlwaysUnhealthyChecker("unhealthy"))
+	if err := manager.RegisterChecker("healthy", NewAlwaysHealthyChecker("healthy")); err != nil {
+		t.Fatalf("Failed to register healthy checker: %v", err)
+	}
+	if err := manager.RegisterChecker("unhealthy", NewAlwaysUnhealthyChecker("unhealthy")); err != nil {
+		t.Fatalf("Failed to register unhealthy checker: %v", err)
+	}
 
 	t.Run("JSON Response", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/health", nil)
@@ -80,7 +84,10 @@ func TestHealthEndpoints_ReadinessHandler(t *testing.T) {
 	endpoints := NewHealthEndpoints(manager, config)
 
 	t.Run("Healthy Service", func(t *testing.T) {
-		manager.RegisterChecker("healthy", NewAlwaysHealthyChecker("healthy"))
+		err := manager.RegisterChecker("healthy", NewAlwaysHealthyChecker("healthy"))
+		if err != nil {
+			t.Fatalf("Failed to register checker: %v", err)
+		}
 
 		req := httptest.NewRequest("GET", "/health/ready", nil)
 		w := httptest.NewRecorder()
@@ -93,7 +100,10 @@ func TestHealthEndpoints_ReadinessHandler(t *testing.T) {
 	})
 
 	t.Run("Degraded Service (Still Ready)", func(t *testing.T) {
-		manager.UnregisterChecker("healthy")
+		err := manager.UnregisterChecker("healthy")
+		if err != nil {
+			t.Fatalf("Failed to unregister checker: %v", err)
+		}
 		degradedChecker := NewCustomHealthChecker("degraded", func(_ context.Context) HealthStatus {
 			return HealthStatus{
 				Status:    StatusDegraded,
@@ -102,7 +112,10 @@ func TestHealthEndpoints_ReadinessHandler(t *testing.T) {
 				Message:   "Degraded but ready",
 			}
 		})
-		manager.RegisterChecker("degraded", degradedChecker)
+		err = manager.RegisterChecker("degraded", degradedChecker)
+		if err != nil {
+			t.Fatalf("Failed to register checker: %v", err)
+		}
 
 		req := httptest.NewRequest("GET", "/health/ready", nil)
 		w := httptest.NewRecorder()
@@ -115,8 +128,14 @@ func TestHealthEndpoints_ReadinessHandler(t *testing.T) {
 	})
 
 	t.Run("Unhealthy Service", func(t *testing.T) {
-		manager.UnregisterChecker("degraded")
-		manager.RegisterChecker("unhealthy", NewAlwaysUnhealthyChecker("unhealthy"))
+		err := manager.UnregisterChecker("degraded")
+		if err != nil {
+			t.Fatalf("Failed to unregister checker: %v", err)
+		}
+		err = manager.RegisterChecker("unhealthy", NewAlwaysUnhealthyChecker("unhealthy"))
+		if err != nil {
+			t.Fatalf("Failed to register checker: %v", err)
+		}
 
 		req := httptest.NewRequest("GET", "/health/ready", nil)
 		w := httptest.NewRecorder()
@@ -164,8 +183,12 @@ func TestHealthEndpoints_ComponentsHandler(t *testing.T) {
 	endpoints := NewHealthEndpoints(manager, config)
 
 	// Register test checkers
-	manager.RegisterChecker("healthy", NewAlwaysHealthyChecker("healthy"))
-	manager.RegisterChecker("unhealthy", NewAlwaysUnhealthyChecker("unhealthy"))
+	if err := manager.RegisterChecker("healthy", NewAlwaysHealthyChecker("healthy")); err != nil {
+		t.Fatalf("Failed to register healthy checker: %v", err)
+	}
+	if err := manager.RegisterChecker("unhealthy", NewAlwaysUnhealthyChecker("unhealthy")); err != nil {
+		t.Fatalf("Failed to register unhealthy checker: %v", err)
+	}
 
 	t.Run("All Components", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/health/components", nil)
@@ -291,7 +314,9 @@ func TestHealthEndpoints_DetailedErrors(t *testing.T) {
 		config.EnableDetailedErrors = false
 		endpoints := NewHealthEndpoints(manager, config)
 
-		manager.RegisterChecker("unhealthy", NewAlwaysUnhealthyChecker("unhealthy"))
+		if err := manager.RegisterChecker("unhealthy", NewAlwaysUnhealthyChecker("unhealthy")); err != nil {
+			t.Fatalf("Failed to register checker: %v", err)
+		}
 
 		req := httptest.NewRequest("GET", "/health", nil)
 		w := httptest.NewRecorder()
@@ -299,7 +324,9 @@ func TestHealthEndpoints_DetailedErrors(t *testing.T) {
 		endpoints.HealthHandler(w, req)
 
 		var response HealthResponse
-		json.Unmarshal(w.Body.Bytes(), &response)
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("Failed to unmarshal response: %v", err)
+		}
 
 		if response.Error != "" {
 			t.Error("expected no error details when disabled")
@@ -321,7 +348,9 @@ func TestHealthEndpoints_DetailedErrors(t *testing.T) {
 		endpoints.HealthHandler(w, req)
 
 		var response HealthResponse
-		json.Unmarshal(w.Body.Bytes(), &response)
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("Failed to unmarshal response: %v", err)
+		}
 
 		// Should include details when enabled
 		if response.Details == nil {
@@ -332,7 +361,9 @@ func TestHealthEndpoints_DetailedErrors(t *testing.T) {
 
 func TestHealthMiddleware(t *testing.T) {
 	manager := NewHealthManager(DefaultHealthManagerConfig())
-	manager.RegisterChecker("healthy", NewAlwaysHealthyChecker("healthy"))
+	if err := manager.RegisterChecker("healthy", NewAlwaysHealthyChecker("healthy")); err != nil {
+		t.Fatalf("Failed to register checker: %v", err)
+	}
 
 	config := DefaultHealthMiddlewareConfig()
 	middleware := NewHealthMiddleware(manager, config)
@@ -340,7 +371,10 @@ func TestHealthMiddleware(t *testing.T) {
 	// Create a simple handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		if _, err := w.Write([]byte("OK")); err != nil {
+			// Log write error but don't fail since headers are already sent
+			t.Logf("Failed to write response: %v", err)
+		}
 	})
 
 	// Wrap with health middleware
@@ -393,7 +427,9 @@ func TestHealthEndpoints_StatusMapping(t *testing.T) {
 
 func BenchmarkHealthEndpoints_HealthHandler(b *testing.B) {
 	manager := NewHealthManager(DefaultHealthManagerConfig())
-	manager.RegisterChecker("test", NewAlwaysHealthyChecker("test"))
+	if err := manager.RegisterChecker("test", NewAlwaysHealthyChecker("test")); err != nil {
+		b.Fatalf("Failed to register checker: %v", err)
+	}
 
 	config := DefaultHealthEndpointsConfig()
 	endpoints := NewHealthEndpoints(manager, config)
@@ -409,7 +445,9 @@ func BenchmarkHealthEndpoints_HealthHandler(b *testing.B) {
 
 func BenchmarkHealthMiddleware_Handler(b *testing.B) {
 	manager := NewHealthManager(DefaultHealthManagerConfig())
-	manager.RegisterChecker("test", NewAlwaysHealthyChecker("test"))
+	if err := manager.RegisterChecker("test", NewAlwaysHealthyChecker("test")); err != nil {
+		b.Fatalf("Failed to register checker: %v", err)
+	}
 
 	config := DefaultHealthMiddlewareConfig()
 	middleware := NewHealthMiddleware(manager, config)

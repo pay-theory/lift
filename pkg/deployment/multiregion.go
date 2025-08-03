@@ -99,12 +99,12 @@ type MultiRegionConfig struct {
 
 // FailoverStrategy defines failover behavior
 type FailoverStrategy struct {
-	// Durations (8 bytes each) - largest first
+	// Strings (16 bytes) - largest first
+	Type string `json:"type"` // automatic, manual
+	
+	// Durations (8 bytes each)
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
 	FailbackDelay       time.Duration `json:"failback_delay"`
-	
-	// Strings (16 bytes)
-	Type string `json:"type"` // automatic, manual
 	
 	// Ints (4 bytes each)
 	FailureThreshold  int `json:"failure_threshold"`
@@ -115,21 +115,15 @@ type FailoverStrategy struct {
 }
 
 // HealthCheckConfig defines health check configuration
-// Memory optimized: 88 → 40 bytes (48 bytes saved)
 type HealthCheckConfig struct {
-	// Slice first (24 bytes)
 	ExpectedCodes      []int         `json:"expected_codes"`
-	// Durations (8 bytes each)
-	Interval           time.Duration `json:"interval"`
-	Timeout            time.Duration `json:"timeout"`
-	// Strings (16 bytes each)
 	Path               string        `json:"path"`
 	Protocol           string        `json:"protocol"`
-	// Ints (4 bytes each)
+	Interval           time.Duration `json:"interval"`
+	Timeout            time.Duration `json:"timeout"`
 	HealthyThreshold   int           `json:"healthy_threshold"`
 	UnhealthyThreshold int           `json:"unhealthy_threshold"`
 	Port               int           `json:"port"`
-	// Bool last (1 byte)
 	Enabled            bool          `json:"enabled"`
 }
 
@@ -583,7 +577,7 @@ func (mrd *MultiRegionDeployer) deployBatch(ctx context.Context, regions []strin
 	close(errChan)
 
 	// Check for errors
-	var errors []error
+	errors := make([]error, 0, len(regions))
 	for err := range errChan {
 		errors = append(errors, err)
 	}
@@ -631,7 +625,7 @@ func (mrd *MultiRegionDeployer) healthCheckBatch(ctx context.Context, regions []
 	close(errChan)
 
 	// Check for errors
-	var errors []error
+	errors := make([]error, 0, len(regions))
 	for err := range errChan {
 		errors = append(errors, err)
 	}
@@ -675,7 +669,7 @@ func (mrd *MultiRegionDeployer) rollbackBatch(ctx context.Context, regions []str
 	close(errChan)
 
 	// Check for errors
-	var errors []error
+	errors := make([]error, 0, len(regions))
 	for err := range errChan {
 		errors = append(errors, err)
 	}

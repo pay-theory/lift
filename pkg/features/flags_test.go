@@ -8,8 +8,14 @@ import (
 func TestFeatureFlags(t *testing.T) {
 	t.Run("Default flags in production", func(t *testing.T) {
 		// Set production environment
-		os.Setenv("LIFT_ENV", "production")
-		defer os.Unsetenv("LIFT_ENV")
+		if err := os.Setenv("LIFT_ENV", "production"); err != nil {
+			t.Logf("Warning: failed to set environment variable: %v", err)
+		}
+		defer func() {
+			if err := os.Unsetenv("LIFT_ENV"); err != nil {
+				t.Logf("Warning: failed to unset environment variable: %v", err)
+			}
+		}()
 
 		ff, err := NewFeatureFlags(FeatureFlagConfig{
 			LocalOnly: true,
@@ -39,8 +45,14 @@ func TestFeatureFlags(t *testing.T) {
 
 	t.Run("Default flags in development", func(t *testing.T) {
 		// Set development environment
-		os.Setenv("LIFT_ENV", "development")
-		defer os.Unsetenv("LIFT_ENV")
+		if err := os.Setenv("LIFT_ENV", "development"); err != nil {
+			t.Logf("Warning: failed to set environment variable: %v", err)
+		}
+		defer func() {
+			if err := os.Unsetenv("LIFT_ENV"); err != nil {
+				t.Logf("Warning: failed to unset environment variable: %v", err)
+			}
+		}()
 
 		ff, err := NewFeatureFlags(FeatureFlagConfig{
 			LocalOnly: true,
@@ -76,8 +88,14 @@ func TestFeatureFlags(t *testing.T) {
 		}
 
 		// Override with environment variable
-		os.Setenv("LIFT_FEATURE_rate_limiting_enabled", "true")
-		defer os.Unsetenv("LIFT_FEATURE_rate_limiting_enabled")
+		if err := os.Setenv("LIFT_FEATURE_rate_limiting_enabled", "true"); err != nil {
+			t.Logf("Warning: failed to set environment variable: %v", err)
+		}
+		defer func() {
+			if err := os.Unsetenv("LIFT_FEATURE_rate_limiting_enabled"); err != nil {
+				t.Logf("Warning: failed to unset environment variable: %v", err)
+			}
+		}()
 
 		// Should now be true due to env override
 		if !ff.IsEnabled(RateLimitingEnabled) {
@@ -159,9 +177,12 @@ func TestGlobalFeatureFlags(t *testing.T) {
 }
 
 func BenchmarkFeatureFlagCheck(b *testing.B) {
-	ff, _ := NewFeatureFlags(FeatureFlagConfig{
+	ff, err := NewFeatureFlags(FeatureFlagConfig{
 		LocalOnly: true,
 	})
+	if err != nil {
+		b.Fatalf("Failed to create feature flags: %v", err)
+	}
 
 	b.ResetTimer()
 

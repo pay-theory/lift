@@ -28,7 +28,7 @@ func (e ValidationErrors) Error() string {
 		return "validation failed"
 	}
 
-	var messages []string
+	messages := make([]string, 0, len(e))
 	for _, err := range e {
 		messages = append(messages, err.Error())
 	}

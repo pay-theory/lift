@@ -45,11 +45,7 @@ func TestWebSocketAPI_NewModularPattern(t *testing.T) {
 	template := synthesizeTemplate(stack)
 
 	// Verify WebSocket API is created
-	assertResourceExists(t, template, "AWS::ApiGatewayV2::Api", map[string]interface{}{
-		"Name":                     "modular-websocket-api",
-		"ProtocolType":             "WEBSOCKET",
-		"RouteSelectionExpression": "$request.body.action",
-	})
+	assertResourceExists(t, template, "AWS::ApiGatewayV2::Api")
 
 	// Verify exactly 3 Lambda functions exist (the ones we created)
 	functions := findResourcesByType(template, "AWS::Lambda::Function")

@@ -18,8 +18,11 @@ type EnhancedComplianceFramework struct {
 }
 
 // EnhancedComplianceConfig holds advanced configuration
+// Memory optimized: 328 → 304 bytes (24 bytes saved)
 type EnhancedComplianceConfig struct {
-	ComplianceConfig                     // Embed base config
+	// Embedded struct first
+	ComplianceConfig
+	// Larger structs 
 	SOC2TypeII       SOC2TypeIIConfig    `json:"soc2_type_ii"`
 	GDPR             GDPRConfig          `json:"gdpr"`
 	IndustryTemplate IndustryTemplate    `json:"industry_template"`
@@ -27,29 +30,39 @@ type EnhancedComplianceConfig struct {
 }
 
 // SOC2TypeIIConfig for SOC 2 Type II compliance automation
+// Memory optimized: 72 → 64 bytes (8 bytes saved)
 type SOC2TypeIIConfig struct {
-	Enabled                bool          `json:"enabled"`
+	// Slice first (24 bytes)
+	ControlObjectives      []string      `json:"control_objectives"`
+	// Duration (8 bytes)
+	ReportingFrequency     time.Duration `json:"reporting_frequency"`
+	// Ints (4 bytes each)
 	ControlPeriodMonths    int           `json:"control_period_months"`
+	ExceptionThreshold     int           `json:"exception_threshold"`
+	EvidenceRetentionYears int           `json:"evidence_retention_years"`
+	// Bools last (1 byte each)
+	Enabled                bool          `json:"enabled"`
 	ContinuousMonitoring   bool          `json:"continuous_monitoring"`
 	AutomatedTesting       bool          `json:"automated_testing"`
-	ExceptionThreshold     int           `json:"exception_threshold"`
-	ReportingFrequency     time.Duration `json:"reporting_frequency"`
-	ControlObjectives      []string      `json:"control_objectives"`
-	EvidenceRetentionYears int           `json:"evidence_retention_years"`
 }
 
 // GDPRConfig for GDPR privacy compliance
+// Memory optimized: 64 → 48 bytes (16 bytes saved)
 type GDPRConfig struct {
-	Enabled                 bool                     `json:"enabled"`
+	// Map first (24 bytes)
+	DataRetentionPolicies   map[string]time.Duration `json:"data_retention_policies"`
+	// Slice (24 bytes)
 	DataProcessingBasis     []string                 `json:"data_processing_basis"`
+	// Int (4 bytes)
+	BreachNotificationHours int                      `json:"breach_notification_hours"`
+	// Bools grouped together (1 byte each)
+	Enabled                 bool                     `json:"enabled"`
 	ConsentManagement       bool                     `json:"consent_management"`
 	DataMinimization        bool                     `json:"data_minimization"`
 	RightToBeForgotten      bool                     `json:"right_to_be_forgotten"`
 	DataPortability         bool                     `json:"data_portability"`
-	BreachNotificationHours int                      `json:"breach_notification_hours"`
 	DPORequired             bool                     `json:"dpo_required"`
 	PIARequired             bool                     `json:"pia_required"`
-	DataRetentionPolicies   map[string]time.Duration `json:"data_retention_policies"`
 }
 
 // IndustryTemplate for industry-specific compliance
@@ -501,10 +514,11 @@ func (ecf *EnhancedComplianceFramework) ApplyIndustryTemplate(industry string) (
 		return nil, fmt.Errorf("industry template not found: %s", industry)
 	}
 
-	var middlewares []LiftMiddleware
+	controls := template.GetControls()
+	middlewares := make([]LiftMiddleware, 0, len(controls))
 
 	// Apply controls as middleware
-	for _, control := range template.GetControls() {
+	for _, control := range controls {
 		middleware := ecf.createControlMiddleware(control)
 		middlewares = append(middlewares, middleware)
 	}
@@ -692,7 +706,7 @@ func (ecf *EnhancedComplianceFramework) handleDataDeletion(ctx LiftContext) erro
 	// Coordinate data deletion across multiple data stores
 	deletionProviders := ecf.getDataDeletionProviders()
 
-	var deletionResults []DataDeletionResult
+	deletionResults := make([]DataDeletionResult, 0, len(deletionProviders))
 	var deletionErrors []error
 
 	// Execute deletions across all providers
@@ -919,7 +933,7 @@ func (ecf *EnhancedComplianceFramework) collectErasedDataCategories(results []Da
 		}
 	}
 
-	var erasedData []string
+	erasedData := make([]string, 0, len(categories))
 	for category := range categories {
 		erasedData = append(erasedData, category)
 	}
@@ -935,7 +949,7 @@ func (ecf *EnhancedComplianceFramework) collectRetainedDataCategories(results []
 		}
 	}
 
-	var retainedData []string
+	retainedData := make([]string, 0, len(categories))
 	for category := range categories {
 		retainedData = append(retainedData, category)
 	}
@@ -960,7 +974,7 @@ func (ecf *EnhancedComplianceFramework) buildRetentionReason(retainForLegal bool
 		return ""
 	}
 
-	var reasonList []string
+	reasonList := make([]string, 0, len(reasons))
 	for reason := range reasons {
 		reasonList = append(reasonList, reason)
 	}

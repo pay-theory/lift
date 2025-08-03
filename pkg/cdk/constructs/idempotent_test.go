@@ -12,6 +12,81 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// createKeyExtractorTestCases generates test cases for different key extractors
+func createKeyExtractorTestCases() []struct {
+	props      *IdempotentFunctionProps
+	assertions func(t *testing.T, template assertions.Template, fn *IdempotentFunction)
+	name       string
+} {
+	baseFunctionProps := LiftFunctionProps{
+		FunctionProps: awslambda.FunctionProps{
+			Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
+			Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+			Handler: jsii.String("bootstrap"),
+		},
+	}
+
+	extractorConfigs := []struct {
+		name         string
+		extractor    IdempotentKeyExtractor
+		keyField     string
+		extractorStr string
+	}{
+		{
+			name:         "creates function with body key extractor",
+			extractor:    IdempotentKeyBody,
+			keyField:     "requestId",
+			extractorStr: "BODY",
+		},
+		{
+			name:         "creates function with path parameter key extractor",
+			extractor:    IdempotentKeyPath,
+			keyField:     "orderId",
+			extractorStr: "PATH",
+		},
+		{
+			name:         "creates function with custom key extractor",
+			extractor:    IdempotentKeyCustom,
+			keyField:     "customExtractorFunction",
+			extractorStr: "CUSTOM",
+		},
+	}
+
+	var testCases []struct {
+		props      *IdempotentFunctionProps
+		assertions func(t *testing.T, template assertions.Template, fn *IdempotentFunction)
+		name       string
+	}
+
+	for _, config := range extractorConfigs {
+		config := config // capture range variable
+		testCases = append(testCases, struct {
+			props      *IdempotentFunctionProps
+			assertions func(t *testing.T, template assertions.Template, fn *IdempotentFunction)
+			name       string
+		}{
+			name: config.name,
+			props: &IdempotentFunctionProps{
+				LiftFunctionProps: baseFunctionProps,
+				KeyExtractor:      config.extractor,
+				KeyField:          jsii.String(config.keyField),
+			},
+			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
+				template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
+					"Environment": &map[string]interface{}{
+						"Variables": &map[string]interface{}{
+							"IDEMPOTENCY_KEY_EXTRACTOR": config.extractorStr,
+							"IDEMPOTENCY_KEY_FIELD":     config.keyField,
+						},
+					},
+				})
+			},
+		})
+	}
+
+	return testCases
+}
+
 func TestNewIdempotentFunction(t *testing.T) {
 	tests := []struct {
 		props      *IdempotentFunctionProps
@@ -116,82 +191,10 @@ func TestNewIdempotentFunction(t *testing.T) {
 				})
 			},
 		},
-		{
-			name: "creates function with body key extractor",
-			props: &IdempotentFunctionProps{
-				LiftFunctionProps: LiftFunctionProps{
-					FunctionProps: awslambda.FunctionProps{
-						Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
-						Runtime: awslambda.Runtime_PROVIDED_AL2023(),
-						Handler: jsii.String("bootstrap"),
-					},
-				},
-				KeyExtractor: IdempotentKeyBody,
-				KeyField:     jsii.String("requestId"),
-			},
-			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
-				// Check environment variables for body extraction
-				template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-					"Environment": &map[string]interface{}{
-						"Variables": &map[string]interface{}{
-							"IDEMPOTENCY_KEY_EXTRACTOR": "BODY",
-							"IDEMPOTENCY_KEY_FIELD":     "requestId",
-						},
-					},
-				})
-			},
-		},
-		{
-			name: "creates function with path parameter key extractor",
-			props: &IdempotentFunctionProps{
-				LiftFunctionProps: LiftFunctionProps{
-					FunctionProps: awslambda.FunctionProps{
-						Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
-						Runtime: awslambda.Runtime_PROVIDED_AL2023(),
-						Handler: jsii.String("bootstrap"),
-					},
-				},
-				KeyExtractor: IdempotentKeyPath,
-				KeyField:     jsii.String("orderId"),
-			},
-			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
-				// Check environment variables for path extraction
-				template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-					"Environment": &map[string]interface{}{
-						"Variables": &map[string]interface{}{
-							"IDEMPOTENCY_KEY_EXTRACTOR": "PATH",
-							"IDEMPOTENCY_KEY_FIELD":     "orderId",
-						},
-					},
-				})
-			},
-		},
-		{
-			name: "creates function with custom key extractor",
-			props: &IdempotentFunctionProps{
-				LiftFunctionProps: LiftFunctionProps{
-					FunctionProps: awslambda.FunctionProps{
-						Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
-						Runtime: awslambda.Runtime_PROVIDED_AL2023(),
-						Handler: jsii.String("bootstrap"),
-					},
-				},
-				KeyExtractor: IdempotentKeyCustom,
-				KeyField:     jsii.String("customExtractorFunction"),
-			},
-			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
-				// Check environment variables for custom extraction
-				template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
-					"Environment": &map[string]interface{}{
-						"Variables": &map[string]interface{}{
-							"IDEMPOTENCY_KEY_EXTRACTOR": "CUSTOM",
-							"IDEMPOTENCY_KEY_FIELD":     "customExtractorFunction",
-						},
-					},
-				})
-			},
-		},
 	}
+
+	// Append key extractor test cases
+	tests = append(tests, createKeyExtractorTestCases()...)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -446,11 +446,12 @@ func (sm *SLAMonitor) determineSeverity(metrics *SLAMetrics, slo SLO) Severity {
 
 // updateSLAStatus updates SLA status
 func (sm *SLAMonitor) updateSLAStatus(metrics *SLAMetrics, _ SLO) {
-	if metrics.ErrorBudget < sm.config.Thresholds.CriticalThreshold {
+	switch {
+	case metrics.ErrorBudget < sm.config.Thresholds.CriticalThreshold:
 		metrics.Status = SLAStatusCritical
-	} else if metrics.ErrorBudget < sm.config.Thresholds.WarningThreshold {
+	case metrics.ErrorBudget < sm.config.Thresholds.WarningThreshold:
 		metrics.Status = SLAStatusWarning
-	} else {
+	default:
 		metrics.Status = SLAStatusHealthy
 	}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pay-theory/lift/pkg/features"
+	"github.com/pay-theory/lift/pkg/lift"
 )
 
 // DevDashboard provides an interactive web interface for development
@@ -108,7 +109,7 @@ func (d *DevDashboard) handleDashboard(w http.ResponseWriter, _ *http.Request) {
 		Stats:        d.server.GetStats(),
 	}
 
-	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set(lift.HeaderContentType, lift.ContentTypeHTML)
 	if err := tmpl.Execute(w, data); err != nil {
 		log.Printf("Failed to execute dashboard template: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

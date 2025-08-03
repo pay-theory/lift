@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+const (
+	envBlue = "blue"
+	envGreen = "green"
+)
+
 func TestDeploymentValidator(t *testing.T) {
 	config := DeploymentConfig{
 		HealthCheckInterval: 5 * time.Second,
@@ -54,7 +59,7 @@ func TestDeploymentValidator(t *testing.T) {
 func TestBlueGreenDeployment(t *testing.T) {
 	// Create test environments
 	blueEnv := Environment{
-		Name:    "blue",
+		Name:    envBlue,
 		URL:     "http://blue.example.com",
 		Version: "v1.0.0",
 		Status:  EnvironmentStatusHealthy,
@@ -68,7 +73,7 @@ func TestBlueGreenDeployment(t *testing.T) {
 	}
 
 	greenEnv := Environment{
-		Name:    "green",
+		Name:    envGreen,
 		URL:     "http://green.example.com",
 		Version: "v1.0.0",
 		Status:  EnvironmentStatusHealthy,
@@ -99,7 +104,7 @@ func TestBlueGreenDeployment(t *testing.T) {
 	bgDeployment := NewBlueGreenDeployment(&blueEnv, &greenEnv, splitter, validator)
 
 	// Test initial state
-	if bgDeployment.currentActive != "blue" {
+	if bgDeployment.currentActive != envBlue {
 		t.Errorf("Expected initial active environment to be 'blue', got '%s'", bgDeployment.currentActive)
 	}
 

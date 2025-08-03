@@ -7,6 +7,7 @@ import (
 	"github.com/pay-theory/lift/pkg/security"
 )
 
+
 func TestSanitizeFieldValue(t *testing.T) {
 	s := Default()
 
@@ -59,13 +60,13 @@ func TestSanitizeFieldValue(t *testing.T) {
 			name:     "short number",
 			key:      "ssn",
 			value:    "123",
-			expected: "[REDACTED]",
+			expected: redactedValue,
 		},
 		{
 			name:     "non-string ssn",
 			key:      "ssn",
 			value:    12345,
-			expected: "[REDACTED]",
+			expected: redactedValue,
 		},
 
 		// Highly sensitive fields (DataConfidential)
@@ -73,19 +74,19 @@ func TestSanitizeFieldValue(t *testing.T) {
 			name:     "password field",
 			key:      "password",
 			value:    "secret123",
-			expected: "[REDACTED]",
+			expected: redactedValue,
 		},
 		{
 			name:     "api_token field",
 			key:      "api_token",
 			value:    "abcdef123456",
-			expected: "[REDACTED]",
+			expected: redactedValue,
 		},
 		{
 			name:     "field containing auth",
 			key:      "authorization_header",
 			value:    "Bearer token123",
-			expected: "[REDACTED]",
+			expected: redactedValue,
 		},
 		{
 			name:     "email field",
@@ -97,7 +98,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			name:     "cvv field",
 			key:      "cvv",
 			value:    "123",
-			expected: "[REDACTED]",
+			expected: redactedValue,
 		},
 
 		// User content fields (DataInternal)
@@ -191,7 +192,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			name:     "uppercase PASSWORD",
 			key:      "PASSWORD",
 			value:    "secret",
-			expected: "[REDACTED]",
+			expected: redactedValue,
 		},
 		{
 			name:     "mixed case Email",
@@ -228,9 +229,9 @@ func TestSanitizeHeaders(t *testing.T) {
 				"Content-Type":  {"application/json"},
 			},
 			expected: map[string]string{
-				"Authorization": "[REDACTED]",
-				"Cookie":        "[REDACTED]",
-				"X-API-Key":     "[REDACTED]",
+				"Authorization": redactedValue,
+				"Cookie":        redactedValue,
+				"X-API-Key":     redactedValue,
 				"Content-Type":  "application/json",
 			},
 		},
@@ -242,9 +243,9 @@ func TestSanitizeHeaders(t *testing.T) {
 				"x-auth-token":  {"auth123"},
 			},
 			expected: map[string]string{
-				"authorization": "[REDACTED]",
-				"COOKIE":        "[REDACTED]",
-				"x-auth-token":  "[REDACTED]",
+				"authorization": redactedValue,
+				"COOKIE":        redactedValue,
+				"x-auth-token":  redactedValue,
 			},
 		},
 		{
@@ -255,7 +256,7 @@ func TestSanitizeHeaders(t *testing.T) {
 			},
 			expected: map[string]string{
 				"Accept": "text/html",
-				"Cookie": "[REDACTED]",
+				"Cookie": redactedValue,
 			},
 		},
 		{
@@ -368,7 +369,7 @@ func TestSanitizeMap(t *testing.T) {
 
 	expected := map[string]any{
 		"username":    "john_doe",
-		"password":    "[REDACTED]",
+		"password":    redactedValue,
 		"email":       "john@example.com", // Email is DataInternal, not redacted
 		"age":         30,
 		"card_bin":    "411111",
@@ -419,7 +420,7 @@ func TestCustomDataProtectionManager(t *testing.T) {
 			name:     "custom sensitive field",
 			key:      "mysecret",
 			value:    "secret value",
-			expected: "[REDACTED]",
+			expected: redactedValue,
 		},
 		{
 			name:     "custom number field",
@@ -454,7 +455,7 @@ func TestCustomDataProtectionManager(t *testing.T) {
 func TestGlobalFunctions(t *testing.T) {
 	// Test global SanitizeFieldValue
 	result := SanitizeFieldValue("password", "secret")
-	if result != "[REDACTED]" {
+	if result != redactedValue {
 		t.Errorf("Global SanitizeFieldValue() = %v, want [REDACTED]", result)
 	}
 
@@ -463,7 +464,7 @@ func TestGlobalFunctions(t *testing.T) {
 		"Authorization": {"Bearer token"},
 	}
 	headerResult := SanitizeHeaders(headers)
-	if headerResult["Authorization"] != "[REDACTED]" {
+	if headerResult["Authorization"] != redactedValue {
 		t.Errorf("Global SanitizeHeaders() = %v, want [REDACTED]", headerResult["Authorization"])
 	}
 

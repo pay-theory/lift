@@ -4,6 +4,14 @@ import (
 	"encoding/json"
 )
 
+// Common HTTP content types and headers
+const (
+	ContentTypeJSON = "application/json"
+	ContentTypeHTML = "text/html"
+	ContentTypeText = "text/plain"
+	HeaderContentType = "Content-Type"
+)
+
 // Response represents a unified response structure for Lambda functions
 type Response struct {
 	// 8-byte aligned fields
@@ -49,7 +57,7 @@ func (r *Response) JSON(data any) error {
 	}
 
 	r.Body = data
-	r.Header("Content-Type", "application/json")
+	r.Header(HeaderContentType, ContentTypeJSON)
 	r.written = true
 	return nil
 }
@@ -73,7 +81,7 @@ func (r *Response) HTML(html string) error {
 	}
 
 	r.Body = html
-	r.Header("Content-Type", "text/html")
+	r.Header(HeaderContentType, ContentTypeHTML)
 	r.written = true
 	return nil
 }

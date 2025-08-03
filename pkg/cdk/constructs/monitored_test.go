@@ -176,7 +176,11 @@ func TestNewMonitoredFunction_DisableLambdaInsights(t *testing.T) {
 	// Note: This is a negative test - checking that Layers property is NOT present
 	// or doesn't contain the Lambda Insights layer
 	fnResource := template.ToJSON()
-	resources := (*fnResource)["Resources"].(map[string]interface{})
+	resourcesVal := (*fnResource)["Resources"]
+	resources, ok := resourcesVal.(map[string]interface{})
+	if !ok {
+		t.Fatal("Template should have Resources")
+	}
 
 	hasInsights := false
 	for _, resource := range resources {

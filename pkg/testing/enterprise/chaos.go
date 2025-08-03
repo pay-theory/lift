@@ -3,6 +3,7 @@ package enterprise
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -155,7 +156,11 @@ func (c *ChaosTest) executeScenario(ctx context.Context, scenario ChaosScenario)
 	if err != nil {
 		return fmt.Errorf("failed to inject failure: %w", err)
 	}
-	defer failure.Cleanup()
+	defer func() {
+		if cleanupErr := failure.Cleanup(); cleanupErr != nil {
+			log.Printf("Warning: failed to cleanup chaos failure: %v", cleanupErr)
+		}
+	}()
 
 	// Execute operations under chaos
 	results, err := scenario.ExecuteOperations(ctx)

@@ -9,6 +9,10 @@ import (
 	"github.com/pay-theory/lift/pkg/security"
 )
 
+const (
+	redactedValue = "[REDACTED]"
+)
+
 // AllowedFields are field names that should not be sanitized
 var AllowedFields = map[string]bool{
 	"card_bin":   true,
@@ -56,7 +60,7 @@ func (s *Sanitizer) SanitizeFieldValue(key string, value any) any {
 
 	// If no data protection manager, redact everything for safety
 	if s.dataProtectionManager == nil {
-		return "[REDACTED]"
+		return redactedValue
 	}
 
 	// Use the data protection manager to classify the field
@@ -87,11 +91,11 @@ func (s *Sanitizer) SanitizeFieldValue(key string, value any) any {
 				return masked
 			}
 		}
-		return "[REDACTED]"
+		return redactedValue
 
 	case security.DataConfidential:
 		// For confidential data, redact completely
-		return "[REDACTED]"
+		return redactedValue
 
 	case security.DataInternal:
 		// For internal data (like user content), show metadata only
@@ -127,7 +131,7 @@ func (s *Sanitizer) SanitizeFieldValue(key string, value any) any {
 
 	default:
 		// Unknown classification - be safe and redact
-		return "[REDACTED]"
+		return redactedValue
 	}
 }
 
@@ -170,7 +174,7 @@ func (s *Sanitizer) SanitizeHeaders(headers map[string][]string) map[string]stri
 	for key, values := range headers {
 		lowerKey := strings.ToLower(key)
 		if sensitiveHeaders[lowerKey] {
-			result[key] = "[REDACTED]"
+			result[key] = redactedValue
 		} else if len(values) > 0 {
 			result[key] = values[0]
 		}

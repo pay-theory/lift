@@ -289,11 +289,13 @@ func (m *CloudWatchMetrics) Close() error {
 
 // GetStats returns metrics collection statistics
 func (m *CloudWatchMetrics) GetStats() observability.MetricsStats {
-	lastFlush, ok := m.lastFlush.Load().(time.Time)
+	lastFlushVal := m.lastFlush.Load()
+	lastFlush, ok := lastFlushVal.(time.Time)
 	if !ok {
 		lastFlush = time.Time{} // zero time if assertion fails
 	}
-	lastError, ok := m.lastError.Load().(string)
+	lastErrorVal := m.lastError.Load()
+	lastError, ok := lastErrorVal.(string)
 	if !ok {
 		lastError = "" // empty string if assertion fails
 	}

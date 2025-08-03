@@ -110,14 +110,15 @@ func NewEventBridgeHandler(scope constructs.Construct, id *string, props *EventB
 	}
 
 	// Create or use existing event bus
-	if props.ExistingEventBus != nil {
+	switch {
+	case props.ExistingEventBus != nil:
 		this.EventBus = props.ExistingEventBus
-	} else if props.EventBusProps != nil {
+	case props.EventBusProps != nil:
 		this.EventBus = awsevents.NewEventBus(this, jsii.String("EventBus"), props.EventBusProps)
-	} else if props.CrossAccountEventBusArn != nil {
+	case props.CrossAccountEventBusArn != nil:
 		// Reference cross-account event bus
 		this.EventBus = awsevents.EventBus_FromEventBusArn(this, jsii.String("CrossAccountEventBus"), props.CrossAccountEventBusArn)
-	} else {
+	default:
 		// Use default event bus
 		this.EventBus = awsevents.EventBus_FromEventBusName(this, jsii.String("DefaultEventBus"), jsii.String("default"))
 	}
@@ -200,14 +201,15 @@ func NewEventBridgeHandler(scope constructs.Construct, id *string, props *EventB
 			return nil, fmt.Errorf("EventPattern and ScheduleExpression cannot both be specified")
 		}
 
-		if props.EventPattern != nil {
+		switch {
+		case props.EventPattern != nil:
 			ruleProps.EventPattern = props.EventPattern
 			// Only set event bus for event pattern rules
 			ruleProps.EventBus = this.EventBus
-		} else if props.ScheduleExpression != nil {
+		case props.ScheduleExpression != nil:
 			ruleProps.Schedule = awsevents.Schedule_Expression(props.ScheduleExpression)
 			// Scheduled rules don't use event buses
-		} else {
+		default:
 			// Default to match all events if neither pattern nor schedule is provided
 			ruleProps.EventPattern = &awsevents.EventPattern{
 				Source: &[]*string{jsii.String("*")},
@@ -317,42 +319,48 @@ func (e *EventBridgeHandler) enableMonitoring() {
 		Period: awscdk.Duration_Minutes(jsii.Number(5)),
 	})
 
-	// Rule invocation failure alarm
-	awscloudwatch.NewAlarm(e, jsii.String("RuleFailureAlarm"), &awscloudwatch.AlarmProps{
-		AlarmName:        jsii.String(fmt.Sprintf("%s-rule-failures", *e.Rule.RuleName())),
-		AlarmDescription: jsii.String("EventBridge rule invocation failures"),
-		Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:  jsii.String("AWS/Events"),
-			MetricName: jsii.String("FailedInvocations"),
-			DimensionsMap: &map[string]*string{
-				"RuleName": e.Rule.RuleName(),
-			},
-			Period: awscdk.Duration_Minutes(jsii.Number(5)),
-		}),
-		Threshold:          jsii.Number(5),
-		EvaluationPeriods:  jsii.Number(2),
-		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-	})
-
-	// DLQ monitoring if DLQ exists
-	if e.DeadLetterQueue != nil {
-		awscloudwatch.NewAlarm(e, jsii.String("DLQAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-dlq-messages", *e.Rule.RuleName())),
-			AlarmDescription: jsii.String("Messages in EventBridge handler DLQ"),
+	// Helper function to create metric alarms
+	createMetricAlarm := func(id, alarmNameSuffix, description, namespace, metricName string, dimensions *map[string]*string, threshold, evaluationPeriods float64) {
+		awscloudwatch.NewAlarm(e, jsii.String(id), &awscloudwatch.AlarmProps{
+			AlarmName:        jsii.String(fmt.Sprintf("%s-%s", *e.Rule.RuleName(), alarmNameSuffix)),
+			AlarmDescription: jsii.String(description),
 			Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-				Namespace:  jsii.String("AWS/SQS"),
-				MetricName: jsii.String("ApproximateNumberOfMessages"),
-				DimensionsMap: &map[string]*string{
-					"QueueName": e.DeadLetterQueue.QueueName(),
-				},
-				Period: awscdk.Duration_Minutes(jsii.Number(5)),
+				Namespace:     jsii.String(namespace),
+				MetricName:    jsii.String(metricName),
+				DimensionsMap: dimensions,
+				Period:        awscdk.Duration_Minutes(jsii.Number(5)),
 			}),
-			Threshold:          jsii.Number(10),
-			EvaluationPeriods:  jsii.Number(1),
+			Threshold:          jsii.Number(threshold),
+			EvaluationPeriods:  jsii.Number(evaluationPeriods),
 			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
 			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
 		})
+	}
+
+	// Rule invocation failure alarm
+	createMetricAlarm(
+		"RuleFailureAlarm",
+		"rule-failures",
+		"EventBridge rule invocation failures",
+		"AWS/Events",
+		"FailedInvocations",
+		&map[string]*string{"RuleName": e.Rule.RuleName()},
+		5,
+		2,
+	)
+
+	// DLQ monitoring if DLQ exists
+	if e.DeadLetterQueue != nil {
+		createMetricAlarm(
+			"DLQAlarm",
+			"dlq-messages",
+			"Messages in EventBridge handler DLQ",
+			"AWS/SQS",
+			"ApproximateNumberOfMessages",
+			&map[string]*string{"QueueName": e.DeadLetterQueue.QueueName()},
+			10,
+			1,
+		)
 	}
 }
 

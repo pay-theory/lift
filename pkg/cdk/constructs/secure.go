@@ -237,13 +237,14 @@ func (f *SecureFunction) AddVPCEndpoint(service awsec2.InterfaceVpcEndpointAwsSe
 	serviceName := *service.Name()
 
 	// Use simple identifiers for common services to avoid token issues
-	if service == awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER() {
+	switch service {
+	case awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER():
 		endpointId = "SecretsManagerEndpoint"
-	} else if service == awsec2.InterfaceVpcEndpointAwsService_SSM() {
+	case awsec2.InterfaceVpcEndpointAwsService_SSM():
 		endpointId = "SSMEndpoint"
-	} else if service == awsec2.InterfaceVpcEndpointAwsService_KMS() {
+	case awsec2.InterfaceVpcEndpointAwsService_KMS():
 		endpointId = "KMSEndpoint"
-	} else {
+	default:
 		// For other services, use a generic ID
 		endpointId = fmt.Sprintf("VPCEndpoint%d", len(f.VpcEndpoints))
 	}

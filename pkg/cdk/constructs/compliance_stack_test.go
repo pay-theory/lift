@@ -362,12 +362,29 @@ func TestComplianceStack_ComplianceStatus(t *testing.T) {
 	status := complianceStack.GetComplianceStatus()
 
 	// THEN
-	assert.True(t, status["cloudtrail_enabled"].(bool))
-	assert.True(t, status["config_enabled"].(bool))
-	assert.True(t, status["guardduty_enabled"].(bool))
-	assert.True(t, status["securityhub_enabled"].(bool))
-	assert.True(t, status["encryption_enabled"].(bool))
-	assert.True(t, status["function_enabled"].(bool))
+	cloudtrailEnabledVal := status["cloudtrail_enabled"]
+	cloudtrailEnabled, ok := cloudtrailEnabledVal.(bool)
+	assert.True(t, ok && cloudtrailEnabled)
+	
+	configEnabledVal := status["config_enabled"]
+	configEnabled, ok := configEnabledVal.(bool)
+	assert.True(t, ok && configEnabled)
+	
+	guarddutyEnabledVal := status["guardduty_enabled"]
+	guarddutyEnabled, ok := guarddutyEnabledVal.(bool)
+	assert.True(t, ok && guarddutyEnabled)
+	
+	securityhubEnabledVal := status["securityhub_enabled"]
+	securityhubEnabled, ok := securityhubEnabledVal.(bool)
+	assert.True(t, ok && securityhubEnabled)
+	
+	encryptionEnabledVal := status["encryption_enabled"]
+	encryptionEnabled, ok := encryptionEnabledVal.(bool)
+	assert.True(t, ok && encryptionEnabled)
+	
+	functionEnabledVal := status["function_enabled"]
+	functionEnabled, ok := functionEnabledVal.(bool)
+	assert.True(t, ok && functionEnabled)
 }
 
 func TestComplianceStack_AddComplianceRule(_ *testing.T) {

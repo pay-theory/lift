@@ -3,6 +3,7 @@ package load
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"sync"
@@ -14,27 +15,36 @@ import (
 
 // LoadTest represents a load testing configuration and execution
 type LoadTest struct {
-	Config      LoadTestConfig
+	// mutex first (24 bytes)
 	mu          sync.RWMutex
-	Name        string
-	Description string
+	// slices (24 bytes each)
 	Scenarios   []Scenario
+	// struct
+	Config      LoadTestConfig
+	// pointers (8 bytes each)
 	App         *lift.App
 	results     *Results
+	// strings (16 bytes each)
+	Name        string
+	Description string
 }
 
 // LoadTestConfig holds configuration for load testing
 type LoadTestConfig struct {
+	// slice (24 bytes)
 	Percentiles       []float64
+	// time.Duration fields (8 bytes each)
 	Duration          time.Duration
-	Concurrent        int
 	RampUpTime        time.Duration
 	RampDownTime      time.Duration
-	MaxRequests       int64
 	ThinkTime         time.Duration
 	Timeout           time.Duration
-	RequestsPerSecond float64
 	ReportInterval    time.Duration
+	// 8-byte aligned fields
+	MaxRequests       int64
+	RequestsPerSecond float64
+	// 4-byte field
+	Concurrent        int
 }
 
 // Scenario represents a test scenario with weight
@@ -62,26 +72,31 @@ type ScenarioResult struct {
 
 // Results contains the aggregated results of a load test
 type Results struct {
-	StartTime      time.Time                 `json:"start_time"`
-	EndTime        time.Time                 `json:"end_time"`
+	// maps (24 bytes each)
 	Percentiles    map[string]time.Duration  `json:"percentiles"`
 	ScenarioStats  map[string]*ScenarioStats `json:"scenario_stats"`
 	ErrorsByStatus map[int]int64             `json:"errors_by_status"`
 	ErrorsByType   map[string]int64          `json:"errors_by_type"`
-	TestName       string                    `json:"test_name"`
+	// slice (24 bytes)
 	Latencies      []time.Duration           `json:"-"`
-	SuccessCount   int64                     `json:"success_count"`
+	// time.Time (24 bytes each)
+	StartTime      time.Time                 `json:"start_time"`
+	EndTime        time.Time                 `json:"end_time"`
+	// string (16 bytes)
+	TestName       string                    `json:"test_name"`
+	// 8-byte aligned fields
+	Duration       time.Duration             `json:"duration"`
 	MaxLatency     time.Duration             `json:"max_latency"`
 	MeanLatency    time.Duration             `json:"mean_latency"`
 	MedianLatency  time.Duration             `json:"median_latency"`
 	MinLatency     time.Duration             `json:"min_latency"`
-	RequestsPerSec float64                   `json:"requests_per_sec"`
+	SuccessCount   int64                     `json:"success_count"`
 	ErrorCount     int64                     `json:"error_count"`
 	TotalRequests  int64                     `json:"total_requests"`
 	BytesRead      int64                     `json:"bytes_read"`
 	BytesWritten   int64                     `json:"bytes_written"`
+	RequestsPerSec float64                   `json:"requests_per_sec"`
 	Throughput     float64                   `json:"throughput_mbps"`
-	Duration       time.Duration             `json:"duration"`
 }
 
 // ScenarioStats contains statistics for a specific scenario
@@ -323,7 +338,9 @@ func (lt *LoadTest) executeScenario(ctx context.Context, scenario Scenario) {
 
 	// Cleanup
 	if scenario.Cleanup != nil && setupData != nil {
-		scenario.Cleanup(setupData)
+		if err := scenario.Cleanup(setupData); err != nil {
+			log.Printf("Warning: load test cleanup failed: %v", err)
+		}
 	}
 }
 

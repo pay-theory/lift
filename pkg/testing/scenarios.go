@@ -19,9 +19,12 @@ import (
 
 // LoadTestResult represents the result of a load test
 type LoadTestResult struct {
-	TotalRequests      int           `json:"total_requests"`
-	SuccessfulRequests int           `json:"successful_requests"`
-	FailedRequests     int           `json:"failed_requests"`
+	// Slice first (24 bytes)
+	Errors             []string      `json:"errors"`
+	// time.Time fields (24 bytes each)
+	StartTime          time.Time     `json:"start_time"`
+	EndTime            time.Time     `json:"end_time"`
+	// 8-byte aligned fields
 	AverageLatency     time.Duration `json:"average_latency"`
 	P95Latency         time.Duration `json:"p95_latency"`
 	P99Latency         time.Duration `json:"p99_latency"`
@@ -30,9 +33,10 @@ type LoadTestResult struct {
 	RequestsPerSecond  float64       `json:"requests_per_second"`
 	ErrorRate          float64       `json:"error_rate"`
 	Duration           time.Duration `json:"duration"`
-	Errors             []string      `json:"errors"`
-	StartTime          time.Time     `json:"start_time"`
-	EndTime            time.Time     `json:"end_time"`
+	// 4-byte int fields grouped
+	TotalRequests      int           `json:"total_requests"`
+	SuccessfulRequests int           `json:"successful_requests"`
+	FailedRequests     int           `json:"failed_requests"`
 }
 
 // LoadTestConfig configures load testing parameters
@@ -339,14 +343,17 @@ func (sr *ScenarioRunner) executeScenario(t *testing.T, scenario TestScenario) {
 
 // TestScenario represents a complete test scenario
 type TestScenario struct {
-	Name        string
-	Description string
+	// Function pointers first (8 bytes each)
 	Setup       func(*TestApp) error
 	Request     func(*TestApp) *TestResponse
 	Assertions  func(*testing.T, *TestResponse)
 	Cleanup     func(*TestApp) error
-	Skip        bool
+	// Strings (16 bytes each)
+	Name        string
+	Description string
 	SkipReason  string
+	// Bool last (1 byte)
+	Skip        bool
 }
 
 // TestApp represents a test application instance
@@ -867,11 +874,16 @@ func CRUDScenarios(basePath string, createData, updateData map[string]any) []Tes
 			Request: func(app *TestApp) *TestResponse {
 				return app.POST(basePath, createData)
 			},
-			Assertions: func(_ *testing.T, resp *TestResponse) {
+			Assertions: func(t *testing.T, resp *TestResponse) {
 				resp.AssertStatus(201)
 				resp.AssertJSONPathExists("$.id")
 				// Store the created ID for subsequent tests
-				createdID = resp.GetJSONPath("$.id").(string)
+				id, ok := resp.GetJSONPath("$.id").(string)
+				if !ok {
+					t.Errorf("Expected id to be a string")
+					return
+				}
+				createdID = id
 			},
 		},
 		{
@@ -1093,7 +1105,11 @@ func CreateTestData(app *TestApp, endpoint string, data map[string]any) (string,
 		return "", fmt.Errorf("created resource has no ID")
 	}
 
-	return id.(string), nil
+	idStr, ok := id.(string)
+	if !ok {
+		return "", fmt.Errorf("created resource ID is not a string")
+	}
+	return idStr, nil
 }
 
 // CleanupTestData removes test data

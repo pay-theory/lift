@@ -67,9 +67,11 @@ func TestHandleRequestLiftErrorStatusCodes(t *testing.T) {
 			app := New()
 
 			// Create a handler that returns the specific error
-			app.GET("/test", func(ctx *Context) error {
+			if err := app.GET("/test", func(_ *Context) error {
 				return tt.error
-			})
+			}); err != nil {
+				t.Fatalf("Failed to register route: %v", err)
+			}
 
 			// Create test request
 			req := NewRequest(&adapters.Request{
@@ -127,9 +129,11 @@ func TestHandleRequestNonLiftError(t *testing.T) {
 	app := New()
 
 	// Create a handler that returns a regular error
-	app.GET("/test", func(ctx *Context) error {
+	if err := app.GET("/test", func(_ *Context) error {
 		return assert.AnError // A regular error, not LiftError
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register route: %v", err)
+	}
 
 	// Create test request
 	req := NewRequest(&adapters.Request{
@@ -181,9 +185,11 @@ func TestMiddlewareLiftErrorStatusCodes(t *testing.T) {
 	})
 
 	// Add a handler (should not be reached)
-	app.GET("/test", func(ctx *Context) error {
+	if err := app.GET("/test", func(ctx *Context) error {
 		return ctx.JSON(map[string]string{"status": "ok"})
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register route: %v", err)
+	}
 
 	// Create test request
 	req := NewRequest(&adapters.Request{

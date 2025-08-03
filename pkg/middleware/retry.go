@@ -89,7 +89,7 @@ func RetryMiddleware(config RetryConfig) lift.Middleware {
 		config.TotalTimeout = 5 * time.Minute
 	}
 	if config.Name == "" {
-		config.Name = "default"
+		config.Name = defaultName
 	}
 	if config.RetryCondition == nil {
 		config.RetryCondition = defaultRetryCondition

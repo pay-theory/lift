@@ -38,7 +38,7 @@ func (c *Context) UserID() string {
 func (c *Context) Logger() observability.StructuredLogger {
 	// Return a default logger if none is set
 	// This would typically be injected via middleware
-	if logger, ok := c.Context.Get("logger").(observability.StructuredLogger); ok {
+	if logger, ok := c.Get("logger").(observability.StructuredLogger); ok {
 		return logger
 	}
 	// Return a no-op logger as fallback
@@ -47,12 +47,12 @@ func (c *Context) Logger() observability.StructuredLogger {
 
 // PathParam returns a path parameter value
 func (c *Context) PathParam(key string) string {
-	return c.Context.Param(key)
+	return c.Param(key)
 }
 
 // QueryParam returns a query parameter value with optional default
 func (c *Context) QueryParam(key string, defaultValue ...string) string {
-	value := c.Context.Query(key)
+	value := c.Query(key)
 	if value == "" && len(defaultValue) > 0 {
 		return defaultValue[0]
 	}
@@ -61,7 +61,7 @@ func (c *Context) QueryParam(key string, defaultValue ...string) string {
 
 // ParseJSON parses the request body as JSON
 func (c *Context) ParseJSON(target any) error {
-	return c.Context.ParseRequest(target)
+	return c.ParseRequest(target)
 }
 
 // noOpLogger is a fallback logger that does nothing

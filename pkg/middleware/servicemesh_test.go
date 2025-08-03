@@ -160,7 +160,7 @@ func (m *mockServiceMeshMetrics) RecordError(operation string) {
 	val, _ := m.metrics.LoadOrStore(key, int64(0))
 	for {
 		current := val.(int64)
-		if m.metrics.CompareAndSwap(key, current, current+1) {
+		if ok := m.metrics.CompareAndSwap(key, current, current+1); ok {
 			break
 		}
 		val, _ = m.metrics.Load(key)
@@ -172,7 +172,7 @@ func (m *mockServiceMeshMetrics) RecordSuccess(operation string) {
 	val, _ := m.metrics.LoadOrStore(key, int64(0))
 	for {
 		current := val.(int64)
-		if m.metrics.CompareAndSwap(key, current, current+1) {
+		if ok := m.metrics.CompareAndSwap(key, current, current+1); ok {
 			break
 		}
 		val, _ = m.metrics.Load(key)
@@ -200,7 +200,7 @@ func (c *mockServiceMeshCounter) Inc() {
 	val, _ := c.metrics.LoadOrStore(c.name, int64(0))
 	for {
 		current := val.(int64)
-		if c.metrics.CompareAndSwap(c.name, current, current+1) {
+		if ok := c.metrics.CompareAndSwap(c.name, current, current+1); ok {
 			break
 		}
 		val, _ = c.metrics.Load(c.name)
@@ -211,7 +211,7 @@ func (c *mockServiceMeshCounter) Add(value float64) {
 	val, _ := c.metrics.LoadOrStore(c.name, float64(0))
 	for {
 		current := val.(float64)
-		if c.metrics.CompareAndSwap(c.name, current, current+value) {
+		if ok := c.metrics.CompareAndSwap(c.name, current, current+value); ok {
 			break
 		}
 		val, _ = c.metrics.Load(c.name)
@@ -240,7 +240,7 @@ func (g *mockServiceMeshGauge) Inc() {
 	val, _ := g.metrics.LoadOrStore(g.name, float64(0))
 	for {
 		current := val.(float64)
-		if g.metrics.CompareAndSwap(g.name, current, current+1) {
+		if ok := g.metrics.CompareAndSwap(g.name, current, current+1); ok {
 			break
 		}
 		val, _ = g.metrics.Load(g.name)
@@ -251,7 +251,7 @@ func (g *mockServiceMeshGauge) Dec() {
 	val, _ := g.metrics.LoadOrStore(g.name, float64(0))
 	for {
 		current := val.(float64)
-		if g.metrics.CompareAndSwap(g.name, current, current-1) {
+		if ok := g.metrics.CompareAndSwap(g.name, current, current-1); ok {
 			break
 		}
 		val, _ = g.metrics.Load(g.name)
@@ -262,7 +262,7 @@ func (g *mockServiceMeshGauge) Add(value float64) {
 	val, _ := g.metrics.LoadOrStore(g.name, float64(0))
 	for {
 		current := val.(float64)
-		if g.metrics.CompareAndSwap(g.name, current, current+value) {
+		if ok := g.metrics.CompareAndSwap(g.name, current, current+value); ok {
 			break
 		}
 		val, _ = g.metrics.Load(g.name)

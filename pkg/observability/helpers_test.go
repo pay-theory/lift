@@ -9,17 +9,33 @@ import (
 
 func TestNewDefaultLoggerConfig(t *testing.T) {
 	// Set up test environment variables
-	os.Setenv("AWS_LAMBDA_FUNCTION_NAME", "test-function")
-	os.Setenv("PARTNER", "test-partner")
-	os.Setenv("STAGE", "test-stage")
-	os.Setenv("AWS_LAMBDA_FUNCTION_VERSION", "v1.0.0")
+	if err := os.Setenv("AWS_LAMBDA_FUNCTION_NAME", "test-function"); err != nil {
+		t.Logf("Warning: failed to set environment variable: %v", err)
+	}
+	if err := os.Setenv("PARTNER", "test-partner"); err != nil {
+		t.Logf("Warning: failed to set environment variable: %v", err)
+	}
+	if err := os.Setenv("STAGE", "test-stage"); err != nil {
+		t.Logf("Warning: failed to set environment variable: %v", err)
+	}
+	if err := os.Setenv("AWS_LAMBDA_FUNCTION_VERSION", "v1.0.0"); err != nil {
+		t.Logf("Warning: failed to set environment variable: %v", err)
+	}
 
 	defer func() {
 		// Clean up
-		os.Unsetenv("AWS_LAMBDA_FUNCTION_NAME")
-		os.Unsetenv("PARTNER")
-		os.Unsetenv("STAGE")
-		os.Unsetenv("AWS_LAMBDA_FUNCTION_VERSION")
+		if err := os.Unsetenv("AWS_LAMBDA_FUNCTION_NAME"); err != nil {
+			t.Logf("Warning: failed to unset environment variable: %v", err)
+		}
+		if err := os.Unsetenv("PARTNER"); err != nil {
+			t.Logf("Warning: failed to unset environment variable: %v", err)
+		}
+		if err := os.Unsetenv("STAGE"); err != nil {
+			t.Logf("Warning: failed to unset environment variable: %v", err)
+		}
+		if err := os.Unsetenv("AWS_LAMBDA_FUNCTION_VERSION"); err != nil {
+			t.Logf("Warning: failed to unset environment variable: %v", err)
+		}
 	}()
 
 	tests := []struct {

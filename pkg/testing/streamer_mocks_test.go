@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+const (
+	goneExceptionCode = "GoneException"
+)
+
 // TestStreamerAPIGatewayClientMock demonstrates the interface compatibility
 func TestStreamerAPIGatewayClientMock(t *testing.T) {
 	ctx := context.Background()
@@ -25,7 +29,7 @@ func TestStreamerAPIGatewayClientMock(t *testing.T) {
 		if goneErr.HTTPStatusCode() != 410 {
 			t.Errorf("Expected status code 410, got %d", goneErr.HTTPStatusCode())
 		}
-		if goneErr.ErrorCode() != "GoneException" {
+		if goneErr.ErrorCode() != goneExceptionCode {
 			t.Errorf("Expected error code 'GoneException', got %s", goneErr.ErrorCode())
 		}
 		if goneErr.IsRetryable() {
@@ -121,7 +125,7 @@ func TestStreamerErrorTypes(t *testing.T) {
 		if goneErr.HTTPStatusCode() != 410 {
 			t.Errorf("Expected 410, got %d", goneErr.HTTPStatusCode())
 		}
-		if goneErr.ErrorCode() != "GoneException" {
+		if goneErr.ErrorCode() != goneExceptionCode {
 			t.Errorf("Expected GoneException, got %s", goneErr.ErrorCode())
 		}
 		if goneErr.IsRetryable() {

@@ -50,11 +50,14 @@ func BenchmarkWebSocketHandlerExecution(b *testing.B) {
 	handler := app.WebSocketHandler()
 	event := createTestWebSocketEvent("$connect", "conn123", "")
 
+	wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+	if !ok {
+		b.Fatal("Handler is not a WebSocket handler function")
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		_, err := wsHandler(context.Background(), event)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -81,11 +84,14 @@ func BenchmarkWebSocketWithAutoConnectionManagement(b *testing.B) {
 	handler := app.WebSocketHandler()
 	event := createTestWebSocketEvent("$connect", "conn123", "")
 
+	wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+	if !ok {
+		b.Fatal("Handler is not a WebSocket handler function")
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		_, err := wsHandler(context.Background(), event)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -99,7 +105,7 @@ func BenchmarkLegacyWebSocketPattern(b *testing.B) {
 	app := New()
 
 	// Old pattern with HTTP-style routing
-	app.Handle("CONNECT", "/connect", func(ctx *Context) error {
+	if err := app.Handle("CONNECT", "/connect", func(ctx *Context) error {
 		wsCtx, err := ctx.AsWebSocket()
 		if err != nil {
 			return ctx.Status(500).JSON(map[string]string{
@@ -118,7 +124,9 @@ func BenchmarkLegacyWebSocketPattern(b *testing.B) {
 		return ctx.Status(200).JSON(map[string]string{
 			"status": "connected",
 		})
-	})
+	}); err != nil {
+		b.Fatalf("Failed to register websocket route: %v", err)
+	}
 
 	// Start the app to apply middleware
 	if err := app.Start(); err != nil {
@@ -154,7 +162,10 @@ func BenchmarkWebSocketContextConversion(b *testing.B) {
 	genericEvent := convertWebSocketEventToGeneric(event)
 
 	app := New()
-	req, _ := app.parseEvent(genericEvent)
+	req, err := app.parseEvent(genericEvent)
+	if err != nil {
+		b.Fatalf("Failed to parse event: %v", err)
+	}
 	ctx := NewContext(context.Background(), req)
 
 	b.ResetTimer()
@@ -187,11 +198,14 @@ func BenchmarkWebSocketMiddlewareStack(b *testing.B) {
 	handler := app.WebSocketHandler()
 	event := createTestWebSocketEvent("message", "conn123", `{"data":"test"}`)
 
+	wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+	if !ok {
+		b.Fatal("Handler is not a WebSocket handler function")
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		_, err := wsHandler(context.Background(), event)
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -143,60 +143,66 @@ func NewMonitoredFunction(scope constructs.Construct, id *string, props *Monitor
 	// Create alarms
 	alarms := make(map[string]awscloudwatch.Alarm)
 
-	// Error rate alarm
-	if *props.AlarmConfig.EnableErrorAlarm {
-		errorAlarm := liftFn.Function.MetricErrors(&awscloudwatch.MetricOptions{
-			Period: awscdk.Duration_Minutes(jsii.Number(5)),
-		}).CreateAlarm(this, jsii.String("ErrorAlarm"), &awscloudwatch.CreateAlarmOptions{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-errors", *liftFn.Function.FunctionName())),
-			AlarmDescription:  jsii.String("Lambda function error rate too high"),
-			Threshold:         props.AlarmConfig.ErrorRateThreshold,
-			EvaluationPeriods: jsii.Number(2),
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-		alarms["errors"] = errorAlarm
+	// Helper function to create and configure alarms
+	createAlarm := func(enabled bool, metric awscloudwatch.Metric, alarmId, alarmKeySuffix, nameSuffix, description string, threshold *float64, evaluationPeriods float64) {
+		if enabled {
+			alarm := metric.CreateAlarm(this, jsii.String(alarmId), &awscloudwatch.CreateAlarmOptions{
+				AlarmName:         jsii.String(fmt.Sprintf("%s-%s", *liftFn.Function.FunctionName(), nameSuffix)),
+				AlarmDescription:  jsii.String(description),
+				Threshold:         threshold,
+				EvaluationPeriods: jsii.Number(evaluationPeriods),
+				TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+			})
+			alarms[alarmKeySuffix] = alarm
 
-		if props.AlarmConfig.AlarmTopic != nil {
-			errorAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(props.AlarmConfig.AlarmTopic))
+			if props.AlarmConfig.AlarmTopic != nil {
+				alarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(props.AlarmConfig.AlarmTopic))
+			}
 		}
 	}
+
+	// Error rate alarm
+	createAlarm(
+		*props.AlarmConfig.EnableErrorAlarm,
+		liftFn.Function.MetricErrors(&awscloudwatch.MetricOptions{
+			Period: awscdk.Duration_Minutes(jsii.Number(5)),
+		}),
+		"ErrorAlarm",
+		"errors",
+		"errors",
+		"Lambda function error rate too high",
+		props.AlarmConfig.ErrorRateThreshold,
+		2,
+	)
 
 	// Latency alarm
-	if *props.AlarmConfig.EnableLatencyAlarm {
-		latencyAlarm := liftFn.Function.MetricDuration(&awscloudwatch.MetricOptions{
+	createAlarm(
+		*props.AlarmConfig.EnableLatencyAlarm,
+		liftFn.Function.MetricDuration(&awscloudwatch.MetricOptions{
 			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 			Statistic: jsii.String("Average"),
-		}).CreateAlarm(this, jsii.String("LatencyAlarm"), &awscloudwatch.CreateAlarmOptions{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-latency", *liftFn.Function.FunctionName())),
-			AlarmDescription:  jsii.String("Lambda function latency too high"),
-			Threshold:         props.AlarmConfig.LatencyThreshold,
-			EvaluationPeriods: jsii.Number(2),
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-		alarms["latency"] = latencyAlarm
-
-		if props.AlarmConfig.AlarmTopic != nil {
-			latencyAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(props.AlarmConfig.AlarmTopic))
-		}
-	}
+		}),
+		"LatencyAlarm",
+		"latency",
+		"latency",
+		"Lambda function latency too high",
+		props.AlarmConfig.LatencyThreshold,
+		2,
+	)
 
 	// Throttles alarm
-	if *props.AlarmConfig.EnableThrottleAlarm {
-		throttleAlarm := liftFn.Function.MetricThrottles(&awscloudwatch.MetricOptions{
+	createAlarm(
+		*props.AlarmConfig.EnableThrottleAlarm,
+		liftFn.Function.MetricThrottles(&awscloudwatch.MetricOptions{
 			Period: awscdk.Duration_Minutes(jsii.Number(5)),
-		}).CreateAlarm(this, jsii.String("ThrottleAlarm"), &awscloudwatch.CreateAlarmOptions{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-throttles", *liftFn.Function.FunctionName())),
-			AlarmDescription:  jsii.String("Lambda function throttling detected"),
-			Threshold:         props.AlarmConfig.ThrottleThreshold,
-			EvaluationPeriods: jsii.Number(1),
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-		alarms["throttles"] = throttleAlarm
-
-		if props.AlarmConfig.AlarmTopic != nil {
-			throttleAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(props.AlarmConfig.AlarmTopic))
-		}
-	}
+		}),
+		"ThrottleAlarm",
+		"throttles",
+		"throttles",
+		"Lambda function throttling detected",
+		props.AlarmConfig.ThrottleThreshold,
+		1,
+	)
 
 	// Concurrent executions alarm
 	if props.AlarmConfig.EnableConcurrentAlarm != nil && *props.AlarmConfig.EnableConcurrentAlarm {

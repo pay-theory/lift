@@ -2,6 +2,7 @@ package enterprise
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -203,13 +204,21 @@ func (e *EnterpriseTestSuite) runTestInEnvironment(testCase TestCase, envName st
 	if err := e.dataFixtures.SetupForEnvironment(env); err != nil {
 		return fmt.Errorf("fixture setup failed: %w", err)
 	}
-	defer e.dataFixtures.CleanupForEnvironment(env)
+	defer func() {
+		if err := e.dataFixtures.CleanupForEnvironment(env); err != nil {
+			log.Printf("Warning: failed to cleanup data fixtures for environment %s: %v", env.Name, err)
+		}
+	}()
 
 	// Setup mock services
 	if err := e.mockServices.SetupForEnvironment(env); err != nil {
 		return fmt.Errorf("mock setup failed: %w", err)
 	}
-	defer e.mockServices.CleanupForEnvironment(env)
+	defer func() {
+		if err := e.mockServices.CleanupForEnvironment(env); err != nil {
+			log.Printf("Warning: failed to cleanup mock services for environment %s: %v", env.Name, err)
+		}
+	}()
 
 	// Run the test
 	start := time.Now()

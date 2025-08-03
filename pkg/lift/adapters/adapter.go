@@ -93,11 +93,12 @@ func (r *AdapterRegistry) GetAdapter(triggerType TriggerType) (EventAdapter, boo
 // DetectAndAdapt automatically detects the event type and adapts it
 func (r *AdapterRegistry) DetectAndAdapt(rawEvent any) (*Request, error) {
 	// Track which adapters were tried and why they failed
-	var attemptedAdapters []string
+	attemptedAdapters := make([]string, 0, len(r.adapters))
 	var detectedFields []string
 
 	// Extract fields from the event for debugging
 	if eventMap, ok := rawEvent.(map[string]any); ok {
+		detectedFields = make([]string, 0, len(eventMap))
 		for key := range eventMap {
 			detectedFields = append(detectedFields, key)
 		}

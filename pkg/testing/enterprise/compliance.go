@@ -516,7 +516,7 @@ func (s *SOC2TypeIICompliance) evaluateTestResult(actual, expected any) Complian
 func (s *SOC2TypeIICompliance) collectEvidence(ctx context.Context, control SOC2Control, result *ControlResult) ([]Evidence, error) {
 	_ = ctx    // Use context parameter to avoid unused warning
 	_ = result // Use result parameter to avoid unused warning
-	var evidence []Evidence
+	evidence := make([]Evidence, 0, len(control.Evidence))
 
 	for _, req := range control.Evidence {
 		ev := Evidence{

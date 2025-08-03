@@ -464,7 +464,7 @@ func (imas *InMemoryAuditStorage) BatchStore(_ context.Context, entries []AuditL
 }
 
 // Query queries audit entries based on filter
-func (imas *InMemoryAuditStorage) Query(ctx context.Context, filter AuditFilter) ([]AuditLogEntry, error) {
+func (imas *InMemoryAuditStorage) Query(_ context.Context, filter AuditFilter) ([]AuditLogEntry, error) {
 	imas.mu.RLock()
 	defer imas.mu.RUnlock()
 

@@ -14,6 +14,10 @@ import (
 	"github.com/pay-theory/lift/pkg/utils/sanitization"
 )
 
+const (
+	formatConsole = "console"
+)
+
 // ZapLogger implements the StructuredLogger interface using Zap
 type ZapLogger struct {
 	logger        *zap.Logger
@@ -109,8 +113,8 @@ func buildZapConfig(config observability.LoggerConfig) zap.Config {
 		ErrorOutputPaths: []string{"stderr"},
 	}
 
-	if config.Format == "console" {
-		zapConfig.Encoding = "console"
+	if config.Format == formatConsole {
+		zapConfig.Encoding = formatConsole
 		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	}
 
@@ -236,7 +240,12 @@ func (z *ZapLogger) log(level zapcore.Level, message string, fieldMaps ...map[st
 	atomic.AddInt64(&z.stats.entriesLogged, 1)
 
 	// Build fields slice
-	var zapFields []zap.Field
+	// Calculate total capacity needed
+	totalFields := len(z.contextFields)
+	for _, fieldMap := range fieldMaps {
+		totalFields += len(fieldMap)
+	}
+	zapFields := make([]zap.Field, 0, totalFields)
 
 	// Add context fields
 	for k, v := range z.contextFields {
@@ -339,7 +348,11 @@ func (f *ZapLoggerFactory) CreateConsoleLogger(config observability.LoggerConfig
 func (f *ZapLoggerFactory) CreateCloudWatchLogger(config observability.LoggerConfig, _ observability.CloudWatchLogsClient) (observability.StructuredLogger, error) {
 	// For now, return a console logger - CloudWatch integration will be in the CloudWatch package
 	config.Format = "json"
-	return NewZapLogger(config) // No SNS options in factory method
+	logger, err := NewZapLogger(config) // No SNS options in factory method
+	if err != nil {
+		return nil, err
+	}
+	return logger, nil
 }
 
 // CreateTestLogger creates a logger suitable for testing

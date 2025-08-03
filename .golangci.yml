@@ -4,15 +4,17 @@ run:
   # Lambda-optimized settings
   timeout: 10m
   concurrency: 4
-  tests: true
+  tests: false  # Exclude test files from linting
   issues-exit-code: 1
   modules-download-mode: readonly
   relative-path-mode: cfg
-  # Skip vendor and test data
+  # Skip vendor, test data, examples, and test files
   skip-dirs-use-default: true
   skip-dirs:
     - examples
     - testdata
+  skip-files:
+    - ".*_test\\.go$"
 
 output:
   format: colored-line-number

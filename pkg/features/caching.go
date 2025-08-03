@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -58,24 +59,31 @@ type CacheStats struct {
 
 // CacheConfig configures the caching middleware
 type CacheConfig struct {
-	Store             CacheStore
-	Strategy          CacheStrategy
-	DefaultTTL        time.Duration
-	MaxSize           int64
-	EnableMetrics     bool
-	TenantIsolation   bool
-	Compression       bool
-	Serialization     SerializationType
+	// slices (24 bytes each)
 	InvalidateOn      []string // HTTP methods that invalidate cache
+	Tags              []string
+	// functions (8 bytes each)
 	KeyFunc           func(*lift.Context) string
 	ShouldCache       func(*lift.Context, any) bool
 	ShouldInvalidate  func(*lift.Context) bool
+	// structs/interfaces
+	Store             CacheStore
+	Strategy          CacheStrategy
+	Serializer        CacheSerializer
+	// strings (16 bytes each)
 	InvalidatePattern string
-	Encryption        bool
-	Tags              []string
 	Namespace         string
 	EvictionPolicy    string
-	Serializer        CacheSerializer
+	// 8-byte aligned fields
+	DefaultTTL        time.Duration
+	MaxSize           int64
+	// 4-byte field
+	Serialization     SerializationType
+	// bool fields (1 byte each)
+	EnableMetrics     bool
+	TenantIsolation   bool
+	Compression       bool
+	Encryption        bool
 }
 
 // SerializationType defines how data is serialized in cache
@@ -330,14 +338,22 @@ func (c *CacheMiddleware) serveResult(ctx *lift.Context, result any) error {
 
 // invalidateCache invalidates relevant cache entries
 func (c *CacheMiddleware) invalidateCache(ctx *lift.Context) {
-	_ = ctx // TODO: Use ctx for more sophisticated invalidation
 	// For now, implement simple invalidation
 	// In a production system, this would be more sophisticated
 	if c.config.TenantIsolation {
-		// TODO: Invalidate tenant-specific entries
-		// This would require a more sophisticated cache store
-		// For now, this is a no-op as tenant isolation isn't fully implemented
-		return
+		// Invalidate tenant-specific entries would require pattern-based deletion
+		// which is not supported by all cache stores
+		tenantID := ctx.TenantID()
+		if tenantID == "" {
+			tenantID = "default"
+		}
+		// Log that invalidation was requested
+		if ctx.Logger != nil {
+			ctx.Logger.Info("Cache invalidation requested", map[string]any{
+				"tenant_id": tenantID,
+				"path":      ctx.Request.Path,
+			})
+		}
 	}
 }
 
@@ -574,8 +590,7 @@ func (m *MultiBendCacheStore) Get(ctx context.Context, key string) (any, bool, e
 		if m.strategy == "write_back" {
 			if setErr := m.primary.Set(ctx, key, value, 0); setErr != nil {
 				// Log error but don't fail the read operation
-				// TODO: Add proper logging once logger is available
-				_ = setErr
+				log.Printf("Failed to write-back to primary cache: %v", setErr)
 			}
 		}
 		return value, true, nil

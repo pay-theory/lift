@@ -87,7 +87,10 @@ func TestNewBasicAPI_DisableCORS(t *testing.T) {
 
 	// Check that CORS is not configured
 	fnResource := template.ToJSON()
-	resources := (*fnResource)["Resources"].(map[string]interface{})
+	resources, ok := (*fnResource)["Resources"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Template should have Resources")
+	}
 
 	hasCORS := false
 	for _, resource := range resources {

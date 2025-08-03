@@ -23,18 +23,11 @@ type ConnectionTable struct {
 // The table uses pk/sk for connection_id and metadata storage
 // GSIs should be defined in your DynamORM model structs
 func NewConnectionTable(scope constructs.Construct, id *string, props *ConnectionTableProps) *ConnectionTable {
-	// Create base props
-	baseProps := &BaseManagementTableProps{
+	// Create the table using shared factory
+	liftTable := createTypedManagementTable(scope, id, props, ManagementTableConfig{
 		DefaultTableName: "websocket-connections",
-	}
-	
-	if props != nil {
-		baseProps.TableName = props.TableName
-		baseProps.TimeToLiveAttribute = props.TimeToLiveAttribute
-	}
-
-	// Create the table using common function
-	liftTable := createManagementTable(scope, id, baseProps)
+		PermissionMethod: "GrantConnectionManagement",
+	})
 
 	return &ConnectionTable{
 		construct: scope,

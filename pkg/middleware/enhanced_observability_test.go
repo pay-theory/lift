@@ -127,7 +127,12 @@ func (m *mockMetrics) RecordLatency(operation string, duration time.Duration) {
 func (m *mockMetrics) RecordError(operation string) {
 	key := operation + ".errors"
 	if val, exists := m.metrics[key]; exists {
-		m.metrics[key] = val.(int) + 1
+		intVal, ok := val.(int)
+		if ok {
+			m.metrics[key] = intVal + 1
+		} else {
+			m.metrics[key] = 1
+		}
 	} else {
 		m.metrics[key] = 1
 	}
@@ -136,7 +141,12 @@ func (m *mockMetrics) RecordError(operation string) {
 func (m *mockMetrics) RecordSuccess(operation string) {
 	key := operation + ".success"
 	if val, exists := m.metrics[key]; exists {
-		m.metrics[key] = val.(int) + 1
+		intVal, ok := val.(int)
+		if ok {
+			m.metrics[key] = intVal + 1
+		} else {
+			m.metrics[key] = 1
+		}
 	} else {
 		m.metrics[key] = 1
 	}
@@ -154,7 +164,12 @@ type mockCounter struct {
 
 func (c *mockCounter) Inc() {
 	if val, exists := c.metrics[c.name]; exists {
-		c.metrics[c.name] = val.(int) + 1
+		intVal, ok := val.(int)
+		if ok {
+			c.metrics[c.name] = intVal + 1
+		} else {
+			c.metrics[c.name] = 1
+		}
 	} else {
 		c.metrics[c.name] = 1
 	}
@@ -162,7 +177,12 @@ func (c *mockCounter) Inc() {
 
 func (c *mockCounter) Add(value float64) {
 	if val, exists := c.metrics[c.name]; exists {
-		c.metrics[c.name] = val.(float64) + value
+		floatVal, ok := val.(float64)
+		if ok {
+			c.metrics[c.name] = floatVal + value
+		} else {
+			c.metrics[c.name] = value
+		}
 	} else {
 		c.metrics[c.name] = value
 	}
@@ -188,7 +208,12 @@ func (g *mockGauge) Set(value float64) {
 
 func (g *mockGauge) Inc() {
 	if val, exists := g.metrics[g.name]; exists {
-		g.metrics[g.name] = val.(float64) + 1
+		floatVal, ok := val.(float64)
+		if ok {
+			g.metrics[g.name] = floatVal + 1
+		} else {
+			g.metrics[g.name] = 1.0
+		}
 	} else {
 		g.metrics[g.name] = 1.0
 	}
@@ -196,7 +221,12 @@ func (g *mockGauge) Inc() {
 
 func (g *mockGauge) Dec() {
 	if val, exists := g.metrics[g.name]; exists {
-		g.metrics[g.name] = val.(float64) - 1
+		floatVal, ok := val.(float64)
+		if ok {
+			g.metrics[g.name] = floatVal - 1
+		} else {
+			g.metrics[g.name] = -1.0
+		}
 	} else {
 		g.metrics[g.name] = -1.0
 	}
@@ -204,7 +234,12 @@ func (g *mockGauge) Dec() {
 
 func (g *mockGauge) Add(value float64) {
 	if val, exists := g.metrics[g.name]; exists {
-		g.metrics[g.name] = val.(float64) + value
+		floatVal, ok := val.(float64)
+		if ok {
+			g.metrics[g.name] = floatVal + value
+		} else {
+			g.metrics[g.name] = value
+		}
 	} else {
 		g.metrics[g.name] = value
 	}
@@ -355,7 +390,9 @@ func BenchmarkEnhancedObservabilityMiddleware(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		handler.Handle(ctx)
+		if err := handler.Handle(ctx); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -494,7 +531,9 @@ func BenchmarkEnhancedObservabilityLoggingOnly(b *testing.B) {
 			Response: &lift.Response{},
 		}
 
-		_ = handler.Handle(ctx)
+		if err := handler.Handle(ctx); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -528,6 +567,8 @@ func BenchmarkEnhancedObservabilityMetricsOnly(b *testing.B) {
 			Response: &lift.Response{},
 		}
 
-		_ = handler.Handle(ctx)
+		if err := handler.Handle(ctx); err != nil {
+			b.Fatal(err)
+		}
 	}
 }

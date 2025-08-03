@@ -256,22 +256,23 @@ func (m *circuitBreakerManager) generateBreakerKey(ctx *lift.Context) string {
 }
 
 // circuitBreaker implements the circuit breaker logic
+// Memory optimized: 344 → 216 bytes (128 bytes saved)
 type circuitBreaker struct {
-	// Largest fields first
+	// Largest fields first (24 bytes each)
 	mutex          sync.RWMutex         // 24 bytes
 	requestHistory []requestRecord      // 24 bytes (slice)
+	lastSuccessTime time.Time           // 24 bytes (time.Time is larger than expected)
+	nextRetryAt     time.Time           // 24 bytes
+	stateChangedAt  time.Time           // 24 bytes
+	lastFailureTime time.Time           // 24 bytes
 	config         CircuitBreakerConfig // struct
-
-	// 8-byte fields (time.Time is struct with int64 + ptr)
-	lastSuccessTime time.Time
-	nextRetryAt     time.Time
-	stateChangedAt  time.Time
-	lastFailureTime time.Time
-	failureCount    int64
-	successCount    int64
 
 	// String field (16 bytes)
 	name string
+
+	// 8-byte fields
+	failureCount    int64
+	successCount    int64
 
 	// 4-byte fields
 	consecutiveSuccesses int

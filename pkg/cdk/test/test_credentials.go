@@ -50,8 +50,8 @@ func GetTestCredentials(isLocal bool) aws.CredentialsProvider {
 // IsLocalTesting checks if we're running against local services
 func IsLocalTesting() bool {
 	// Check common environment variables for local testing
-	return os.Getenv("DYNAMODB_LOCAL") == "true" ||
-		os.Getenv("USE_LOCAL_STACK") == "true" ||
-		os.Getenv("AWS_SAM_LOCAL") == "true" ||
+	return os.Getenv("DYNAMODB_LOCAL") == EnvValueTrue ||
+		os.Getenv("USE_LOCAL_STACK") == EnvValueTrue ||
+		os.Getenv("AWS_SAM_LOCAL") == EnvValueTrue ||
 		os.Getenv("TEST_ENV") == "local"
 }

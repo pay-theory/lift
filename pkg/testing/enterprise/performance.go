@@ -19,10 +19,12 @@ const (
 
 // PerformanceTester provides comprehensive performance testing capabilities
 type PerformanceTester struct {
+	// mutex first (24 bytes)
+	mutex    sync.RWMutex
+	// pointers (8 bytes each)
 	app      *EnterpriseTestApp
 	metrics  *PerformanceMetrics
 	executor *TestExecutor
-	mutex    sync.RWMutex
 }
 
 // PerformanceTestCase represents a performance test case
@@ -35,78 +37,74 @@ type PerformanceTestCase struct {
 
 // PerformanceConfig defines configuration for performance tests
 type PerformanceConfig struct {
-	// HTTP/API Configuration
-	Endpoint string
-	Method   string
-
-	// Load Configuration
-	ConcurrentUsers int
-	TestDuration    time.Duration
-
-	// Response Time Expectations
-	ExpectedP95 time.Duration
-	ExpectedP99 time.Duration
-
-	// Throughput Expectations
-	ExpectedTPS int
-
-	// Database Configuration
+	// strings (16 bytes each)
+	Endpoint  string
+	Method    string
 	QueryType string
-
-	// Memory Configuration
-	MaxMemoryMB int
+	// time.Duration fields (8 bytes each)
+	TestDuration time.Duration
+	ExpectedP95  time.Duration
+	ExpectedP99  time.Duration
+	// int fields (4 bytes each)
+	ConcurrentUsers int
+	ExpectedTPS     int
+	MaxMemoryMB     int
 }
 
 // PerformanceTestResult represents the result of a performance test
 type PerformanceTestResult struct {
+	// time.Time (24 bytes)
+	Timestamp time.Time
+	// large structs
 	TestCase  PerformanceTestCase
 	Metrics   PerformanceTestMetrics
-	Timestamp time.Time
-	Duration  time.Duration
+	// string (16 bytes)
 	Error     string
+	// 8-byte aligned field
+	Duration  time.Duration
+	// bool (1 byte)
 	Success   bool
 }
 
 // PerformanceTestMetrics contains detailed performance metrics
 type PerformanceTestMetrics struct {
-	// Response Time Metrics
+	// time.Duration fields (8 bytes each)
 	P95Latency    time.Duration
 	P99Latency    time.Duration
 	MeanLatency   time.Duration
 	MedianLatency time.Duration
 	MinLatency    time.Duration
 	MaxLatency    time.Duration
-
-	// Throughput Metrics
-	ThroughputTPS  float64
+	AvgQueryTime  time.Duration
+	// int64 fields (8 bytes each)
 	TotalRequests  int64
 	SuccessfulReqs int64
 	FailedRequests int64
-
-	// Resource Metrics
-	MaxMemoryMB   float64
-	AvgMemoryMB   float64
-	MaxCPUPercent float64
-	AvgCPUPercent float64
-
-	// Error Metrics
-	ErrorCount int64
-	ErrorRate  float64
-
-	// Database Metrics (if applicable)
-	AvgQueryTime time.Duration
-	QueryCount   int64
+	ErrorCount     int64
+	QueryCount     int64
+	// float64 fields (8 bytes each)
+	ThroughputTPS  float64
+	MaxMemoryMB    float64
+	AvgMemoryMB    float64
+	MaxCPUPercent  float64
+	AvgCPUPercent  float64
+	ErrorRate      float64
 }
 
 // PerformanceTestReport represents a comprehensive performance report
 type PerformanceTestReport struct {
+	// slice (24 bytes)
+	Results        []PerformanceTestResult
+	// time.Time (24 bytes)
+	Timestamp      time.Time
+	// string (16 bytes)
+	Summary        string
+	// int fields (4 bytes each)
 	TotalTests     int
 	PassedTests    int
 	FailedTests    int
+	// bool (1 byte)
 	AllTestsPassed bool
-	Summary        string
-	Results        []PerformanceTestResult
-	Timestamp      time.Time
 }
 
 // RegressionDetector detects performance regressions
@@ -524,14 +522,16 @@ func (rd *RegressionDetector) calculateRegression(baseline, current float64) flo
 
 // getSeverity determines the severity of a regression
 func (rd *RegressionDetector) getSeverity(regressionPct float64) string {
-	if regressionPct >= 50 {
+	switch {
+	case regressionPct >= 50:
 		return "Critical"
-	} else if regressionPct >= 25 {
+	case regressionPct >= 25:
 		return "High"
-	} else if regressionPct >= 15 {
+	case regressionPct >= 15:
 		return "Medium"
+	default:
+		return "Low"
 	}
-	return "Low"
 }
 
 // updateBaseline updates the baseline if performance improved

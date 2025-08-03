@@ -229,7 +229,7 @@ func TestDynamORMEventStoreEnvironmentVariables(t *testing.T) {
 	env := eventStore.GetEnvironmentVariables()
 
 	// Test required environment variables
-	if (*env)["DYNAMORM_EVENT_STORE_ENABLED"] == nil || *(*env)["DYNAMORM_EVENT_STORE_ENABLED"] != "true" {
+	if (*env)["DYNAMORM_EVENT_STORE_ENABLED"] == nil || *(*env)["DYNAMORM_EVENT_STORE_ENABLED"] != trueStr {
 		t.Fatal("DYNAMORM_EVENT_STORE_ENABLED should be true")
 	}
 
@@ -253,19 +253,19 @@ func TestDynamORMEventStoreEnvironmentVariables(t *testing.T) {
 		t.Fatal("DYNAMORM_SNAPSHOT_FREQUENCY should be 50")
 	}
 
-	if (*env)["DYNAMORM_EVENT_VERSIONING"] == nil || *(*env)["DYNAMORM_EVENT_VERSIONING"] != "true" {
+	if (*env)["DYNAMORM_EVENT_VERSIONING"] == nil || *(*env)["DYNAMORM_EVENT_VERSIONING"] != trueStr {
 		t.Fatal("DYNAMORM_EVENT_VERSIONING should be true")
 	}
 
-	if (*env)["DYNAMORM_EVENT_ENCRYPTION"] == nil || *(*env)["DYNAMORM_EVENT_ENCRYPTION"] != "true" {
+	if (*env)["DYNAMORM_EVENT_ENCRYPTION"] == nil || *(*env)["DYNAMORM_EVENT_ENCRYPTION"] != trueStr {
 		t.Fatal("DYNAMORM_EVENT_ENCRYPTION should be true")
 	}
 
-	if (*env)["DYNAMORM_EVENT_COMPRESSION"] == nil || *(*env)["DYNAMORM_EVENT_COMPRESSION"] != "true" {
+	if (*env)["DYNAMORM_EVENT_COMPRESSION"] == nil || *(*env)["DYNAMORM_EVENT_COMPRESSION"] != trueStr {
 		t.Fatal("DYNAMORM_EVENT_COMPRESSION should be true")
 	}
 
-	if (*env)["DYNAMORM_EVENT_STORE_MULTI_TENANT"] == nil || *(*env)["DYNAMORM_EVENT_STORE_MULTI_TENANT"] != "true" {
+	if (*env)["DYNAMORM_EVENT_STORE_MULTI_TENANT"] == nil || *(*env)["DYNAMORM_EVENT_STORE_MULTI_TENANT"] != trueStr {
 		t.Fatal("DYNAMORM_EVENT_STORE_MULTI_TENANT should be true")
 	}
 
@@ -273,7 +273,7 @@ func TestDynamORMEventStoreEnvironmentVariables(t *testing.T) {
 		t.Fatal("DYNAMORM_TENANT_ATTRIBUTE should be org_id")
 	}
 
-	if (*env)["DYNAMORM_ARCHIVAL_ENABLED"] == nil || *(*env)["DYNAMORM_ARCHIVAL_ENABLED"] != "true" {
+	if (*env)["DYNAMORM_ARCHIVAL_ENABLED"] == nil || *(*env)["DYNAMORM_ARCHIVAL_ENABLED"] != trueStr {
 		t.Fatal("DYNAMORM_ARCHIVAL_ENABLED should be true")
 	}
 

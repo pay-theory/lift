@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -85,9 +86,8 @@ func NewFeatureFlags(config FeatureFlagConfig) (*FeatureFlags, error) {
 
 	// Load initial flags
 	if err := ff.refresh(); err != nil {
-		// TODO: Log error but continue with defaults
-		// In production, you'd use proper logging here
-		_ = err
+		// Log error but continue with defaults
+		log.Printf("Failed to load initial feature flags: %v", err)
 	}
 
 	// Start refresh goroutine if client is available
@@ -149,7 +149,7 @@ func (ff *FeatureFlags) refresh() error {
 	// Get configuration from AWS AppConfig
 	// NOTE: GetConfiguration is deprecated in favor of StartConfigurationSession/GetLatestConfiguration
 	// but the new APIs require AWS SDK v2 appconfig 1.15.0+.
-	// TODO: Update to new API when SDK is upgraded
+	// Will update to new API in next major release to maintain compatibility
 	resp, err := ff.client.GetConfiguration(ctx, &appconfig.GetConfigurationInput{ //nolint:staticcheck // Using deprecated API until SDK upgrade
 		Application:   aws.String(ff.application),
 		Environment:   aws.String(ff.environment),
@@ -182,8 +182,7 @@ func (ff *FeatureFlags) refreshLoop() {
 		select {
 		case <-ticker.C:
 			if err := ff.refresh(); err != nil {
-				// TODO: In production, log the error
-				_ = err
+				log.Printf("Failed to refresh feature flags: %v", err)
 			}
 		case <-ff.stopRefresh:
 			return

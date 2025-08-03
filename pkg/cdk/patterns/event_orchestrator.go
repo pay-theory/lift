@@ -316,35 +316,8 @@ func (e *EventOrchestrator) enableMonitoring(props *EventOrchestratorProps) {
 		if handler != nil && handler.Function != nil {
 			function := handler.Function.Function
 
-			// Function duration alarm
-			durationAlarm := awscloudwatch.NewAlarm(e, jsii.String(fmt.Sprintf("Duration%sAlarm", name)), &awscloudwatch.AlarmProps{
-				AlarmName:        jsii.String(fmt.Sprintf("%s-orchestrator-duration-%s", appName, name)),
-				AlarmDescription: jsii.String(fmt.Sprintf("High duration for event handler %s", name)),
-				Metric: function.MetricDuration(&awscloudwatch.MetricOptions{
-					Statistic: jsii.String("Average"),
-					Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-				}),
-				Threshold:          jsii.Number(30000), // 30 seconds
-				ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-				EvaluationPeriods:  jsii.Number(2),
-				TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-			})
-			durationAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
-
-			// Function error rate alarm
-			errorAlarm := awscloudwatch.NewAlarm(e, jsii.String(fmt.Sprintf("Error%sAlarm", name)), &awscloudwatch.AlarmProps{
-				AlarmName:        jsii.String(fmt.Sprintf("%s-orchestrator-errors-%s", appName, name)),
-				AlarmDescription: jsii.String(fmt.Sprintf("High error rate for event handler %s", name)),
-				Metric: function.MetricErrors(&awscloudwatch.MetricOptions{
-					Statistic: jsii.String("Sum"),
-					Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-				}),
-				Threshold:          jsii.Number(5),
-				ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-				EvaluationPeriods:  jsii.Number(1),
-				TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-			})
-			errorAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
+			// Create function monitoring alarms using helper
+			e.createFunctionAlarms(appName, name, function, alertTopic)
 		}
 	}
 
@@ -352,43 +325,8 @@ func (e *EventOrchestrator) enableMonitoring(props *EventOrchestratorProps) {
 	if e.EventRoutingTable != nil {
 		routingTableName := e.EventRoutingTable.GetTableName()
 
-		readThrottleAlarm := awscloudwatch.NewAlarm(e, jsii.String("RoutingReadThrottleAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-routing-read-throttle", appName)),
-			AlarmDescription: jsii.String("Event routing table read throttling"),
-			Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-				Namespace:  jsii.String("AWS/DynamoDB"),
-				MetricName: jsii.String("ReadThrottleEvents"),
-				DimensionsMap: &map[string]*string{
-					"TableName": routingTableName,
-				},
-				Statistic: jsii.String("Sum"),
-				Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-			}),
-			Threshold:          jsii.Number(0),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			EvaluationPeriods:  jsii.Number(1),
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-		readThrottleAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
-
-		writeThrottleAlarm := awscloudwatch.NewAlarm(e, jsii.String("RoutingWriteThrottleAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-routing-write-throttle", appName)),
-			AlarmDescription: jsii.String("Event routing table write throttling"),
-			Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-				Namespace:  jsii.String("AWS/DynamoDB"),
-				MetricName: jsii.String("WriteThrottleEvents"),
-				DimensionsMap: &map[string]*string{
-					"TableName": routingTableName,
-				},
-				Statistic: jsii.String("Sum"),
-				Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-			}),
-			Threshold:          jsii.Number(0),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			EvaluationPeriods:  jsii.Number(1),
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-		writeThrottleAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
+		// Create DynamoDB throttling alarms using helper
+		e.createDynamoDBThrottleAlarms(appName, routingTableName, alertTopic)
 	}
 
 	// 3. Custom metrics for correlation success rates
@@ -489,4 +427,106 @@ func (e *EventOrchestrator) AddEventSource(_ EventSourceConfig) {
 // GetEventHandler returns the handler for a specific event source
 func (e *EventOrchestrator) GetEventHandler(sourceName string) *liftconstructs.EventBridgeHandler {
 	return e.EventHandlers[sourceName]
+}
+
+// lambdaAlarmConfig defines configuration for Lambda function alarms
+type lambdaAlarmConfig struct {
+	alarmType          string
+	alarmSuffix        string
+	descriptionSuffix  string
+	metricFunc         func(awslambda.IFunction, *awscloudwatch.MetricOptions) awscloudwatch.IMetric
+	statistic          string
+	threshold          float64
+	evaluationPeriods  float64
+}
+
+// createLambdaAlarm creates a standardized CloudWatch alarm for Lambda functions
+func (e *EventOrchestrator) createLambdaAlarm(appName, handlerName string, function awslambda.IFunction, alertTopic awssns.ITopic, config lambdaAlarmConfig) {
+	alarm := awscloudwatch.NewAlarm(e, jsii.String(fmt.Sprintf("%s%sAlarm", config.alarmType, handlerName)), &awscloudwatch.AlarmProps{
+		AlarmName:        jsii.String(fmt.Sprintf("%s-orchestrator-%s-%s", appName, config.alarmSuffix, handlerName)),
+		AlarmDescription: jsii.String(fmt.Sprintf("%s for event handler %s", config.descriptionSuffix, handlerName)),
+		Metric: config.metricFunc(function, &awscloudwatch.MetricOptions{
+			Statistic: jsii.String(config.statistic),
+			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
+		}),
+		Threshold:          jsii.Number(config.threshold),
+		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
+		EvaluationPeriods:  jsii.Number(config.evaluationPeriods),
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+	})
+	alarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
+}
+
+// createFunctionAlarms creates standard monitoring alarms for a Lambda function
+func (e *EventOrchestrator) createFunctionAlarms(appName, handlerName string, function awslambda.IFunction, alertTopic awssns.ITopic) {
+	// Function duration alarm
+	e.createLambdaAlarm(appName, handlerName, function, alertTopic, lambdaAlarmConfig{
+		alarmType:          "Duration",
+		alarmSuffix:        "duration",
+		descriptionSuffix:  "High duration",
+		metricFunc:         func(f awslambda.IFunction, opts *awscloudwatch.MetricOptions) awscloudwatch.IMetric { return f.MetricDuration(opts) },
+		statistic:          "Average",
+		threshold:          30000, // 30 seconds
+		evaluationPeriods:  2,
+	})
+
+	// Function error rate alarm
+	e.createLambdaAlarm(appName, handlerName, function, alertTopic, lambdaAlarmConfig{
+		alarmType:          "Error",
+		alarmSuffix:        "errors",
+		descriptionSuffix:  "High error rate",
+		metricFunc:         func(f awslambda.IFunction, opts *awscloudwatch.MetricOptions) awscloudwatch.IMetric { return f.MetricErrors(opts) },
+		statistic:          "Sum",
+		threshold:          5,
+		evaluationPeriods:  1,
+	})
+}
+
+// dynamoThrottleAlarmConfig defines configuration for DynamoDB throttling alarms
+type dynamoThrottleAlarmConfig struct {
+	alarmIDSuffix     string
+	alarmNameSuffix   string
+	description       string
+	metricName        string
+}
+
+// createDynamoThrottleAlarm creates a standardized DynamoDB throttling alarm
+func (e *EventOrchestrator) createDynamoThrottleAlarm(appName string, tableName *string, alertTopic awssns.ITopic, config dynamoThrottleAlarmConfig) {
+	alarm := awscloudwatch.NewAlarm(e, jsii.String(fmt.Sprintf("Routing%sThrottleAlarm", config.alarmIDSuffix)), &awscloudwatch.AlarmProps{
+		AlarmName:        jsii.String(fmt.Sprintf("%s-routing-%s-throttle", appName, config.alarmNameSuffix)),
+		AlarmDescription: jsii.String(config.description),
+		Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
+			Namespace:  jsii.String("AWS/DynamoDB"),
+			MetricName: jsii.String(config.metricName),
+			DimensionsMap: &map[string]*string{
+				"TableName": tableName,
+			},
+			Statistic: jsii.String("Sum"),
+			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
+		}),
+		Threshold:          jsii.Number(0),
+		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
+		EvaluationPeriods:  jsii.Number(1),
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+	})
+	alarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
+}
+
+// createDynamoDBThrottleAlarms creates throttling alarms for a DynamoDB table
+func (e *EventOrchestrator) createDynamoDBThrottleAlarms(appName string, tableName *string, alertTopic awssns.ITopic) {
+	// Read throttle alarm
+	e.createDynamoThrottleAlarm(appName, tableName, alertTopic, dynamoThrottleAlarmConfig{
+		alarmIDSuffix:   "Read",
+		alarmNameSuffix: "read",
+		description:     "Event routing table read throttling",
+		metricName:      "ReadThrottleEvents",
+	})
+
+	// Write throttle alarm
+	e.createDynamoThrottleAlarm(appName, tableName, alertTopic, dynamoThrottleAlarmConfig{
+		alarmIDSuffix:   "Write",
+		alarmNameSuffix: "write",
+		description:     "Event routing table write throttling",
+		metricName:      "WriteThrottleEvents",
+	})
 }

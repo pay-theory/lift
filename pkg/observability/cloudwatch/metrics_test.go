@@ -70,7 +70,11 @@ func TestCloudWatchMetrics_BasicMetrics(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Record various metric types
 	metrics.RecordCount("test.count", 5)
@@ -114,7 +118,11 @@ func TestCloudWatchMetrics_MultiTenantDimensions(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Create tenant-specific metrics
 	tenant1Metrics := metrics.WithTenant("tenant-1")
@@ -166,7 +174,11 @@ func TestCloudWatchMetrics_BufferOverflow(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Record more metrics than buffer size
 	for i := 0; i < 10; i++ {
@@ -206,7 +218,11 @@ func TestCloudWatchMetrics_ErrorHandling(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Record metrics that will trigger flush
 	metrics.RecordCount("error.test", 1)
@@ -233,7 +249,11 @@ func TestCloudWatchMetrics_PeriodicFlush(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Record a metric
 	metrics.RecordCount("periodic.test", 1)
@@ -257,7 +277,11 @@ func TestCloudWatchMetrics_LiftInterface(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Test Counter
 	counter := metrics.Counter("test.counter", map[string]string{"type": "api"})
@@ -310,7 +334,11 @@ func TestCloudWatchMetrics_ConcurrentAccess(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Concurrent metric recording
 	var wg sync.WaitGroup
@@ -353,7 +381,11 @@ func TestCloudWatchMetrics_Stats(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Initial stats
 	stats := metrics.GetStats()
@@ -385,7 +417,11 @@ func TestCloudWatchMetrics_Performance(t *testing.T) {
 	}
 
 	metrics := NewCloudWatchMetrics(client, config)
-	defer metrics.Close()
+	defer func() {
+		if err := metrics.Close(); err != nil {
+			t.Logf("Warning: failed to close metrics: %v", err)
+		}
+	}()
 
 	// Measure time to record 1000 metrics
 	start := time.Now()

@@ -215,7 +215,9 @@ func TestHealthManager_OverallHealth(t *testing.T) {
 	}
 
 	// Remove unhealthy, add degraded
-	manager.UnregisterChecker("unhealthy1")
+	if err := manager.UnregisterChecker("unhealthy1"); err != nil {
+		t.Logf("Warning: failed to unregister checker: %v", err)
+	}
 	degradedChecker := NewCustomHealthChecker("degraded", func(_ context.Context) HealthStatus {
 		return HealthStatus{
 			Status:    StatusDegraded,
@@ -293,13 +295,17 @@ func TestHealthManager_Cache(t *testing.T) {
 	ctx := context.Background()
 
 	// First call should execute the checker
-	manager.CheckComponent(ctx, "counting")
+	if _, err := manager.CheckComponent(ctx, "counting"); err != nil {
+		t.Logf("Warning: CheckComponent failed: %v", err)
+	}
 	if callCount != 1 {
 		t.Errorf("expected 1 call, got %d", callCount)
 	}
 
 	// Second call should use cache
-	manager.CheckComponent(ctx, "counting")
+	if _, err := manager.CheckComponent(ctx, "counting"); err != nil {
+		t.Logf("Warning: CheckComponent failed: %v", err)
+	}
 	if callCount != 1 {
 		t.Errorf("expected 1 call (cached), got %d", callCount)
 	}
@@ -308,7 +314,9 @@ func TestHealthManager_Cache(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	// Third call should execute the checker again
-	manager.CheckComponent(ctx, "counting")
+	if _, err := manager.CheckComponent(ctx, "counting"); err != nil {
+		t.Logf("Warning: CheckComponent failed: %v", err)
+	}
 	if callCount != 2 {
 		t.Errorf("expected 2 calls (cache expired), got %d", callCount)
 	}
@@ -442,7 +450,9 @@ func BenchmarkHealthManager_CheckComponent(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		manager.CheckComponent(ctx, "test")
+		if _, err := manager.CheckComponent(ctx, "test"); err != nil {
+			b.Logf("Warning: CheckComponent failed: %v", err)
+		}
 	}
 }
 

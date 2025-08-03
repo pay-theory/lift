@@ -126,7 +126,7 @@ func validateContentType(ctx *lift.Context, config ValidationConfig) error {
 		return nil // No restrictions
 	}
 
-	contentType := ctx.Header("Content-Type")
+	contentType := ctx.Header(lift.HeaderContentType)
 	if contentType == "" {
 		return nil // No content type specified
 	}
@@ -277,7 +277,7 @@ func validateRequestBody(ctx *lift.Context, config ValidationConfig) error {
 	}
 
 	// If it's JSON, validate JSON structure
-	contentType := ctx.Header("Content-Type")
+	contentType := ctx.Header(lift.HeaderContentType)
 	if strings.Contains(strings.ToLower(contentType), "application/json") {
 		var js json.RawMessage
 		if err := json.Unmarshal(ctx.Request.Body, &js); err != nil {

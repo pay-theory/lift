@@ -26,19 +26,23 @@ func TestJWTAuthentication(t *testing.T) {
 	)
 
 	// Public endpoint
-	app.GET("/public", func(ctx *lift.Context) error {
+	if err := app.GET("/public", func(ctx *lift.Context) error {
 		return ctx.OK(map[string]bool{"public": true})
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register public route: %v", err)
+	}
 
 	// Protected endpoint
-	app.GET("/protected", func(ctx *lift.Context) error {
+	if err := app.GET("/protected", func(ctx *lift.Context) error {
 		return ctx.OK(map[string]any{
 			"user_id":       ctx.UserID(),
 			"tenant_id":     ctx.TenantID(),
 			"claims":        ctx.Claims(),
 			"authenticated": ctx.IsAuthenticated(),
 		})
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register protected route: %v", err)
+	}
 
 	t.Run("Public endpoint accessible without token", func(t *testing.T) {
 		ctx := createTestContext("GET", "/public", nil)

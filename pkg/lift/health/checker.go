@@ -223,19 +223,20 @@ func (hm *DefaultHealthManager) OverallHealth(ctx context.Context) HealthStatus 
 
 	// Determine overall status
 	totalChecks := len(results)
-	if totalChecks == 0 {
+	switch {
+	case totalChecks == 0:
 		overall.Status = StatusUnknown
 		overall.Message = "No health checkers registered"
-	} else if unhealthyCount > 0 {
+	case unhealthyCount > 0:
 		overall.Status = StatusUnhealthy
 		overall.Message = fmt.Sprintf("%d unhealthy, %d degraded, %d healthy", unhealthyCount, degradedCount, healthyCount)
-	} else if degradedCount > 0 {
+	case degradedCount > 0:
 		overall.Status = StatusDegraded
 		overall.Message = fmt.Sprintf("%d degraded, %d healthy", degradedCount, healthyCount)
-	} else if unknownCount > 0 {
+	case unknownCount > 0:
 		overall.Status = StatusUnknown
 		overall.Message = fmt.Sprintf("%d unknown, %d healthy", unknownCount, healthyCount)
-	} else {
+	default:
 		overall.Status = StatusHealthy
 		overall.Message = fmt.Sprintf("All %d components healthy", healthyCount)
 	}

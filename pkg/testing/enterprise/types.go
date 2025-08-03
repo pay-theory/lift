@@ -1471,85 +1471,159 @@ func (f *ChaosEngineeringFramework) validateExperiment(experiment *ChaosExperime
 	return nil
 }
 
-// validateHypothesis validates experiment hypothesis against results
+// validateHypothesis validates if an experiment hypothesis is met
 func (f *ChaosEngineeringFramework) validateHypothesis(experiment *ChaosExperiment, results *ExperimentResults) bool {
-	// Simple validation - no critical failures means hypothesis is valid
-	_ = experiment // Use experiment parameter to avoid unused warning
+	if experiment == nil || results == nil {
+		return false
+	}
+	
+	// Check for critical failures
 	for _, failure := range results.Failures {
 		if failure.Severity == CriticalSeverity {
 			return false
 		}
 	}
+	
+	// If recovery was attempted and failed, hypothesis is invalid
+	if results.Recovery != nil && results.Recovery.Attempted && !results.Recovery.Successful {
+		return false
+	}
+	
+	// For simplicity, assume hypothesis is valid if no critical issues
 	return true
 }
 
-// calculateImpact calculates the impact of experiment results
+// calculateImpact calculates the impact of a chaos experiment
 func (f *ChaosEngineeringFramework) calculateImpact(results *ExperimentResults) map[string]any {
 	impact := make(map[string]any)
-
-	// Calculate averages from observations
-	var totalResponseTime, totalErrorRate, totalThroughput float64
-	var count int
-
-	for _, obs := range results.Observations {
-		if obs.Type == MetricObservation {
-			if rt, ok := obs.Data["response_time_p95"].(float64); ok {
-				totalResponseTime += rt
-				count++
-			}
-			if er, ok := obs.Data["error_rate"].(float64); ok {
-				totalErrorRate += er
-			}
-			if tp, ok := obs.Data["throughput"].(float64); ok {
-				totalThroughput += tp
+	
+	if results == nil {
+		return impact
+	}
+	
+	// Calculate basic impact metrics
+	impact["failure_count"] = len(results.Failures)
+	impact["duration"] = results.Duration.String()
+	impact["recovery_successful"] = false
+	
+	if results.Recovery != nil {
+		impact["recovery_successful"] = results.Recovery.Successful
+		impact["recovery_duration"] = results.Recovery.Duration.String()
+	}
+	
+	// Extract metrics from observations
+	if len(results.Observations) > 0 {
+		var totalResponseTime, totalErrorRate, totalThroughput float64
+		count := 0
+		
+		for _, obs := range results.Observations {
+			if obs.Type == MetricObservation && obs.Data != nil {
+				if rt, ok := obs.Data["response_time_p95"].(float64); ok {
+					totalResponseTime += rt
+					count++
+				}
+				if er, ok := obs.Data["error_rate"].(float64); ok {
+					totalErrorRate += er
+				}
+				if tp, ok := obs.Data["throughput"].(float64); ok {
+					totalThroughput += tp
+				}
 			}
 		}
+		
+		if count > 0 {
+			impact["avg_response_time"] = totalResponseTime / float64(count)
+			impact["avg_error_rate"] = totalErrorRate / float64(count)
+			impact["avg_throughput"] = totalThroughput / float64(count)
+		}
 	}
-
-	if count > 0 {
-		impact["avg_response_time"] = totalResponseTime / float64(count)
-		impact["avg_error_rate"] = totalErrorRate / float64(count)
-		impact["avg_throughput"] = totalThroughput / float64(count)
-	}
-
-	impact["failure_count"] = len(results.Failures)
-	impact["recovery_successful"] = results.Recovery != nil && results.Recovery.Successful
-
+	
 	return impact
 }
 
 // generateExperimentSummary generates a summary of experiment results
 func (f *ChaosEngineeringFramework) generateExperimentSummary(experiment *ChaosExperiment, results *ExperimentResults) string {
-	summary := fmt.Sprintf("Experiment '%s' completed", experiment.Name)
-
+	if experiment == nil || results == nil {
+		return "Invalid experiment or results"
+	}
+	
+	summary := fmt.Sprintf("Chaos experiment '%s' completed with status: %s. ", 
+		experiment.Name, results.Status)
+	
 	if f.validateHypothesis(experiment, results) {
-		summary += ". Hypothesis validated"
+		summary += "Hypothesis validated successfully. "
 	} else {
-		summary += ". Hypothesis invalidated"
+		summary += "Hypothesis validation failed. "
 	}
-
-	if results.Recovery != nil && results.Recovery.Successful {
-		summary += ". System recovery completed successfully"
+	
+	if len(results.Failures) > 0 {
+		summary += fmt.Sprintf("Encountered %d failures during execution. ", len(results.Failures))
+	} else {
+		summary += "No failures encountered. "
 	}
-
+	
+	if results.Recovery != nil && results.Recovery.Attempted {
+		if results.Recovery.Successful {
+			summary += fmt.Sprintf("System recovery completed successfully in %v.", results.Recovery.Duration)
+		} else {
+			summary += "System recovery failed."
+		}
+	}
+	
 	return summary
 }
 
 // generateRecommendations generates recommendations based on experiment results
 func (f *ChaosEngineeringFramework) generateRecommendations(experiment *ChaosExperiment, results *ExperimentResults) []string {
-	_ = experiment // Use experiment parameter to avoid unused warning
-	recommendations := []string{}
-
+	var recommendations []string
+	
+	if experiment == nil || results == nil {
+		return []string{"Unable to generate recommendations due to invalid data"}
+	}
+	
+	// Base recommendation on overall results
 	if len(results.Failures) == 0 && results.Recovery != nil && results.Recovery.Successful {
-		recommendations = append(recommendations, "System shows good resilience characteristics")
+		recommendations = append(recommendations, "System demonstrates good resilience to this type of failure")
 	}
-
+	
 	if len(results.Failures) > 0 {
-		recommendations = append(recommendations, "Consider implementing additional fault tolerance measures")
+		recommendations = append(recommendations, "Consider implementing additional error handling and recovery mechanisms")
+		
+		// Check for specific failure types
+		for _, failure := range results.Failures {
+			switch failure.Severity {
+			case CriticalSeverity:
+				recommendations = append(recommendations, "Critical failures detected - immediate action required")
+			case HighSeverity:
+				recommendations = append(recommendations, "High severity issues found - prioritize fixes")
+			}
+		}
 	}
-
+	
+	if results.Recovery != nil && !results.Recovery.Successful {
+		recommendations = append(recommendations, "Recovery mechanisms need improvement")
+	}
+	
+	// Add experiment-specific recommendations
+	switch experiment.Type {
+	case NetworkChaos:
+		recommendations = append(recommendations, "Consider implementing circuit breakers and retry logic")
+	case ServiceChaos:
+		recommendations = append(recommendations, "Evaluate service dependencies and fallback mechanisms")
+	case ResourceChaos:
+		recommendations = append(recommendations, "Review resource allocation and scaling policies")
+	}
+	
+	if len(recommendations) == 0 {
+		recommendations = append(recommendations, "System performed well - continue regular chaos testing")
+	}
+	
 	return recommendations
 }
+
+
+
+
 
 // ServiceDefinition represents a service definition for contracts
 type ServiceDefinition struct {
@@ -1712,16 +1786,16 @@ func GenerateBlastRadius(experiment *ChaosExperiment) *BlastRadius {
 		severity = "medium"
 		scope = "network"
 	case ServiceChaos:
-		severity = "high"
+		severity = string(HighSeverity)
 		scope = "service"
 	case DatabaseChaos:
-		severity = "high"
+		severity = string(HighSeverity)
 		scope = "data"
 	case ResourceChaos:
 		severity = "medium"
 		scope = "infrastructure"
 	case StorageChaos:
-		severity = "high"
+		severity = string(HighSeverity)
 		scope = "data"
 	}
 

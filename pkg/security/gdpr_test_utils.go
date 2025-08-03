@@ -1,64 +1,104 @@
 package security
 
-import (
-	"time"
-)
+import "time"
 
-// createTestConsentRecord creates a test consent record for use in tests
+// Test helper functions for GDPR consent management tests
+
+// createTestConsentRecord creates a test ConsentRecord with default values
 func createTestConsentRecord() *ConsentRecord {
 	now := time.Now()
 	expiryDate := now.Add(365 * 24 * time.Hour)
 	return &ConsentRecord{
-		ID:                 "consent-123",
-		DataSubjectID:      "user-456",
-		DataSubjectEmail:   "user@example.com",
-		ConsentVersion:     "1.0",
-		ConsentDate:        now,
-		ConsentMethod:      "explicit",
-		LegalBasis:         "consent",
-		ProcessingPurposes: []string{"marketing"},
-		DataCategories:     []string{"contact_info", "preferences"},
-		ExpiryDate:         &expiryDate,
-		ConsentProof: &ConsentProof{
-			Type:      "digital_signature",
-			Method:    "web_form",
-			Evidence:  "test-signature",
-			Timestamp: now,
-			IPAddress: "192.168.1.1",
-			UserAgent: "Mozilla/5.0",
-			Verified:  true,
-			Metadata: map[string]any{
-				"form_id": "consent-form-v1",
+		ID:               "test-consent-123",
+		DataSubjectID:    "test-user-456",
+		DataSubjectEmail: "test@example.com",
+		ConsentVersion:   "1.0",
+		ConsentScope: []ConsentPurpose{
+			{
+				ID:          "analytics",
+				Name:        "Analytics",
+				Description: "Analytics tracking",
+				LegalBasis:  "consent",
+				ConsentDate: now,
+				Required:    false,
+				Consented:   true,
+			},
+			{
+				ID:          "marketing",
+				Name:        "Marketing",
+				Description: "Marketing communications",
+				LegalBasis:  "consent",
+				ConsentDate: now,
+				Required:    false,
+				Consented:   true,
 			},
 		},
-		Status:      "active",
-		Granular:    true,
-		Specific:    true,
-		Informed:    true,
-		Unambiguous: true,
-		Metadata: map[string]any{
-			"campaign_id": "summer-2024",
+		ProcessingPurposes: []string{
+			"analytics",
+			"marketing",
+			"personalization",
 		},
-		CreatedAt: now,
-		UpdatedAt: now,
+		DataCategories: []string{
+			"usage_data",
+			"preferences",
+			"device_info",
+		},
+		Recipients: []DataRecipient{
+			{
+				ID:         "proc-1",
+				Name:       "Analytics Inc",
+				Type:       "processor",
+				Country:    "US",
+				Purposes:   []string{"analytics"},
+				Safeguards: []string{"SCC"},
+			},
+		},
+		ConsentProof: &ConsentProof{
+			Type:      "digital_signature",
+			Evidence:  "User clicked consent button",
+			IPAddress: "192.168.1.1",
+			UserAgent: "Mozilla/5.0",
+			Method:    "web_form",
+			Timestamp: now,
+			Verified:  true,
+			Metadata:  make(map[string]any),
+		},
+		ConsentDate:   now,
+		ExpiryDate:    &expiryDate,
+		ConsentMethod: "web_form",
+		Status:        "active",
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		Metadata:      make(map[string]any),
+		RetentionPeriod: 365 * 24 * time.Hour,
 	}
 }
 
-// createTestGDPRManager creates a test GDPR manager for use in tests
+// createTestGDPRManager creates a test GDPRConsentManager with default configuration
 func createTestGDPRManager() *GDPRConsentManager {
-	config := GDPRConsentConfig{
-		Enabled:                  true,
-		ConsentExpiryDays:        365,
-		GranularConsentRequired:  true,
-		ConsentProofRequired:     true,
-		ConsentWithdrawalEnabled: true,
-		DataPortabilityEnabled:   true,
-		RightToErasureEnabled:    true,
-		DataRetentionDays:        2555, // 7 years
-		BreachNotificationHours:  72,
-		PrivacyByDesignEnabled:   true,
+	return &GDPRConsentManager{
+		config: GDPRConsentConfig{
+			DataRetentionPolicies: map[string]time.Duration{
+				"analytics": 90 * 24 * time.Hour,
+				"marketing": 180 * 24 * time.Hour,
+			},
+			CrossBorderTransferRules: []CrossBorderRule{},
+			ConsentRenewalDays:       365,
+			BreachNotificationHours:  72,
+			ConsentExpiryDays:        365,
+			DataRetentionDays:        90,
+			RequestProcessingDays:    30,
+			Enabled:                  true,
+			AutomaticConsentRenewal:  false,
+			GranularConsentRequired:  true,
+			ConsentWithdrawalEnabled: true,
+			DataPortabilityEnabled:   true,
+			RightToErasureEnabled:    true,
+			PrivacyByDesignEnabled:   true,
+			RequireExplicitConsent:   true,
+			RequireConsentProof:      true,
+			ConsentProofRequired:     true,
+		},
+		// The other fields will be initialized by the constructor or test setup
 	}
-	
-	manager := NewGDPRConsentManager(config)
-	return manager
 }

@@ -94,10 +94,18 @@ type AnalyticsDataStore interface {
 }
 
 // AuditEvent represents an audit event for analysis
+// Memory optimized: 472 → 464 bytes (8 bytes saved)
 type AuditEvent struct {
-	Timestamp    time.Time         `json:"timestamp"`
+	// Map first (24 bytes)
 	Metadata     map[string]any    `json:"metadata"`
+	// Slice (24 bytes)
+	DataAccessed []string          `json:"data_accessed"`
+	// Time struct (24 bytes)
+	Timestamp    time.Time         `json:"timestamp"`
+	// Structs
 	Compliance   ComplianceContext `json:"compliance"`
+	Security     SecurityContext   `json:"security"`
+	// Strings (16 bytes each)
 	Result       string            `json:"result"`
 	IPAddress    string            `json:"ip_address"`
 	TenantID     string            `json:"tenant_id"`
@@ -111,8 +119,7 @@ type AuditEvent struct {
 	RequestID    string            `json:"request_id"`
 	EventType    string            `json:"event_type"`
 	Source       string            `json:"source"`
-	Security     SecurityContext   `json:"security"`
-	DataAccessed []string          `json:"data_accessed"`
+	// Duration last (8 bytes)
 	Duration     time.Duration     `json:"duration"`
 }
 
@@ -137,12 +144,18 @@ type SecurityContext struct {
 }
 
 // RiskScore represents a calculated risk score
+// Memory optimized: 160 → 152 bytes (8 bytes saved)
 type RiskScore struct {
-	Timestamp       time.Time      `json:"timestamp"`
+	// Map first (24 bytes)
 	Metadata        map[string]any `json:"metadata"`
-	Level           string         `json:"level"`
+	// Slices (24 bytes each)
 	Factors         []RiskFactor   `json:"factors"`
 	Recommendations []string       `json:"recommendations"`
+	// Time struct (24 bytes)
+	Timestamp       time.Time      `json:"timestamp"`
+	// String (16 bytes)
+	Level           string         `json:"level"`
+	// Float64s last (8 bytes each)
 	Score           float64        `json:"score"`
 	Confidence      float64        `json:"confidence"`
 }
@@ -179,30 +192,41 @@ type TimeRange struct {
 }
 
 // RiskFeedback represents feedback for risk model improvement
+// Memory optimized: 272 → 264 bytes (8 bytes saved)
 type RiskFeedback struct {
+	// Time struct first (24 bytes)
 	Timestamp     time.Time `json:"timestamp"`
+	// Strings (16 bytes each)
 	EventID       string    `json:"event_id"`
 	FeedbackType  string    `json:"feedback_type"`
 	Comments      string    `json:"comments"`
 	ProvidedBy    string    `json:"provided_by"`
+	// Float64s last (8 bytes each)
 	ActualRisk    float64   `json:"actual_risk"`
 	PredictedRisk float64   `json:"predicted_risk"`
 	Accuracy      float64   `json:"accuracy"`
 }
 
 // Anomaly represents a detected anomaly
+// Memory optimized: 112 → 88 bytes (24 bytes saved)
 type Anomaly struct {
-	Pattern         AnomalyPattern `json:"pattern"`
-	DetectedAt      time.Time      `json:"detected_at"`
+	// Map first (24 bytes)
 	Metadata        map[string]any `json:"metadata"`
+	// Slices (24 bytes each)
+	Events          []*AuditEvent  `json:"events"`
+	Recommendations []string       `json:"recommendations"`
+	// Time struct (24 bytes)
+	DetectedAt      time.Time      `json:"detected_at"`
+	// Struct
+	Pattern         AnomalyPattern `json:"pattern"`
+	// Strings (16 bytes each)
 	Impact          string         `json:"impact"`
 	Description     string         `json:"description"`
 	Severity        string         `json:"severity"`
 	ID              string         `json:"id"`
 	Status          string         `json:"status"`
 	Type            string         `json:"type"`
-	Events          []*AuditEvent  `json:"events"`
-	Recommendations []string       `json:"recommendations"`
+	// Float64s last (8 bytes each)
 	Confidence      float64        `json:"confidence"`
 	Score           float64        `json:"score"`
 }
@@ -220,13 +244,19 @@ type AnomalyPattern struct {
 }
 
 // CompliancePrediction represents a compliance risk prediction
+// Memory optimized: 160 → 152 bytes (8 bytes saved)
 type CompliancePrediction struct {
-	GeneratedAt     time.Time              `json:"generated_at"`
+	// Map first (24 bytes)
 	Metadata        map[string]any         `json:"metadata"`
+	// Slices (24 bytes each)
 	RiskFactors     []PredictiveRiskFactor `json:"risk_factors"`
 	Scenarios       []RiskScenario         `json:"scenarios"`
 	Recommendations []string               `json:"recommendations"`
+	// Time struct (24 bytes)
+	GeneratedAt     time.Time              `json:"generated_at"`
+	// Duration (8 bytes)
 	Timeframe       time.Duration          `json:"timeframe"`
+	// Float64s last (8 bytes each)
 	PredictedRisk   float64                `json:"predicted_risk"`
 	Confidence      float64                `json:"confidence"`
 }
@@ -254,15 +284,22 @@ type RiskScenario struct {
 }
 
 // TrendPrediction represents a trend prediction
+// Memory optimized: 144 → 128 bytes (16 bytes saved)
 type TrendPrediction struct {
+	// Map first (24 bytes)
 	Metadata    map[string]any   `json:"metadata"`
-	Metric      string           `json:"metric"`
-	Direction   string           `json:"direction"`
+	// Slices (24 bytes each)
 	DataPoints  []TrendDataPoint `json:"data_points"`
 	Anomalies   []TrendAnomaly   `json:"anomalies"`
+	// Strings (16 bytes each)
+	Metric      string           `json:"metric"`
+	Direction   string           `json:"direction"`
+	// Duration (8 bytes)
 	Timeframe   time.Duration    `json:"timeframe"`
+	// Float64s (8 bytes each)
 	Magnitude   float64          `json:"magnitude"`
 	Confidence  float64          `json:"confidence"`
+	// Bool last (1 byte)
 	Seasonality bool             `json:"seasonality"`
 }
 

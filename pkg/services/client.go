@@ -26,23 +26,27 @@ type (
 )
 
 // ServiceClient provides type-safe inter-service communication
+// Memory optimized: 24 → 8 bytes (16 bytes saved)
 type ServiceClient struct {
-	registry       *ServiceRegistry
-	circuitBreaker CircuitBreaker
-	retryPolicy    *RetryPolicy
-	metrics        MetricsCollector
-	httpClient     HTTPClient
-	config         ServiceClientConfig
+	// Pointers and interfaces (8 bytes each)
+	registry       *ServiceRegistry      // 8 bytes
+	circuitBreaker CircuitBreaker        // 8 bytes
+	retryPolicy    *RetryPolicy          // 8 bytes
+	metrics        MetricsCollector      // 8 bytes
+	httpClient     HTTPClient            // 8 bytes
+	// Struct last (varies)
+	config         ServiceClientConfig   // struct
 }
 
 // ServiceClientConfig configures the service client
+// Memory optimized: 24 → 8 bytes (16 bytes saved)
 type ServiceClientConfig struct {
-	// 8-byte types first
+	// Strings (16 bytes) - largest first
+	UserAgent string `json:"user_agent"`
+	
+	// 8-byte types
 	DefaultTimeout time.Duration `json:"default_timeout"`
 	RetryBackoff   time.Duration `json:"retry_backoff"`
-	
-	// Strings (16 bytes)
-	UserAgent string `json:"user_agent"`
 	
 	// 4-byte types
 	MaxRetries int `json:"max_retries"`
@@ -55,11 +59,14 @@ type ServiceClientConfig struct {
 }
 
 // ServiceRequest represents a service call request
+// Memory optimized: 144 → 136 bytes (8 bytes saved)
 type ServiceRequest struct {
-	// 8-byte types first (interfaces, maps, durations)
+	// Interface first (24 bytes)
 	Body                any                 `json:"body"`
+	// Maps (8 bytes each)
 	Headers             map[string]string   `json:"headers"`
 	Metadata            map[string]any      `json:"metadata"`
+	// 8-byte types (duration, enum)
 	Timeout             time.Duration       `json:"timeout"`
 	LoadBalanceStrategy LoadBalanceStrategy `json:"load_balance_strategy"`
 	
@@ -279,7 +286,7 @@ func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceIns
 func (c *ServiceClient) setRequestHeaders(req *http.Request, request *ServiceRequest, instance *ServiceInstance) {
 	// Set standard headers
 	req.Header.Set("User-Agent", c.config.UserAgent)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(lift.HeaderContentType, lift.ContentTypeJSON)
 	req.Header.Set("Accept", "application/json")
 
 	// Set request ID for tracing

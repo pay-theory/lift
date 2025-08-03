@@ -353,9 +353,12 @@ func TestLambdaResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected Environment property to exist")
 	} else {
-		envMap := env.(map[string]any)
-		variables := envMap["Variables"].(map[string]string)
-		if variables["ENV"] != "dev" {
+		envMap, ok := env.(map[string]any)
+		if !ok {
+			t.Errorf("Expected Environment to be map[string]any, got %T", env)
+		} else if variables, ok := envMap["Variables"].(map[string]string); !ok {
+			t.Errorf("Expected Variables to be map[string]string, got %T", envMap["Variables"])
+		} else if variables["ENV"] != "dev" {
 			t.Errorf("Expected ENV variable 'dev', got %v", variables["ENV"])
 		}
 	}
@@ -365,8 +368,10 @@ func TestLambdaResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected Layers property to exist")
 	} else {
-		layersList := layers.([]string)
-		if len(layersList) != 1 {
+		layersList, ok := layers.([]string)
+		if !ok {
+			t.Errorf("Expected Layers to be []string, got %T", layers)
+		} else if len(layersList) != 1 {
 			t.Errorf("Expected 1 layer, got %d", len(layersList))
 		}
 	}
@@ -376,8 +381,10 @@ func TestLambdaResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected DeadLetterConfig property to exist")
 	} else {
-		dlqMap := dlqConfig.(map[string]any)
-		if dlqMap["TargetArn"] == "" {
+		dlqMap, ok := dlqConfig.(map[string]any)
+		if !ok {
+			t.Errorf("Expected DeadLetterConfig to be map[string]any, got %T", dlqConfig)
+		} else if dlqMap["TargetArn"] == "" {
 			t.Error("Expected TargetArn to be set")
 		}
 	}
@@ -452,8 +459,10 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected KeySchema property to exist")
 	} else {
-		keySchemaList := keySchema.([]map[string]any)
-		if len(keySchemaList) != 2 {
+		keySchemaList, ok := keySchema.([]map[string]any)
+		if !ok {
+			t.Errorf("Expected KeySchema to be []map[string]any, got %T", keySchema)
+		} else if len(keySchemaList) != 2 {
 			t.Errorf("Expected 2 key schema elements, got %d", len(keySchemaList))
 		}
 	}
@@ -463,8 +472,10 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected AttributeDefinitions property to exist")
 	} else {
-		attrDefsList := attrDefs.([]map[string]any)
-		if len(attrDefsList) != 3 {
+		attrDefsList, ok := attrDefs.([]map[string]any)
+		if !ok {
+			t.Errorf("Expected AttributeDefinitions to be []map[string]any, got %T", attrDefs)
+		} else if len(attrDefsList) != 3 {
 			t.Errorf("Expected 3 attribute definitions, got %d", len(attrDefsList))
 		}
 	}
@@ -474,8 +485,10 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected StreamSpecification property to exist")
 	} else {
-		streamSpecMap := streamSpec.(map[string]any)
-		if streamSpecMap["StreamViewType"] != "NEW_AND_OLD_IMAGES" {
+		streamSpecMap, ok := streamSpec.(map[string]any)
+		if !ok {
+			t.Errorf("Expected StreamSpecification to be map[string]any, got %T", streamSpec)
+		} else if streamSpecMap["StreamViewType"] != "NEW_AND_OLD_IMAGES" {
 			t.Errorf("Expected stream view type 'NEW_AND_OLD_IMAGES', got %v", streamSpecMap["StreamViewType"])
 		}
 	}
@@ -485,8 +498,10 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected SSESpecification property to exist")
 	} else {
-		sseSpecMap := sseSpec.(map[string]any)
-		if sseSpecMap["SSEEnabled"] != true {
+		sseSpecMap, ok := sseSpec.(map[string]any)
+		if !ok {
+			t.Errorf("Expected SSESpecification to be map[string]any, got %T", sseSpec)
+		} else if sseSpecMap["SSEEnabled"] != true {
 			t.Error("Expected SSE to be enabled")
 		}
 	}
@@ -496,8 +511,10 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected PointInTimeRecoverySpecification property to exist")
 	} else {
-		pitrSpecMap := pitrSpec.(map[string]any)
-		if pitrSpecMap["PointInTimeRecoveryEnabled"] != true {
+		pitrSpecMap, ok := pitrSpec.(map[string]any)
+		if !ok {
+			t.Errorf("Expected PointInTimeRecoverySpecification to be map[string]any, got %T", pitrSpec)
+		} else if pitrSpecMap["PointInTimeRecoveryEnabled"] != true {
 			t.Error("Expected point-in-time recovery to be enabled")
 		}
 	}
@@ -507,9 +524,14 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 	if !exists {
 		t.Error("Expected GlobalSecondaryIndexes property to exist")
 	} else {
-		gsisList := gsis.([]map[string]any)
+		gsisList, ok := gsis.([]map[string]any)
+		if !ok {
+			t.Errorf("Expected GlobalSecondaryIndexes to be []map[string]any, got %T", gsis)
+			return
+		}
 		if len(gsisList) != 1 {
 			t.Errorf("Expected 1 global secondary index, got %d", len(gsisList))
+			return
 		}
 
 		gsi := gsisList[0]

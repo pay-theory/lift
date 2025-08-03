@@ -13,13 +13,13 @@ import (
 // Core e-commerce domain models with multi-tenant architecture
 
 // Tenant represents a multi-tenant e-commerce store
-// Memory optimized: 520 → 456 bytes (64 bytes saved)
+// Memory optimized: 512 → 504 bytes (8 bytes saved)
 type Tenant struct {
 	// Large structs first (24+ bytes each)
 	Configuration TenantConfig `json:"configuration"`
 	Subscription  Subscription `json:"subscription"`
 	Owner         TenantOwner  `json:"owner"`
-	// Time structs (24 bytes each)
+	// Time structs (24 bytes each) 
 	CreatedAt     time.Time    `json:"createdAt"`
 	UpdatedAt     time.Time    `json:"updatedAt"`
 	// Strings (16 bytes each)
@@ -31,7 +31,7 @@ type Tenant struct {
 }
 
 // TenantConfig holds tenant-specific configuration
-// Memory optimized: 160 → 152 bytes (8 bytes saved)
+// Memory optimized: 216 → 152 bytes (64 bytes saved)
 type TenantConfig struct {
 	// Maps and slices first (24 bytes each)
 	CustomSettings  map[string]any `json:"customSettings"`

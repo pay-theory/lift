@@ -348,7 +348,9 @@ func demoIntegrationTesting() {
 		Threshold:          5.0,
 		ComparisonOperator: testing.ComparisonGreaterThanThreshold,
 	}
-	alarmsMock.PutMetricAlarm(ctx, connectionAlarm)
+	if err := alarmsMock.PutMetricAlarm(ctx, connectionAlarm); err != nil {
+		log.Printf("Warning: failed to put metric alarm: %v", err)
+	}
 
 	// Simulate application behavior
 	fmt.Printf("🎭 Simulating application behavior...\n")
@@ -389,10 +391,14 @@ func demoIntegrationTesting() {
 		},
 	}
 
-	metricsMock.PutMetricData(ctx, "PayTheory/Streamer", metrics)
+	if err := metricsMock.PutMetricData(ctx, "PayTheory/Streamer", metrics); err != nil {
+		log.Printf("Warning: failed to put metric data: %v", err)
+	}
 
 	// Evaluate monitoring
-	alarmsMock.EvaluateAlarms(ctx)
+	if err := alarmsMock.EvaluateAlarms(ctx); err != nil {
+		log.Printf("Warning: failed to evaluate alarms: %v", err)
+	}
 
 	// Report results
 	fmt.Printf("📊 Simulation Results:\n")

@@ -127,13 +127,15 @@ func main() {
 	}
 
 	// GET /products - List all products (will be cached)
-	app.GET("/products", func(ctx *lift.Context) error {
+	if err := app.GET("/products", func(ctx *lift.Context) error {
 		log.Println("Handler: Fetching all products")
 		return ctx.JSON(products)
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /products: %v", err)
+	}
 
 	// GET /products/:id - Get single product
-	app.GET("/products/:id", func(ctx *lift.Context) error {
+	if err := app.GET("/products/:id", func(ctx *lift.Context) error {
 		productID := ctx.Param("id")
 		log.Printf("Handler: Fetching product %s", productID)
 
@@ -144,10 +146,12 @@ func main() {
 		}
 
 		return ctx.NotFound("Product not found", nil)
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET /products/:id: %v", err)
+	}
 
 	// POST /products - Create product (idempotent)
-	app.POST("/products", func(ctx *lift.Context) error {
+	if err := app.POST("/products", func(ctx *lift.Context) error {
 		var newProduct Product
 		if err := ctx.ParseRequest(&newProduct); err != nil {
 			return err
@@ -159,7 +163,9 @@ func main() {
 
 		log.Printf("Handler: Created product %s", newProduct.ID)
 		return ctx.Status(201).JSON(newProduct)
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register POST /products: %v", err)
+	}
 
 	// Start the app
 	if err := app.Start(); err != nil {

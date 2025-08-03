@@ -51,7 +51,9 @@ func TestEventRouterThreadSafety(t *testing.T) {
 				},
 			}
 			for j := 0; j < numOperations; j++ {
-				router.FindEventHandler(ctx)
+				if _, err := router.FindEventHandler(ctx); err != nil {
+					t.Logf("Warning: FindEventHandler failed: %v", err)
+				}
 			}
 		}(i)
 	}

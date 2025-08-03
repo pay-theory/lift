@@ -11,13 +11,17 @@ import (
 )
 
 // MockDynamORM provides a mock implementation of DynamORM for testing
+// Memory optimized for better alignment
 type MockDynamORM struct {
+	// Sync primitive first (24 bytes)
+	mu              sync.RWMutex
+	// Maps (8 bytes each)
 	data            map[string]map[string]any
 	transactions    map[string]*MockTransaction
-	config          *dynamorm.DynamORMConfig
 	FailOnOperation map[string]error
 	Delays          map[string]time.Duration
-	mu              sync.RWMutex
+	// Pointer last (8 bytes)
+	config          *dynamorm.DynamORMConfig
 }
 
 // NewMockDynamORM creates a new mock DynamORM instance
@@ -214,18 +218,27 @@ func (m *MockDynamORM) Reset() {
 }
 
 // MockTransaction represents a mock DynamORM transaction
+// Memory optimized for better alignment
 type MockTransaction struct {
-	mock       *MockDynamORM
-	id         string
-	operations []TransactionOperation
+	// Sync primitive first (24 bytes)
 	mu         sync.RWMutex
+	// Slice (24 bytes)
+	operations []TransactionOperation
+	// Pointer (8 bytes)
+	mock       *MockDynamORM
+	// String (16 bytes)
+	id         string
+	// Bools last (1 byte each)
 	committed  bool
 	rolledBack bool
 }
 
 // TransactionOperation represents an operation within a transaction
+// Memory optimized for better alignment
 type TransactionOperation struct {
+	// Interface first (24 bytes)
 	Item  any
+	// Strings (16 bytes each)
 	Type  string
 	Table string
 	Key   string
@@ -315,11 +328,14 @@ func (tx *MockTransaction) Rollback() error {
 }
 
 // MockAWSService provides a generic mock for AWS services
+// Memory optimized for better alignment
 type MockAWSService struct {
+	// Sync primitive first (24 bytes)
+	mu        sync.RWMutex
+	// Maps (8 bytes each)
 	responses map[string]any
 	errors    map[string]error
 	callCount map[string]int
-	mu        sync.RWMutex
 }
 
 // NewMockAWSService creates a new mock AWS service
@@ -387,18 +403,26 @@ func (m *MockAWSService) Reset() {
 }
 
 // MockHTTPClient provides a mock HTTP client for external API testing
+// Memory optimized for better alignment
 type MockHTTPClient struct {
+	// Sync primitive first (24 bytes)
+	mu        sync.RWMutex
+	// Maps (8 bytes each)
 	responses map[string]*MockHTTPResponse
 	callCount map[string]int
-	mu        sync.RWMutex
 }
 
 // MockHTTPResponse represents a mock HTTP response
+// Memory optimized for better alignment
 type MockHTTPResponse struct {
+	// Map first (8 bytes)
 	Headers    map[string]string
-	Body       string
-	StatusCode int
+	// Duration (8 bytes)
 	Delay      time.Duration
+	// String (16 bytes)
+	Body       string
+	// Int last (4 bytes)
+	StatusCode int
 }
 
 // NewMockHTTPClient creates a new mock HTTP client
@@ -507,8 +531,7 @@ func (w *MockDynamORMWrapper) BeginTransaction() (any, error) {
 // extractID extracts the ID field from an item using reflection or type assertion
 func (w *MockDynamORMWrapper) extractID(item any) string {
 	// Try to extract ID field using type assertion for common types
-	switch v := item.(type) {
-	case map[string]any:
+	if v, ok := item.(map[string]any); ok {
 		if id, ok := v["id"].(string); ok {
 			return id
 		}
@@ -1142,7 +1165,7 @@ func (m *MockCloudWatchMetricsClient) PutMetricData(_ context.Context, namespace
 }
 
 // GetMetricStatistics retrieves statistics for a metric
-func (m *MockCloudWatchMetricsClient) GetMetricStatistics(ctx context.Context, namespace, metricName string, dimensions map[string]string, startTime, endTime time.Time, period int32, statistics []Statistic) (map[Statistic]float64, error) {
+func (m *MockCloudWatchMetricsClient) GetMetricStatistics(_ context.Context, namespace, metricName string, dimensions map[string]string, startTime, endTime time.Time, _ int32, statistics []Statistic) (map[Statistic]float64, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -1165,7 +1188,7 @@ func (m *MockCloudWatchMetricsClient) GetMetricStatistics(ctx context.Context, n
 		return make(map[Statistic]float64), nil
 	}
 
-	var matchingMetrics []*MockMetricDatum
+	matchingMetrics := make([]*MockMetricDatum, 0, len(namespaceMetrics))
 	for _, metric := range namespaceMetrics {
 		if metric.MetricName != metricName {
 			continue

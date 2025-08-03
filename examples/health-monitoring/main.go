@@ -182,7 +182,7 @@ func main() {
 	// Add a simple index page
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = fmt.Fprintf(w, `
+		if _, err := fmt.Fprintf(w, `
 <!DOCTYPE html>
 <html>
 <head>
@@ -246,7 +246,9 @@ func main() {
         <li>✅ Detailed error reporting</li>
     </ul>
 </body>
-</html>`)
+</html>`); err != nil {
+			log.Printf("Warning: failed to write response: %v", err)
+		}
 	})
 
 	// Demonstrate health checks

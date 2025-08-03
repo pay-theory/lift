@@ -21,7 +21,7 @@ func main() {
 
 	// Handle different scheduled events based on the rule name
 	// EventBridge sends the rule name in the event details
-	app.EventBridge("scheduled-*", func(ctx *lift.Context) error {
+	if err := app.EventBridge("scheduled-*", func(ctx *lift.Context) error {
 		// Get the event details to determine which schedule triggered
 		eventMap, ok := ctx.Request.RawEvent.(map[string]interface{})
 		if !ok {
@@ -35,7 +35,10 @@ func main() {
 		}
 
 		// The ARN contains the rule name
-		arn := resources[0].(string)
+		arn, ok := resources[0].(string)
+		if !ok {
+			return lift.NewLiftError("INVALID_ARN", "Resource ARN is not a string", 400)
+		}
 		log.Printf("Triggered by rule: %s", arn)
 
 		// Route based on the schedule
@@ -55,7 +58,9 @@ func main() {
 				"arn":    arn,
 			})
 		}
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register EventBridge handler: %v", err)
+	}
 
 	// Start Lambda handler
 	lambda.Start(app.HandleRequest)

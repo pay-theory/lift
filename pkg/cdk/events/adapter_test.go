@@ -71,7 +71,10 @@ func TestEventAdapter_HandleEventBridgeEvent(t *testing.T) {
 		"orderId":       "order-123",
 		"correlationId": "corr-456",
 	}
-	detailBytes, _ := json.Marshal(detail)
+	detailBytes, err := json.Marshal(detail)
+	if err != nil {
+		t.Fatalf("Failed to marshal detail: %v", err)
+	}
 
 	ebEvent := events.CloudWatchEvent{
 		ID:         "evt-123",
@@ -83,7 +86,7 @@ func TestEventAdapter_HandleEventBridgeEvent(t *testing.T) {
 	}
 
 	// When
-	err := adapter.HandleEventBridgeEvent(context.Background(), ebEvent)
+	err = adapter.HandleEventBridgeEvent(context.Background(), ebEvent)
 
 	// Then
 	require.NoError(t, err)
@@ -296,7 +299,10 @@ func TestLiftContextAdapter_AdaptEventBridgeToHTTP(t *testing.T) {
 		"orderId": "order-123",
 		"amount":  99.99,
 	}
-	detailBytes, _ := json.Marshal(detail)
+	detailBytes, err := json.Marshal(detail)
+	if err != nil {
+		t.Fatalf("Failed to marshal detail: %v", err)
+	}
 
 	event := events.CloudWatchEvent{
 		ID:         "evt-123",

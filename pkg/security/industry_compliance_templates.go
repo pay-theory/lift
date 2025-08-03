@@ -245,6 +245,112 @@ type RiskAssessmentTemplate struct {
 	Metadata         map[string]any `json:"metadata"`
 }
 
+// Helper functions for reducing duplication in risk assessments
+
+// createStandardRiskAssessment creates a standard risk assessment template
+func createStandardRiskAssessment(id, name, industry string, scope []string, customRiskFactors []RiskFactor, threatSources, assetCategories, impactCategories []string) RiskAssessmentTemplate {
+	// Standard risk factors that apply to most industries
+	standardRiskFactors := []RiskFactor{
+		{ID: "RF-001", Name: "Data Breach", Category: "security", Weight: 0.9},
+		{ID: "RF-002", Name: "Regulatory Non-compliance", Category: "compliance", Weight: 0.7},
+	}
+
+	// Merge custom and standard risk factors
+	allRiskFactors := make([]RiskFactor, 0, len(standardRiskFactors)+len(customRiskFactors))
+	allRiskFactors = append(allRiskFactors, standardRiskFactors...)
+	allRiskFactors = append(allRiskFactors, customRiskFactors...)
+
+	return RiskAssessmentTemplate{
+		ID:               id,
+		Name:             name,
+		Industry:         industry,
+		Scope:            scope,
+		RiskFactors:      allRiskFactors,
+		ThreatSources:    threatSources,
+		AssetCategories:  assetCategories,
+		ImpactCategories: impactCategories,
+		Methodology:      "NIST",
+		Frequency:        90 * 24 * time.Hour, // Quarterly
+	}
+}
+
+// createBankingRiskAssessment creates a banking-specific risk assessment
+func createBankingRiskAssessment() RiskAssessmentTemplate {
+	customRiskFactors := []RiskFactor{
+		{ID: "RF-BANK-001", Name: "Payment Fraud", Category: "operational", Weight: 0.8},
+	}
+
+	return createStandardRiskAssessment(
+		"BANK-RISK-001",
+		"Financial Services Risk Assessment",
+		"banking",
+		[]string{"payment_processing", "customer_data", "financial_reporting"},
+		customRiskFactors,
+		[]string{"cybercriminals", "insider_threats", "nation_states"},
+		[]string{"customer_data", "payment_systems", "financial_records"},
+		[]string{"financial", "reputational", "regulatory"},
+	)
+}
+
+// createHealthcareRiskAssessment creates a healthcare-specific risk assessment
+func createHealthcareRiskAssessment() RiskAssessmentTemplate {
+	customRiskFactors := []RiskFactor{
+		{ID: "RF-HC-001", Name: "PHI Breach", Category: "security", Weight: 0.9},
+		{ID: "RF-HC-002", Name: "Medical Device Vulnerability", Category: "operational", Weight: 0.8},
+	}
+
+	return createStandardRiskAssessment(
+		"HC-RISK-001",
+		"Healthcare Risk Assessment", 
+		"healthcare",
+		[]string{"phi_handling", "medical_devices", "clinical_systems"},
+		customRiskFactors,
+		[]string{"cybercriminals", "insider_threats", "medical_device_hackers"},
+		[]string{"phi_data", "medical_devices", "clinical_systems"},
+		[]string{"patient_safety", "privacy", "regulatory"},
+	)
+}
+
+// Helper functions for creating compliance controls
+
+// createStandardAccessControl creates a standard access control with industry-specific details
+func createStandardAccessControl(id, name, description, framework, category string, evidenceType1, evidenceDesc1 string, evidence1Automated bool, evidenceType2, evidenceDesc2, remediation string) ComplianceControl {
+	return ComplianceControl{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		Framework:   framework,
+		Category:    category,
+		Severity:    "critical",
+		Automated:   true,
+		Frequency:   24 * time.Hour,
+		Evidence: []EvidenceRequirement{
+			{Type: evidenceType1, Description: evidenceDesc1, Required: true, Automated: evidence1Automated},
+			{Type: evidenceType2, Description: evidenceDesc2, Required: true, Automated: true},
+		},
+		Remediation: remediation,
+	}
+}
+
+// createStandardMonitoringControl creates a standard monitoring control
+func createStandardMonitoringControl(id, name, description, framework string, evidenceType1, evidenceDesc1, evidenceType2, evidenceDesc2, remediation string) ComplianceControl {
+	return ComplianceControl{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		Framework:   framework,
+		Category:    "monitoring",
+		Severity:    "high",
+		Automated:   true,
+		Frequency:   time.Hour,
+		Evidence: []EvidenceRequirement{
+			{Type: evidenceType1, Description: evidenceDesc1, Required: true, Automated: true},
+			{Type: evidenceType2, Description: evidenceDesc2, Required: true, Automated: true},
+		},
+		Remediation: remediation,
+	}
+}
+
 // NewIndustryComplianceTemplateManager creates a new template manager
 func NewIndustryComplianceTemplateManager() *IndustryComplianceTemplateManager {
 	manager := &IndustryComplianceTemplateManager{
@@ -477,22 +583,7 @@ func (bct *BankingComplianceTemplate) GetAudits() []AuditRequirement {
 // GetRiskAssessments returns risk assessment templates
 func (bct *BankingComplianceTemplate) GetRiskAssessments() []RiskAssessmentTemplate {
 	return []RiskAssessmentTemplate{
-		{
-			ID:       "BANK-RISK-001",
-			Name:     "Financial Services Risk Assessment",
-			Industry: "banking",
-			Scope:    []string{"payment_processing", "customer_data", "financial_reporting"},
-			RiskFactors: []RiskFactor{
-				{ID: "RF-001", Name: "Payment Fraud", Category: "operational", Weight: 0.8},
-				{ID: "RF-002", Name: "Data Breach", Category: "security", Weight: 0.9},
-				{ID: "RF-003", Name: "Regulatory Non-compliance", Category: "compliance", Weight: 0.7},
-			},
-			ThreatSources:    []string{"cybercriminals", "insider_threats", "nation_states"},
-			AssetCategories:  []string{"customer_data", "payment_systems", "financial_records"},
-			ImpactCategories: []string{"financial", "reputational", "regulatory"},
-			Methodology:      "NIST",
-			Frequency:        90 * 24 * time.Hour, // Quarterly
-		},
+		createBankingRiskAssessment(),
 	}
 }
 
@@ -555,36 +646,25 @@ func (hct *HealthcareComplianceTemplate) GetRegulations() []string {
 // GetControls returns compliance controls
 func (hct *HealthcareComplianceTemplate) GetControls() []ComplianceControl {
 	controls := []ComplianceControl{
-		{
-			ID:          "HC-001",
-			Name:        "PHI Protection",
-			Description: "Protect Protected Health Information according to HIPAA requirements",
-			Framework:   "HIPAA",
-			Category:    "data_protection",
-			Severity:    "critical",
-			Automated:   true,
-			Frequency:   24 * time.Hour,
-			Evidence: []EvidenceRequirement{
-				{Type: "phi_encryption", Description: "PHI encryption verification", Required: true, Automated: true},
-				{Type: "access_logs", Description: "PHI access logs", Required: true, Automated: true},
-			},
-			Remediation: "Implement end-to-end encryption for all PHI",
-		},
-		{
-			ID:          "HC-002",
-			Name:        "Access Controls",
-			Description: "Implement role-based access controls for healthcare data",
-			Framework:   "HIPAA",
-			Category:    "access_control",
-			Severity:    "high",
-			Automated:   true,
-			Frequency:   time.Hour,
-			Evidence: []EvidenceRequirement{
-				{Type: "rbac_configuration", Description: "Role-based access control configuration", Required: true, Automated: true},
-				{Type: "user_access_review", Description: "User access review logs", Required: true, Automated: false},
-			},
-			Remediation: "Configure role-based access controls with minimum necessary access",
-		},
+		createStandardAccessControl(
+			"HC-001",
+			"PHI Protection",
+			"Protect Protected Health Information according to HIPAA requirements",
+			"HIPAA",
+			"data_protection",
+			"phi_encryption", "PHI encryption verification", true,
+			"access_logs", "PHI access logs",
+			"Implement end-to-end encryption for all PHI",
+		),
+		createStandardMonitoringControl(
+			"HC-002",
+			"Access Controls",
+			"Implement role-based access controls for healthcare data",
+			"HIPAA",
+			"rbac_configuration", "Role-based access control configuration",
+			"user_access_review", "User access review logs",
+			"Configure role-based access controls with minimum necessary access",
+		),
 	}
 
 	if hct.config.BreachNotification {
@@ -626,22 +706,7 @@ func (hct *HealthcareComplianceTemplate) GetAudits() []AuditRequirement {
 // GetRiskAssessments returns risk assessment templates
 func (hct *HealthcareComplianceTemplate) GetRiskAssessments() []RiskAssessmentTemplate {
 	return []RiskAssessmentTemplate{
-		{
-			ID:       "HC-RISK-001",
-			Name:     "Healthcare Risk Assessment",
-			Industry: "healthcare",
-			Scope:    []string{"phi_handling", "medical_devices", "clinical_systems"},
-			RiskFactors: []RiskFactor{
-				{ID: "RF-001", Name: "PHI Breach", Category: "security", Weight: 0.9},
-				{ID: "RF-002", Name: "Medical Device Vulnerability", Category: "operational", Weight: 0.8},
-				{ID: "RF-003", Name: "Regulatory Non-compliance", Category: "compliance", Weight: 0.7},
-			},
-			ThreatSources:    []string{"cybercriminals", "insider_threats", "medical_device_hackers"},
-			AssetCategories:  []string{"phi_data", "medical_devices", "clinical_systems"},
-			ImpactCategories: []string{"patient_safety", "privacy", "regulatory"},
-			Methodology:      "NIST",
-			Frequency:        90 * 24 * time.Hour, // Quarterly
-		},
+		createHealthcareRiskAssessment(),
 	}
 }
 
@@ -838,36 +903,25 @@ func (gct *GovernmentComplianceTemplate) GetRegulations() []string {
 // GetControls returns compliance controls
 func (gct *GovernmentComplianceTemplate) GetControls() []ComplianceControl {
 	controls := []ComplianceControl{
-		{
-			ID:          "GOV-001",
-			Name:        "Access Control",
-			Description: "Implement NIST 800-53 access control requirements",
-			Framework:   "NIST-800-53",
-			Category:    "access_control",
-			Severity:    "critical",
-			Automated:   true,
-			Frequency:   24 * time.Hour,
-			Evidence: []EvidenceRequirement{
-				{Type: "access_control_policy", Description: "Access control policy documentation", Required: true, Automated: false},
-				{Type: "access_logs", Description: "System access logs", Required: true, Automated: true},
-			},
-			Remediation: "Implement multi-factor authentication and role-based access controls",
-		},
-		{
-			ID:          "GOV-002",
-			Name:        "Continuous Monitoring",
-			Description: "Implement continuous monitoring according to NIST guidelines",
-			Framework:   "NIST-800-137",
-			Category:    "monitoring",
-			Severity:    "high",
-			Automated:   true,
-			Frequency:   time.Hour,
-			Evidence: []EvidenceRequirement{
-				{Type: "monitoring_logs", Description: "Continuous monitoring logs", Required: true, Automated: true},
-				{Type: "security_metrics", Description: "Security metrics and dashboards", Required: true, Automated: true},
-			},
-			Remediation: "Deploy automated security monitoring with real-time alerting",
-		},
+		createStandardAccessControl(
+			"GOV-001",
+			"Access Control",
+			"Implement NIST 800-53 access control requirements",
+			"NIST-800-53",
+			"access_control",
+			"access_control_policy", "Access control policy documentation", false,
+			"access_logs", "System access logs",
+			"Implement multi-factor authentication and role-based access controls",
+		),
+		createStandardMonitoringControl(
+			"GOV-002",
+			"Continuous Monitoring",
+			"Implement continuous monitoring according to NIST guidelines",
+			"NIST-800-137",
+			"monitoring_logs", "Continuous monitoring logs",
+			"security_metrics", "Security metrics and dashboards",
+			"Deploy automated security monitoring with real-time alerting",
+		),
 	}
 
 	if gct.config.CUIHandling {

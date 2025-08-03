@@ -183,9 +183,14 @@ func TestIdempotencyMiddleware(t *testing.T) {
 		assert.Equal(t, 1, callCount) // Handler not called again
 
 		// Verify errors match
-		liftErr1, _ := err1.(*lift.LiftError)
-		liftErr2, _ := err2.(*lift.LiftError)
-		assert.Equal(t, liftErr1.StatusCode, liftErr2.StatusCode)
+		var liftErr1, liftErr2 *lift.LiftError
+		liftErr1, ok1 := err1.(*lift.LiftError)
+		liftErr2, ok2 := err2.(*lift.LiftError)
+		assert.True(t, ok1, "err1 should be a LiftError")
+		assert.True(t, ok2, "err2 should be a LiftError")
+		if ok1 && ok2 {
+			assert.Equal(t, liftErr1.StatusCode, liftErr2.StatusCode)
+		}
 	})
 
 	t.Run("isolates keys by account", func(t *testing.T) {
@@ -198,7 +203,11 @@ func TestIdempotencyMiddleware(t *testing.T) {
 		})
 
 		handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
-			accountID := ctx.Get("account_id").(string)
+			accountIDVal := ctx.Get("account_id")
+			accountID, ok := accountIDVal.(string)
+			if !ok {
+				return fmt.Errorf("account_id not found")
+			}
 			response := TestPaymentIntent{
 				ID:     "pi_" + accountID,
 				Amount: 1000,
@@ -344,7 +353,9 @@ func TestMemoryIdempotencyStore(t *testing.T) {
 					CreatedAt:  time.Now(),
 					ExpiresAt:  time.Now().Add(1 * time.Hour),
 				}
-				store.Set(ctx, record.Key, record)
+				if err := store.Set(ctx, record.Key, record); err != nil {
+					t.Errorf("Failed to set record: %v", err)
+				}
 				done <- true
 			}(i)
 		}

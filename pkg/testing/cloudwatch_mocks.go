@@ -33,7 +33,8 @@ func (m *MockCloudWatchClient) PutMetricData(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.PutMetricDataOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.PutMetricDataOutput); ok {
 			return output, args.Error(1)
 		}
@@ -49,7 +50,8 @@ func (m *MockCloudWatchClient) GetMetricStatistics(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.GetMetricStatisticsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.GetMetricStatisticsOutput); ok {
 			return output, args.Error(1)
 		}
@@ -65,7 +67,8 @@ func (m *MockCloudWatchClient) PutMetricAlarm(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.PutMetricAlarmOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.PutMetricAlarmOutput); ok {
 			return output, args.Error(1)
 		}
@@ -81,7 +84,8 @@ func (m *MockCloudWatchClient) DescribeAlarms(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.DescribeAlarmsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.DescribeAlarmsOutput); ok {
 			return output, args.Error(1)
 		}
@@ -97,7 +101,8 @@ func (m *MockCloudWatchClient) DeleteAlarms(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.DeleteAlarmsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.DeleteAlarmsOutput); ok {
 			return output, args.Error(1)
 		}
@@ -113,7 +118,8 @@ func (m *MockCloudWatchClient) ListMetrics(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.ListMetricsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.ListMetricsOutput); ok {
 			return output, args.Error(1)
 		}
@@ -129,7 +135,8 @@ func (m *MockCloudWatchClient) GetMetricData(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.GetMetricDataOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.GetMetricDataOutput); ok {
 			return output, args.Error(1)
 		}
@@ -145,7 +152,8 @@ func (m *MockCloudWatchClient) PutAnomalyDetector(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.PutAnomalyDetectorOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.PutAnomalyDetectorOutput); ok {
 			return output, args.Error(1)
 		}
@@ -161,7 +169,8 @@ func (m *MockCloudWatchClient) DescribeAnomalyDetectors(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.DescribeAnomalyDetectorsOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.DescribeAnomalyDetectorsOutput); ok {
 			return output, args.Error(1)
 		}
@@ -177,7 +186,8 @@ func (m *MockCloudWatchClient) DeleteAnomalyDetector(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.DeleteAnomalyDetectorOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.DeleteAnomalyDetectorOutput); ok {
 			return output, args.Error(1)
 		}
@@ -193,7 +203,8 @@ func (m *MockCloudWatchClient) TagResource(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.TagResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.TagResourceOutput); ok {
 			return output, args.Error(1)
 		}
@@ -209,7 +220,8 @@ func (m *MockCloudWatchClient) UntagResource(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.UntagResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.UntagResourceOutput); ok {
 			return output, args.Error(1)
 		}
@@ -225,7 +237,8 @@ func (m *MockCloudWatchClient) ListTagsForResource(
 	optFns ...func(*cloudwatch.Options),
 ) (*cloudwatch.ListTagsForResourceOutput, error) {
 	args := m.Called(ctx, input, optFns)
-	if v := args.Get(0); v != nil {
+	v := args.Get(0)
+	if v != nil {
 		if output, ok := v.(*cloudwatch.ListTagsForResourceOutput); ok {
 			return output, args.Error(1)
 		}

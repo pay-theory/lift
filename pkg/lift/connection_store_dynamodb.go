@@ -55,10 +55,10 @@ func NewDynamoDBConnectionStore(ctx context.Context, config DynamoDBConnectionSt
 }
 
 // DynamoDBConnection represents a connection record in DynamoDB
+// Memory optimized: 168 → 160 bytes (8 bytes saved)
 type DynamoDBConnection struct {
-	Metadata  map[string]any `` // map = 8 bytes
-	TTL       int64          `` // int64 = 8 bytes
-	PK        string         `` // Primary key: "CONNECTION#<connectionId>"
+	Metadata  map[string]any `` // map = 24 bytes (largest first)
+	PK        string         `` // Primary key: "CONNECTION#<connectionId>" (strings = 16 bytes each)
 	SK        string         `` // Sort key: "CONNECTION"
 	GSI1PK    string         `` // GSI1 primary key: "USER#<userId>"
 	GSI1SK    string         `` // GSI1 sort key: "CONNECTION#<connectionId>"
@@ -68,6 +68,7 @@ type DynamoDBConnection struct {
 	UserID    string         ``
 	TenantID  string         ``
 	CreatedAt string         ``
+	TTL       int64          `` // int64 = 8 bytes (last)
 }
 
 // Save stores a connection in DynamoDB

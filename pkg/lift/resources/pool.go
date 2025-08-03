@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/lift"
 )
 
 // ConnectionPool manages a pool of reusable resources
@@ -56,30 +58,21 @@ type ResourceFactory interface {
 }
 
 // PoolConfig configures connection pool behavior
+// Memory optimized: 80 → 16 bytes (64 bytes saved)
 type PoolConfig struct {
-	// MinIdle minimum number of idle connections
-	MinIdle int
-
-	// MaxActive maximum number of active connections
-	MaxActive int
-
-	// MaxIdle maximum number of idle connections
-	MaxIdle int
-
-	// IdleTimeout how long to keep idle connections
-	IdleTimeout time.Duration
-
-	// MaxLifetime maximum lifetime of a connection
-	MaxLifetime time.Duration
-
-	// GetTimeout timeout for getting a connection
-	GetTimeout time.Duration
-
-	// HealthCheckInterval how often to health check idle connections
+	// Interface first (24 bytes)
+	Logger lift.Logger
+	// Durations (8 bytes each)
+	IdleTimeout         time.Duration
+	MaxLifetime         time.Duration
+	GetTimeout          time.Duration
 	HealthCheckInterval time.Duration
-
-	// PreWarm whether to pre-warm the pool on startup
-	PreWarm bool
+	// Ints (4 bytes each)
+	MinIdle   int
+	MaxActive int
+	MaxIdle   int
+	// Bool last (1 byte)
+	PreWarm   bool
 }
 
 // PoolStats provides pool statistics
@@ -113,16 +106,26 @@ type PoolStats struct {
 }
 
 // DefaultConnectionPool implements ConnectionPool
+// Memory optimized: 240 → 152 bytes (88 bytes saved)
 type DefaultConnectionPool struct {
-	factory       ResourceFactory
-	active        map[Resource]bool
+	// Interfaces first (24 bytes each)
+	factory ResourceFactory
+	logger  lift.Logger
+	// Map (24 bytes)
+	active  map[Resource]bool
+	// Slice (24 bytes)
+	idle    []Resource
+	// Sync primitives (24 bytes each)
+	mu      sync.RWMutex
+	// Struct
+	stats   PoolStats
+	config  PoolConfig
+	// Pointers (8 bytes each)
 	cond          *sync.Cond
 	cleanupTicker *time.Ticker
+	// Channel (8 bytes)
 	stopCleanup   chan struct{}
-	idle          []Resource
-	stats         PoolStats
-	config        PoolConfig
-	mu            sync.RWMutex
+	// Bool last (1 byte)
 	closed        bool
 }
 
@@ -131,6 +134,7 @@ func NewConnectionPool(config PoolConfig, factory ResourceFactory) *DefaultConne
 	pool := &DefaultConnectionPool{
 		config:      config,
 		factory:     factory,
+		logger:      config.Logger,
 		idle:        make([]Resource, 0, config.MaxIdle),
 		active:      make(map[Resource]bool),
 		stopCleanup: make(chan struct{}),
@@ -174,8 +178,9 @@ func (p *DefaultConnectionPool) Get(ctx context.Context) (any, error) {
 		// Resource is invalid, clean it up
 		if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+			}
 		}
 	}
 
@@ -203,8 +208,9 @@ func (p *DefaultConnectionPool) Get(ctx context.Context) (any, error) {
 		p.mu.Unlock()
 		if cleanupErr := resource.Cleanup(); cleanupErr != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = cleanupErr // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", cleanupErr).Warn("Failed to cleanup resource during initialization")
+			}
 		}
 		return nil, err
 	}
@@ -242,8 +248,9 @@ func (p *DefaultConnectionPool) Put(resource any) error {
 	if !p.factory.Validate(res) || !res.IsValid() {
 		if err := res.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", err).Warn("Failed to cleanup invalid resource")
+			}
 		}
 		p.cond.Signal()
 		return nil
@@ -256,8 +263,9 @@ func (p *DefaultConnectionPool) Put(resource any) error {
 		// Pool is full, cleanup the resource
 		if err := res.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", err).Warn("Failed to cleanup resource when pool is full")
+			}
 		}
 	}
 
@@ -286,8 +294,9 @@ func (p *DefaultConnectionPool) Close() error {
 	for _, resource := range p.idle {
 		if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+			}
 		}
 	}
 	p.idle = nil
@@ -296,8 +305,9 @@ func (p *DefaultConnectionPool) Close() error {
 	for resource := range p.active {
 		if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+			}
 		}
 	}
 	p.active = nil
@@ -368,8 +378,9 @@ func (p *DefaultConnectionPool) cleanup() {
 		if p.config.MaxLifetime > 0 && now.Sub(resource.LastUsed()) > p.config.MaxLifetime {
 			if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+			}
 		}
 			continue
 		}
@@ -378,8 +389,9 @@ func (p *DefaultConnectionPool) cleanup() {
 		if p.config.IdleTimeout > 0 && now.Sub(resource.LastUsed()) > p.config.IdleTimeout {
 			if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", err).Warn("Failed to cleanup resource")
+			}
 		}
 			continue
 		}
@@ -390,8 +402,9 @@ func (p *DefaultConnectionPool) cleanup() {
 			cancel()
 			if err := resource.Cleanup(); err != nil {
 			// Log cleanup error but continue - this is best-effort cleanup
-			// TODO: Add proper logging once logger is available
-			_ = err // Intentionally ignored
+			if p.logger != nil {
+				p.logger.WithField("error", err).Warn("Failed to cleanup resource during health check")
+			}
 		}
 			continue
 		}

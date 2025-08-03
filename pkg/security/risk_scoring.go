@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+const (
+	riskLevelCritical = "critical"
+	riskLevelHigh     = "high"
+	riskLevelMedium   = "medium"
+	riskLevelLow      = "low"
+)
+
 // MLRiskScorer implements ML-based risk scoring
 type MLRiskScorer struct {
 	config      RiskScoringConfig
@@ -20,17 +27,23 @@ type MLRiskScorer struct {
 
 // RiskScoringConfig configuration for risk scoring
 type RiskScoringConfig struct {
-	Enabled            bool                `json:"enabled"`
-	ModelType          string              `json:"model_type"` // "linear", "neural", "ensemble"
-	LearningRate       float64             `json:"learning_rate"`
-	AdaptiveLearning   bool                `json:"adaptive_learning"`
-	FeedbackWeight     float64             `json:"feedback_weight"`
-	BaselineUpdateFreq time.Duration       `json:"baseline_update_freq"`
+	// map (24 bytes)
 	RiskFactorWeights  map[string]float64  `json:"risk_factor_weights"`
-	ThresholdConfig    RiskThresholdConfig `json:"threshold_config"`
+	// slices (24 bytes each)
 	ContextualFactors  []string            `json:"contextual_factors"`
 	TemporalFactors    []string            `json:"temporal_factors"`
 	BehavioralFactors  []string            `json:"behavioral_factors"`
+	// struct
+	ThresholdConfig    RiskThresholdConfig `json:"threshold_config"`
+	// string (16 bytes)
+	ModelType          string              `json:"model_type"` // "linear", "neural", "ensemble"
+	// 8-byte aligned fields
+	BaselineUpdateFreq time.Duration       `json:"baseline_update_freq"`
+	LearningRate       float64             `json:"learning_rate"`
+	FeedbackWeight     float64             `json:"feedback_weight"`
+	// bool fields (1 byte each)
+	Enabled            bool                `json:"enabled"`
+	AdaptiveLearning   bool                `json:"adaptive_learning"`
 }
 
 // RiskThresholdConfig defines risk level thresholds
@@ -588,10 +601,10 @@ func (mrs *MLRiskScorer) getActionRisk(action string) float64 {
 
 func (mrs *MLRiskScorer) getSeverityRisk(severity string) float64 {
 	riskMap := map[string]float64{
-		"low":      0.2,
-		"medium":   0.5,
-		"high":     0.8,
-		"critical": 1.0,
+		riskLevelLow:      0.2,
+		riskLevelMedium:   0.5,
+		riskLevelHigh:     0.8,
+		riskLevelCritical: 1.0,
 	}
 	if risk, exists := riskMap[severity]; exists {
 		return risk
@@ -685,7 +698,7 @@ func (mrs *MLRiskScorer) getComplianceRisk(compliance ComplianceContext) float64
 	if len(compliance.Violations) > 0 {
 		return 1.0
 	}
-	if compliance.RiskLevel == "high" || compliance.RiskLevel == "critical" {
+	if compliance.RiskLevel == riskLevelHigh || compliance.RiskLevel == riskLevelCritical {
 		return 0.8
 	}
 	return 0.3
@@ -696,11 +709,11 @@ func (mrs *MLRiskScorer) getSecurityContextRisk(security SecurityContext) float6
 
 	// Threat level
 	switch security.ThreatLevel {
-	case "critical":
+	case riskLevelCritical:
 		risk += 0.4
-	case "high":
+	case riskLevelHigh:
 		risk += 0.3
-	case "medium":
+	case riskLevelMedium:
 		risk += 0.2
 	}
 
@@ -757,15 +770,15 @@ func (mrs *MLRiskScorer) applyBehavioralAdjustments(_ context.Context, _ *AuditE
 // determineRiskLevel determines risk level from score
 func (mrs *MLRiskScorer) determineRiskLevel(score float64) string {
 	if score >= mrs.config.ThresholdConfig.CriticalThreshold {
-		return "critical"
+		return riskLevelCritical
 	}
 	if score >= mrs.config.ThresholdConfig.HighThreshold {
-		return "high"
+		return riskLevelHigh
 	}
 	if score >= mrs.config.ThresholdConfig.MediumThreshold {
-		return "medium"
+		return riskLevelMedium
 	}
-	return "low"
+	return riskLevelLow
 }
 
 // calculateConfidence calculates confidence in the risk score
@@ -787,18 +800,18 @@ func (mrs *MLRiskScorer) generateRecommendations(riskLevel string, factors []Ris
 	var recommendations []string
 
 	switch riskLevel {
-	case "critical":
+	case riskLevelCritical:
 		recommendations = append(recommendations, "Immediate investigation required")
 		recommendations = append(recommendations, "Consider blocking user/session")
 		recommendations = append(recommendations, "Escalate to security team")
-	case "high":
+	case riskLevelHigh:
 		recommendations = append(recommendations, "Enhanced monitoring required")
 		recommendations = append(recommendations, "Additional authentication may be needed")
 		recommendations = append(recommendations, "Review user permissions")
-	case "medium":
+	case riskLevelMedium:
 		recommendations = append(recommendations, "Monitor for patterns")
 		recommendations = append(recommendations, "Consider additional logging")
-	case "low":
+	case riskLevelLow:
 		recommendations = append(recommendations, "Continue normal monitoring")
 	}
 

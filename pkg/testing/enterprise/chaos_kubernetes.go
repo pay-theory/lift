@@ -3,6 +3,7 @@ package enterprise
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -561,7 +562,9 @@ func (c *ChaosMeshIntegration) CreateExperiment(ctx context.Context, spec *Chaos
 		Severity: EventSeverityInfo,
 		Tags:     []string{"experiment", "started"},
 	}
-	c.eventBus.PublishEvent(ctx, event)
+	if err := c.eventBus.PublishEvent(ctx, event); err != nil {
+		log.Printf("Warning: failed to publish chaos experiment start event: %v", err)
+	}
 
 	return result, nil
 }
@@ -598,7 +601,9 @@ func (c *ChaosMeshIntegration) StopExperiment(ctx context.Context, experimentID 
 		Severity:  EventSeverityInfo,
 		Tags:      []string{"experiment", "stopped"},
 	}
-	c.eventBus.PublishEvent(ctx, event)
+	if err := c.eventBus.PublishEvent(ctx, event); err != nil {
+		log.Printf("Warning: failed to publish chaos experiment stop event: %v", err)
+	}
 
 	return nil
 }

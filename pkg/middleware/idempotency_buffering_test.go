@@ -25,13 +25,15 @@ func TestIdempotencyMiddlewareWithBuffering(t *testing.T) {
 	handlerCalls := 0
 
 	// Register a test handler
-	app.POST("/api/test", func(ctx *lift.Context) error {
+	if err := app.POST("/api/test", func(ctx *lift.Context) error {
 		handlerCalls++
 		return ctx.JSON(map[string]interface{}{
 			"status": "success",
 			"calls":  handlerCalls,
 		})
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register route: %v", err)
+	}
 
 	// Create first request with idempotency key
 	req1 := &lift.Request{

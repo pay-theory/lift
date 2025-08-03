@@ -11,32 +11,43 @@ import (
 
 // DisasterRecoveryManager manages disaster recovery operations
 type DisasterRecoveryManager struct {
-	config          DRConfig
-	currentState    DRState
-	metrics         DRMetrics
+	// mutex first (24 bytes)
 	mu              sync.RWMutex
-	primaryRegion   string
+	// slices (24 bytes each)
 	backupRegions   []string
 	failoverHistory []FailoverEvent
+	// pointers (8 bytes each)
 	healthMonitor   *HealthMonitor
 	dataSync        *DataSynchronizer
 	notificationMgr *NotificationManager
+	// structs
+	config          DRConfig
+	currentState    DRState
+	metrics         DRMetrics
+	// string (16 bytes)
+	primaryRegion   string
 }
 
 // DRConfig holds disaster recovery configuration
 type DRConfig struct {
+	// slice (24 bytes)
+	BackupRegions    []string              `json:"backup_regions"`
+	// structs (ordered by importance)
 	HealthCheck      HealthCheckConfig     `json:"health_check"`
 	DataReplication  DataReplicationConfig `json:"data_replication"`
 	Notifications    NotificationConfig    `json:"notifications"`
 	BackupRetention  BackupRetentionConfig `json:"backup_retention"`
 	TestingSchedule  TestingScheduleConfig `json:"testing_schedule"`
+	// strings (16 bytes each)
 	ApplicationName  string                `json:"application_name"`
 	Environment      string                `json:"environment"`
 	PrimaryRegion    string                `json:"primary_region"`
-	BackupRegions    []string              `json:"backup_regions"`
+	// 8-byte aligned fields
 	RPO              time.Duration         `json:"rpo"` // Recovery Point Objective
 	RTO              time.Duration         `json:"rto"` // Recovery Time Objective
+	// smaller fields
 	FailoverStrategy FailoverStrategyType  `json:"failover_strategy"`
+	// bool fields (1 byte each)
 	AutoFailover     bool                  `json:"auto_failover"`
 	AutoFailback     bool                  `json:"auto_failback"`
 }
@@ -53,15 +64,20 @@ const (
 
 // DRState represents the current disaster recovery state
 type DRState struct {
-	Status          DRStatus                `json:"status"`
-	ActiveRegion    string                  `json:"active_region"`
+	// slice (24 bytes)
 	StandbyRegions  []string                `json:"standby_regions"`
+	// map (24 bytes)
+	RegionHealth    map[string]RegionHealth `json:"region_health"`
+	// time.Time (24 bytes each)
 	LastFailover    time.Time               `json:"last_failover"`
 	LastFailback    time.Time               `json:"last_failback"`
 	LastHealthCheck time.Time               `json:"last_health_check"`
-	DataSyncStatus  DataSyncStatus          `json:"data_sync_status"`
-	RegionHealth    map[string]RegionHealth `json:"region_health"`
+	// strings (16 bytes each)
+	ActiveRegion    string                  `json:"active_region"`
 	FailoverReason  string                  `json:"failover_reason,omitempty"`
+	// smaller fields
+	Status          DRStatus                `json:"status"`
+	DataSyncStatus  DataSyncStatus          `json:"data_sync_status"`
 }
 
 // DRStatus represents disaster recovery status
@@ -666,8 +682,7 @@ func (drm *DisasterRecoveryManager) rollbackFailover(ctx context.Context, event 
 		"event": event,
 	}); err != nil {
 		// Log notification error but don't fail rollback operation
-		// Silently ignore notification errors to not impact rollback
-		_ = err
+		log.Printf("Failed to send failover rollback notification: %v", err)
 	}
 
 	return event, nil
@@ -737,8 +752,7 @@ func (drm *DisasterRecoveryManager) handleHealthEvent(ctx context.Context, event
 							"to_region":   targetRegion,
 						}); notifyErr != nil {
 							// Log notification error but continue
-							// TODO: Add proper logging once logger is available
-							_ = notifyErr
+							log.Printf("Failed to send recovery test notification: %v", notifyErr)
 						}
 					}
 				}()
@@ -769,8 +783,7 @@ func (drm *DisasterRecoveryManager) handleSyncEvent(ctx context.Context, event S
 			"replication_lag": event.ReplicationLag,
 		}); err != nil {
 			// Log notification error but continue
-			// TODO: Add proper logging once logger is available
-			_ = err
+			log.Printf("Failed to send notification: %v", err)
 		}
 	}
 }
@@ -823,8 +836,7 @@ func (drm *DisasterRecoveryManager) performDRTest(ctx context.Context) {
 		"scheduled_time": time.Now().Add(drm.config.TestingSchedule.NotifyBefore),
 	}); err != nil {
 		// Log notification error but continue with test
-		// TODO: Add proper logging once logger is available
-		_ = err
+		log.Printf("Failed to send DR test starting notification: %v", err)
 	}
 
 	// Wait for notification period
@@ -865,8 +877,7 @@ func (drm *DisasterRecoveryManager) executeTestFailover(ctx context.Context, eve
 		"success": event.Status == FailoverStatusCompleted,
 	}); err != nil {
 		// Log notification error but continue
-		// TODO: Add proper logging once logger is available
-		_ = err
+		log.Printf("Failed to send DR test completed notification: %v", err)
 	}
 }
 

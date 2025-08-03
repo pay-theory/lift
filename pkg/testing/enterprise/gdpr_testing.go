@@ -137,7 +137,10 @@ func (tester *GDPRComplianceTester) TestRightToRectification(_ context.Context, 
 	}
 
 	// Apply updates
-	dataMap := userData.(map[string]any)
+	dataMap, ok := userData.(map[string]any)
+	if !ok {
+		return fmt.Errorf("userData must be a map[string]any for updates")
+	}
 	for key, value := range updates {
 		dataMap[key] = value
 	}

@@ -80,7 +80,9 @@ func TestUserService_QueryUsers_WithMockTable(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, output.Item)
-	assert.Equal(t, "Test User", output.Item["name"].(*types.AttributeValueMemberS).Value)
+	nameAttr, ok := output.Item["name"].(*types.AttributeValueMemberS)
+	assert.True(t, ok, "name attribute should be a string")
+	assert.Equal(t, "Test User", nameAttr.Value)
 }
 
 // Example 3: Integration testing with DynamoDB Local
@@ -121,8 +123,12 @@ func TestPaymentService_Integration(t *testing.T) {
 	})
 
 	assert.NotNil(t, retrieved)
-	assert.Equal(t, "1000", retrieved["amount"].(*types.AttributeValueMemberN).Value)
-	assert.Equal(t, "pending", retrieved["status"].(*types.AttributeValueMemberS).Value)
+	amountAttr, ok := retrieved["amount"].(*types.AttributeValueMemberN)
+	assert.True(t, ok, "amount should be a number")
+	assert.Equal(t, "1000", amountAttr.Value)
+	statusAttr, ok := retrieved["status"].(*types.AttributeValueMemberS)
+	assert.True(t, ok, "status should be a string")
+	assert.Equal(t, "pending", statusAttr.Value)
 
 	// Query by user ID using GSI
 	ctx := context.Background()
@@ -153,9 +159,15 @@ func TestDynamORMModel_Serialization(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify attributes
-	assert.Equal(t, "USER#123", av["pk"].(*types.AttributeValueMemberS).Value)
-	assert.Equal(t, "PROFILE", av["sk"].(*types.AttributeValueMemberS).Value)
-	assert.Equal(t, "user", av["type"].(*types.AttributeValueMemberS).Value)
+	pkAttr, ok := av["pk"].(*types.AttributeValueMemberS)
+	assert.True(t, ok, "pk should be a string")
+	assert.Equal(t, "USER#123", pkAttr.Value)
+	skAttr, ok := av["sk"].(*types.AttributeValueMemberS)
+	assert.True(t, ok, "sk should be a string")
+	assert.Equal(t, "PROFILE", skAttr.Value)
+	typeAttr, ok := av["type"].(*types.AttributeValueMemberS)
+	assert.True(t, ok, "type should be a string")
+	assert.Equal(t, "user", typeAttr.Value)
 	assert.NotNil(t, av["created_at"])
 	assert.NotNil(t, av["updated_at"])
 
@@ -252,10 +264,13 @@ func BenchmarkPutItem_WithMocks(b *testing.B) {
 
 	// Run benchmark
 	for i := 0; i < b.N; i++ {
-		_, _ = mockClient.PutItem(ctx, &dynamodb.PutItemInput{
+		_, err := mockClient.PutItem(ctx, &dynamodb.PutItemInput{
 			TableName: aws.String("benchmark-table"),
 			Item:      item,
 		})
+		if err != nil {
+			b.Fatalf("PutItem failed: %v", err)
+		}
 	}
 }
 
@@ -295,7 +310,9 @@ func (s *PaymentServiceTestSuite) TestCreatePayment() {
 	})
 
 	s.NotNil(retrieved)
-	s.Equal("5000", retrieved["amount"].(*types.AttributeValueMemberN).Value)
+	amountAttr, ok := retrieved["amount"].(*types.AttributeValueMemberN)
+	s.True(ok, "amount should be a number")
+	s.Equal("5000", amountAttr.Value)
 }
 
 func (s *PaymentServiceTestSuite) TestQueryUserPayments() {

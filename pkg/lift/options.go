@@ -9,16 +9,18 @@ import (
 
 // JWTAuthConfig holds configuration for JWT authentication
 type JWTAuthConfig struct {
-	// 8-byte aligned fields (interfaces, functions, slices)
-	PublicKey    any                                   // Public key for RSA/ECDSA algorithms
-	ErrorHandler func(ctx *Context, err error) error  // Custom error handler
-	Validator    func(claims jwt.MapClaims) error      // Custom claims validator
+	// Slice first (24 bytes)
 	SkipPaths    []string                              // Skip authentication for these paths
 
 	// Strings (16 bytes each)
 	Secret      string // Secret key for HMAC algorithms
 	Algorithm   string // Algorithm to use (HS256, RS256, etc)
 	TokenLookup string // Token lookup string (e.g., "header:Authorization,query:token")
+
+	// 8-byte aligned fields (interfaces, functions)
+	PublicKey    any                                   // Public key for RSA/ECDSA algorithms
+	ErrorHandler func(ctx *Context, err error) error  // Custom error handler
+	Validator    func(claims jwt.MapClaims) error      // Custom claims validator
 }
 
 // WithJWTAuth adds JWT authentication middleware to the application
@@ -52,6 +54,7 @@ func WithSimpleJWTAuth(secret string) AppOption {
 }
 
 // SecurityConfig holds configuration for security middleware
+// Memory optimized: 96 → 88 bytes (8 bytes saved)
 type SecurityConfig struct {
 	// 8-byte aligned fields (functions, slices)
 	Handler       func(ctx *Context) error                                  // Custom security handler

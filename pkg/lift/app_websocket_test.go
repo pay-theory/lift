@@ -92,9 +92,9 @@ func TestWebSocketHandler(t *testing.T) {
 	t.Run("Connect Event", func(t *testing.T) {
 		event := createTestWebSocketEvent("$connect", "conn123", "")
 
-		resp, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+		assert.True(t, ok, "Handler should be a WebSocket handler function")
+		resp, err := wsHandler(context.Background(), event)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 200, resp.StatusCode)
@@ -105,9 +105,9 @@ func TestWebSocketHandler(t *testing.T) {
 	t.Run("Disconnect Event", func(t *testing.T) {
 		event := createTestWebSocketEvent("$disconnect", "conn123", "")
 
-		resp, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+		assert.True(t, ok, "Handler should be a WebSocket handler function")
+		resp, err := wsHandler(context.Background(), event)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 200, resp.StatusCode)
@@ -118,9 +118,9 @@ func TestWebSocketHandler(t *testing.T) {
 	t.Run("Custom Message Event", func(t *testing.T) {
 		event := createTestWebSocketEvent("sendMessage", "conn123", `{"message":"hello"}`)
 
-		resp, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+		assert.True(t, ok, "Handler should be a WebSocket handler function")
+		resp, err := wsHandler(context.Background(), event)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 200, resp.StatusCode)
@@ -131,9 +131,9 @@ func TestWebSocketHandler(t *testing.T) {
 	t.Run("Unhandled Route", func(t *testing.T) {
 		event := createTestWebSocketEvent("unknownRoute", "conn123", "")
 
-		resp, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+		assert.True(t, ok, "Handler should be a WebSocket handler function")
+		resp, err := wsHandler(context.Background(), event)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 404, resp.StatusCode)
@@ -177,9 +177,9 @@ func TestWebSocketWithMiddleware(t *testing.T) {
 	handler := app.WebSocketHandler()
 	event := createTestWebSocketEvent("$connect", "conn123", "")
 
-	_, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-		context.Background(), event,
-	)
+	wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+	assert.True(t, ok, "Handler should be a WebSocket handler function")
+	_, err := wsHandler(context.Background(), event)
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{
@@ -221,9 +221,9 @@ func TestWebSocketAutoConnectionManagement(t *testing.T) {
 	t.Run("Auto Save Connection", func(t *testing.T) {
 		event := createTestWebSocketEvent("$connect", "conn123", "")
 
-		_, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+		assert.True(t, ok, "Handler should be a WebSocket handler function")
+		_, err := wsHandler(context.Background(), event)
 
 		assert.NoError(t, err)
 		assert.Len(t, mockStore.connections, 1)
@@ -236,9 +236,9 @@ func TestWebSocketAutoConnectionManagement(t *testing.T) {
 	t.Run("Auto Remove Connection", func(t *testing.T) {
 		event := createTestWebSocketEvent("$disconnect", "conn123", "")
 
-		_, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+		assert.True(t, ok, "Handler should be a WebSocket handler function")
+		_, err := wsHandler(context.Background(), event)
 
 		assert.NoError(t, err)
 		assert.Len(t, mockStore.connections, 0)
@@ -266,9 +266,9 @@ func TestWebSocketDefaultHandler(t *testing.T) {
 	t.Run("Specific Route", func(t *testing.T) {
 		event := createTestWebSocketEvent("$connect", "conn123", "")
 
-		resp, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+		assert.True(t, ok, "Handler should be a WebSocket handler function")
+		resp, err := wsHandler(context.Background(), event)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 200, resp.StatusCode)
@@ -280,9 +280,9 @@ func TestWebSocketDefaultHandler(t *testing.T) {
 		defaultCalled = false
 		event := createTestWebSocketEvent("unknownRoute", "conn123", "")
 
-		resp, err := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))(
-			context.Background(), event,
-		)
+		wsHandler, ok := handler.(func(context.Context, events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error))
+		assert.True(t, ok, "Handler should be a WebSocket handler function")
+		resp, err := wsHandler(context.Background(), event)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 200, resp.StatusCode)

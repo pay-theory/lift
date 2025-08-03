@@ -537,7 +537,11 @@ func createLiftContext(r *http.Request) *lift.Context {
 
 	// Read body if present
 	if r.Body != nil {
-		defer func() { _ = r.Body.Close() }()
+		defer func() {
+			if err := r.Body.Close(); err != nil {
+				log.Printf("Warning: failed to close request body: %v", err)
+			}
+		}()
 		if bodyBytes, err := json.Marshal(r.Body); err == nil {
 			request.Body = bodyBytes
 		}

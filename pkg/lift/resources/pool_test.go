@@ -156,7 +156,9 @@ func TestConnectionPool_MaxActive(t *testing.T) {
 	}
 
 	// Return one resource
-	pool.Put(resource1)
+	if err := pool.Put(resource1); err != nil {
+		t.Logf("Warning: failed to put resource: %v", err)
+	}
 
 	// Now we should be able to get another
 	ctx = context.Background()
@@ -165,8 +167,12 @@ func TestConnectionPool_MaxActive(t *testing.T) {
 		t.Fatalf("failed to get resource after put: %v", err)
 	}
 
-	pool.Put(resource2)
-	pool.Put(resource3)
+	if err := pool.Put(resource2); err != nil {
+		t.Logf("Warning: failed to put resource: %v", err)
+	}
+	if err := pool.Put(resource3); err != nil {
+		t.Logf("Warning: failed to put resource: %v", err)
+	}
 }
 
 func TestConnectionPool_HealthCheck(t *testing.T) {
@@ -193,10 +199,20 @@ func TestConnectionPool_HealthCheck(t *testing.T) {
 	}
 
 	// Add some connections
-	resource1, _ := pool.Get(ctx)
-	resource2, _ := pool.Get(ctx)
-	pool.Put(resource1)
-	pool.Put(resource2)
+	resource1, err := pool.Get(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get resource1: %v", err)
+	}
+	resource2, err := pool.Get(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get resource2: %v", err)
+	}
+	if err := pool.Put(resource1); err != nil {
+		t.Logf("Warning: failed to put resource: %v", err)
+	}
+	if err := pool.Put(resource2); err != nil {
+		t.Logf("Warning: failed to put resource: %v", err)
+	}
 
 	// Now health check should pass
 	err = pool.HealthCheck(ctx)
@@ -282,8 +298,13 @@ func TestConnectionPool_ResourceValidation(t *testing.T) {
 		t.Fatalf("failed to get resource: %v", err)
 	}
 
-	mockRes := resource.(*mockResource)
-	mockRes.Cleanup() // Invalidate the resource
+	mockRes, ok := resource.(*mockResource)
+	if !ok {
+		t.Fatalf("Expected resource to be *mockResource, got %T", resource)
+	}
+	if err := mockRes.Cleanup(); err != nil {
+		t.Logf("Warning: cleanup failed: %v", err)
+	} // Invalidate the resource
 
 	// Put it back - should be cleaned up
 	err = pool.Put(resource)
@@ -480,7 +501,9 @@ func BenchmarkResourceManager_HealthCheck(b *testing.B) {
 		factory := &mockFactory{}
 		pool := NewConnectionPool(poolConfig, factory)
 
-		manager.RegisterPool(fmt.Sprintf("pool-%d", i), pool)
+		if err := manager.RegisterPool(fmt.Sprintf("pool-%d", i), pool); err != nil {
+			b.Fatalf("Failed to register pool-%d: %v", i, err)
+		}
 	}
 
 	ctx := context.Background()

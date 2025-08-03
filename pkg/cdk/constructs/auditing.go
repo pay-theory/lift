@@ -372,42 +372,44 @@ func createLogGroup(scope constructs.Construct, id string, logGroupName string, 
 	return awslogs.NewLogGroup(scope, jsii.String(id), &awslogs.LogGroupProps{
 		LogGroupName: jsii.String(logGroupName),
 		Retention: func() awslogs.RetentionDays {
-			if *retentionDays <= 1 {
+			switch {
+			case *retentionDays <= 1:
 				return awslogs.RetentionDays_ONE_DAY
-			} else if *retentionDays <= 3 {
+			case *retentionDays <= 3:
 				return awslogs.RetentionDays_THREE_DAYS
-			} else if *retentionDays <= 5 {
+			case *retentionDays <= 5:
 				return awslogs.RetentionDays_FIVE_DAYS
-			} else if *retentionDays <= 7 {
+			case *retentionDays <= 7:
 				return awslogs.RetentionDays_ONE_WEEK
-			} else if *retentionDays <= 14 {
+			case *retentionDays <= 14:
 				return awslogs.RetentionDays_TWO_WEEKS
-			} else if *retentionDays <= 30 {
+			case *retentionDays <= 30:
 				return awslogs.RetentionDays_ONE_MONTH
-			} else if *retentionDays <= 60 {
+			case *retentionDays <= 60:
 				return awslogs.RetentionDays_TWO_MONTHS
-			} else if *retentionDays <= 90 {
+			case *retentionDays <= 90:
 				return awslogs.RetentionDays_THREE_MONTHS
-			} else if *retentionDays <= 120 {
+			case *retentionDays <= 120:
 				return awslogs.RetentionDays_FOUR_MONTHS
-			} else if *retentionDays <= 150 {
+			case *retentionDays <= 150:
 				return awslogs.RetentionDays_FIVE_MONTHS
-			} else if *retentionDays <= 180 {
+			case *retentionDays <= 180:
 				return awslogs.RetentionDays_SIX_MONTHS
-			} else if *retentionDays <= 365 {
+			case *retentionDays <= 365:
 				return awslogs.RetentionDays_ONE_YEAR
-			} else if *retentionDays <= 400 {
+			case *retentionDays <= 400:
 				return awslogs.RetentionDays_THIRTEEN_MONTHS
-			} else if *retentionDays <= 545 {
+			case *retentionDays <= 545:
 				return awslogs.RetentionDays_EIGHTEEN_MONTHS
-			} else if *retentionDays <= 730 {
+			case *retentionDays <= 730:
 				return awslogs.RetentionDays_TWO_YEARS
-			} else if *retentionDays <= 1827 {
+			case *retentionDays <= 1827:
 				return awslogs.RetentionDays_FIVE_YEARS
-			} else if *retentionDays <= 3653 {
+			case *retentionDays <= 3653:
 				return awslogs.RetentionDays_TEN_YEARS
+			default:
+				return awslogs.RetentionDays_INFINITE
 			}
-			return awslogs.RetentionDays_INFINITE
 		}(),
 		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
 		EncryptionKey: encryptionKey,
@@ -483,9 +485,9 @@ func createFirehoseDeliveryStream(scope constructs.Construct, props *AuditingPro
 
 // createAuditLambdaFunction creates a Lambda function with common audit configurations
 func createAuditLambdaFunction(scope constructs.Construct, id string, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key, config struct {
+	Timeout      awscdk.Duration
 	FunctionName string
 	Description  string
-	Timeout      awscdk.Duration
 	Permissions  string // "read" or "readwrite"
 }) awslambda.Function {
 	return CreateStandardLambdaFunction(scope, id, bucket, encryptionKey, LambdaFunctionConfig{
@@ -504,9 +506,9 @@ func createAuditLambdaFunction(scope constructs.Construct, id string, props *Aud
 // createLogProcessingFunction creates a Lambda function for log processing
 func createLogProcessingFunction(scope constructs.Construct, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key, stream awskinesis.Stream) awslambda.Function {
 	function := createAuditLambdaFunction(scope, "LogProcessingFunction", props, bucket, encryptionKey, struct {
+		Timeout      awscdk.Duration
 		FunctionName string
 		Description  string
-		Timeout      awscdk.Duration
 		Permissions  string
 	}{
 		FunctionName: fmt.Sprintf("%s-log-processing", *props.AppName),
@@ -555,50 +557,67 @@ func createLogProcessingFunction(scope constructs.Construct, props *AuditingProp
 	return function
 }
 
-// createIntegrityCheckingFunction creates a Lambda function for log integrity checking
-func createIntegrityCheckingFunction(scope constructs.Construct, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key) awslambda.Function {
-	function := createAuditLambdaFunction(scope, "IntegrityCheckingFunction", props, bucket, encryptionKey, struct {
+// createScheduledAuditFunction creates a Lambda function with scheduled execution for audit tasks
+func createScheduledAuditFunction(scope constructs.Construct, id string, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key, config struct {
+	Schedule       awsevents.Schedule
+	FunctionSuffix string
+	Description    string
+	Permissions    string
+	RuleID         string
+}) awslambda.Function {
+	function := createAuditLambdaFunction(scope, id, props, bucket, encryptionKey, struct {
+		Timeout      awscdk.Duration
 		FunctionName string
 		Description  string
-		Timeout      awscdk.Duration
 		Permissions  string
 	}{
-		FunctionName: fmt.Sprintf("%s-integrity-checking", *props.AppName),
-		Description:  "Audit log integrity checking function",
+		FunctionName: fmt.Sprintf("%s-%s", *props.AppName, config.FunctionSuffix),
+		Description:  config.Description,
 		Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
-		Permissions:  "read",
+		Permissions:  config.Permissions,
 	})
 
-	// Schedule integrity checks
-	rule := awsevents.NewRule(scope, jsii.String("IntegrityCheckRule"), &awsevents.RuleProps{
-		Schedule: awsevents.Schedule_Rate(awscdk.Duration_Hours(jsii.Number(24))),
+	// Schedule the function
+	rule := awsevents.NewRule(scope, jsii.String(config.RuleID), &awsevents.RuleProps{
+		Schedule: config.Schedule,
 	})
 	rule.AddTarget(awseventstargets.NewLambdaFunction(function, nil))
 
 	return function
 }
 
+// createIntegrityCheckingFunction creates a Lambda function for log integrity checking
+func createIntegrityCheckingFunction(scope constructs.Construct, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key) awslambda.Function {
+	return createScheduledAuditFunction(scope, "IntegrityCheckingFunction", props, bucket, encryptionKey, struct {
+		Schedule       awsevents.Schedule
+		FunctionSuffix string
+		Description    string
+		Permissions    string
+		RuleID         string
+	}{
+		FunctionSuffix: "integrity-checking",
+		Description:    "Audit log integrity checking function",
+		Permissions:    "read",
+		RuleID:         "IntegrityCheckRule",
+		Schedule:       awsevents.Schedule_Rate(awscdk.Duration_Hours(jsii.Number(24))),
+	})
+}
+
 // createAuditComplianceFunction creates a Lambda function for compliance reporting
 func createAuditComplianceFunction(scope constructs.Construct, props *AuditingProps, bucket awss3.Bucket, encryptionKey awskms.Key) awslambda.Function {
-	function := createAuditLambdaFunction(scope, "ComplianceFunction", props, bucket, encryptionKey, struct {
-		FunctionName string
-		Description  string
-		Timeout      awscdk.Duration
-		Permissions  string
+	return createScheduledAuditFunction(scope, "ComplianceFunction", props, bucket, encryptionKey, struct {
+		Schedule       awsevents.Schedule
+		FunctionSuffix string
+		Description    string
+		Permissions    string
+		RuleID         string
 	}{
-		FunctionName: fmt.Sprintf("%s-compliance-reporting", *props.AppName),
-		Description:  "Audit compliance reporting function",
-		Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
-		Permissions:  "readwrite",
+		FunctionSuffix: "compliance-reporting",
+		Description:    "Audit compliance reporting function",
+		Permissions:    "readwrite",
+		RuleID:         "ComplianceReportRule",
+		Schedule:       awsevents.Schedule_Rate(awscdk.Duration_Days(jsii.Number(7))),
 	})
-
-	// Schedule compliance reports
-	rule := awsevents.NewRule(scope, jsii.String("ComplianceReportRule"), &awsevents.RuleProps{
-		Schedule: awsevents.Schedule_Rate(awscdk.Duration_Days(jsii.Number(7))),
-	})
-	rule.AddTarget(awseventstargets.NewLambdaFunction(function, nil))
-
-	return function
 }
 
 // createAuditDashboard creates a CloudWatch dashboard for audit monitoring
@@ -633,14 +652,10 @@ func createAuditDashboard(scope constructs.Construct, props *AuditingProps, appL
 
 // createLogMetricAlarm creates a CloudWatch alarm for log metrics
 func createLogMetricAlarm(scope constructs.Construct, id string, _ *AuditingProps, config struct {
-	// Pointer first (8 bytes)
-	LogGroupName    *string
-	// Float64 (8 bytes)
-	Threshold       float64
-	// String (16 bytes)
-	AlarmName       string
-	// Ints grouped together (4 bytes each)
-	PeriodMinutes   int
+	AlarmName         string
+	LogGroupName      *string
+	Threshold         float64
+	PeriodMinutes     int
 	EvaluationPeriods int
 	DatapointsToAlarm int
 }) awscloudwatch.Alarm {
@@ -668,14 +683,10 @@ func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogG
 
 	// Failed login attempts alarm
 	failedLoginAlarm := createLogMetricAlarm(scope, "FailedLoginAlarm", props, struct {
-		// Pointer first (8 bytes)
-		LogGroupName    *string
-		// Float64 (8 bytes)
-		Threshold       float64
-		// String (16 bytes)
-		AlarmName       string
-		// Ints grouped together (4 bytes each)
-		PeriodMinutes   int
+		AlarmName         string
+		LogGroupName      *string
+		Threshold         float64
+		PeriodMinutes     int
 		EvaluationPeriods int
 		DatapointsToAlarm int
 	}{
@@ -690,14 +701,10 @@ func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogG
 
 	// Suspicious activity alarm
 	suspiciousActivityAlarm := createLogMetricAlarm(scope, "SuspiciousActivityAlarm", props, struct {
-		// Pointer first (8 bytes)
-		LogGroupName    *string
-		// Float64 (8 bytes)
-		Threshold       float64
-		// String (16 bytes)
-		AlarmName       string
-		// Ints grouped together (4 bytes each)
-		PeriodMinutes   int
+		AlarmName         string
+		LogGroupName      *string
+		Threshold         float64
+		PeriodMinutes     int
 		EvaluationPeriods int
 		DatapointsToAlarm int
 	}{

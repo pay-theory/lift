@@ -16,15 +16,15 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	// Performance settings (8 bytes each) - largest individual fields first
-	MaxRequestSize  int64 `json:"max_request_size"`
-	MaxResponseSize int64 `json:"max_response_size"`
-
-	// Security (slice = 24 bytes)
+	// Security (slice = 24 bytes) - largest first
 	AllowedOrigins []string `json:"allowed_origins"`
 
 	// Observability (string = 16 bytes)
 	LogLevel string `json:"log_level"`
+
+	// Performance settings (8 bytes each)
+	MaxRequestSize  int64 `json:"max_request_size"`
+	MaxResponseSize int64 `json:"max_response_size"`
 
 	// Performance settings (4 bytes - place before bools to minimize padding)
 	Timeout int `json:"timeout_seconds"`
@@ -64,6 +64,10 @@ type App struct {
 	// Slice (24 bytes)
 	middleware []Middleware
 
+	// Maps (24 bytes each) 
+	wsRoutes map[string]WebSocketHandler
+	features map[string]bool
+
 	// Pointers and interfaces (8 bytes each)
 	router          *Router                       // HTTP router
 	eventRouter     *EventRouter                  // Non-HTTP event router
@@ -73,10 +77,6 @@ type App struct {
 	db              any
 	logger          Logger
 	metrics         MetricsCollector
-
-	// Maps (8 bytes each) 
-	wsRoutes map[string]WebSocketHandler
-	features map[string]bool
 
 	// Boolean flags (1 byte each) - place smallest last
 	started                   bool
@@ -317,7 +317,8 @@ func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 
 	// Route based on trigger type
 	var routeErr error
-	if req.TriggerType == adapters.TriggerWebSocket {
+	switch {
+	case req.TriggerType == adapters.TriggerWebSocket:
 		// WebSocket event, use WebSocket routing
 		routeKey := ""
 		if metadata, ok := req.Metadata["routeKey"].(string); ok {
@@ -343,12 +344,12 @@ func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 				routeErr = err
 			}
 		}
-	} else if req.TriggerType != adapters.TriggerAPIGateway && req.TriggerType != adapters.TriggerAPIGatewayV2 && req.TriggerType != adapters.TriggerUnknown {
+	case req.TriggerType != adapters.TriggerAPIGateway && req.TriggerType != adapters.TriggerAPIGatewayV2 && req.TriggerType != adapters.TriggerUnknown:
 		// Non-HTTP event, use event router
 		if err := a.eventRouter.HandleEvent(liftCtx); err != nil {
 			routeErr = err
 		}
-	} else {
+	default:
 		// HTTP event, use regular router
 		if err := a.router.Handle(liftCtx); err != nil {
 			routeErr = err

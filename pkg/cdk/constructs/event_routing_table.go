@@ -22,18 +22,11 @@ type EventRoutingTable struct {
 // NewEventRoutingTable creates a new event routing table
 // The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
 func NewEventRoutingTable(scope constructs.Construct, id *string, props *EventRoutingTableProps) *EventRoutingTable {
-	// Create base props
-	baseProps := &BaseManagementTableProps{
+	// Create the table using shared factory
+	liftTable := createTypedManagementTable(scope, id, props, ManagementTableConfig{
 		DefaultTableName: "event-routing",
-	}
-	
-	if props != nil {
-		baseProps.TableName = props.TableName
-		baseProps.TimeToLiveAttribute = props.TimeToLiveAttribute
-	}
-
-	// Create the table using common function
-	liftTable := createManagementTable(scope, id, baseProps)
+		PermissionMethod: "GrantEventManagement",
+	})
 
 	return &EventRoutingTable{
 		construct: scope,

@@ -15,13 +15,14 @@ import (
 
 // PoolHealthChecker checks the health of a connection pool
 type PoolHealthChecker struct {
+	name             string // 16 bytes (largest first)
+
 	pool resources.ConnectionPool // 8 bytes (interface)
 
 	// Thresholds (8 bytes each)
 	maxActiveThreshold float64 // Percentage of max active connections
 	errorRateThreshold float64 // Maximum error rate (0.0-1.0)
 
-	name             string // 16 bytes
 	minIdleThreshold int    // 4 bytes
 }
 
@@ -104,10 +105,10 @@ func (p *PoolHealthChecker) Check(ctx context.Context) HealthStatus {
 
 // DatabaseHealthChecker checks database connectivity
 type DatabaseHealthChecker struct {
+	name string // 16 bytes (largest first)
+
 	db          *sql.DB       // 8 bytes (pointer)
 	pingTimeout time.Duration // 8 bytes
-
-	name string // 16 bytes
 }
 
 // NewDatabaseHealthChecker creates a new database health checker
@@ -165,11 +166,11 @@ func (d *DatabaseHealthChecker) Check(ctx context.Context) HealthStatus {
 
 // HTTPHealthChecker checks the health of an HTTP service
 type HTTPHealthChecker struct {
+	name string // 16 bytes (largest first)
+	url  string // 16 bytes
+
 	client  *http.Client  // 8 bytes (pointer)
 	timeout time.Duration // 8 bytes
-
-	name string // 16 bytes
-	url  string // 16 bytes
 
 	// Configuration
 	expectedStatus int // 4 bytes
@@ -331,13 +332,14 @@ func (m *MemoryHealthChecker) Check(_ context.Context) HealthStatus {
 	}
 
 	// Check memory thresholds
-	if memStats.Alloc > m.criticalThreshold {
+	switch {
+	case memStats.Alloc > m.criticalThreshold:
 		status.Status = StatusUnhealthy
 		status.Message = fmt.Sprintf("Critical memory usage: %d bytes (> %d)", memStats.Alloc, m.criticalThreshold)
-	} else if memStats.Alloc > m.warningThreshold {
+	case memStats.Alloc > m.warningThreshold:
 		status.Status = StatusDegraded
 		status.Message = fmt.Sprintf("High memory usage: %d bytes (> %d)", memStats.Alloc, m.warningThreshold)
-	} else {
+	default:
 		status.Message = fmt.Sprintf("Memory usage is healthy: %d bytes", memStats.Alloc)
 	}
 

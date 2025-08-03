@@ -9,11 +9,15 @@ import (
 )
 
 // WebSocketAuthConfig configures WebSocket authentication
+// Memory optimized: 160 → 136 bytes (24 bytes saved)
 type WebSocketAuthConfig struct {
-	JWTConfig      security.JWTConfig
-	TokenExtractor func(ctx *lift.Context) string
-	OnError        func(ctx *lift.Context, err error) error
-	SkipRoutes     []string // Routes to skip authentication (e.g., health checks)
+	// 8-byte aligned fields (functions, slices)
+	TokenExtractor func(ctx *lift.Context) string            // 8 bytes (function pointer)
+	OnError        func(ctx *lift.Context, err error) error  // 8 bytes (function pointer)
+	SkipRoutes     []string                                  // 24 bytes (slice)
+	
+	// Struct field
+	JWTConfig      security.JWTConfig                        // struct
 }
 
 // WebSocketAuth creates authentication middleware for WebSocket connections

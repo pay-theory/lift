@@ -12,18 +12,23 @@ import (
 
 // PulumiDeployer handles Pulumi-specific deployments using CLI automation
 type PulumiDeployer struct {
+	// Slice first (24 bytes)
+	deploymentLog []DeploymentLogEntry
+	// Large struct
+	config        InfrastructureConfig
+	// Strings (16 bytes each)
 	projectName   string
 	stackName     string
 	region        string
-	config        InfrastructureConfig
-	deploymentLog []DeploymentLogEntry
 	workspaceDir  string
 	pulumiCmd     string
 }
 
 // DeploymentLogEntry represents a deployment log entry
 type DeploymentLogEntry struct {
+	// time.Time first (24 bytes)
 	Timestamp time.Time `json:"timestamp"`
+	// Strings (16 bytes each)
 	Level     string    `json:"level"`
 	Message   string    `json:"message"`
 	Resource  string    `json:"resource,omitempty"`
@@ -34,25 +39,25 @@ type DeploymentLogEntry struct {
 
 // PulumiStackConfig holds Pulumi stack configuration
 type PulumiStackConfig struct {
-	ProjectName     string            `json:"project_name"`
-	StackName       string            `json:"stack_name"`
-	Region          string            `json:"region"`
-	BackendURL      string            `json:"backend_url,omitempty"`
-	SecretsProvider string            `json:"secrets_provider,omitempty"`
-	Config          map[string]string `json:"config"`
-	Tags            map[string]string `json:"tags"`
+	Config          map[string]string `json:"config"`          // 24 bytes (maps first)
+	Tags            map[string]string `json:"tags"`            // 24 bytes
+	ProjectName     string            `json:"project_name"`    // 16 bytes (strings next)
+	StackName       string            `json:"stack_name"`      // 16 bytes
+	Region          string            `json:"region"`          // 16 bytes
+	BackendURL      string            `json:"backend_url,omitempty"`      // 16 bytes
+	SecretsProvider string            `json:"secrets_provider,omitempty"` // 16 bytes
 }
 
 // DeploymentResult represents the result of a deployment
 type DeploymentResult struct {
-	Success   bool              `json:"success"`
-	StackName string            `json:"stack_name"`
-	Outputs   map[string]any    `json:"outputs"`
-	Resources []ResourceSummary `json:"resources"`
-	Duration  time.Duration     `json:"duration"`
+	Outputs   map[string]any    `json:"outputs"`    // 24 bytes (map first)
+	Resources []ResourceSummary `json:"resources"`  // 24 bytes (slice)
+	StackName string            `json:"stack_name"` // 16 bytes (strings)
 	Error     string            `json:"error,omitempty"`
 	Permalink string            `json:"permalink,omitempty"`
 	UpdateID  string            `json:"update_id,omitempty"`
+	Duration  time.Duration     `json:"duration"` // 8 bytes
+	Success   bool              `json:"success"`  // 1 byte (last)
 }
 
 // ResourceSummary represents a summary of a deployed resource
@@ -65,13 +70,13 @@ type ResourceSummary struct {
 
 // PulumiOperationResult represents the result of a Pulumi CLI operation
 type PulumiOperationResult struct {
-	Version   int              `json:"version"`
-	Kind      string           `json:"kind"`
-	Stack     string           `json:"stack"`
-	Project   string           `json:"project"`
-	Result    string           `json:"result"`
-	Outputs   map[string]any   `json:"outputs"`
-	Resources []PulumiResource `json:"resources"`
+	Outputs   map[string]any   `json:"outputs"`   // 24 bytes (map first)
+	Resources []PulumiResource `json:"resources"` // 24 bytes (slice)
+	Kind      string           `json:"kind"`      // 16 bytes (strings)
+	Stack     string           `json:"stack"`     // 16 bytes
+	Project   string           `json:"project"`   // 16 bytes
+	Result    string           `json:"result"`    // 16 bytes
+	Version   int              `json:"version"`   // 4 bytes (last)
 }
 
 // PulumiResource represents a resource in Pulumi output
@@ -342,7 +347,7 @@ func (pd *PulumiDeployer) parsePulumiOutput(output string) (*PulumiOperationResu
 
 // convertPulumiResources converts Pulumi resources to ResourceSummary format
 func (pd *PulumiDeployer) convertPulumiResources(resources []PulumiResource) []ResourceSummary {
-	var summaries []ResourceSummary
+	summaries := make([]ResourceSummary, 0, len(resources))
 
 	for _, resource := range resources {
 		// Extract resource name from URN

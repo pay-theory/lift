@@ -32,7 +32,11 @@ func (m *MockConsentStore) StoreConsent(ctx context.Context, consent *ConsentRec
 func (m *MockConsentStore) GetConsent(ctx context.Context, dataSubjectID, purpose string) (*ConsentRecord, error) {
 	args := m.Called(ctx, dataSubjectID, purpose)
 	if v := args.Get(0); v != nil {
-		return v.(*ConsentRecord), args.Error(1)
+		record, ok := v.(*ConsentRecord)
+		if !ok {
+			return nil, args.Error(1)
+		}
+		return record, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -40,7 +44,11 @@ func (m *MockConsentStore) GetConsent(ctx context.Context, dataSubjectID, purpos
 func (m *MockConsentStore) GetAllConsents(ctx context.Context, dataSubjectID string) ([]*ConsentRecord, error) {
 	args := m.Called(ctx, dataSubjectID)
 	if v := args.Get(0); v != nil {
-		return v.([]*ConsentRecord), args.Error(1)
+		records, ok := v.([]*ConsentRecord)
+		if !ok {
+			return nil, args.Error(1)
+		}
+		return records, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -58,7 +66,11 @@ func (m *MockConsentStore) WithdrawConsent(ctx context.Context, consentID string
 func (m *MockConsentStore) GetExpiredConsents(ctx context.Context) ([]*ConsentRecord, error) {
 	args := m.Called(ctx)
 	if v := args.Get(0); v != nil {
-		return v.([]*ConsentRecord), args.Error(1)
+		records, ok := v.([]*ConsentRecord)
+		if !ok {
+			return nil, args.Error(1)
+		}
+		return records, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -66,7 +78,11 @@ func (m *MockConsentStore) GetExpiredConsents(ctx context.Context) ([]*ConsentRe
 func (m *MockConsentStore) GetConsentsForRenewal(ctx context.Context) ([]*ConsentRecord, error) {
 	args := m.Called(ctx)
 	if v := args.Get(0); v != nil {
-		return v.([]*ConsentRecord), args.Error(1)
+		records, ok := v.([]*ConsentRecord)
+		if !ok {
+			return nil, args.Error(1)
+		}
+		return records, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -734,9 +750,7 @@ func TestGDPRConsentManager_ErrorHandling(t *testing.T) {
 	}{
 		{
 			name: "consent store not set",
-			setupManager: func() *GDPRConsentManager {
-				return createTestGDPRManager()
-			},
+			setupManager: createTestGDPRManager,
 			operation: func(m *GDPRConsentManager) error {
 				return m.RecordConsent(context.Background(), createTestConsentRecord())
 			},
@@ -744,9 +758,7 @@ func TestGDPRConsentManager_ErrorHandling(t *testing.T) {
 		},
 		{
 			name: "data subject rights handler not set",
-			setupManager: func() *GDPRConsentManager {
-				return createTestGDPRManager()
-			},
+			setupManager: createTestGDPRManager,
 			operation: func(m *GDPRConsentManager) error {
 				request := &DataAccessRequest{
 					ID:            "req-123",

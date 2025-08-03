@@ -204,7 +204,7 @@ func (m *MockDynamORMClient) Scan(ctx context.Context, params *dynamodb.ScanInpu
 		}
 	}
 
-	var items []map[string]types.AttributeValue
+	items := make([]map[string]types.AttributeValue, 0, len(table.items))
 	for _, item := range table.items {
 		items = append(items, item)
 	}

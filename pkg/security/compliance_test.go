@@ -48,12 +48,20 @@ func (m *MockLiftContext) ClientIP() string {
 
 func (m *MockLiftContext) Logger() Logger {
 	args := m.Called()
-	return args.Get(0).(Logger)
+	logger, ok := args.Get(0).(Logger)
+	if !ok {
+		return nil
+	}
+	return logger
 }
 
 func (m *MockLiftContext) GetDataAccessLog() []string {
 	args := m.Called()
-	return args.Get(0).([]string)
+	log, ok := args.Get(0).([]string)
+	if !ok {
+		return nil
+	}
+	return log
 }
 
 // MockLogger implements Logger for testing
@@ -110,17 +118,29 @@ type MockComplianceValidator struct {
 
 func (m *MockComplianceValidator) ValidateRequest(ctx LiftContext, framework string) (*ComplianceResult, error) {
 	args := m.Called(ctx, framework)
-	return args.Get(0).(*ComplianceResult), args.Error(1)
+	result, ok := args.Get(0).(*ComplianceResult)
+	if !ok && args.Get(0) != nil {
+		return nil, args.Error(1)
+	}
+	return result, args.Error(1)
 }
 
 func (m *MockComplianceValidator) ValidateDataAccess(ctx LiftContext, dataType string) (*ComplianceResult, error) {
 	args := m.Called(ctx, dataType)
-	return args.Get(0).(*ComplianceResult), args.Error(1)
+	result, ok := args.Get(0).(*ComplianceResult)
+	if !ok && args.Get(0) != nil {
+		return nil, args.Error(1)
+	}
+	return result, args.Error(1)
 }
 
 func (m *MockComplianceValidator) ValidateRegion(ctx LiftContext, region string) (*ComplianceResult, error) {
 	args := m.Called(ctx, region)
-	return args.Get(0).(*ComplianceResult), args.Error(1)
+	result, ok := args.Get(0).(*ComplianceResult)
+	if !ok && args.Get(0) != nil {
+		return nil, args.Error(1)
+	}
+	return result, args.Error(1)
 }
 
 // MockHandler implements LiftHandler for testing

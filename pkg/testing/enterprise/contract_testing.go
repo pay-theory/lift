@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// Note: JobStatus is defined in infrastructure.go
+
 // ContractTestingFramework provides contract testing capabilities
 type ContractTestingFramework struct {
 	registry  *ContractRegistry
@@ -327,7 +329,7 @@ func (f *ContractTestingFramework) ValidateContract(_ context.Context, contract 
 		validation := f.validateInteraction(&interaction)
 		result.Validations[interaction.ID] = &validation
 
-		if validation.Status == "failed" {
+		if validation.Status == string(JobFailed) {
 			result.Status = TestStatusFailed
 			result.Errors = append(result.Errors, validation.Errors...)
 		}
@@ -355,21 +357,21 @@ func (f *ContractTestingFramework) validateInteraction(interaction *ContractInte
 		check := f.validateHTTPMethod(interaction.Request.Method)
 		validation.Checks["http_method"] = check
 		if !check.Valid {
-			validation.Status = "failed"
+			validation.Status = string(JobFailed)
 			validation.Errors = append(validation.Errors, check.Errors...)
 		}
 
 		check = f.validateHTTPPath(interaction.Request.Path)
 		validation.Checks["http_path"] = check
 		if !check.Valid {
-			validation.Status = "failed"
+			validation.Status = string(JobFailed)
 			validation.Errors = append(validation.Errors, check.Errors...)
 		}
 
 		check = f.validateHeaders(interaction.Request.Headers)
 		validation.Checks["request_headers"] = check
 		if !check.Valid {
-			validation.Status = "failed"
+			validation.Status = string(JobFailed)
 			validation.Errors = append(validation.Errors, check.Errors...)
 		}
 	}
@@ -379,7 +381,7 @@ func (f *ContractTestingFramework) validateInteraction(interaction *ContractInte
 		check := f.validateHeaders(interaction.Response.Headers)
 		validation.Checks["response_headers"] = check
 		if !check.Valid {
-			validation.Status = "failed"
+			validation.Status = string(JobFailed)
 			validation.Errors = append(validation.Errors, check.Errors...)
 		}
 	}
@@ -388,65 +390,6 @@ func (f *ContractTestingFramework) validateInteraction(interaction *ContractInte
 	return validation
 }
 
-// validateSchema validates data against a JSON schema
-func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefinition) (*ValidationCheck, error) {
-	check := &ValidationCheck{
-		ID:          fmt.Sprintf("schema-%d", time.Now().Unix()),
-		Name:        "Schema Validation",
-		Description: "Validates data against JSON schema",
-		Status:      "passed",
-		Valid:       true,
-		Expected:    schema,
-		Actual:      data,
-		Errors:      []string{},
-		Warnings:    []string{},
-		Metadata:    make(map[string]any),
-	}
-
-	if schema == nil {
-		return check, nil
-	}
-
-	// Basic type validation
-	if !f.validateType(data, schema.Type) {
-		check.Valid = false
-		check.Status = "failed"
-		check.Errors = append(check.Errors, fmt.Sprintf("Expected type %s, got %T", schema.Type, data))
-		return check, nil
-	}
-
-	// String validation
-	if schema.Type == "string" {
-		if str, ok := data.(string); ok {
-			if schema.MinLength != nil && len(str) < *schema.MinLength {
-				check.Valid = false
-				check.Status = "failed"
-				check.Errors = append(check.Errors, fmt.Sprintf("String too short: %d < %d", len(str), *schema.MinLength))
-			}
-			if schema.MaxLength != nil && len(str) > *schema.MaxLength {
-				check.Valid = false
-				check.Status = "failed"
-				check.Errors = append(check.Errors, fmt.Sprintf("String too long: %d > %d", len(str), *schema.MaxLength))
-			}
-		}
-	}
-
-	// Object validation
-	if schema.Type == "object" {
-		if obj, ok := data.(map[string]any); ok {
-			// Check required fields
-			for _, required := range schema.Required {
-				if _, exists := obj[required]; !exists {
-					check.Valid = false
-					check.Status = "failed"
-					check.Errors = append(check.Errors, fmt.Sprintf("Missing required field: %s", required))
-				}
-			}
-		}
-	}
-
-	return check, nil
-}
 
 // validateHTTPMethod validates HTTP method
 func (f *ContractTestingFramework) validateHTTPMethod(method string) *ValidationCheck {
@@ -471,7 +414,7 @@ func (f *ContractTestingFramework) validateHTTPMethod(method string) *Validation
 	}
 
 	check.Valid = false
-	check.Status = "failed"
+	check.Status = string(JobFailed)
 	check.Errors = append(check.Errors, fmt.Sprintf("Invalid HTTP method: %s", method))
 	return check
 }
@@ -493,14 +436,14 @@ func (f *ContractTestingFramework) validateHTTPPath(path string) *ValidationChec
 
 	if path == "" {
 		check.Valid = false
-		check.Status = "failed"
+		check.Status = string(JobFailed)
 		check.Errors = append(check.Errors, "Path cannot be empty")
 		return check
 	}
 
 	if !strings.HasPrefix(path, "/") {
 		check.Valid = false
-		check.Status = "failed"
+		check.Status = string(JobFailed)
 		check.Errors = append(check.Errors, "Path must start with /")
 		return check
 	}
@@ -526,12 +469,12 @@ func (f *ContractTestingFramework) validateHeaders(headers map[string]string) *V
 	for name, value := range headers {
 		if name == "" {
 			check.Valid = false
-			check.Status = "failed"
+			check.Status = string(JobFailed)
 			check.Errors = append(check.Errors, "Header name cannot be empty")
 		}
 		if value == "" {
 			check.Valid = false
-			check.Status = "failed"
+			check.Status = string(JobFailed)
 			check.Errors = append(check.Errors, fmt.Sprintf("Header value cannot be empty for %s", name))
 		}
 	}
@@ -539,20 +482,106 @@ func (f *ContractTestingFramework) validateHeaders(headers map[string]string) *V
 	return check
 }
 
-// validateType validates data type
+
+
+
+
+// validateSchema validates data against a schema definition
+func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefinition) (*ValidationCheck, error) {
+	check := &ValidationCheck{
+		ID:          fmt.Sprintf("schema-%d", time.Now().Unix()),
+		Name:        "Schema Validation",
+		Description: "Validates data against schema definition",
+		Status:      "passed",
+		Valid:       true,
+		Expected:    "Data conforms to schema",
+		Actual:      data,
+		Errors:      []string{},
+		Warnings:    []string{},
+		Metadata:    make(map[string]any),
+	}
+
+	if schema == nil {
+		check.Valid = false
+		check.Status = "failed"
+		check.Errors = append(check.Errors, "Schema definition is required")
+		return check, nil
+	}
+
+	// Validate type
+	if !f.validateType(data, schema.Type) {
+		check.Valid = false
+		check.Status = "failed"
+		check.Errors = append(check.Errors, fmt.Sprintf("Type mismatch: expected %s", schema.Type))
+		return check, nil
+	}
+
+	// Type-specific validations
+	switch schema.Type {
+	case "string":
+		if str, ok := data.(string); ok {
+			if schema.MinLength != nil && len(str) < *schema.MinLength {
+				check.Valid = false
+				check.Status = "failed"
+				check.Errors = append(check.Errors, fmt.Sprintf("String too short: %d < %d", len(str), *schema.MinLength))
+			}
+			if schema.MaxLength != nil && len(str) > *schema.MaxLength {
+				check.Valid = false
+				check.Status = "failed"
+				check.Errors = append(check.Errors, fmt.Sprintf("String too long: %d > %d", len(str), *schema.MaxLength))
+			}
+		}
+	case "number", "integer":
+		if num, ok := data.(float64); ok {
+			if schema.Minimum != nil && num < *schema.Minimum {
+				check.Valid = false
+				check.Status = "failed"
+				check.Errors = append(check.Errors, fmt.Sprintf("Number too small: %f < %f", num, *schema.Minimum))
+			}
+			if schema.Maximum != nil && num > *schema.Maximum {
+				check.Valid = false
+				check.Status = "failed"
+				check.Errors = append(check.Errors, fmt.Sprintf("Number too large: %f > %f", num, *schema.Maximum))
+			}
+		}
+	case "object":
+		if obj, ok := data.(map[string]any); ok {
+			// Check required fields
+			for _, required := range schema.Required {
+				if _, exists := obj[required]; !exists {
+					check.Valid = false
+					check.Status = "failed"
+					check.Errors = append(check.Errors, fmt.Sprintf("Missing required field: %s", required))
+				}
+			}
+		}
+	}
+
+	return check, nil
+}
+
+// validateType validates if data matches the expected type
 func (f *ContractTestingFramework) validateType(data any, expectedType string) bool {
+	if data == nil {
+		return expectedType == "null"
+	}
+
 	switch expectedType {
 	case "string":
 		_, ok := data.(string)
 		return ok
 	case "number":
 		_, ok := data.(float64)
+		if !ok {
+			_, ok = data.(int)
+		}
 		return ok
 	case "integer":
 		if num, ok := data.(float64); ok {
-			return num == float64(int(num))
+			return num == float64(int64(num)) // Check if it's a whole number
 		}
-		return false
+		_, ok := data.(int)
+		return ok
 	case "boolean":
 		_, ok := data.(bool)
 		return ok
@@ -610,25 +639,39 @@ func (f *ContractTestingFramework) calculateValidationStatus(validations map[str
 	if len(validations) == 0 {
 		return "unknown"
 	}
+
+	allPassed := true
 	for _, validation := range validations {
-		if validation.Status == "failed" {
-			return "failed"
+		if validation.Status != "passed" {
+			allPassed = false
+			break
 		}
 	}
-	return "passed"
+
+	if allPassed {
+		return "passed"
+	}
+	return "failed"
 }
 
-// calculateInteractionStatus calculates interaction status from checks
+// calculateInteractionStatus calculates interaction status based on checks
 func (f *ContractTestingFramework) calculateInteractionStatus(checks map[string]*ValidationCheck) string {
 	if len(checks) == 0 {
 		return "unknown"
 	}
+
+	allPassed := true
 	for _, check := range checks {
-		if check.Status == "failed" {
-			return "failed"
+		if check.Status != "passed" {
+			allPassed = false
+			break
 		}
 	}
-	return "passed"
+
+	if allPassed {
+		return "passed"
+	}
+	return "failed"
 }
 
 // Contract Testing Implementation leverages existing framework

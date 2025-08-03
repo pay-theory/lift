@@ -13,8 +13,13 @@ func main() {
 	app := lift.New(lift.WithWebSocketSupport())
 
 	// Handle new connections
-	app.WebSocket("$connect", func(ctx *lift.Context) error {
-		connectionID := ctx.Request.Metadata["connectionId"].(string)
+	if err := app.WebSocket("$connect", func(ctx *lift.Context) error {
+		connectionID, ok := ctx.Request.Metadata["connectionId"].(string)
+		if !ok {
+			return ctx.Status(400).JSON(map[string]string{
+				"error": "Missing connection ID",
+			})
+		}
 		log.Printf("New connection: %s", connectionID)
 
 		// You can authenticate here using query parameters
@@ -32,22 +37,37 @@ func main() {
 			"message":      "Connected successfully",
 			"connectionId": connectionID,
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register WebSocket $connect handler: %v", err)
+	}
 
 	// Handle disconnections
-	app.WebSocket("$disconnect", func(ctx *lift.Context) error {
-		connectionID := ctx.Request.Metadata["connectionId"].(string)
+	if err := app.WebSocket("$disconnect", func(ctx *lift.Context) error {
+		connectionID, ok := ctx.Request.Metadata["connectionId"].(string)
+		if !ok {
+			log.Printf("Warning: Missing connection ID in disconnect event")
+			return ctx.Status(200).JSON(map[string]string{
+				"message": "Disconnected",
+			})
+		}
 		log.Printf("Disconnected: %s", connectionID)
 
 		// Clean up any resources for this connection
 		// The connection will be automatically removed if using ConnectionStore
 
 		return nil // No response needed for disconnect
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register WebSocket $disconnect handler: %v", err)
+	}
 
 	// Handle incoming messages
-	app.WebSocket("message", func(ctx *lift.Context) error {
-		connectionID := ctx.Request.Metadata["connectionId"].(string)
+	if err := app.WebSocket("message", func(ctx *lift.Context) error {
+		connectionID, ok := ctx.Request.Metadata["connectionId"].(string)
+		if !ok {
+			return ctx.Status(400).JSON(map[string]string{
+				"error": "Missing connection ID",
+			})
+		}
 
 		// Parse the incoming message
 		var msg struct {
@@ -89,7 +109,13 @@ func main() {
 				"data":   msg.Data,
 			}
 
-			responseData, _ := json.Marshal(response)
+			responseData, err := json.Marshal(response)
+			if err != nil {
+				log.Printf("Failed to marshal response: %v", err)
+				return ctx.Status(500).JSON(map[string]string{
+					"error": "Failed to process message",
+				})
+			}
 			if err := wsCtx.SendMessage(responseData); err != nil {
 				log.Printf("Failed to send message: %v", err)
 			}
@@ -103,16 +129,23 @@ func main() {
 				"error": "Unknown action",
 			})
 		}
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register WebSocket message handler: %v", err)
+	}
 
 	// Handle any other routes with a default handler
-	app.WebSocket("$default", func(ctx *lift.Context) error {
-		routeKey := ctx.Request.Metadata["routeKey"].(string)
+	if err := app.WebSocket("$default", func(ctx *lift.Context) error {
+		routeKey, ok := ctx.Request.Metadata["routeKey"].(string)
+		if !ok {
+			routeKey = "unknown"
+		}
 		return ctx.Status(404).JSON(map[string]string{
 			"error": "Unknown route",
 			"route": routeKey,
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register WebSocket $default handler: %v", err)
+	}
 
 	// Start the Lambda handler
 	lambda.Start(app.WebSocketHandler())

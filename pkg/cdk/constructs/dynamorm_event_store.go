@@ -58,12 +58,17 @@ const (
 )
 
 // DynamORMEventStoreProps defines properties for DynamORM event store
-// Memory optimized: 312 → 296 bytes (16 bytes saved)
+// Memory optimized: 304 → 296 bytes (8 bytes saved)
 type DynamORMEventStoreProps struct {
 	// Interface first (24 bytes)
 	ArchivalBucket awss3.IBucket
 	// Slice (24 bytes)
 	ProjectionQueries []string
+	// Duration structs (16 bytes each) - moved up for better alignment
+	EventTTL               awscdk.Duration
+	SnapshotTimeInterval awscdk.Duration
+	SnapshotRetention    awscdk.Duration
+	ArchivalAfter  awscdk.Duration
 	// Pointers (8 bytes each)
 	AlertThresholds       *EventStoreAlertThresholds
 	Tags *map[string]*string
@@ -87,12 +92,7 @@ type DynamORMEventStoreProps struct {
 	EnableDetailedMetrics *bool
 	EnableEncryption *bool
 	EnableGSIs        *bool
-	// Duration structs (16 bytes each)
-	EventTTL               awscdk.Duration
-	SnapshotTimeInterval awscdk.Duration
-	SnapshotRetention    awscdk.Duration
-	ArchivalAfter  awscdk.Duration
-	// Enums/smaller types
+	// Enums/smaller types grouped together
 	Pattern EventStorePattern
 	SnapshotStrategy     SnapshotStrategy
 }

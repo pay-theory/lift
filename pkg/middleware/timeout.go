@@ -12,22 +12,26 @@ import (
 
 // TimeoutConfig holds configuration for request timeouts
 type TimeoutConfig struct {
-	// 8-byte aligned fields (durations, maps, functions, interfaces)
+	// Maps first (24 bytes each)
+	OperationTimeouts    map[string]time.Duration        `json:"operation_timeouts"` // Timeouts per operation
+	TenantTimeouts       map[string]time.Duration        `json:"tenant_timeouts"`    // Timeouts per tenant
+	
+	// Strings (16 bytes each)
+	TimeoutMessage string `json:"timeout_message"` // Message for timeout response
+	Name           string `json:"name"`            // Timeout middleware name for metrics
+
+	// Functions and interfaces (8 bytes each)
+	TimeoutCalculator    func(*lift.Context) time.Duration `json:"-"`                // Custom timeout calculator
+	TimeoutHandler       func(*lift.Context) error       `json:"-"`                  // Custom timeout response handler
+	Logger               observability.StructuredLogger  `json:"-"`
+	Metrics              observability.MetricsCollector  `json:"-"`
+	
+	// Durations (8 bytes each)
 	DefaultTimeout       time.Duration                   `json:"default_timeout"`    // Default timeout for all requests
 	ReadTimeout          time.Duration                   `json:"read_timeout"`       // Timeout for reading request body
 	WriteTimeout         time.Duration                   `json:"write_timeout"`      // Timeout for writing response
 	IdleTimeout          time.Duration                   `json:"idle_timeout"`       // Timeout for idle connections
 	ShutdownTimeout      time.Duration                   `json:"shutdown_timeout"`   // Timeout for graceful shutdown
-	OperationTimeouts    map[string]time.Duration        `json:"operation_timeouts"` // Timeouts per operation
-	TenantTimeouts       map[string]time.Duration        `json:"tenant_timeouts"`    // Timeouts per tenant
-	TimeoutCalculator    func(*lift.Context) time.Duration `json:"-"`                // Custom timeout calculator
-	TimeoutHandler       func(*lift.Context) error       `json:"-"`                  // Custom timeout response handler
-	Logger               observability.StructuredLogger  `json:"-"`
-	Metrics              observability.MetricsCollector  `json:"-"`
-
-	// Strings (16 bytes each)
-	TimeoutMessage string `json:"timeout_message"` // Message for timeout response
-	Name           string `json:"name"`            // Timeout middleware name for metrics
 
 	// 4-byte aligned fields
 	TimeoutStatusCode int `json:"timeout_status_code"` // HTTP status for timeout
@@ -75,7 +79,7 @@ func TimeoutMiddleware(config TimeoutConfig) lift.Middleware {
 		config.TimeoutMessage = "Request timeout"
 	}
 	if config.Name == "" {
-		config.Name = "default"
+		config.Name = defaultName
 	}
 	if config.TimeoutHandler == nil {
 		config.TimeoutHandler = defaultTimeoutHandler(config.TimeoutStatusCode, config.TimeoutMessage)
@@ -172,10 +176,14 @@ func TimeoutMiddleware(config TimeoutConfig) lift.Middleware {
 }
 
 // timeoutManager manages timeout logic and statistics
+// Memory optimized: 160 → 136 bytes (24 bytes saved)
 type timeoutManager struct {
-	config TimeoutConfig
-	stats  *TimeoutStats
-	mutex  sync.RWMutex
+	// Mutex first (24 bytes)
+	mutex  sync.RWMutex     // 24 bytes
+	// Struct (varies)
+	config TimeoutConfig    // struct
+	// Pointer (8 bytes)
+	stats  *TimeoutStats    // 8 bytes
 }
 
 // calculateTimeout determines the timeout for a specific request

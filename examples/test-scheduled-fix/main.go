@@ -8,6 +8,10 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
+const (
+	unknownValue = "unknown"
+)
+
 // This example demonstrates the fix for handling scheduled events
 // that come from EventBridge (formerly CloudWatch Events)
 func main() {
@@ -26,21 +30,27 @@ func main() {
 	})
 
 	// Test endpoint for HTTP requests
-	app.GET("/test", func(ctx *lift.Context) error {
+	if err := app.GET("/test", func(ctx *lift.Context) error {
 		return ctx.JSON(map[string]string{
 			"status":  "ok",
 			"message": "Test scheduled fix example",
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register GET route: %v", err)
+	}
 
 	// Handle scheduled events from EventBridge
 	// The pattern matches any scheduled event
-	app.EventBridge("scheduled-test", func(ctx *lift.Context) error {
+	if err := app.EventBridge("scheduled-test", func(ctx *lift.Context) error {
 		log.Println("Scheduled event received")
 
 		// Log the raw event for debugging
-		eventJSON, _ := json.MarshalIndent(ctx.Request.RawEvent, "", "  ")
-		log.Printf("Raw event:\n%s", eventJSON)
+		eventJSON, err := json.MarshalIndent(ctx.Request.RawEvent, "", "  ")
+		if err != nil {
+			log.Printf("Failed to marshal event for debugging: %v", err)
+		} else {
+			log.Printf("Raw event:\n%s", eventJSON)
+		}
 
 		// Parse EventBridge event structure
 		eventMap, ok := ctx.Request.RawEvent.(map[string]interface{})
@@ -49,9 +59,21 @@ func main() {
 		}
 
 		// Extract event details
-		detailType, _ := eventMap["detail-type"].(string)
-		source, _ := eventMap["source"].(string)
-		eventTime, _ := eventMap["time"].(string)
+		detailType, ok := eventMap["detail-type"].(string)
+		if !ok {
+			log.Printf("Warning: detail-type is not a string or missing")
+			detailType = unknownValue
+		}
+		source, ok := eventMap["source"].(string)
+		if !ok {
+			log.Printf("Warning: source is not a string or missing")
+			source = unknownValue
+		}
+		eventTime, ok := eventMap["time"].(string)
+		if !ok {
+			log.Printf("Warning: time is not a string or missing")
+			eventTime = unknownValue
+		}
 
 		log.Printf("Event details - Type: %s, Source: %s, Time: %s", detailType, source, eventTime)
 
@@ -65,7 +87,9 @@ func main() {
 			"eventType": detailType,
 			"source":    source,
 		})
-	})
+	}); err != nil {
+		log.Fatalf("Failed to register EventBridge handler: %v", err)
+	}
 
 	// Start Lambda handler
 	lambda.Start(app.HandleRequest)
@@ -80,7 +104,11 @@ func handleScheduledTask(ctx *lift.Context, event map[string]interface{}) error 
 		log.Printf("Custom event detail: %+v", detail)
 
 		// Process based on custom detail
-		taskType, _ := detail["taskType"].(string)
+		taskType, ok := detail["taskType"].(string)
+		if !ok {
+			log.Printf("Warning: taskType is not a string or missing")
+			taskType = unknownValue
+		}
 		switch taskType {
 		case "cleanup":
 			return performCleanup(ctx)

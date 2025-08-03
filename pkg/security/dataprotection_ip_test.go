@@ -87,7 +87,10 @@ func TestIPAddressNotRedacted(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to mask data: %v", err)
 		}
-		maskedMap := maskedData.(map[string]any)
+		maskedMap, ok := maskedData.(map[string]any)
+		if !ok {
+			t.Fatalf("Failed to assert maskedData as map[string]any")
+		}
 
 		// IP addresses should not be masked
 		if maskedMap["source_ip"] != "192.168.1.100" {

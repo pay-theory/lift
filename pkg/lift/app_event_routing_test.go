@@ -148,10 +148,12 @@ func TestNonHTTPEventRouting(t *testing.T) {
 			called := false
 
 			// Register handler
-			app.Handle(tt.method, tt.path, func(ctx *Context) error {
+			if err := app.Handle(tt.method, tt.path, func(ctx *Context) error {
 				called = true
 				return ctx.JSON(map[string]string{"status": "ok"})
-			})
+			}); err != nil {
+				t.Fatalf("Failed to register route: %v", err)
+			}
 
 			// Process event
 			resp, err := app.HandleRequest(context.Background(), tt.event)
@@ -187,13 +189,15 @@ func TestEventRouterIntegration(t *testing.T) {
 		handlerCalled := false
 
 		// Register a non-HTTP handler
-		app.Handle("EventBridge", "test.source", func(ctx *Context) error {
+		if err := app.Handle("EventBridge", "test.source", func(ctx *Context) error {
 			handlerCalled = true
 			if ctx.Request.TriggerType != TriggerEventBridge {
 				t.Errorf("Expected TriggerType = %v, got %v", TriggerEventBridge, ctx.Request.TriggerType)
 			}
 			return ctx.JSON(map[string]string{"status": "ok"})
-		})
+		}); err != nil {
+			t.Fatalf("Failed to register event handler: %v", err)
+		}
 
 		// Check that the route was added to eventRouter
 		routes := app.eventRouter.GetRoutes()
@@ -225,9 +229,11 @@ func TestEventRouterIntegration(t *testing.T) {
 		app := New()
 
 		// Register an HTTP handler
-		app.GET("/test", func(ctx *Context) error {
+		if err := app.GET("/test", func(ctx *Context) error {
 			return ctx.JSON(map[string]string{"status": "ok"})
-		})
+		}); err != nil {
+			t.Fatalf("Failed to register route: %v", err)
+		}
 
 		// Check that eventRouter doesn't have HTTP routes
 		routes := app.eventRouter.GetRoutes()

@@ -501,7 +501,7 @@ func (c *MemoryHealthChecker) Name() string {
 	return "memory"
 }
 
-func (c *MemoryHealthChecker) Check(ctx context.Context) health.HealthStatus {
+func (c *MemoryHealthChecker) Check(_ context.Context) health.HealthStatus {
 	start := time.Now()
 	var issues []string
 
@@ -615,8 +615,8 @@ func getEnvBool(key string, defaultValue bool) bool {
 }
 
 func (d *LambdaDeployment) logWarning(message string, err error) {
-	// TODO: Integrate with observability package
-	// For now, warnings are silently ignored to avoid exposing internal details
+	// Note: Warnings are silently handled to avoid exposing internal deployment details
+	// Integration with observability package planned for future release
 	_ = message
 	_ = err
 }

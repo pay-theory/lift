@@ -3,6 +3,7 @@ package enterprise
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -81,7 +82,9 @@ func (e *EnterpriseTestPatterns) RunTestSuite(ctx context.Context, suite TestSui
 	// Teardown
 	defer func() {
 		if suite.Teardown != nil {
-			suite.Teardown()
+			if err := suite.Teardown(); err != nil {
+				log.Printf("Warning: test suite teardown failed: %v", err)
+			}
 		}
 	}()
 
@@ -97,7 +100,7 @@ func (e *EnterpriseTestPatterns) RunTestSuite(ctx context.Context, suite TestSui
 
 // runTestsSequential runs tests sequentially
 func (e *EnterpriseTestPatterns) runTestsSequential(ctx context.Context, tests []Test) []TestResult {
-	var results []TestResult
+	results := make([]TestResult, 0, len(tests))
 
 	for _, test := range tests {
 		result := e.runSingleTest(ctx, test)
@@ -252,14 +255,26 @@ func (e *EnterpriseTestPatterns) CreateAPIContractTest(apiName, version string, 
 func (e *EnterpriseTestPatterns) CreateChaosScenario(scenarioType string, config map[string]any) error {
 	switch scenarioType {
 	case "network_latency":
-		latency := config["latency"].(time.Duration)
-		duration := config["duration"].(time.Duration)
+		latency, ok := config["latency"].(time.Duration)
+		if !ok {
+			return fmt.Errorf("latency must be a time.Duration")
+		}
+		duration, ok := config["duration"].(time.Duration)
+		if !ok {
+			return fmt.Errorf("duration must be a time.Duration")
+		}
 		scenario := NewNetworkLatencyScenario(latency, duration)
 		e.chaosTest.AddScenario(scenario)
 
 	case "service_unavailable":
-		serviceName := config["service_name"].(string)
-		duration := config["duration"].(time.Duration)
+		serviceName, ok := config["service_name"].(string)
+		if !ok {
+			return fmt.Errorf("service_name must be a string")
+		}
+		duration, ok := config["duration"].(time.Duration)
+		if !ok {
+			return fmt.Errorf("duration must be a time.Duration")
+		}
 		scenario := NewServiceUnavailableScenario(serviceName, duration)
 		e.chaosTest.AddScenario(scenario)
 

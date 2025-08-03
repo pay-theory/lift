@@ -36,15 +36,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create Zap logger: %v", err)
 	}
+
+	// Create Lift app with the logger
+	app := lift.New()
+	app.WithLogger(logger)
+	
+	// Set up defer after app is created to ensure cleanup happens
 	defer func() {
 		if err := logger.Close(); err != nil {
 			log.Printf("Error closing logger: %v", err)
 		}
 	}()
-
-	// Create Lift app with the logger
-	app := lift.New()
-	app.WithLogger(logger)
 
 	// Add observability middleware with the logger
 	app.Use(middleware.ObservabilityMiddleware(middleware.ObservabilityConfig{
@@ -52,7 +54,7 @@ func main() {
 	}))
 
 	// Example route that logs at different levels
-	app.GET("/test", func(ctx *lift.Context) error {
+	if err := app.GET("/test", func(ctx *lift.Context) error {
 		// Info log - will appear in CloudWatch Logs
 		ctx.Logger.Info("Test endpoint called", map[string]any{
 			"method": ctx.Request.Method,
@@ -74,17 +76,26 @@ func main() {
 			"message": "Success",
 			"logger":  "zap-with-sns",
 		})
-	})
+	}); err != nil {
+		logger.Error("Failed to register GET /test", map[string]any{"error": err})
+		return
+	}
 
 	// Alternative: Use custom SNS topic
-	app.GET("/custom", func(ctx *lift.Context) error {
+	if err := app.GET("/custom", func(ctx *lift.Context) error {
 		// Example with custom SNS topic ARN
 		customTopicARN := fmt.Sprintf("arn:aws:sns:%s:%s:my-custom-alerts",
 			os.Getenv("AWS_REGION"),
 			os.Getenv("AWS_ACCOUNT_ID"))
 
-		customLogger, _ := zap.NewZapLogger(loggerConfig,
+		customLogger, err := zap.NewZapLogger(loggerConfig,
 			zap.WithErrorNotifications(snsClient, customTopicARN))
+		if err != nil {
+			log.Printf("Failed to create custom logger: %v", err)
+			return ctx.Status(500).JSON(map[string]string{
+				"error": "Failed to create custom logger",
+			})
+		}
 
 		customLogger.Error("Error with custom SNS topic", map[string]any{
 			"topic": customTopicARN,
@@ -93,7 +104,10 @@ func main() {
 		return ctx.JSON(map[string]string{
 			"message": "Sent to custom topic",
 		})
-	})
+	}); err != nil {
+		logger.Error("Failed to register GET /custom", map[string]any{"error": err})
+		return
+	}
 
 	// Start the Lambda handler
 	lambda.Start(app.HandleRequest)

@@ -679,7 +679,7 @@ func (api *ProductionAPI) setupRoutes() *http.ServeMux {
 		}
 
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = fmt.Fprintf(w, `
+		if _, err := fmt.Fprintf(w, `
 <!DOCTYPE html>
 <html>
 <head>
@@ -771,7 +771,9 @@ curl http://localhost:8080/health
 curl http://localhost:8080/metrics
     </pre>
 </body>
-</html>`)
+</html>`); err != nil {
+			log.Printf("Warning: failed to write response: %v", err)
+		}
 	})
 
 	return mux

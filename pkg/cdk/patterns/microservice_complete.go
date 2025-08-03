@@ -396,13 +396,14 @@ func (m *MicroserviceComplete) createTaskDefinition(props *MicroserviceCompleteP
 
 	// Create container image
 	var containerImage awsecs.ContainerImage
-	if props.ContainerConfig.ImageURI != nil {
+	switch {
+	case props.ContainerConfig.ImageURI != nil:
 		containerImage = awsecs.ContainerImage_FromRegistry(props.ContainerConfig.ImageURI, &awsecs.RepositoryImageProps{})
-	} else if props.ContainerConfig.CodeAssetPath != nil {
+	case props.ContainerConfig.CodeAssetPath != nil:
 		containerImage = awsecs.ContainerImage_FromAsset(props.ContainerConfig.CodeAssetPath, &awsecs.AssetImageProps{
 			// Platform: awsecs.Platform_LINUX_ARM64(), // Platform API may have changed
 		})
-	} else {
+	default:
 		// Default to a simple HTTP server for demonstration
 		containerImage = awsecs.ContainerImage_FromRegistry(jsii.String("nginx:alpine"), &awsecs.RepositoryImageProps{})
 	}

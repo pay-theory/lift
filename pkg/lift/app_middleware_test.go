@@ -23,13 +23,15 @@ func TestHandleRequestExecutesMiddleware(t *testing.T) {
 	})
 
 	// Add handler that checks for the middleware value
-	app.GET("/test", func(ctx *Context) error {
+	if err := app.GET("/test", func(ctx *Context) error {
 		value := ctx.Get("middleware_value")
 		if value != "middleware_ran" {
 			t.Error("Middleware did not set expected value")
 		}
 		return ctx.JSON(map[string]string{"status": "ok"})
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register route: %v", err)
+	}
 
 	// Create API Gateway v1 event (using map format like other tests)
 	event := map[string]any{
@@ -93,10 +95,12 @@ func TestHandleRequestMiddlewareOrder(t *testing.T) {
 	})
 
 	// Add handler
-	app.GET("/test", func(ctx *Context) error {
+	if err := app.GET("/test", func(ctx *Context) error {
 		executionOrder = append(executionOrder, "handler")
 		return ctx.JSON(map[string]string{"status": "ok"})
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register route: %v", err)
+	}
 
 	// Create API Gateway v1 event
 	event := map[string]any{
@@ -153,7 +157,7 @@ func TestHandleRequestWithDependencyInjection(t *testing.T) {
 	})
 
 	// Add handler that uses the service
-	app.GET("/test", func(ctx *Context) error {
+	if err := app.GET("/test", func(ctx *Context) error {
 		serviceInterface := ctx.Get("service")
 		if serviceInterface == nil {
 			t.Error("Service not found in context")
@@ -167,7 +171,9 @@ func TestHandleRequestWithDependencyInjection(t *testing.T) {
 		}
 
 		return ctx.JSON(map[string]string{"service_name": service.Name})
-	})
+	}); err != nil {
+		t.Fatalf("Failed to register route: %v", err)
+	}
 
 	// Create API Gateway v1 event
 	event := map[string]any{

@@ -34,8 +34,10 @@ type SecretCache struct {
 
 // CachedSecret represents a cached secret with expiration
 type CachedSecret struct {
-	Value     string
+	// time.Time (24 bytes)
 	ExpiresAt time.Time
+	// string (16 bytes)
+	Value     string
 }
 
 // NewAWSSecretsManager creates a new AWS Secrets Manager provider with plain text cache (deprecated)
@@ -613,7 +615,7 @@ func (msp *MockSecretsProvider) RotateSecret(_ context.Context, name string) err
 	}
 
 	// Simulate rotation by appending "-rotated"
-	msp.secrets[name] = msp.secrets[name] + "-rotated"
+	msp.secrets[name] += "-rotated"
 	return nil
 }
 

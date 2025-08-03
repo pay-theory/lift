@@ -46,8 +46,14 @@ func TestLimitedRateLimit(t *testing.T) {
 
 func TestIPRateLimitWithLimited(t *testing.T) {
 	// Set AWS_REGION for testing
-	os.Setenv("AWS_REGION", "us-east-1")
-	defer os.Unsetenv("AWS_REGION")
+	if err := os.Setenv("AWS_REGION", "us-east-1"); err != nil {
+		t.Logf("Warning: failed to set AWS_REGION: %v", err)
+	}
+	defer func() {
+		if err := os.Unsetenv("AWS_REGION"); err != nil {
+			t.Logf("Warning: failed to unset AWS_REGION: %v", err)
+		}
+	}()
 
 	middleware, err := IPRateLimitWithLimited(10, time.Minute)
 	if err != nil {
@@ -59,8 +65,14 @@ func TestIPRateLimitWithLimited(t *testing.T) {
 
 func TestUserRateLimitWithLimited(t *testing.T) {
 	// Set AWS_REGION for testing
-	os.Setenv("AWS_REGION", "us-east-1")
-	defer os.Unsetenv("AWS_REGION")
+	if err := os.Setenv("AWS_REGION", "us-east-1"); err != nil {
+		t.Logf("Warning: failed to set AWS_REGION: %v", err)
+	}
+	defer func() {
+		if err := os.Unsetenv("AWS_REGION"); err != nil {
+			t.Logf("Warning: failed to unset AWS_REGION: %v", err)
+		}
+	}()
 
 	middleware, err := UserRateLimitWithLimited(100, 15*time.Minute)
 	if err != nil {
@@ -72,8 +84,14 @@ func TestUserRateLimitWithLimited(t *testing.T) {
 
 func TestTenantRateLimitWithLimited(t *testing.T) {
 	// Set AWS_REGION for testing
-	os.Setenv("AWS_REGION", "us-east-1")
-	defer os.Unsetenv("AWS_REGION")
+	if err := os.Setenv("AWS_REGION", "us-east-1"); err != nil {
+		t.Logf("Warning: failed to set AWS_REGION: %v", err)
+	}
+	defer func() {
+		if err := os.Unsetenv("AWS_REGION"); err != nil {
+			t.Logf("Warning: failed to unset AWS_REGION: %v", err)
+		}
+	}()
 
 	middleware, err := TenantRateLimitWithLimited(50, 10*time.Minute)
 	if err != nil {
@@ -85,8 +103,12 @@ func TestTenantRateLimitWithLimited(t *testing.T) {
 
 func TestRateLimitWithoutAWSRegion(t *testing.T) {
 	// Ensure AWS_REGION is not set
-	os.Unsetenv("AWS_REGION")
-	os.Unsetenv("AWS_DEFAULT_REGION")
+	if err := os.Unsetenv("AWS_REGION"); err != nil {
+		t.Logf("Warning: failed to unset AWS_REGION: %v", err)
+	}
+	if err := os.Unsetenv("AWS_DEFAULT_REGION"); err != nil {
+		t.Logf("Warning: failed to unset AWS_DEFAULT_REGION: %v", err)
+	}
 
 	// Test IPRateLimitWithLimited without region
 	_, err := IPRateLimitWithLimited(10, time.Minute)

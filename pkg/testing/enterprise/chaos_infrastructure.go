@@ -2,6 +2,7 @@ package enterprise
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -446,6 +447,32 @@ type PolicyException struct {
 	Metadata   map[string]any `json:"metadata"`
 }
 
+// Helper functions for fault injection status checking
+
+// createFaultStatus creates a standard fault status response for an active fault
+func createFaultStatus(activeFault *ActiveFault, impactKey string, impactValue any) FaultStatus {
+	return FaultStatus{
+		Active:    true,
+		StartTime: activeFault.StartTime,
+		Duration:  time.Since(activeFault.StartTime),
+		Impact:    map[string]any{impactKey: impactValue},
+		Metadata:  activeFault.Config,
+	}
+}
+
+// checkFaultStatus checks if a fault is active and returns the appropriate status
+func checkFaultStatus(active map[string]*ActiveFault, mutex *sync.RWMutex, faultID string, impactKey string, impactValueFunc func(*ActiveFault) any) (FaultStatus, error) {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	activeFault, exists := active[faultID]
+	if !exists {
+		return FaultStatus{Active: false}, nil
+	}
+
+	return createFaultStatus(activeFault, impactKey, impactValueFunc(activeFault)), nil
+}
+
 // Implementation methods for fault injectors
 
 func NewNetworkFaultInjector(config *NetworkFaultConfig) *NetworkFaultInjector {
@@ -481,7 +508,10 @@ func (nfi *NetworkFaultInjector) Inject(_ context.Context, fault FaultDefinition
 		activeFault.Config["injected_delay"] = delay
 
 	case NetworkPartition:
-		partition := fault.Parameters["partition"].(string)
+		partition, ok := fault.Parameters["partition"].(string)
+		if !ok {
+			return fmt.Errorf("network partition parameter must be a string")
+		}
 		activeFault.Config["partition_type"] = partition
 
 	case ErrorFault:
@@ -505,21 +535,9 @@ func (nfi *NetworkFaultInjector) Remove(_ context.Context, fault FaultDefinition
 }
 
 func (nfi *NetworkFaultInjector) Status(_ context.Context, fault FaultDefinition, _ ExperimentTarget) (FaultStatus, error) {
-	nfi.mutex.RLock()
-	defer nfi.mutex.RUnlock()
-
-	activeFault, exists := nfi.active[fault.ID]
-	if !exists {
-		return FaultStatus{Active: false}, nil
-	}
-
-	return FaultStatus{
-		Active:    true,
-		StartTime: activeFault.StartTime,
-		Duration:  time.Since(activeFault.StartTime),
-		Impact:    map[string]any{"requests_affected": activeFault.Impact.AffectedRequests},
-		Metadata:  activeFault.Config,
-	}, nil
+	return checkFaultStatus(nfi.active, &nfi.mutex, fault.ID, "requests_affected", func(af *ActiveFault) any {
+		return af.Impact.AffectedRequests
+	})
 }
 
 func NewServiceFaultInjector(config *ServiceFaultConfig) *ServiceFaultInjector {
@@ -580,21 +598,9 @@ func (sfi *ServiceFaultInjector) Remove(_ context.Context, fault FaultDefinition
 }
 
 func (sfi *ServiceFaultInjector) Status(_ context.Context, fault FaultDefinition, _ ExperimentTarget) (FaultStatus, error) {
-	sfi.mutex.RLock()
-	defer sfi.mutex.RUnlock()
-
-	activeFault, exists := sfi.active[fault.ID]
-	if !exists {
-		return FaultStatus{Active: false}, nil
-	}
-
-	return FaultStatus{
-		Active:    true,
-		StartTime: activeFault.StartTime,
-		Duration:  time.Since(activeFault.StartTime),
-		Impact:    map[string]any{"errors_introduced": activeFault.Impact.ErrorsIntroduced},
-		Metadata:  activeFault.Config,
-	}, nil
+	return checkFaultStatus(sfi.active, &sfi.mutex, fault.ID, "errors_introduced", func(af *ActiveFault) any {
+		return af.Impact.ErrorsIntroduced
+	})
 }
 
 func NewResourceFaultInjector(config *ResourceFaultConfig) *ResourceFaultInjector {
@@ -621,10 +627,15 @@ func (rfi *ResourceFaultInjector) Inject(_ context.Context, fault FaultDefinitio
 	}
 
 	// Simulate resource fault injection
-	switch fault.Type {
-	case ResourceExhaustion:
-		resourceType := fault.Parameters["resource_type"].(string)
-		percentage := fault.Parameters["percentage"].(float64)
+	if fault.Type == ResourceExhaustion {
+		resourceType, ok := fault.Parameters["resource_type"].(string)
+		if !ok {
+			return fmt.Errorf("resource_type parameter must be a string")
+		}
+		percentage, ok := fault.Parameters["percentage"].(float64)
+		if !ok {
+			return fmt.Errorf("percentage parameter must be a float64")
+		}
 
 		activeFault.Config["resource_type"] = resourceType
 		activeFault.Config["exhaustion_percentage"] = percentage

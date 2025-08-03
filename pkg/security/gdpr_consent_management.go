@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"regexp"
 	"sync"
 	"time"
 )
@@ -1057,7 +1056,7 @@ func (gcm *GDPRConsentManager) HandleErasureRequest(ctx context.Context, request
 	return gcm.dataSubjectRights.HandleErasureRequest(ctx, request)
 }
 
-// validateConsentRecord validates a consent record (alias for validateConsent for test compatibility)
+// validateConsentRecord validates a consent record with comprehensive checks
 func (gcm *GDPRConsentManager) validateConsentRecord(consent *ConsentRecord) error {
 	return gcm.validateConsent(consent)
 }
@@ -1067,16 +1066,48 @@ func (gcm *GDPRConsentManager) generateConsentID() string {
 	return fmt.Sprintf("consent-%d", time.Now().UnixNano())
 }
 
-// isValidEmail validates an email address
+// isValidEmail validates an email address format
 func (gcm *GDPRConsentManager) isValidEmail(email string) bool {
-	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	return emailRegex.MatchString(email)
+	if email == "" {
+		return false
+	}
+	
+	// Basic email validation - contains @ and at least one dot after @
+	atIndex := -1
+	for i, char := range email {
+		if char == '@' {
+			if atIndex != -1 {
+				return false // Multiple @ symbols
+			}
+			atIndex = i
+		}
+	}
+	
+	if atIndex == -1 || atIndex == 0 || atIndex == len(email)-1 {
+		return false // No @, @ at start, or @ at end
+	}
+	
+	// Check for dot after @
+	hasValidDomain := false
+	for i := atIndex + 1; i < len(email); i++ {
+		if email[i] == '.' && i > atIndex+1 && i < len(email)-1 {
+			hasValidDomain = true
+			break
+		}
+	}
+	
+	return hasValidDomain
 }
 
 // calculateExpiryDate calculates the expiry date for consent
 func (gcm *GDPRConsentManager) calculateExpiryDate() time.Time {
-	if gcm.config.ConsentExpiryDays > 0 {
-		return time.Now().AddDate(0, 0, gcm.config.ConsentExpiryDays)
+	days := gcm.config.ConsentExpiryDays
+	if days <= 0 {
+		days = 365 // Default to 1 year
 	}
-	return time.Now().AddDate(1, 0, 0) // Default to 1 year
+	return time.Now().Add(time.Duration(days) * 24 * time.Hour)
 }
+
+
+
+

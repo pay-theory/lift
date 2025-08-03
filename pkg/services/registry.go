@@ -399,7 +399,7 @@ func (r *ServiceRegistry) validateConfig(config *ServiceConfig) error {
 
 // filterInstances filters service instances based on discovery options
 func (r *ServiceRegistry) filterInstances(instances []*ServiceInstance, opts DiscoveryOptions) []*ServiceInstance {
-	var filtered []*ServiceInstance
+	filtered := make([]*ServiceInstance, 0, len(instances))
 
 	for _, instance := range instances {
 		// Filter by tenant

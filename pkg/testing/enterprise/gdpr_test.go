@@ -146,14 +146,22 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"legal_basis_documented",
 		}
 
-		resultMap, ok := result.(map[string]any)
-		if !ok {
-			t.Fatal("Expected result to be a map")
+		// Check that result has test results
+		if result.TestResults == nil {
+			t.Fatal("Expected test results in ArticleResult")
 		}
 
+		// Check that expected test cases exist in TestResults
 		for _, field := range expectedFields {
-			if _, exists := resultMap[field]; !exists {
-				t.Errorf("Expected field %s in consent validation result", field)
+			found := false
+			for testName := range result.TestResults {
+				if testName == field {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Expected test case %s in consent validation result", field)
 			}
 		}
 	})
@@ -181,14 +189,22 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"technical_erasure_complete",
 		}
 
-		resultMap, ok := result.(map[string]any)
-		if !ok {
-			t.Fatal("Expected result to be a map")
+		// Check that result has test results
+		if result.TestResults == nil {
+			t.Fatal("Expected test results in ArticleResult")
 		}
 
+		// Check that expected test cases exist in TestResults
 		for _, field := range expectedFields {
-			if _, exists := resultMap[field]; !exists {
-				t.Errorf("Expected field %s in erasure validation result", field)
+			found := false
+			for testName := range result.TestResults {
+				if testName == field {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Expected test case %s in erasure validation result", field)
 			}
 		}
 	})
@@ -216,14 +232,22 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"free_of_charge",
 		}
 
-		resultMap, ok := result.(map[string]any)
-		if !ok {
-			t.Fatal("Expected result to be a map")
+		// Check that result has test results
+		if result.TestResults == nil {
+			t.Fatal("Expected test results in ArticleResult")
 		}
 
+		// Check that expected test cases exist in TestResults
 		for _, field := range expectedFields {
-			if _, exists := resultMap[field]; !exists {
-				t.Errorf("Expected field %s in portability validation result", field)
+			found := false
+			for testName := range result.TestResults {
+				if testName == field {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Expected test case %s in portability validation result", field)
 			}
 		}
 	})
@@ -250,14 +274,22 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"proportionality_assessed",
 		}
 
-		resultMap, ok := result.(map[string]any)
-		if !ok {
-			t.Fatal("Expected result to be a map")
+		// Check that result has test results
+		if result.TestResults == nil {
+			t.Fatal("Expected test results in ArticleResult")
 		}
 
+		// Check that expected test cases exist in TestResults
 		for _, field := range expectedFields {
-			if _, exists := resultMap[field]; !exists {
-				t.Errorf("Expected field %s in transfer validation result", field)
+			found := false
+			for testName := range result.TestResults {
+				if testName == field {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Expected test case %s in transfer validation result", field)
 			}
 		}
 	})
@@ -284,14 +316,22 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"follow_up_provided",
 		}
 
-		resultMap, ok := result.(map[string]any)
-		if !ok {
-			t.Fatal("Expected result to be a map")
+		// Check that result has test results
+		if result.TestResults == nil {
+			t.Fatal("Expected test results in ArticleResult")
 		}
 
+		// Check that expected test cases exist in TestResults
 		for _, field := range expectedFields {
-			if _, exists := resultMap[field]; !exists {
-				t.Errorf("Expected field %s in breach validation result", field)
+			found := false
+			for testName := range result.TestResults {
+				if testName == field {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Expected test case %s in breach validation result", field)
 			}
 		}
 	})
@@ -320,14 +360,22 @@ func TestGDPRPrivacyFramework(t *testing.T) {
 			"pia_updated",
 		}
 
-		resultMap, ok := result.(map[string]any)
-		if !ok {
-			t.Fatal("Expected result to be a map")
+		// Check that result has test results
+		if result.TestResults == nil {
+			t.Fatal("Expected test results in ArticleResult")
 		}
 
+		// Check that expected test cases exist in TestResults
 		for _, field := range expectedFields {
-			if _, exists := resultMap[field]; !exists {
-				t.Errorf("Expected field %s in PIA validation result", field)
+			found := false
+			for testName := range result.TestResults {
+				if testName == field {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Expected test case %s in PIA validation result", field)
 			}
 		}
 	})

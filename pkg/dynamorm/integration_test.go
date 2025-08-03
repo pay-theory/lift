@@ -43,7 +43,8 @@ func TestDynamORMIntegration(t *testing.T) {
 	})
 
 	t.Run("DynamORM Wrapper Creation", func(t *testing.T) {
-		wrapper, err := initDynamORM(config)
+		factory := &DefaultDBFactory{}
+		wrapper, err := initDynamORMWithFactory(config, factory)
 		if err != nil {
 			t.Skipf("Could not connect to local DynamoDB: %v", err)
 		}
@@ -55,7 +56,8 @@ func TestDynamORMIntegration(t *testing.T) {
 	})
 
 	t.Run("Basic CRUD Operations", func(t *testing.T) {
-		wrapper, err := initDynamORM(config)
+		factory := &DefaultDBFactory{}
+		wrapper, err := initDynamORMWithFactory(config, factory)
 		if err != nil {
 			t.Skipf("Could not connect to local DynamoDB: %v", err)
 		}
@@ -82,7 +84,8 @@ func TestDynamORMIntegration(t *testing.T) {
 	})
 
 	t.Run("Transaction Operations", func(t *testing.T) {
-		wrapper, err := initDynamORM(config)
+		factory := &DefaultDBFactory{}
+		wrapper, err := initDynamORMWithFactory(config, factory)
 		if err != nil {
 			t.Skipf("Could not connect to local DynamoDB: %v", err)
 		}
@@ -122,7 +125,8 @@ func TestDynamORMIntegration(t *testing.T) {
 			TenantIsolation: true,
 		}
 
-		wrapper, err := initDynamORM(tenantConfig)
+		factory := &DefaultDBFactory{}
+		wrapper, err := initDynamORMWithFactory(tenantConfig, factory)
 		if err != nil {
 			t.Skipf("Could not connect to local DynamoDB: %v", err)
 		}
@@ -184,7 +188,7 @@ func TestDynamORMMiddlewareBasic(t *testing.T) {
 		app.Use(WithDynamORM(config))
 
 		// Create a test handler that uses DynamORM
-		app.GET("/test", func(ctx *lift.Context) error {
+		if err := app.GET("/test", func(ctx *lift.Context) error {
 			db, err := DB(ctx)
 			if err != nil {
 				return err
@@ -198,7 +202,9 @@ func TestDynamORMMiddlewareBasic(t *testing.T) {
 				"status": "ok",
 				"table":  db.tableName,
 			})
-		})
+		}); err != nil {
+			t.Fatalf("Failed to register route: %v", err)
+		}
 
 		// Verify app was configured
 		assert.NotNil(t, app)
@@ -217,7 +223,7 @@ func TestDynamORMMiddlewareBasic(t *testing.T) {
 		app.Use(WithDynamORM(transactionConfig))
 
 		// Create a POST handler (write operation)
-		app.POST("/test", func(ctx *lift.Context) error {
+		if err := app.POST("/test", func(ctx *lift.Context) error {
 			// Check if transaction is available in context
 			tx := ctx.Get("dynamorm_transaction")
 			if tx != nil {
@@ -228,7 +234,9 @@ func TestDynamORMMiddlewareBasic(t *testing.T) {
 				"status":      "created",
 				"transaction": "enabled",
 			})
-		})
+		}); err != nil {
+			t.Fatalf("Failed to register route: %v", err)
+		}
 
 		// Verify app was configured
 		assert.NotNil(t, app)

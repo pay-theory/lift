@@ -14,6 +14,11 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const (
+	// EnvValueTrue is the common "true" value for environment variables
+	EnvValueTrue = "true"
+)
+
 // DynamORMIntegrationSuite provides a base suite for DynamORM integration tests
 type DynamORMIntegrationSuite struct {
 	suite.Suite
@@ -26,7 +31,7 @@ type DynamORMIntegrationSuite struct {
 // SetupSuite runs once before all tests in the suite
 func (s *DynamORMIntegrationSuite) SetupSuite() {
 	// Skip if not running integration tests
-	if os.Getenv("INTEGRATION_TEST") != "true" {
+	if os.Getenv("INTEGRATION_TEST") != EnvValueTrue {
 		s.T().Skip("Skipping integration test. Set INTEGRATION_TEST=true to run.")
 	}
 
@@ -74,7 +79,7 @@ func NewDynamORMTestEnvironment() *DynamORMTestEnvironment {
 	}
 
 	// Check if we're using local DynamoDB
-	isLocal := os.Getenv("USE_REAL_AWS") != "true"
+	isLocal := os.Getenv("USE_REAL_AWS") != EnvValueTrue
 
 	return &DynamORMTestEnvironment{
 		LocalEndpoint: endpoint,

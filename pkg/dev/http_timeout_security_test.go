@@ -25,7 +25,9 @@ func TestHTTPTimeoutSecurity(t *testing.T) {
 
 		// Start server briefly to initialize configuration
 		go func() {
-			server.startHTTPServer(ctx)
+			if err := server.startHTTPServer(ctx); err != nil {
+				t.Logf("Warning: server failed to start: %v", err)
+			}
 		}()
 
 		// Give it a moment to initialize
@@ -41,7 +43,9 @@ func TestHTTPTimeoutSecurity(t *testing.T) {
 		assert.Equal(t, 60*time.Second, server.server.IdleTimeout, "IdleTimeout should be 60 seconds")
 		assert.Equal(t, 1<<20, server.server.MaxHeaderBytes, "MaxHeaderBytes should be 1MB")
 
-		server.Stop()
+		if err := server.Stop(); err != nil {
+			t.Logf("Warning: server failed to stop cleanly: %v", err)
+		}
 	})
 
 	t.Run("ProfilerServer has proper timeout configurations", func(t *testing.T) {
@@ -105,7 +109,9 @@ func TestSlowlorisAttackPrevention(t *testing.T) {
 		// Create a test server that simulates our dev server configuration
 		handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+			if _, err := w.Write([]byte("OK")); err != nil {
+				t.Logf("Warning: failed to write response: %v", err)
+			}
 		})
 
 		server := httptest.NewUnstartedServer(handler)
@@ -122,7 +128,8 @@ func TestSlowlorisAttackPrevention(t *testing.T) {
 
 		// Test normal request works
 		client := &http.Client{Timeout: 2 * time.Second}
-		req, _ := http.NewRequestWithContext(context.Background(), "GET", server.URL, nil)
+		req, err := http.NewRequestWithContext(context.Background(), "GET", server.URL, nil)
+		require.NoError(t, err, "Failed to create request")
 		resp, err := client.Do(req)
 		require.NoError(t, err, "Normal request should succeed")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -143,7 +150,9 @@ func TestHTTPClientSecurity(t *testing.T) {
 		// Create a test server for health checking
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+			if _, err := w.Write([]byte("OK")); err != nil {
+				t.Logf("Warning: failed to write response: %v", err)
+			}
 		}))
 		defer server.Close()
 

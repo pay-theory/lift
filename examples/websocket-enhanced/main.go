@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -151,7 +152,7 @@ func handleDefault(ctx *lift.Context) error {
 
 	// Parse message
 	var msg Message
-	if err := json.Unmarshal(ctx.Request.Body, &msg); err != nil {
+	if parseErr := json.Unmarshal(ctx.Request.Body, &msg); parseErr != nil {
 		return ws.SendMessage([]byte(`{"error":"Invalid message format"}`))
 	}
 
@@ -161,7 +162,10 @@ func handleDefault(ctx *lift.Context) error {
 		"message": msg,
 	}
 
-	responseData, _ := json.Marshal(response)
+	responseData, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("failed to marshal echo response: %w", err)
+	}
 	return ws.SendMessage(responseData)
 }
 
@@ -189,12 +193,15 @@ func handleBroadcast(ctx *lift.Context) error {
 	var request struct {
 		Message string `json:"message"`
 	}
-	if err := json.Unmarshal(ctx.Request.Body, &request); err != nil {
+	if parseErr := json.Unmarshal(ctx.Request.Body, &request); parseErr != nil {
 		return ws.SendMessage([]byte(`{"error":"Invalid broadcast format"}`))
 	}
 
 	// Get tenant ID from context
-	tenantID, _ := ctx.Get("tenant_id").(string)
+	tenantID, ok := ctx.Get("tenant_id").(string)
+	if !ok {
+		tenantID = "" // Default to empty if not set
+	}
 
 	// Prepare broadcast message
 	broadcast := map[string]any{
@@ -203,7 +210,10 @@ func handleBroadcast(ctx *lift.Context) error {
 		"tenant_id": tenantID,
 		"message":   request.Message,
 	}
-	broadcastData, _ := json.Marshal(broadcast)
+	broadcastData, err := json.Marshal(broadcast)
+	if err != nil {
+		return fmt.Errorf("failed to marshal broadcast message: %w", err)
+	}
 
 	// In a real implementation, you would:
 	// 1. Get all connections for this tenant from the store

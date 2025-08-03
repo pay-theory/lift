@@ -4,35 +4,38 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/lift"
 )
 
 // HealthEndpoints provides HTTP endpoints for health checks
 type HealthEndpoints struct {
-	manager HealthManager
+	corsOrigins          []string      // 24 bytes (slice first)
+	manager              HealthManager // 8 bytes (interface)
+	timeout              time.Duration // 8 bytes
 
-	// Configuration
+	// Configuration (bools last)
 	enableDetailedErrors bool
 	enableCORS           bool
-	corsOrigins          []string
-	timeout              time.Duration
 }
 
 // HealthEndpointsConfig configures health endpoints
 type HealthEndpointsConfig struct {
+	// CORSOrigins allowed CORS origins (24 bytes - slice first)
+	CORSOrigins []string
+
+	// Timeout for health checks (8 bytes)
+	Timeout time.Duration
+
 	// EnableDetailedErrors whether to include detailed error information
 	EnableDetailedErrors bool
 
 	// EnableCORS whether to enable CORS headers
 	EnableCORS bool
-
-	// CORSOrigins allowed CORS origins
-	CORSOrigins []string
-
-	// Timeout for health checks
-	Timeout time.Duration
 }
 
 // NewHealthEndpoints creates new health endpoints
@@ -200,23 +203,23 @@ func (he *HealthEndpoints) ComponentsHandler(w http.ResponseWriter, r *http.Requ
 		response[name] = he.healthStatusToResponse(status)
 
 		// Determine overall status
-		if status.Status == StatusUnhealthy {
+		switch {
+		case status.Status == StatusUnhealthy:
 			overallStatus = StatusUnhealthy
-		} else if status.Status == StatusDegraded && overallStatus != StatusUnhealthy {
+		case status.Status == StatusDegraded && overallStatus != StatusUnhealthy:
 			overallStatus = StatusDegraded
-		} else if status.Status == StatusUnknown && overallStatus == StatusHealthy {
+		case status.Status == StatusUnknown && overallStatus == StatusHealthy:
 			overallStatus = StatusUnknown
 		}
 	}
 
 	statusCode := he.healthStatusToHTTPStatus(overallStatus)
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(lift.HeaderContentType, lift.ContentTypeJSON)
 	w.WriteHeader(statusCode)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		// Log error but can't change status code at this point
-		// TODO: Add proper logging once logger is available
-		_ = err // Intentionally ignored
+		log.Printf("Failed to encode health check response: %v", err)
 	}
 }
 
@@ -262,12 +265,11 @@ func (he *HealthEndpoints) healthStatusToResponse(status HealthStatus) HealthRes
 func (he *HealthEndpoints) writeJSONResponse(w http.ResponseWriter, statusCode int, status HealthStatus) {
 	response := he.healthStatusToResponse(status)
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(lift.HeaderContentType, lift.ContentTypeJSON)
 	w.WriteHeader(statusCode)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		// Log error but can't change status code at this point
-		// TODO: Add proper logging once logger is available
-		_ = err // Intentionally ignored
+		log.Printf("Failed to encode health check response: %v", err)
 	}
 }
 
@@ -283,14 +285,13 @@ func (he *HealthEndpoints) writePlainTextResponse(w http.ResponseWriter, statusC
 
 	if _, err := fmt.Fprint(w, message); err != nil {
 		// Log error but can't change status code at this point
-		// TODO: Add proper logging once logger is available
-		_ = err // Intentionally ignored
+		log.Printf("Failed to write plain text response: %v", err)
 	}
 }
 
 // writeError writes an error response
 func (he *HealthEndpoints) writeError(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(lift.HeaderContentType, lift.ContentTypeJSON)
 	w.WriteHeader(statusCode)
 
 	errorResponse := map[string]string{
@@ -301,8 +302,7 @@ func (he *HealthEndpoints) writeError(w http.ResponseWriter, statusCode int, mes
 
 	if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
 		// Log error but can't change status code at this point
-		// TODO: Add proper logging once logger is available
-		_ = err // Intentionally ignored
+		log.Printf("Failed to encode error response: %v", err)
 	}
 }
 

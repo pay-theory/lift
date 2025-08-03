@@ -268,7 +268,9 @@ func BenchmarkCompleteMiddlewareStack(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		_ = handler.Handle(ctx)
+		if err := handler.Handle(ctx); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 

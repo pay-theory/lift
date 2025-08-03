@@ -10,16 +10,26 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
+// initDynamORM initializes a DynamORM database connection
+// This is a test helper function used by integration tests
+func initDynamORM() (core.ExtendedDB, error) {
+	// Initialize with default test configuration
+	return dynamorm.New(session.Config{
+		Region: "us-east-1",
+		// Add other test-specific configuration as needed
+	})
+}
+
 // DynamORMConfig holds configuration for DynamORM integration
 type DynamORMConfig struct {
-	// 8-byte aligned fields
-	Timeout time.Duration `json:"timeout"`
-
-	// Strings (16 bytes each)
+	// Strings (16 bytes each) - largest first
 	TableName string `json:"table_name"`
 	Region    string `json:"region"`
 	Endpoint  string `json:"endpoint,omitempty"` // For local testing
 	TenantKey string `json:"tenant_key"`         // Key used for tenant isolation (default: "tenant_id")
+
+	// 8-byte aligned fields
+	Timeout time.Duration `json:"timeout"`
 
 	// 4-byte aligned fields
 	MaxRetries int `json:"max_retries"`
@@ -194,33 +204,7 @@ func initDynamORMWithFactory(config *DynamORMConfig, factory DBFactory) (*DynamO
 	return wrapper, nil
 }
 
-// initDynamORM initializes a DynamORM connection using the actual library
-func initDynamORM(config *DynamORMConfig) (*DynamORMWrapper, error) {
-	// Create session config for DynamORM
-	sessionConfig := session.Config{
-		Region: config.Region,
-	}
 
-	// Add endpoint for local testing
-	if config.Endpoint != "" {
-		sessionConfig.Endpoint = config.Endpoint
-	}
-
-	// Initialize DynamORM using the New function which returns core.ExtendedDB
-	db, err := dynamorm.New(sessionConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	wrapper := &DynamORMWrapper{
-		db:        db,
-		config:    config,
-		tableName: config.TableName,
-		region:    config.Region,
-	}
-
-	return wrapper, nil
-}
 
 // DynamORMWrapper wraps the DynamORM client with Lift-specific functionality
 type DynamORMWrapper struct {
@@ -332,9 +316,9 @@ type Transaction struct {
 
 // TransactionOperation represents an operation to be executed in a transaction
 type TransactionOperation struct {
-	Type string // "put", "delete", etc.
-	Item any
-	Key  any
+	Type string // "put", "delete", etc. (16 bytes - largest first)
+	Item any    // 16 bytes (interface)
+	Key  any    // 16 bytes (interface)
 }
 
 // Put adds a put operation to the transaction
@@ -409,18 +393,18 @@ func (t *Transaction) Rollback() error {
 
 // Query represents a DynamORM query
 type Query struct {
-	PartitionKey any
-	SortKey      any
-	IndexName    string
-	Filters      map[string]any
-	Limit        int
-	Ascending    bool
+	Filters      map[string]any // 24 bytes (map first)
+	IndexName    string         // 16 bytes (string)
+	PartitionKey any            // 16 bytes (interface)
+	SortKey      any            // 16 bytes (interface)
+	Limit        int            // 4 bytes
+	Ascending    bool           // 1 byte (smallest last)
 }
 
 // QueryResult represents the result of a query operation
 type QueryResult struct {
-	Items        []any
-	LastKey      any
-	Count        int
-	ScannedCount int
+	Items        []any // 24 bytes (slice first)
+	LastKey      any   // 16 bytes (interface)
+	Count        int   // 4 bytes
+	ScannedCount int   // 4 bytes
 }

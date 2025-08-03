@@ -85,7 +85,7 @@ func TestWebSocketContext_AsWebSocket(t *testing.T) {
 				assert.Error(t, err)
 				assert.Nil(t, wsCtx)
 			} else {
-				assert.NoError(t, err)
+		assert.NoError(t, err)
 				assert.NotNil(t, wsCtx)
 				assert.Equal(t, tt.expectedConnID, wsCtx.ConnectionID())
 				assert.Equal(t, tt.expectedStage, wsCtx.Stage())
@@ -105,7 +105,8 @@ func TestWebSocketContext_WithRegion(t *testing.T) {
 		},
 	}
 	ctx := NewContext(context.Background(), req)
-	wsCtx, _ := ctx.AsWebSocket()
+	wsCtx, err := ctx.AsWebSocket()
+	assert.NoError(t, err)
 
 	// Test setting region
 	result := wsCtx.WithRegion("us-west-2")
@@ -131,7 +132,8 @@ func TestWebSocketContext_GetRegion(t *testing.T) {
 					},
 				}
 				ctx := NewContext(context.Background(), req)
-				wsCtx, _ := ctx.AsWebSocket()
+				wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 				wsCtx.WithRegion("eu-west-1")
 				return wsCtx
 			},
@@ -149,7 +151,8 @@ func TestWebSocketContext_GetRegion(t *testing.T) {
 					},
 				}
 				ctx := NewContext(context.Background(), req)
-				wsCtx, _ := ctx.AsWebSocket()
+				wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 				return wsCtx
 			},
 			expectedRegion: "us-east-1",
@@ -215,7 +218,8 @@ func TestWebSocketContext_HelperMethods(t *testing.T) {
 				},
 			}
 			ctx := NewContext(context.Background(), req)
-			wsCtx, _ := ctx.AsWebSocket()
+			wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 			assert.Equal(t, tt.expectedIsConnect, wsCtx.IsConnectEvent())
 			assert.Equal(t, tt.expectedIsDisconnect, wsCtx.IsDisconnectEvent())
@@ -248,7 +252,8 @@ func TestWebSocketContext_GetAuthorizationFromQuery(t *testing.T) {
 					},
 				}
 				ctx := NewContext(context.Background(), req)
-				wsCtx, _ := ctx.AsWebSocket()
+				wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 				return wsCtx
 			},
 			expectedAuth: "Bearer token123",
@@ -271,7 +276,8 @@ func TestWebSocketContext_GetAuthorizationFromQuery(t *testing.T) {
 					},
 				}
 				ctx := NewContext(context.Background(), req)
-				wsCtx, _ := ctx.AsWebSocket()
+				wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 				return wsCtx
 			},
 			expectedAuth: "",
@@ -336,7 +342,8 @@ func TestWebSocketContext_EndpointMethods(t *testing.T) {
 				},
 			}
 			ctx := NewContext(context.Background(), req)
-			wsCtx, _ := ctx.AsWebSocket()
+			wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 			assert.Equal(t, tt.expectedConnID, wsCtx.ConnectionID())
 			assert.Equal(t, tt.expectedRouteKey, wsCtx.RouteKey())
@@ -358,7 +365,8 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			},
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 		assert.Equal(t, "", wsCtx.ConnectionID())
 		assert.Equal(t, "", wsCtx.RouteKey())
@@ -379,7 +387,8 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			},
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 		assert.Equal(t, "", wsCtx.ConnectionID())
 		assert.Equal(t, "", wsCtx.RouteKey())
@@ -395,7 +404,8 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			},
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 		api, err := wsCtx.GetManagementAPI()
 		assert.Error(t, err)
@@ -413,9 +423,10 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			},
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
-		err := wsCtx.SendMessage([]byte("test"))
+		err = wsCtx.SendMessage([]byte("test"))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "connection ID not found")
 	})
@@ -438,7 +449,8 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			Body: largeMessage,
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 		// Verify we can access the large body
 		assert.Equal(t, len(largeMessage), len(ctx.Request.Body))
@@ -456,10 +468,11 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			},
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 		// Try to send a channel (cannot be marshaled to JSON)
-		err := wsCtx.SendJSONMessage(make(chan int))
+		err = wsCtx.SendJSONMessage(make(chan int))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to marshal JSON")
 	})
@@ -475,9 +488,10 @@ func TestWebSocketContext_EdgeCases(t *testing.T) {
 			},
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
-		err := wsCtx.BroadcastMessage([]string{}, []byte("test"))
+		err = wsCtx.BroadcastMessage([]string{}, []byte("test"))
 		assert.NoError(t, err) // Should not error on empty list
 	})
 }
@@ -497,7 +511,8 @@ func TestWebSocketContext_APIErrorHandling(t *testing.T) {
 			},
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 		// We can't easily test the actual AWS SDK errors without mocking
 		// but we can verify the method exists and accepts the right parameters
@@ -515,10 +530,11 @@ func TestWebSocketContext_APIErrorHandling(t *testing.T) {
 			},
 		}
 		ctx := NewContext(context.Background(), req)
-		wsCtx, _ := ctx.AsWebSocket()
+		wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 		// Test disconnect with empty connection ID
-		err := wsCtx.Disconnect("")
+		err = wsCtx.Disconnect("")
 		// Without mocking, this will fail due to missing AWS credentials
 		// but we're testing that the method exists and accepts parameters
 		assert.Error(t, err)
@@ -526,7 +542,7 @@ func TestWebSocketContext_APIErrorHandling(t *testing.T) {
 }
 
 // Test concurrent operations safety
-func TestWebSocketContext_ConcurrentSafety(_ *testing.T) {
+func TestWebSocketContext_ConcurrentSafety(t *testing.T) {
 	req := &Request{
 		Request: &adapters.Request{
 			TriggerType: TriggerWebSocket,
@@ -538,7 +554,8 @@ func TestWebSocketContext_ConcurrentSafety(_ *testing.T) {
 		},
 	}
 	ctx := NewContext(context.Background(), req)
-	wsCtx, _ := ctx.AsWebSocket()
+	wsCtx, err := ctx.AsWebSocket()
+		assert.NoError(t, err)
 
 	// Test concurrent reads
 	done := make(chan bool, 10)

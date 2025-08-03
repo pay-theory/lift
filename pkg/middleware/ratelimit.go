@@ -10,6 +10,10 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
+const (
+	defaultTenant = "default"
+)
+
 // RateLimitConfig holds configuration for rate limiting
 type RateLimitConfig struct {
 	DynamORM        *dynamorm.DynamORMWrapper                   `json:"-"`
@@ -593,7 +597,7 @@ func defaultKeyFunc(ctx *lift.Context) *RateLimitKey {
 func tenantKeyFunc(ctx *lift.Context) *RateLimitKey {
 	tenantID := ctx.TenantID()
 	if tenantID == "" {
-		tenantID = "default"
+		tenantID = defaultTenant
 	}
 
 	return &RateLimitKey{

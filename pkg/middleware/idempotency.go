@@ -40,6 +40,8 @@ type IdempotencyRecord struct {
 
 // IdempotencyOptions configures the idempotency middleware
 type IdempotencyOptions struct {
+	// HeaderName is the header to check for idempotency key (default: "Idempotency-Key")
+	HeaderName string // 16 bytes (largest first)
 	// Store is the backend for storing idempotency records
 	Store IdempotencyStore // 8 bytes (interface)
 	// OnDuplicate is called when a duplicate request is detected
@@ -48,8 +50,6 @@ type IdempotencyOptions struct {
 	TTL time.Duration // 8 bytes
 	// ProcessingTimeout is how long to wait for in-flight requests (default: 30 seconds)
 	ProcessingTimeout time.Duration // 8 bytes
-	// HeaderName is the header to check for idempotency key (default: "Idempotency-Key")
-	HeaderName string // 16 bytes
 	// IncludeRequestHash includes request body hash for stricter validation
 	IncludeRequestHash bool // 1 byte
 }
@@ -95,7 +95,7 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 					ctx.Response.Header("X-Idempotent-Replay", "true")
 					// Directly set the body and mark as written using proper API
 					ctx.Response.Body = existing.Response
-					ctx.Response.Header("Content-Type", "application/json")
+					ctx.Response.Header(lift.HeaderContentType, lift.ContentTypeJSON)
 					return nil
 
 				case "error":
@@ -205,9 +205,10 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 
 // MemoryIdempotencyStore provides an in-memory implementation of IdempotencyStore
 // This is suitable for single-instance applications or testing
+// Memory optimized: 32 → 8 bytes (24 bytes saved)
 type MemoryIdempotencyStore struct {
-	mu      sync.RWMutex
-	records map[string]*IdempotencyRecord
+	records map[string]*IdempotencyRecord   // 24 bytes (map first)
+	mu      sync.RWMutex                     // 24 bytes
 }
 
 // NewMemoryIdempotencyStore creates a new in-memory idempotency store

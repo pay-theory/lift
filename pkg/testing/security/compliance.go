@@ -9,6 +9,47 @@ import (
 	"time"
 )
 
+// Helper functions for compliance checking
+
+// checkAuthenticationRequired tests if a URL endpoint requires authentication
+func checkAuthenticationRequired(ctx context.Context, client *http.Client, url string) bool {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return false
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Warning: failed to close response body: %v", err)
+		}
+	}()
+
+	// Should require authentication (return 401 Unauthorized or 403 Forbidden)
+	return resp.StatusCode == 401 || resp.StatusCode == 403
+}
+
+// getPCIDSSRequirements returns the standard PCI DSS 12 requirements
+func getPCIDSSRequirements() []Requirement {
+	return []Requirement{
+		{ID: "1", Description: "Install and maintain a firewall configuration", Category: "network", Mandatory: true},
+		{ID: "2", Description: "Do not use vendor-supplied defaults", Category: "configuration", Mandatory: true},
+		{ID: "3", Description: "Protect stored cardholder data", Category: "data", Mandatory: true},
+		{ID: "4", Description: "Encrypt transmission of cardholder data", Category: "encryption", Mandatory: true},
+		{ID: "5", Description: "Protect all systems against malware", Category: "malware", Mandatory: true},
+		{ID: "6", Description: "Develop and maintain secure systems", Category: "development", Mandatory: true},
+		{ID: "7", Description: "Restrict access to cardholder data", Category: "access", Mandatory: true},
+		{ID: "8", Description: "Identify and authenticate access", Category: "authentication", Mandatory: true},
+		{ID: "9", Description: "Restrict physical access to cardholder data", Category: "physical", Mandatory: true},
+		{ID: "10", Description: "Track and monitor all access", Category: "monitoring", Mandatory: true},
+		{ID: "11", Description: "Regularly test security systems", Category: "testing", Mandatory: true},
+		{ID: "12", Description: "Maintain information security policy", Category: "policy", Mandatory: true},
+	}
+}
+
 // HIPAA Compliance Checker for Healthcare Applications
 type HIPAAComplianceChecker struct {
 	client  *http.Client
@@ -125,23 +166,7 @@ func (h *HIPAAComplianceChecker) validateRequirement(ctx context.Context, system
 
 func (h *HIPAAComplianceChecker) checkAdministrativeSafeguards(ctx context.Context, system SystemInfo) bool {
 	// Check for user access management
-	req, err := http.NewRequestWithContext(ctx, "GET", system.Target.URL+"/admin/users", nil)
-	if err != nil {
-		return false
-	}
-
-	resp, err := h.client.Do(req)
-	if err != nil {
-		return false
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
-		}
-	}()
-
-	// Should require authentication
-	return resp.StatusCode == 401 || resp.StatusCode == 403
+	return checkAuthenticationRequired(ctx, h.client, system.Target.URL+"/admin/users")
 }
 
 func (h *HIPAAComplianceChecker) checkPhysicalSafeguards(_ context.Context, _ SystemInfo) bool {
@@ -262,20 +287,7 @@ func (p *PCIDSSComplianceChecker) Validate(ctx context.Context, system SystemInf
 	}
 
 	// PCI DSS 12 Requirements
-	requirements := []Requirement{
-		{ID: "1", Description: "Install and maintain a firewall configuration", Category: "network", Mandatory: true},
-		{ID: "2", Description: "Do not use vendor-supplied defaults", Category: "configuration", Mandatory: true},
-		{ID: "3", Description: "Protect stored cardholder data", Category: "data", Mandatory: true},
-		{ID: "4", Description: "Encrypt transmission of cardholder data", Category: "encryption", Mandatory: true},
-		{ID: "5", Description: "Protect all systems against malware", Category: "malware", Mandatory: true},
-		{ID: "6", Description: "Develop and maintain secure systems", Category: "development", Mandatory: true},
-		{ID: "7", Description: "Restrict access to cardholder data", Category: "access", Mandatory: true},
-		{ID: "8", Description: "Identify and authenticate access", Category: "authentication", Mandatory: true},
-		{ID: "9", Description: "Restrict physical access to cardholder data", Category: "physical", Mandatory: true},
-		{ID: "10", Description: "Track and monitor all access", Category: "monitoring", Mandatory: true},
-		{ID: "11", Description: "Regularly test security systems", Category: "testing", Mandatory: true},
-		{ID: "12", Description: "Maintain information security policy", Category: "policy", Mandatory: true},
-	}
+	requirements := getPCIDSSRequirements()
 
 	var passedCount int
 	for _, req := range requirements {
@@ -450,23 +462,7 @@ func (p *PCIDSSComplianceChecker) checkSecureSystems(_ context.Context, _ System
 
 func (p *PCIDSSComplianceChecker) checkAccessRestriction(ctx context.Context, system SystemInfo) bool {
 	// Check for proper access controls
-	req, err := http.NewRequestWithContext(ctx, "GET", system.Target.URL+"/payment/data", nil)
-	if err != nil {
-		return false
-	}
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return false
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
-		}
-	}()
-
-	// Payment data should require authentication
-	return resp.StatusCode == 401 || resp.StatusCode == 403
+	return checkAuthenticationRequired(ctx, p.client, system.Target.URL+"/payment/data")
 }
 
 func (p *PCIDSSComplianceChecker) checkAuthentication(_ context.Context, _ SystemInfo) bool {
@@ -521,20 +517,7 @@ func (p *PCIDSSComplianceChecker) GetStandard() string {
 }
 
 func (p *PCIDSSComplianceChecker) GetRequirements() []Requirement {
-	return []Requirement{
-		{ID: "1", Description: "Install and maintain a firewall configuration", Category: "network", Mandatory: true},
-		{ID: "2", Description: "Do not use vendor-supplied defaults", Category: "configuration", Mandatory: true},
-		{ID: "3", Description: "Protect stored cardholder data", Category: "data", Mandatory: true},
-		{ID: "4", Description: "Encrypt transmission of cardholder data", Category: "encryption", Mandatory: true},
-		{ID: "5", Description: "Protect all systems against malware", Category: "malware", Mandatory: true},
-		{ID: "6", Description: "Develop and maintain secure systems", Category: "development", Mandatory: true},
-		{ID: "7", Description: "Restrict access to cardholder data", Category: "access", Mandatory: true},
-		{ID: "8", Description: "Identify and authenticate access", Category: "authentication", Mandatory: true},
-		{ID: "9", Description: "Restrict physical access to cardholder data", Category: "physical", Mandatory: true},
-		{ID: "10", Description: "Track and monitor all access", Category: "monitoring", Mandatory: true},
-		{ID: "11", Description: "Regularly test security systems", Category: "testing", Mandatory: true},
-		{ID: "12", Description: "Maintain information security policy", Category: "policy", Mandatory: true},
-	}
+	return getPCIDSSRequirements()
 }
 
 func (p *PCIDSSComplianceChecker) GenerateComplianceReport() ComplianceReport {
@@ -664,23 +647,7 @@ func (s *SOC2ComplianceChecker) validateSOC2Requirement(ctx context.Context, sys
 
 func (s *SOC2ComplianceChecker) checkAccessControls(ctx context.Context, system SystemInfo) bool {
 	// Check for proper authentication
-	req, err := http.NewRequestWithContext(ctx, "GET", system.Target.URL+"/protected", nil)
-	if err != nil {
-		return false
-	}
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return false
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
-		}
-	}()
-
-	// Protected resources should require authentication
-	return resp.StatusCode == 401 || resp.StatusCode == 403
+	return checkAuthenticationRequired(ctx, s.client, system.Target.URL+"/protected")
 }
 
 func (s *SOC2ComplianceChecker) checkSystemOperations(ctx context.Context, system SystemInfo) bool {
