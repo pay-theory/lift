@@ -85,272 +85,163 @@ type AuditingConstruct struct {
 func NewAuditingConstruct(scope constructs.Construct, id string, props *AuditingProps) *AuditingConstruct {
 	this := constructs.NewConstruct(scope, &id)
 
-	// Set defaults
-	if props.AuditLevel == "" {
-		props.AuditLevel = AuditLevelDetailed
+	builder := newAuditingConstructBuilder(this, props)
+	return builder.build()
+}
+
+// auditingConstructBuilder builds auditing construct components
+type auditingConstructBuilder struct {
+	construct constructs.Construct
+	props     *AuditingProps
+	config    *auditingConstructConfig
+}
+
+// auditingConstructConfig holds resolved configuration values
+type auditingConstructConfig struct {
+	auditLevel                  AuditLevel
+	enableCloudTrail            bool
+	enableApplicationLogs       bool
+	enableDatabaseLogs          bool
+	enableRealTimeProcessing    bool
+	enableTamperProtection      bool
+	enableLogAggregation        bool
+	logRetentionDays           *float64
+	enableSIEMIntegration       bool
+	enableLogAnalysis           bool
+	enableComplianceReporting   bool
+	environment                 string
+	enableEncryption            bool
+	enableCrossAccountAccess    bool
+	enableIntegrityChecking     bool
+	enableDashboard             bool
+	enableAlerting              bool
+	enableImmutableLogs         bool
+	enableRegulatoryCompliance  bool
+}
+
+// newAuditingConstructBuilder creates a new auditing construct builder
+func newAuditingConstructBuilder(construct constructs.Construct, props *AuditingProps) *auditingConstructBuilder {
+	return &auditingConstructBuilder{
+		construct: construct,
+		props:     props,
+		config:    buildAuditingConstructConfig(props),
 	}
-	if props.EnableCloudTrail == nil {
-		props.EnableCloudTrail = jsii.Bool(true)
-	}
-	if props.EnableApplicationLogs == nil {
-		props.EnableApplicationLogs = jsii.Bool(true)
-	}
-	if props.EnableDatabaseLogs == nil {
-		props.EnableDatabaseLogs = jsii.Bool(true)
-	}
-	if props.EnableRealTimeProcessing == nil {
-		props.EnableRealTimeProcessing = jsii.Bool(true)
-	}
-	if props.EnableTamperProtection == nil {
-		props.EnableTamperProtection = jsii.Bool(true)
-	}
-	if props.EnableLogAggregation == nil {
-		props.EnableLogAggregation = jsii.Bool(true)
-	}
-	if props.LogRetentionDays == nil {
-		props.LogRetentionDays = jsii.Number(2555) // 7 years
-	}
-	if props.EnableSIEMIntegration == nil {
-		props.EnableSIEMIntegration = jsii.Bool(false)
-	}
-	if props.EnableLogAnalysis == nil {
-		props.EnableLogAnalysis = jsii.Bool(true)
-	}
-	if props.EnableComplianceReporting == nil {
-		props.EnableComplianceReporting = jsii.Bool(true)
-	}
-	if props.Environment == nil {
-		props.Environment = jsii.String("prod")
-	}
-	if props.EnableEncryption == nil {
-		props.EnableEncryption = jsii.Bool(true)
-	}
-	if props.EnableCrossAccountAccess == nil {
-		props.EnableCrossAccountAccess = jsii.Bool(false)
-	}
-	if props.EnableIntegrityChecking == nil {
-		props.EnableIntegrityChecking = jsii.Bool(true)
-	}
-	if props.EnableDashboard == nil {
-		props.EnableDashboard = jsii.Bool(true)
-	}
-	if props.EnableAlerting == nil {
-		props.EnableAlerting = jsii.Bool(true)
-	}
-	if props.EnableImmutableLogs == nil {
-		props.EnableImmutableLogs = jsii.Bool(true)
-	}
-	if props.EnableRegulatoryCompliance == nil {
-		props.EnableRegulatoryCompliance = jsii.Bool(true)
+}
+
+// buildAuditingConstructConfig resolves configuration values with defaults
+func buildAuditingConstructConfig(props *AuditingProps) *auditingConstructConfig {
+	config := &auditingConstructConfig{
+		auditLevel:                  AuditLevelDetailed,
+		enableCloudTrail:            true,
+		enableApplicationLogs:       true,
+		enableDatabaseLogs:          true,
+		enableRealTimeProcessing:    true,
+		enableTamperProtection:      true,
+		enableLogAggregation:        true,
+		logRetentionDays:           jsii.Number(2555), // 7 years
+		enableSIEMIntegration:       false,
+		enableLogAnalysis:           true,
+		enableComplianceReporting:   true,
+		environment:                 "prod",
+		enableEncryption:            true,
+		enableCrossAccountAccess:    false,
+		enableIntegrityChecking:     true,
+		enableDashboard:             true,
+		enableAlerting:              true,
+		enableImmutableLogs:         true,
+		enableRegulatoryCompliance:  true,
 	}
 
-	// Create KMS key for encryption
-	var encryptionKey awskms.Key
-	if props.EnableEncryption != nil && *props.EnableEncryption {
-		if props.EncryptionKey != nil {
-			var ok bool
-			encryptionKey, ok = props.EncryptionKey.(awskms.Key)
-			if !ok {
-				panic("EncryptionKey must be of type awskms.Key")
-			}
-		} else {
-			encryptionKey = awskms.NewKey(this, jsii.String("AuditEncryptionKey"), &awskms.KeyProps{
-				Description:       jsii.String(fmt.Sprintf("Audit encryption key for %s", *props.AppName)),
-				EnableKeyRotation: jsii.Bool(true),
-				Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
-					Statements: &[]awsiam.PolicyStatement{
-						awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-							Sid:    jsii.String("Enable IAM User Permissions"),
-							Effect: awsiam.Effect_ALLOW,
-							Principals: &[]awsiam.IPrincipal{
-								awsiam.NewAccountRootPrincipal(),
-							},
-							Actions:   &[]*string{jsii.String("kms:*")},
-							Resources: &[]*string{jsii.String("*")},
-						}),
-						awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-							Sid:    jsii.String("Allow audit services"),
-							Effect: awsiam.Effect_ALLOW,
-							Principals: &[]awsiam.IPrincipal{
-								awsiam.NewServicePrincipal(jsii.String("cloudtrail.amazonaws.com"), nil),
-								awsiam.NewServicePrincipal(jsii.String("logs.amazonaws.com"), nil),
-								awsiam.NewServicePrincipal(jsii.String("firehose.amazonaws.com"), nil),
-								awsiam.NewServicePrincipal(jsii.String("kinesis.amazonaws.com"), nil),
-							},
-							Actions: &[]*string{
-								jsii.String("kms:Encrypt"),
-								jsii.String("kms:Decrypt"),
-								jsii.String("kms:ReEncrypt*"),
-								jsii.String("kms:GenerateDataKey*"),
-								jsii.String("kms:DescribeKey"),
-							},
-							Resources: &[]*string{jsii.String("*")},
-						}),
-					},
-				}),
-			})
-			encryptionKey.AddAlias(jsii.String(fmt.Sprintf("alias/%s-audit", *props.AppName)))
-		}
+	// Apply provided values
+	if props.AuditLevel != "" {
+		config.auditLevel = props.AuditLevel
+	}
+	if props.EnableCloudTrail != nil {
+		config.enableCloudTrail = *props.EnableCloudTrail
+	}
+	if props.EnableApplicationLogs != nil {
+		config.enableApplicationLogs = *props.EnableApplicationLogs
+	}
+	if props.EnableDatabaseLogs != nil {
+		config.enableDatabaseLogs = *props.EnableDatabaseLogs
+	}
+	if props.EnableRealTimeProcessing != nil {
+		config.enableRealTimeProcessing = *props.EnableRealTimeProcessing
+	}
+	if props.EnableTamperProtection != nil {
+		config.enableTamperProtection = *props.EnableTamperProtection
+	}
+	if props.EnableLogAggregation != nil {
+		config.enableLogAggregation = *props.EnableLogAggregation
+	}
+	if props.LogRetentionDays != nil {
+		config.logRetentionDays = props.LogRetentionDays
+	}
+	if props.EnableSIEMIntegration != nil {
+		config.enableSIEMIntegration = *props.EnableSIEMIntegration
+	}
+	if props.EnableLogAnalysis != nil {
+		config.enableLogAnalysis = *props.EnableLogAnalysis
+	}
+	if props.EnableComplianceReporting != nil {
+		config.enableComplianceReporting = *props.EnableComplianceReporting
+	}
+	if props.Environment != nil {
+		config.environment = *props.Environment
+	}
+	if props.EnableEncryption != nil {
+		config.enableEncryption = *props.EnableEncryption
+	}
+	if props.EnableCrossAccountAccess != nil {
+		config.enableCrossAccountAccess = *props.EnableCrossAccountAccess
+	}
+	if props.EnableIntegrityChecking != nil {
+		config.enableIntegrityChecking = *props.EnableIntegrityChecking
+	}
+	if props.EnableDashboard != nil {
+		config.enableDashboard = *props.EnableDashboard
+	}
+	if props.EnableAlerting != nil {
+		config.enableAlerting = *props.EnableAlerting
+	}
+	if props.EnableImmutableLogs != nil {
+		config.enableImmutableLogs = *props.EnableImmutableLogs
+	}
+	if props.EnableRegulatoryCompliance != nil {
+		config.enableRegulatoryCompliance = *props.EnableRegulatoryCompliance
 	}
 
-	// Create S3 bucket for audit logs
-	var auditBucket awss3.Bucket
-	if props.AuditBucket != nil {
-		var ok bool
-		auditBucket, ok = props.AuditBucket.(awss3.Bucket)
-		if !ok {
-			panic("AuditBucket must be of type awss3.Bucket")
-		}
-	} else {
-		auditBucket = awss3.NewBucket(this, jsii.String("AuditBucket"), &awss3.BucketProps{
-			BucketName: jsii.String(fmt.Sprintf("%s-audit-%s", *props.AppName, *awscdk.Stack_Of(this).Region())),
-			Encryption: func() awss3.BucketEncryption {
-				if props.EnableEncryption != nil && *props.EnableEncryption {
-					return awss3.BucketEncryption_KMS
-				}
-				return awss3.BucketEncryption_S3_MANAGED
-			}(),
-			EncryptionKey: func() awskms.IKey {
-				if props.EnableEncryption != nil && *props.EnableEncryption {
-					return encryptionKey
-				}
-				return nil
-			}(),
-			BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
-			Versioned:         jsii.Bool(true),
-			ObjectLockEnabled: func() *bool {
-				if props.EnableImmutableLogs != nil && *props.EnableImmutableLogs {
-					return jsii.Bool(true)
-				}
-				return nil
-			}(),
-			LifecycleRules: &[]*awss3.LifecycleRule{
-				{
-					Id: jsii.String("AuditLogLifecycle"),
-					Transitions: &[]*awss3.Transition{
-						{
-							StorageClass:    awss3.StorageClass_INFREQUENT_ACCESS(),
-							TransitionAfter: awscdk.Duration_Days(jsii.Number(30)),
-						},
-						{
-							StorageClass:    awss3.StorageClass_GLACIER(),
-							TransitionAfter: awscdk.Duration_Days(jsii.Number(90)),
-						},
-						{
-							StorageClass:    awss3.StorageClass_DEEP_ARCHIVE(),
-							TransitionAfter: awscdk.Duration_Days(jsii.Number(365)),
-						},
-					},
-					Expiration: awscdk.Duration_Days(props.LogRetentionDays),
-				},
-			},
-			ServerAccessLogsPrefix: jsii.String("access-logs/"),
-		})
+	return config
+}
 
-		// Add bucket policy for cross-account access if enabled
-		if props.EnableCrossAccountAccess != nil && *props.EnableCrossAccountAccess && props.CrossAccountRoleArns != nil {
-			auditBucket.AddToResourcePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-				Sid:    jsii.String("AllowCrossAccountAccess"),
-				Effect: awsiam.Effect_ALLOW,
-				Principals: &[]awsiam.IPrincipal{
-					awsiam.NewArnPrincipal((*props.CrossAccountRoleArns)[0]),
-				},
-				Actions: &[]*string{
-					jsii.String("s3:GetObject"),
-					jsii.String("s3:ListBucket"),
-				},
-				Resources: &[]*string{
-					auditBucket.BucketArn(),
-					auditBucket.ArnForObjects(jsii.String("*")),
-				},
-			}))
-		}
-	}
-
+// build constructs the complete auditing construct
+func (b *auditingConstructBuilder) build() *AuditingConstruct {
+	// Create encryption key
+	encryptionKey := b.setupEncryptionKey()
+	
+	// Create audit bucket
+	auditBucket := b.setupAuditBucket(encryptionKey)
+	
 	// Create log groups
-	applicationLogGroup := createLogGroup(this, "ApplicationLogGroup", fmt.Sprintf("/aws/audit/%s/application", *props.AppName), encryptionKey, props.LogRetentionDays)
-	databaseLogGroup := createLogGroup(this, "DatabaseLogGroup", fmt.Sprintf("/aws/audit/%s/database", *props.AppName), encryptionKey, props.LogRetentionDays)
-	auditLogGroup := createLogGroup(this, "AuditLogGroup", fmt.Sprintf("/aws/audit/%s/system", *props.AppName), encryptionKey, props.LogRetentionDays)
-
+	applicationLogGroup, databaseLogGroup, auditLogGroup := b.setupLogGroups(encryptionKey)
+	
 	// Create CloudTrail
-	var cloudTrail awscloudtrail.Trail
-	if props.EnableCloudTrail != nil && *props.EnableCloudTrail {
-		cloudTrail = awscloudtrail.NewTrail(this, jsii.String("AuditCloudTrail"), &awscloudtrail.TrailProps{
-			TrailName:                  jsii.String(fmt.Sprintf("%s-audit-trail", *props.AppName)),
-			Bucket:                     auditBucket,
-			S3KeyPrefix:                jsii.String("cloudtrail/"),
-			IncludeGlobalServiceEvents: jsii.Bool(true),
-			IsMultiRegionTrail:         jsii.Bool(true),
-			EnableFileValidation:       jsii.Bool(true),
-			SendToCloudWatchLogs:       jsii.Bool(true),
-			CloudWatchLogGroup:         auditLogGroup,
-		})
-
-		// Add S3 data events for comprehensive auditing
-		cloudTrail.AddS3EventSelector(&[]*awscloudtrail.S3EventSelector{
-			{
-				Bucket:       auditBucket,
-				ObjectPrefix: jsii.String(""),
-			},
-		}, &awscloudtrail.AddEventSelectorOptions{
-			ReadWriteType:           awscloudtrail.ReadWriteType_ALL,
-			IncludeManagementEvents: jsii.Bool(true),
-		})
-	}
-
-	// Create Kinesis stream for real-time processing
-	var logStream awskinesis.Stream
-	if props.EnableRealTimeProcessing != nil && *props.EnableRealTimeProcessing {
-		logStream = awskinesis.NewStream(this, jsii.String("AuditLogStream"), &awskinesis.StreamProps{
-			StreamName:      jsii.String(fmt.Sprintf("%s-audit-stream", *props.AppName)),
-			ShardCount:      jsii.Number(2),
-			Encryption:      awskinesis.StreamEncryption_KMS,
-			EncryptionKey:   encryptionKey,
-			RetentionPeriod: awscdk.Duration_Hours(jsii.Number(24)),
-		})
-	}
-
-	// Create Firehose delivery stream for log aggregation
-	var firehoseStream awskinesisfirehose.CfnDeliveryStream
-	if props.EnableLogAggregation != nil && *props.EnableLogAggregation {
-		firehoseStream = createFirehoseDeliveryStream(this, props, auditBucket, encryptionKey, logStream)
-	}
-
-	// Create log processing function
-	var logProcessingFunction awslambda.Function
-	if props.EnableRealTimeProcessing != nil && *props.EnableRealTimeProcessing {
-		logProcessingFunction = createLogProcessingFunction(this, props, auditBucket, encryptionKey, logStream)
-	}
-
-	// Create integrity checking function
-	var integrityFunction awslambda.Function
-	if props.EnableIntegrityChecking != nil && *props.EnableIntegrityChecking {
-		integrityFunction = createIntegrityCheckingFunction(this, props, auditBucket, encryptionKey)
-	}
-
-	// Create compliance function
-	var complianceFunction awslambda.Function
-	if props.EnableComplianceReporting != nil && *props.EnableComplianceReporting {
-		complianceFunction = createAuditComplianceFunction(this, props, auditBucket, encryptionKey)
-	}
-
-	// Create dashboard
-	var dashboard awscloudwatch.Dashboard
-	if props.EnableDashboard != nil && *props.EnableDashboard {
-		dashboard = createAuditDashboard(this, props, applicationLogGroup, databaseLogGroup, auditLogGroup)
-	}
-
-	// Create alarms
-	var alarms []awscloudwatch.Alarm
-	if props.EnableAlerting != nil && *props.EnableAlerting {
-		alarms = createAuditAlarms(this, props, applicationLogGroup, databaseLogGroup, auditLogGroup)
-	}
-
+	cloudTrail := b.setupCloudTrail(auditBucket, auditLogGroup)
+	
+	// Create streaming components
+	logStream, firehoseStream := b.setupStreamingComponents(auditBucket, encryptionKey)
+	
+	// Create processing functions
+	logProcessingFunction, integrityFunction, complianceFunction := b.setupProcessingFunctions(auditBucket, encryptionKey, logStream)
+	
+	// Create monitoring components
+	dashboard, alarms := b.setupMonitoring(applicationLogGroup, databaseLogGroup, auditLogGroup)
+	
 	// Store audit configuration
-	storeAuditConfiguration(this, props)
+	storeAuditConfiguration(b.construct, b.props)
 
 	return &AuditingConstruct{
-		Construct:              this,
+		Construct:              b.construct,
 		AuditBucket:            auditBucket,
 		EncryptionKey:          encryptionKey,
 		CloudTrail:             cloudTrail,
@@ -365,6 +256,250 @@ func NewAuditingConstruct(scope constructs.Construct, id string, props *Auditing
 		IntegrityFunction:      integrityFunction,
 		ComplianceFunction:     complianceFunction,
 	}
+}
+
+// setupEncryptionKey creates the KMS encryption key
+func (b *auditingConstructBuilder) setupEncryptionKey() awskms.Key {
+	if !b.config.enableEncryption {
+		return nil
+	}
+	
+	if b.props.EncryptionKey != nil {
+		encryptionKey, ok := b.props.EncryptionKey.(awskms.Key)
+		if !ok {
+			panic("EncryptionKey must be of type awskms.Key")
+		}
+		return encryptionKey
+	}
+	
+	encryptionKey := awskms.NewKey(b.construct, jsii.String("AuditEncryptionKey"), &awskms.KeyProps{
+		Description:       jsii.String(fmt.Sprintf("Audit encryption key for %s", *b.props.AppName)),
+		EnableKeyRotation: jsii.Bool(true),
+		Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
+			Statements: &[]awsiam.PolicyStatement{
+				awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+					Sid:    jsii.String("Enable IAM User Permissions"),
+					Effect: awsiam.Effect_ALLOW,
+					Principals: &[]awsiam.IPrincipal{
+						awsiam.NewAccountRootPrincipal(),
+					},
+					Actions:   &[]*string{jsii.String("kms:*")},
+					Resources: &[]*string{jsii.String("*")},
+				}),
+				awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+					Sid:    jsii.String("Allow audit services"),
+					Effect: awsiam.Effect_ALLOW,
+					Principals: &[]awsiam.IPrincipal{
+						awsiam.NewServicePrincipal(jsii.String("cloudtrail.amazonaws.com"), nil),
+						awsiam.NewServicePrincipal(jsii.String("logs.amazonaws.com"), nil),
+						awsiam.NewServicePrincipal(jsii.String("firehose.amazonaws.com"), nil),
+						awsiam.NewServicePrincipal(jsii.String("kinesis.amazonaws.com"), nil),
+					},
+					Actions: &[]*string{
+						jsii.String("kms:Encrypt"),
+						jsii.String("kms:Decrypt"),
+						jsii.String("kms:ReEncrypt*"),
+						jsii.String("kms:GenerateDataKey*"),
+						jsii.String("kms:DescribeKey"),
+					},
+					Resources: &[]*string{jsii.String("*")},
+				}),
+			},
+		}),
+	})
+	encryptionKey.AddAlias(jsii.String(fmt.Sprintf("alias/%s-audit", *b.props.AppName)))
+	
+	return encryptionKey
+}
+
+// setupAuditBucket creates the S3 audit bucket
+func (b *auditingConstructBuilder) setupAuditBucket(encryptionKey awskms.Key) awss3.Bucket {
+	if b.props.AuditBucket != nil {
+		auditBucket, ok := b.props.AuditBucket.(awss3.Bucket)
+		if !ok {
+			panic("AuditBucket must be of type awss3.Bucket")
+		}
+		return auditBucket
+	}
+	
+	auditBucket := awss3.NewBucket(b.construct, jsii.String("AuditBucket"), &awss3.BucketProps{
+		BucketName: jsii.String(fmt.Sprintf("%s-audit-%s", *b.props.AppName, *awscdk.Stack_Of(b.construct).Region())),
+		Encryption: func() awss3.BucketEncryption {
+			if b.config.enableEncryption {
+				return awss3.BucketEncryption_KMS
+			}
+			return awss3.BucketEncryption_S3_MANAGED
+		}(),
+		EncryptionKey: func() awskms.IKey {
+			if b.config.enableEncryption {
+				return encryptionKey
+			}
+			return nil
+		}(),
+		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
+		Versioned:         jsii.Bool(true),
+		ObjectLockEnabled: func() *bool {
+			if b.config.enableImmutableLogs {
+				return jsii.Bool(true)
+			}
+			return nil
+		}(),
+		LifecycleRules: &[]*awss3.LifecycleRule{
+			{
+				Id: jsii.String("AuditLogLifecycle"),
+				Transitions: &[]*awss3.Transition{
+					{
+						StorageClass:    awss3.StorageClass_INFREQUENT_ACCESS(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(30)),
+					},
+					{
+						StorageClass:    awss3.StorageClass_GLACIER(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(90)),
+					},
+					{
+						StorageClass:    awss3.StorageClass_DEEP_ARCHIVE(),
+						TransitionAfter: awscdk.Duration_Days(jsii.Number(365)),
+					},
+				},
+				Expiration: awscdk.Duration_Days(b.config.logRetentionDays),
+			},
+		},
+		ServerAccessLogsPrefix: jsii.String("access-logs/"),
+	})
+
+	// Configure cross-account access if enabled
+	b.configureCrossAccountAccess(auditBucket)
+	
+	return auditBucket
+}
+
+// configureCrossAccountAccess adds bucket policy for cross-account access
+func (b *auditingConstructBuilder) configureCrossAccountAccess(auditBucket awss3.Bucket) {
+	if !b.config.enableCrossAccountAccess || b.props.CrossAccountRoleArns == nil {
+		return
+	}
+	
+	auditBucket.AddToResourcePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Sid:    jsii.String("AllowCrossAccountAccess"),
+		Effect: awsiam.Effect_ALLOW,
+		Principals: &[]awsiam.IPrincipal{
+			awsiam.NewArnPrincipal((*b.props.CrossAccountRoleArns)[0]),
+		},
+		Actions: &[]*string{
+			jsii.String("s3:GetObject"),
+			jsii.String("s3:ListBucket"),
+		},
+		Resources: &[]*string{
+			auditBucket.BucketArn(),
+			auditBucket.ArnForObjects(jsii.String("*")),
+		},
+	}))
+}
+
+// setupLogGroups creates all required log groups
+func (b *auditingConstructBuilder) setupLogGroups(encryptionKey awskms.Key) (awslogs.LogGroup, awslogs.LogGroup, awslogs.LogGroup) {
+	applicationLogGroup := createLogGroup(b.construct, "ApplicationLogGroup", fmt.Sprintf("/aws/audit/%s/application", *b.props.AppName), encryptionKey, b.config.logRetentionDays)
+	databaseLogGroup := createLogGroup(b.construct, "DatabaseLogGroup", fmt.Sprintf("/aws/audit/%s/database", *b.props.AppName), encryptionKey, b.config.logRetentionDays)
+	auditLogGroup := createLogGroup(b.construct, "AuditLogGroup", fmt.Sprintf("/aws/audit/%s/system", *b.props.AppName), encryptionKey, b.config.logRetentionDays)
+	
+	return applicationLogGroup, databaseLogGroup, auditLogGroup
+}
+
+// setupCloudTrail creates CloudTrail if enabled
+func (b *auditingConstructBuilder) setupCloudTrail(auditBucket awss3.Bucket, auditLogGroup awslogs.LogGroup) awscloudtrail.Trail {
+	if !b.config.enableCloudTrail {
+		return nil
+	}
+	
+	cloudTrail := awscloudtrail.NewTrail(b.construct, jsii.String("AuditCloudTrail"), &awscloudtrail.TrailProps{
+		TrailName:                  jsii.String(fmt.Sprintf("%s-audit-trail", *b.props.AppName)),
+		Bucket:                     auditBucket,
+		S3KeyPrefix:                jsii.String("cloudtrail/"),
+		IncludeGlobalServiceEvents: jsii.Bool(true),
+		IsMultiRegionTrail:         jsii.Bool(true),
+		EnableFileValidation:       jsii.Bool(true),
+		SendToCloudWatchLogs:       jsii.Bool(true),
+		CloudWatchLogGroup:         auditLogGroup,
+	})
+
+	// Add S3 data events for comprehensive auditing
+	cloudTrail.AddS3EventSelector(&[]*awscloudtrail.S3EventSelector{
+		{
+			Bucket:       auditBucket,
+			ObjectPrefix: jsii.String(""),
+		},
+	}, &awscloudtrail.AddEventSelectorOptions{
+		ReadWriteType:           awscloudtrail.ReadWriteType_ALL,
+		IncludeManagementEvents: jsii.Bool(true),
+	})
+	
+	return cloudTrail
+}
+
+// setupStreamingComponents creates Kinesis stream and Firehose delivery stream
+func (b *auditingConstructBuilder) setupStreamingComponents(auditBucket awss3.Bucket, encryptionKey awskms.Key) (awskinesis.Stream, awskinesisfirehose.CfnDeliveryStream) {
+	var logStream awskinesis.Stream
+	var firehoseStream awskinesisfirehose.CfnDeliveryStream
+	
+	// Create Kinesis stream for real-time processing
+	if b.config.enableRealTimeProcessing {
+		logStream = awskinesis.NewStream(b.construct, jsii.String("AuditLogStream"), &awskinesis.StreamProps{
+			StreamName:      jsii.String(fmt.Sprintf("%s-audit-stream", *b.props.AppName)),
+			ShardCount:      jsii.Number(2),
+			Encryption:      awskinesis.StreamEncryption_KMS,
+			EncryptionKey:   encryptionKey,
+			RetentionPeriod: awscdk.Duration_Hours(jsii.Number(24)),
+		})
+	}
+	
+	// Create Firehose delivery stream for log aggregation
+	if b.config.enableLogAggregation {
+		firehoseStream = createFirehoseDeliveryStream(b.construct, b.props, auditBucket, encryptionKey, logStream)
+	}
+	
+	return logStream, firehoseStream
+}
+
+// setupProcessingFunctions creates all Lambda processing functions
+func (b *auditingConstructBuilder) setupProcessingFunctions(auditBucket awss3.Bucket, encryptionKey awskms.Key, logStream awskinesis.Stream) (awslambda.Function, awslambda.Function, awslambda.Function) {
+	var logProcessingFunction awslambda.Function
+	var integrityFunction awslambda.Function
+	var complianceFunction awslambda.Function
+	
+	// Create log processing function
+	if b.config.enableRealTimeProcessing {
+		logProcessingFunction = createLogProcessingFunction(b.construct, b.props, auditBucket, encryptionKey, logStream)
+	}
+	
+	// Create integrity checking function
+	if b.config.enableIntegrityChecking {
+		integrityFunction = createIntegrityCheckingFunction(b.construct, b.props, auditBucket, encryptionKey)
+	}
+	
+	// Create compliance function
+	if b.config.enableComplianceReporting {
+		complianceFunction = createAuditComplianceFunction(b.construct, b.props, auditBucket, encryptionKey)
+	}
+	
+	return logProcessingFunction, integrityFunction, complianceFunction
+}
+
+// setupMonitoring creates dashboard and alarms
+func (b *auditingConstructBuilder) setupMonitoring(applicationLogGroup, databaseLogGroup, auditLogGroup awslogs.LogGroup) (awscloudwatch.Dashboard, []awscloudwatch.Alarm) {
+	var dashboard awscloudwatch.Dashboard
+	var alarms []awscloudwatch.Alarm
+	
+	// Create dashboard
+	if b.config.enableDashboard {
+		dashboard = createAuditDashboard(b.construct, b.props, applicationLogGroup, databaseLogGroup, auditLogGroup)
+	}
+	
+	// Create alarms
+	if b.config.enableAlerting {
+		alarms = createAuditAlarms(b.construct, b.props, applicationLogGroup, databaseLogGroup, auditLogGroup)
+	}
+	
+	return dashboard, alarms
 }
 
 // createLogGroup creates a CloudWatch log group with encryption
@@ -490,17 +625,40 @@ func createAuditLambdaFunction(scope constructs.Construct, id string, props *Aud
 	Description  string
 	Permissions  string // "read" or "readwrite"
 }) awslambda.Function {
-	return CreateStandardLambdaFunction(scope, id, bucket, encryptionKey, LambdaFunctionConfig{
-		FunctionName: config.FunctionName,
-		Description:  config.Description,
+	// Create environment variables
+	environment := &map[string]*string{
+		"AUDIT_BUCKET": bucket.BucketName(),
+		"APP_NAME":     props.AppName,
+		"ENVIRONMENT":  props.Environment,
+	}
+	
+	// Create the Lambda function
+	function := awslambda.NewFunction(scope, jsii.String(id), &awslambda.FunctionProps{
+		FunctionName: jsii.String(config.FunctionName),
+		Description:  jsii.String(config.Description),
+		Runtime:      awslambda.Runtime_GO_1_X(),
+		Code:         awslambda.Code_FromInline(jsii.String("// Placeholder audit function code")),
+		Handler:      jsii.String("main"),
 		Timeout:      config.Timeout,
-		Permissions:  config.Permissions,
-		Environment: map[string]*string{
-			"AUDIT_BUCKET": bucket.BucketName(),
-			"APP_NAME":     props.AppName,
-			"ENVIRONMENT":  props.Environment,
-		},
+		Environment:  environment,
 	})
+
+	// Grant appropriate S3 permissions
+	if config.Permissions == "read" {
+		bucket.GrantRead(awsiam.IGrantable(function), jsii.String("*"))
+	} else if config.Permissions == "readwrite" {
+		bucket.GrantReadWrite(awsiam.IGrantable(function), jsii.String("*"))
+	}
+
+	// Grant KMS permissions if encryption is enabled
+	if encryptionKey != nil {
+		encryptionKey.GrantDecrypt(awsiam.IGrantable(function))
+		if config.Permissions == "readwrite" {
+			encryptionKey.GrantEncrypt(awsiam.IGrantable(function))
+		}
+	}
+
+	return function
 }
 
 // createLogProcessingFunction creates a Lambda function for log processing
