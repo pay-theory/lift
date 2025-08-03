@@ -684,38 +684,80 @@ func (rfi *ResourceFaultInjector) Status(_ context.Context, fault FaultDefinitio
 // Utility functions for chaos engineering
 
 func ValidateExperimentSafety(experiment *ChaosExperiment, policy *ChaosPolicy) []string {
-	violations := []string{}
+	validator := newExperimentSafetyValidator(experiment, policy)
+	return validator.validate()
+}
 
-	// Check blast radius
-	for _, rule := range policy.Rules {
-		if rule.Type == BlastRadiusRule && rule.Enabled {
-			// Validate blast radius constraints
-			if maxPercentage, ok := rule.Parameters["max_percentage"].(float64); ok {
-				// Check if experiment exceeds max percentage
-				if experiment.Target.Scope == ClusterScope && maxPercentage > 10.0 {
-					violations = append(violations, "Experiment exceeds maximum blast radius percentage")
-				}
-			}
+// experimentSafetyValidator validates chaos experiment safety
+type experimentSafetyValidator struct {
+	experiment *ChaosExperiment
+	policy     *ChaosPolicy
+	violations []string
+}
+
+// newExperimentSafetyValidator creates a new safety validator
+func newExperimentSafetyValidator(experiment *ChaosExperiment, policy *ChaosPolicy) *experimentSafetyValidator {
+	return &experimentSafetyValidator{
+		experiment: experiment,
+		policy:     policy,
+		violations: []string{},
+	}
+}
+
+// validate performs all safety validations
+func (v *experimentSafetyValidator) validate() []string {
+	for _, rule := range v.policy.Rules {
+		if !rule.Enabled {
+			continue
 		}
+		
+		v.validateRule(rule)
+	}
+	return v.violations
+}
 
-		if rule.Type == TimeWindowRule && rule.Enabled {
-			// Validate time window constraints
-			if maxDuration, ok := rule.Parameters["max_duration"].(time.Duration); ok {
-				if experiment.Duration > maxDuration {
-					violations = append(violations, "Experiment duration exceeds policy limits")
-				}
-			}
-		}
+// validateRule validates a single policy rule
+func (v *experimentSafetyValidator) validateRule(rule PolicyRule) {
+	switch rule.Type {
+	case BlastRadiusRule:
+		v.validateBlastRadius(rule)
+	case TimeWindowRule:
+		v.validateTimeWindow(rule)
+	case ApprovalRule:
+		v.validateApproval(rule)
+	}
+}
 
-		if rule.Type == ApprovalRule && rule.Enabled {
-			// Check if approval is required
-			for _, fault := range experiment.Faults {
-				if fault.Severity == CriticalSeverity {
-					violations = append(violations, "Critical severity experiments require approval")
-				}
-			}
+// validateBlastRadius validates blast radius constraints
+func (v *experimentSafetyValidator) validateBlastRadius(rule PolicyRule) {
+	maxPercentage, ok := rule.Parameters["max_percentage"].(float64)
+	if !ok {
+		return
+	}
+	
+	if v.experiment.Target.Scope == ClusterScope && maxPercentage > 10.0 {
+		v.violations = append(v.violations, "Experiment exceeds maximum blast radius percentage")
+	}
+}
+
+// validateTimeWindow validates time window constraints
+func (v *experimentSafetyValidator) validateTimeWindow(rule PolicyRule) {
+	maxDuration, ok := rule.Parameters["max_duration"].(time.Duration)
+	if !ok {
+		return
+	}
+	
+	if v.experiment.Duration > maxDuration {
+		v.violations = append(v.violations, "Experiment duration exceeds policy limits")
+	}
+}
+
+// validateApproval validates approval requirements
+func (v *experimentSafetyValidator) validateApproval(rule PolicyRule) {
+	for _, fault := range v.experiment.Faults {
+		if fault.Severity == CriticalSeverity {
+			v.violations = append(v.violations, "Critical severity experiments require approval")
+			break // Only add once
 		}
 	}
-
-	return violations
 }
