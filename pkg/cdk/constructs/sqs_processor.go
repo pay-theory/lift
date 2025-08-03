@@ -80,223 +80,397 @@ func NewSQSProcessor(scope constructs.Construct, id *string, props *SQSProcessor
 		props = &SQSProcessorProps{}
 	}
 
-	// Default values
-	batchSize := float64(10)
+	builder := newSQSProcessorBuilder(this, props)
+	return builder.build()
+}
+
+// sqsProcessorBuilder builds SQS processor components
+type sqsProcessorBuilder struct {
+	processor *SQSProcessor
+	props     *SQSProcessorProps
+	config    *sqsProcessorConfig
+}
+
+// sqsProcessorConfig holds resolved configuration values
+type sqsProcessorConfig struct {
+	batchSize              float64
+	maxBatchingWindow      awscdk.Duration
+	visibilityTimeout      awscdk.Duration
+	messageRetentionPeriod awscdk.Duration
+	maxReceiveCount        float64
+	enableDLQ              bool
+	fifoQueue              bool
+	longPollingWaitTime    float64
+}
+
+// newSQSProcessorBuilder creates a new SQS processor builder
+func newSQSProcessorBuilder(processor *SQSProcessor, props *SQSProcessorProps) *sqsProcessorBuilder {
+	return &sqsProcessorBuilder{
+		processor: processor,
+		props:     props,
+		config:    buildSQSProcessorConfig(props),
+	}
+}
+
+// buildSQSProcessorConfig resolves configuration values with defaults
+func buildSQSProcessorConfig(props *SQSProcessorProps) *sqsProcessorConfig {
+	config := &sqsProcessorConfig{
+		batchSize:              float64(10),
+		maxBatchingWindow:      awscdk.Duration_Seconds(jsii.Number(5)),
+		visibilityTimeout:      awscdk.Duration_Minutes(jsii.Number(5)),
+		messageRetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
+		maxReceiveCount:        float64(3),
+		enableDLQ:              true,
+		fifoQueue:              false,
+		longPollingWaitTime:    float64(0),
+	}
+
+	// Apply provided values
 	if props.BatchSize != nil {
-		batchSize = *props.BatchSize
+		config.batchSize = *props.BatchSize
 	}
-
-	maxBatchingWindow := awscdk.Duration_Seconds(jsii.Number(5))
 	if props.MaxBatchingWindow != nil {
-		maxBatchingWindow = props.MaxBatchingWindow
+		config.maxBatchingWindow = props.MaxBatchingWindow
 	}
-
-	visibilityTimeout := awscdk.Duration_Minutes(jsii.Number(5))
 	if props.VisibilityTimeout != nil {
-		visibilityTimeout = props.VisibilityTimeout
+		config.visibilityTimeout = props.VisibilityTimeout
 	}
-
-	messageRetentionPeriod := awscdk.Duration_Days(jsii.Number(14))
 	if props.MessageRetentionPeriod != nil {
-		messageRetentionPeriod = props.MessageRetentionPeriod
+		config.messageRetentionPeriod = props.MessageRetentionPeriod
 	}
-
-	maxReceiveCount := float64(3)
 	if props.MaxReceiveCount != nil {
-		maxReceiveCount = *props.MaxReceiveCount
+		config.maxReceiveCount = *props.MaxReceiveCount
 	}
-
-	enableDLQ := true
 	if props.EnableDeadLetterQueue != nil {
-		enableDLQ = *props.EnableDeadLetterQueue
+		config.enableDLQ = *props.EnableDeadLetterQueue
 	}
-
-	fifoQueue := false
 	if props.FifoQueue != nil {
-		fifoQueue = *props.FifoQueue
+		config.fifoQueue = *props.FifoQueue
 	}
-
-	longPollingWaitTime := float64(0)
 	if props.ReceiveMessageWaitTimeSeconds != nil {
-		longPollingWaitTime = *props.ReceiveMessageWaitTimeSeconds
+		config.longPollingWaitTime = *props.ReceiveMessageWaitTimeSeconds
 	}
 
+	return config
+}
+
+// build constructs the complete SQS processor
+func (b *sqsProcessorBuilder) build() *SQSProcessor {
 	// Create or use existing queue
-	if props.ExistingQueue != nil {
-		this.Queue = props.ExistingQueue
-	} else {
-		// Create dead letter queue if enabled
-		var dlqConfig *awssqs.DeadLetterQueue
-		if enableDLQ {
-			dlqProps := &awssqs.QueueProps{}
-			if props.DeadLetterQueueProps != nil {
-				dlqProps = props.DeadLetterQueueProps
-			}
+	b.setupQueue()
+	
+	// Create Lambda function
+	b.setupFunction()
+	
+	// Configure event source
+	b.setupEventSource()
+	
+	// Setup permissions
+	b.setupPermissions()
+	
+	// Add monitoring if enabled
+	b.setupMonitoring()
 
-			// Set DLQ defaults
-			if dlqProps.RetentionPeriod == nil {
-				dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
-			}
-			if dlqProps.QueueName == nil && props.FunctionProps.FunctionName != nil {
-				dlqProps.QueueName = jsii.String(*props.FunctionProps.FunctionName + "-dlq")
-			}
+	return b.processor
+}
 
-			// Handle FIFO DLQ suffix
-			if fifoQueue && dlqProps.QueueName != nil {
-				queueName := *dlqProps.QueueName
-				if len(queueName) < 5 || queueName[len(queueName)-5:] != fifoSuffix {
-					dlqProps.QueueName = jsii.String(queueName + fifoSuffix)
-				}
-				dlqProps.Fifo = jsii.Bool(true)
-				if props.EnableContentBasedDeduplication != nil {
-					dlqProps.ContentBasedDeduplication = props.EnableContentBasedDeduplication
-				}
-			}
-
-			this.DeadLetterQueue = awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), dlqProps)
-
-			dlqConfig = &awssqs.DeadLetterQueue{
-				MaxReceiveCount: jsii.Number(maxReceiveCount),
-				Queue:           this.DeadLetterQueue,
-			}
-		}
-
-		// Create main queue
-		queueProps := &awssqs.QueueProps{
-			VisibilityTimeout:      visibilityTimeout,
-			RetentionPeriod:        messageRetentionPeriod,
-			DeadLetterQueue:        dlqConfig,
-			ReceiveMessageWaitTime: awscdk.Duration_Seconds(jsii.Number(longPollingWaitTime)),
-		}
-
-		// Override with user-provided props
-		if props.QueueProps != nil {
-			if props.QueueProps.QueueName != nil {
-				queueProps.QueueName = props.QueueProps.QueueName
-			}
-			if props.QueueProps.VisibilityTimeout != nil {
-				queueProps.VisibilityTimeout = props.QueueProps.VisibilityTimeout
-			}
-			if props.QueueProps.RetentionPeriod != nil {
-				queueProps.RetentionPeriod = props.QueueProps.RetentionPeriod
-			}
-			if props.QueueProps.ReceiveMessageWaitTime != nil {
-				queueProps.ReceiveMessageWaitTime = props.QueueProps.ReceiveMessageWaitTime
-			}
-		}
-
-		// FIFO queue configuration
-		if fifoQueue {
-			queueProps.Fifo = jsii.Bool(true)
-			if props.EnableContentBasedDeduplication != nil {
-				queueProps.ContentBasedDeduplication = props.EnableContentBasedDeduplication
-			}
-
-			// Ensure FIFO queue name ends with .fifo
-			if queueProps.QueueName != nil {
-				queueName := *queueProps.QueueName
-				if len(queueName) < 5 || queueName[len(queueName)-5:] != fifoSuffix {
-					queueProps.QueueName = jsii.String(queueName + fifoSuffix)
-				}
-			}
-		}
-
-		// Set default queue name if not provided
-		if queueProps.QueueName == nil && props.FunctionProps.FunctionName != nil {
-			suffix := ""
-			if fifoQueue {
-				suffix = fifoSuffix
-			}
-			queueProps.QueueName = jsii.String(*props.FunctionProps.FunctionName + "-queue" + suffix)
-		}
-
-		this.Queue = awssqs.NewQueue(this, jsii.String("Queue"), queueProps)
+// setupQueue creates or configures the SQS queue
+func (b *sqsProcessorBuilder) setupQueue() {
+	if b.props.ExistingQueue != nil {
+		b.processor.Queue = b.props.ExistingQueue
+		return
 	}
 
-	// Create Lambda function with SQS environment variables
+	queueBuilder := newSQSQueueBuilder(b.processor, b.props, b.config)
+	b.processor.Queue, b.processor.DeadLetterQueue = queueBuilder.build()
+}
+
+// setupFunction creates the Lambda function
+func (b *sqsProcessorBuilder) setupFunction() {
+	functionBuilder := newSQSFunctionBuilder(b.processor, b.props)
+	b.processor.Function = functionBuilder.build()
+}
+
+// setupEventSource configures the SQS event source
+func (b *sqsProcessorBuilder) setupEventSource() {
+	eventSourceBuilder := newSQSEventSourceBuilder(b.processor, b.props, b.config)
+	b.processor.EventSource = eventSourceBuilder.build()
+}
+
+// setupPermissions grants necessary permissions
+func (b *sqsProcessorBuilder) setupPermissions() {
+	b.processor.Queue.GrantConsumeMessages(b.processor.Function.Function)
+	if b.processor.DeadLetterQueue != nil {
+		b.processor.DeadLetterQueue.GrantSendMessages(b.processor.Function.Function)
+	}
+}
+
+// setupMonitoring adds monitoring if enabled
+func (b *sqsProcessorBuilder) setupMonitoring() {
+	if b.props.EnableMonitoring != nil && *b.props.EnableMonitoring {
+		b.processor.enableMonitoring()
+	}
+}
+
+// sqsQueueBuilder builds SQS queue components
+type sqsQueueBuilder struct {
+	processor *SQSProcessor
+	props     *SQSProcessorProps
+	config    *sqsProcessorConfig
+}
+
+// newSQSQueueBuilder creates a new SQS queue builder
+func newSQSQueueBuilder(processor *SQSProcessor, props *SQSProcessorProps, config *sqsProcessorConfig) *sqsQueueBuilder {
+	return &sqsQueueBuilder{
+		processor: processor,
+		props:     props,
+		config:    config,
+	}
+}
+
+// build creates the main queue and optional dead letter queue
+func (qb *sqsQueueBuilder) build() (awssqs.Queue, awssqs.Queue) {
+	var dlq awssqs.Queue
+	var dlqConfig *awssqs.DeadLetterQueue
+	
+	// Create dead letter queue if enabled
+	if qb.config.enableDLQ {
+		dlq = qb.createDeadLetterQueue()
+		dlqConfig = &awssqs.DeadLetterQueue{
+			MaxReceiveCount: jsii.Number(qb.config.maxReceiveCount),
+			Queue:           dlq,
+		}
+	}
+	
+	// Create main queue
+	mainQueue := qb.createMainQueue(dlqConfig)
+	
+	return mainQueue, dlq
+}
+
+// createDeadLetterQueue creates the dead letter queue
+func (qb *sqsQueueBuilder) createDeadLetterQueue() awssqs.Queue {
+	dlqProps := &awssqs.QueueProps{
+		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
+	}
+	
+	// Apply user-provided DLQ props
+	if qb.props.DeadLetterQueueProps != nil {
+		dlqProps = qb.props.DeadLetterQueueProps
+		if dlqProps.RetentionPeriod == nil {
+			dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
+		}
+	}
+	
+	// Set DLQ name
+	if dlqProps.QueueName == nil && qb.props.FunctionProps.FunctionName != nil {
+		dlqProps.QueueName = jsii.String(*qb.props.FunctionProps.FunctionName + "-dlq")
+	}
+	
+	// Apply FIFO configuration if needed
+	qb.applyFIFOConfig(dlqProps)
+	
+	return awssqs.NewQueue(qb.processor, jsii.String("DeadLetterQueue"), dlqProps)
+}
+
+// createMainQueue creates the main SQS queue
+func (qb *sqsQueueBuilder) createMainQueue(dlqConfig *awssqs.DeadLetterQueue) awssqs.Queue {
+	queueProps := &awssqs.QueueProps{
+		VisibilityTimeout:      qb.config.visibilityTimeout,
+		RetentionPeriod:        qb.config.messageRetentionPeriod,
+		DeadLetterQueue:        dlqConfig,
+		ReceiveMessageWaitTime: awscdk.Duration_Seconds(jsii.Number(qb.config.longPollingWaitTime)),
+	}
+	
+	// Apply user-provided queue props
+	qb.applyUserQueueProps(queueProps)
+	
+	// Apply FIFO configuration
+	qb.applyFIFOConfig(queueProps)
+	
+	// Set default queue name if needed
+	qb.setDefaultQueueName(queueProps)
+	
+	return awssqs.NewQueue(qb.processor, jsii.String("Queue"), queueProps)
+}
+
+// applyUserQueueProps applies user-provided queue properties
+func (qb *sqsQueueBuilder) applyUserQueueProps(queueProps *awssqs.QueueProps) {
+	if qb.props.QueueProps == nil {
+		return
+	}
+	
+	if qb.props.QueueProps.QueueName != nil {
+		queueProps.QueueName = qb.props.QueueProps.QueueName
+	}
+	if qb.props.QueueProps.VisibilityTimeout != nil {
+		queueProps.VisibilityTimeout = qb.props.QueueProps.VisibilityTimeout
+	}
+	if qb.props.QueueProps.RetentionPeriod != nil {
+		queueProps.RetentionPeriod = qb.props.QueueProps.RetentionPeriod
+	}
+	if qb.props.QueueProps.ReceiveMessageWaitTime != nil {
+		queueProps.ReceiveMessageWaitTime = qb.props.QueueProps.ReceiveMessageWaitTime
+	}
+}
+
+// applyFIFOConfig applies FIFO queue configuration
+func (qb *sqsQueueBuilder) applyFIFOConfig(queueProps *awssqs.QueueProps) {
+	if !qb.config.fifoQueue {
+		return
+	}
+	
+	queueProps.Fifo = jsii.Bool(true)
+	if qb.props.EnableContentBasedDeduplication != nil {
+		queueProps.ContentBasedDeduplication = qb.props.EnableContentBasedDeduplication
+	}
+	
+	// Ensure FIFO queue name ends with .fifo
+	if queueProps.QueueName != nil {
+		queueName := *queueProps.QueueName
+		if len(queueName) < 5 || queueName[len(queueName)-5:] != fifoSuffix {
+			queueProps.QueueName = jsii.String(queueName + fifoSuffix)
+		}
+	}
+}
+
+// setDefaultQueueName sets a default queue name if none provided
+func (qb *sqsQueueBuilder) setDefaultQueueName(queueProps *awssqs.QueueProps) {
+	if queueProps.QueueName != nil || qb.props.FunctionProps.FunctionName == nil {
+		return
+	}
+	
+	suffix := ""
+	if qb.config.fifoQueue {
+		suffix = fifoSuffix
+	}
+	queueProps.QueueName = jsii.String(*qb.props.FunctionProps.FunctionName + "-queue" + suffix)
+}
+
+// sqsFunctionBuilder builds Lambda function components
+type sqsFunctionBuilder struct {
+	processor *SQSProcessor
+	props     *SQSProcessorProps
+}
+
+// newSQSFunctionBuilder creates a new SQS function builder
+func newSQSFunctionBuilder(processor *SQSProcessor, props *SQSProcessorProps) *sqsFunctionBuilder {
+	return &sqsFunctionBuilder{
+		processor: processor,
+		props:     props,
+	}
+}
+
+// build creates the Lambda function with SQS environment variables
+func (fb *sqsFunctionBuilder) build() *LiftFunction {
+	// Prepare environment variables
+	functionEnv := fb.prepareFunctionEnvironment()
+	
+	// Create LiftFunction properties
+	liftProps := &LiftFunctionProps{
+		FunctionProps: fb.props.FunctionProps,
+	}
+	
+	// Set environment variables
+	liftProps.FunctionProps.Environment = &functionEnv
+	
+	// Set Lift-specific properties
+	if fb.props.EnableTracing != nil {
+		liftProps.EnableTracing = fb.props.EnableTracing
+	}
+	if fb.props.EnableMultiTenant != nil {
+		liftProps.EnableMultiTenant = fb.props.EnableMultiTenant
+	}
+	
+	return NewLiftFunction(fb.processor, jsii.String("Function"), liftProps)
+}
+
+// prepareFunctionEnvironment prepares environment variables for the function
+func (fb *sqsFunctionBuilder) prepareFunctionEnvironment() map[string]*string {
 	functionEnv := make(map[string]*string)
-	if props.FunctionProps.Environment != nil {
-		for k, v := range *props.FunctionProps.Environment {
+	
+	// Copy existing environment variables
+	if fb.props.FunctionProps.Environment != nil {
+		for k, v := range *fb.props.FunctionProps.Environment {
 			functionEnv[k] = v
 		}
 	}
-
+	
 	// Add SQS-specific environment variables
-	functionEnv["SQS_QUEUE_URL"] = this.Queue.QueueUrl()
-	if this.DeadLetterQueue != nil {
-		functionEnv["SQS_DLQ_URL"] = this.DeadLetterQueue.QueueUrl()
+	functionEnv["SQS_QUEUE_URL"] = fb.processor.Queue.QueueUrl()
+	if fb.processor.DeadLetterQueue != nil {
+		functionEnv["SQS_DLQ_URL"] = fb.processor.DeadLetterQueue.QueueUrl()
 	}
+	
+	return functionEnv
+}
 
-	// Create LiftFunction with enhanced properties
-	liftProps := &LiftFunctionProps{
-		FunctionProps: props.FunctionProps,
+// sqsEventSourceBuilder builds SQS event source components
+type sqsEventSourceBuilder struct {
+	processor *SQSProcessor
+	props     *SQSProcessorProps
+	config    *sqsProcessorConfig
+}
+
+// newSQSEventSourceBuilder creates a new SQS event source builder
+func newSQSEventSourceBuilder(processor *SQSProcessor, props *SQSProcessorProps, config *sqsProcessorConfig) *sqsEventSourceBuilder {
+	return &sqsEventSourceBuilder{
+		processor: processor,
+		props:     props,
+		config:    config,
 	}
+}
 
-	// Override environment
-	liftProps.Environment = &functionEnv
-
-	// Set Lift-specific properties
-	if props.EnableTracing != nil {
-		liftProps.EnableTracing = props.EnableTracing
-	}
-	if props.EnableMultiTenant != nil {
-		liftProps.EnableMultiTenant = props.EnableMultiTenant
-	}
-
-	// SQS handles its own DLQ, no need for Lambda DLQ
-
-	this.Function = NewLiftFunction(this, jsii.String("Function"), liftProps)
-
-	// Configure SQS event source
+// build creates and configures the SQS event source
+func (esb *sqsEventSourceBuilder) build() awslambdaeventsources.SqsEventSource {
+	// Create base event source properties
 	eventSourceProps := &awslambdaeventsources.SqsEventSourceProps{
-		BatchSize:               jsii.Number(batchSize),
+		BatchSize:               jsii.Number(esb.config.batchSize),
 		ReportBatchItemFailures: jsii.Bool(true),
 	}
-
-	// Don't set batching window for FIFO queues (not supported)
-	if !fifoQueue {
-		eventSourceProps.MaxBatchingWindow = maxBatchingWindow
+	
+	// Set batching window for non-FIFO queues
+	if !esb.config.fifoQueue {
+		eventSourceProps.MaxBatchingWindow = esb.config.maxBatchingWindow
 	}
+	
+	// Apply user-provided event source properties
+	esb.applyUserEventSourceProps(eventSourceProps)
+	
+	// Create event source and add to function
+	eventSource := awslambdaeventsources.NewSqsEventSource(esb.processor.Queue, eventSourceProps)
+	esb.processor.Function.Function.AddEventSource(eventSource)
+	
+	return eventSource
+}
 
-	// Override with user-provided event source props
-	if props.EventSourceProps != nil {
-		if props.EventSourceProps.BatchSize != nil {
-			eventSourceProps.BatchSize = props.EventSourceProps.BatchSize
-		}
-		// Only set batching window for non-FIFO queues
-		if props.EventSourceProps.MaxBatchingWindow != nil && !fifoQueue {
-			eventSourceProps.MaxBatchingWindow = props.EventSourceProps.MaxBatchingWindow
-		}
-		if props.EventSourceProps.ReportBatchItemFailures != nil {
-			eventSourceProps.ReportBatchItemFailures = props.EventSourceProps.ReportBatchItemFailures
-		}
-		if props.EventSourceProps.MaxConcurrency != nil {
-			eventSourceProps.MaxConcurrency = props.EventSourceProps.MaxConcurrency
-		}
-		if props.EventSourceProps.Enabled != nil {
-			eventSourceProps.Enabled = props.EventSourceProps.Enabled
-		}
-		if props.EventSourceProps.Filters != nil {
-			eventSourceProps.Filters = props.EventSourceProps.Filters
-		}
+// applyUserEventSourceProps applies user-provided event source properties
+func (esb *sqsEventSourceBuilder) applyUserEventSourceProps(eventSourceProps *awslambdaeventsources.SqsEventSourceProps) {
+	if esb.props.EventSourceProps == nil {
+		return
 	}
-
-	// Create and add event source
-	this.EventSource = awslambdaeventsources.NewSqsEventSource(this.Queue, eventSourceProps)
-	this.Function.Function.AddEventSource(this.EventSource)
-
-	// Grant permissions
-	this.Queue.GrantConsumeMessages(this.Function.Function)
-	if this.DeadLetterQueue != nil {
-		this.DeadLetterQueue.GrantSendMessages(this.Function.Function)
+	
+	if esb.props.EventSourceProps.BatchSize != nil {
+		eventSourceProps.BatchSize = esb.props.EventSourceProps.BatchSize
 	}
-
-	// Add monitoring if enabled
-	if props.EnableMonitoring != nil && *props.EnableMonitoring {
-		this.enableMonitoring()
+	
+	// Only set batching window for non-FIFO queues
+	if esb.props.EventSourceProps.MaxBatchingWindow != nil && !esb.config.fifoQueue {
+		eventSourceProps.MaxBatchingWindow = esb.props.EventSourceProps.MaxBatchingWindow
 	}
-
-	return this
+	
+	if esb.props.EventSourceProps.ReportBatchItemFailures != nil {
+		eventSourceProps.ReportBatchItemFailures = esb.props.EventSourceProps.ReportBatchItemFailures
+	}
+	if esb.props.EventSourceProps.MaxConcurrency != nil {
+		eventSourceProps.MaxConcurrency = esb.props.EventSourceProps.MaxConcurrency
+	}
+	if esb.props.EventSourceProps.Enabled != nil {
+		eventSourceProps.Enabled = esb.props.EventSourceProps.Enabled
+	}
+	if esb.props.EventSourceProps.Filters != nil {
+		eventSourceProps.Filters = esb.props.EventSourceProps.Filters
+	}
 }
 
 // enableMonitoring adds CloudWatch alarms and metrics for the SQS processor
