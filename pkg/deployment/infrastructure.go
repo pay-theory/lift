@@ -627,71 +627,173 @@ func (ig *InfrastructureGenerator) generateDatabaseResources(template *Infrastru
 	dbConfig := ig.config.Database
 
 	if dbConfig.Type == "DynamoDB" {
-		for _, tableConfig := range dbConfig.Tables {
-			tableName := fmt.Sprintf("DynamoTable%s", cases.Title(language.English).String(tableConfig.Name))
-
-			table := Resource{
-				Type: "AWS::DynamoDB::Table",
-				Name: fmt.Sprintf("%s-%s", ig.config.ApplicationName, tableConfig.Name),
-				Properties: map[string]any{
-					"TableName":            fmt.Sprintf("%s-%s-%s", ig.config.ApplicationName, ig.config.Environment, tableConfig.Name),
-					"BillingMode":          tableConfig.BillingMode,
-					"AttributeDefinitions": ig.generateAttributeDefinitions(tableConfig.Attributes),
-					"KeySchema":            ig.generateKeySchema(tableConfig.HashKey, tableConfig.RangeKey),
-				},
-				Tags: ig.config.Tags,
-			}
-
-			if tableConfig.StreamEnabled {
-				table.Properties["StreamSpecification"] = map[string]any{
-					"StreamViewType": "NEW_AND_OLD_IMAGES",
-				}
-			}
-
-			if dbConfig.Encryption.Enabled {
-				sseSpec := map[string]any{
-					"SSEEnabled": true,
-				}
-				if dbConfig.Encryption.KMSKeyId != "" {
-					sseSpec["KMSMasterKeyId"] = dbConfig.Encryption.KMSKeyId
-				}
-				table.Properties["SSESpecification"] = sseSpec
-			}
-
-			if tableConfig.BackupEnabled {
-				table.Properties["PointInTimeRecoverySpecification"] = map[string]any{
-					"PointInTimeRecoveryEnabled": true,
-				}
-			}
-
-			// Global Secondary Indexes
-			if len(tableConfig.GlobalIndexes) > 0 {
-				gsis := make([]map[string]any, 0, len(tableConfig.GlobalIndexes))
-				for _, gsi := range tableConfig.GlobalIndexes {
-					gsiDef := map[string]any{
-						"IndexName": gsi.Name,
-						"KeySchema": ig.generateKeySchema(gsi.HashKey, gsi.RangeKey),
-						"Projection": map[string]any{
-							"ProjectionType": gsi.Projection.Type,
-						},
-					}
-
-					if gsi.Projection.Type == "INCLUDE" && len(gsi.Projection.Attributes) > 0 {
-						if projection, ok := gsiDef["Projection"].(map[string]any); ok {
-							projection["NonKeyAttributes"] = gsi.Projection.Attributes
-						}
-					}
-
-					gsis = append(gsis, gsiDef)
-				}
-				table.Properties["GlobalSecondaryIndexes"] = gsis
-			}
-
-			template.Resources[tableName] = table
-		}
+		builder := newDynamoDBResourceBuilder(ig, dbConfig)
+		return builder.generateTables(template)
 	}
 
 	return nil
+}
+
+// dynamoDBResourceBuilder builds DynamoDB table resources
+type dynamoDBResourceBuilder struct {
+	ig       *InfrastructureGenerator
+	dbConfig DatabaseConfig
+}
+
+// newDynamoDBResourceBuilder creates a new DynamoDB resource builder
+func newDynamoDBResourceBuilder(ig *InfrastructureGenerator, dbConfig DatabaseConfig) *dynamoDBResourceBuilder {
+	return &dynamoDBResourceBuilder{
+		ig:       ig,
+		dbConfig: dbConfig,
+	}
+}
+
+// generateTables generates all DynamoDB table resources
+func (drb *dynamoDBResourceBuilder) generateTables(template *InfrastructureTemplate) error {
+	for _, tableConfig := range drb.dbConfig.Tables {
+		tableBuilder := newDynamoDBTableBuilder(drb.ig, drb.dbConfig, tableConfig)
+		table := tableBuilder.build()
+		
+		tableName := fmt.Sprintf("DynamoTable%s", cases.Title(language.English).String(tableConfig.Name))
+		template.Resources[tableName] = table
+	}
+	return nil
+}
+
+// dynamoDBTableBuilder builds individual DynamoDB table resources
+type dynamoDBTableBuilder struct {
+	ig          *InfrastructureGenerator
+	dbConfig    DatabaseConfig
+	tableConfig TableConfig
+}
+
+// newDynamoDBTableBuilder creates a new DynamoDB table builder
+func newDynamoDBTableBuilder(ig *InfrastructureGenerator, dbConfig DatabaseConfig, tableConfig TableConfig) *dynamoDBTableBuilder {
+	return &dynamoDBTableBuilder{
+		ig:          ig,
+		dbConfig:    dbConfig,
+		tableConfig: tableConfig,
+	}
+}
+
+// build creates a complete DynamoDB table resource
+func (dtb *dynamoDBTableBuilder) build() Resource {
+	table := dtb.buildBaseTable()
+	dtb.configureStreaming(&table)
+	dtb.configureEncryption(&table)
+	dtb.configureBackup(&table)
+	dtb.configureGlobalIndexes(&table)
+	return table
+}
+
+// buildBaseTable creates the base table resource
+func (dtb *dynamoDBTableBuilder) buildBaseTable() Resource {
+	return Resource{
+		Type: "AWS::DynamoDB::Table",
+		Name: fmt.Sprintf("%s-%s", dtb.ig.config.ApplicationName, dtb.tableConfig.Name),
+		Properties: map[string]any{
+			"TableName":            fmt.Sprintf("%s-%s-%s", dtb.ig.config.ApplicationName, dtb.ig.config.Environment, dtb.tableConfig.Name),
+			"BillingMode":          dtb.tableConfig.BillingMode,
+			"AttributeDefinitions": dtb.ig.generateAttributeDefinitions(dtb.tableConfig.Attributes),
+			"KeySchema":            dtb.ig.generateKeySchema(dtb.tableConfig.HashKey, dtb.tableConfig.RangeKey),
+		},
+		Tags: dtb.ig.config.Tags,
+	}
+}
+
+// configureStreaming adds stream configuration if enabled
+func (dtb *dynamoDBTableBuilder) configureStreaming(table *Resource) {
+	if dtb.tableConfig.StreamEnabled {
+		table.Properties["StreamSpecification"] = map[string]any{
+			"StreamViewType": "NEW_AND_OLD_IMAGES",
+		}
+	}
+}
+
+// configureEncryption adds encryption configuration if enabled
+func (dtb *dynamoDBTableBuilder) configureEncryption(table *Resource) {
+	if !dtb.dbConfig.Encryption.Enabled {
+		return
+	}
+
+	sseSpec := map[string]any{
+		"SSEEnabled": true,
+	}
+	
+	if dtb.dbConfig.Encryption.KMSKeyId != "" {
+		sseSpec["KMSMasterKeyId"] = dtb.dbConfig.Encryption.KMSKeyId
+	}
+	
+	table.Properties["SSESpecification"] = sseSpec
+}
+
+// configureBackup adds backup configuration if enabled
+func (dtb *dynamoDBTableBuilder) configureBackup(table *Resource) {
+	if dtb.tableConfig.BackupEnabled {
+		table.Properties["PointInTimeRecoverySpecification"] = map[string]any{
+			"PointInTimeRecoveryEnabled": true,
+		}
+	}
+}
+
+// configureGlobalIndexes adds global secondary indexes if configured
+func (dtb *dynamoDBTableBuilder) configureGlobalIndexes(table *Resource) {
+	if len(dtb.tableConfig.GlobalIndexes) == 0 {
+		return
+	}
+
+	gsiBuilder := newGlobalSecondaryIndexBuilder(dtb.ig, dtb.tableConfig.GlobalIndexes)
+	gsis := gsiBuilder.buildAll()
+	table.Properties["GlobalSecondaryIndexes"] = gsis
+}
+
+// globalSecondaryIndexBuilder builds GSI configurations
+type globalSecondaryIndexBuilder struct {
+	ig          *InfrastructureGenerator
+	gsiConfigs  []GlobalIndexConfig
+}
+
+// newGlobalSecondaryIndexBuilder creates a new GSI builder
+func newGlobalSecondaryIndexBuilder(ig *InfrastructureGenerator, gsiConfigs []GlobalIndexConfig) *globalSecondaryIndexBuilder {
+	return &globalSecondaryIndexBuilder{
+		ig:         ig,
+		gsiConfigs: gsiConfigs,
+	}
+}
+
+// buildAll creates all GSI configurations
+func (gsib *globalSecondaryIndexBuilder) buildAll() []map[string]any {
+	gsis := make([]map[string]any, 0, len(gsib.gsiConfigs))
+	
+	for _, gsi := range gsib.gsiConfigs {
+		gsiDef := gsib.buildSingleGSI(gsi)
+		gsis = append(gsis, gsiDef)
+	}
+	
+	return gsis
+}
+
+// buildSingleGSI creates a single GSI configuration
+func (gsib *globalSecondaryIndexBuilder) buildSingleGSI(gsi GlobalIndexConfig) map[string]any {
+	gsiDef := map[string]any{
+		"IndexName": gsi.Name,
+		"KeySchema": gsib.ig.generateKeySchema(gsi.HashKey, gsi.RangeKey),
+		"Projection": map[string]any{
+			"ProjectionType": gsi.Projection.Type,
+		},
+	}
+
+	gsib.configureGSIProjection(gsiDef, gsi)
+	return gsiDef
+}
+
+// configureGSIProjection configures GSI projection attributes
+func (gsib *globalSecondaryIndexBuilder) configureGSIProjection(gsiDef map[string]any, gsi GlobalIndexConfig) {
+	if gsi.Projection.Type == "INCLUDE" && len(gsi.Projection.Attributes) > 0 {
+		if projection, ok := gsiDef["Projection"].(map[string]any); ok {
+			projection["NonKeyAttributes"] = gsi.Projection.Attributes
+		}
+	}
 }
 
 // generateMonitoringResources generates monitoring resources
