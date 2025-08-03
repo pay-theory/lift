@@ -51,88 +51,175 @@ func Default() *Sanitizer {
 
 // SanitizeFieldValue sanitizes a field value based on its key name and data classification
 func (s *Sanitizer) SanitizeFieldValue(key string, value any) any {
-	keyLower := strings.ToLower(key)
+	processor := newFieldSanitizationProcessor(s, key, value)
+	return processor.sanitize()
+}
 
-	// Check if field is explicitly allowed
-	if AllowedFields[keyLower] {
-		return value
+// fieldSanitizationProcessor handles field value sanitization
+type fieldSanitizationProcessor struct {
+	sanitizer  *Sanitizer
+	key        string
+	keyLower   string
+	value      any
+}
+
+// newFieldSanitizationProcessor creates a new field sanitization processor
+func newFieldSanitizationProcessor(sanitizer *Sanitizer, key string, value any) *fieldSanitizationProcessor {
+	return &fieldSanitizationProcessor{
+		sanitizer: sanitizer,
+		key:       key,
+		keyLower:  strings.ToLower(key),
+		value:     value,
 	}
+}
 
+// sanitize performs the sanitization process
+func (p *fieldSanitizationProcessor) sanitize() any {
+	// Check if field is explicitly allowed
+	if AllowedFields[p.keyLower] {
+		return p.value
+	}
+	
 	// If no data protection manager, redact everything for safety
-	if s.dataProtectionManager == nil {
+	if p.sanitizer.dataProtectionManager == nil {
 		return redactedValue
 	}
+	
+	// Get data classification
+	classification := p.getDataClassification()
+	
+	// Apply sanitization based on classification
+	return p.applySanitization(classification)
+}
 
+// getDataClassification determines the data classification for the field
+func (p *fieldSanitizationProcessor) getDataClassification() security.DataClassification {
 	// Use the data protection manager to classify the field
-	dataCtx := s.dataProtectionManager.ClassifyData(
-		map[string]any{key: value},
+	dataCtx := p.sanitizer.dataProtectionManager.ClassifyData(
+		map[string]any{p.key: p.value},
 		map[string]any{"source": "sanitizer"},
 	)
-
+	
 	// Get the classification for this specific field
-	var classification security.DataClassification
-	if fieldClass, exists := dataCtx.Fields[key]; exists {
-		classification = fieldClass
-	} else {
-		// Use overall classification if field-specific not found
-		classification = dataCtx.Classification
+	if fieldClass, exists := dataCtx.Fields[p.key]; exists {
+		return fieldClass
 	}
+	
+	// Use overall classification if field-specific not found
+	return dataCtx.Classification
+}
 
-	// Apply sanitization based on classification
+// applySanitization applies the appropriate sanitization based on classification
+func (p *fieldSanitizationProcessor) applySanitization(classification security.DataClassification) any {
+	handler := newClassificationHandler(p.keyLower, p.value)
+	
 	switch classification {
 	case security.DataRestricted:
-		// For restricted data, show last 4 if it's a number field, otherwise redact
-		if str, ok := value.(string); ok {
-			// Clean the string to check if it's a number
-			cleaned := strings.ReplaceAll(strings.ReplaceAll(str, " ", ""), "-", "")
-			if len(cleaned) >= 4 && isNumeric(cleaned) {
-				// Show last 4 digits, mask the rest
-				masked := strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
-				return masked
-			}
-		}
-		return redactedValue
-
+		return handler.handleRestricted()
 	case security.DataConfidential:
-		// For confidential data, redact completely
-		return redactedValue
-
+		return handler.handleConfidential()
 	case security.DataInternal:
-		// For internal data (like user content), show metadata only
-		if str, ok := value.(string); ok {
-			// User-generated content fields show length
-			if isUserContentField(keyLower) {
-				if len(str) > 0 {
-					return fmt.Sprintf("[USER_CONTENT_%d_CHARS]", len(str))
-				}
-				return "[USER_CONTENT]"
-			}
-
-			// Error messages might contain sensitive info
-			if keyLower == "error" || strings.Contains(keyLower, "error") {
-				if len(str) > 50 ||
-					strings.Contains(strings.ToLower(str), "input") ||
-					strings.Contains(strings.ToLower(str), "invalid") {
-					return "[SANITIZED_ERROR]"
-				}
-			}
-
-			// For other internal data, check if it's large
-			if len(str) > 200 {
-				return fmt.Sprintf("[LARGE_STRING_%d_CHARS]", len(str))
-			}
-		}
-		// For small internal data or non-strings, return as-is
-		return value
-
+		return handler.handleInternal()
 	case security.DataPublic:
-		// Public data doesn't need sanitization
-		return value
-
+		return handler.handlePublic()
 	default:
-		// Unknown classification - be safe and redact
+		return handler.handleUnknown()
+	}
+}
+
+// classificationHandler handles sanitization for different data classifications
+type classificationHandler struct {
+	keyLower string
+	value    any
+}
+
+// newClassificationHandler creates a new classification handler
+func newClassificationHandler(keyLower string, value any) *classificationHandler {
+	return &classificationHandler{
+		keyLower: keyLower,
+		value:    value,
+	}
+}
+
+// handleRestricted handles restricted data sanitization
+func (h *classificationHandler) handleRestricted() any {
+	str, ok := h.value.(string)
+	if !ok {
 		return redactedValue
 	}
+	
+	// Clean the string to check if it's a number
+	cleaned := strings.ReplaceAll(strings.ReplaceAll(str, " ", ""), "-", "")
+	if len(cleaned) >= 4 && isNumeric(cleaned) {
+		// Show last 4 digits, mask the rest
+		masked := strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
+		return masked
+	}
+	
+	return redactedValue
+}
+
+// handleConfidential handles confidential data sanitization
+func (h *classificationHandler) handleConfidential() any {
+	return redactedValue
+}
+
+// handleInternal handles internal data sanitization
+func (h *classificationHandler) handleInternal() any {
+	str, ok := h.value.(string)
+	if !ok {
+		return h.value
+	}
+	
+	// Handle user-generated content
+	if isUserContentField(h.keyLower) {
+		return h.sanitizeUserContent(str)
+	}
+	
+	// Handle error messages
+	if h.isErrorField() {
+		return h.sanitizeErrorMessage(str)
+	}
+	
+	// Handle large strings
+	if len(str) > 200 {
+		return fmt.Sprintf("[LARGE_STRING_%d_CHARS]", len(str))
+	}
+	
+	return h.value
+}
+
+// handlePublic handles public data (no sanitization needed)
+func (h *classificationHandler) handlePublic() any {
+	return h.value
+}
+
+// handleUnknown handles unknown classification (default to redact)
+func (h *classificationHandler) handleUnknown() any {
+	return redactedValue
+}
+
+// sanitizeUserContent sanitizes user-generated content
+func (h *classificationHandler) sanitizeUserContent(str string) string {
+	if len(str) > 0 {
+		return fmt.Sprintf("[USER_CONTENT_%d_CHARS]", len(str))
+	}
+	return "[USER_CONTENT]"
+}
+
+// isErrorField checks if the field is an error field
+func (h *classificationHandler) isErrorField() bool {
+	return h.keyLower == "error" || strings.Contains(h.keyLower, "error")
+}
+
+// sanitizeErrorMessage sanitizes error messages
+func (h *classificationHandler) sanitizeErrorMessage(str string) any {
+	if len(str) > 50 ||
+		strings.Contains(strings.ToLower(str), "input") ||
+		strings.Contains(strings.ToLower(str), "invalid") {
+		return "[SANITIZED_ERROR]"
+	}
+	return str
 }
 
 // isUserContentField checks if a field contains user-generated content
