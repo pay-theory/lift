@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -70,110 +72,269 @@ func NewLoadTester(app *TestApp, config *LoadTestConfig) *LoadTester {
 
 // RunLoadTest executes a load test scenario
 func (lt *LoadTester) RunLoadTest(ctx context.Context, request func(*TestApp) *TestResponse) (*LoadTestResult, error) {
-	startTime := time.Now()
+	// Create load test execution context
+	execution := newLoadTestExecution(lt, request)
+	
+	// Run the load test
+	return execution.run(ctx)
+}
 
-	result := &LoadTestResult{
-		StartTime: startTime,
-		Errors:    []string{},
+// loadTestExecution manages a single load test execution
+type loadTestExecution struct {
+	loadTester *LoadTester
+	request    func(*TestApp) *TestResponse
+	result     *LoadTestResult
+	collector  *responseCollector
+	workers    *workerPool
+}
+
+// newLoadTestExecution creates a new load test execution
+func newLoadTestExecution(lt *LoadTester, request func(*TestApp) *TestResponse) *loadTestExecution {
+	return &loadTestExecution{
+		loadTester: lt,
+		request:    request,
+		result: &LoadTestResult{
+			StartTime: time.Now(),
+			Errors:    []string{},
+		},
+		collector: newResponseCollector(),
 	}
+}
 
-	// Channel to collect results
-	results := make(chan *TestResponse, lt.config.ConcurrentUsers*100)
-	done := make(chan bool)
-
-	// Start workers
-	for i := 0; i < lt.config.ConcurrentUsers; i++ {
-		go func(_ int) {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(lt.config.Duration):
-					done <- true
-					return
-				default:
-					resp := request(lt.app)
-					results <- resp
-				}
-			}
-		}(i)
-	}
-
+// run executes the load test
+func (lte *loadTestExecution) run(ctx context.Context) (*LoadTestResult, error) {
+	// Start worker pool
+	lte.workers = newWorkerPool(lte.loadTester.config.ConcurrentUsers, lte.loadTester.config.Duration)
+	lte.workers.start(ctx, lte.executeRequest)
+	
 	// Collect results
-	latencies := []time.Duration{}
+	lte.collectResponses(ctx)
+	
+	// Finalize results
+	lte.finalizeResult()
+	
+	return lte.result, nil
+}
 
-	timeout := time.NewTimer(lt.config.Duration + 10*time.Second)
+// executeRequest executes a single request
+func (lte *loadTestExecution) executeRequest() {
+	resp := lte.request(lte.loadTester.app)
+	lte.collector.add(resp)
+}
+
+// collectResponses collects all responses with timeout
+func (lte *loadTestExecution) collectResponses(ctx context.Context) {
+	timeout := time.NewTimer(lte.loadTester.config.Duration + 10*time.Second)
 	defer timeout.Stop()
-
+	
+	done := lte.workers.done()
+	
 	for {
 		select {
-		case resp := <-results:
-			result.TotalRequests++
-			if resp.GetStatusCode() >= 200 && resp.GetStatusCode() < 400 {
-				result.SuccessfulRequests++
-			} else {
-				result.FailedRequests++
-				if resp.err != nil {
-					result.Errors = append(result.Errors, resp.err.Error())
-				}
-			}
-			// For now, use a placeholder duration since assertions.go TestResponse doesn't have GetDuration
-			latencies = append(latencies, time.Millisecond*10)
-
+		case resp := <-lte.collector.responses():
+			lte.processResponse(resp)
 		case <-done:
-			goto collectResults
-
+			return
 		case <-timeout.C:
-			goto collectResults
-
+			return
 		case <-ctx.Done():
-			goto collectResults
+			return
 		}
 	}
+}
 
-collectResults:
-	result.EndTime = time.Now()
-	result.Duration = result.EndTime.Sub(result.StartTime)
-
-	// Calculate metrics
-	if len(latencies) > 0 {
-		// Sort latencies for percentile calculation
-		// Simple sorting implementation
-		for i := 0; i < len(latencies); i++ {
-			for j := i + 1; j < len(latencies); j++ {
-				if latencies[i] > latencies[j] {
-					latencies[i], latencies[j] = latencies[j], latencies[i]
-				}
-			}
-		}
-
-		result.MinLatency = latencies[0]
-		result.MaxLatency = latencies[len(latencies)-1]
-
-		// Calculate average
-		var totalLatency time.Duration
-		for _, lat := range latencies {
-			totalLatency += lat
-		}
-		result.AverageLatency = totalLatency / time.Duration(len(latencies))
-
-		// Calculate percentiles
-		if len(latencies) >= 20 {
-			result.P95Latency = latencies[int(float64(len(latencies))*0.95)]
-			result.P99Latency = latencies[int(float64(len(latencies))*0.99)]
+// processResponse processes a single response
+func (lte *loadTestExecution) processResponse(resp *TestResponse) {
+	lte.result.TotalRequests++
+	
+	if resp.GetStatusCode() >= 200 && resp.GetStatusCode() < 400 {
+		lte.result.SuccessfulRequests++
+	} else {
+		lte.result.FailedRequests++
+		if resp.err != nil {
+			lte.result.Errors = append(lte.result.Errors, resp.err.Error())
 		}
 	}
+	
+	// Record latency (placeholder for now)
+	lte.collector.recordLatency(time.Millisecond * 10)
+}
 
+// finalizeResult calculates final metrics
+func (lte *loadTestExecution) finalizeResult() {
+	lte.result.EndTime = time.Now()
+	lte.result.Duration = lte.result.EndTime.Sub(lte.result.StartTime)
+	
+	// Calculate latency metrics
+	metrics := newLatencyMetrics(lte.collector.getLatencies())
+	lte.result.MinLatency = metrics.min()
+	lte.result.MaxLatency = metrics.max()
+	lte.result.AverageLatency = metrics.average()
+	lte.result.P95Latency = metrics.percentile(95)
+	lte.result.P99Latency = metrics.percentile(99)
+	
 	// Calculate rates
-	if result.Duration > 0 {
-		result.RequestsPerSecond = float64(result.TotalRequests) / result.Duration.Seconds()
-	}
+	lte.calculateRates()
+}
 
-	if result.TotalRequests > 0 {
-		result.ErrorRate = float64(result.FailedRequests) / float64(result.TotalRequests)
+// calculateRates calculates request and error rates
+func (lte *loadTestExecution) calculateRates() {
+	if lte.result.Duration > 0 {
+		lte.result.RequestsPerSecond = float64(lte.result.TotalRequests) / lte.result.Duration.Seconds()
 	}
+	
+	if lte.result.TotalRequests > 0 {
+		lte.result.ErrorRate = float64(lte.result.FailedRequests) / float64(lte.result.TotalRequests)
+	}
+}
 
-	return result, nil
+// responseCollector collects test responses
+type responseCollector struct {
+	respChan   chan *TestResponse
+	latencies  []time.Duration
+	mu         sync.Mutex
+}
+
+// newResponseCollector creates a new response collector
+func newResponseCollector() *responseCollector {
+	return &responseCollector{
+		respChan:  make(chan *TestResponse, 1000),
+		latencies: []time.Duration{},
+	}
+}
+
+// add adds a response to the collector
+func (rc *responseCollector) add(resp *TestResponse) {
+	rc.respChan <- resp
+}
+
+// responses returns the response channel
+func (rc *responseCollector) responses() <-chan *TestResponse {
+	return rc.respChan
+}
+
+// recordLatency records a latency measurement
+func (rc *responseCollector) recordLatency(latency time.Duration) {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+	rc.latencies = append(rc.latencies, latency)
+}
+
+// getLatencies returns all recorded latencies
+func (rc *responseCollector) getLatencies() []time.Duration {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+	return append([]time.Duration{}, rc.latencies...)
+}
+
+// workerPool manages concurrent workers
+type workerPool struct {
+	concurrency int
+	duration    time.Duration
+	doneSignal  chan bool
+}
+
+// newWorkerPool creates a new worker pool
+func newWorkerPool(concurrency int, duration time.Duration) *workerPool {
+	return &workerPool{
+		concurrency: concurrency,
+		duration:    duration,
+		doneSignal:  make(chan bool),
+	}
+}
+
+// start starts the worker pool
+func (wp *workerPool) start(ctx context.Context, task func()) {
+	for i := 0; i < wp.concurrency; i++ {
+		go wp.runWorker(ctx, task)
+	}
+}
+
+// runWorker runs a single worker
+func (wp *workerPool) runWorker(ctx context.Context, task func()) {
+	timer := time.NewTimer(wp.duration)
+	defer timer.Stop()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			wp.doneSignal <- true
+			return
+		case <-timer.C:
+			wp.doneSignal <- true
+			return
+		default:
+			task()
+		}
+	}
+}
+
+// done returns the done signal channel
+func (wp *workerPool) done() <-chan bool {
+	return wp.doneSignal
+}
+
+// latencyMetrics calculates latency statistics
+type latencyMetrics struct {
+	values []time.Duration
+}
+
+// newLatencyMetrics creates new latency metrics
+func newLatencyMetrics(latencies []time.Duration) *latencyMetrics {
+	if len(latencies) == 0 {
+		return &latencyMetrics{values: []time.Duration{}}
+	}
+	
+	// Sort latencies for percentile calculation
+	sorted := make([]time.Duration, len(latencies))
+	copy(sorted, latencies)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i] < sorted[j]
+	})
+	
+	return &latencyMetrics{values: sorted}
+}
+
+// min returns the minimum latency
+func (lm *latencyMetrics) min() time.Duration {
+	if len(lm.values) == 0 {
+		return 0
+	}
+	return lm.values[0]
+}
+
+// max returns the maximum latency
+func (lm *latencyMetrics) max() time.Duration {
+	if len(lm.values) == 0 {
+		return 0
+	}
+	return lm.values[len(lm.values)-1]
+}
+
+// average returns the average latency
+func (lm *latencyMetrics) average() time.Duration {
+	if len(lm.values) == 0 {
+		return 0
+	}
+	
+	var total time.Duration
+	for _, v := range lm.values {
+		total += v
+	}
+	return total / time.Duration(len(lm.values))
+}
+
+// percentile returns the specified percentile
+func (lm *latencyMetrics) percentile(p int) time.Duration {
+	if len(lm.values) == 0 || len(lm.values) < 20 {
+		return 0
+	}
+	
+	index := int(float64(len(lm.values)) * float64(p) / 100.0)
+	if index >= len(lm.values) {
+		index = len(lm.values) - 1
+	}
+	return lm.values[index]
 }
 
 // ScenarioRunner provides advanced scenario execution capabilities
