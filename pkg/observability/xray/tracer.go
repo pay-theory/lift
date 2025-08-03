@@ -52,142 +52,28 @@ func NewXRayTracer(config XRayConfig) *XRayTracer {
 // XRayMiddleware creates middleware for automatic X-Ray tracing
 func XRayMiddleware(config XRayConfig) lift.Middleware {
 	tracer := NewXRayTracer(config)
-
+	segmentMgr := newSegmentManager(config)
+	panicHandler := newPanicHandler(config)
+	annotationMgr := newAnnotationManager(config, tracer)
+	
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			// Start segment for the request
-			var segment *xray.Segment
-			ctx.Context, segment = xray.BeginSegment(ctx.Context, config.ServiceName)
-
-			// Add panic recovery to prevent crashes
-			defer func() {
-				if r := recover(); r != nil {
-					panicErr := fmt.Errorf("panic in request handler: %v", r)
-
-					// Log to X-Ray if possible
-					if segment != nil {
-						if err := segment.AddError(panicErr); err != nil {
-							// Silently ignore XRay errors to avoid circular dependencies
-							_ = err
-						}
-						segment.Close(panicErr)
-					}
-
-					// In production, convert panic to error response
-					if config.RecoverPanics {
-						ctx.Response.StatusCode = http.StatusInternalServerError
-						ctx.Response.Body = []byte(`{"error":"internal server error"}`)
-						ctx.Response.Headers[lift.HeaderContentType] = lift.ContentTypeJSON
-
-						// Log the panic details for debugging
-						if ctx.Logger != nil {
-							ctx.Logger.Error("Recovered from panic", map[string]any{
-								"panic": r,
-								"stack": string(debug.Stack()),
-							})
-						}
-					} else {
-						// Re-panic in development or when explicitly disabled
-						panic(r)
-					}
-				}
-			}()
-
-			// Ensure segment is closed
-			defer func() {
-				if segment != nil {
-					segment.Close(nil)
-				}
-			}()
-
-			// Add standard annotations
-			tracer.addStandardAnnotations(segment, ctx)
-
-			// Add custom annotations from config
-			if config.Annotations != nil {
-				for key, value := range config.Annotations {
-					if err := segment.AddAnnotation(key, value); err != nil {
-						// Silently ignore XRay annotation errors
-						_ = err
-					}
-				}
-			}
-
-			// Add metadata
-			tracer.addStandardMetadata(segment, ctx)
-			if config.Metadata != nil {
-				for key, value := range config.Metadata {
-					if err := segment.AddMetadata("custom", map[string]any{key: value}); err != nil {
-						// Silently ignore XRay metadata errors
-						_ = err
-					}
-				}
-			}
-
-			// Add trace information to context for logging
-			if ctx.Request != nil {
-				// Ensure Headers map is initialized
-				if ctx.Request.Headers == nil {
-					ctx.Request.Headers = make(map[string]string)
-				}
-
-				if traceID := segment.TraceID; traceID != "" {
-					ctx.Request.Headers["X-Trace-Id"] = traceID
-				}
-				if segmentID := segment.ID; segmentID != "" {
-					ctx.Request.Headers["X-Span-Id"] = segmentID
-				}
-			}
-
-			// Execute handler
-			start := time.Now()
-			err := next.Handle(ctx)
-			duration := time.Since(start)
-
-			// Record timing
-			if addErr := segment.AddMetadata("timing", map[string]any{
-				"duration_ms": duration.Milliseconds(),
-			}); addErr != nil {
-				// Silently ignore XRay timing errors
-				_ = addErr
-			}
-
-			// Handle errors
-			if err != nil {
-				if addErr := segment.AddError(err); addErr != nil {
-					// Silently ignore XRay errors
-					_ = addErr
-				}
-				if annoErr := segment.AddAnnotation("error", "true"); annoErr != nil {
-					// Silently ignore XRay annotation errors
-					_ = annoErr
-				}
-				if metaErr := segment.AddMetadata("error", map[string]any{
-					"message": err.Error(),
-				}); metaErr != nil {
-					// Silently ignore XRay metadata errors
-					_ = metaErr
-				}
-			} else {
-				if annoErr := segment.AddAnnotation("error", "false"); annoErr != nil {
-					// Silently ignore XRay annotation errors
-					_ = annoErr
-				}
-			}
-
-			// Add response information
-			if annoErr := segment.AddAnnotation("http.status_code", ctx.Response.StatusCode); annoErr != nil {
-				// Silently ignore XRay annotation errors
-				_ = annoErr
-			}
-			if metaErr := segment.AddMetadata("response", map[string]any{
-				"status_code": ctx.Response.StatusCode,
-			}); metaErr != nil {
-				// Silently ignore XRay metadata errors
-				_ = metaErr
-			}
-
-			return err
+			return segmentMgr.withSegment(ctx, func(segment *xray.Segment) error {
+				// Add request annotations and metadata
+				annotationMgr.addRequestAnnotations(segment, ctx)
+				annotationMgr.addRequestMetadata(segment, ctx)
+				annotationMgr.addTraceHeaders(ctx, segment)
+				
+				// Execute handler with panic recovery and timing
+				start := time.Now()
+				err := panicHandler.safeExecute(ctx, segment, next)
+				duration := time.Since(start)
+				
+				// Add response data
+				annotationMgr.addResponseData(segment, ctx, duration, err)
+				
+				return err
+			})
 		})
 	}
 }
@@ -494,5 +380,187 @@ func SetError(ctx context.Context, err error) {
 			// Silently ignore XRay errors
 			_ = addErr
 		}
+	}
+}
+
+// xraySegmentManager handles X-Ray segment lifecycle
+type xraySegmentManager struct {
+	config XRayConfig
+}
+
+// newSegmentManager creates a new segment manager
+func newSegmentManager(config XRayConfig) *xraySegmentManager {
+	return &xraySegmentManager{
+		config: config,
+	}
+}
+
+// withSegment executes a function within an X-Ray segment
+func (sm *xraySegmentManager) withSegment(ctx *lift.Context, fn func(*xray.Segment) error) error {
+	newCtx, segment := xray.BeginSegment(ctx.Context, sm.config.ServiceName)
+	ctx.Context = newCtx
+	
+	defer func() {
+		if segment != nil {
+			segment.Close(nil)
+		}
+	}()
+	
+	return fn(segment)
+}
+
+// xrayPanicHandler handles panic recovery for X-Ray middleware
+type xrayPanicHandler struct {
+	config XRayConfig
+}
+
+// newPanicHandler creates a new panic handler
+func newPanicHandler(config XRayConfig) *xrayPanicHandler {
+	return &xrayPanicHandler{
+		config: config,
+	}
+}
+
+// safeExecute executes a function with panic recovery
+func (ph *xrayPanicHandler) safeExecute(ctx *lift.Context, segment *xray.Segment, next lift.Handler) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			panicErr := fmt.Errorf("panic in request handler: %v", r)
+			
+			// Log to X-Ray if possible
+			if segment != nil {
+				if xrayErr := segment.AddError(panicErr); xrayErr != nil {
+					_ = xrayErr // Silently ignore XRay errors
+				}
+				segment.Close(panicErr)
+			}
+			
+			if ph.config.RecoverPanics {
+				ph.handlePanicRecovery(ctx, r)
+				err = panicErr
+			} else {
+				panic(r) // Re-panic in development
+			}
+		}
+	}()
+	
+	return next.Handle(ctx)
+}
+
+// handlePanicRecovery handles panic recovery by setting error response
+func (ph *xrayPanicHandler) handlePanicRecovery(ctx *lift.Context, panicValue any) {
+	ctx.Response.StatusCode = http.StatusInternalServerError
+	ctx.Response.Body = []byte(`{"error":"internal server error"}`)
+	ctx.Response.Headers[lift.HeaderContentType] = lift.ContentTypeJSON
+	
+	if ctx.Logger != nil {
+		ctx.Logger.Error("Recovered from panic", map[string]any{
+			"panic": panicValue,
+			"stack": string(debug.Stack()),
+		})
+	}
+}
+
+// xrayAnnotationManager handles adding annotations and metadata
+type xrayAnnotationManager struct {
+	config XRayConfig
+	tracer *XRayTracer
+}
+
+// newAnnotationManager creates a new annotation manager
+func newAnnotationManager(config XRayConfig, tracer *XRayTracer) *xrayAnnotationManager {
+	return &xrayAnnotationManager{
+		config: config,
+		tracer: tracer,
+	}
+}
+
+// addRequestAnnotations adds standard request annotations
+func (am *xrayAnnotationManager) addRequestAnnotations(segment *xray.Segment, ctx *lift.Context) {
+	// Add standard annotations
+	am.tracer.addStandardAnnotations(segment, ctx)
+	
+	// Add custom annotations from config
+	if am.config.Annotations != nil {
+		for key, value := range am.config.Annotations {
+			if err := segment.AddAnnotation(key, value); err != nil {
+				_ = err // Silently ignore XRay errors
+			}
+		}
+	}
+}
+
+// addRequestMetadata adds standard request metadata
+func (am *xrayAnnotationManager) addRequestMetadata(segment *xray.Segment, ctx *lift.Context) {
+	// Add standard metadata
+	am.tracer.addStandardMetadata(segment, ctx)
+	
+	// Add custom metadata from config
+	if am.config.Metadata != nil {
+		for key, value := range am.config.Metadata {
+			if err := segment.AddMetadata("custom", map[string]any{key: value}); err != nil {
+				_ = err // Silently ignore XRay errors
+			}
+		}
+	}
+}
+
+// addTraceHeaders adds trace information to request headers
+func (am *xrayAnnotationManager) addTraceHeaders(ctx *lift.Context, segment *xray.Segment) {
+	if ctx.Request != nil {
+		if ctx.Request.Headers == nil {
+			ctx.Request.Headers = make(map[string]string)
+		}
+		
+		if traceID := segment.TraceID; traceID != "" {
+			ctx.Request.Headers["X-Trace-Id"] = traceID
+		}
+		if segmentID := segment.ID; segmentID != "" {
+			ctx.Request.Headers["X-Span-Id"] = segmentID
+		}
+	}
+}
+
+// addResponseData adds response timing and status information
+func (am *xrayAnnotationManager) addResponseData(segment *xray.Segment, ctx *lift.Context, duration time.Duration, err error) {
+	// Record timing
+	if addErr := segment.AddMetadata("timing", map[string]any{
+		"duration_ms": duration.Milliseconds(),
+	}); addErr != nil {
+		_ = addErr // Silently ignore XRay errors
+	}
+	
+	// Handle errors
+	if err != nil {
+		am.addErrorData(segment, err)
+	} else {
+		if annoErr := segment.AddAnnotation("error", "false"); annoErr != nil {
+			_ = annoErr // Silently ignore XRay errors
+		}
+	}
+	
+	// Add response information
+	if annoErr := segment.AddAnnotation("http.status_code", ctx.Response.StatusCode); annoErr != nil {
+		_ = annoErr // Silently ignore XRay errors
+	}
+	if metaErr := segment.AddMetadata("response", map[string]any{
+		"status_code": ctx.Response.StatusCode,
+	}); metaErr != nil {
+		_ = metaErr // Silently ignore XRay errors
+	}
+}
+
+// addErrorData adds error-specific annotations and metadata
+func (am *xrayAnnotationManager) addErrorData(segment *xray.Segment, err error) {
+	if addErr := segment.AddError(err); addErr != nil {
+		_ = addErr // Silently ignore XRay errors
+	}
+	if annoErr := segment.AddAnnotation("error", "true"); annoErr != nil {
+		_ = annoErr // Silently ignore XRay errors
+	}
+	if metaErr := segment.AddMetadata("error", map[string]any{
+		"message": err.Error(),
+	}); metaErr != nil {
+		_ = metaErr // Silently ignore XRay errors
 	}
 }
