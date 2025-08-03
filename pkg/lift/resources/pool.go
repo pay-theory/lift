@@ -3,6 +3,7 @@ package resources
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -362,50 +363,88 @@ func (p *DefaultConnectionPool) cleanup() {
 		return
 	}
 
-	now := time.Now()
-	validIdle := make([]Resource, 0, len(p.idle))
+	cleaner := newPoolResourceCleaner(p.config, p.logger)
+	p.idle = cleaner.cleanResources(p.idle)
+}
 
-	for _, resource := range p.idle {
-		// Check if resource has exceeded max lifetime
-		if p.config.MaxLifetime > 0 && now.Sub(resource.LastUsed()) > p.config.MaxLifetime {
-			if err := resource.Cleanup(); err != nil {
-				// Log cleanup error but continue - this is best-effort cleanup
-				if p.logger != nil {
-					p.logger.WithField("error", err).Warn("Failed to cleanup resource")
-				}
-			}
-			continue
-		}
+// poolResourceCleaner handles cleanup of pool resources
+type poolResourceCleaner struct {
+	config PoolConfig
+	logger lift.Logger
+	now    time.Time
+}
 
-		// Check if resource has been idle too long
-		if p.config.IdleTimeout > 0 && now.Sub(resource.LastUsed()) > p.config.IdleTimeout {
-			if err := resource.Cleanup(); err != nil {
-				// Log cleanup error but continue - this is best-effort cleanup
-				if p.logger != nil {
-					p.logger.WithField("error", err).Warn("Failed to cleanup resource")
-				}
-			}
-			continue
-		}
-
-		// Health check the resource
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		if err := resource.HealthCheck(ctx); err != nil {
-			cancel()
-			if err := resource.Cleanup(); err != nil {
-				// Log cleanup error but continue - this is best-effort cleanup
-				if p.logger != nil {
-					p.logger.WithField("error", err).Warn("Failed to cleanup resource during health check")
-				}
-			}
-			continue
-		}
-		cancel()
-
-		validIdle = append(validIdle, resource)
+// newPoolResourceCleaner creates a new pool resource cleaner
+func newPoolResourceCleaner(config PoolConfig, logger lift.Logger) *poolResourceCleaner {
+	return &poolResourceCleaner{
+		config: config,
+		logger: logger,
+		now:    time.Now(),
 	}
+}
 
-	p.idle = validIdle
+// cleanResources filters and cleans resources, returning valid ones
+func (c *poolResourceCleaner) cleanResources(resources []Resource) []Resource {
+	validIdle := make([]Resource, 0, len(resources))
+	
+	for _, resource := range resources {
+		if c.shouldKeepResource(resource) {
+			validIdle = append(validIdle, resource)
+		} else {
+			c.cleanupResource(resource, "cleanup")
+		}
+	}
+	
+	return validIdle
+}
+
+// shouldKeepResource determines if a resource should be kept in the pool
+func (c *poolResourceCleaner) shouldKeepResource(resource Resource) bool {
+	// Check max lifetime
+	if c.hasExceededMaxLifetime(resource) {
+		return false
+	}
+	
+	// Check idle timeout
+	if c.hasExceededIdleTimeout(resource) {
+		return false
+	}
+	
+	// Perform health check
+	return c.isResourceHealthy(resource)
+}
+
+// hasExceededMaxLifetime checks if resource has exceeded its maximum lifetime
+func (c *poolResourceCleaner) hasExceededMaxLifetime(resource Resource) bool {
+	return c.config.MaxLifetime > 0 && c.now.Sub(resource.LastUsed()) > c.config.MaxLifetime
+}
+
+// hasExceededIdleTimeout checks if resource has been idle too long
+func (c *poolResourceCleaner) hasExceededIdleTimeout(resource Resource) bool {
+	return c.config.IdleTimeout > 0 && c.now.Sub(resource.LastUsed()) > c.config.IdleTimeout
+}
+
+// isResourceHealthy performs a health check on the resource
+func (c *poolResourceCleaner) isResourceHealthy(resource Resource) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	if err := resource.HealthCheck(ctx); err != nil {
+		c.cleanupResource(resource, "health check")
+		return false
+	}
+	
+	return true
+}
+
+// cleanupResource safely cleans up a resource with error logging
+func (c *poolResourceCleaner) cleanupResource(resource Resource, reason string) {
+	if err := resource.Cleanup(); err != nil {
+		if c.logger != nil {
+			message := fmt.Sprintf("Failed to cleanup resource during %s", reason)
+			c.logger.WithField("error", err).Warn(message)
+		}
+	}
 }
 
 // DefaultPoolConfig returns a sensible default configuration
