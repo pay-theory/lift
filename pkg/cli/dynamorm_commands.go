@@ -847,139 +847,289 @@ func awsConfig(ctx context.Context, region string) (aws.Config, error) {
 }
 
 func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynamodb.Client, tableName string) (*TableAnalysis, error) {
+	builder := newTableAnalysisBuilder(c, ctx, client, tableName)
+	return builder.build()
+}
+
+// tableAnalysisBuilder builds table analysis
+type tableAnalysisBuilder struct {
+	cmd       *DynamORMMigrateCommand
+	ctx       context.Context
+	client    *dynamodb.Client
+	tableName string
+	table     *types.TableDescription
+	analysis  *TableAnalysis
+}
+
+// newTableAnalysisBuilder creates a new table analysis builder
+func newTableAnalysisBuilder(cmd *DynamORMMigrateCommand, ctx context.Context, client *dynamodb.Client, tableName string) *tableAnalysisBuilder {
+	return &tableAnalysisBuilder{
+		cmd:       cmd,
+		ctx:       ctx,
+		client:    client,
+		tableName: tableName,
+	}
+}
+
+// build constructs the complete table analysis
+func (tab *tableAnalysisBuilder) build() (*TableAnalysis, error) {
 	// Get table description
+	if err := tab.describeTable(); err != nil {
+		return nil, err
+	}
+
+	// Initialize analysis
+	tab.initializeAnalysis()
+
+	// Analyze various aspects
+	tab.analyzeKeySchema()
+	tab.analyzeGlobalSecondaryIndexes()
+	tab.analyzeLocalSecondaryIndexes()
+	tab.analyzeTTL()
+	tab.analyzeStreams()
+
+	// Sample and finalize
+	tab.sampleTableItems()
+	tab.finalizeAnalysis()
+
+	return tab.analysis, nil
+}
+
+// describeTable gets table description from DynamoDB
+func (tab *tableAnalysisBuilder) describeTable() error {
 	describeInput := &dynamodb.DescribeTableInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(tab.tableName),
 	}
 
-	describeOutput, err := client.DescribeTable(ctx, describeInput)
+	describeOutput, err := tab.client.DescribeTable(tab.ctx, describeInput)
 	if err != nil {
-		return nil, fmt.Errorf("failed to describe table: %w", err)
+		return fmt.Errorf("failed to describe table: %w", err)
 	}
 
-	table := describeOutput.Table
-	analysis := &TableAnalysis{
-		TableName:      tableName,
-		BillingMode:    string(table.BillingModeSummary.BillingMode),
-		ItemCount:      *table.ItemCount,
-		TableSizeBytes: *table.TableSizeBytes,
+	tab.table = describeOutput.Table
+	return nil
+}
+
+// initializeAnalysis creates initial analysis structure
+func (tab *tableAnalysisBuilder) initializeAnalysis() {
+	tab.analysis = &TableAnalysis{
+		TableName:      tab.tableName,
+		BillingMode:    string(tab.table.BillingModeSummary.BillingMode),
+		ItemCount:      *tab.table.ItemCount,
+		TableSizeBytes: *tab.table.TableSizeBytes,
 		Attributes:     make(map[string]AttributeSpec),
 		CreatedAt:      time.Now(),
 	}
+}
 
-	// Analyze key schema
-	for _, key := range table.KeySchema {
-		attr := c.findAttribute(table.AttributeDefinitions, *key.AttributeName)
-		if attr == nil {
+// analyzeKeySchema analyzes primary key schema
+func (tab *tableAnalysisBuilder) analyzeKeySchema() {
+	keyAnalyzer := newKeySchemaAnalyzer(tab.cmd, tab.table.AttributeDefinitions)
+	
+	for _, key := range tab.table.KeySchema {
+		spec := keyAnalyzer.analyzeKey(key)
+		if spec == nil {
 			continue
-		}
-
-		spec := AttributeSpec{
-			Name:     *key.AttributeName,
-			Type:     c.convertDynamoType(attr.AttributeType),
-			Required: true,
 		}
 
 		switch key.KeyType {
 		case types.KeyTypeHash:
-			analysis.PartitionKey = spec
+			tab.analysis.PartitionKey = *spec
 		case types.KeyTypeRange:
-			analysis.SortKey = &spec
+			tab.analysis.SortKey = spec
+		}
+	}
+}
+
+// analyzeGlobalSecondaryIndexes analyzes all GSIs
+func (tab *tableAnalysisBuilder) analyzeGlobalSecondaryIndexes() {
+	gsiAnalyzer := newGSIAnalyzer(tab.cmd, tab.table.AttributeDefinitions)
+	
+	for _, gsi := range tab.table.GlobalSecondaryIndexes {
+		gsiAnalysis := gsiAnalyzer.analyzeGSI(gsi)
+		tab.analysis.GlobalSecondaryIndexes = append(tab.analysis.GlobalSecondaryIndexes, gsiAnalysis)
+	}
+}
+
+// analyzeLocalSecondaryIndexes analyzes all LSIs
+func (tab *tableAnalysisBuilder) analyzeLocalSecondaryIndexes() {
+	lsiAnalyzer := newLSIAnalyzer(tab.cmd, tab.table.AttributeDefinitions)
+	
+	for _, lsi := range tab.table.LocalSecondaryIndexes {
+		lsiAnalysis := lsiAnalyzer.analyzeLSI(lsi)
+		tab.analysis.LocalSecondaryIndexes = append(tab.analysis.LocalSecondaryIndexes, lsiAnalysis)
+	}
+}
+
+// analyzeTTL analyzes TTL configuration
+func (tab *tableAnalysisBuilder) analyzeTTL() {
+	ttlAnalyzer := newTTLAnalyzer()
+	tab.analysis.TimeToLiveSpec = ttlAnalyzer.analyzeTTL(tab.table.AttributeDefinitions)
+}
+
+// analyzeStreams analyzes DynamoDB streams configuration
+func (tab *tableAnalysisBuilder) analyzeStreams() {
+	if tab.table.StreamSpecification != nil && 
+	   tab.table.StreamSpecification.StreamEnabled != nil && 
+	   *tab.table.StreamSpecification.StreamEnabled {
+		tab.analysis.StreamSpec = &StreamSpec{
+			Enabled:   true,
+			ViewType:  string(tab.table.StreamSpecification.StreamViewType),
+			StreamArn: *tab.table.LatestStreamArn,
+		}
+	}
+}
+
+// sampleTableItems samples items for better analysis
+func (tab *tableAnalysisBuilder) sampleTableItems() {
+	if err := tab.cmd.sampleItems(tab.ctx, tab.client, tab.tableName, tab.analysis); err != nil {
+		tab.analysis.Warnings = append(tab.analysis.Warnings, fmt.Sprintf("Failed to sample items: %v", err))
+	}
+}
+
+// finalizeAnalysis determines complexity and generates recommendations
+func (tab *tableAnalysisBuilder) finalizeAnalysis() {
+	tab.analysis.MigrationComplexity = tab.cmd.determineMigrationComplexity(tab.analysis)
+	tab.analysis.RecommendedModel = tab.cmd.generateRecommendedModel(tab.analysis)
+	tab.analysis.MultiTenantCandidate = tab.cmd.isMultiTenantCandidate(tab.analysis)
+}
+
+// keySchemaAnalyzer analyzes key schemas
+type keySchemaAnalyzer struct {
+	cmd        *DynamORMMigrateCommand
+	attributes []types.AttributeDefinition
+}
+
+// newKeySchemaAnalyzer creates a new key schema analyzer
+func newKeySchemaAnalyzer(cmd *DynamORMMigrateCommand, attributes []types.AttributeDefinition) *keySchemaAnalyzer {
+	return &keySchemaAnalyzer{
+		cmd:        cmd,
+		attributes: attributes,
+	}
+}
+
+// analyzeKey analyzes a single key element
+func (ksa *keySchemaAnalyzer) analyzeKey(key types.KeySchemaElement) *AttributeSpec {
+	attr := ksa.cmd.findAttribute(ksa.attributes, *key.AttributeName)
+	if attr == nil {
+		return nil
+	}
+
+	return &AttributeSpec{
+		Name:     *key.AttributeName,
+		Type:     ksa.cmd.convertDynamoType(attr.AttributeType),
+		Required: true,
+	}
+}
+
+// gsiAnalyzer analyzes global secondary indexes
+type gsiAnalyzer struct {
+	cmd        *DynamORMMigrateCommand
+	attributes []types.AttributeDefinition
+}
+
+// newGSIAnalyzer creates a new GSI analyzer
+func newGSIAnalyzer(cmd *DynamORMMigrateCommand, attributes []types.AttributeDefinition) *gsiAnalyzer {
+	return &gsiAnalyzer{
+		cmd:        cmd,
+		attributes: attributes,
+	}
+}
+
+// analyzeGSI analyzes a single GSI
+func (ga *gsiAnalyzer) analyzeGSI(gsi types.GlobalSecondaryIndexDescription) GSIAnalysis {
+	gsiAnalysis := GSIAnalysis{
+		IndexName:      *gsi.IndexName,
+		ProjectionType: string(gsi.Projection.ProjectionType),
+		ItemCount:      *gsi.ItemCount,
+		KeySchema:      gsi.KeySchema,
+	}
+
+	keyAnalyzer := newKeySchemaAnalyzer(ga.cmd, ga.attributes)
+	
+	for _, key := range gsi.KeySchema {
+		spec := keyAnalyzer.analyzeKey(key)
+		if spec == nil {
+			continue
+		}
+
+		switch key.KeyType {
+		case types.KeyTypeHash:
+			gsiAnalysis.PartitionKey = *spec
+		case types.KeyTypeRange:
+			gsiAnalysis.SortKey = spec
 		}
 	}
 
-	// Analyze GSIs
-	for _, gsi := range table.GlobalSecondaryIndexes {
-		gsiAnalysis := GSIAnalysis{
-			IndexName:      *gsi.IndexName,
-			ProjectionType: string(gsi.Projection.ProjectionType),
-			ItemCount:      *gsi.ItemCount,
-			KeySchema:      gsi.KeySchema,
-		}
+	return gsiAnalysis
+}
 
-		for _, key := range gsi.KeySchema {
-			attr := c.findAttribute(table.AttributeDefinitions, *key.AttributeName)
-			if attr == nil {
-				continue
-			}
+// lsiAnalyzer analyzes local secondary indexes
+type lsiAnalyzer struct {
+	cmd        *DynamORMMigrateCommand
+	attributes []types.AttributeDefinition
+}
 
-			spec := AttributeSpec{
-				Name:     *key.AttributeName,
-				Type:     c.convertDynamoType(attr.AttributeType),
-				Required: true,
-			}
+// newLSIAnalyzer creates a new LSI analyzer
+func newLSIAnalyzer(cmd *DynamORMMigrateCommand, attributes []types.AttributeDefinition) *lsiAnalyzer {
+	return &lsiAnalyzer{
+		cmd:        cmd,
+		attributes: attributes,
+	}
+}
 
-			switch key.KeyType {
-			case types.KeyTypeHash:
-				gsiAnalysis.PartitionKey = spec
-			case types.KeyTypeRange:
-				gsiAnalysis.SortKey = &spec
-			}
-		}
-
-		analysis.GlobalSecondaryIndexes = append(analysis.GlobalSecondaryIndexes, gsiAnalysis)
+// analyzeLSI analyzes a single LSI
+func (la *lsiAnalyzer) analyzeLSI(lsi types.LocalSecondaryIndexDescription) LSIAnalysis {
+	lsiAnalysis := LSIAnalysis{
+		IndexName:      *lsi.IndexName,
+		ProjectionType: string(lsi.Projection.ProjectionType),
+		ItemCount:      *lsi.ItemCount,
 	}
 
-	// Analyze LSIs
-	for _, lsi := range table.LocalSecondaryIndexes {
-		lsiAnalysis := LSIAnalysis{
-			IndexName:      *lsi.IndexName,
-			ProjectionType: string(lsi.Projection.ProjectionType),
-			ItemCount:      *lsi.ItemCount,
-		}
-
-		for _, key := range lsi.KeySchema {
-			if key.KeyType == types.KeyTypeRange {
-				attr := c.findAttribute(table.AttributeDefinitions, *key.AttributeName)
-				if attr != nil {
-					lsiAnalysis.SortKey = AttributeSpec{
-						Name:     *key.AttributeName,
-						Type:     c.convertDynamoType(attr.AttributeType),
-						Required: true,
-					}
+	for _, key := range lsi.KeySchema {
+		if key.KeyType == types.KeyTypeRange {
+			attr := la.cmd.findAttribute(la.attributes, *key.AttributeName)
+			if attr != nil {
+				lsiAnalysis.SortKey = AttributeSpec{
+					Name:     *key.AttributeName,
+					Type:     la.cmd.convertDynamoType(attr.AttributeType),
+					Required: true,
 				}
 			}
 		}
-
-		analysis.LocalSecondaryIndexes = append(analysis.LocalSecondaryIndexes, lsiAnalysis)
 	}
 
-	// Analyze TTL - Note: TTL info requires separate DescribeTimeToLive call
-	// For now, we'll check if TTL attribute is mentioned in attribute definitions
-	// In practice, you'd make a separate DescribeTimeToLive API call
-	for _, attr := range table.AttributeDefinitions {
+	return lsiAnalysis
+}
+
+// ttlAnalyzer analyzes TTL configuration
+type ttlAnalyzer struct{}
+
+// newTTLAnalyzer creates a new TTL analyzer
+func newTTLAnalyzer() *ttlAnalyzer {
+	return &ttlAnalyzer{}
+}
+
+// analyzeTTL checks for TTL attributes
+func (ta *ttlAnalyzer) analyzeTTL(attributes []types.AttributeDefinition) *TTLSpec {
+	for _, attr := range attributes {
 		attrName := *attr.AttributeName
-		if strings.HasSuffix(strings.ToLower(attrName), "ttl") ||
-			strings.HasSuffix(strings.ToLower(attrName), "expires") ||
-			strings.HasSuffix(strings.ToLower(attrName), "expiry") {
-			analysis.TimeToLiveSpec = &TTLSpec{
+		if ta.isTTLAttribute(attrName) {
+			return &TTLSpec{
 				AttributeName: attrName,
 				Enabled:       false, // Would need separate API call to confirm
 			}
-			break
 		}
 	}
+	return nil
+}
 
-	// Analyze streams
-	if table.StreamSpecification != nil && table.StreamSpecification.StreamEnabled != nil && *table.StreamSpecification.StreamEnabled {
-		analysis.StreamSpec = &StreamSpec{
-			Enabled:   true,
-			ViewType:  string(table.StreamSpecification.StreamViewType),
-			StreamArn: *table.LatestStreamArn,
-		}
-	}
-
-	// Sample items for better analysis
-	if err := c.sampleItems(ctx, client, tableName, analysis); err != nil {
-		analysis.Warnings = append(analysis.Warnings, fmt.Sprintf("Failed to sample items: %v", err))
-	}
-
-	// Determine complexity and recommendations
-	analysis.MigrationComplexity = c.determineMigrationComplexity(analysis)
-	analysis.RecommendedModel = c.generateRecommendedModel(analysis)
-	analysis.MultiTenantCandidate = c.isMultiTenantCandidate(analysis)
-
-	return analysis, nil
+// isTTLAttribute checks if attribute name suggests TTL usage
+func (ta *ttlAnalyzer) isTTLAttribute(attrName string) bool {
+	lowerName := strings.ToLower(attrName)
+	return strings.HasSuffix(lowerName, "ttl") ||
+		strings.HasSuffix(lowerName, "expires") ||
+		strings.HasSuffix(lowerName, "expiry")
 }
 
 func (c *DynamORMMigrateCommand) findAttribute(attrs []types.AttributeDefinition, name string) *types.AttributeDefinition {
