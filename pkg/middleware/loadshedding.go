@@ -95,7 +95,23 @@ type LoadSheddingStats struct {
 
 // LoadSheddingMiddleware creates a load shedding middleware
 func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
-	// Set defaults
+	// Apply default configuration
+	config = applyLoadSheddingDefaults(config)
+	
+	manager := newLoadSheddingManager(config)
+	
+	// Start background metrics collection
+	go manager.metricsCollector()
+	
+	return func(next lift.Handler) lift.Handler {
+		return lift.HandlerFunc(func(ctx *lift.Context) error {
+			return manager.handleRequest(ctx, next)
+		})
+	}
+}
+
+// applyLoadSheddingDefaults applies default values to the configuration
+func applyLoadSheddingDefaults(config LoadSheddingConfig) LoadSheddingConfig {
 	if config.CPUThreshold == 0 {
 		config.CPUThreshold = 0.8 // 80% CPU
 	}
@@ -141,8 +157,12 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 	if config.SheddingHandler == nil {
 		config.SheddingHandler = defaultSheddingHandler(config.SheddingStatusCode, config.SheddingMessage)
 	}
+	return config
+}
 
-	manager := &loadSheddingManager{
+// newLoadSheddingManager creates a new load shedding manager
+func newLoadSheddingManager(config LoadSheddingConfig) *loadSheddingManager {
+	return &loadSheddingManager{
 		config:         config,
 		metrics:        &LoadMetrics{LastUpdated: time.Now(), WindowStart: time.Now()},
 		latencyHistory: make([]time.Duration, 0, 1000),
@@ -153,68 +173,124 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 			Enabled:  config.Enabled,
 		},
 	}
+}
 
-	// Start background metrics collection
-	go manager.metricsCollector()
+// handleRequest processes a single request with load shedding logic
+func (lsm *loadSheddingManager) handleRequest(ctx *lift.Context, next lift.Handler) error {
+	if !lsm.config.Enabled {
+		return next.Handle(ctx)
+	}
+	
+	handler := newLoadSheddingHandler(lsm, ctx)
+	return handler.handle(next)
+}
 
-	return func(next lift.Handler) lift.Handler {
-		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			if !config.Enabled {
-				return next.Handle(ctx)
-			}
+// loadSheddingHandler handles a single request with load shedding
+type loadSheddingHandler struct {
+	manager *loadSheddingManager
+	ctx     *lift.Context
+	start   time.Time
+}
 
-			start := time.Now()
+// newLoadSheddingHandler creates a new load shedding handler
+func newLoadSheddingHandler(manager *loadSheddingManager, ctx *lift.Context) *loadSheddingHandler {
+	return &loadSheddingHandler{
+		manager: manager,
+		ctx:     ctx,
+		start:   time.Now(),
+	}
+}
 
-			// Update active request count
-			atomic.AddInt64(&manager.metrics.ActiveRequests, 1)
-			defer atomic.AddInt64(&manager.metrics.ActiveRequests, -1)
+// handle processes the request with load shedding logic
+func (h *loadSheddingHandler) handle(next lift.Handler) error {
+	// Update active request count
+	h.incrementActiveRequests()
+	defer h.decrementActiveRequests()
+	
+	// Check if request should be shed
+	if h.shouldShedRequest() {
+		return h.handleShedding()
+	}
+	
+	// Execute request and record metrics
+	return h.executeAndRecordMetrics(next)
+}
 
-			// Check if request should be shed
-			shouldShed := manager.shouldShedRequest(ctx)
+// incrementActiveRequests increments the active request counter
+func (h *loadSheddingHandler) incrementActiveRequests() {
+	atomic.AddInt64(&h.manager.metrics.ActiveRequests, 1)
+}
 
-			if shouldShed {
-				// Record shedding metrics
-				atomic.AddInt64(&manager.metrics.ShedRequests, 1)
-				atomic.AddInt64(&manager.metrics.TotalRequests, 1)
+// decrementActiveRequests decrements the active request counter
+func (h *loadSheddingHandler) decrementActiveRequests() {
+	atomic.AddInt64(&h.manager.metrics.ActiveRequests, -1)
+}
 
-				if config.Logger != nil {
-					priority := config.PriorityExtractor(ctx)
-					config.Logger.Warn("Request shed due to load", map[string]any{
-						"load_shedding_name": config.Name,
-						"strategy":           string(config.Strategy),
-						"priority":           priority,
-						"shedding_rate":      manager.getCurrentSheddingRate(),
-						"active_requests":    atomic.LoadInt64(&manager.metrics.ActiveRequests),
-					})
-				}
+// shouldShedRequest determines if the request should be shed
+func (h *loadSheddingHandler) shouldShedRequest() bool {
+	return h.manager.shouldShedRequest(h.ctx)
+}
 
-				// Record shedding metrics
-				if config.EnableMetrics && config.Metrics != nil {
-					manager.recordShedding(ctx)
-				}
+// handleShedding handles a shed request
+func (h *loadSheddingHandler) handleShedding() error {
+	// Record shedding metrics
+	h.recordSheddingMetrics()
+	
+	// Log shedding event
+	h.logSheddingEvent()
+	
+	// Record shedding in metrics system
+	if h.manager.config.EnableMetrics && h.manager.config.Metrics != nil {
+		h.manager.recordShedding(h.ctx)
+	}
+	
+	return h.manager.config.SheddingHandler(h.ctx)
+}
 
-				return config.SheddingHandler(ctx)
-			}
+// recordSheddingMetrics updates shedding counters
+func (h *loadSheddingHandler) recordSheddingMetrics() {
+	atomic.AddInt64(&h.manager.metrics.ShedRequests, 1)
+	atomic.AddInt64(&h.manager.metrics.TotalRequests, 1)
+}
 
-			// Execute request
-			err := next.Handle(ctx)
-			duration := time.Since(start)
-
-			// Record request metrics
-			atomic.AddInt64(&manager.metrics.TotalRequests, 1)
-			manager.recordLatency(duration)
-
-			if err != nil {
-				manager.recordError()
-			}
-
-			// Record success metrics
-			if config.EnableMetrics && config.Metrics != nil {
-				manager.recordSuccess(ctx, duration)
-			}
-
-			return err
+// logSheddingEvent logs the shedding event
+func (h *loadSheddingHandler) logSheddingEvent() {
+	if h.manager.config.Logger != nil {
+		priority := h.manager.config.PriorityExtractor(h.ctx)
+		h.manager.config.Logger.Warn("Request shed due to load", map[string]any{
+			"load_shedding_name": h.manager.config.Name,
+			"strategy":           string(h.manager.config.Strategy),
+			"priority":           priority,
+			"shedding_rate":      h.manager.getCurrentSheddingRate(),
+			"active_requests":    atomic.LoadInt64(&h.manager.metrics.ActiveRequests),
 		})
+	}
+}
+
+// executeAndRecordMetrics executes the request and records metrics
+func (h *loadSheddingHandler) executeAndRecordMetrics(next lift.Handler) error {
+	// Execute request
+	err := next.Handle(h.ctx)
+	duration := time.Since(h.start)
+	
+	// Record request metrics
+	h.recordRequestMetrics(duration, err)
+	
+	return err
+}
+
+// recordRequestMetrics records metrics for the completed request
+func (h *loadSheddingHandler) recordRequestMetrics(duration time.Duration, err error) {
+	atomic.AddInt64(&h.manager.metrics.TotalRequests, 1)
+	h.manager.recordLatency(duration)
+	
+	if err != nil {
+		h.manager.recordError()
+	}
+	
+	// Record success metrics in metrics system
+	if h.manager.config.EnableMetrics && h.manager.config.Metrics != nil {
+		h.manager.recordSuccess(h.ctx, duration)
 	}
 }
 
