@@ -57,7 +57,20 @@ type ResourceStats struct {
 
 // BulkheadMiddleware creates a bulkhead pattern middleware
 func BulkheadMiddleware(config BulkheadConfig) lift.Middleware {
-	// Set defaults
+	// Apply default configuration
+	config = applyBulkheadDefaults(config)
+	
+	manager := newBulkheadManager(config)
+	
+	return func(next lift.Handler) lift.Handler {
+		return lift.HandlerFunc(func(ctx *lift.Context) error {
+			return manager.handleRequest(ctx, next)
+		})
+	}
+}
+
+// applyBulkheadDefaults applies default values to the configuration
+func applyBulkheadDefaults(config BulkheadConfig) BulkheadConfig {
 	if config.MaxConcurrentRequests == 0 {
 		config.MaxConcurrentRequests = 100
 	}
@@ -79,8 +92,12 @@ func BulkheadMiddleware(config BulkheadConfig) lift.Middleware {
 	if config.PriorityExtractor == nil {
 		config.PriorityExtractor = defaultPriorityExtractor
 	}
+	return config
+}
 
-	manager := &bulkheadManager{
+// newBulkheadManager creates a new bulkhead manager
+func newBulkheadManager(config BulkheadConfig) *bulkheadManager {
+	return &bulkheadManager{
 		config:              config,
 		globalSemaphore:     newSemaphore(config.MaxConcurrentRequests),
 		tenantSemaphores:    make(map[string]*semaphore),
@@ -91,69 +108,124 @@ func BulkheadMiddleware(config BulkheadConfig) lift.Middleware {
 			OperationStats: make(map[string]*ResourceStats),
 		},
 	}
+}
 
-	return func(next lift.Handler) lift.Handler {
-		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			start := time.Now()
+// handleRequest processes a request through the bulkhead
+func (bm *bulkheadManager) handleRequest(ctx *lift.Context, next lift.Handler) error {
+	handler := newBulkheadRequestHandler(bm, ctx)
+	return handler.handle(next)
+}
 
-			// Extract context information
-			tenantID := ctx.TenantID()
-			operation := fmt.Sprintf("%s:%s", ctx.Request.Method, ctx.Request.Path)
-			priority := config.PriorityExtractor(ctx)
+// bulkheadRequestHandler handles a single request through the bulkhead
+type bulkheadRequestHandler struct {
+	manager   *bulkheadManager
+	ctx       *lift.Context
+	tenantID  string
+	operation string
+	priority  int
+	start     time.Time
+}
 
-			// Acquire resources
-			acquired, waitTime, err := manager.acquireResources(ctx.Context, tenantID, operation, priority)
-			if err != nil {
-				// Resource acquisition failed
-				if config.Logger != nil {
-					config.Logger.Warn("Bulkhead resource acquisition failed", map[string]any{
-						"bulkhead_name": config.Name,
-						"tenant_id":     tenantID,
-						"operation":     operation,
-						"priority":      priority,
-						"wait_time":     waitTime.String(),
-						"error":         "[REDACTED_ERROR_DETAIL]", // Sanitized for security
-					})
-				}
+// newBulkheadRequestHandler creates a new request handler
+func newBulkheadRequestHandler(manager *bulkheadManager, ctx *lift.Context) *bulkheadRequestHandler {
+	return &bulkheadRequestHandler{
+		manager:   manager,
+		ctx:       ctx,
+		tenantID:  ctx.TenantID(),
+		operation: fmt.Sprintf("%s:%s", ctx.Request.Method, ctx.Request.Path),
+		priority:  manager.config.PriorityExtractor(ctx),
+		start:     time.Now(),
+	}
+}
 
-				// Record metrics
-				if config.EnableMetrics && config.Metrics != nil {
-					manager.recordRejection(tenantID, operation, waitTime)
-				}
+// handle processes the request
+func (h *bulkheadRequestHandler) handle(next lift.Handler) error {
+	// Acquire resources
+	acquired, waitTime, err := h.manager.acquireResources(h.ctx.Context, h.tenantID, h.operation, h.priority)
+	if err != nil {
+		return h.handleRejection(err, waitTime)
+	}
+	
+	// Ensure resources are released
+	defer h.releaseResources(acquired, waitTime)
+	
+	// Record successful acquisition
+	h.recordAcquisition(waitTime)
+	
+	// Execute the handler
+	return next.Handle(h.ctx)
+}
 
-				return config.RejectionHandler(ctx, err.Error())
-			}
+// handleRejection handles resource acquisition failure
+func (h *bulkheadRequestHandler) handleRejection(err error, waitTime time.Duration) error {
+	// Log the rejection
+	h.logRejection(waitTime)
+	
+	// Record rejection metrics
+	h.recordRejection(waitTime)
+	
+	// Execute rejection handler
+	return h.manager.config.RejectionHandler(h.ctx, err.Error())
+}
 
-			// Ensure resources are released
-			defer func() {
-				manager.releaseResources(acquired, tenantID, operation)
-
-				duration := time.Since(start)
-
-				// Record completion metrics
-				if config.EnableMetrics && config.Metrics != nil {
-					manager.recordCompletion(tenantID, operation, duration, waitTime)
-				}
-
-				if config.Logger != nil {
-					config.Logger.Debug("Bulkhead request completed", map[string]any{
-						"bulkhead_name": config.Name,
-						"tenant_id":     tenantID,
-						"operation":     operation,
-						"duration":      duration.String(),
-						"wait_time":     waitTime.String(),
-					})
-				}
-			}()
-
-			// Record successful acquisition
-			if config.EnableMetrics && config.Metrics != nil {
-				manager.recordAcquisition(tenantID, operation, waitTime)
-			}
-
-			// Execute the handler
-			return next.Handle(ctx)
+// logRejection logs when resources cannot be acquired
+func (h *bulkheadRequestHandler) logRejection(waitTime time.Duration) {
+	if h.manager.config.Logger != nil {
+		h.manager.config.Logger.Warn("Bulkhead resource acquisition failed", map[string]any{
+			"bulkhead_name": h.manager.config.Name,
+			"tenant_id":     h.tenantID,
+			"operation":     h.operation,
+			"priority":      h.priority,
+			"wait_time":     waitTime.String(),
+			"error":         "[REDACTED_ERROR_DETAIL]", // Sanitized for security
 		})
+	}
+}
+
+// recordRejection records rejection metrics
+func (h *bulkheadRequestHandler) recordRejection(waitTime time.Duration) {
+	if h.manager.config.EnableMetrics && h.manager.config.Metrics != nil {
+		h.manager.recordRejection(h.tenantID, h.operation, waitTime)
+	}
+}
+
+// releaseResources ensures resources are properly released
+func (h *bulkheadRequestHandler) releaseResources(acquired *acquiredResources, waitTime time.Duration) {
+	h.manager.releaseResources(acquired, h.tenantID, h.operation)
+	
+	duration := time.Since(h.start)
+	
+	// Record completion metrics
+	h.recordCompletion(duration, waitTime)
+	
+	// Log completion
+	h.logCompletion(duration, waitTime)
+}
+
+// recordCompletion records completion metrics
+func (h *bulkheadRequestHandler) recordCompletion(duration, waitTime time.Duration) {
+	if h.manager.config.EnableMetrics && h.manager.config.Metrics != nil {
+		h.manager.recordCompletion(h.tenantID, h.operation, duration, waitTime)
+	}
+}
+
+// logCompletion logs request completion
+func (h *bulkheadRequestHandler) logCompletion(duration, waitTime time.Duration) {
+	if h.manager.config.Logger != nil {
+		h.manager.config.Logger.Debug("Bulkhead request completed", map[string]any{
+			"bulkhead_name": h.manager.config.Name,
+			"tenant_id":     h.tenantID,
+			"operation":     h.operation,
+			"duration":      duration.String(),
+			"wait_time":     waitTime.String(),
+		})
+	}
+}
+
+// recordAcquisition records successful resource acquisition
+func (h *bulkheadRequestHandler) recordAcquisition(waitTime time.Duration) {
+	if h.manager.config.EnableMetrics && h.manager.config.Metrics != nil {
+		h.manager.recordAcquisition(h.tenantID, h.operation, waitTime)
 	}
 }
 
