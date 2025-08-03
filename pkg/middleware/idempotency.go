@@ -51,6 +51,20 @@ type IdempotencyOptions struct {
 // Idempotency creates middleware that provides idempotent request handling
 func Idempotency(opts IdempotencyOptions) Middleware {
 	// Set defaults
+	opts = setIdempotencyDefaults(opts)
+	
+	// Create the idempotency service
+	service := newIdempotencyService(opts)
+	
+	return func(next lift.Handler) lift.Handler {
+		return lift.HandlerFunc(func(ctx *lift.Context) error {
+			return service.handleRequest(ctx, next)
+		})
+	}
+}
+
+// setIdempotencyDefaults applies default values to idempotency options
+func setIdempotencyDefaults(opts IdempotencyOptions) IdempotencyOptions {
 	if opts.HeaderName == "" {
 		opts.HeaderName = "Idempotency-Key"
 	}
@@ -60,141 +74,7 @@ func Idempotency(opts IdempotencyOptions) Middleware {
 	if opts.ProcessingTimeout == 0 {
 		opts.ProcessingTimeout = 30 * time.Second
 	}
-
-	return func(next lift.Handler) lift.Handler {
-		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			// Check for idempotency key
-			idempotencyKey := ctx.Header(opts.HeaderName)
-			if idempotencyKey == "" {
-				// No idempotency key, process normally
-				return next.Handle(ctx)
-			}
-
-			// Add account/tenant context to key for isolation
-			accountID := ctx.Get("account_id")
-			if accountID != nil {
-				idempotencyKey = fmt.Sprintf("%v:%s", accountID, idempotencyKey)
-			}
-
-			// Check for existing record
-			existing, err := opts.Store.Get(ctx.Request.Context(), idempotencyKey)
-			if err == nil && existing != nil {
-				switch existing.Status {
-				case "completed":
-					// Return cached successful response
-					if opts.OnDuplicate != nil {
-						opts.OnDuplicate(ctx, existing)
-					}
-					ctx.Response.StatusCode = existing.StatusCode
-					ctx.Response.Header("X-Idempotent-Replay", "true")
-					// Directly set the body and mark as written using proper API
-					ctx.Response.Body = existing.Response
-					ctx.Response.Header(lift.HeaderContentType, lift.ContentTypeJSON)
-					return nil
-
-				case "error":
-					// Return cached error
-					if existing.Error != "" {
-						return lift.NewLiftError("IDEMPOTENT_ERROR_REPLAY", existing.Error, existing.StatusCode)
-					}
-					return lift.NewLiftError("IDEMPOTENT_ERROR_REPLAY", "Previous request failed", 500)
-
-				case "processing":
-					// Check if processing timeout has elapsed
-					if time.Now().After(existing.ExpiresAt) {
-						// Timeout elapsed, allow retry
-						if err := opts.Store.Delete(ctx.Request.Context(), idempotencyKey); err != nil {
-							if ctx.Logger != nil {
-								ctx.Logger.Error("Failed to delete expired idempotency key", map[string]any{
-									"key":   idempotencyKey,
-									"error": err.Error(),
-								})
-							}
-						}
-					} else {
-						// Still processing
-						return lift.NewLiftError("IDEMPOTENCY_CONFLICT", "A request with this idempotency key is already being processed", 409)
-					}
-				}
-			}
-
-			// Mark as processing to prevent concurrent duplicates
-			expiresAt := time.Now().Add(opts.ProcessingTimeout)
-
-			if err := opts.Store.SetProcessing(ctx.Request.Context(), idempotencyKey, expiresAt); err != nil {
-				// Log but continue - idempotency is best-effort
-				if ctx.Logger != nil {
-					ctx.Logger.Warn("Failed to set idempotency processing lock", map[string]any{
-						"key":   idempotencyKey,
-						"error": err.Error(),
-					})
-				}
-			}
-
-			// Enable response buffering to capture the response
-			ctx.EnableResponseBuffering()
-
-			// Execute handler
-			handlerErr := next.Handle(ctx)
-
-			// Capture response after handler execution
-			var capturedResponse any
-			var capturedStatus int
-
-			// Try to get response from buffer first
-			if buffer := ctx.GetResponseBuffer(); buffer != nil {
-				capturedResponse = buffer.CapturedData
-				capturedStatus = buffer.StatusCode
-			} else {
-				// Fallback to Response.Body (may not be reliable)
-				capturedResponse = ctx.Response.Body
-				capturedStatus = ctx.Response.StatusCode
-			}
-
-			if capturedStatus == 0 {
-				capturedStatus = 200
-			}
-
-			// Prepare record for storage
-			record := &IdempotencyRecord{
-				Key:       idempotencyKey,
-				CreatedAt: time.Now(),
-				ExpiresAt: time.Now().Add(opts.TTL),
-			}
-
-			if handlerErr != nil {
-				// Store error result
-				record.Status = "error"
-				record.Error = handlerErr.Error()
-				if liftErr, ok := handlerErr.(*lift.LiftError); ok {
-					record.StatusCode = liftErr.StatusCode
-				} else {
-					record.StatusCode = 500
-				}
-			} else {
-				// Store successful result
-				record.Status = "completed"
-				record.Response = capturedResponse
-				record.StatusCode = capturedStatus
-				if record.StatusCode == 0 {
-					record.StatusCode = 200
-				}
-			}
-
-			// Store the result
-			if storeErr := opts.Store.Set(ctx.Request.Context(), idempotencyKey, record); storeErr != nil {
-				// Log but don't fail the request
-				if ctx.Logger != nil {
-					ctx.Logger.Error("Failed to store idempotency record", map[string]any{
-						"key":   idempotencyKey,
-						"error": storeErr.Error(),
-					})
-				}
-			}
-
-			return handlerErr
-		})
-	}
+	return opts
 }
 
 // MemoryIdempotencyStore provides an in-memory implementation of IdempotencyStore
@@ -269,5 +149,245 @@ func (m *MemoryIdempotencyStore) cleanupExpired() {
 		if now.After(record.ExpiresAt) {
 			delete(m.records, key)
 		}
+	}
+}
+
+// idempotencyState represents the different states an idempotency key can be in
+type idempotencyState int
+
+const (
+	stateNew idempotencyState = iota
+	stateProcessing
+	stateCompleted
+	stateError
+	stateExpired
+)
+
+// idempotencyService handles idempotent request processing
+type idempotencyService struct {
+	store   IdempotencyStore
+	options IdempotencyOptions
+}
+
+// newIdempotencyService creates a new idempotency service
+func newIdempotencyService(options IdempotencyOptions) *idempotencyService {
+	return &idempotencyService{
+		store:   options.Store,
+		options: options,
+	}
+}
+
+// handleRequest processes a request with idempotency support
+func (s *idempotencyService) handleRequest(ctx *lift.Context, next lift.Handler) error {
+	key := s.extractKey(ctx)
+	if key == "" {
+		return next.Handle(ctx)
+	}
+	
+	state, record := s.determineState(ctx, key)
+	
+	switch state {
+	case stateCompleted:
+		return s.replayResponse(ctx, record)
+	case stateError:
+		return s.replayError(record)
+	case stateProcessing:
+		return s.handleConcurrent(ctx, key, record)
+	case stateExpired:
+		return s.handleExpired(ctx, key, next)
+	default: // stateNew
+		return s.processNew(ctx, key, next)
+	}
+}
+
+// extractKey extracts and processes the idempotency key
+func (s *idempotencyService) extractKey(ctx *lift.Context) string {
+	key := ctx.Header(s.options.HeaderName)
+	if key == "" {
+		return ""
+	}
+	
+	// Add account/tenant context for isolation
+	if accountID := ctx.Get("account_id"); accountID != nil {
+		key = fmt.Sprintf("%v:%s", accountID, key)
+	}
+	
+	return key
+}
+
+// determineState checks the current state of an idempotency key
+func (s *idempotencyService) determineState(ctx *lift.Context, key string) (idempotencyState, *IdempotencyRecord) {
+	record, err := s.store.Get(ctx.Request.Context(), key)
+	
+	if err != nil || record == nil {
+		return stateNew, nil
+	}
+	
+	switch record.Status {
+	case "completed":
+		return stateCompleted, record
+	case "error":
+		return stateError, record
+	case "processing":
+		if time.Now().After(record.ExpiresAt) {
+			return stateExpired, record
+		}
+		return stateProcessing, record
+	default:
+		return stateNew, nil
+	}
+}
+
+// replayResponse replays a cached successful response
+func (s *idempotencyService) replayResponse(ctx *lift.Context, record *IdempotencyRecord) error {
+	if s.options.OnDuplicate != nil {
+		s.options.OnDuplicate(ctx, record)
+	}
+	
+	ctx.Response.StatusCode = record.StatusCode
+	ctx.Response.Header("X-Idempotent-Replay", "true")
+	ctx.Response.Body = record.Response
+	ctx.Response.Header(lift.HeaderContentType, lift.ContentTypeJSON)
+	
+	return nil
+}
+
+// replayError replays a cached error response
+func (s *idempotencyService) replayError(record *IdempotencyRecord) error {
+	if record.Error != "" {
+		return lift.NewLiftError("IDEMPOTENT_ERROR_REPLAY", record.Error, record.StatusCode)
+	}
+	return lift.NewLiftError("IDEMPOTENT_ERROR_REPLAY", "Previous request failed", 500)
+}
+
+// handleConcurrent handles concurrent requests with the same key
+func (s *idempotencyService) handleConcurrent(ctx *lift.Context, key string, record *IdempotencyRecord) error {
+	return lift.NewLiftError("IDEMPOTENCY_CONFLICT", "A request with this idempotency key is already being processed", 409)
+}
+
+// handleExpired handles expired processing states
+func (s *idempotencyService) handleExpired(ctx *lift.Context, key string, next lift.Handler) error {
+	if err := s.store.Delete(ctx.Request.Context(), key); err != nil {
+		s.logError(ctx, "Failed to delete expired idempotency key", key, err)
+	}
+	return s.processNew(ctx, key, next)
+}
+
+// processNew processes a new request and stores the result
+func (s *idempotencyService) processNew(ctx *lift.Context, key string, next lift.Handler) error {
+	// Mark as processing
+	if err := s.setProcessing(ctx, key); err != nil {
+		s.logWarn(ctx, "Failed to set idempotency processing lock", key, err)
+	}
+	
+	// Execute handler with response capture
+	processor := newResponseProcessor(ctx)
+	err := processor.executeAndCapture(next)
+	
+	// Store result
+	record := s.createRecord(key, processor, err)
+	if storeErr := s.store.Set(ctx.Request.Context(), key, record); storeErr != nil {
+		s.logError(ctx, "Failed to store idempotency record", key, storeErr)
+	}
+	
+	return err
+}
+
+// setProcessing marks a key as being processed
+func (s *idempotencyService) setProcessing(ctx *lift.Context, key string) error {
+	expiresAt := time.Now().Add(s.options.ProcessingTimeout)
+	return s.store.SetProcessing(ctx.Request.Context(), key, expiresAt)
+}
+
+// createRecord creates an idempotency record from the processing result
+func (s *idempotencyService) createRecord(key string, processor *responseProcessor, err error) *IdempotencyRecord {
+	record := &IdempotencyRecord{
+		Key:       key,
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(s.options.TTL),
+	}
+	
+	if err != nil {
+		record.Status = "error"
+		record.Error = err.Error()
+		if liftErr, ok := err.(*lift.LiftError); ok {
+			record.StatusCode = liftErr.StatusCode
+		} else {
+			record.StatusCode = 500
+		}
+	} else {
+		record.Status = "completed"
+		record.Response = processor.capturedResponse
+		record.StatusCode = processor.capturedStatus
+		if record.StatusCode == 0 {
+			record.StatusCode = 200
+		}
+	}
+	
+	return record
+}
+
+// logError logs an error message if logger is available
+func (s *idempotencyService) logError(ctx *lift.Context, message, key string, err error) {
+	if ctx.Logger != nil {
+		ctx.Logger.Error(message, map[string]any{
+			"key":   key,
+			"error": err.Error(),
+		})
+	}
+}
+
+// logWarn logs a warning message if logger is available
+func (s *idempotencyService) logWarn(ctx *lift.Context, message, key string, err error) {
+	if ctx.Logger != nil {
+		ctx.Logger.Warn(message, map[string]any{
+			"key":   key,
+			"error": err.Error(),
+		})
+	}
+}
+
+// responseProcessor handles response capture during handler execution
+type responseProcessor struct {
+	ctx               *lift.Context
+	capturedResponse  any
+	capturedStatus    int
+}
+
+// newResponseProcessor creates a new response processor
+func newResponseProcessor(ctx *lift.Context) *responseProcessor {
+	return &responseProcessor{
+		ctx: ctx,
+	}
+}
+
+// executeAndCapture executes the handler and captures the response
+func (rp *responseProcessor) executeAndCapture(next lift.Handler) error {
+	// Enable response buffering to capture the response
+	rp.ctx.EnableResponseBuffering()
+	
+	// Execute handler
+	err := next.Handle(rp.ctx)
+	
+	// Capture response after handler execution
+	rp.captureResponse()
+	
+	return err
+}
+
+// captureResponse captures the response from the context
+func (rp *responseProcessor) captureResponse() {
+	// Try to get response from buffer first
+	if buffer := rp.ctx.GetResponseBuffer(); buffer != nil {
+		rp.capturedResponse = buffer.CapturedData
+		rp.capturedStatus = buffer.StatusCode
+	} else {
+		// Fallback to Response.Body (may not be reliable)
+		rp.capturedResponse = rp.ctx.Response.Body
+		rp.capturedStatus = rp.ctx.Response.StatusCode
+	}
+	
+	if rp.capturedStatus == 0 {
+		rp.capturedStatus = 200
 	}
 }
