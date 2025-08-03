@@ -85,179 +85,249 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 	this := &WebSocketAPI{}
 	constructs.NewConstruct_Override(this, scope, id)
 
-	// Set defaults
+	builder := newWebSocketAPIBuilder(this, props)
+	return builder.build()
+}
+
+// webSocketAPIBuilder builds WebSocket API components
+type webSocketAPIBuilder struct {
+	api     *WebSocketAPI
+	props   *WebSocketAPIProps
+	config  *webSocketAPIConfig
+}
+
+// webSocketAPIConfig holds resolved configuration values
+type webSocketAPIConfig struct {
+	apiName                     string
+	description                 string
+	routeSelectionExpression    string
+	stageName                   string
+	enableConnectionManagement  bool
+	autoDeploy                  bool
+	enableAccessLogging         bool
+}
+
+// newWebSocketAPIBuilder creates a new WebSocket API builder
+func newWebSocketAPIBuilder(api *WebSocketAPI, props *WebSocketAPIProps) *webSocketAPIBuilder {
+	return &webSocketAPIBuilder{
+		api:    api,
+		props:  props,
+		config: buildWebSocketAPIConfig(props),
+	}
+}
+
+// buildWebSocketAPIConfig resolves configuration values with defaults
+func buildWebSocketAPIConfig(props *WebSocketAPIProps) *webSocketAPIConfig {
 	if props == nil {
 		props = &WebSocketAPIProps{}
 	}
+	
+	config := &webSocketAPIConfig{
+		apiName:                     "WebSocketAPI",
+		description:                 "Lift WebSocket API with DynamORM",
+		routeSelectionExpression:    "$request.body.action",
+		stageName:                   "prod",
+		enableConnectionManagement:  true,
+		autoDeploy:                  true,
+		enableAccessLogging:         true,
+	}
 
-	apiName := "WebSocketAPI"
+	// Apply provided values
 	if props.ApiName != nil {
-		apiName = *props.ApiName
+		config.apiName = *props.ApiName
 	}
-
-	description := "Lift WebSocket API with DynamORM"
 	if props.Description != nil {
-		description = *props.Description
+		config.description = *props.Description
 	}
-
-	routeSelectionExpression := "$request.body.action"
 	if props.RouteSelectionExpression != nil {
-		routeSelectionExpression = *props.RouteSelectionExpression
+		config.routeSelectionExpression = *props.RouteSelectionExpression
 	}
-
-	stageName := "prod"
 	if props.StageName != nil {
-		stageName = *props.StageName
+		config.stageName = *props.StageName
 	}
-
-	enableConnectionManagement := true
 	if props.EnableConnectionManagement != nil {
-		enableConnectionManagement = *props.EnableConnectionManagement
+		config.enableConnectionManagement = *props.EnableConnectionManagement
 	}
-
-	autoDeploy := true
 	if props.AutoDeploy != nil {
-		autoDeploy = *props.AutoDeploy
+		config.autoDeploy = *props.AutoDeploy
 	}
-
-	enableAccessLogging := true
 	if props.EnableAccessLogging != nil {
-		enableAccessLogging = *props.EnableAccessLogging
+		config.enableAccessLogging = *props.EnableAccessLogging
 	}
 
-	// Create access log group if access logging is enabled
-	if enableAccessLogging {
-		if props.AccessLogGroup != nil {
-			this.AccessLogGroup = props.AccessLogGroup
-		} else {
-			this.AccessLogGroup = awslogs.NewLogGroup(this, jsii.String("AccessLogGroup"), &awslogs.LogGroupProps{
-				LogGroupName:  jsii.String(fmt.Sprintf("/aws/apigateway/websocket/%s", apiName)),
-				Retention:     awslogs.RetentionDays_ONE_MONTH,
-				RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-			})
-		}
-	}
+	return config
+}
 
-	// Create WebSocket API
+// build constructs the complete WebSocket API
+func (b *webSocketAPIBuilder) build() *WebSocketAPI {
+	// Setup access logging
+	b.setupAccessLogging()
+	
+	// Setup WebSocket API
+	b.setupWebSocketAPI()
+	
+	// Setup connection table
+	b.setupConnectionTable()
+	
+	// Validate and setup routes
+	b.validateRequiredFunctions()
+	b.setupRoutes()
+	
+	// Setup stage
+	b.setupStage()
+	
+	// Grant permissions
+	b.api.grantApiGatewayInvokePermissions()
+
+	return b.api
+}
+
+// setupAccessLogging creates access log group if enabled
+func (b *webSocketAPIBuilder) setupAccessLogging() {
+	if !b.config.enableAccessLogging {
+		return
+	}
+	
+	if b.props.AccessLogGroup != nil {
+		b.api.AccessLogGroup = b.props.AccessLogGroup
+	} else {
+		b.api.AccessLogGroup = awslogs.NewLogGroup(b.api, jsii.String("AccessLogGroup"), &awslogs.LogGroupProps{
+			LogGroupName:  jsii.String(fmt.Sprintf("/aws/apigateway/websocket/%s", b.config.apiName)),
+			Retention:     awslogs.RetentionDays_ONE_MONTH,
+			RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
+		})
+	}
+}
+
+// setupWebSocketAPI creates the WebSocket API
+func (b *webSocketAPIBuilder) setupWebSocketAPI() {
 	apiProps := &awsapigatewayv2.WebSocketApiProps{
-		ApiName:                  jsii.String(apiName),
-		Description:              jsii.String(description),
-		RouteSelectionExpression: jsii.String(routeSelectionExpression),
+		ApiName:                  jsii.String(b.config.apiName),
+		Description:              jsii.String(b.config.description),
+		RouteSelectionExpression: jsii.String(b.config.routeSelectionExpression),
 	}
 
 	// Add default authorizer if provided
-	if props.DefaultAuthorizer != nil {
+	if b.props.DefaultAuthorizer != nil {
 		apiProps.DefaultRouteOptions = &awsapigatewayv2.WebSocketRouteOptions{
-			Authorizer: props.DefaultAuthorizer,
+			Authorizer: b.props.DefaultAuthorizer,
 		}
 	}
 
-	this.WebSocketApi = awsapigatewayv2.NewWebSocketApi(this, jsii.String("Api"), apiProps) // Shorter ID
+	b.api.WebSocketApi = awsapigatewayv2.NewWebSocketApi(b.api, jsii.String("Api"), apiProps)
+}
 
-	// Create connection management table using DynamORM if enabled
-	if enableConnectionManagement {
-		// Set defaults for connection table
-		connectionTableProps := &ConnectionTableProps{}
-		if props.ConnectionTableProps != nil {
-			connectionTableProps = props.ConnectionTableProps
-		}
-
-		// Set table name based on API name if not provided
-		if connectionTableProps.TableName == nil {
-			connectionTableProps.TableName = jsii.String(fmt.Sprintf("%s-connections", apiName))
-		}
-
-		// GSIs for user and tenant indexes are now defined in DynamORM models
-		// Example model:
-		// type Connection struct {
-		//     PK     string `dynamorm:"pk"`                    // connection#{id}
-		//     SK     string `dynamorm:"sk"`                    // metadata
-		//     UserID string `dynamorm:"index:user-index,pk"`   // For user queries
-		//     TenantID string `dynamorm:"index:tenant-index,pk"` // For tenant queries (if multi-tenant)
-		// }
-
-		// Create the DynamORM-based connection table with minimal ID
-		this.ConnectionTable = NewConnectionTable(this, jsii.String("T"), connectionTableProps) // Minimal ID
+// setupConnectionTable creates connection management table if enabled
+func (b *webSocketAPIBuilder) setupConnectionTable() {
+	if !b.config.enableConnectionManagement {
+		return
+	}
+	
+	// Set defaults for connection table
+	connectionTableProps := &ConnectionTableProps{}
+	if b.props.ConnectionTableProps != nil {
+		connectionTableProps = b.props.ConnectionTableProps
 	}
 
-	// Validate required functions
-	if props.ConnectRouteFunction == nil {
+	// Set table name based on API name if not provided
+	if connectionTableProps.TableName == nil {
+		connectionTableProps.TableName = jsii.String(fmt.Sprintf("%s-connections", b.config.apiName))
+	}
+
+	// Create the DynamORM-based connection table with minimal ID
+	b.api.ConnectionTable = NewConnectionTable(b.api, jsii.String("T"), connectionTableProps)
+}
+
+// validateRequiredFunctions validates that required Lambda functions are provided
+func (b *webSocketAPIBuilder) validateRequiredFunctions() {
+	if b.props.ConnectRouteFunction == nil {
 		panic("ConnectRouteFunction is required. Create Lambda function externally and pass via props to avoid long CloudFormation resource names.")
 	}
-	if props.DisconnectRouteFunction == nil {
+	if b.props.DisconnectRouteFunction == nil {
 		panic("DisconnectRouteFunction is required. Create Lambda function externally and pass via props to avoid long CloudFormation resource names.")
 	}
-	if props.DefaultRouteFunction == nil {
+	if b.props.DefaultRouteFunction == nil {
 		panic("DefaultRouteFunction is required. Create Lambda function externally and pass via props to avoid long CloudFormation resource names.")
 	}
+}
 
+// setupRoutes creates all WebSocket routes
+func (b *webSocketAPIBuilder) setupRoutes() {
 	// Initialize routes map
-	this.Routes = make(map[string]awsapigatewayv2.WebSocketRoute)
-
-	// Use provided functions
-	connectFunction := props.ConnectRouteFunction
-	disconnectFunction := props.DisconnectRouteFunction
-	defaultFunction := props.DefaultRouteFunction
-
+	b.api.Routes = make(map[string]awsapigatewayv2.WebSocketRoute)
+	
 	// Add standard routes
-	if connectFunction != nil {
-		this.AddRoute("$connect", connectFunction, &WebSocketRouteConfig{
+	b.addStandardRoutes()
+	
+	// Add custom routes
+	b.addCustomRoutes()
+}
+
+// addStandardRoutes adds the standard WebSocket routes
+func (b *webSocketAPIBuilder) addStandardRoutes() {
+	if b.props.ConnectRouteFunction != nil {
+		b.api.AddRoute("$connect", b.props.ConnectRouteFunction, &WebSocketRouteConfig{
 			RouteKey: jsii.String("$connect"),
-			Function: connectFunction,
+			Function: b.props.ConnectRouteFunction,
 		})
 	}
 
-	if disconnectFunction != nil {
-		this.AddRoute("$disconnect", disconnectFunction, &WebSocketRouteConfig{
+	if b.props.DisconnectRouteFunction != nil {
+		b.api.AddRoute("$disconnect", b.props.DisconnectRouteFunction, &WebSocketRouteConfig{
 			RouteKey: jsii.String("$disconnect"),
-			Function: disconnectFunction,
+			Function: b.props.DisconnectRouteFunction,
 		})
 	}
 
-	if defaultFunction != nil {
-		this.AddRoute(defaultRoute, defaultFunction, &WebSocketRouteConfig{
+	if b.props.DefaultRouteFunction != nil {
+		b.api.AddRoute(defaultRoute, b.props.DefaultRouteFunction, &WebSocketRouteConfig{
 			RouteKey: jsii.String(defaultRoute),
-			Function: defaultFunction,
+			Function: b.props.DefaultRouteFunction,
 		})
 	}
+}
 
-	// Add custom routes if provided
-	if props.Routes != nil {
-		for _, routeConfig := range props.Routes {
-			if routeConfig.RouteKey != nil && routeConfig.Function != nil {
-				this.AddRoute(*routeConfig.RouteKey, routeConfig.Function, routeConfig)
-			}
+// addCustomRoutes adds custom routes if provided
+func (b *webSocketAPIBuilder) addCustomRoutes() {
+	if b.props.Routes == nil {
+		return
+	}
+	
+	for _, routeConfig := range b.props.Routes {
+		if routeConfig.RouteKey != nil && routeConfig.Function != nil {
+			b.api.AddRoute(*routeConfig.RouteKey, routeConfig.Function, routeConfig)
 		}
 	}
+}
 
-	// Create stage
+// setupStage creates the WebSocket stage with throttling
+func (b *webSocketAPIBuilder) setupStage() {
 	stageProps := &awsapigatewayv2.WebSocketStageProps{
-		WebSocketApi: this.WebSocketApi,
-		StageName:    jsii.String(stageName),
-		AutoDeploy:   jsii.Bool(autoDeploy),
+		WebSocketApi: b.api.WebSocketApi,
+		StageName:    jsii.String(b.config.stageName),
+		AutoDeploy:   jsii.Bool(b.config.autoDeploy),
 	}
 
-	// Configure throttling
-	if props.ThrottleRateLimit != nil || props.ThrottleBurstLimit != nil {
-		throttleSettings := &awsapigatewayv2.ThrottleSettings{}
-		if props.ThrottleRateLimit != nil {
-			throttleSettings.RateLimit = props.ThrottleRateLimit
-		}
-		if props.ThrottleBurstLimit != nil {
-			throttleSettings.BurstLimit = props.ThrottleBurstLimit
-		}
-		stageProps.Throttle = throttleSettings
+	// Configure throttling if specified
+	b.configureThrottling(stageProps)
+
+	b.api.Stage = awsapigatewayv2.NewWebSocketStage(b.api, jsii.String("Stage"), stageProps)
+}
+
+// configureThrottling configures stage throttling settings
+func (b *webSocketAPIBuilder) configureThrottling(stageProps *awsapigatewayv2.WebSocketStageProps) {
+	if b.props.ThrottleRateLimit == nil && b.props.ThrottleBurstLimit == nil {
+		return
 	}
-
-	this.Stage = awsapigatewayv2.NewWebSocketStage(this, jsii.String("Stage"), stageProps)
-
-	// Grant API Gateway permissions to invoke Lambda functions
-	this.grantApiGatewayInvokePermissions()
-
-	// Environment variables are no longer set automatically
-	// Use GetWebSocketURL(), GetConnectionTableName(), etc. to get values for your functions
-
-	return this
+	
+	throttleSettings := &awsapigatewayv2.ThrottleSettings{}
+	if b.props.ThrottleRateLimit != nil {
+		throttleSettings.RateLimit = b.props.ThrottleRateLimit
+	}
+	if b.props.ThrottleBurstLimit != nil {
+		throttleSettings.BurstLimit = b.props.ThrottleBurstLimit
+	}
+	stageProps.Throttle = throttleSettings
 }
 
 // REMOVED: createStandardFunctions - Functions must now be created externally to avoid deep nesting
