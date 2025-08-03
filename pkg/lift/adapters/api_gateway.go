@@ -79,100 +79,49 @@ func (a *APIGatewayAdapter) Adapt(rawEvent any) (*Request, error) {
 		return nil, fmt.Errorf("event must be a map[string]any, got %T", rawEvent)
 	}
 
-	// Extract request context
-	requestContext := extractMapField(eventMap, "requestContext")
+	extractor := newAPIGatewayEventExtractor(eventMap)
+	return extractor.extract()
+}
 
+// apiGatewayEventExtractor extracts data from API Gateway events
+type apiGatewayEventExtractor struct {
+	eventMap       map[string]any
+	requestContext map[string]any
+}
+
+// newAPIGatewayEventExtractor creates a new event extractor
+func newAPIGatewayEventExtractor(eventMap map[string]any) *apiGatewayEventExtractor {
+	return &apiGatewayEventExtractor{
+		eventMap:       eventMap,
+		requestContext: extractMapField(eventMap, "requestContext"),
+	}
+}
+
+// extract converts the event to a Request
+func (e *apiGatewayEventExtractor) extract() (*Request, error) {
 	// Extract basic HTTP information
-	method := extractStringField(eventMap, "httpMethod")
-	path := extractStringField(eventMap, "path")
-	if path == "" {
-		// API Gateway v1 should always have a path field when properly configured
-		// The resource field contains the route template (e.g., /users/{id}) not the actual path
-		return nil, fmt.Errorf("API Gateway v1 event missing 'path' field - check your API Gateway integration configuration")
+	method := extractStringField(e.eventMap, "httpMethod")
+	path, err := e.extractPath()
+	if err != nil {
+		return nil, err
 	}
 
-	// Handle stage prefix in path (occurs with custom domains)
-	// This matches the behavior of the v2 adapter
-	stage := extractStringField(requestContext, "stage")
-	if stage != "" && stage != defaultRoute {
-		stagePrefix := "/" + stage
-		if path == stagePrefix {
-			// Path is exactly the stage, return root
-			path = "/"
-		} else if strings.HasPrefix(path, stagePrefix+"/") {
-			// Strip stage prefix from path only if followed by "/"
-			path = strings.TrimPrefix(path, stagePrefix)
-		}
-	}
-
-	// Extract headers (case-insensitive)
-	headers := make(map[string]string)
-	if headersMap := extractMapField(eventMap, "headers"); len(headersMap) > 0 {
-		for k, v := range headersMap {
-			if str, ok := v.(string); ok {
-				headers[strings.ToLower(k)] = str
-			}
-		}
-	}
-
-	// Handle multi-value headers
-	if multiHeaders := extractMapField(eventMap, "multiValueHeaders"); len(multiHeaders) > 0 {
-		for k, v := range multiHeaders {
-			if slice, ok := v.([]any); ok && len(slice) > 0 {
-				// Take the first value for simplicity
-				if str, ok := slice[0].(string); ok {
-					headers[strings.ToLower(k)] = str
-				}
-			}
-		}
-	}
-
-	// Extract query parameters
-	queryParams := extractStringMapField(eventMap, "queryStringParameters")
-	if queryParams == nil {
-		queryParams = make(map[string]string)
-	}
-
-	// Handle multi-value query parameters
-	if multiQuery := extractMapField(eventMap, "multiValueQueryStringParameters"); len(multiQuery) > 0 {
-		for k, v := range multiQuery {
-			if slice, ok := v.([]any); ok && len(slice) > 0 {
-				// Take the first value for simplicity
-				if str, ok := slice[0].(string); ok {
-					queryParams[k] = str
-				}
-			}
-		}
-	}
-
-	// Extract path parameters
-	pathParams := extractStringMapField(eventMap, "pathParameters")
-	if pathParams == nil {
-		pathParams = make(map[string]string)
-	}
-
-	// Extract and decode body
-	var body []byte
-	if bodyStr := extractStringField(eventMap, "body"); bodyStr != "" {
-		// Check if body is base64 encoded
-		if isBase64Encoded, ok := eventMap["isBase64Encoded"].(bool); ok && isBase64Encoded {
-			decoded, err := base64.StdEncoding.DecodeString(bodyStr)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode base64 body: %w", err)
-			}
-			body = decoded
-		} else {
-			body = []byte(bodyStr)
-		}
+	// Extract all request data
+	headers := e.extractHeaders()
+	queryParams := e.extractQueryParams()
+	pathParams := e.extractPathParams()
+	body, err := e.extractBody()
+	if err != nil {
+		return nil, err
 	}
 
 	// Extract event metadata
-	eventID := extractStringField(requestContext, "requestId")
-	timestamp := extractStringField(requestContext, "requestTimeEpoch")
+	eventID := extractStringField(e.requestContext, "requestId")
+	timestamp := extractStringField(e.requestContext, "requestTimeEpoch")
 
 	return &Request{
 		TriggerType: TriggerAPIGateway,
-		RawEvent:    rawEvent,
+		RawEvent:    e.eventMap,
 		EventID:     eventID,
 		Timestamp:   timestamp,
 		Method:      method,
@@ -182,4 +131,127 @@ func (a *APIGatewayAdapter) Adapt(rawEvent any) (*Request, error) {
 		PathParams:  pathParams,
 		Body:        body,
 	}, nil
+}
+
+// extractPath extracts and normalizes the request path
+func (e *apiGatewayEventExtractor) extractPath() (string, error) {
+	path := extractStringField(e.eventMap, "path")
+	if path == "" {
+		// API Gateway v1 should always have a path field when properly configured
+		// The resource field contains the route template (e.g., /users/{id}) not the actual path
+		return "", fmt.Errorf("API Gateway v1 event missing 'path' field - check your API Gateway integration configuration")
+	}
+
+	// Handle stage prefix in path
+	return e.normalizePathWithStage(path), nil
+}
+
+// normalizePathWithStage removes stage prefix from path if present
+func (e *apiGatewayEventExtractor) normalizePathWithStage(path string) string {
+	stage := extractStringField(e.requestContext, "stage")
+	if stage == "" || stage == defaultRoute {
+		return path
+	}
+
+	stagePrefix := "/" + stage
+	if path == stagePrefix {
+		// Path is exactly the stage, return root
+		return "/"
+	} else if strings.HasPrefix(path, stagePrefix+"/") {
+		// Strip stage prefix from path only if followed by "/"
+		return strings.TrimPrefix(path, stagePrefix)
+	}
+
+	return path
+}
+
+// extractHeaders extracts and normalizes headers
+func (e *apiGatewayEventExtractor) extractHeaders() map[string]string {
+	headers := make(map[string]string)
+
+	// Extract single-value headers
+	e.extractSingleValueHeaders(headers)
+
+	// Extract multi-value headers
+	e.extractMultiValueHeaders(headers)
+
+	return headers
+}
+
+// extractSingleValueHeaders extracts headers from the headers field
+func (e *apiGatewayEventExtractor) extractSingleValueHeaders(headers map[string]string) {
+	headersMap := extractMapField(e.eventMap, "headers")
+	for k, v := range headersMap {
+		if str, ok := v.(string); ok {
+			headers[strings.ToLower(k)] = str
+		}
+	}
+}
+
+// extractMultiValueHeaders extracts headers from multiValueHeaders field
+func (e *apiGatewayEventExtractor) extractMultiValueHeaders(headers map[string]string) {
+	multiHeaders := extractMapField(e.eventMap, "multiValueHeaders")
+	for k, v := range multiHeaders {
+		if slice, ok := v.([]any); ok && len(slice) > 0 {
+			// Take the first value for simplicity
+			if str, ok := slice[0].(string); ok {
+				headers[strings.ToLower(k)] = str
+			}
+		}
+	}
+}
+
+// extractQueryParams extracts query parameters
+func (e *apiGatewayEventExtractor) extractQueryParams() map[string]string {
+	// Start with single-value parameters
+	queryParams := extractStringMapField(e.eventMap, "queryStringParameters")
+	if queryParams == nil {
+		queryParams = make(map[string]string)
+	}
+
+	// Merge multi-value parameters
+	e.mergeMultiValueQueryParams(queryParams)
+
+	return queryParams
+}
+
+// mergeMultiValueQueryParams merges multi-value query parameters
+func (e *apiGatewayEventExtractor) mergeMultiValueQueryParams(queryParams map[string]string) {
+	multiQuery := extractMapField(e.eventMap, "multiValueQueryStringParameters")
+	for k, v := range multiQuery {
+		if slice, ok := v.([]any); ok && len(slice) > 0 {
+			// Take the first value for simplicity
+			if str, ok := slice[0].(string); ok {
+				queryParams[k] = str
+			}
+		}
+	}
+}
+
+// extractPathParams extracts path parameters
+func (e *apiGatewayEventExtractor) extractPathParams() map[string]string {
+	pathParams := extractStringMapField(e.eventMap, "pathParameters")
+	if pathParams == nil {
+		pathParams = make(map[string]string)
+	}
+	return pathParams
+}
+
+// extractBody extracts and decodes the request body
+func (e *apiGatewayEventExtractor) extractBody() ([]byte, error) {
+	bodyStr := extractStringField(e.eventMap, "body")
+	if bodyStr == "" {
+		return nil, nil
+	}
+
+	// Check if body is base64 encoded
+	if isBase64Encoded, ok := e.eventMap["isBase64Encoded"].(bool); ok && isBase64Encoded {
+		decoded, err := base64.StdEncoding.DecodeString(bodyStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode base64 body: %w", err)
+		}
+		return decoded, nil
+	}
+
+	return []byte(bodyStr), nil
 }
