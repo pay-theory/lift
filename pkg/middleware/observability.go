@@ -19,153 +19,238 @@ type ObservabilityConfig struct {
 
 // ObservabilityMiddleware provides comprehensive logging and metrics collection
 func ObservabilityMiddleware(config ObservabilityConfig) lift.Middleware {
-	// Default operation name function
+	// Set defaults
+	config = setObservabilityMiddlewareDefaults(config)
+	
+	// Create coordinated handler
+	handler := newBasicObservabilityHandler(config)
+	
+	return func(next lift.Handler) lift.Handler {
+		return lift.HandlerFunc(func(ctx *lift.Context) error {
+			return handler.handle(ctx, next)
+		})
+	}
+}
+
+// setObservabilityMiddlewareDefaults applies default configuration values
+func setObservabilityMiddlewareDefaults(config ObservabilityConfig) ObservabilityConfig {
 	if config.OperationNameFunc == nil {
 		config.OperationNameFunc = func(ctx *lift.Context) string {
 			return fmt.Sprintf("%s_%s", ctx.Request.Method, ctx.Request.Path)
 		}
 	}
+	return config
+}
 
-	return func(next lift.Handler) lift.Handler {
-		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			// Start timing
-			start := time.Now()
+// basicObservabilityHandler coordinates basic logging and metrics
+type basicObservabilityHandler struct {
+	config     ObservabilityConfig
+	logger     *basicLogHandler
+	metrics    *basicMetricsHandler
+}
 
-			// Add logger with context to the request
-			if config.Logger != nil {
-				contextLogger := config.Logger.
-					WithRequestID(ctx.RequestID).
-					WithTenantID(ctx.TenantID()).
-					WithUserID(ctx.UserID())
-
-				// Add trace context if available
-				if traceID := ctx.Request.Headers["X-Trace-Id"]; traceID != "" {
-					contextLogger = contextLogger.WithTraceID(traceID)
-				}
-				if spanID := ctx.Request.Headers["X-Span-Id"]; spanID != "" {
-					contextLogger = contextLogger.WithSpanID(spanID)
-				}
-
-				ctx.Logger = contextLogger
-
-				// Log request start
-				ctx.Logger.Info("Request started", map[string]any{
-					"method":     ctx.Request.Method,
-					"path":       ctx.Request.Path,
-					"query":      "[SANITIZED_QUERY_PARAMS]", // Sanitized for security
-					"source_ip":  ctx.Request.Headers["X-Forwarded-For"],
-					"user_agent": ctx.Request.Headers["User-Agent"],
-				})
-			}
-
-			// Get operation name for metrics
-			operation := config.OperationNameFunc(ctx)
-
-			// Add metrics collector with tenant context
-			if config.Metrics != nil {
-				tenantMetrics := config.Metrics.WithTags(map[string]string{
-					"tenant_id": ctx.TenantID(),
-					"method":    ctx.Request.Method,
-					"path":      ctx.Request.Path,
-				})
-
-				// Record request count
-				counter := tenantMetrics.Counter("requests.total")
-				counter.Inc()
-			}
-
-			// Execute handler
-			err := next.Handle(ctx)
-
-			// Calculate duration
-			duration := time.Since(start)
-
-			// Log and record metrics based on result
-			if err != nil {
-				// Log error
-				if ctx.Logger != nil {
-					ctx.Logger.Error("Request failed", map[string]any{
-						"error":    "[SANITIZED_ERROR]", // Sanitized for security
-						"duration": duration.String(),
-						"status":   ctx.Response.StatusCode,
-					})
-				}
-
-				// Record error metrics
-				if config.Metrics != nil {
-					errorMetrics := config.Metrics.WithTags(map[string]string{
-						"tenant_id": ctx.TenantID(),
-						"method":    ctx.Request.Method,
-						"path":      ctx.Request.Path,
-						"error":     "true",
-					})
-
-					errorCounter := errorMetrics.Counter("requests.errors")
-					errorCounter.Inc()
-
-					// Record latency even for errors
-					histogram := errorMetrics.Histogram("requests.duration")
-					histogram.Observe(float64(duration.Milliseconds()))
-				}
-			} else {
-				// Log success
-				if ctx.Logger != nil {
-					ctx.Logger.Info("Request completed", map[string]any{
-						"duration": duration.String(),
-						"status":   ctx.Response.StatusCode,
-					})
-				}
-
-				// Record success metrics
-				if config.Metrics != nil {
-					successMetrics := config.Metrics.WithTags(map[string]string{
-						"tenant_id": ctx.TenantID(),
-						"method":    ctx.Request.Method,
-						"path":      ctx.Request.Path,
-						"status":    fmt.Sprintf("%d", ctx.Response.StatusCode),
-					})
-
-					// Record latency
-					histogram := successMetrics.Histogram("requests.duration")
-					histogram.Observe(float64(duration.Milliseconds()))
-
-					// Record response size if available
-					if ctx.Response.Body != nil {
-						// Try to estimate response size
-						var size int
-						switch v := ctx.Response.Body.(type) {
-						case string:
-							size = len(v)
-						case []byte:
-							size = len(v)
-						default:
-							// For other types, marshal to JSON to get size estimate
-							if data, marshalErr := json.Marshal(v); marshalErr == nil {
-								size = len(data)
-							}
-						}
-						if size > 0 {
-							gauge := successMetrics.Gauge("response.size")
-							gauge.Set(float64(size))
-						}
-					}
-				}
-			}
-
-			// Record operation-specific metrics
-			if config.Metrics != nil {
-				// Record operation-specific counters
-				operationCounter := config.Metrics.Counter(fmt.Sprintf("operation.%s", operation))
-				operationCounter.Inc()
-
-				// Record operation duration
-				operationHistogram := config.Metrics.Histogram(fmt.Sprintf("operation.%s.duration", operation))
-				operationHistogram.Observe(float64(duration.Milliseconds()))
-			}
-
-			return err
-		})
+// newBasicObservabilityHandler creates a new basic observability handler
+func newBasicObservabilityHandler(config ObservabilityConfig) *basicObservabilityHandler {
+	return &basicObservabilityHandler{
+		config:  config,
+		logger:  newBasicLogHandler(config),
+		metrics: newBasicMetricsHandler(config),
 	}
+}
+
+// handle processes the request with coordinated observability
+func (h *basicObservabilityHandler) handle(ctx *lift.Context, next lift.Handler) error {
+	start := time.Now()
+	operation := h.config.OperationNameFunc(ctx)
+	
+	// Setup logging and metrics
+	h.logger.before(ctx)
+	h.metrics.before(ctx, operation)
+	
+	// Execute handler
+	err := next.Handle(ctx)
+	
+	// Complete logging and metrics
+	duration := time.Since(start)
+	h.logger.after(ctx, duration, err)
+	h.metrics.after(ctx, operation, duration, err)
+	
+	return err
+}
+
+// basicLogHandler handles the logging aspect
+type basicLogHandler struct {
+	config ObservabilityConfig
+}
+
+// newBasicLogHandler creates a new basic log handler
+func newBasicLogHandler(config ObservabilityConfig) *basicLogHandler {
+	return &basicLogHandler{config: config}
+}
+
+// before sets up logging context before request processing
+func (l *basicLogHandler) before(ctx *lift.Context) {
+	if l.config.Logger == nil {
+		return
+	}
+	
+	// Create context logger
+	contextLogger := l.config.Logger.
+		WithRequestID(ctx.RequestID).
+		WithTenantID(ctx.TenantID()).
+		WithUserID(ctx.UserID())
+	
+	// Add trace context if available
+	if traceID := ctx.Request.Headers["X-Trace-Id"]; traceID != "" {
+		contextLogger = contextLogger.WithTraceID(traceID)
+	}
+	if spanID := ctx.Request.Headers["X-Span-Id"]; spanID != "" {
+		contextLogger = contextLogger.WithSpanID(spanID)
+	}
+	
+	ctx.Logger = contextLogger
+	
+	// Log request start
+	ctx.Logger.Info("Request started", map[string]any{
+		"method":     ctx.Request.Method,
+		"path":       ctx.Request.Path,
+		"query":      "[SANITIZED_QUERY_PARAMS]", // Sanitized for security
+		"source_ip":  ctx.Request.Headers["X-Forwarded-For"],
+		"user_agent": ctx.Request.Headers["User-Agent"],
+	})
+}
+
+// after handles logging after request processing
+func (l *basicLogHandler) after(ctx *lift.Context, duration time.Duration, err error) {
+	if ctx.Logger == nil {
+		return
+	}
+	
+	logFields := map[string]any{
+		"duration": duration.String(),
+		"status":   ctx.Response.StatusCode,
+	}
+	
+	if err != nil {
+		logFields["error"] = "[SANITIZED_ERROR]" // Sanitized for security
+		ctx.Logger.Error("Request failed", logFields)
+	} else {
+		ctx.Logger.Info("Request completed", logFields)
+	}
+}
+
+// basicMetricsHandler handles the metrics aspect
+type basicMetricsHandler struct {
+	config ObservabilityConfig
+}
+
+// newBasicMetricsHandler creates a new basic metrics handler
+func newBasicMetricsHandler(config ObservabilityConfig) *basicMetricsHandler {
+	return &basicMetricsHandler{config: config}
+}
+
+// before handles metrics setup before request processing
+func (m *basicMetricsHandler) before(ctx *lift.Context, operation string) {
+	if m.config.Metrics == nil {
+		return
+	}
+	
+	// Record request count
+	tenantMetrics := m.config.Metrics.WithTags(map[string]string{
+		"tenant_id": ctx.TenantID(),
+		"method":    ctx.Request.Method,
+		"path":      ctx.Request.Path,
+	})
+	
+	counter := tenantMetrics.Counter("requests.total")
+	counter.Inc()
+}
+
+// after handles metrics after request processing
+func (m *basicMetricsHandler) after(ctx *lift.Context, operation string, duration time.Duration, err error) {
+	if m.config.Metrics == nil {
+		return
+	}
+	
+	// Record response metrics based on success/error
+	if err != nil {
+		m.recordErrorMetrics(ctx, duration)
+	} else {
+		m.recordSuccessMetrics(ctx, duration)
+	}
+	
+	// Record operation-specific metrics
+	m.recordOperationMetrics(operation, duration)
+}
+
+// recordErrorMetrics records metrics for error responses
+func (m *basicMetricsHandler) recordErrorMetrics(ctx *lift.Context, duration time.Duration) {
+	errorMetrics := m.config.Metrics.WithTags(map[string]string{
+		"tenant_id": ctx.TenantID(),
+		"method":    ctx.Request.Method,
+		"path":      ctx.Request.Path,
+		"error":     "true",
+	})
+	
+	errorCounter := errorMetrics.Counter("requests.errors")
+	errorCounter.Inc()
+	
+	// Record latency even for errors
+	histogram := errorMetrics.Histogram("requests.duration")
+	histogram.Observe(float64(duration.Milliseconds()))
+}
+
+// recordSuccessMetrics records metrics for successful responses
+func (m *basicMetricsHandler) recordSuccessMetrics(ctx *lift.Context, duration time.Duration) {
+	successMetrics := m.config.Metrics.WithTags(map[string]string{
+		"tenant_id": ctx.TenantID(),
+		"method":    ctx.Request.Method,
+		"path":      ctx.Request.Path,
+		"status":    fmt.Sprintf("%d", ctx.Response.StatusCode),
+	})
+	
+	// Record latency
+	histogram := successMetrics.Histogram("requests.duration")
+	histogram.Observe(float64(duration.Milliseconds()))
+	
+	// Record response size if available
+	m.recordResponseSize(ctx, successMetrics)
+}
+
+// recordResponseSize calculates and records response size metrics
+func (m *basicMetricsHandler) recordResponseSize(ctx *lift.Context, metrics observability.MetricsCollector) {
+	if ctx.Response.Body == nil {
+		return
+	}
+	
+	var size int
+	switch v := ctx.Response.Body.(type) {
+	case string:
+		size = len(v)
+	case []byte:
+		size = len(v)
+	default:
+		// For other types, marshal to JSON to get size estimate
+		if data, marshalErr := json.Marshal(v); marshalErr == nil {
+			size = len(data)
+		}
+	}
+	
+	if size > 0 {
+		gauge := metrics.Gauge("response.size")
+		gauge.Set(float64(size))
+	}
+}
+
+// recordOperationMetrics records operation-specific metrics
+func (m *basicMetricsHandler) recordOperationMetrics(operation string, duration time.Duration) {
+	// Record operation-specific counters
+	operationCounter := m.config.Metrics.Counter(fmt.Sprintf("operation.%s", operation))
+	operationCounter.Inc()
+	
+	// Record operation duration
+	operationHistogram := m.config.Metrics.Histogram(fmt.Sprintf("operation.%s.duration", operation))
+	operationHistogram.Observe(float64(duration.Milliseconds()))
 }
 
 // MetricsOnlyMiddleware provides lightweight metrics collection without logging
