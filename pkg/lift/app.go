@@ -537,149 +537,197 @@ func convertHandlerUsingReflection(handler any) (Handler, error) {
 }
 
 // validateHandlerSignature validates that the handler function has a supported signature
+// handlerPattern represents the different handler signature patterns supported
+type handlerPattern int
+
+const (
+	patternContextError handlerPattern = iota // func(*Context) error
+	patternContextResponse                    // func(*Context) (any, error)
+	patternSimpleError                        // func() error
+	patternSimpleResponse                     // func() (any, error)
+	patternModelError                         // func(RequestModel) error
+	patternModelResponse                      // func(RequestModel) (ResponseModel, error)
+	patternUnsupported
+)
+
+// handlerValidator provides validation for handler signatures
+type handlerValidator struct{}
+
+// validateHandlerSignature validates that a handler function has a supported signature
 func validateHandlerSignature(t reflect.Type) error {
+	validator := &handlerValidator{}
+	pattern := validator.identifyPattern(t)
+	
+	if pattern == patternUnsupported {
+		return fmt.Errorf("unsupported handler signature: %s", t.String())
+	}
+	
+	return nil
+}
+
+// identifyPattern determines which handler pattern a function type matches
+func (v *handlerValidator) identifyPattern(t reflect.Type) handlerPattern {
 	numIn := t.NumIn()
 	numOut := t.NumOut()
-
-	// Pattern 1: func(*Context) error
-	if numIn == 1 && numOut == 1 {
-		// Already handled in the switch statement, but included for completeness
-		if isContextType(t.In(0)) && isErrorType(t.Out(0)) {
-			return nil
-		}
+	
+	switch {
+	case numIn == 1 && numOut == 1:
+		return v.validateSingleInOut(t)
+	case numIn == 1 && numOut == 2:
+		return v.validateSingleInDoubleOut(t)
+	case numIn == 0 && numOut == 1:
+		return v.validateNoInSingleOut(t)
+	case numIn == 0 && numOut == 2:
+		return v.validateNoInDoubleOut(t)
+	default:
+		return patternUnsupported
 	}
+}
 
-	// Pattern 2: func(*Context) (any, error)
-	if numIn == 1 && numOut == 2 {
-		if isContextType(t.In(0)) && isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
-			return nil
-		}
+// validateSingleInOut validates patterns: func(*Context) error OR func(RequestModel) error
+func (v *handlerValidator) validateSingleInOut(t reflect.Type) handlerPattern {
+	if !isErrorType(t.Out(0)) {
+		return patternUnsupported
 	}
-
-	// Pattern 3: func() error (no context - simple handlers)
-	if numIn == 0 && numOut == 1 {
-		if isErrorType(t.Out(0)) {
-			return nil
-		}
+	
+	if isContextType(t.In(0)) {
+		return patternContextError
 	}
+	
+	return patternModelError
+}
 
-	// Pattern 4: func() (any, error) (no context - simple handlers with return value)
-	if numIn == 0 && numOut == 2 {
-		if isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
-			return nil
-		}
+// validateSingleInDoubleOut validates patterns: func(*Context) (any, error) OR func(RequestModel) (ResponseModel, error)
+func (v *handlerValidator) validateSingleInDoubleOut(t reflect.Type) handlerPattern {
+	if !isInterfaceType(t.Out(0)) || !isErrorType(t.Out(1)) {
+		return patternUnsupported
 	}
-
-	// Pattern 5: func(any) error (request model binding)
-	if numIn == 1 && numOut == 1 {
-		if !isContextType(t.In(0)) && isErrorType(t.Out(0)) {
-			return nil
-		}
+	
+	if isContextType(t.In(0)) {
+		return patternContextResponse
 	}
+	
+	return patternModelResponse
+}
 
-	// Pattern 6: func(any) (any, error) (request/response model binding)
-	if numIn == 1 && numOut == 2 {
-		if !isContextType(t.In(0)) && isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
-			return nil
-		}
+// validateNoInSingleOut validates pattern: func() error
+func (v *handlerValidator) validateNoInSingleOut(t reflect.Type) handlerPattern {
+	if isErrorType(t.Out(0)) {
+		return patternSimpleError
 	}
+	return patternUnsupported
+}
 
-	return fmt.Errorf("unsupported handler signature: %s", t.String())
+// validateNoInDoubleOut validates pattern: func() (any, error)
+func (v *handlerValidator) validateNoInDoubleOut(t reflect.Type) handlerPattern {
+	if isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
+		return patternSimpleResponse
+	}
+	return patternUnsupported
+}
+
+// handlerExecutor handles the execution of different handler patterns
+type handlerExecutor struct {
+	value   reflect.Value
+	pattern handlerPattern
+	funcType reflect.Type
 }
 
 // createReflectedHandler creates a Handler from a reflected function
 func createReflectedHandler(v reflect.Value, t reflect.Type) Handler {
+	validator := &handlerValidator{}
+	pattern := validator.identifyPattern(t)
+	
+	executor := &handlerExecutor{
+		value:   v,
+		pattern: pattern,
+		funcType: t,
+	}
+	
 	return HandlerFunc(func(ctx *Context) error {
-		// Determine the handler pattern and call appropriately
-		numIn := t.NumIn()
-		numOut := t.NumOut()
-
-		var callArgs []reflect.Value
-		var results []reflect.Value
-
-		switch {
-		// Pattern 1: func(*Context) error - already handled by main switch but included here
-		case numIn == 1 && numOut == 1 && isContextType(t.In(0)):
-			callArgs = []reflect.Value{reflect.ValueOf(ctx)}
-
-		// Pattern 2: func(*Context) (any, error)
-		case numIn == 1 && numOut == 2 && isContextType(t.In(0)):
-			callArgs = []reflect.Value{reflect.ValueOf(ctx)}
-
-		// Pattern 3: func() error
-		case numIn == 0 && numOut == 1:
-			callArgs = []reflect.Value{}
-
-		// Pattern 4: func() (any, error)
-		case numIn == 0 && numOut == 2:
-			callArgs = []reflect.Value{}
-
-		// Pattern 5: func(RequestModel) error
-		case numIn == 1 && numOut == 1 && !isContextType(t.In(0)):
-			// Create instance of the expected input type
-			requestType := t.In(0)
-			requestValue := reflect.New(requestType).Interface()
-
-			// Parse request body into the model
-			if err := ctx.ParseRequest(requestValue); err != nil {
-				return err
-			}
-
-			callArgs = []reflect.Value{reflect.ValueOf(requestValue).Elem()}
-
-		// Pattern 6: func(RequestModel) (ResponseModel, error)
-		case numIn == 1 && numOut == 2 && !isContextType(t.In(0)):
-			// Create instance of the expected input type
-			requestType := t.In(0)
-			requestValue := reflect.New(requestType).Interface()
-
-			// Parse request body into the model
-			if err := ctx.ParseRequest(requestValue); err != nil {
-				return err
-			}
-
-			callArgs = []reflect.Value{reflect.ValueOf(requestValue).Elem()}
-
-		default:
-			return fmt.Errorf("unsupported handler pattern during execution")
-		}
-
-		// Call the handler function
-		results = v.Call(callArgs)
-
-		// Handle return values
-		switch len(results) {
-		case 1:
-			// Only error return
-			if !results[0].IsNil() {
-				if err, ok := results[0].Interface().(error); ok {
-					return err
-				}
-				return fmt.Errorf("handler returned non-error value: %v", results[0].Interface())
-			}
-			return nil
-
-		case 2:
-			// (value, error) return
-			errValue := results[1]
-			if !errValue.IsNil() {
-				if err, ok := errValue.Interface().(error); ok {
-					return err
-				}
-				return fmt.Errorf("handler returned non-error value in error position: %v", errValue.Interface())
-			}
-
-			// Send the response value as JSON
-			responseValue := results[0].Interface()
-			if err := ctx.JSON(responseValue); err != nil {
-				return fmt.Errorf("failed to send JSON response: %w", err)
-			}
-			return nil
-
-		default:
-			return fmt.Errorf("unexpected number of return values: %d", len(results))
-		}
+		return executor.execute(ctx)
 	})
+}
+
+// execute runs the handler function based on its identified pattern
+func (e *handlerExecutor) execute(ctx *Context) error {
+	callArgs, err := e.prepareArgs(ctx)
+	if err != nil {
+		return err
+	}
+	
+	results := e.value.Call(callArgs)
+	return e.handleResults(ctx, results)
+}
+
+// prepareArgs prepares the arguments for the function call based on the pattern
+func (e *handlerExecutor) prepareArgs(ctx *Context) ([]reflect.Value, error) {
+	switch e.pattern {
+	case patternContextError, patternContextResponse:
+		return []reflect.Value{reflect.ValueOf(ctx)}, nil
+	
+	case patternSimpleError, patternSimpleResponse:
+		return []reflect.Value{}, nil
+	
+	case patternModelError, patternModelResponse:
+		return e.prepareModelArgs(ctx)
+	
+	default:
+		return nil, fmt.Errorf("unsupported handler pattern during execution")
+	}
+}
+
+// prepareModelArgs prepares arguments for model-based handlers
+func (e *handlerExecutor) prepareModelArgs(ctx *Context) ([]reflect.Value, error) {
+	requestType := e.funcType.In(0)
+	requestValue := reflect.New(requestType).Interface()
+	
+	if err := ctx.ParseRequest(requestValue); err != nil {
+		return nil, err
+	}
+	
+	return []reflect.Value{reflect.ValueOf(requestValue).Elem()}, nil
+}
+
+// handleResults processes the return values from the handler function
+func (e *handlerExecutor) handleResults(ctx *Context, results []reflect.Value) error {
+	switch len(results) {
+	case 1:
+		return e.handleSingleResult(results[0])
+	case 2:
+		return e.handleDoubleResult(ctx, results[0], results[1])
+	default:
+		return fmt.Errorf("unexpected number of return values: %d", len(results))
+	}
+}
+
+// handleSingleResult handles functions that return only an error
+func (e *handlerExecutor) handleSingleResult(result reflect.Value) error {
+	if result.IsNil() {
+		return nil
+	}
+	
+	if err, ok := result.Interface().(error); ok {
+		return err
+	}
+	
+	return fmt.Errorf("handler returned non-error value: %v", result.Interface())
+}
+
+// handleDoubleResult handles functions that return (value, error)
+func (e *handlerExecutor) handleDoubleResult(ctx *Context, valueResult, errorResult reflect.Value) error {
+	if !errorResult.IsNil() {
+		if err, ok := errorResult.Interface().(error); ok {
+			return err
+		}
+		return fmt.Errorf("handler returned non-error value in error position: %v", errorResult.Interface())
+	}
+	
+	responseValue := valueResult.Interface()
+	if err := ctx.JSON(responseValue); err != nil {
+		return fmt.Errorf("failed to send JSON response: %w", err)
+	}
+	return nil
 }
 
 // Helper functions for type checking
