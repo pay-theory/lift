@@ -69,233 +69,399 @@ type EventOrchestrator struct {
 
 // NewEventOrchestrator creates a new event orchestrator pattern using DynamORM
 func NewEventOrchestrator(scope constructs.Construct, id *string, props *EventOrchestratorProps) *EventOrchestrator {
-	this := &EventOrchestrator{
+	builder := newEventOrchestratorBuilder(scope, id, props)
+	return builder.build()
+}
+
+// eventOrchestratorBuilder builds event orchestrator components
+type eventOrchestratorBuilder struct {
+	orchestrator *EventOrchestrator
+	props        *EventOrchestratorProps
+	config       *eventOrchestratorConfig
+}
+
+// eventOrchestratorConfig holds resolved configuration values
+type eventOrchestratorConfig struct {
+	appName                string
+	eventBusName           string
+	enableEventRouting     bool
+	enableSagaPattern      bool
+	enableEventCorrelation bool
+	enableMonitoring       bool
+}
+
+// newEventOrchestratorBuilder creates a new event orchestrator builder
+func newEventOrchestratorBuilder(scope constructs.Construct, id *string, props *EventOrchestratorProps) *eventOrchestratorBuilder {
+	orchestrator := &EventOrchestrator{
 		EventHandlers: make(map[string]*liftconstructs.EventBridgeHandler),
 	}
-	constructs.NewConstruct_Override(this, scope, id)
+	constructs.NewConstruct_Override(orchestrator, scope, id)
 
-	// Set defaults
+	return &eventOrchestratorBuilder{
+		orchestrator: orchestrator,
+		props:        props,
+		config:       buildEventOrchestratorConfig(props),
+	}
+}
+
+// buildEventOrchestratorConfig resolves configuration values with defaults
+func buildEventOrchestratorConfig(props *EventOrchestratorProps) *eventOrchestratorConfig {
 	if props == nil {
 		props = &EventOrchestratorProps{}
 	}
 
-	appName := "event-orchestrator"
+	config := &eventOrchestratorConfig{
+		appName:                "event-orchestrator",
+		eventBusName:           "default",
+		enableEventRouting:     true,
+		enableSagaPattern:      false,
+		enableEventCorrelation: true,
+		enableMonitoring:       false,
+	}
+
+	// Apply provided values
 	if props.AppName != nil {
-		appName = *props.AppName
+		config.appName = *props.AppName
 	}
-
-	eventBusName := "default"
 	if props.EventBusName != nil {
-		eventBusName = *props.EventBusName
+		config.eventBusName = *props.EventBusName
 	}
-
-	enableEventRouting := true
 	if props.EnableEventRouting != nil {
-		enableEventRouting = *props.EnableEventRouting
+		config.enableEventRouting = *props.EnableEventRouting
 	}
-
-	enableSagaPattern := false
 	if props.EnableSagaPattern != nil {
-		enableSagaPattern = *props.EnableSagaPattern
+		config.enableSagaPattern = *props.EnableSagaPattern
 	}
-
-	enableEventCorrelation := true
 	if props.EnableEventCorrelation != nil {
-		enableEventCorrelation = *props.EnableEventCorrelation
+		config.enableEventCorrelation = *props.EnableEventCorrelation
+	}
+	if props.EnableMonitoring != nil {
+		config.enableMonitoring = *props.EnableMonitoring
 	}
 
-	// Create event routing table using DynamORM if enabled
-	if enableEventRouting {
-		eventRoutingProps := &liftconstructs.EventRoutingTableProps{
-			TableName: jsii.String(appName + "-routing"),
-			// GSIs for source, status, and date indexes are now defined in DynamORM models
-			// Example model:
-			// type EventRoute struct {
-			//     PK         string `dynamorm:"pk"`                    // event#{event_id}
-			//     SK         string `dynamorm:"sk"`                    // route#{route_id}
-			//     Source     string `dynamorm:"index:source-index,pk"` // For source queries
-			//     Status     string `dynamorm:"index:status-index,pk"` // For status queries
-			//     Date       string `dynamorm:"index:date-index,pk"`   // For date queries
-			// }
-		}
+	return config
+}
 
-		// Override with user-provided props
-		if props.EventRoutingTableProps != nil {
-			eventRoutingProps = props.EventRoutingTableProps
-		}
+// build constructs the complete event orchestrator
+func (b *eventOrchestratorBuilder) build() *EventOrchestrator {
+	// Create event routing table
+	b.setupEventRoutingTable()
+	
+	// Create core functions
+	b.setupOrchestratorFunction()
+	b.setupCorrelationFunction()
+	
+	// Create event source handlers
+	b.setupEventSourceHandlers()
+	
+	// Setup monitoring
+	b.setupMonitoring()
 
-		this.EventRoutingTable = liftconstructs.NewEventRoutingTable(this, jsii.String("EventRouting"), eventRoutingProps)
+	return b.orchestrator
+}
+
+// setupEventRoutingTable creates event routing table if enabled
+func (b *eventOrchestratorBuilder) setupEventRoutingTable() {
+	if !b.config.enableEventRouting {
+		return
 	}
 
-	// Create orchestrator function
-	orchestratorEnv := make(map[string]*string)
-	if props.DefaultEnvironment != nil {
-		for k, v := range *props.DefaultEnvironment {
-			orchestratorEnv[k] = v
-		}
+	eventRoutingProps := &liftconstructs.EventRoutingTableProps{
+		TableName: jsii.String(b.config.appName + "-routing"),
+		// GSIs for source, status, and date indexes are now defined in DynamORM models
+		// Example model:
+		// type EventRoute struct {
+		//     PK         string `dynamorm:"pk"`                    // event#{event_id}
+		//     SK         string `dynamorm:"sk"`                    // route#{route_id}
+		//     Source     string `dynamorm:"index:source-index,pk"` // For source queries
+		//     Status     string `dynamorm:"index:status-index,pk"` // For status queries
+		//     Date       string `dynamorm:"index:date-index,pk"`   // For date queries
+		// }
 	}
 
-	// Add environment variables for orchestration
-	orchestratorEnv["EVENT_BUS_NAME"] = jsii.String(eventBusName)
-	orchestratorEnv["SAGA_ENABLED"] = jsii.String(fmt.Sprintf("%t", enableSagaPattern))
-	orchestratorEnv["CORRELATION_ENABLED"] = jsii.String(fmt.Sprintf("%t", enableEventCorrelation))
-	if this.EventRoutingTable != nil {
-		orchestratorEnv["EVENT_ROUTING_TABLE"] = this.EventRoutingTable.GetTableName()
-		orchestratorEnv["EVENT_ROUTING_TABLE_ARN"] = this.EventRoutingTable.GetTableArn()
-
-		// GSI names are now determined by DynamORM model struct tags
-		// The index names in the model would be like "source-index", "status-index", "date-index", etc.
+	// Override with user-provided props
+	if b.props.EventRoutingTableProps != nil {
+		eventRoutingProps = b.props.EventRoutingTableProps
 	}
 
-	// Create orchestrator function
-	orchestratorProps := props.DefaultFunctionProps
-	orchestratorProps.FunctionName = jsii.String(appName + "-orchestrator")
-	orchestratorProps.Environment = &orchestratorEnv
-	if props.DefaultMemorySize != nil {
-		orchestratorProps.MemorySize = props.DefaultMemorySize
-	}
-	if props.DefaultTimeout != nil {
-		orchestratorProps.Timeout = awscdk.Duration_Seconds(props.DefaultTimeout)
-	}
+	b.orchestrator.EventRoutingTable = liftconstructs.NewEventRoutingTable(b.orchestrator, jsii.String("EventRouting"), eventRoutingProps)
+}
 
-	this.OrchestratorFunction = liftconstructs.NewLiftFunction(this, jsii.String("Orchestrator"), &liftconstructs.LiftFunctionProps{
-		FunctionProps:     orchestratorProps,
-		EnableTracing:     props.EnableTracing,
-		EnableMultiTenant: props.EnableMultiTenant,
-	})
+// setupOrchestratorFunction creates the main orchestrator function
+func (b *eventOrchestratorBuilder) setupOrchestratorFunction() {
+	functionBuilder := newOrchestratorFunctionBuilder(b.orchestrator, b.props, b.config)
+	b.orchestrator.OrchestratorFunction = functionBuilder.build()
 
 	// Grant permissions to orchestrator
-	if this.EventRoutingTable != nil {
-		this.EventRoutingTable.GrantEventManagement(this.OrchestratorFunction.Function)
+	if b.orchestrator.EventRoutingTable != nil {
+		b.orchestrator.EventRoutingTable.GrantEventManagement(b.orchestrator.OrchestratorFunction.Function)
+	}
+}
+
+// setupCorrelationFunction creates correlation function if enabled
+func (b *eventOrchestratorBuilder) setupCorrelationFunction() {
+	if !b.config.enableEventCorrelation {
+		return
 	}
 
-	// Create correlation function if enabled
-	if enableEventCorrelation {
-		correlationEnv := make(map[string]*string)
-		for k, v := range orchestratorEnv {
-			correlationEnv[k] = v
-		}
+	correlationBuilder := newCorrelationFunctionBuilder(b.orchestrator, b.props, b.config)
+	b.orchestrator.CorrelationFunction = correlationBuilder.build()
 
-		correlationProps := props.DefaultFunctionProps
-		correlationProps.FunctionName = jsii.String(appName + "-correlator")
-		correlationProps.Environment = &correlationEnv
-
-		this.CorrelationFunction = liftconstructs.NewLiftFunction(this, jsii.String("Correlator"), &liftconstructs.LiftFunctionProps{
-			FunctionProps:     correlationProps,
-			EnableTracing:     props.EnableTracing,
-			EnableMultiTenant: props.EnableMultiTenant,
-		})
-
-		// Grant permissions to correlator
-		if this.EventRoutingTable != nil {
-			this.EventRoutingTable.GrantEventManagement(this.CorrelationFunction.Function)
-		}
+	// Grant permissions to correlator
+	if b.orchestrator.EventRoutingTable != nil {
+		b.orchestrator.EventRoutingTable.GrantEventManagement(b.orchestrator.CorrelationFunction.Function)
 	}
+}
 
-	// Create event source handlers
-	for _, sourceConfig := range props.EventSources {
+// setupEventSourceHandlers creates handlers for each event source
+func (b *eventOrchestratorBuilder) setupEventSourceHandlers() {
+	for _, sourceConfig := range b.props.EventSources {
 		if sourceConfig.SourceName == nil {
 			continue
 		}
 
-		sourceName := *sourceConfig.SourceName
-
-		// Create handler environment
-		handlerEnv := make(map[string]*string)
-		if props.DefaultEnvironment != nil {
-			for k, v := range *props.DefaultEnvironment {
-				handlerEnv[k] = v
-			}
+		handlerBuilder := newEventSourceHandlerBuilder(b.orchestrator, b.props, b.config, sourceConfig)
+		handler := handlerBuilder.build()
+		
+		if handler != nil {
+			b.orchestrator.EventHandlers[*sourceConfig.SourceName] = handler
 		}
-
-		// Add source-specific environment
-		handlerEnv["EVENT_SOURCE"] = jsii.String(sourceName)
-		handlerEnv["PROCESSING_MODE"] = sourceConfig.ProcessingMode
-		if this.EventRoutingTable != nil {
-			handlerEnv["EVENT_ROUTING_TABLE"] = this.EventRoutingTable.GetTableName()
-		}
-
-		// Create handler function props
-		handlerProps := props.DefaultFunctionProps
-		if sourceConfig.HandlerProps != nil {
-			handlerProps = *sourceConfig.HandlerProps
-		}
-		handlerProps.FunctionName = jsii.String(fmt.Sprintf("%s-%s-handler", appName, sourceName))
-		handlerProps.Environment = &handlerEnv
-
-		// Create event pattern
-		eventPattern := &awsevents.EventPattern{
-			Source: &[]*string{jsii.String(sourceName)},
-		}
-		if len(sourceConfig.EventTypes) > 0 {
-			eventPattern.DetailType = &sourceConfig.EventTypes
-		}
-		if len(sourceConfig.EventFilters) > 0 {
-			eventPattern.Detail = &sourceConfig.EventFilters
-		}
-
-		// Create EventBridge handler
-		handler, err := liftconstructs.NewEventBridgeHandler(this, jsii.String(sourceName+"Handler"), &liftconstructs.EventBridgeHandlerProps{
-			FunctionProps:     handlerProps,
-			EnableTracing:     props.EnableTracing,
-			EnableMultiTenant: props.EnableMultiTenant,
-			RuleProps: &awsevents.RuleProps{
-				RuleName:     jsii.String(fmt.Sprintf("%s-%s-rule", appName, sourceName)),
-				Description:  jsii.String(fmt.Sprintf("Process %s events", sourceName)),
-				EventPattern: eventPattern,
-			},
-		})
-		if err != nil {
-			// Log error and skip this handler
-			fmt.Printf("Warning: Failed to create EventBridge handler for %s: %v\n", sourceName, err)
-			continue
-		}
-
-		// Grant permissions
-		if this.EventRoutingTable != nil {
-			this.EventRoutingTable.GrantEventManagement(handler.Function.Function)
-		}
-
-		this.EventHandlers[sourceName] = handler
 	}
+}
 
-	// Create DLQ handler for event-specific dead letter queues
-	// Note: Individual event sources (like SQS) handle their own DLQs
-	if false { // Removed automatic DLQ handler creation
-		dlqEnv := make(map[string]*string)
-		if props.DefaultEnvironment != nil {
-			for k, v := range *props.DefaultEnvironment {
-				dlqEnv[k] = v
-			}
-		}
+// setupMonitoring enables monitoring if requested
+func (b *eventOrchestratorBuilder) setupMonitoring() {
+	if b.config.enableMonitoring {
+		b.orchestrator.enableMonitoring(b.props)
+	}
+}
 
-		dlqEnv["EVENT_BUS_NAME"] = jsii.String(eventBusName)
-		if this.EventRoutingTable != nil {
-			dlqEnv["EVENT_ROUTING_TABLE"] = this.EventRoutingTable.GetTableName()
-		}
+// orchestratorFunctionBuilder builds the main orchestrator function
+type orchestratorFunctionBuilder struct {
+	orchestrator *EventOrchestrator
+	props        *EventOrchestratorProps
+	config       *eventOrchestratorConfig
+}
 
-		dlqProps := props.DefaultFunctionProps
-		dlqProps.FunctionName = jsii.String(appName + "-dlq-handler")
-		dlqProps.Environment = &dlqEnv
+// newOrchestratorFunctionBuilder creates a new orchestrator function builder
+func newOrchestratorFunctionBuilder(orchestrator *EventOrchestrator, props *EventOrchestratorProps, config *eventOrchestratorConfig) *orchestratorFunctionBuilder {
+	return &orchestratorFunctionBuilder{
+		orchestrator: orchestrator,
+		props:        props,
+		config:       config,
+	}
+}
 
-		this.DLQHandler = liftconstructs.NewLiftFunction(this, jsii.String("DLQHandler"), &liftconstructs.LiftFunctionProps{
-			FunctionProps:     dlqProps,
-			EnableTracing:     props.EnableTracing,
-			EnableMultiTenant: props.EnableMultiTenant,
-		})
+// build creates the orchestrator function
+func (ofb *orchestratorFunctionBuilder) build() *liftconstructs.LiftFunction {
+	// Create orchestrator environment
+	orchestratorEnv := ofb.buildEnvironment()
+	
+	// Create orchestrator function props
+	orchestratorProps := ofb.buildFunctionProps(orchestratorEnv)
 
-		// Grant permissions
-		if this.EventRoutingTable != nil {
-			this.EventRoutingTable.GrantEventManagement(this.DLQHandler.Function)
+	return liftconstructs.NewLiftFunction(ofb.orchestrator, jsii.String("Orchestrator"), &liftconstructs.LiftFunctionProps{
+		FunctionProps:     orchestratorProps,
+		EnableTracing:     ofb.props.EnableTracing,
+		EnableMultiTenant: ofb.props.EnableMultiTenant,
+	})
+}
+
+// buildEnvironment creates environment variables for orchestrator function
+func (ofb *orchestratorFunctionBuilder) buildEnvironment() map[string]*string {
+	orchestratorEnv := make(map[string]*string)
+	
+	// Copy default environment
+	if ofb.props.DefaultEnvironment != nil {
+		for k, v := range *ofb.props.DefaultEnvironment {
+			orchestratorEnv[k] = v
 		}
 	}
 
-	// Enable monitoring if requested
-	if props.EnableMonitoring != nil && *props.EnableMonitoring {
-		this.enableMonitoring(props)
+	// Add orchestration-specific environment variables
+	orchestratorEnv["EVENT_BUS_NAME"] = jsii.String(ofb.config.eventBusName)
+	orchestratorEnv["SAGA_ENABLED"] = jsii.String(fmt.Sprintf("%t", ofb.config.enableSagaPattern))
+	orchestratorEnv["CORRELATION_ENABLED"] = jsii.String(fmt.Sprintf("%t", ofb.config.enableEventCorrelation))
+	
+	if ofb.orchestrator.EventRoutingTable != nil {
+		orchestratorEnv["EVENT_ROUTING_TABLE"] = ofb.orchestrator.EventRoutingTable.GetTableName()
+		orchestratorEnv["EVENT_ROUTING_TABLE_ARN"] = ofb.orchestrator.EventRoutingTable.GetTableArn()
 	}
 
-	return this
+	return orchestratorEnv
+}
+
+// buildFunctionProps creates function properties for orchestrator
+func (ofb *orchestratorFunctionBuilder) buildFunctionProps(env map[string]*string) awslambda.FunctionProps {
+	orchestratorProps := ofb.props.DefaultFunctionProps
+	orchestratorProps.FunctionName = jsii.String(ofb.config.appName + "-orchestrator")
+	orchestratorProps.Environment = &env
+	
+	if ofb.props.DefaultMemorySize != nil {
+		orchestratorProps.MemorySize = ofb.props.DefaultMemorySize
+	}
+	if ofb.props.DefaultTimeout != nil {
+		orchestratorProps.Timeout = awscdk.Duration_Seconds(ofb.props.DefaultTimeout)
+	}
+
+	return orchestratorProps
+}
+
+// correlationFunctionBuilder builds the correlation function
+type correlationFunctionBuilder struct {
+	orchestrator *EventOrchestrator
+	props        *EventOrchestratorProps
+	config       *eventOrchestratorConfig
+}
+
+// newCorrelationFunctionBuilder creates a new correlation function builder
+func newCorrelationFunctionBuilder(orchestrator *EventOrchestrator, props *EventOrchestratorProps, config *eventOrchestratorConfig) *correlationFunctionBuilder {
+	return &correlationFunctionBuilder{
+		orchestrator: orchestrator,
+		props:        props,
+		config:       config,
+	}
+}
+
+// build creates the correlation function
+func (cfb *correlationFunctionBuilder) build() *liftconstructs.LiftFunction {
+	// Create correlation environment (copy from orchestrator)
+	correlationEnv := make(map[string]*string)
+	correlationEnv["EVENT_BUS_NAME"] = jsii.String(cfb.config.eventBusName)
+	correlationEnv["SAGA_ENABLED"] = jsii.String(fmt.Sprintf("%t", cfb.config.enableSagaPattern))
+	correlationEnv["CORRELATION_ENABLED"] = jsii.String(fmt.Sprintf("%t", cfb.config.enableEventCorrelation))
+	
+	if cfb.orchestrator.EventRoutingTable != nil {
+		correlationEnv["EVENT_ROUTING_TABLE"] = cfb.orchestrator.EventRoutingTable.GetTableName()
+		correlationEnv["EVENT_ROUTING_TABLE_ARN"] = cfb.orchestrator.EventRoutingTable.GetTableArn()
+	}
+
+	// Copy default environment
+	if cfb.props.DefaultEnvironment != nil {
+		for k, v := range *cfb.props.DefaultEnvironment {
+			correlationEnv[k] = v
+		}
+	}
+
+	correlationProps := cfb.props.DefaultFunctionProps
+	correlationProps.FunctionName = jsii.String(cfb.config.appName + "-correlator")
+	correlationProps.Environment = &correlationEnv
+
+	return liftconstructs.NewLiftFunction(cfb.orchestrator, jsii.String("Correlator"), &liftconstructs.LiftFunctionProps{
+		FunctionProps:     correlationProps,
+		EnableTracing:     cfb.props.EnableTracing,
+		EnableMultiTenant: cfb.props.EnableMultiTenant,
+	})
+}
+
+// eventSourceHandlerBuilder builds handlers for event sources
+type eventSourceHandlerBuilder struct {
+	orchestrator *EventOrchestrator
+	props        *EventOrchestratorProps
+	config       *eventOrchestratorConfig
+	sourceConfig EventSourceConfig
+}
+
+// newEventSourceHandlerBuilder creates a new event source handler builder
+func newEventSourceHandlerBuilder(orchestrator *EventOrchestrator, props *EventOrchestratorProps, config *eventOrchestratorConfig, sourceConfig EventSourceConfig) *eventSourceHandlerBuilder {
+	return &eventSourceHandlerBuilder{
+		orchestrator: orchestrator,
+		props:        props,
+		config:       config,
+		sourceConfig: sourceConfig,
+	}
+}
+
+// build creates an event source handler
+func (eshb *eventSourceHandlerBuilder) build() *liftconstructs.EventBridgeHandler {
+	sourceName := *eshb.sourceConfig.SourceName
+
+	// Create handler environment
+	handlerEnv := eshb.buildHandlerEnvironment(sourceName)
+	
+	// Create handler function props
+	handlerProps := eshb.buildHandlerProps(sourceName, handlerEnv)
+	
+	// Create event pattern
+	eventPattern := eshb.buildEventPattern(sourceName)
+
+	// Create EventBridge handler
+	handler, err := liftconstructs.NewEventBridgeHandler(eshb.orchestrator, jsii.String(sourceName+"Handler"), &liftconstructs.EventBridgeHandlerProps{
+		FunctionProps:     handlerProps,
+		EnableTracing:     eshb.props.EnableTracing,
+		EnableMultiTenant: eshb.props.EnableMultiTenant,
+		RuleProps: &awsevents.RuleProps{
+			RuleName:     jsii.String(fmt.Sprintf("%s-%s-rule", eshb.config.appName, sourceName)),
+			Description:  jsii.String(fmt.Sprintf("Process %s events", sourceName)),
+			EventPattern: eventPattern,
+		},
+	})
+	
+	if err != nil {
+		// Log error and return nil
+		fmt.Printf("Warning: Failed to create EventBridge handler for %s: %v\n", sourceName, err)
+		return nil
+	}
+
+	// Grant permissions
+	if eshb.orchestrator.EventRoutingTable != nil {
+		eshb.orchestrator.EventRoutingTable.GrantEventManagement(handler.Function.Function)
+	}
+
+	return handler
+}
+
+// buildHandlerEnvironment creates environment variables for handler
+func (eshb *eventSourceHandlerBuilder) buildHandlerEnvironment(sourceName string) map[string]*string {
+	handlerEnv := make(map[string]*string)
+	
+	// Copy default environment
+	if eshb.props.DefaultEnvironment != nil {
+		for k, v := range *eshb.props.DefaultEnvironment {
+			handlerEnv[k] = v
+		}
+	}
+
+	// Add source-specific environment
+	handlerEnv["EVENT_SOURCE"] = jsii.String(sourceName)
+	handlerEnv["PROCESSING_MODE"] = eshb.sourceConfig.ProcessingMode
+	
+	if eshb.orchestrator.EventRoutingTable != nil {
+		handlerEnv["EVENT_ROUTING_TABLE"] = eshb.orchestrator.EventRoutingTable.GetTableName()
+	}
+
+	return handlerEnv
+}
+
+// buildHandlerProps creates function properties for handler
+func (eshb *eventSourceHandlerBuilder) buildHandlerProps(sourceName string, env map[string]*string) awslambda.FunctionProps {
+	handlerProps := eshb.props.DefaultFunctionProps
+	
+	if eshb.sourceConfig.HandlerProps != nil {
+		handlerProps = *eshb.sourceConfig.HandlerProps
+	}
+	
+	handlerProps.FunctionName = jsii.String(fmt.Sprintf("%s-%s-handler", eshb.config.appName, sourceName))
+	handlerProps.Environment = &env
+
+	return handlerProps
+}
+
+// buildEventPattern creates event pattern for handler
+func (eshb *eventSourceHandlerBuilder) buildEventPattern(sourceName string) *awsevents.EventPattern {
+	eventPattern := &awsevents.EventPattern{
+		Source: &[]*string{jsii.String(sourceName)},
+	}
+	
+	if len(eshb.sourceConfig.EventTypes) > 0 {
+		eventPattern.DetailType = &eshb.sourceConfig.EventTypes
+	}
+	
+	if len(eshb.sourceConfig.EventFilters) > 0 {
+		eventPattern.Detail = &eshb.sourceConfig.EventFilters
+	}
+
+	return eventPattern
 }
 
 // enableMonitoring adds CloudWatch alarms and metrics
