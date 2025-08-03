@@ -123,44 +123,97 @@ func (er *EventRouter) matchSQSPattern(ctx *Context, pattern string) bool {
 
 // matchS3Pattern matches S3 bucket names and object keys
 func (er *EventRouter) matchS3Pattern(ctx *Context, pattern string) bool {
-	var bucketName, objectKey string
-
-	// Check if this is an S3 event through EventBridge
-	if ctx.Request.Source == "aws.s3" && ctx.Request.Detail != nil {
-		// For EventBridge S3 events, bucket and object info is in the detail field
-		if bucket, ok := ctx.Request.Detail["bucket"].(map[string]any); ok {
-			if name, nameOk := bucket["name"].(string); nameOk {
-				bucketName = name
-			}
-		}
-		if object, ok := ctx.Request.Detail["object"].(map[string]any); ok {
-			if key, keyOk := object["key"].(string); keyOk {
-				objectKey = key
-			}
-		}
-	} else if len(ctx.Request.Records) > 0 {
-		// For direct S3 events, extract from records
-		if record, ok := ctx.Request.Records[0].(map[string]any); ok {
-			if s3Data, ok := record["s3"].(map[string]any); ok {
-				if bucket, ok := s3Data["bucket"].(map[string]any); ok {
-					if name, nameOk := bucket["name"].(string); nameOk {
-						bucketName = name
-					}
-				}
-				if object, ok := s3Data["object"].(map[string]any); ok {
-					if key, keyOk := object["key"].(string); keyOk {
-						objectKey = key
-					}
-				}
-			}
-		}
-	}
-
+	extractor := newS3EventExtractor(ctx)
+	bucketName, objectKey := extractor.extractS3Info()
+	
 	if bucketName == "" {
 		return false
 	}
 
 	return er.matchS3PatternString(bucketName, objectKey, pattern)
+}
+
+// s3EventExtractor extracts S3 information from various event formats
+type s3EventExtractor struct {
+	ctx *Context
+}
+
+// newS3EventExtractor creates a new S3 event extractor
+func newS3EventExtractor(ctx *Context) *s3EventExtractor {
+	return &s3EventExtractor{ctx: ctx}
+}
+
+// extractS3Info extracts bucket name and object key from the event
+func (e *s3EventExtractor) extractS3Info() (bucketName, objectKey string) {
+	// Try EventBridge S3 events first
+	if e.isEventBridgeS3Event() {
+		return e.extractFromEventBridge()
+	}
+	
+	// Try direct S3 events from records
+	if e.hasS3Records() {
+		return e.extractFromRecords()
+	}
+	
+	return "", ""
+}
+
+// isEventBridgeS3Event checks if this is an S3 event through EventBridge
+func (e *s3EventExtractor) isEventBridgeS3Event() bool {
+	return e.ctx.Request.Source == "aws.s3" && e.ctx.Request.Detail != nil
+}
+
+// hasS3Records checks if the event has S3 records
+func (e *s3EventExtractor) hasS3Records() bool {
+	return len(e.ctx.Request.Records) > 0
+}
+
+// extractFromEventBridge extracts S3 info from EventBridge event format
+func (e *s3EventExtractor) extractFromEventBridge() (bucketName, objectKey string) {
+	// Extract bucket name
+	if bucket, ok := e.ctx.Request.Detail["bucket"].(map[string]any); ok {
+		if name, nameOk := bucket["name"].(string); nameOk {
+			bucketName = name
+		}
+	}
+	
+	// Extract object key
+	if object, ok := e.ctx.Request.Detail["object"].(map[string]any); ok {
+		if key, keyOk := object["key"].(string); keyOk {
+			objectKey = key
+		}
+	}
+	
+	return bucketName, objectKey
+}
+
+// extractFromRecords extracts S3 info from direct S3 event records
+func (e *s3EventExtractor) extractFromRecords() (bucketName, objectKey string) {
+	record, ok := e.ctx.Request.Records[0].(map[string]any)
+	if !ok {
+		return "", ""
+	}
+	
+	s3Data, ok := record["s3"].(map[string]any)
+	if !ok {
+		return "", ""
+	}
+	
+	// Extract bucket name
+	if bucket, ok := s3Data["bucket"].(map[string]any); ok {
+		if name, nameOk := bucket["name"].(string); nameOk {
+			bucketName = name
+		}
+	}
+	
+	// Extract object key
+	if object, ok := s3Data["object"].(map[string]any); ok {
+		if key, keyOk := object["key"].(string); keyOk {
+			objectKey = key
+		}
+	}
+	
+	return bucketName, objectKey
 }
 
 // matchS3PatternString matches S3 patterns against bucket names and object keys
