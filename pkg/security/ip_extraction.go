@@ -26,86 +26,136 @@ func (e *IPExtractionError) Error() string {
 //
 // Returns an error if no valid IP address can be extracted.
 func ExtractClientIP(headers map[string]string, requestContext map[string]any) (string, error) {
-	// Collect relevant headers for error reporting
-	relevantHeaders := make(map[string]string)
+	extractor := newIPExtractor(headers, requestContext)
+	return extractor.extract()
+}
 
-	// Try X-Forwarded-For header first (most common for load balancers)
-	if forwardedFor, ok := headers["X-Forwarded-For"]; ok && forwardedFor != "" {
-		relevantHeaders["X-Forwarded-For"] = forwardedFor
-		// Take the first IP in the chain (original client IP)
-		ips := strings.Split(forwardedFor, ",")
-		if len(ips) > 0 {
-			sourceIP := strings.TrimSpace(ips[0])
-			if isValidIP(sourceIP) {
-				return stripPort(sourceIP), nil
-			}
+// ipExtractor handles IP extraction from various sources
+type ipExtractor struct {
+	headers         map[string]string
+	requestContext  map[string]any
+	relevantHeaders map[string]string
+	strategies      []ipExtractionStrategy
+}
+
+// newIPExtractor creates a new IP extractor with configured strategies
+func newIPExtractor(headers map[string]string, requestContext map[string]any) *ipExtractor {
+	e := &ipExtractor{
+		headers:         headers,
+		requestContext:  requestContext,
+		relevantHeaders: make(map[string]string),
+	}
+	
+	// Configure extraction strategies in priority order
+	e.strategies = []ipExtractionStrategy{
+		&headerStrategy{name: "X-Forwarded-For", multiValue: true},
+		&headerStrategy{name: "X-Real-IP", multiValue: false},
+		&headerStrategy{name: "CF-Connecting-IP", multiValue: false},
+		&headerStrategy{name: "X-Original-Forwarded-For", multiValue: true},
+		&contextStrategy{path: []string{"http", "sourceIp"}, label: "requestContext.http.sourceIp"},
+		&contextStrategy{path: []string{"identity", "sourceIp"}, label: "requestContext.identity.sourceIp"},
+		&contextStrategy{path: []string{"sourceIp"}, label: "requestContext.sourceIp"},
+	}
+	
+	return e
+}
+
+// extract attempts to extract client IP using configured strategies
+func (e *ipExtractor) extract() (string, error) {
+	for _, strategy := range e.strategies {
+		if ip := strategy.extractIP(e); ip != "" {
+			return ip, nil
 		}
 	}
-
-	// Try X-Real-IP header
-	if xRealIP, ok := headers["X-Real-IP"]; ok && xRealIP != "" {
-		relevantHeaders["X-Real-IP"] = xRealIP
-		if isValidIP(xRealIP) {
-			return stripPort(xRealIP), nil
-		}
-	}
-
-	// Try Cloudflare-specific header
-	if cfIP, ok := headers["CF-Connecting-IP"]; ok && cfIP != "" {
-		relevantHeaders["CF-Connecting-IP"] = cfIP
-		if isValidIP(cfIP) {
-			return stripPort(cfIP), nil
-		}
-	}
-
-	// Try X-Original-Forwarded-For (some proxies use this)
-	if origForwarded, ok := headers["X-Original-Forwarded-For"]; ok && origForwarded != "" {
-		relevantHeaders["X-Original-Forwarded-For"] = origForwarded
-		ips := strings.Split(origForwarded, ",")
-		if len(ips) > 0 {
-			sourceIP := strings.TrimSpace(ips[0])
-			if isValidIP(sourceIP) {
-				return stripPort(sourceIP), nil
-			}
-		}
-	}
-
-	// Try to extract from request context (API Gateway specific)
-	if requestContext != nil {
-		// API Gateway v2 format
-		if httpContext, ok := requestContext["http"].(map[string]any); ok {
-			if sourceIP, ok := httpContext["sourceIp"].(string); ok && sourceIP != "" {
-				if isValidIP(sourceIP) {
-					return stripPort(sourceIP), nil
-				}
-				relevantHeaders["requestContext.http.sourceIp"] = sourceIP
-			}
-		}
-
-		// API Gateway v1 format
-		if identity, ok := requestContext["identity"].(map[string]any); ok {
-			if sourceIP, ok := identity["sourceIp"].(string); ok && sourceIP != "" {
-				if isValidIP(sourceIP) {
-					return stripPort(sourceIP), nil
-				}
-				relevantHeaders["requestContext.identity.sourceIp"] = sourceIP
-			}
-		}
-
-		// Direct sourceIp field (some Lambda integrations)
-		if sourceIP, ok := requestContext["sourceIp"].(string); ok && sourceIP != "" {
-			if isValidIP(sourceIP) {
-				return stripPort(sourceIP), nil
-			}
-			relevantHeaders["requestContext.sourceIp"] = sourceIP
-		}
-	}
-
-	// Return error with context about what was checked
+	
 	return "", &IPExtractionError{
 		Message: "no valid IP address found in headers or request context",
-		Headers: relevantHeaders,
+		Headers: e.relevantHeaders,
 	}
+}
+
+// ipExtractionStrategy defines the interface for IP extraction strategies
+type ipExtractionStrategy interface {
+	extractIP(e *ipExtractor) string
+}
+
+// headerStrategy extracts IP from HTTP headers
+type headerStrategy struct {
+	name       string
+	multiValue bool // whether the header contains comma-separated values
+}
+
+// extractIP implements the extraction logic for header-based strategies
+func (h *headerStrategy) extractIP(e *ipExtractor) string {
+	value, ok := e.headers[h.name]
+	if !ok || value == "" {
+		return ""
+	}
+	
+	e.relevantHeaders[h.name] = value
+	
+	if h.multiValue {
+		// Handle comma-separated list of IPs
+		ips := strings.Split(value, ",")
+		if len(ips) > 0 {
+			sourceIP := strings.TrimSpace(ips[0])
+			if isValidIP(sourceIP) {
+				return stripPort(sourceIP)
+			}
+		}
+	} else {
+		// Single IP value
+		if isValidIP(value) {
+			return stripPort(value)
+		}
+	}
+	
+	return ""
+}
+
+// contextStrategy extracts IP from request context
+type contextStrategy struct {
+	path  []string
+	label string
+}
+
+// extractIP implements the extraction logic for context-based strategies
+func (c *contextStrategy) extractIP(e *ipExtractor) string {
+	if e.requestContext == nil {
+		return ""
+	}
+	
+	value := c.navigateContext(e.requestContext, c.path)
+	if value == "" {
+		return ""
+	}
+	
+	if isValidIP(value) {
+		return stripPort(value)
+	}
+	
+	// Record for error reporting even if invalid
+	e.relevantHeaders[c.label] = value
+	return ""
+}
+
+// navigateContext traverses the context map following the given path
+func (c *contextStrategy) navigateContext(context map[string]any, path []string) string {
+	current := any(context)
+	
+	for _, key := range path {
+		if m, ok := current.(map[string]any); ok {
+			current = m[key]
+		} else {
+			return ""
+		}
+	}
+	
+	if str, ok := current.(string); ok {
+		return str
+	}
+	
+	return ""
 }
 
 // stripPort removes port from IP address if present
