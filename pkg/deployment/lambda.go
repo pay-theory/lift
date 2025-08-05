@@ -354,87 +354,141 @@ func (c *ResourceHealthChecker) Name() string {
 }
 
 func (c *ResourceHealthChecker) Check(ctx context.Context) health.HealthStatus {
-	start := time.Now()
-	var issues []string
+	checker := newResourceCheckBuilder(c, ctx)
+	return checker.build()
+}
 
-	// Set defaults if not configured
-	if c.maxCPUPercent == 0 {
-		c.maxCPUPercent = 80.0 // 80% CPU threshold
-	}
-	if c.maxOpenFiles == 0 {
-		c.maxOpenFiles = 1000 // Max 1000 open files
-	}
-	if c.maxGoroutines == 0 {
-		c.maxGoroutines = 1000 // Max 1000 goroutines
-	}
-	if c.minDiskSpaceMB == 0 {
-		c.minDiskSpaceMB = 100 // Minimum 100MB disk space
-	}
+// resourceCheckBuilder builds resource health checks
+type resourceCheckBuilder struct {
+	checker  *ResourceHealthChecker
+	ctx      context.Context
+	start    time.Time
+	issues   []string
+	memStats runtime.MemStats
+}
 
-	// 1. Check goroutine count
-	goroutineCount := runtime.NumGoroutine()
-	if goroutineCount > c.maxGoroutines {
-		issues = append(issues, fmt.Sprintf("Too many goroutines: %d (max: %d)", goroutineCount, c.maxGoroutines))
+// newResourceCheckBuilder creates a new resource check builder
+func newResourceCheckBuilder(checker *ResourceHealthChecker, ctx context.Context) *resourceCheckBuilder {
+	return &resourceCheckBuilder{
+		checker: checker,
+		ctx:     ctx,
+		start:   time.Now(),
+		issues:  []string{},
 	}
+}
 
-	// 2. Check memory usage
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
+// build performs all health checks
+func (b *resourceCheckBuilder) build() health.HealthStatus {
+	b.setDefaults()
+	b.checkGoroutines()
+	b.checkMemory()
+	b.checkGarbageCollection()
+	b.checkFileDescriptors()
+	b.checkDiskSpace()
+	b.checkNetworkConnectivity()
+	
+	return b.buildStatus()
+}
 
-	// Convert to MB for easier reading
-	allocMB := float64(memStats.Alloc) / 1024 / 1024
-	sysMB := float64(memStats.Sys) / 1024 / 1024
-
-	// Check if we're using excessive memory (basic heuristic)
-	if memStats.Alloc > memStats.Sys/2 {
-		issues = append(issues, fmt.Sprintf("High memory usage: %.1fMB allocated of %.1fMB system", allocMB, sysMB))
+// setDefaults ensures all thresholds have default values
+func (b *resourceCheckBuilder) setDefaults() {
+	if b.checker.maxCPUPercent == 0 {
+		b.checker.maxCPUPercent = 80.0
 	}
+	if b.checker.maxOpenFiles == 0 {
+		b.checker.maxOpenFiles = 1000
+	}
+	if b.checker.maxGoroutines == 0 {
+		b.checker.maxGoroutines = 1000
+	}
+	if b.checker.minDiskSpaceMB == 0 {
+		b.checker.minDiskSpaceMB = 100
+	}
+}
 
-	// 3. Check garbage collection pressure
-	gcPauseTotalNs := memStats.PauseTotalNs
-	if gcPauseTotalNs > 100*1000*1000 { // 100ms total GC pause time
+// checkGoroutines checks goroutine count
+func (b *resourceCheckBuilder) checkGoroutines() {
+	count := runtime.NumGoroutine()
+	if count > b.checker.maxGoroutines {
+		b.issues = append(b.issues, fmt.Sprintf("Too many goroutines: %d (max: %d)", count, b.checker.maxGoroutines))
+	}
+}
+
+// checkMemory checks memory usage
+func (b *resourceCheckBuilder) checkMemory() {
+	runtime.ReadMemStats(&b.memStats)
+	
+	allocMB := float64(b.memStats.Alloc) / 1024 / 1024
+	sysMB := float64(b.memStats.Sys) / 1024 / 1024
+	
+	if b.memStats.Alloc > b.memStats.Sys/2 {
+		b.issues = append(b.issues, fmt.Sprintf("High memory usage: %.1fMB allocated of %.1fMB system", allocMB, sysMB))
+	}
+}
+
+// checkGarbageCollection checks GC pressure
+func (b *resourceCheckBuilder) checkGarbageCollection() {
+	gcPauseTotalNs := b.memStats.PauseTotalNs
+	if gcPauseTotalNs > 100*1000*1000 { // 100ms total
 		gcPauseMs := float64(gcPauseTotalNs) / 1000000
-		issues = append(issues, fmt.Sprintf("High GC pressure: %.2fms total pause time", gcPauseMs))
+		b.issues = append(b.issues, fmt.Sprintf("High GC pressure: %.2fms total pause time", gcPauseMs))
 	}
+}
 
-	// 4. Check file descriptor usage (approximation)
-	if c.checkFileDescriptors() {
-		if openFiles := c.estimateOpenFiles(); openFiles > c.maxOpenFiles {
-			issues = append(issues, fmt.Sprintf("High file descriptor usage: estimated %d open files", openFiles))
-		}
+// checkFileDescriptors checks file descriptor usage
+func (b *resourceCheckBuilder) checkFileDescriptors() {
+	if !b.checker.checkFileDescriptors() {
+		return
 	}
-
-	// 5. Check disk space if enabled
-	if c.checkDiskSpace {
-		if availableMB, err := c.getDiskSpaceMB(); err == nil {
-			if availableMB < c.minDiskSpaceMB {
-				issues = append(issues, fmt.Sprintf("Low disk space: %dMB available (min: %dMB)", availableMB, c.minDiskSpaceMB))
-			}
-		} else {
-			issues = append(issues, fmt.Sprintf("Failed to check disk space: %v", err))
-		}
+	
+	openFiles := b.checker.estimateOpenFiles()
+	if openFiles > b.checker.maxOpenFiles {
+		b.issues = append(b.issues, fmt.Sprintf("High file descriptor usage: estimated %d open files", openFiles))
 	}
+}
 
-	// 6. Check network connectivity if enabled
-	if c.checkNetworkConnectivity {
-		if err := c.checkNetwork(ctx); err != nil {
-			issues = append(issues, fmt.Sprintf("Network connectivity issue: %v", err))
-		}
+// checkDiskSpace checks available disk space
+func (b *resourceCheckBuilder) checkDiskSpace() {
+	if !b.checker.checkDiskSpace {
+		return
 	}
+	
+	availableMB, err := b.checker.getDiskSpaceMB()
+	if err != nil {
+		b.issues = append(b.issues, fmt.Sprintf("Failed to check disk space: %v", err))
+		return
+	}
+	
+	if availableMB < b.checker.minDiskSpaceMB {
+		b.issues = append(b.issues, fmt.Sprintf("Low disk space: %dMB available (min: %dMB)", availableMB, b.checker.minDiskSpaceMB))
+	}
+}
 
-	// Determine overall status
+// checkNetworkConnectivity checks network connectivity
+func (b *resourceCheckBuilder) checkNetworkConnectivity() {
+	if !b.checker.checkNetworkConnectivity {
+		return
+	}
+	
+	if err := b.checker.checkNetwork(b.ctx); err != nil {
+		b.issues = append(b.issues, fmt.Sprintf("Network connectivity issue: %v", err))
+	}
+}
+
+// buildStatus creates the final health status
+func (b *resourceCheckBuilder) buildStatus() health.HealthStatus {
 	status := health.StatusHealthy
 	message := "All resources are healthy"
-
-	if len(issues) > 0 {
+	
+	if len(b.issues) > 0 {
 		status = health.StatusUnhealthy
-		message = fmt.Sprintf("Resource issues detected: %v", issues)
+		message = fmt.Sprintf("Resource issues detected: %v", b.issues)
 	}
-
+	
 	return health.HealthStatus{
 		Status:    status,
 		Timestamp: time.Now(),
-		Duration:  time.Since(start),
+		Duration:  time.Since(b.start),
 		Message:   message,
 	}
 }
@@ -502,97 +556,161 @@ func (c *MemoryHealthChecker) Name() string {
 }
 
 func (c *MemoryHealthChecker) Check(_ context.Context) health.HealthStatus {
-	start := time.Now()
-	var issues []string
+	checker := newMemoryCheckBuilder(c)
+	return checker.build()
+}
 
-	// Set defaults if not configured
-	if c.maxMemoryMB == 0 {
-		c.maxMemoryMB = 512 // Default Lambda memory limit
+// memoryCheckBuilder builds memory health checks
+type memoryCheckBuilder struct {
+	checker     *MemoryHealthChecker
+	start       time.Time
+	issues      []string
+	memStats    runtime.MemStats
+	allocMB     float64
+	sysMB       float64
+	heapInUseMB float64
+}
+
+// newMemoryCheckBuilder creates a new memory check builder
+func newMemoryCheckBuilder(checker *MemoryHealthChecker) *memoryCheckBuilder {
+	return &memoryCheckBuilder{
+		checker: checker,
+		start:   time.Now(),
+		issues:  []string{},
 	}
-	if c.maxHeapMB == 0 {
-		c.maxHeapMB = c.maxMemoryMB * 80 / 100 // 80% of max memory
+}
+
+// build performs all memory health checks
+func (b *memoryCheckBuilder) build() health.HealthStatus {
+	b.setDefaults()
+	b.readMemoryStats()
+	b.checkTotalMemory()
+	b.checkHeapUsage()
+	b.checkGCPerformance()
+	b.checkMemoryLeaks()
+	b.checkMemoryEfficiency()
+	
+	return b.buildStatus()
+}
+
+// setDefaults ensures all thresholds have default values
+func (b *memoryCheckBuilder) setDefaults() {
+	if b.checker.maxMemoryMB == 0 {
+		b.checker.maxMemoryMB = 512 // Default Lambda memory limit
 	}
-	if c.maxGCPauseMs == 0 {
-		c.maxGCPauseMs = 10.0 // 10ms max GC pause
+	if b.checker.maxHeapMB == 0 {
+		b.checker.maxHeapMB = b.checker.maxMemoryMB * 80 / 100 // 80% of max memory
 	}
-
-	// Get current memory statistics
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-
-	// Convert bytes to MB
-	allocMB := float64(memStats.Alloc) / 1024 / 1024
-	sysMB := float64(memStats.Sys) / 1024 / 1024
-	heapInUseMB := float64(memStats.HeapInuse) / 1024 / 1024
-
-	// 1. Check total memory usage
-	if allocMB > float64(c.maxMemoryMB) {
-		issues = append(issues, fmt.Sprintf("Memory usage too high: %.1fMB (max: %dMB)", allocMB, c.maxMemoryMB))
+	if b.checker.maxGCPauseMs == 0 {
+		b.checker.maxGCPauseMs = 10.0 // 10ms max GC pause
 	}
+}
 
-	// 2. Check heap usage
-	if heapInUseMB > float64(c.maxHeapMB) {
-		issues = append(issues, fmt.Sprintf("Heap usage too high: %.1fMB (max: %dMB)", heapInUseMB, c.maxHeapMB))
+// readMemoryStats reads current memory statistics
+func (b *memoryCheckBuilder) readMemoryStats() {
+	runtime.ReadMemStats(&b.memStats)
+	b.allocMB = float64(b.memStats.Alloc) / 1024 / 1024
+	b.sysMB = float64(b.memStats.Sys) / 1024 / 1024
+	b.heapInUseMB = float64(b.memStats.HeapInuse) / 1024 / 1024
+}
+
+// checkTotalMemory checks total memory usage
+func (b *memoryCheckBuilder) checkTotalMemory() {
+	if b.allocMB > float64(b.checker.maxMemoryMB) {
+		b.issues = append(b.issues, fmt.Sprintf("Memory usage too high: %.1fMB (max: %dMB)", 
+			b.allocMB, b.checker.maxMemoryMB))
 	}
+}
 
-	// 3. Check GC performance if enabled
-	if c.enableGCStats {
-		// Check recent GC pause times
-		gcPauses := memStats.PauseNs[:]
-		var maxRecentPause uint64
-		for i := 0; i < 10 && i < len(gcPauses); i++ { // Check last 10 GC cycles
-			if gcPauses[i] > maxRecentPause {
-				maxRecentPause = gcPauses[i]
-			}
+// checkHeapUsage checks heap memory usage
+func (b *memoryCheckBuilder) checkHeapUsage() {
+	if b.heapInUseMB > float64(b.checker.maxHeapMB) {
+		b.issues = append(b.issues, fmt.Sprintf("Heap usage too high: %.1fMB (max: %dMB)", 
+			b.heapInUseMB, b.checker.maxHeapMB))
+	}
+}
+
+// checkGCPerformance checks garbage collection performance
+func (b *memoryCheckBuilder) checkGCPerformance() {
+	if !b.checker.enableGCStats {
+		return
+	}
+	
+	b.checkGCPauseTimes()
+	b.checkGCFrequency()
+}
+
+// checkGCPauseTimes checks recent GC pause times
+func (b *memoryCheckBuilder) checkGCPauseTimes() {
+	gcPauses := b.memStats.PauseNs[:]
+	var maxRecentPause uint64
+	
+	for i := 0; i < 10 && i < len(gcPauses); i++ {
+		if gcPauses[i] > maxRecentPause {
+			maxRecentPause = gcPauses[i]
 		}
-
-		maxRecentPauseMs := float64(maxRecentPause) / 1000000
-		if maxRecentPauseMs > c.maxGCPauseMs {
-			issues = append(issues, fmt.Sprintf("High GC pause time: %.2fms (max: %.2fms)", maxRecentPauseMs, c.maxGCPauseMs))
-		}
-
-		// Check GC frequency
-		if memStats.NumGC > 0 {
-			gcRate := float64(memStats.NumGC) / time.Since(time.Unix(0, int64(memStats.LastGC))).Minutes() // #nosec G115 - LastGC is uint64 nanoseconds since epoch, safe to convert to int64
-			if gcRate > 60 { // More than 60 GC cycles per minute
-				issues = append(issues, fmt.Sprintf("High GC frequency: %.1f cycles/minute", gcRate))
-			}
-		}
 	}
+	
+	maxRecentPauseMs := float64(maxRecentPause) / 1000000
+	if maxRecentPauseMs > b.checker.maxGCPauseMs {
+		b.issues = append(b.issues, fmt.Sprintf("High GC pause time: %.2fms (max: %.2fms)", 
+			maxRecentPauseMs, b.checker.maxGCPauseMs))
+	}
+}
 
-	// 4. Check for memory leaks (heuristic)
-	heapObjects := memStats.HeapObjects
+// checkGCFrequency checks garbage collection frequency
+func (b *memoryCheckBuilder) checkGCFrequency() {
+	if b.memStats.NumGC == 0 {
+		return
+	}
+	
+	gcRate := float64(b.memStats.NumGC) / time.Since(time.Unix(0, int64(b.memStats.LastGC))).Minutes()
+	if gcRate > 60 { // More than 60 GC cycles per minute
+		b.issues = append(b.issues, fmt.Sprintf("High GC frequency: %.1f cycles/minute", gcRate))
+	}
+}
+
+// checkMemoryLeaks checks for potential memory leaks
+func (b *memoryCheckBuilder) checkMemoryLeaks() {
+	heapObjects := b.memStats.HeapObjects
 	if heapObjects > 1000000 { // More than 1M objects on heap
-		issues = append(issues, fmt.Sprintf("High object count on heap: %d objects", heapObjects))
+		b.issues = append(b.issues, fmt.Sprintf("High object count on heap: %d objects", heapObjects))
 	}
+}
 
-	// 5. Check system memory vs allocated memory ratio
-	if memStats.Sys > 0 {
-		wasteRatio := float64(memStats.Sys-memStats.Alloc) / float64(memStats.Sys)
-		if wasteRatio > 0.5 { // More than 50% wasted
-			issues = append(issues, fmt.Sprintf("High memory waste ratio: %.1f%% unused", wasteRatio*100))
-		}
+// checkMemoryEfficiency checks memory efficiency
+func (b *memoryCheckBuilder) checkMemoryEfficiency() {
+	if b.memStats.Sys == 0 {
+		return
 	}
+	
+	wasteRatio := float64(b.memStats.Sys-b.memStats.Alloc) / float64(b.memStats.Sys)
+	if wasteRatio > 0.5 { // More than 50% wasted
+		b.issues = append(b.issues, fmt.Sprintf("High memory waste ratio: %.1f%% unused", wasteRatio*100))
+	}
+}
 
-	// Determine overall status
+// buildStatus creates the final health status
+func (b *memoryCheckBuilder) buildStatus() health.HealthStatus {
 	status := health.StatusHealthy
-	message := fmt.Sprintf("Memory healthy: %.1fMB allocated, %.1fMB heap in use", allocMB, heapInUseMB)
-
-	if len(issues) > 0 {
+	message := fmt.Sprintf("Memory healthy: %.1fMB allocated, %.1fMB heap in use", 
+		b.allocMB, b.heapInUseMB)
+	
+	if len(b.issues) > 0 {
 		status = health.StatusUnhealthy
-		message = fmt.Sprintf("Memory issues detected: %v", issues)
+		message = fmt.Sprintf("Memory issues detected: %v", b.issues)
 	}
-
+	
 	return health.HealthStatus{
 		Status:    status,
 		Timestamp: time.Now(),
-		Duration:  time.Since(start),
+		Duration:  time.Since(b.start),
 		Message:   message,
 		Details: map[string]any{
-			"allocated_mb":  allocMB,
-			"system_mb":     sysMB,
-			"heap_inuse_mb": heapInUseMB,
-			"num_gc":        memStats.NumGC,
+			"allocated_mb":  b.allocMB,
+			"system_mb":     b.sysMB,
+			"heap_inuse_mb": b.heapInUseMB,
+			"num_gc":        b.memStats.NumGC,
 			"goroutines":    runtime.NumGoroutine(),
 		},
 	}

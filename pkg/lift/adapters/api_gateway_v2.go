@@ -65,90 +65,181 @@ func (a *APIGatewayV2Adapter) Validate(event any) error {
 
 // Adapt converts an API Gateway V2 event to a normalized Request
 func (a *APIGatewayV2Adapter) Adapt(rawEvent any) (*Request, error) {
-	if err := a.Validate(rawEvent); err != nil {
-		return nil, fmt.Errorf("validation failed: %w", err)
+	adapter := newAPIGatewayV2EventAdapter(a, rawEvent)
+	return adapter.build()
+}
+
+// apiGatewayV2EventAdapter builds requests from API Gateway V2 events
+type apiGatewayV2EventAdapter struct {
+	adapter        *APIGatewayV2Adapter
+	rawEvent       any
+	eventMap       map[string]any
+	requestContext map[string]any
+	httpContext    map[string]any
+	request        *Request
+}
+
+// newAPIGatewayV2EventAdapter creates a new event adapter
+func newAPIGatewayV2EventAdapter(adapter *APIGatewayV2Adapter, rawEvent any) *apiGatewayV2EventAdapter {
+	return &apiGatewayV2EventAdapter{
+		adapter:  adapter,
+		rawEvent: rawEvent,
+		request: &Request{
+			TriggerType: TriggerAPIGatewayV2,
+			RawEvent:    rawEvent,
+		},
 	}
+}
 
-	eventMap, ok := rawEvent.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("event must be a map[string]any, got %T", rawEvent)
+// build constructs the normalized request
+func (b *apiGatewayV2EventAdapter) build() (*Request, error) {
+	if err := b.validate(); err != nil {
+		return nil, err
 	}
-
-	// Extract request context
-	requestContext := extractMapField(eventMap, "requestContext")
-	httpContext := extractMapField(requestContext, "http")
-
-	// Extract basic HTTP information
-	method := extractStringField(httpContext, "method")
-	path := extractStringField(httpContext, "path")
-
-	// Handle stage prefix in path (occurs with custom domains)
-	// When using custom domains with base path mapping, API Gateway includes
-	// the stage in the path. We need to strip it for proper routing.
-	stage := extractStringField(requestContext, "stage")
-	if stage != "" && stage != "$default" {
-		// Check if path starts with stage prefix followed by "/" or is exactly the stage
-		stagePrefix := "/" + stage
-		if path == stagePrefix {
-			// Path is exactly the stage, return root
-			path = "/"
-		} else if strings.HasPrefix(path, stagePrefix+"/") {
-			// Strip stage prefix from path only if followed by "/"
-			path = strings.TrimPrefix(path, stagePrefix)
-		}
+	
+	b.extractEventMap()
+	b.extractContexts()
+	b.extractHTTPInfo()
+	b.extractHeaders()
+	b.extractParameters()
+	
+	if err := b.extractBody(); err != nil {
+		return nil, err
 	}
+	
+	b.extractMetadata()
+	
+	return b.request, nil
+}
 
-	// Extract headers (case-insensitive)
+// validate validates the raw event
+func (b *apiGatewayV2EventAdapter) validate() error {
+	if err := b.adapter.Validate(b.rawEvent); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+	return nil
+}
+
+// extractEventMap extracts the event as a map
+func (b *apiGatewayV2EventAdapter) extractEventMap() {
+	if eventMap, ok := b.rawEvent.(map[string]any); ok {
+		b.eventMap = eventMap
+	}
+}
+
+// extractContexts extracts request and HTTP contexts
+func (b *apiGatewayV2EventAdapter) extractContexts() {
+	b.requestContext = extractMapField(b.eventMap, "requestContext")
+	b.httpContext = extractMapField(b.requestContext, "http")
+}
+
+// extractHTTPInfo extracts HTTP method and path
+func (b *apiGatewayV2EventAdapter) extractHTTPInfo() {
+	b.request.Method = extractStringField(b.httpContext, "method")
+	b.request.Path = b.processPath()
+}
+
+// processPath handles path extraction and stage prefix removal
+func (b *apiGatewayV2EventAdapter) processPath() string {
+	path := extractStringField(b.httpContext, "path")
+	stage := extractStringField(b.requestContext, "stage")
+	
+	return b.stripStagePrefix(path, stage)
+}
+
+// stripStagePrefix removes stage prefix from path for custom domains
+func (b *apiGatewayV2EventAdapter) stripStagePrefix(path, stage string) string {
+	if stage == "" || stage == "$default" {
+		return path
+	}
+	
+	stagePrefix := "/" + stage
+	
+	if path == stagePrefix {
+		return "/"
+	}
+	
+	if strings.HasPrefix(path, stagePrefix+"/") {
+		return strings.TrimPrefix(path, stagePrefix)
+	}
+	
+	return path
+}
+
+// extractHeaders extracts and normalizes headers
+func (b *apiGatewayV2EventAdapter) extractHeaders() {
 	headers := make(map[string]string)
-	if headersMap := extractMapField(eventMap, "headers"); len(headersMap) > 0 {
+	
+	if headersMap := extractMapField(b.eventMap, "headers"); len(headersMap) > 0 {
 		for k, v := range headersMap {
 			if str, ok := v.(string); ok {
 				headers[strings.ToLower(k)] = str
 			}
 		}
 	}
+	
+	b.request.Headers = headers
+}
 
-	// Extract query parameters
-	queryParams := extractStringMapField(eventMap, "queryStringParameters")
+// extractParameters extracts query and path parameters
+func (b *apiGatewayV2EventAdapter) extractParameters() {
+	b.request.QueryParams = b.extractQueryParams()
+	b.request.PathParams = b.extractPathParams()
+}
+
+// extractQueryParams extracts query string parameters
+func (b *apiGatewayV2EventAdapter) extractQueryParams() map[string]string {
+	queryParams := extractStringMapField(b.eventMap, "queryStringParameters")
 	if queryParams == nil {
-		queryParams = make(map[string]string)
+		return make(map[string]string)
 	}
+	return queryParams
+}
 
-	// Extract path parameters
-	pathParams := extractStringMapField(eventMap, "pathParameters")
+// extractPathParams extracts path parameters
+func (b *apiGatewayV2EventAdapter) extractPathParams() map[string]string {
+	pathParams := extractStringMapField(b.eventMap, "pathParameters")
 	if pathParams == nil {
-		pathParams = make(map[string]string)
+		return make(map[string]string)
 	}
+	return pathParams
+}
 
-	// Extract and decode body
-	var body []byte
-	if bodyStr := extractStringField(eventMap, "body"); bodyStr != "" {
-		// Check if body is base64 encoded
-		if isBase64Encoded, ok := eventMap["isBase64Encoded"].(bool); ok && isBase64Encoded {
-			decoded, err := base64.StdEncoding.DecodeString(bodyStr)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode base64 body: %w", err)
-			}
-			body = decoded
-		} else {
-			body = []byte(bodyStr)
-		}
+// extractBody extracts and decodes the request body
+func (b *apiGatewayV2EventAdapter) extractBody() error {
+	bodyStr := extractStringField(b.eventMap, "body")
+	if bodyStr == "" {
+		return nil
 	}
+	
+	if b.isBase64Encoded() {
+		return b.decodeBase64Body(bodyStr)
+	}
+	
+	b.request.Body = []byte(bodyStr)
+	return nil
+}
 
-	// Extract event metadata
-	eventID := extractStringField(requestContext, "requestId")
-	timestamp := extractStringField(requestContext, "timeEpoch")
+// isBase64Encoded checks if the body is base64 encoded
+func (b *apiGatewayV2EventAdapter) isBase64Encoded() bool {
+	if encoded, ok := b.eventMap["isBase64Encoded"].(bool); ok {
+		return encoded
+	}
+	return false
+}
 
-	return &Request{
-		TriggerType: TriggerAPIGatewayV2,
-		RawEvent:    rawEvent,
-		EventID:     eventID,
-		Timestamp:   timestamp,
-		Method:      method,
-		Path:        path,
-		Headers:     headers,
-		QueryParams: queryParams,
-		PathParams:  pathParams,
-		Body:        body,
-	}, nil
+// decodeBase64Body decodes a base64 encoded body
+func (b *apiGatewayV2EventAdapter) decodeBase64Body(bodyStr string) error {
+	decoded, err := base64.StdEncoding.DecodeString(bodyStr)
+	if err != nil {
+		return fmt.Errorf("failed to decode base64 body: %w", err)
+	}
+	b.request.Body = decoded
+	return nil
+}
+
+// extractMetadata extracts event metadata
+func (b *apiGatewayV2EventAdapter) extractMetadata() {
+	b.request.EventID = extractStringField(b.requestContext, "requestId")
+	b.request.Timestamp = extractStringField(b.requestContext, "timeEpoch")
 }

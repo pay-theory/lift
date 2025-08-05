@@ -57,162 +57,212 @@ type LiftApp struct {
 
 // NewLiftApp creates a complete Lift application stack
 func NewLiftApp(scope constructs.Construct, id *string, props *LiftAppProps) *LiftApp {
-	this := constructs.NewConstruct(scope, id)
+	builder := newLiftAppBuilder(scope, id, props)
+	return builder.build()
+}
 
-	app := &LiftApp{
-		Construct: this,
+// liftAppBuilder builds complete Lift application stacks
+type liftAppBuilder struct {
+	scope     constructs.Construct
+	id        *string
+	props     *LiftAppProps
+	construct constructs.Construct
+	app       *LiftApp
+	env       map[string]*string
+}
+
+// newLiftAppBuilder creates a new Lift app builder
+func newLiftAppBuilder(scope constructs.Construct, id *string, props *LiftAppProps) *liftAppBuilder {
+	return &liftAppBuilder{
+		scope: scope,
+		id:    id,
+		props: props,
+		env:   make(map[string]*string),
 	}
+}
 
-	// Prepare environment variables
-	env := make(map[string]*string)
-	if props.Environment != nil {
-		for k, v := range *props.Environment {
-			env[k] = v
+// build constructs the complete Lift application
+func (b *liftAppBuilder) build() *LiftApp {
+	b.construct = constructs.NewConstruct(b.scope, b.id)
+	b.app = &LiftApp{Construct: b.construct}
+	
+	b.prepareEnvironment()
+	b.createFunction()
+	b.setupDatabase()
+	b.setupRateLimiting()
+	b.createAPI()
+	b.setupRoutes()
+	b.createOutputs()
+	
+	return b.app
+}
+
+// prepareEnvironment prepares environment variables for the Lambda function
+func (b *liftAppBuilder) prepareEnvironment() {
+	// Copy user-provided environment variables
+	if b.props.Environment != nil {
+		for k, v := range *b.props.Environment {
+			b.env[k] = v
 		}
 	}
 
 	// Add database table name if enabled
-	if props.EnableDatabase != nil && *props.EnableDatabase {
-		tableName := props.DatabaseTableName
+	if b.props.EnableDatabase != nil && *b.props.EnableDatabase {
+		tableName := b.props.DatabaseTableName
 		if tableName == nil {
-			tableName = jsii.String(*props.AppName + "-table")
+			tableName = jsii.String(*b.props.AppName + "-table")
 		}
-		env["DYNAMODB_TABLE"] = tableName
+		b.env["DYNAMODB_TABLE"] = tableName
 	}
 
 	// Add rate limit table name if enabled
-	if props.EnableRateLimiting != nil && *props.EnableRateLimiting {
-		tableName := props.RateLimitTableName
+	if b.props.EnableRateLimiting != nil && *b.props.EnableRateLimiting {
+		tableName := b.props.RateLimitTableName
 		if tableName == nil {
-			tableName = jsii.String(*props.AppName + "-rate-limits")
+			tableName = jsii.String(*b.props.AppName + "-rate-limits")
 		}
-		env["RATE_LIMIT_TABLE"] = tableName
+		b.env["RATE_LIMIT_TABLE"] = tableName
+	}
+}
+
+// createFunction creates the Lambda function
+func (b *liftAppBuilder) createFunction() {
+	timeout := awscdk.Duration_Seconds(jsii.Number(30))
+	if b.props.Timeout != nil {
+		timeout = awscdk.Duration_Seconds(b.props.Timeout)
 	}
 
-	// Create Lambda function
 	fnProps := &liftconstructs.LiftFunctionProps{
 		FunctionProps: awslambda.FunctionProps{
-			FunctionName: props.AppName,
-			Code:         awslambda.Code_FromAsset(props.CodeAssetPath, nil),
+			FunctionName: b.props.AppName,
+			Code:         awslambda.Code_FromAsset(b.props.CodeAssetPath, nil),
 			Handler:      jsii.String("bootstrap"),
-			Environment:  &env,
-			MemorySize:   props.MemorySize,
-			Timeout: func() awscdk.Duration {
-				if props.Timeout != nil {
-					return awscdk.Duration_Seconds(props.Timeout)
-				}
-				return awscdk.Duration_Seconds(jsii.Number(30))
-			}(),
+			Environment:  &b.env,
+			MemorySize:   b.props.MemorySize,
+			Timeout:      timeout,
 		},
 		EnableTracing:     jsii.Bool(true),
-		EnableMultiTenant: props.EnableMultiTenant,
+		EnableMultiTenant: b.props.EnableMultiTenant,
 	}
 
-	app.Function = liftconstructs.NewLiftFunction(this, jsii.String("Function"), fnProps)
+	b.app.Function = liftconstructs.NewLiftFunction(b.construct, jsii.String("Function"), fnProps)
+}
 
-	// Use provided table or create new one if enabled
-	if props.DatabaseTable != nil {
-		// Use the provided table
-		app.Database = props.DatabaseTable
-		// Grant Lambda permissions to access the table
-		app.Database.Table.GrantReadWriteData(app.Function.Function)
-		// Update environment variable with actual table name
-		env["DYNAMODB_TABLE"] = app.Database.Table.TableName()
-	} else if props.EnableDatabase != nil && *props.EnableDatabase {
-		// Create a new table - but warn that field names are unknown
-		tableName := props.DatabaseTableName
-		if tableName == nil {
-			tableName = jsii.String(*props.AppName + "-table")
-		}
+// setupDatabase configures the database table
+func (b *liftAppBuilder) setupDatabase() {
+	if b.props.DatabaseTable != nil {
+		b.useExistingDatabase()
+	} else if b.props.EnableDatabase != nil && *b.props.EnableDatabase {
+		b.createNewDatabase()
+	}
+}
 
-		// Use provided key names or defaults
-		partitionKey := props.DatabasePartitionKey
-		if partitionKey == nil {
-			partitionKey = jsii.String("ID") // Common default for simple models
-		}
+// useExistingDatabase uses the provided database table
+func (b *liftAppBuilder) useExistingDatabase() {
+	b.app.Database = b.props.DatabaseTable
+	b.app.Database.Table.GrantReadWriteData(b.app.Function.Function)
+	b.env["DYNAMODB_TABLE"] = b.app.Database.Table.TableName()
+}
 
-		tableProps := &liftconstructs.LiftTableProps{
-			TableName:                 tableName,
-			PartitionKeyName:          partitionKey,
-			EnablePointInTimeRecovery: jsii.Bool(true),
-			EnableStreams:             jsii.Bool(true),
-			TimeToLiveAttribute:       jsii.String("ttl"),
-			EnableAutoScaling:         jsii.Bool(true),
-		}
-
-		// Add sort key if specified
-		if props.DatabaseSortKey != nil {
-			tableProps.SortKeyName = props.DatabaseSortKey
-		}
-
-		app.Database = liftconstructs.NewLiftTable(this, jsii.String("Database"), tableProps)
-
-		// Grant Lambda permissions to access the table
-		app.Database.Table.GrantReadWriteData(app.Function.Function)
+// createNewDatabase creates a new database table
+func (b *liftAppBuilder) createNewDatabase() {
+	tableName := b.props.DatabaseTableName
+	if tableName == nil {
+		tableName = jsii.String(*b.props.AppName + "-table")
 	}
 
-	// Create rate limiting table if enabled
-	if props.EnableRateLimiting != nil && *props.EnableRateLimiting {
-		tableName := props.RateLimitTableName
-		if tableName == nil {
-			tableName = jsii.String(*props.AppName + "-rate-limits")
-		}
-
-		app.RateLimitTable = liftconstructs.NewLiftTable(this, jsii.String("RateLimitTable"), &liftconstructs.LiftTableProps{
-			TableName:           tableName,
-			PartitionKeyName:    jsii.String("PK"), // RateLimit struct uses PK/SK
-			SortKeyName:         jsii.String("SK"),
-			TimeToLiveAttribute: jsii.String("expires"),
-		})
-
-		// Grant Lambda permissions
-		app.RateLimitTable.Table.GrantReadWriteData(app.Function.Function)
+	partitionKey := b.props.DatabasePartitionKey
+	if partitionKey == nil {
+		partitionKey = jsii.String("ID") // Common default for simple models
 	}
 
-	// Create API Gateway
+	tableProps := &liftconstructs.LiftTableProps{
+		TableName:                 tableName,
+		PartitionKeyName:          partitionKey,
+		EnablePointInTimeRecovery: jsii.Bool(true),
+		EnableStreams:             jsii.Bool(true),
+		TimeToLiveAttribute:       jsii.String("ttl"),
+		EnableAutoScaling:         jsii.Bool(true),
+	}
+
+	if b.props.DatabaseSortKey != nil {
+		tableProps.SortKeyName = b.props.DatabaseSortKey
+	}
+
+	b.app.Database = liftconstructs.NewLiftTable(b.construct, jsii.String("Database"), tableProps)
+	b.app.Database.Table.GrantReadWriteData(b.app.Function.Function)
+}
+
+// setupRateLimiting creates rate limiting table if enabled
+func (b *liftAppBuilder) setupRateLimiting() {
+	if b.props.EnableRateLimiting == nil || !*b.props.EnableRateLimiting {
+		return
+	}
+
+	tableName := b.props.RateLimitTableName
+	if tableName == nil {
+		tableName = jsii.String(*b.props.AppName + "-rate-limits")
+	}
+
+	b.app.RateLimitTable = liftconstructs.NewLiftTable(b.construct, jsii.String("RateLimitTable"), &liftconstructs.LiftTableProps{
+		TableName:           tableName,
+		PartitionKeyName:    jsii.String("PK"), // RateLimit struct uses PK/SK
+		SortKeyName:         jsii.String("SK"),
+		TimeToLiveAttribute: jsii.String("expires"),
+	})
+
+	b.app.RateLimitTable.Table.GrantReadWriteData(b.app.Function.Function)
+}
+
+// createAPI creates the API Gateway
+func (b *liftAppBuilder) createAPI() {
 	apiProps := &liftconstructs.LiftAPIProps{
-		Name:                jsii.String(*props.AppName + "-api"),
-		Description:         jsii.String("API Gateway for " + *props.AppName),
+		Name:                jsii.String(*b.props.AppName + "-api"),
+		Description:         jsii.String("API Gateway for " + *b.props.AppName),
 		EnableCORS:          jsii.Bool(true),
-		EnableAccessLogging: props.EnableAccessLogging,
-		DomainName:          props.DomainName,
-		CertificateArn:      props.CertificateArn,
+		EnableAccessLogging: b.props.EnableAccessLogging,
+		DomainName:          b.props.DomainName,
+		CertificateArn:      b.props.CertificateArn,
 	}
 
-	app.API = liftconstructs.NewLiftAPI(this, jsii.String("API"), apiProps)
+	b.app.API = liftconstructs.NewLiftAPI(b.construct, jsii.String("API"), apiProps)
+}
 
+// setupRoutes configures API Gateway routes
+func (b *liftAppBuilder) setupRoutes() {
 	// Add catch-all route to Lambda
-	app.API.AddLambdaRoute(
+	b.app.API.AddLambdaRoute(
 		jsii.String("/{proxy+}"),
 		awsapigatewayv2.HttpMethod_ANY,
-		app.Function.Function,
+		b.app.Function.Function,
 	)
 
 	// Also add root route
-	app.API.AddLambdaRoute(
+	b.app.API.AddLambdaRoute(
 		jsii.String("/"),
 		awsapigatewayv2.HttpMethod_ANY,
-		app.Function.Function,
+		b.app.Function.Function,
 	)
+}
 
-	// Output important values (using scope instead of this so they appear in the stack)
-	stack := awscdk.Stack_Of(this)
+// createOutputs creates CloudFormation outputs
+func (b *liftAppBuilder) createOutputs() {
+	stack := awscdk.Stack_Of(b.construct)
+	
 	awscdk.NewCfnOutput(stack, jsii.String("ApiUrl"), &awscdk.CfnOutputProps{
-		Value:       app.API.GetUrl(),
+		Value:       b.app.API.GetUrl(),
 		Description: jsii.String("API Gateway endpoint URL"),
 	})
 
 	awscdk.NewCfnOutput(stack, jsii.String("FunctionName"), &awscdk.CfnOutputProps{
-		Value:       app.Function.Function.FunctionName(),
+		Value:       b.app.Function.Function.FunctionName(),
 		Description: jsii.String("Lambda function name"),
 	})
 
-	if app.Database != nil {
+	if b.app.Database != nil {
 		awscdk.NewCfnOutput(stack, jsii.String("DatabaseTableName"), &awscdk.CfnOutputProps{
-			Value:       app.Database.Table.TableName(),
+			Value:       b.app.Database.Table.TableName(),
 			Description: jsii.String("DynamoDB table name"),
 		})
 	}
-
-	return app
 }

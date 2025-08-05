@@ -170,79 +170,134 @@ func NewDynamORMEventStore(scope constructs.Construct, id *string, props *DynamO
 
 // applyDefaults applies default values to event store properties
 func (e *DynamORMEventStore) applyDefaults(props *DynamORMEventStoreProps) *DynamORMEventStoreProps {
-	if props.Pattern == "" {
-		props.Pattern = EventStorePattern_SINGLE_TABLE
-	}
-	if props.EventTableName == nil {
-		props.EventTableName = jsii.String("event-store")
-	}
-	if props.SnapshotTableName == nil {
-		props.SnapshotTableName = jsii.String("event-snapshots")
-	}
-	if props.EnableMultiTenant == nil {
-		props.EnableMultiTenant = jsii.Bool(false)
-	}
-	if props.TenantAttribute == nil {
-		props.TenantAttribute = jsii.String("TenantID")
-	}
-	if props.EnableEventVersioning == nil {
-		props.EnableEventVersioning = jsii.Bool(true)
-	}
-	if props.EnableEventEncryption == nil {
-		props.EnableEventEncryption = jsii.Bool(true)
-	}
-	if props.EnableEventCompression == nil {
-		props.EnableEventCompression = jsii.Bool(false)
-	}
-	if props.EventTTL == nil {
-		props.EventTTL = awscdk.Duration_Days(jsii.Number(365 * 7)) // 7 years default
-	}
-	if props.SnapshotStrategy == "" {
-		props.SnapshotStrategy = SnapshotStrategy_FREQUENCY
-	}
-	if props.SnapshotFrequency == nil {
-		i := 100 // Every 100 events
-		props.SnapshotFrequency = &i
-	}
-	if props.SnapshotSizeLimit == nil {
-		i := 1024 // 1MB
-		props.SnapshotSizeLimit = &i
-	}
-	if props.SnapshotTimeInterval == nil {
-		props.SnapshotTimeInterval = awscdk.Duration_Hours(jsii.Number(24)) // Daily
-	}
-	if props.SnapshotRetention == nil {
-		props.SnapshotRetention = awscdk.Duration_Days(jsii.Number(90)) // 90 days
-	}
-	if props.EventStreamEnabled == nil {
-		props.EventStreamEnabled = jsii.Bool(true)
-	}
-	if props.SnapshotStreamEnabled == nil {
-		props.SnapshotStreamEnabled = jsii.Bool(false)
-	}
-	if props.EnableAutoScaling == nil {
-		props.EnableAutoScaling = jsii.Bool(true)
-	}
-	if props.EnableArchival == nil {
-		props.EnableArchival = jsii.Bool(false)
-	}
-	if props.ArchivalAfter == nil {
-		props.ArchivalAfter = awscdk.Duration_Days(jsii.Number(365)) // 1 year
-	}
-	if props.EnableMetrics == nil {
-		props.EnableMetrics = jsii.Bool(true)
-	}
-	if props.EnableDetailedMetrics == nil {
-		props.EnableDetailedMetrics = jsii.Bool(false)
-	}
-	if props.EnableEncryption == nil {
-		props.EnableEncryption = jsii.Bool(true)
-	}
-	if props.EnableGSIs == nil {
-		props.EnableGSIs = jsii.Bool(true)
-	}
+	builder := newEventStoreDefaultsBuilder(props)
+	return builder.build()
+}
 
-	return props
+// eventStoreDefaultsBuilder builds event store properties with defaults
+type eventStoreDefaultsBuilder struct {
+	props *DynamORMEventStoreProps
+}
+
+// newEventStoreDefaultsBuilder creates a new event store defaults builder
+func newEventStoreDefaultsBuilder(props *DynamORMEventStoreProps) *eventStoreDefaultsBuilder {
+	return &eventStoreDefaultsBuilder{props: props}
+}
+
+// build applies all defaults and returns the configured properties
+func (b *eventStoreDefaultsBuilder) build() *DynamORMEventStoreProps {
+	b.setTableDefaults()
+	b.setTenantDefaults()
+	b.setEventDefaults()
+	b.setSnapshotDefaults()
+	b.setStreamDefaults()
+	b.setArchivalDefaults()
+	b.setMonitoringDefaults()
+	b.setEncryptionDefaults()
+	return b.props
+}
+
+// setTableDefaults sets table-related defaults
+func (b *eventStoreDefaultsBuilder) setTableDefaults() {
+	if b.props.Pattern == "" {
+		b.props.Pattern = EventStorePattern_SINGLE_TABLE
+	}
+	if b.props.EventTableName == nil {
+		b.props.EventTableName = jsii.String("event-store")
+	}
+	if b.props.SnapshotTableName == nil {
+		b.props.SnapshotTableName = jsii.String("event-snapshots")
+	}
+	if b.props.EnableGSIs == nil {
+		b.props.EnableGSIs = jsii.Bool(true)
+	}
+}
+
+// setTenantDefaults sets multi-tenant defaults
+func (b *eventStoreDefaultsBuilder) setTenantDefaults() {
+	if b.props.EnableMultiTenant == nil {
+		b.props.EnableMultiTenant = jsii.Bool(false)
+	}
+	if b.props.TenantAttribute == nil {
+		b.props.TenantAttribute = jsii.String("TenantID")
+	}
+}
+
+// setEventDefaults sets event-related defaults
+func (b *eventStoreDefaultsBuilder) setEventDefaults() {
+	if b.props.EnableEventVersioning == nil {
+		b.props.EnableEventVersioning = jsii.Bool(true)
+	}
+	if b.props.EnableEventEncryption == nil {
+		b.props.EnableEventEncryption = jsii.Bool(true)
+	}
+	if b.props.EnableEventCompression == nil {
+		b.props.EnableEventCompression = jsii.Bool(false)
+	}
+	if b.props.EventTTL == nil {
+		b.props.EventTTL = awscdk.Duration_Days(jsii.Number(365 * 7)) // 7 years default
+	}
+}
+
+// setSnapshotDefaults sets snapshot-related defaults
+func (b *eventStoreDefaultsBuilder) setSnapshotDefaults() {
+	if b.props.SnapshotStrategy == "" {
+		b.props.SnapshotStrategy = SnapshotStrategy_FREQUENCY
+	}
+	if b.props.SnapshotFrequency == nil {
+		i := 100 // Every 100 events
+		b.props.SnapshotFrequency = &i
+	}
+	if b.props.SnapshotSizeLimit == nil {
+		i := 1024 // 1MB
+		b.props.SnapshotSizeLimit = &i
+	}
+	if b.props.SnapshotTimeInterval == nil {
+		b.props.SnapshotTimeInterval = awscdk.Duration_Hours(jsii.Number(24)) // Daily
+	}
+	if b.props.SnapshotRetention == nil {
+		b.props.SnapshotRetention = awscdk.Duration_Days(jsii.Number(90)) // 90 days
+	}
+}
+
+// setStreamDefaults sets stream-related defaults
+func (b *eventStoreDefaultsBuilder) setStreamDefaults() {
+	if b.props.EventStreamEnabled == nil {
+		b.props.EventStreamEnabled = jsii.Bool(true)
+	}
+	if b.props.SnapshotStreamEnabled == nil {
+		b.props.SnapshotStreamEnabled = jsii.Bool(false)
+	}
+	if b.props.EnableAutoScaling == nil {
+		b.props.EnableAutoScaling = jsii.Bool(true)
+	}
+}
+
+// setArchivalDefaults sets archival-related defaults
+func (b *eventStoreDefaultsBuilder) setArchivalDefaults() {
+	if b.props.EnableArchival == nil {
+		b.props.EnableArchival = jsii.Bool(false)
+	}
+	if b.props.ArchivalAfter == nil {
+		b.props.ArchivalAfter = awscdk.Duration_Days(jsii.Number(365)) // 1 year
+	}
+}
+
+// setMonitoringDefaults sets monitoring-related defaults
+func (b *eventStoreDefaultsBuilder) setMonitoringDefaults() {
+	if b.props.EnableMetrics == nil {
+		b.props.EnableMetrics = jsii.Bool(true)
+	}
+	if b.props.EnableDetailedMetrics == nil {
+		b.props.EnableDetailedMetrics = jsii.Bool(false)
+	}
+}
+
+// setEncryptionDefaults sets encryption-related defaults
+func (b *eventStoreDefaultsBuilder) setEncryptionDefaults() {
+	if b.props.EnableEncryption == nil {
+		b.props.EnableEncryption = jsii.Bool(true)
+	}
 }
 
 // createEventTable creates the main event table
@@ -655,68 +710,108 @@ func (e *DynamORMEventStore) createDetailedMonitoring() {
 
 // GetEnvironmentVariables returns environment variables for Lambda functions
 func (e *DynamORMEventStore) GetEnvironmentVariables() *map[string]*string {
-	env := make(map[string]*string)
+	builder := newEventStoreEnvBuilder(e)
+	return builder.build()
+}
 
-	// Basic event store configuration
-	env["DYNAMORM_EVENT_STORE_ENABLED"] = jsii.String("true")
-	env["DYNAMORM_EVENT_STORE_PATTERN"] = jsii.String(string(e.props.Pattern))
-	env["DYNAMORM_EVENT_TABLE_NAME"] = e.EventTable.GetTableName()
-	env["DYNAMORM_EVENT_TABLE_ARN"] = e.EventTable.GetTableArn()
+// eventStoreEnvBuilder builds environment variables for event store Lambda functions
+type eventStoreEnvBuilder struct {
+	eventStore *DynamORMEventStore
+	env        map[string]*string
+}
 
-	if e.SnapshotTable != nil {
-		env["DYNAMORM_SNAPSHOT_TABLE_NAME"] = e.SnapshotTable.GetTableName()
-		env["DYNAMORM_SNAPSHOT_TABLE_ARN"] = e.SnapshotTable.GetTableArn()
-		env["DYNAMORM_SNAPSHOT_STRATEGY"] = jsii.String(string(e.props.SnapshotStrategy))
-		env["DYNAMORM_SNAPSHOT_FREQUENCY"] = jsii.String(fmt.Sprintf("%d", *e.props.SnapshotFrequency))
+// newEventStoreEnvBuilder creates a new event store environment builder
+func newEventStoreEnvBuilder(eventStore *DynamORMEventStore) *eventStoreEnvBuilder {
+	return &eventStoreEnvBuilder{
+		eventStore: eventStore,
+		env:        make(map[string]*string),
 	}
+}
 
-	// Event configuration
-	if e.props.EnableEventVersioning != nil && *e.props.EnableEventVersioning {
-		env["DYNAMORM_EVENT_VERSIONING"] = jsii.String("true")
-	}
-	if e.props.EnableEventEncryption != nil && *e.props.EnableEventEncryption {
-		env["DYNAMORM_EVENT_ENCRYPTION"] = jsii.String("true")
-	}
-	if e.props.EnableEventCompression != nil && *e.props.EnableEventCompression {
-		env["DYNAMORM_EVENT_COMPRESSION"] = jsii.String("true")
-	}
+// build constructs the complete environment variables map
+func (b *eventStoreEnvBuilder) build() *map[string]*string {
+	b.setBasicConfiguration()
+	b.setSnapshotConfiguration()
+	b.setEventConfiguration()
+	b.setTenantConfiguration()
+	b.setStreamConfiguration()
+	b.setArchivalConfiguration()
+	b.setMetricsConfiguration()
+	return &b.env
+}
 
-	// Multi-tenant configuration
-	if e.props.EnableMultiTenant != nil && *e.props.EnableMultiTenant {
-		env["DYNAMORM_EVENT_STORE_MULTI_TENANT"] = jsii.String("true")
-		env["DYNAMORM_TENANT_ATTRIBUTE"] = e.props.TenantAttribute
-	}
+// setBasicConfiguration sets basic event store environment variables
+func (b *eventStoreEnvBuilder) setBasicConfiguration() {
+	b.env["DYNAMORM_EVENT_STORE_ENABLED"] = jsii.String("true")
+	b.env["DYNAMORM_EVENT_STORE_PATTERN"] = jsii.String(string(b.eventStore.props.Pattern))
+	b.env["DYNAMORM_EVENT_TABLE_NAME"] = b.eventStore.EventTable.GetTableName()
+	b.env["DYNAMORM_EVENT_TABLE_ARN"] = b.eventStore.EventTable.GetTableArn()
+}
 
-	// Streams configuration
-	if e.props.EventStreamEnabled != nil && *e.props.EventStreamEnabled {
-		if e.EventTable.GetStreamArn() != nil {
-			env["DYNAMORM_EVENT_STREAM_ARN"] = e.EventTable.GetStreamArn()
+// setSnapshotConfiguration sets snapshot-related environment variables
+func (b *eventStoreEnvBuilder) setSnapshotConfiguration() {
+	if b.eventStore.SnapshotTable != nil {
+		b.env["DYNAMORM_SNAPSHOT_TABLE_NAME"] = b.eventStore.SnapshotTable.GetTableName()
+		b.env["DYNAMORM_SNAPSHOT_TABLE_ARN"] = b.eventStore.SnapshotTable.GetTableArn()
+		b.env["DYNAMORM_SNAPSHOT_STRATEGY"] = jsii.String(string(b.eventStore.props.SnapshotStrategy))
+		b.env["DYNAMORM_SNAPSHOT_FREQUENCY"] = jsii.String(fmt.Sprintf("%d", *b.eventStore.props.SnapshotFrequency))
+	}
+}
+
+// setEventConfiguration sets event-related environment variables
+func (b *eventStoreEnvBuilder) setEventConfiguration() {
+	if b.eventStore.props.EnableEventVersioning != nil && *b.eventStore.props.EnableEventVersioning {
+		b.env["DYNAMORM_EVENT_VERSIONING"] = jsii.String("true")
+	}
+	if b.eventStore.props.EnableEventEncryption != nil && *b.eventStore.props.EnableEventEncryption {
+		b.env["DYNAMORM_EVENT_ENCRYPTION"] = jsii.String("true")
+	}
+	if b.eventStore.props.EnableEventCompression != nil && *b.eventStore.props.EnableEventCompression {
+		b.env["DYNAMORM_EVENT_COMPRESSION"] = jsii.String("true")
+	}
+}
+
+// setTenantConfiguration sets multi-tenant environment variables
+func (b *eventStoreEnvBuilder) setTenantConfiguration() {
+	if b.eventStore.props.EnableMultiTenant != nil && *b.eventStore.props.EnableMultiTenant {
+		b.env["DYNAMORM_EVENT_STORE_MULTI_TENANT"] = jsii.String("true")
+		b.env["DYNAMORM_TENANT_ATTRIBUTE"] = b.eventStore.props.TenantAttribute
+	}
+}
+
+// setStreamConfiguration sets stream-related environment variables
+func (b *eventStoreEnvBuilder) setStreamConfiguration() {
+	if b.eventStore.props.EventStreamEnabled != nil && *b.eventStore.props.EventStreamEnabled {
+		if b.eventStore.EventTable.GetStreamArn() != nil {
+			b.env["DYNAMORM_EVENT_STREAM_ARN"] = b.eventStore.EventTable.GetStreamArn()
 		}
 	}
-	if e.props.SnapshotStreamEnabled != nil && *e.props.SnapshotStreamEnabled && e.SnapshotTable != nil {
-		if e.SnapshotTable.GetStreamArn() != nil {
-			env["DYNAMORM_SNAPSHOT_STREAM_ARN"] = e.SnapshotTable.GetStreamArn()
+	if b.eventStore.props.SnapshotStreamEnabled != nil && *b.eventStore.props.SnapshotStreamEnabled && b.eventStore.SnapshotTable != nil {
+		if b.eventStore.SnapshotTable.GetStreamArn() != nil {
+			b.env["DYNAMORM_SNAPSHOT_STREAM_ARN"] = b.eventStore.SnapshotTable.GetStreamArn()
 		}
 	}
+}
 
-	// Archival configuration
-	if e.props.EnableArchival != nil && *e.props.EnableArchival && e.ArchivalBucket != nil {
-		env["DYNAMORM_ARCHIVAL_ENABLED"] = jsii.String("true")
-		env["DYNAMORM_ARCHIVAL_BUCKET"] = e.ArchivalBucket.BucketName()
-		if e.props.ArchivalAfter != nil {
-			days := e.props.ArchivalAfter.ToDays(nil)
+// setArchivalConfiguration sets archival-related environment variables
+func (b *eventStoreEnvBuilder) setArchivalConfiguration() {
+	if b.eventStore.props.EnableArchival != nil && *b.eventStore.props.EnableArchival && b.eventStore.ArchivalBucket != nil {
+		b.env["DYNAMORM_ARCHIVAL_ENABLED"] = jsii.String("true")
+		b.env["DYNAMORM_ARCHIVAL_BUCKET"] = b.eventStore.ArchivalBucket.BucketName()
+		if b.eventStore.props.ArchivalAfter != nil {
+			days := b.eventStore.props.ArchivalAfter.ToDays(nil)
 			if days != nil {
-				env["DYNAMORM_ARCHIVAL_AFTER_DAYS"] = jsii.String(fmt.Sprintf("%.0f", *days))
+				b.env["DYNAMORM_ARCHIVAL_AFTER_DAYS"] = jsii.String(fmt.Sprintf("%.0f", *days))
 			}
 		}
 	}
+}
 
-	// Metrics configuration
-	if e.props.EnableMetrics != nil && *e.props.EnableMetrics {
-		env["DYNAMORM_EVENT_STORE_METRICS"] = jsii.String("true")
+// setMetricsConfiguration sets metrics-related environment variables
+func (b *eventStoreEnvBuilder) setMetricsConfiguration() {
+	if b.eventStore.props.EnableMetrics != nil && *b.eventStore.props.EnableMetrics {
+		b.env["DYNAMORM_EVENT_STORE_METRICS"] = jsii.String("true")
 	}
-
-	return &env
 }
 
 // GrantEventReaderAccess grants event reader access to a Lambda function

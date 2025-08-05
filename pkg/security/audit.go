@@ -456,44 +456,101 @@ func (imas *InMemoryAuditStorage) BatchStore(_ context.Context, entries []AuditL
 func (imas *InMemoryAuditStorage) Query(_ context.Context, filter AuditFilter) ([]AuditLogEntry, error) {
 	imas.mu.RLock()
 	defer imas.mu.RUnlock()
+	
+	query := newAuditQuery(imas.entries, filter)
+	return query.execute()
+}
 
-	var results []AuditLogEntry
+// auditQuery handles filtering audit entries
+type auditQuery struct {
+	entries map[string][]AuditLogEntry
+	filter  AuditFilter
+	results []AuditLogEntry
+}
 
-	for auditID, entries := range imas.entries {
-		if filter.AuditID != "" && auditID != filter.AuditID {
+// newAuditQuery creates a new audit query
+func newAuditQuery(entries map[string][]AuditLogEntry, filter AuditFilter) *auditQuery {
+	return &auditQuery{
+		entries: entries,
+		filter:  filter,
+		results: []AuditLogEntry{},
+	}
+}
+
+// execute runs the query
+func (q *auditQuery) execute() ([]AuditLogEntry, error) {
+	for auditID, entries := range q.entries {
+		if !q.matchesAuditID(auditID) {
 			continue
 		}
+		
+		q.processEntries(entries)
+		
+		if q.limitReached() {
+			break
+		}
+	}
+	
+	return q.results, nil
+}
 
-		for _, entry := range entries {
-			if filter.UserID != "" && entry.UserID != filter.UserID {
-				continue
-			}
+// matchesAuditID checks if audit ID matches filter
+func (q *auditQuery) matchesAuditID(auditID string) bool {
+	return q.filter.AuditID == "" || auditID == q.filter.AuditID
+}
 
-			if filter.TenantID != "" && entry.TenantID != filter.TenantID {
-				continue
-			}
-
-			if filter.EntryType != "" && entry.EntryType != filter.EntryType {
-				continue
-			}
-
-			if !filter.Since.IsZero() && entry.Timestamp.Before(filter.Since) {
-				continue
-			}
-
-			if !filter.Until.IsZero() && entry.Timestamp.After(filter.Until) {
-				continue
-			}
-
-			results = append(results, entry)
-
-			if filter.Limit > 0 && len(results) >= filter.Limit {
-				return results, nil
+// processEntries processes entries for an audit ID
+func (q *auditQuery) processEntries(entries []AuditLogEntry) {
+	for _, entry := range entries {
+		if q.entryMatches(entry) {
+			q.results = append(q.results, entry)
+			
+			if q.limitReached() {
+				return
 			}
 		}
 	}
+}
 
-	return results, nil
+// entryMatches checks if an entry matches all filter criteria
+func (q *auditQuery) entryMatches(entry AuditLogEntry) bool {
+	return q.matchesUser(entry) &&
+		q.matchesTenant(entry) &&
+		q.matchesType(entry) &&
+		q.matchesTimeRange(entry)
+}
+
+// matchesUser checks user ID match
+func (q *auditQuery) matchesUser(entry AuditLogEntry) bool {
+	return q.filter.UserID == "" || entry.UserID == q.filter.UserID
+}
+
+// matchesTenant checks tenant ID match
+func (q *auditQuery) matchesTenant(entry AuditLogEntry) bool {
+	return q.filter.TenantID == "" || entry.TenantID == q.filter.TenantID
+}
+
+// matchesType checks entry type match
+func (q *auditQuery) matchesType(entry AuditLogEntry) bool {
+	return q.filter.EntryType == "" || entry.EntryType == q.filter.EntryType
+}
+
+// matchesTimeRange checks if entry is within time range
+func (q *auditQuery) matchesTimeRange(entry AuditLogEntry) bool {
+	if !q.filter.Since.IsZero() && entry.Timestamp.Before(q.filter.Since) {
+		return false
+	}
+	
+	if !q.filter.Until.IsZero() && entry.Timestamp.After(q.filter.Until) {
+		return false
+	}
+	
+	return true
+}
+
+// limitReached checks if query limit has been reached
+func (q *auditQuery) limitReached() bool {
+	return q.filter.Limit > 0 && len(q.results) >= q.filter.Limit
 }
 
 // Clear clears all audit entries

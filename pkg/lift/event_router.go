@@ -260,64 +260,141 @@ func (er *EventRouter) matchObjectKeyPattern(objectKey, pattern string) bool {
 
 // matchWildcardPattern matches a string against a pattern with wildcards
 func (er *EventRouter) matchWildcardPattern(str, pattern string) bool {
-	// Exact match
-	if pattern == str {
+	matcher := newWildcardMatcher(str, pattern)
+	return matcher.match()
+}
+
+// wildcardMatcher handles wildcard pattern matching
+type wildcardMatcher struct {
+	str     string
+	pattern string
+	parts   []string
+}
+
+// newWildcardMatcher creates a new wildcard matcher
+func newWildcardMatcher(str, pattern string) *wildcardMatcher {
+	return &wildcardMatcher{
+		str:     str,
+		pattern: pattern,
+	}
+}
+
+// match performs the pattern matching
+func (m *wildcardMatcher) match() bool {
+	// Try simple matches first
+	if m.matchExact() || m.matchSingleWildcard() {
 		return true
 	}
-
-	// Single wildcard
-	if pattern == "*" {
+	
+	// Try specific wildcard patterns
+	if m.matchPrefix() || m.matchSuffix() || m.matchMiddle() {
 		return true
 	}
+	
+	// Handle complex patterns
+	return m.matchMultipleWildcards()
+}
 
-	// Prefix match: "prefix*"
-	if strings.HasSuffix(pattern, "*") && !strings.Contains(pattern[:len(pattern)-1], "*") {
-		prefix := strings.TrimSuffix(pattern, "*")
-		return strings.HasPrefix(str, prefix)
+// matchExact checks for exact string match
+func (m *wildcardMatcher) matchExact() bool {
+	return m.pattern == m.str
+}
+
+// matchSingleWildcard checks for single wildcard pattern
+func (m *wildcardMatcher) matchSingleWildcard() bool {
+	return m.pattern == "*"
+}
+
+// matchPrefix checks for prefix wildcard pattern
+func (m *wildcardMatcher) matchPrefix() bool {
+	if !strings.HasSuffix(m.pattern, "*") {
+		return false
 	}
-
-	// Suffix match: "*suffix"
-	if strings.HasPrefix(pattern, "*") && !strings.Contains(pattern[1:], "*") {
-		suffix := strings.TrimPrefix(pattern, "*")
-		return strings.HasSuffix(str, suffix)
+	
+	withoutSuffix := m.pattern[:len(m.pattern)-1]
+	if strings.Contains(withoutSuffix, "*") {
+		return false
 	}
+	
+	return strings.HasPrefix(m.str, withoutSuffix)
+}
 
-	// Middle wildcard: "prefix*suffix"
-	if strings.Count(pattern, "*") == 1 {
-		parts := strings.Split(pattern, "*")
-		if len(parts) == 2 {
-			return strings.HasPrefix(str, parts[0]) && strings.HasSuffix(str, parts[1])
-		}
+// matchSuffix checks for suffix wildcard pattern
+func (m *wildcardMatcher) matchSuffix() bool {
+	if !strings.HasPrefix(m.pattern, "*") {
+		return false
 	}
+	
+	withoutPrefix := m.pattern[1:]
+	if strings.Contains(withoutPrefix, "*") {
+		return false
+	}
+	
+	return strings.HasSuffix(m.str, withoutPrefix)
+}
 
-	// Multiple wildcards - convert to simple regex-like matching
-	// This is a simplified implementation
-	if strings.Contains(pattern, "*") {
-		// For now, do a simple contains check for each non-wildcard part
-		parts := strings.Split(pattern, "*")
-		lastIndex := 0
-		for i, part := range parts {
-			if part == "" {
-				continue
-			}
-			index := strings.Index(str[lastIndex:], part)
-			if index == -1 {
-				return false
-			}
-			// First part must match at the beginning
-			if i == 0 && index != 0 {
-				return false
-			}
-			lastIndex = lastIndex + index + len(part)
+// matchMiddle checks for single middle wildcard pattern
+func (m *wildcardMatcher) matchMiddle() bool {
+	if strings.Count(m.pattern, "*") != 1 {
+		return false
+	}
+	
+	m.parts = strings.Split(m.pattern, "*")
+	if len(m.parts) != 2 {
+		return false
+	}
+	
+	return strings.HasPrefix(m.str, m.parts[0]) && strings.HasSuffix(m.str, m.parts[1])
+}
+
+// matchMultipleWildcards handles patterns with multiple wildcards
+func (m *wildcardMatcher) matchMultipleWildcards() bool {
+	if !strings.Contains(m.pattern, "*") {
+		return false
+	}
+	
+	m.parts = strings.Split(m.pattern, "*")
+	return m.matchParts()
+}
+
+// matchParts matches string parts sequentially
+func (m *wildcardMatcher) matchParts() bool {
+	lastIndex := 0
+	
+	for i, part := range m.parts {
+		if part == "" {
+			continue
 		}
-		// Last part must match at the end if it's not empty
-		if len(parts) > 0 && parts[len(parts)-1] != "" {
-			return strings.HasSuffix(str, parts[len(parts)-1])
+		
+		index := strings.Index(m.str[lastIndex:], part)
+		if index == -1 {
+			return false
 		}
+		
+		// First part must match at the beginning
+		if i == 0 && index != 0 {
+			return false
+		}
+		
+		lastIndex = lastIndex + index + len(part)
+	}
+	
+	// Check if last part should match at the end
+	return m.checkLastPart()
+}
+
+// checkLastPart verifies the last part matches at string end
+func (m *wildcardMatcher) checkLastPart() bool {
+	if len(m.parts) == 0 {
 		return true
 	}
-
-	return false
+	
+	lastPart := m.parts[len(m.parts)-1]
+	if lastPart == "" {
+		return true
+	}
+	
+	return strings.HasSuffix(m.str, lastPart)
 }
 
 // matchEventBridgePattern matches EventBridge source patterns

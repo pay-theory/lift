@@ -112,52 +112,94 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 
 // applyLoadSheddingDefaults applies default values to the configuration
 func applyLoadSheddingDefaults(config LoadSheddingConfig) LoadSheddingConfig {
-	if config.CPUThreshold == 0 {
-		config.CPUThreshold = 0.8 // 80% CPU
+	builder := newLoadSheddingDefaultsBuilder(config)
+	return builder.build()
+}
+
+// loadSheddingDefaultsBuilder applies defaults to load shedding configuration
+type loadSheddingDefaultsBuilder struct {
+	config LoadSheddingConfig
+}
+
+// newLoadSheddingDefaultsBuilder creates a new defaults builder
+func newLoadSheddingDefaultsBuilder(config LoadSheddingConfig) *loadSheddingDefaultsBuilder {
+	return &loadSheddingDefaultsBuilder{config: config}
+}
+
+// build applies all defaults to the configuration
+func (b *loadSheddingDefaultsBuilder) build() LoadSheddingConfig {
+	b.applyPerformanceDefaults()
+	b.applySheddingDefaults()
+	b.applyMetricsDefaults()
+	b.applyResponseDefaults()
+	b.applyFunctionDefaults()
+	
+	return b.config
+}
+
+// applyPerformanceDefaults sets performance-related defaults
+func (b *loadSheddingDefaultsBuilder) applyPerformanceDefaults() {
+	if b.config.CPUThreshold == 0 {
+		b.config.CPUThreshold = 0.8 // 80% CPU
 	}
-	if config.MemoryThreshold == 0 {
-		config.MemoryThreshold = 0.85 // 85% Memory
+	if b.config.MemoryThreshold == 0 {
+		b.config.MemoryThreshold = 0.85 // 85% Memory
 	}
-	if config.LatencyThreshold == 0 {
-		config.LatencyThreshold = 5 * time.Second
+	if b.config.LatencyThreshold == 0 {
+		b.config.LatencyThreshold = 5 * time.Second
 	}
-	if config.ErrorRateThreshold == 0 {
-		config.ErrorRateThreshold = 0.1 // 10% error rate
+	if b.config.ErrorRateThreshold == 0 {
+		b.config.ErrorRateThreshold = 0.1 // 10% error rate
 	}
-	if config.TargetLatency == 0 {
-		config.TargetLatency = 100 * time.Millisecond
+	if b.config.TargetLatency == 0 {
+		b.config.TargetLatency = 100 * time.Millisecond
 	}
-	if config.MaxSheddingRate == 0 {
-		config.MaxSheddingRate = 0.9 // Max 90% shedding
+}
+
+// applySheddingDefaults sets shedding-related defaults
+func (b *loadSheddingDefaultsBuilder) applySheddingDefaults() {
+	if b.config.MaxSheddingRate == 0 {
+		b.config.MaxSheddingRate = 0.9 // Max 90% shedding
 	}
-	if config.MinSheddingRate == 0 {
-		config.MinSheddingRate = 0.0 // Min 0% shedding
+	if b.config.MinSheddingRate == 0 {
+		b.config.MinSheddingRate = 0.0 // Min 0% shedding
 	}
-	if config.AdaptationRate == 0 {
-		config.AdaptationRate = 0.1 // 10% adaptation rate
+	if b.config.AdaptationRate == 0 {
+		b.config.AdaptationRate = 0.1 // 10% adaptation rate
 	}
-	if config.MetricsWindow == 0 {
-		config.MetricsWindow = 30 * time.Second
+}
+
+// applyMetricsDefaults sets metrics-related defaults
+func (b *loadSheddingDefaultsBuilder) applyMetricsDefaults() {
+	if b.config.MetricsWindow == 0 {
+		b.config.MetricsWindow = 30 * time.Second
 	}
-	if config.SamplingRate == 0 {
-		config.SamplingRate = 1.0 // Sample all requests by default
+	if b.config.SamplingRate == 0 {
+		b.config.SamplingRate = 1.0 // Sample all requests by default
 	}
-	if config.SheddingStatusCode == 0 {
-		config.SheddingStatusCode = 503 // Service Unavailable
+}
+
+// applyResponseDefaults sets response-related defaults
+func (b *loadSheddingDefaultsBuilder) applyResponseDefaults() {
+	if b.config.SheddingStatusCode == 0 {
+		b.config.SheddingStatusCode = 503 // Service Unavailable
 	}
-	if config.SheddingMessage == "" {
-		config.SheddingMessage = "Service temporarily overloaded"
+	if b.config.SheddingMessage == "" {
+		b.config.SheddingMessage = "Service temporarily overloaded"
 	}
-	if config.Name == "" {
-		config.Name = defaultName
+	if b.config.Name == "" {
+		b.config.Name = defaultName
 	}
-	if config.PriorityExtractor == nil {
-		config.PriorityExtractor = defaultLoadSheddingPriorityExtractor
+}
+
+// applyFunctionDefaults sets function-related defaults
+func (b *loadSheddingDefaultsBuilder) applyFunctionDefaults() {
+	if b.config.PriorityExtractor == nil {
+		b.config.PriorityExtractor = defaultLoadSheddingPriorityExtractor
 	}
-	if config.SheddingHandler == nil {
-		config.SheddingHandler = defaultSheddingHandler(config.SheddingStatusCode, config.SheddingMessage)
+	if b.config.SheddingHandler == nil {
+		b.config.SheddingHandler = defaultSheddingHandler(b.config.SheddingStatusCode, b.config.SheddingMessage)
 	}
-	return config
 }
 
 // newLoadSheddingManager creates a new load shedding manager

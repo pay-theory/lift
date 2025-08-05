@@ -114,51 +114,123 @@ func (v *JWTValidator) ValidateToken(tokenString string) (*JWTClaims, error) {
 
 // validateStandardClaims validates the standard JWT claims
 func (v *JWTValidator) validateStandardClaims(claims *JWTClaims) error {
-	now := time.Now()
+	validator := newStandardClaimsValidator(v, claims)
+	return validator.validate()
+}
 
-	// Check expiration
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(now) {
+// standardClaimsValidator validates JWT standard claims
+type standardClaimsValidator struct {
+	validator *JWTValidator
+	claims    *JWTClaims
+	now       time.Time
+}
+
+// newStandardClaimsValidator creates a new standard claims validator
+func newStandardClaimsValidator(validator *JWTValidator, claims *JWTClaims) *standardClaimsValidator {
+	return &standardClaimsValidator{
+		validator: validator,
+		claims:    claims,
+		now:       time.Now(),
+	}
+}
+
+// validate performs all standard claim validations
+func (v *standardClaimsValidator) validate() error {
+	if err := v.validateExpiration(); err != nil {
+		return err
+	}
+	
+	if err := v.validateNotBefore(); err != nil {
+		return err
+	}
+	
+	if err := v.validateMaxAge(); err != nil {
+		return err
+	}
+	
+	if err := v.validateIssuer(); err != nil {
+		return err
+	}
+	
+	return v.validateAudience()
+}
+
+// validateExpiration checks token expiration
+func (v *standardClaimsValidator) validateExpiration() error {
+	if v.claims.ExpiresAt == nil {
+		return nil
+	}
+	
+	if v.claims.ExpiresAt.Before(v.now) {
 		return fmt.Errorf("token has expired")
 	}
+	
+	return nil
+}
 
-	// Check not before
-	if claims.NotBefore != nil && claims.NotBefore.After(now) {
+// validateNotBefore checks token not-before time
+func (v *standardClaimsValidator) validateNotBefore() error {
+	if v.claims.NotBefore == nil {
+		return nil
+	}
+	
+	if v.claims.NotBefore.After(v.now) {
 		return fmt.Errorf("token not valid yet")
 	}
+	
+	return nil
+}
 
-	// Check issued at (with max age)
-	if claims.IssuedAt != nil && v.config.MaxAge > 0 {
-		maxAge := claims.IssuedAt.Add(v.config.MaxAge)
-		if now.After(maxAge) {
-			return fmt.Errorf("token exceeds maximum age")
-		}
+// validateMaxAge checks token maximum age
+func (v *standardClaimsValidator) validateMaxAge() error {
+	if v.claims.IssuedAt == nil || v.validator.config.MaxAge <= 0 {
+		return nil
 	}
+	
+	maxAge := v.claims.IssuedAt.Add(v.validator.config.MaxAge)
+	if v.now.After(maxAge) {
+		return fmt.Errorf("token exceeds maximum age")
+	}
+	
+	return nil
+}
 
-	// Check issuer
-	if v.config.Issuer != "" && claims.Issuer != v.config.Issuer {
+// validateIssuer checks token issuer
+func (v *standardClaimsValidator) validateIssuer() error {
+	if v.validator.config.Issuer == "" {
+		return nil
+	}
+	
+	if v.claims.Issuer != v.validator.config.Issuer {
 		return fmt.Errorf("token validation failed: issuer mismatch")
 	}
+	
+	return nil
+}
 
-	// Check audience
-	if len(v.config.Audience) > 0 {
-		validAudience := false
-		for _, aud := range v.config.Audience {
-			for _, claimAud := range claims.Audience {
-				if aud == claimAud {
-					validAudience = true
-					break
-				}
+// validateAudience checks token audience
+func (v *standardClaimsValidator) validateAudience() error {
+	if len(v.validator.config.Audience) == 0 {
+		return nil
+	}
+	
+	if v.isValidAudience() {
+		return nil
+	}
+	
+	return fmt.Errorf("token validation failed: audience mismatch")
+}
+
+// isValidAudience checks if any audience matches
+func (v *standardClaimsValidator) isValidAudience() bool {
+	for _, configAud := range v.validator.config.Audience {
+		for _, claimAud := range v.claims.Audience {
+			if configAud == claimAud {
+				return true
 			}
-			if validAudience {
-				break
-			}
-		}
-		if !validAudience {
-			return fmt.Errorf("token validation failed: audience mismatch")
 		}
 	}
-
-	return nil
+	return false
 }
 
 // validateCustomClaims validates custom claims specific to Pay Theory

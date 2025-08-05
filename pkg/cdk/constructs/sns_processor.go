@@ -62,101 +62,180 @@ type SNSProcessor struct {
 
 // NewSNSProcessor creates a new SNS processor with Lambda function
 func NewSNSProcessor(scope constructs.Construct, id *string, props *SNSProcessorProps) *SNSProcessor {
-	this := constructs.NewConstruct(scope, id)
+	builder := newSNSProcessorBuilder(scope, id, props)
+	return builder.build()
+}
 
-	// Create or use existing SNS topic
-	var topic awssns.ITopic
-	if props.ExistingTopic != nil {
-		topic = props.ExistingTopic
-	} else {
-		topicProps := props.TopicProps
-		if topicProps == nil {
-			topicProps = &awssns.TopicProps{}
-		}
+// snsProcessorBuilder builds SNS processor infrastructure
+type snsProcessorBuilder struct {
+	scope        constructs.Construct
+	id           *string
+	props        *SNSProcessorProps
+	construct    constructs.Construct
+	topic        awssns.ITopic
+	function     *LiftFunction
+	dlq          awssqs.IQueue
+	subscription *awslambdaeventsources.SnsEventSourceProps
+}
 
-		// Set default display name if not provided
-		if topicProps.DisplayName == nil && props.DisplayName != nil {
-			topicProps.DisplayName = props.DisplayName
-		}
-
-		// Handle FIFO topic configuration
-		if props.EnableFifo != nil && *props.EnableFifo {
-			topicProps.Fifo = jsii.Bool(true)
-			if props.ContentBasedDeduplication != nil {
-				topicProps.ContentBasedDeduplication = props.ContentBasedDeduplication
-			}
-		}
-
-		// Note: SNS topics don't have message retention period - messages are delivered immediately
-		// The MessageRetentionSeconds prop is kept for API compatibility but not used
-
-		topic = awssns.NewTopic(this, jsii.String("Topic"), topicProps)
+// newSNSProcessorBuilder creates a new SNS processor builder
+func newSNSProcessorBuilder(scope constructs.Construct, id *string, props *SNSProcessorProps) *snsProcessorBuilder {
+	return &snsProcessorBuilder{
+		scope: scope,
+		id:    id,
+		props: props,
 	}
+}
 
-	// Create the Lambda function
-	function := NewLiftFunction(this, jsii.String("Function"), props.FunctionProps)
-
-	// Add SNS topic environment variables
-	function.Function.AddEnvironment(jsii.String("SNS_TOPIC_ARN"), topic.TopicArn(), nil)
-	function.Function.AddEnvironment(jsii.String("SNS_TOPIC_NAME"), topic.TopicName(), nil)
-
-	// Create DLQ if enabled
-	var dlq awssqs.IQueue
-	enableDLQ := true // Default to enabled
-	if props.EnableDLQ != nil {
-		enableDLQ = *props.EnableDLQ
+// build constructs the complete SNS processor
+func (b *snsProcessorBuilder) build() *SNSProcessor {
+	b.construct = constructs.NewConstruct(b.scope, b.id)
+	
+	b.setupTopic()
+	b.createFunction()
+	b.configureEnvironment()
+	b.setupDLQ()
+	b.configureSubscription()
+	b.grantPermissions()
+	
+	return &SNSProcessor{
+		Construct: b.construct,
+		Topic:     b.topic,
+		Function:  *b.function,
+		DLQ:       b.dlq,
 	}
+}
 
-	if enableDLQ {
-		dlqProps := props.DLQProps
-		if dlqProps == nil {
-			dlqProps = &awssqs.QueueProps{
-				RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
-			}
-		}
-
-		// Ensure FIFO DLQ for FIFO topics
-		if props.EnableFifo != nil && *props.EnableFifo {
-			dlqProps.Fifo = jsii.Bool(true)
-		}
-
-		dlq = awssqs.NewQueue(this, jsii.String("DLQ"), dlqProps)
-		function.Function.AddEnvironment(jsii.String("SNS_DLQ_URL"), dlq.QueueUrl(), nil)
+// setupTopic creates or uses existing SNS topic
+func (b *snsProcessorBuilder) setupTopic() {
+	if b.props.ExistingTopic != nil {
+		b.topic = b.props.ExistingTopic
+		return
 	}
+	
+	b.topic = b.createNewTopic()
+}
 
-	// Configure SNS subscription
-	subscriptionProps := props.SubscriptionProps
-	if subscriptionProps == nil {
-		subscriptionProps = &awslambdaeventsources.SnsEventSourceProps{}
+// createNewTopic creates a new SNS topic
+func (b *snsProcessorBuilder) createNewTopic() awssns.ITopic {
+	topicProps := b.getTopicProps()
+	b.applyDisplayName(topicProps)
+	b.applyFifoConfig(topicProps)
+	
+	return awssns.NewTopic(b.construct, jsii.String("Topic"), topicProps)
+}
+
+// getTopicProps gets or creates topic properties
+func (b *snsProcessorBuilder) getTopicProps() *awssns.TopicProps {
+	if b.props.TopicProps != nil {
+		return b.props.TopicProps
 	}
+	return &awssns.TopicProps{}
+}
 
-	// Set filter policy if provided
-	if props.FilterPolicy != nil {
-		subscriptionProps.FilterPolicy = props.FilterPolicy
+// applyDisplayName sets the display name if provided
+func (b *snsProcessorBuilder) applyDisplayName(topicProps *awssns.TopicProps) {
+	if topicProps.DisplayName == nil && b.props.DisplayName != nil {
+		topicProps.DisplayName = b.props.DisplayName
 	}
+}
 
-	// Configure raw message delivery
-	// Note: RawMessageDelivery is handled separately in subscription props
-
-	// Set DLQ for subscription
-	if dlq != nil {
-		subscriptionProps.DeadLetterQueue = dlq
+// applyFifoConfig applies FIFO configuration if enabled
+func (b *snsProcessorBuilder) applyFifoConfig(topicProps *awssns.TopicProps) {
+	if b.props.EnableFifo == nil || !*b.props.EnableFifo {
+		return
 	}
-
-	// Add SNS event source to Lambda
-	function.Function.AddEventSource(awslambdaeventsources.NewSnsEventSource(topic, subscriptionProps))
-
-	// Grant SNS permission to invoke Lambda
-	topic.GrantPublish(function.Function.GrantPrincipal())
-
-	processor := &SNSProcessor{
-		Construct: this,
-		Topic:     topic,
-		Function:  *function,
-		DLQ:       dlq,
+	
+	topicProps.Fifo = jsii.Bool(true)
+	if b.props.ContentBasedDeduplication != nil {
+		topicProps.ContentBasedDeduplication = b.props.ContentBasedDeduplication
 	}
+}
 
-	return processor
+// createFunction creates the Lambda function
+func (b *snsProcessorBuilder) createFunction() {
+	b.function = NewLiftFunction(b.construct, jsii.String("Function"), b.props.FunctionProps)
+}
+
+// configureEnvironment sets up environment variables
+func (b *snsProcessorBuilder) configureEnvironment() {
+	b.function.Function.AddEnvironment(jsii.String("SNS_TOPIC_ARN"), b.topic.TopicArn(), nil)
+	b.function.Function.AddEnvironment(jsii.String("SNS_TOPIC_NAME"), b.topic.TopicName(), nil)
+}
+
+// setupDLQ creates dead letter queue if enabled
+func (b *snsProcessorBuilder) setupDLQ() {
+	if !b.isDLQEnabled() {
+		return
+	}
+	
+	dlqProps := b.getDLQProps()
+	b.ensureFifoDLQ(dlqProps)
+	
+	b.dlq = awssqs.NewQueue(b.construct, jsii.String("DLQ"), dlqProps)
+	b.function.Function.AddEnvironment(jsii.String("SNS_DLQ_URL"), b.dlq.QueueUrl(), nil)
+}
+
+// isDLQEnabled checks if DLQ should be created
+func (b *snsProcessorBuilder) isDLQEnabled() bool {
+	if b.props.EnableDLQ == nil {
+		return true // Default to enabled
+	}
+	return *b.props.EnableDLQ
+}
+
+// getDLQProps gets or creates DLQ properties
+func (b *snsProcessorBuilder) getDLQProps() *awssqs.QueueProps {
+	if b.props.DLQProps != nil {
+		return b.props.DLQProps
+	}
+	return &awssqs.QueueProps{
+		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
+	}
+}
+
+// ensureFifoDLQ ensures DLQ is FIFO for FIFO topics
+func (b *snsProcessorBuilder) ensureFifoDLQ(dlqProps *awssqs.QueueProps) {
+	if b.props.EnableFifo != nil && *b.props.EnableFifo {
+		dlqProps.Fifo = jsii.Bool(true)
+	}
+}
+
+// configureSubscription sets up SNS subscription
+func (b *snsProcessorBuilder) configureSubscription() {
+	b.subscription = b.getSubscriptionProps()
+	b.applyFilterPolicy()
+	b.applyDLQToSubscription()
+	
+	eventSource := awslambdaeventsources.NewSnsEventSource(b.topic, b.subscription)
+	b.function.Function.AddEventSource(eventSource)
+}
+
+// getSubscriptionProps gets or creates subscription properties
+func (b *snsProcessorBuilder) getSubscriptionProps() *awslambdaeventsources.SnsEventSourceProps {
+	if b.props.SubscriptionProps != nil {
+		return b.props.SubscriptionProps
+	}
+	return &awslambdaeventsources.SnsEventSourceProps{}
+}
+
+// applyFilterPolicy sets filter policy if provided
+func (b *snsProcessorBuilder) applyFilterPolicy() {
+	if b.props.FilterPolicy != nil {
+		b.subscription.FilterPolicy = b.props.FilterPolicy
+	}
+}
+
+// applyDLQToSubscription adds DLQ to subscription if available
+func (b *snsProcessorBuilder) applyDLQToSubscription() {
+	if b.dlq != nil {
+		b.subscription.DeadLetterQueue = b.dlq
+	}
+}
+
+// grantPermissions grants necessary permissions
+func (b *snsProcessorBuilder) grantPermissions() {
+	b.topic.GrantPublish(b.function.Function.GrantPrincipal())
 }
 
 // GrantPublish grants SNS publish permissions to a principal

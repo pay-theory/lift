@@ -586,8 +586,9 @@ func (e *EventOrchestrator) GrantEventRoutingAccess(grantee awslambda.IFunction)
 
 // AddEventSource adds a new event source to the orchestrator
 func (e *EventOrchestrator) AddEventSource(_ EventSourceConfig) {
-	// TODO: Implement dynamic event source addition
+	// Dynamic event source addition is not implemented in this version
 	// This would create a new EventBridgeHandler and add it to the orchestrator
+	// Implementation would need to handle CDK construct creation at runtime
 }
 
 // GetEventHandler returns the handler for a specific event source

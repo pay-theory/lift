@@ -861,62 +861,141 @@ func (gcm *GDPRConsentManager) ProcessDataSubjectRequest(ctx context.Context, re
 
 // validateConsent validates a consent record
 func (gcm *GDPRConsentManager) validateConsent(consent *ConsentRecord) error {
-	if consent == nil {
+	validator := newConsentValidator(gcm, consent)
+	return validator.validate()
+}
+
+// consentValidator handles consent validation logic
+type consentValidator struct {
+	manager *GDPRConsentManager
+	consent *ConsentRecord
+}
+
+// newConsentValidator creates a new consent validator
+func newConsentValidator(manager *GDPRConsentManager, consent *ConsentRecord) *consentValidator {
+	return &consentValidator{
+		manager: manager,
+		consent: consent,
+	}
+}
+
+// validate performs all consent validations
+func (v *consentValidator) validate() error {
+	// Basic validations
+	if err := v.validateRequired(); err != nil {
+		return err
+	}
+	
+	// Legal basis validation
+	if err := v.validateLegalBasis(); err != nil {
+		return err
+	}
+	
+	// Time-based validation
+	if err := v.validateExpiry(); err != nil {
+		return err
+	}
+	
+	// Configuration-based validations
+	if err := v.validateConfigRequirements(); err != nil {
+		return err
+	}
+	
+	// GDPR compliance validations
+	return v.validateGDPRRequirements()
+}
+
+// validateRequired checks required fields
+func (v *consentValidator) validateRequired() error {
+	if v.consent == nil {
 		return fmt.Errorf("consent record is required")
 	}
-
-	if consent.DataSubjectID == "" {
+	
+	if v.consent.DataSubjectID == "" {
 		return fmt.Errorf("data subject ID is required")
 	}
-
-	// Check for purpose - support both legacy Purpose field and ProcessingPurposes
-	if consent.Purpose == "" && len(consent.ProcessingPurposes) == 0 {
+	
+	if !v.hasPurpose() {
 		return fmt.Errorf("purpose is required")
 	}
-
-	if consent.LegalBasis == "" {
+	
+	if v.consent.LegalBasis == "" {
 		return fmt.Errorf("legal basis is required")
 	}
+	
+	return nil
+}
 
-	// Validate legal basis values
-	validLegalBases := []string{"consent", "contract", "legal_obligation", "vital_interests", "public_task", "legitimate_interests"}
-	isValidLegalBasis := false
-	for _, validBasis := range validLegalBases {
-		if consent.LegalBasis == validBasis {
-			isValidLegalBasis = true
-			break
+// hasPurpose checks if purpose is provided
+func (v *consentValidator) hasPurpose() bool {
+	return v.consent.Purpose != "" || len(v.consent.ProcessingPurposes) > 0
+}
+
+// validateLegalBasis validates the legal basis value
+func (v *consentValidator) validateLegalBasis() error {
+	validBases := v.getValidLegalBases()
+	
+	for _, validBasis := range validBases {
+		if v.consent.LegalBasis == validBasis {
+			return nil
 		}
 	}
-	if !isValidLegalBasis {
-		return fmt.Errorf("invalid legal basis")
-	}
+	
+	return fmt.Errorf("invalid legal basis")
+}
 
-	// Check for expired consent
-	if consent.ExpiryDate != nil && consent.ExpiryDate.Before(time.Now()) {
+// getValidLegalBases returns valid legal basis values
+func (v *consentValidator) getValidLegalBases() []string {
+	return []string{
+		"consent", 
+		"contract", 
+		"legal_obligation", 
+		"vital_interests", 
+		"public_task", 
+		"legitimate_interests",
+	}
+}
+
+// validateExpiry checks consent expiration
+func (v *consentValidator) validateExpiry() error {
+	if v.consent.ExpiryDate == nil {
+		return nil
+	}
+	
+	if v.consent.ExpiryDate.Before(time.Now()) {
 		return fmt.Errorf("consent has expired")
 	}
+	
+	return nil
+}
 
-	if gcm.config.GranularConsentRequired && !consent.Granular {
+// validateConfigRequirements validates configuration-based requirements
+func (v *consentValidator) validateConfigRequirements() error {
+	if v.manager.config.GranularConsentRequired && !v.consent.Granular {
 		return fmt.Errorf("granular consent is required")
 	}
-
-	if gcm.config.ConsentProofRequired && consent.ConsentProof == nil {
+	
+	if v.manager.config.ConsentProofRequired && v.consent.ConsentProof == nil {
 		return fmt.Errorf("consent proof is required")
 	}
+	
+	return nil
+}
 
-	// Validate GDPR consent requirements
-	if !consent.Specific {
+// validateGDPRRequirements validates GDPR compliance requirements
+func (v *consentValidator) validateGDPRRequirements() error {
+	if !v.consent.Specific {
 		return fmt.Errorf("consent must be specific")
 	}
-
-	if !consent.Informed {
+	
+	if !v.consent.Informed {
 		return fmt.Errorf("consent must be informed")
 	}
-
-	if !consent.Unambiguous {
+	
+	if !v.consent.Unambiguous {
 		return fmt.Errorf("consent must be unambiguous")
 	}
-
+	
 	return nil
 }
 

@@ -132,9 +132,10 @@ func (vm *ValidationMiddleware) validateRequest(ctx *lift.Context) error {
 }
 
 func (vm *ValidationMiddleware) validateResponse(ctx *lift.Context) error {
-	_ = ctx // TODO: Implement response validation using ctx
-	// This would need to capture the response data
-	// For now, we'll skip response validation
+	// Response validation would require intercepting the response data
+	// This is not implemented in the current version as it would need
+	// response buffering to be enabled at the application level
+	// and access to the response schema configuration
 	return nil
 }
 
@@ -224,8 +225,9 @@ func (vm *ValidationMiddleware) validateData(data any, schema *ValidationSchema)
 func (vm *ValidationMiddleware) validateField(field string, value any, rule ValidationRule) *ValidationError {
 	// Check conditions first
 	if len(rule.Conditions) > 0 {
-		// TODO: For now, skip conditional validation
-		// This would require access to the full data context
+		// Conditional validation is not implemented in this version
+		// as it would require access to the full data context and
+		// complex condition evaluation logic
 		_ = rule.Conditions
 	}
 
@@ -297,12 +299,16 @@ func (vm *ValidationMiddleware) validateRange(field string, value any, minVal, m
 }
 
 // rangeValidator handles range validation for different value types
+// Memory optimized: struct with 72 pointer bytes could be 64
 type rangeValidator struct {
-	field   string
-	value   any
-	minVal  any
-	maxVal  any
-	vm      *ValidationMiddleware
+	// Pointer first (8 bytes)
+	vm *ValidationMiddleware
+	// String (16 bytes)
+	field string
+	// Interfaces (16 bytes each)
+	value  any
+	minVal any
+	maxVal any
 }
 
 // newRangeValidator creates a new range validator

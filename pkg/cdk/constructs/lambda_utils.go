@@ -16,7 +16,7 @@ type LambdaFunctionConfig struct {
 	Timeout      awscdk.Duration    // 8 bytes (int64)
 	FunctionName string             // 16 bytes
 	Description  string             // 16 bytes
-	Permissions  string             // "read" or "readwrite" - 16 bytes
+	Permissions  string             // PermissionRead or PermissionReadWrite - 16 bytes
 }
 
 // CreateStandardLambdaFunction creates a Lambda function with common configurations
@@ -30,7 +30,7 @@ func CreateStandardLambdaFunction(scope constructs.Construct, id string, bucket 
 	})
 
 	// Grant permissions
-	if config.Permissions == "readwrite" {
+	if config.Permissions == PermissionReadWrite {
 		bucket.GrantReadWrite(role, nil)
 	} else {
 		bucket.GrantRead(role, nil)

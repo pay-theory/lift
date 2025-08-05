@@ -2,8 +2,6 @@ package constructs
 
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -45,118 +43,115 @@ func (l *LiftFunction) GetResourceName() *string {
 
 // NewLiftFunction creates a new Lift Lambda function with optimized defaults
 func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunctionProps) *LiftFunction {
-	this := constructs.NewConstruct(scope, id)
+	builder := newLiftFunctionBuilder(scope, id, props)
+	return builder.build()
+}
 
-	// Set Lift-optimized defaults
-	if props.Runtime == nil {
-		props.Runtime = awslambda.Runtime_PROVIDED_AL2023()
-	}
-	if props.Architecture == nil {
-		props.Architecture = awslambda.Architecture_ARM_64()
-	}
-	if props.MemorySize == nil {
-		props.MemorySize = jsii.Number(512)
-	}
-	if props.Timeout == nil {
-		props.Timeout = awscdk.Duration_Seconds(jsii.Number(30))
-	}
-	if props.EnableTracing != nil && *props.EnableTracing {
-		props.Tracing = awslambda.Tracing_ACTIVE
-	}
+// liftFunctionBuilder builds optimized Lambda functions with Lift defaults
+type liftFunctionBuilder struct {
+	scope     constructs.Construct
+	id        *string
+	props     *LiftFunctionProps
+	construct constructs.Construct
+}
 
-	// Set reserved concurrent executions if specified
-	if props.ReservedConcurrentExecutions != nil {
-		props.FunctionProps.ReservedConcurrentExecutions = props.ReservedConcurrentExecutions
+// newLiftFunctionBuilder creates a new Lift function builder
+func newLiftFunctionBuilder(scope constructs.Construct, id *string, props *LiftFunctionProps) *liftFunctionBuilder {
+	return &liftFunctionBuilder{
+		scope: scope,
+		id:    id,
+		props: props,
 	}
+}
 
-	// Add Lift-specific environment variables
-	if props.Environment == nil {
-		props.Environment = &map[string]*string{}
+// build constructs the complete Lift function
+func (b *liftFunctionBuilder) build() *LiftFunction {
+	b.construct = constructs.NewConstruct(b.scope, b.id)
+	
+	b.setLiftDefaults()
+	b.configureTracing()
+	b.configureConcurrency()
+	b.configureEnvironment()
+	b.configureDynamORM()
+	
+	function := awslambda.NewFunction(b.construct, jsii.String("Resource"), &b.props.FunctionProps)
+	
+	return &LiftFunction{
+		Construct: b.construct,
+		Function:  function,
 	}
-	env := *props.Environment
+}
+
+// setLiftDefaults applies Lift-optimized defaults
+func (b *liftFunctionBuilder) setLiftDefaults() {
+	if b.props.Runtime == nil {
+		b.props.Runtime = awslambda.Runtime_PROVIDED_AL2023()
+	}
+	if b.props.Architecture == nil {
+		b.props.Architecture = awslambda.Architecture_ARM_64()
+	}
+	if b.props.MemorySize == nil {
+		b.props.MemorySize = jsii.Number(512)
+	}
+	if b.props.Timeout == nil {
+		b.props.Timeout = awscdk.Duration_Seconds(jsii.Number(30))
+	}
+}
+
+// configureTracing configures AWS X-Ray tracing
+func (b *liftFunctionBuilder) configureTracing() {
+	if b.props.EnableTracing != nil && *b.props.EnableTracing {
+		b.props.Tracing = awslambda.Tracing_ACTIVE
+	}
+}
+
+// configureConcurrency configures concurrent execution limits
+func (b *liftFunctionBuilder) configureConcurrency() {
+	if b.props.ReservedConcurrentExecutions != nil {
+		b.props.FunctionProps.ReservedConcurrentExecutions = b.props.ReservedConcurrentExecutions
+	}
+}
+
+// configureEnvironment sets up Lift-specific environment variables
+func (b *liftFunctionBuilder) configureEnvironment() {
+	if b.props.Environment == nil {
+		b.props.Environment = &map[string]*string{}
+	}
+	
+	env := *b.props.Environment
 	env["LIFT_VERSION"] = jsii.String("1.0.0")
-	if props.EnableMultiTenant != nil && *props.EnableMultiTenant {
+	
+	if b.props.EnableMultiTenant != nil && *b.props.EnableMultiTenant {
 		env["LIFT_MULTI_TENANT"] = jsii.String(trueStr)
 	}
-	if props.EnableMetrics != nil && *props.EnableMetrics {
+	if b.props.EnableMetrics != nil && *b.props.EnableMetrics {
 		env["LIFT_METRICS_ENABLED"] = jsii.String(trueStr)
 	}
+}
 
-	// Configure DynamORM environment variables if enabled
-	if props.EnableDynamORM != nil && *props.EnableDynamORM {
-		env["DYNAMORM_REGION"] = awscdk.Stack_Of(this).Region()
+// configureDynamORM configures DynamORM environment variables
+func (b *liftFunctionBuilder) configureDynamORM() {
+	if b.props.EnableDynamORM == nil || !*b.props.EnableDynamORM {
+		return
+	}
+	
+	env := *b.props.Environment
+	env["DYNAMORM_REGION"] = awscdk.Stack_Of(b.construct).Region()
 
-		if props.DynamORMTableName != nil {
-			env["DYNAMODB_TABLE_NAME"] = props.DynamORMTableName
-		}
-
-		// Set debug mode
-		debugMode := "false"
-		if props.DynamORMDebug != nil && *props.DynamORMDebug {
-			debugMode = trueStr
-		}
-		env["DYNAMORM_DEBUG"] = jsii.String(debugMode)
-
-		// Set default retry configuration
-		env["DYNAMORM_RETRY_MAX_ATTEMPTS"] = jsii.String("3")
-		env["DYNAMORM_RETRY_BASE_DELAY"] = jsii.String("100")
+	if b.props.DynamORMTableName != nil {
+		env["DYNAMODB_TABLE_NAME"] = b.props.DynamORMTableName
 	}
 
-	props.Environment = &env
-
-	// Lambda automatically creates and manages its own LogGroup
-	// We don't set any log-related properties to avoid conflicts
-
-	// Create the Lambda function
-	fn := awslambda.NewFunction(this, jsii.String("Function"), &props.FunctionProps)
-
-	return &LiftFunction{
-		Construct: this,
-		Function:  fn,
-	}
-}
-
-// GetFunction returns the underlying Lambda function
-func (f *LiftFunction) GetFunction() awslambda.Function {
-	return f.Function
-}
-
-
-// AddEnvironment adds an environment variable to the function
-func (f *LiftFunction) AddEnvironment(key *string, value *string) {
-	f.Function.AddEnvironment(key, value, nil)
-}
-
-// GrantInvoke grants invoke permissions to the given principal
-func (f *LiftFunction) GrantInvoke(grantee awsiam.IGrantable) awsiam.Grant {
-	return f.Function.GrantInvoke(grantee)
-}
-
-// AddEventSource adds an event source to the function
-func (f *LiftFunction) AddEventSource(source awslambda.IEventSource) {
-	f.Function.AddEventSource(source)
-}
-
-// AddToRolePolicy adds a policy statement to the function's role
-func (f *LiftFunction) AddToRolePolicy(statement awsiam.PolicyStatement) {
-	f.Function.AddToRolePolicy(statement)
-}
-
-// Metric returns a CloudWatch metric for this function
-func (f *LiftFunction) Metric(metricName *string, props *awscloudwatch.MetricOptions) awscloudwatch.Metric {
-	return f.Function.Metric(metricName, props)
-}
-
-// ConfigureDynamORM adds DynamORM environment variables to an existing function
-func (f *LiftFunction) ConfigureDynamORM(tableName *string, debug *bool) {
-	f.AddEnvironment(jsii.String("DYNAMORM_REGION"), awscdk.Stack_Of(f).Region())
-	f.AddEnvironment(jsii.String("DYNAMODB_TABLE_NAME"), tableName)
-
+	// Set debug mode
 	debugMode := "false"
-	if debug != nil && *debug {
+	if b.props.DynamORMDebug != nil && *b.props.DynamORMDebug {
 		debugMode = trueStr
 	}
-	f.AddEnvironment(jsii.String("DYNAMORM_DEBUG"), jsii.String(debugMode))
-	f.AddEnvironment(jsii.String("DYNAMORM_RETRY_MAX_ATTEMPTS"), jsii.String("3"))
-	f.AddEnvironment(jsii.String("DYNAMORM_RETRY_BASE_DELAY"), jsii.String("100"))
+	env["DYNAMORM_DEBUG"] = jsii.String(debugMode)
+
+	// Set default retry configuration
+	env["DYNAMORM_RETRY_MAX_ATTEMPTS"] = jsii.String("3")
+	env["DYNAMORM_RETRY_BASE_DELAY"] = jsii.String("100")
+	
+	b.props.Environment = &env
 }

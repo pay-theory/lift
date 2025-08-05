@@ -206,75 +206,125 @@ func (l *CloudWatchLogger) WithSpanID(spanID string) observability.StructuredLog
 
 // log is the internal logging method
 func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]any) {
-	// Check if logger is closed
-	if atomic.LoadInt32(l.shared.closed) == 1 {
+	builder := newLogEntryBuilder(l, level, message, fieldMaps)
+	builder.build()
+}
+
+// logEntryBuilder builds and processes log entries
+type logEntryBuilder struct {
+	logger     *CloudWatchLogger
+	level      string
+	message    string
+	fieldMaps  []map[string]any
+	entry      *observability.LogEntry
+}
+
+// newLogEntryBuilder creates a new log entry builder
+func newLogEntryBuilder(logger *CloudWatchLogger, level, message string, fieldMaps []map[string]any) *logEntryBuilder {
+	return &logEntryBuilder{
+		logger:    logger,
+		level:     level,
+		message:   message,
+		fieldMaps: fieldMaps,
+	}
+}
+
+// build constructs and processes the log entry
+func (b *logEntryBuilder) build() {
+	if !b.shouldLog() {
 		return
 	}
+	
+	b.createEntry()
+	b.addContextFields()
+	b.mergeFieldMaps()
+	b.submitEntry()
+}
 
-	entry := &observability.LogEntry{
+// shouldLog checks if logging should proceed
+func (b *logEntryBuilder) shouldLog() bool {
+	return atomic.LoadInt32(b.logger.shared.closed) == 0
+}
+
+// createEntry creates the base log entry
+func (b *logEntryBuilder) createEntry() {
+	b.entry = &observability.LogEntry{
 		Timestamp: time.Now().UTC(),
-		Level:     level,
-		Message:   message,
+		Level:     b.level,
+		Message:   b.message,
 		Fields:    make(map[string]any),
 	}
+}
 
-	// Add context fields
-	for k, v := range l.contextFields {
-		switch k {
-		case "request_id":
-			if s, ok := v.(string); ok {
-				entry.RequestID = s
-			}
-		case "tenant_id":
-			if s, ok := v.(string); ok {
-				entry.TenantID = s
-			}
-		case "user_id":
-			if s, ok := v.(string); ok {
-				entry.UserID = s
-			}
-		case "trace_id":
-			if s, ok := v.(string); ok {
-				entry.TraceID = s
-			}
-		case "span_id":
-			if s, ok := v.(string); ok {
-				entry.SpanID = s
-			}
-		default:
-			entry.Fields[k] = l.sanitizeFieldValue(k, v)
-		}
+// addContextFields adds context fields to the entry
+func (b *logEntryBuilder) addContextFields() {
+	for k, v := range b.logger.contextFields {
+		b.processContextField(k, v)
 	}
+}
 
-	// Merge all field maps with sanitization
-	for _, fieldMap := range fieldMaps {
-		for k, v := range fieldMap {
-			entry.Fields[k] = l.sanitizeFieldValue(k, v)
-		}
-	}
-
-	// Non-blocking send to buffer
-	select {
-	case l.shared.buffer <- entry:
-		atomic.AddInt64(&l.shared.stats.entriesLogged, 1)
-
-		// Send SNS notification for errors if configured
-		if level == "ERROR" && l.snsNotifier != nil {
-			// Async SNS notification to avoid blocking the logger
-			go func(e *observability.LogEntry) {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-
-				if err := l.snsNotifier.NotifyError(ctx, e); err != nil {
-					// Log SNS error to stats but don't block
-					atomic.AddInt64(&l.shared.stats.errorCount, 1)
-					l.shared.stats.lastError = fmt.Sprintf("SNS notification failed: %v", err)
-				}
-			}(entry)
-		}
+// processContextField handles a single context field
+func (b *logEntryBuilder) processContextField(key string, value any) {
+	switch key {
+	case "request_id":
+		b.setStringField(&b.entry.RequestID, value)
+	case "tenant_id":
+		b.setStringField(&b.entry.TenantID, value)
+	case "user_id":
+		b.setStringField(&b.entry.UserID, value)
+	case "trace_id":
+		b.setStringField(&b.entry.TraceID, value)
+	case "span_id":
+		b.setStringField(&b.entry.SpanID, value)
 	default:
-		// Buffer full, drop log entry
-		atomic.AddInt64(&l.shared.stats.entriesDropped, 1)
+		b.entry.Fields[key] = b.logger.sanitizeFieldValue(key, value)
+	}
+}
+
+// setStringField sets a string field if the value is a string
+func (b *logEntryBuilder) setStringField(field *string, value any) {
+	if s, ok := value.(string); ok {
+		*field = s
+	}
+}
+
+// mergeFieldMaps merges all provided field maps
+func (b *logEntryBuilder) mergeFieldMaps() {
+	for _, fieldMap := range b.fieldMaps {
+		for k, v := range fieldMap {
+			b.entry.Fields[k] = b.logger.sanitizeFieldValue(k, v)
+		}
+	}
+}
+
+// submitEntry sends the entry to the buffer and handles notifications
+func (b *logEntryBuilder) submitEntry() {
+	select {
+	case b.logger.shared.buffer <- b.entry:
+		atomic.AddInt64(&b.logger.shared.stats.entriesLogged, 1)
+		b.handleErrorNotification()
+	default:
+		atomic.AddInt64(&b.logger.shared.stats.entriesDropped, 1)
+	}
+}
+
+// handleErrorNotification sends SNS notification for errors if configured
+func (b *logEntryBuilder) handleErrorNotification() {
+	if b.level != "ERROR" || b.logger.snsNotifier == nil {
+		return
+	}
+	
+	go b.sendAsyncNotification(b.entry)
+}
+
+// sendAsyncNotification sends the notification asynchronously
+func (b *logEntryBuilder) sendAsyncNotification(e *observability.LogEntry) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	
+	if err := b.logger.snsNotifier.NotifyError(ctx, e); err != nil {
+		atomic.AddInt64(&b.logger.shared.stats.errorCount, 1)
+		b.logger.shared.stats.lastError = fmt.Sprintf("SNS notification failed: %v", err)
 	}
 }
 

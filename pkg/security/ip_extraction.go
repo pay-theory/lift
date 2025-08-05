@@ -103,11 +103,9 @@ func (h *headerStrategy) extractIP(e *ipExtractor) string {
 				return stripPort(sourceIP)
 			}
 		}
-	} else {
+	} else if isValidIP(value) {
 		// Single IP value
-		if isValidIP(value) {
-			return stripPort(value)
-		}
+		return stripPort(value)
 	}
 	
 	return ""

@@ -261,14 +261,73 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 		return nil, fmt.Errorf("data subject ID is required")
 	}
 
-	// Start audit trail
-	auditID := g.auditLogger.StartOperation(ctx, "GDPR_EXPORT", dataSubjectID)
-	defer g.auditLogger.CompleteOperation(ctx, auditID)
+	builder := newDataExportBuilder(g, ctx, dataSubjectID, requestID)
+	return builder.build()
+}
 
-	exportRecord := &DataExportRecord{
+// dataExportBuilder orchestrates the data export process
+type dataExportBuilder struct {
+	service       *GDPRCompleteService
+	ctx           context.Context
+	dataSubjectID string
+	requestID     string
+	auditID       string
+	exportRecord  *DataExportRecord
+	exportData    map[string]interface{}
+}
+
+// newDataExportBuilder creates a new data export builder
+func newDataExportBuilder(service *GDPRCompleteService, ctx context.Context, dataSubjectID, requestID string) *dataExportBuilder {
+	return &dataExportBuilder{
+		service:       service,
+		ctx:           ctx,
+		dataSubjectID: dataSubjectID,
+		requestID:     requestID,
+		exportData:    make(map[string]interface{}),
+	}
+}
+
+// build executes the complete export process
+func (b *dataExportBuilder) build() (*DataExportRecord, error) {
+	// Start audit trail
+	b.auditID = b.service.auditLogger.StartOperation(b.ctx, "GDPR_EXPORT", b.dataSubjectID)
+	defer b.service.auditLogger.CompleteOperation(b.ctx, b.auditID)
+
+	// Initialize export record
+	if err := b.initializeExportRecord(); err != nil {
+		return nil, err
+	}
+
+	// Collect user data
+	if err := b.collectUserData(); err != nil {
+		return nil, err
+	}
+
+	// Process and prepare data
+	finalData, err := b.processExportData()
+	if err != nil {
+		return nil, err
+	}
+
+	// Upload to storage
+	if err := b.uploadExportData(finalData); err != nil {
+		return nil, err
+	}
+
+	// Finalize and notify
+	if err := b.finalizeExport(finalData); err != nil {
+		return nil, err
+	}
+
+	return b.exportRecord, nil
+}
+
+// initializeExportRecord creates and stores the initial export record
+func (b *dataExportBuilder) initializeExportRecord() error {
+	b.exportRecord = &DataExportRecord{
 		ExportID:      uuid.New().String(),
-		DataSubjectID: dataSubjectID,
-		RequestID:     requestID,
+		DataSubjectID: b.dataSubjectID,
+		RequestID:     b.requestID,
 		RequestDate:   time.Now(),
 		Status:        "processing",
 		Format:        "json",
@@ -276,129 +335,169 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 		DataSources:   []string{},
 		CreatedAt:     time.Now(),
 		Metadata: map[string]interface{}{
-			"audit_id":    auditID,
-			"environment": g.config.Environment,
+			"audit_id":    b.auditID,
+			"environment": b.service.config.Environment,
 			"service":     "gdpr-complete",
 		},
 	}
 
-	// Store initial export record
-	if err := g.db.Put(ctx, exportRecord); err != nil {
-		return nil, fmt.Errorf("failed to create export record: %w", err)
+	if err := b.service.db.Put(b.ctx, b.exportRecord); err != nil {
+		return fmt.Errorf("failed to create export record: %w", err)
 	}
 
-	// Collect data from all sources
-	exportData := make(map[string]interface{})
+	return nil
+}
 
-	// Get user data from all tables
-	tables := g.getUserDataTables()
+// collectUserData gathers data from all configured sources
+func (b *dataExportBuilder) collectUserData() error {
+	tables := b.service.getUserDataTables()
+	
 	for _, table := range tables {
-		data, err := g.collectFromTable(ctx, table, dataSubjectID)
-		if err != nil {
-			g.auditLogger.LogError(ctx, auditID, "Failed to collect from table", map[string]interface{}{
-				"table": table,
-				"error": err.Error(),
-			})
-			exportRecord.Status = statusFailed
-			if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
-				// Log database error but continue with the original error
-				fmt.Printf("Warning: failed to update export record status: %v\n", putErr)
-			}
-			return nil, fmt.Errorf("failed to collect from table %s: %w", table, err)
-		}
-
-		if len(data) > 0 {
-			exportData[table] = data
-			exportRecord.DataSources = append(exportRecord.DataSources, table)
+		if err := b.collectFromTable(table); err != nil {
+			return err
 		}
 	}
 
-	// Add metadata
-	exportData["export_metadata"] = map[string]interface{}{
-		"export_id":    exportRecord.ExportID,
-		"export_date":  exportRecord.RequestDate,
-		"data_subject": dataSubjectID,
-		"format":       exportRecord.Format,
+	b.addExportMetadata()
+	return nil
+}
+
+// collectFromTable collects data from a specific table
+func (b *dataExportBuilder) collectFromTable(table string) error {
+	data, err := b.service.collectFromTable(b.ctx, table, b.dataSubjectID)
+	if err != nil {
+		b.service.auditLogger.LogError(b.ctx, b.auditID, "Failed to collect from table", map[string]interface{}{
+			"table": table,
+			"error": err.Error(),
+		})
+		b.updateExportStatus(statusFailed)
+		return fmt.Errorf("failed to collect from table %s: %w", table, err)
+	}
+
+	if len(data) > 0 {
+		b.exportData[table] = data
+		b.exportRecord.DataSources = append(b.exportRecord.DataSources, table)
+	}
+
+	return nil
+}
+
+// addExportMetadata adds metadata to the export
+func (b *dataExportBuilder) addExportMetadata() {
+	b.exportData["export_metadata"] = map[string]interface{}{
+		"export_id":    b.exportRecord.ExportID,
+		"export_date":  b.exportRecord.RequestDate,
+		"data_subject": b.dataSubjectID,
+		"format":       b.exportRecord.Format,
 		"gdpr_version": "2.0",
 		"service":      "lift-gdpr-complete",
 	}
+}
 
+// processExportData marshals and optionally encrypts the data
+func (b *dataExportBuilder) processExportData() ([]byte, error) {
 	// Convert to JSON
-	jsonData, err := json.MarshalIndent(exportData, "", "  ")
+	jsonData, err := json.MarshalIndent(b.exportData, "", "  ")
 	if err != nil {
-		exportRecord.Status = statusFailed
-		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
-			log.Printf("Failed to update export record: %v", putErr)
-		}
+		b.updateExportStatus(statusFailed)
 		return nil, fmt.Errorf("failed to marshal export data: %w", err)
 	}
 
 	// Check size limits
-	if len(jsonData) > g.config.MaxExportSizeMB*1024*1024 {
-		exportRecord.Status = statusFailed
-		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
-			log.Printf("Failed to update export record: %v", putErr)
-		}
-		return nil, fmt.Errorf("export data exceeds maximum size limit")
+	if err := b.validateDataSize(jsonData); err != nil {
+		return nil, err
 	}
 
-	// Encrypt the export if enabled
-	var finalData = jsonData
-	if g.config.EncryptionEnabled {
-		encrypted, key, err := g.encryptData(jsonData)
-		if err != nil {
-			exportRecord.Status = statusFailed
-			if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
-				// Log error but continue with original error
-				log.Printf("Failed to update export record: %v", putErr)
-			}
-			return nil, fmt.Errorf("failed to encrypt export data: %w", err)
-		}
-		finalData = encrypted
-		exportRecord.EncryptionKey = base64.StdEncoding.EncodeToString(key)
+	// Encrypt if enabled
+	if b.service.config.EncryptionEnabled {
+		return b.encryptExportData(jsonData)
 	}
 
-	// Upload to S3
+	return jsonData, nil
+}
+
+// validateDataSize checks if the export data is within size limits
+func (b *dataExportBuilder) validateDataSize(data []byte) error {
+	if len(data) > b.service.config.MaxExportSizeMB*1024*1024 {
+		b.updateExportStatus(statusFailed)
+		return fmt.Errorf("export data exceeds maximum size limit")
+	}
+	return nil
+}
+
+// encryptExportData encrypts the export data
+func (b *dataExportBuilder) encryptExportData(data []byte) ([]byte, error) {
+	encrypted, key, err := b.service.encryptData(data)
+	if err != nil {
+		b.updateExportStatus(statusFailed)
+		return nil, fmt.Errorf("failed to encrypt export data: %w", err)
+	}
+	
+	b.exportRecord.EncryptionKey = base64.StdEncoding.EncodeToString(key)
+	return encrypted, nil
+}
+
+// uploadExportData uploads the processed data to S3
+func (b *dataExportBuilder) uploadExportData(data []byte) error {
+	exportPath := b.buildExportPath()
+	
+	if err := b.service.uploadToS3(b.ctx, b.service.config.DataExportBucket, exportPath, data); err != nil {
+		b.updateExportStatus(statusFailed)
+		return fmt.Errorf("failed to upload export to S3: %w", err)
+	}
+
+	b.exportRecord.ExportPath = exportPath
+	b.exportRecord.FileSizeBytes = int64(len(data))
+	
+	return nil
+}
+
+// buildExportPath constructs the S3 path for the export
+func (b *dataExportBuilder) buildExportPath() string {
 	exportPath := fmt.Sprintf("gdpr-exports/%s/%s/%s.json",
-		g.config.Environment,
-		dataSubjectID,
-		exportRecord.ExportID)
+		b.service.config.Environment,
+		b.dataSubjectID,
+		b.exportRecord.ExportID)
 
-	if g.config.EncryptionEnabled {
+	if b.service.config.EncryptionEnabled {
 		exportPath += ".enc"
 	}
 
-	if err := g.uploadToS3(ctx, g.config.DataExportBucket, exportPath, finalData); err != nil {
-		exportRecord.Status = statusFailed
-		if putErr := g.db.Put(ctx, exportRecord); putErr != nil {
-			log.Printf("Failed to update export record: %v", putErr)
-		}
-		return nil, fmt.Errorf("failed to upload export to S3: %w", err)
-	}
+	return exportPath
+}
 
+// finalizeExport completes the export process
+func (b *dataExportBuilder) finalizeExport(data []byte) error {
 	// Update export record
 	now := time.Now()
-	exportRecord.Status = "completed"
-	exportRecord.ExportPath = exportPath
-	exportRecord.FileSizeBytes = int64(len(finalData))
-	exportRecord.CompletedAt = &now
+	b.exportRecord.Status = "completed"
+	b.exportRecord.CompletedAt = &now
 
-	if err := g.db.Put(ctx, exportRecord); err != nil {
-		return nil, fmt.Errorf("failed to update export record: %w", err)
+	if err := b.service.db.Put(b.ctx, b.exportRecord); err != nil {
+		return fmt.Errorf("failed to update export record: %w", err)
 	}
 
 	// Send notification
-	if err := g.sendExportNotification(ctx, exportRecord); err != nil {
+	if err := b.service.sendExportNotification(b.ctx, b.exportRecord); err != nil {
 		log.Printf("Warning: Failed to send export notification: %v", err)
 	}
 
-	g.auditLogger.LogSuccess(ctx, auditID, "Data export completed", map[string]interface{}{
-		"export_id":    exportRecord.ExportID,
-		"file_size":    exportRecord.FileSizeBytes,
-		"data_sources": len(exportRecord.DataSources),
+	// Log success
+	b.service.auditLogger.LogSuccess(b.ctx, b.auditID, "Data export completed", map[string]interface{}{
+		"export_id":    b.exportRecord.ExportID,
+		"file_size":    b.exportRecord.FileSizeBytes,
+		"data_sources": len(b.exportRecord.DataSources),
 	})
 
-	return exportRecord, nil
+	return nil
+}
+
+// updateExportStatus updates the export record status with error handling
+func (b *dataExportBuilder) updateExportStatus(status string) {
+	b.exportRecord.Status = status
+	if err := b.service.db.Put(b.ctx, b.exportRecord); err != nil {
+		log.Printf("Failed to update export record: %v", err)
+	}
 }
 
 // ProcessConsentUpdate implements consent management with audit trail
@@ -611,7 +710,8 @@ func (g *GDPRCompleteService) collectFromTable(ctx context.Context, tableName st
 func (g *GDPRCompleteService) queryUserData(_ context.Context, _ string, _ string) ([]map[string]interface{}, error) {
 	// This is a simplified implementation - in practice, you'd need to know
 	// the specific query patterns for each table
-	// TODO: Implement using DynamORM Query methods
+	// Production implementation should use DynamORM Query methods
+	// with proper GSI configuration for user data queries
 	// The DynamORM wrapper doesn't expose direct DynamoDB client access
 	// This needs to be refactored to use DynamORM's query builder
 
@@ -648,7 +748,7 @@ func (g *GDPRCompleteService) deleteItem(_ context.Context, tableName string, it
 		key["SK"] = &types.AttributeValueMemberS{Value: skStr}
 	}
 
-	// TODO: Implement using DynamORM Delete method
+	// Production implementation should use DynamORM Delete method
 	// The DynamORM wrapper doesn't expose direct DynamoDB client access
 	// This needs to be refactored to use DynamORM's delete method
 	_ = tableName // Suppress unused variable warning

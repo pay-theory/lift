@@ -123,15 +123,19 @@ type complianceStackBuilder struct {
 }
 
 // complianceStackConfig holds resolved configuration values
+// Memory optimized: 48 → 32 bytes (16 bytes saved)
 type complianceStackConfig struct {
+	// String first (16 bytes)
+	environment string
+	// Float64 (8 bytes)
+	dataRetentionDays float64
+	// Booleans (1 byte each, packed together)
 	enableCloudTrail        bool
 	enableConfig            bool
 	enableGuardDuty         bool
 	enableSecurityHub       bool
 	enableEncryption        bool
-	dataRetentionDays       float64
 	enableComplianceReports bool
-	environment             string
 	enableAutomation        bool
 }
 
@@ -656,7 +660,7 @@ func createComplianceFunction(scope constructs.Construct, props *ComplianceStack
 		FunctionName: fmt.Sprintf("%s-compliance-automation", *props.AppName),
 		Description:  "Compliance automation and reporting function",
 		Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
-		Permissions:  "readwrite",
+		Permissions:  PermissionReadWrite,
 		Environment: map[string]*string{
 			"COMPLIANCE_BUCKET": bucket.BucketName(),
 			"APP_NAME":          props.AppName,

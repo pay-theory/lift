@@ -100,70 +100,154 @@ func (c *DynamORMBenchmarkCommand) Execute(_ context.Context, args []string) err
 }
 
 func (c *DynamORMBenchmarkCommand) parseBenchmarkArgs(args []string) (*BenchmarkConfig, error) {
-	config := &BenchmarkConfig{
-		Operations:  []string{"put", "get", "query"},
-		Concurrency: 10,
-		Duration:    30 * time.Second,
-		ItemSize:    1024, // 1KB
-		OutputDir:   "benchmarks",
-		Region:      "us-east-1",
-		Warmup:      5 * time.Second,
-	}
+	parser := newBenchmarkArgsParser()
+	return parser.parse(args)
+}
 
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case tableFlag:
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--table requires a value")
-			}
-			config.TableName = args[i+1]
-			i++
-		case "--operations":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--operations requires a value")
-			}
-			config.Operations = strings.Split(args[i+1], ",")
-			i++
-		case "--concurrency":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--concurrency requires a value")
-			}
-			var concurrency int
-			if _, err := fmt.Sscanf(args[i+1], "%d", &concurrency); err != nil {
-				return nil, fmt.Errorf("invalid concurrency value: %s", args[i+1])
-			}
-			config.Concurrency = concurrency
-			i++
-		case "--duration":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--duration requires a value")
-			}
-			duration, err := time.ParseDuration(args[i+1])
-			if err != nil {
-				return nil, fmt.Errorf("invalid duration value: %s", args[i+1])
-			}
-			config.Duration = duration
-			i++
-		case "--output-dir":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--output-dir requires a value")
-			}
-			config.OutputDir = args[i+1]
-			i++
-		case "--region":
-			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--region requires a value")
-			}
-			config.Region = args[i+1]
-			i++
+// benchmarkArgsParser handles benchmark argument parsing
+type benchmarkArgsParser struct {
+	config *BenchmarkConfig
+	args   []string
+	index  int
+}
+
+// newBenchmarkArgsParser creates a new parser with default config
+func newBenchmarkArgsParser() *benchmarkArgsParser {
+	return &benchmarkArgsParser{
+		config: &BenchmarkConfig{
+			Operations:  []string{"put", "get", "query"},
+			Concurrency: 10,
+			Duration:    30 * time.Second,
+			ItemSize:    1024, // 1KB
+			OutputDir:   "benchmarks",
+			Region:      "us-east-1",
+			Warmup:      5 * time.Second,
+		},
+	}
+}
+
+// parse processes the arguments
+func (p *benchmarkArgsParser) parse(args []string) (*BenchmarkConfig, error) {
+	p.args = args
+	
+	for p.index = 0; p.index < len(args); p.index++ {
+		if err := p.parseFlag(); err != nil {
+			return nil, err
 		}
 	}
+	
+	return p.validate()
+}
 
-	if config.TableName == "" {
+// parseFlag parses a single flag
+func (p *benchmarkArgsParser) parseFlag() error {
+	flag := p.args[p.index]
+	
+	handler, exists := p.getFlagHandlers()[flag]
+	if !exists {
+		return nil // Ignore unknown flags
+	}
+	
+	return handler()
+}
+
+// getFlagHandlers returns the map of flag handlers
+func (p *benchmarkArgsParser) getFlagHandlers() map[string]func() error {
+	return map[string]func() error{
+		tableFlag:       p.parseTableFlag,
+		"--operations":  p.parseOperationsFlag,
+		"--concurrency": p.parseConcurrencyFlag,
+		"--duration":    p.parseDurationFlag,
+		"--output-dir":  p.parseOutputDirFlag,
+		"--region":      p.parseRegionFlag,
+	}
+}
+
+// parseTableFlag handles --table flag
+func (p *benchmarkArgsParser) parseTableFlag() error {
+	value, err := p.getNextValue(tableFlag)
+	if err != nil {
+		return err
+	}
+	p.config.TableName = value
+	return nil
+}
+
+// parseOperationsFlag handles --operations flag
+func (p *benchmarkArgsParser) parseOperationsFlag() error {
+	value, err := p.getNextValue("--operations")
+	if err != nil {
+		return err
+	}
+	p.config.Operations = strings.Split(value, ",")
+	return nil
+}
+
+// parseConcurrencyFlag handles --concurrency flag
+func (p *benchmarkArgsParser) parseConcurrencyFlag() error {
+	value, err := p.getNextValue("--concurrency")
+	if err != nil {
+		return err
+	}
+	
+	var concurrency int
+	if _, err := fmt.Sscanf(value, "%d", &concurrency); err != nil {
+		return fmt.Errorf("invalid concurrency value: %s", value)
+	}
+	p.config.Concurrency = concurrency
+	return nil
+}
+
+// parseDurationFlag handles --duration flag
+func (p *benchmarkArgsParser) parseDurationFlag() error {
+	value, err := p.getNextValue("--duration")
+	if err != nil {
+		return err
+	}
+	
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		return fmt.Errorf("invalid duration value: %s", value)
+	}
+	p.config.Duration = duration
+	return nil
+}
+
+// parseOutputDirFlag handles --output-dir flag
+func (p *benchmarkArgsParser) parseOutputDirFlag() error {
+	value, err := p.getNextValue("--output-dir")
+	if err != nil {
+		return err
+	}
+	p.config.OutputDir = value
+	return nil
+}
+
+// parseRegionFlag handles --region flag
+func (p *benchmarkArgsParser) parseRegionFlag() error {
+	value, err := p.getNextValue("--region")
+	if err != nil {
+		return err
+	}
+	p.config.Region = value
+	return nil
+}
+
+// getNextValue gets the next argument value
+func (p *benchmarkArgsParser) getNextValue(flag string) (string, error) {
+	if p.index+1 >= len(p.args) {
+		return "", fmt.Errorf("%s requires a value", flag)
+	}
+	p.index++
+	return p.args[p.index], nil
+}
+
+// validate ensures required fields are set
+func (p *benchmarkArgsParser) validate() (*BenchmarkConfig, error) {
+	if p.config.TableName == "" {
 		return nil, fmt.Errorf("--table is required")
 	}
-
-	return config, nil
+	return p.config, nil
 }
 
 func (c *DynamORMBenchmarkCommand) isLiftProject() bool {

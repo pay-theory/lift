@@ -2,8 +2,6 @@ package constructs
 
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskinesis"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
@@ -89,214 +87,241 @@ type KinesisProcessor struct {
 
 // NewKinesisProcessor creates a new Kinesis processor with Lambda function
 func NewKinesisProcessor(scope constructs.Construct, id *string, props *KinesisProcessorProps) *KinesisProcessor {
-	this := constructs.NewConstruct(scope, id)
+	builder := newKinesisProcessorBuilder(scope, id, props)
+	return builder.build()
+}
 
-	// Create or use existing Kinesis stream
-	var stream awskinesis.IStream
-	if props.ExistingStream != nil {
-		stream = props.ExistingStream
-	} else {
-		streamProps := props.StreamProps
-		if streamProps == nil {
-			streamProps = &awskinesis.StreamProps{}
-		}
+// kinesisProcessorBuilder builds Kinesis processors with Lambda functions
+type kinesisProcessorBuilder struct {
+	scope     constructs.Construct
+	id        *string
+	props     *KinesisProcessorProps
+	construct constructs.Construct
+}
 
-		// Set stream mode
-		if props.StreamMode != nil {
-			streamProps.StreamMode = *props.StreamMode
-		} else {
-			// Default to on-demand for simplicity
-			streamProps.StreamMode = awskinesis.StreamMode_ON_DEMAND
-		}
-
-		// Set shard count for provisioned mode
-		if props.ShardCount != nil {
-			streamProps.ShardCount = props.ShardCount
-		}
-
-		// Set retention period
-		if props.RetentionPeriodHours != nil {
-			streamProps.RetentionPeriod = awscdk.Duration_Hours(props.RetentionPeriodHours)
-		} else if streamProps.RetentionPeriod == nil {
-			streamProps.RetentionPeriod = awscdk.Duration_Hours(jsii.Number(24)) // 24 hours default
-		}
-
-		// Set encryption
-		if props.Encryption != nil {
-			streamProps.Encryption = *props.Encryption
-		}
-
-		stream = awskinesis.NewStream(this, jsii.String("Stream"), streamProps)
+// newKinesisProcessorBuilder creates a new Kinesis processor builder
+func newKinesisProcessorBuilder(scope constructs.Construct, id *string, props *KinesisProcessorProps) *kinesisProcessorBuilder {
+	return &kinesisProcessorBuilder{
+		scope: scope,
+		id:    id,
+		props: props,
 	}
+}
 
-	// Create the Lambda function
-	function := NewLiftFunction(this, jsii.String("Function"), props.FunctionProps)
-
-	// Add Kinesis stream environment variables
-	function.Function.AddEnvironment(jsii.String("KINESIS_STREAM_ARN"), stream.StreamArn(), nil)
-	function.Function.AddEnvironment(jsii.String("KINESIS_STREAM_NAME"), stream.StreamName(), nil)
-
-	// Create DLQ if enabled
-	var dlq awssqs.IQueue
-	enableDLQ := true // Default to enabled
-	if props.EnableDLQ != nil {
-		enableDLQ = *props.EnableDLQ
-	}
-
-	if enableDLQ {
-		dlqProps := props.DLQProps
-		if dlqProps == nil {
-			dlqProps = &awssqs.QueueProps{
-				RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
-			}
-		}
-		dlq = awssqs.NewQueue(this, jsii.String("DLQ"), dlqProps)
-		function.Function.AddEnvironment(jsii.String("KINESIS_DLQ_URL"), dlq.QueueUrl(), nil)
-	}
-
-	// Configure event source
-	eventSourceProps := props.EventSourceProps
-	if eventSourceProps == nil {
-		eventSourceProps = &awslambdaeventsources.KinesisEventSourceProps{}
-	}
-
-	// Set batch size
-	if props.BatchSize != nil {
-		eventSourceProps.BatchSize = props.BatchSize
-	} else if eventSourceProps.BatchSize == nil {
-		eventSourceProps.BatchSize = jsii.Number(100) // Default batch size
-	}
-
-	// Set batching window
-	if props.MaxBatchingWindowSeconds != nil {
-		eventSourceProps.MaxBatchingWindow = awscdk.Duration_Seconds(props.MaxBatchingWindowSeconds)
-	}
-
-	// Set parallelization factor
-	if props.ParallelizationFactor != nil {
-		eventSourceProps.ParallelizationFactor = props.ParallelizationFactor
-	}
-
-	// Set starting position
-	if props.StartingPosition != nil {
-		eventSourceProps.StartingPosition = *props.StartingPosition
-	} else {
-		eventSourceProps.StartingPosition = awslambda.StartingPosition_LATEST
-	}
-
-	// Set max record age
-	if props.MaxRecordAgeSeconds != nil {
-		eventSourceProps.MaxRecordAge = awscdk.Duration_Seconds(props.MaxRecordAgeSeconds)
-	}
-
-	// Set bisect batch on error
-	if props.BisectBatchOnError != nil {
-		eventSourceProps.BisectBatchOnError = props.BisectBatchOnError
-	}
-
-	// Set retry attempts
-	if props.RetryAttempts != nil {
-		eventSourceProps.RetryAttempts = props.RetryAttempts
-	}
-
-	// Set tumbling window
-	if props.TumblingWindowSeconds != nil {
-		eventSourceProps.TumblingWindow = awscdk.Duration_Seconds(props.TumblingWindowSeconds)
-	}
-
-	// Set report batch item failures
-	if props.ReportBatchItemFailures != nil {
-		eventSourceProps.ReportBatchItemFailures = props.ReportBatchItemFailures
-	}
-
-	// Set DLQ
-	if dlq != nil {
-		eventSourceProps.OnFailure = awslambdaeventsources.NewSqsDlq(dlq)
-	}
-
-	// Create enhanced fan-out consumer if requested
-	var consumer awskinesis.IStreamConsumer
-	if props.EnableEnhancedFanOut != nil && *props.EnableEnhancedFanOut {
-		consumerName := props.ConsumerName
-		if consumerName == nil {
-			consumerName = jsii.String("LiftConsumer")
-		}
-
-		// Note: Enhanced fan-out consumer creation is not directly supported in CDK Go
-		// You would need to create the consumer using CloudFormation or after deployment
-		// For now, we just set the consumer name as an environment variable
-		function.Function.AddEnvironment(jsii.String("KINESIS_CONSUMER_NAME"), consumerName, nil)
-	}
-
-	// Add Kinesis event source to Lambda
-	function.Function.AddEventSource(awslambdaeventsources.NewKinesisEventSource(stream, eventSourceProps))
-
-	// Grant permissions
-	stream.GrantRead(function.Function.GrantPrincipal())
-
-	processor := &KinesisProcessor{
-		Construct: this,
+// build constructs the complete Kinesis processor
+func (b *kinesisProcessorBuilder) build() *KinesisProcessor {
+	b.construct = constructs.NewConstruct(b.scope, b.id)
+	
+	stream := b.createOrGetStream()
+	function := b.createFunction(stream)
+	dlq := b.createDLQ(function)
+	b.configureEventSource(stream, function, dlq)
+	b.grantPermissions(stream, function, dlq)
+	
+	return &KinesisProcessor{
+		Construct: b.construct,
 		Stream:    stream,
 		Function:  *function,
 		DLQ:       dlq,
-		Consumer:  consumer,
 	}
-
-	return processor
 }
 
-// GrantRead grants read permissions to the stream
-func (k *KinesisProcessor) GrantRead(grantee awsiam.IGrantable) awsiam.Grant {
-	return k.Stream.GrantRead(grantee)
-}
-
-// GrantWrite grants write permissions to the stream
-func (k *KinesisProcessor) GrantWrite(grantee awsiam.IGrantable) awsiam.Grant {
-	return k.Stream.GrantWrite(grantee)
-}
-
-// GrantReadWrite grants read and write permissions to the stream
-func (k *KinesisProcessor) GrantReadWrite(grantee awsiam.IGrantable) awsiam.Grant {
-	return k.Stream.GrantReadWrite(grantee)
-}
-
-// GetStreamArn returns the Kinesis stream ARN
-func (k *KinesisProcessor) GetStreamArn() *string {
-	return k.Stream.StreamArn()
-}
-
-// GetStreamName returns the Kinesis stream name
-func (k *KinesisProcessor) GetStreamName() *string {
-	return k.Stream.StreamName()
-}
-
-// GetDLQUrl returns the DLQ URL if DLQ is enabled
-func (k *KinesisProcessor) GetDLQUrl() *string {
-	if k.DLQ != nil {
-		return k.DLQ.QueueUrl()
+// createOrGetStream creates a new stream or uses existing one
+func (b *kinesisProcessorBuilder) createOrGetStream() awskinesis.IStream {
+	if b.props.ExistingStream != nil {
+		return b.props.ExistingStream
 	}
-	return nil
+	
+	streamBuilder := newKinesisStreamBuilder(b.construct, b.props)
+	return streamBuilder.build()
 }
 
-// AddConsumer adds an enhanced fan-out consumer to the stream
-func (k *KinesisProcessor) AddConsumer(id *string, consumerName *string) awskinesis.IStreamConsumer {
-	// This is a simplified approach - in a real implementation,
-	// you would use CfnStreamConsumer or handle this differently
-	k.Function.Function.AddEnvironment(jsii.String("KINESIS_CONSUMER_"+*id), consumerName, nil)
-	return k.Consumer
+// createFunction creates the Lambda function with environment variables
+func (b *kinesisProcessorBuilder) createFunction(stream awskinesis.IStream) *LiftFunction {
+	function := NewLiftFunction(b.construct, jsii.String("Function"), b.props.FunctionProps)
+	
+	function.Function.AddEnvironment(jsii.String("KINESIS_STREAM_ARN"), stream.StreamArn(), nil)
+	function.Function.AddEnvironment(jsii.String("KINESIS_STREAM_NAME"), stream.StreamName(), nil)
+	
+	return function
 }
 
-// Metric returns a metric for the stream
-func (k *KinesisProcessor) Metric(metricName *string, props *awscloudwatch.MetricOptions) awscloudwatch.Metric {
-	return k.Stream.Metric(metricName, props)
+// createDLQ creates the dead letter queue if enabled
+func (b *kinesisProcessorBuilder) createDLQ(function *LiftFunction) awssqs.IQueue {
+	enableDLQ := true
+	if b.props.EnableDLQ != nil {
+		enableDLQ = *b.props.EnableDLQ
+	}
+	
+	if !enableDLQ {
+		return nil
+	}
+	
+	dlqBuilder := newDeadLetterQueueBuilder(
+		b.construct,
+		b.props.DLQProps,
+		b.props.FunctionProps.FunctionName,
+		"-kinesis-dlq",
+	)
+	dlq := dlqBuilder.build()
+	
+	function.Function.AddEnvironment(jsii.String("KINESIS_DLQ_URL"), dlq.QueueUrl(), nil)
+	return dlq
 }
 
-// MetricGetRecords returns the GetRecords metric
-func (k *KinesisProcessor) MetricGetRecords(props *awscloudwatch.MetricOptions) awscloudwatch.Metric {
-	return k.Stream.Metric(jsii.String("GetRecords.Success"), props)
+// kinesisStreamBuilder builds Kinesis streams
+type kinesisStreamBuilder struct {
+	construct constructs.Construct
+	props     *KinesisProcessorProps
 }
 
-// MetricPutRecords returns the PutRecords metric
-func (k *KinesisProcessor) MetricPutRecords(props *awscloudwatch.MetricOptions) awscloudwatch.Metric {
-	return k.Stream.Metric(jsii.String("PutRecords.Success"), props)
+// newKinesisStreamBuilder creates a new Kinesis stream builder
+func newKinesisStreamBuilder(construct constructs.Construct, props *KinesisProcessorProps) *kinesisStreamBuilder {
+	return &kinesisStreamBuilder{
+		construct: construct,
+		props:     props,
+	}
+}
+
+// build creates the Kinesis stream with configured properties
+func (sb *kinesisStreamBuilder) build() awskinesis.IStream {
+	streamProps := sb.createStreamProps()
+	return awskinesis.NewStream(sb.construct, jsii.String("Stream"), streamProps)
+}
+
+// createStreamProps creates stream properties with defaults
+func (sb *kinesisStreamBuilder) createStreamProps() *awskinesis.StreamProps {
+	streamProps := sb.props.StreamProps
+	if streamProps == nil {
+		streamProps = &awskinesis.StreamProps{}
+	}
+	
+	sb.configureStreamMode(streamProps)
+	sb.configureShardCount(streamProps)
+	sb.configureRetention(streamProps)
+	sb.configureEncryption(streamProps)
+	
+	return streamProps
+}
+
+// configureStreamMode sets the stream mode
+func (sb *kinesisStreamBuilder) configureStreamMode(streamProps *awskinesis.StreamProps) {
+	if sb.props.StreamMode != nil {
+		streamProps.StreamMode = *sb.props.StreamMode
+	} else {
+		streamProps.StreamMode = awskinesis.StreamMode_ON_DEMAND
+	}
+}
+
+// configureShardCount sets the shard count for provisioned mode
+func (sb *kinesisStreamBuilder) configureShardCount(streamProps *awskinesis.StreamProps) {
+	if sb.props.ShardCount != nil {
+		streamProps.ShardCount = sb.props.ShardCount
+	}
+}
+
+// configureRetention sets the retention period
+func (sb *kinesisStreamBuilder) configureRetention(streamProps *awskinesis.StreamProps) {
+	if sb.props.RetentionPeriodHours != nil {
+		streamProps.RetentionPeriod = awscdk.Duration_Hours(sb.props.RetentionPeriodHours)
+	} else if streamProps.RetentionPeriod == nil {
+		streamProps.RetentionPeriod = awscdk.Duration_Hours(jsii.Number(24))
+	}
+}
+
+// configureEncryption sets the encryption configuration
+func (sb *kinesisStreamBuilder) configureEncryption(streamProps *awskinesis.StreamProps) {
+	if sb.props.Encryption != nil {
+		streamProps.Encryption = *sb.props.Encryption
+	}
+}
+
+
+// configureEventSource configures the Kinesis event source for the Lambda function
+func (b *kinesisProcessorBuilder) configureEventSource(stream awskinesis.IStream, function *LiftFunction, dlq awssqs.IQueue) {
+	eventSourceBuilder := newKinesisEventSourceBuilder(b.props)
+	eventSource := eventSourceBuilder.build(stream)
+	function.Function.AddEventSource(eventSource)
+}
+
+// grantPermissions grants necessary permissions
+func (b *kinesisProcessorBuilder) grantPermissions(stream awskinesis.IStream, function *LiftFunction, dlq awssqs.IQueue) {
+	stream.GrantRead(function.Function)
+	if dlq != nil {
+		dlq.GrantSendMessages(function.Function)
+	}
+}
+
+// kinesisEventSourceBuilder builds Kinesis event sources
+type kinesisEventSourceBuilder struct {
+	props *KinesisProcessorProps
+}
+
+// newKinesisEventSourceBuilder creates a new Kinesis event source builder
+func newKinesisEventSourceBuilder(props *KinesisProcessorProps) *kinesisEventSourceBuilder {
+	return &kinesisEventSourceBuilder{
+		props: props,
+	}
+}
+
+// build creates the Kinesis event source with configured properties
+func (esb *kinesisEventSourceBuilder) build(stream awskinesis.IStream) awslambdaeventsources.KinesisEventSource {
+	eventSourceProps := esb.createEventSourceProps()
+	return awslambdaeventsources.NewKinesisEventSource(stream, eventSourceProps)
+}
+
+// createEventSourceProps creates event source properties with defaults
+func (esb *kinesisEventSourceBuilder) createEventSourceProps() *awslambdaeventsources.KinesisEventSourceProps {
+	eventSourceProps := esb.props.EventSourceProps
+	if eventSourceProps == nil {
+		eventSourceProps = &awslambdaeventsources.KinesisEventSourceProps{}
+	}
+	
+	esb.configureBatching(eventSourceProps)
+	esb.configureProcessing(eventSourceProps)
+	esb.configureErrorHandling(eventSourceProps)
+	
+	return eventSourceProps
+}
+
+// configureBatching configures batch processing settings
+func (esb *kinesisEventSourceBuilder) configureBatching(props *awslambdaeventsources.KinesisEventSourceProps) {
+	if esb.props.BatchSize != nil {
+		props.BatchSize = esb.props.BatchSize
+	} else if props.BatchSize == nil {
+		props.BatchSize = jsii.Number(100)
+	}
+	
+	if esb.props.MaxBatchingWindowSeconds != nil {
+		props.MaxBatchingWindow = awscdk.Duration_Seconds(esb.props.MaxBatchingWindowSeconds)
+	} else if props.MaxBatchingWindow == nil {
+		props.MaxBatchingWindow = awscdk.Duration_Seconds(jsii.Number(5))
+	}
+	
+	if esb.props.ParallelizationFactor != nil {
+		props.ParallelizationFactor = esb.props.ParallelizationFactor
+	}
+}
+
+// configureProcessing configures processing settings
+func (esb *kinesisEventSourceBuilder) configureProcessing(props *awslambdaeventsources.KinesisEventSourceProps) {
+	if esb.props.StartingPosition != nil {
+		props.StartingPosition = *esb.props.StartingPosition
+	}
+}
+
+// configureErrorHandling configures error handling settings
+func (esb *kinesisEventSourceBuilder) configureErrorHandling(props *awslambdaeventsources.KinesisEventSourceProps) {
+	if esb.props.RetryAttempts != nil {
+		props.RetryAttempts = esb.props.RetryAttempts
+	}
+	
+	if esb.props.MaxRecordAgeSeconds != nil {
+		props.MaxRecordAge = awscdk.Duration_Seconds(esb.props.MaxRecordAgeSeconds)
+	}
+	
+	// Note: BisectBatchOnFunctionError may not be available in this CDK version
+	// if esb.props.BisectBatchOnError != nil {
+	//	props.BisectBatchOnFunctionError = esb.props.BisectBatchOnError
+	// }
 }

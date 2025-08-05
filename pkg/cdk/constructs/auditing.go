@@ -97,26 +97,30 @@ type auditingConstructBuilder struct {
 }
 
 // auditingConstructConfig holds resolved configuration values
+// Memory optimized: 64 → 56 bytes (8 bytes saved)
 type auditingConstructConfig struct {
-	auditLevel                  AuditLevel
-	enableCloudTrail            bool
-	enableApplicationLogs       bool
-	enableDatabaseLogs          bool
-	enableRealTimeProcessing    bool
-	enableTamperProtection      bool
-	enableLogAggregation        bool
-	logRetentionDays           *float64
-	enableSIEMIntegration       bool
-	enableLogAnalysis           bool
-	enableComplianceReporting   bool
-	environment                 string
-	enableEncryption            bool
-	enableCrossAccountAccess    bool
-	enableIntegrityChecking     bool
-	enableDashboard             bool
-	enableAlerting              bool
-	enableImmutableLogs         bool
-	enableRegulatoryCompliance  bool
+	// Pointers first (8 bytes)
+	logRetentionDays *float64
+	// Strings (16 bytes each)
+	environment string
+	auditLevel  AuditLevel
+	// Booleans (1 byte each, packed together)
+	enableCloudTrail           bool
+	enableApplicationLogs      bool
+	enableDatabaseLogs         bool
+	enableRealTimeProcessing   bool
+	enableTamperProtection     bool
+	enableLogAggregation       bool
+	enableSIEMIntegration      bool
+	enableLogAnalysis          bool
+	enableComplianceReporting  bool
+	enableEncryption           bool
+	enableCrossAccountAccess   bool
+	enableIntegrityChecking    bool
+	enableDashboard            bool
+	enableAlerting             bool
+	enableImmutableLogs        bool
+	enableRegulatoryCompliance bool
 }
 
 // newAuditingConstructBuilder creates a new auditing construct builder
@@ -130,88 +134,123 @@ func newAuditingConstructBuilder(construct constructs.Construct, props *Auditing
 
 // buildAuditingConstructConfig resolves configuration values with defaults
 func buildAuditingConstructConfig(props *AuditingProps) *auditingConstructConfig {
-	config := &auditingConstructConfig{
-		auditLevel:                  AuditLevelDetailed,
-		enableCloudTrail:            true,
-		enableApplicationLogs:       true,
-		enableDatabaseLogs:          true,
-		enableRealTimeProcessing:    true,
-		enableTamperProtection:      true,
-		enableLogAggregation:        true,
-		logRetentionDays:           jsii.Number(2555), // 7 years
-		enableSIEMIntegration:       false,
-		enableLogAnalysis:           true,
-		enableComplianceReporting:   true,
-		environment:                 "prod",
-		enableEncryption:            true,
-		enableCrossAccountAccess:    false,
-		enableIntegrityChecking:     true,
-		enableDashboard:             true,
-		enableAlerting:              true,
-		enableImmutableLogs:         true,
-		enableRegulatoryCompliance:  true,
-	}
+	builder := newAuditingConfigBuilder()
+	return builder.withDefaults().applyProps(props).build()
+}
 
-	// Apply provided values
-	if props.AuditLevel != "" {
-		config.auditLevel = props.AuditLevel
+// auditingConfigBuilder builds auditing configuration
+type auditingConfigBuilder struct {
+	config *auditingConstructConfig
+}
+
+// newAuditingConfigBuilder creates a new auditing config builder
+func newAuditingConfigBuilder() *auditingConfigBuilder {
+	return &auditingConfigBuilder{
+		config: &auditingConstructConfig{},
 	}
+}
+
+// withDefaults sets default values
+func (b *auditingConfigBuilder) withDefaults() *auditingConfigBuilder {
+	b.config.auditLevel = AuditLevelDetailed
+	b.config.enableCloudTrail = true
+	b.config.enableApplicationLogs = true
+	b.config.enableDatabaseLogs = true
+	b.config.enableRealTimeProcessing = true
+	b.config.enableTamperProtection = true
+	b.config.enableLogAggregation = true
+	b.config.logRetentionDays = jsii.Number(2555) // 7 years
+	b.config.enableSIEMIntegration = false
+	b.config.enableLogAnalysis = true
+	b.config.enableComplianceReporting = true
+	b.config.environment = "prod"
+	b.config.enableEncryption = true
+	b.config.enableCrossAccountAccess = false
+	b.config.enableIntegrityChecking = true
+	b.config.enableDashboard = true
+	b.config.enableAlerting = true
+	b.config.enableImmutableLogs = true
+	b.config.enableRegulatoryCompliance = true
+	return b
+}
+
+// applyProps applies provided properties
+func (b *auditingConfigBuilder) applyProps(props *AuditingProps) *auditingConfigBuilder {
+	if props.AuditLevel != "" {
+		b.config.auditLevel = props.AuditLevel
+	}
+	
+	b.applyBooleanProps(props)
+	b.applyAdvancedProps(props)
+	
+	return b
+}
+
+// applyBooleanProps applies basic boolean properties
+func (b *auditingConfigBuilder) applyBooleanProps(props *AuditingProps) {
 	if props.EnableCloudTrail != nil {
-		config.enableCloudTrail = *props.EnableCloudTrail
+		b.config.enableCloudTrail = *props.EnableCloudTrail
 	}
 	if props.EnableApplicationLogs != nil {
-		config.enableApplicationLogs = *props.EnableApplicationLogs
+		b.config.enableApplicationLogs = *props.EnableApplicationLogs
 	}
 	if props.EnableDatabaseLogs != nil {
-		config.enableDatabaseLogs = *props.EnableDatabaseLogs
+		b.config.enableDatabaseLogs = *props.EnableDatabaseLogs
 	}
 	if props.EnableRealTimeProcessing != nil {
-		config.enableRealTimeProcessing = *props.EnableRealTimeProcessing
+		b.config.enableRealTimeProcessing = *props.EnableRealTimeProcessing
 	}
 	if props.EnableTamperProtection != nil {
-		config.enableTamperProtection = *props.EnableTamperProtection
+		b.config.enableTamperProtection = *props.EnableTamperProtection
 	}
 	if props.EnableLogAggregation != nil {
-		config.enableLogAggregation = *props.EnableLogAggregation
-	}
-	if props.LogRetentionDays != nil {
-		config.logRetentionDays = props.LogRetentionDays
+		b.config.enableLogAggregation = *props.EnableLogAggregation
 	}
 	if props.EnableSIEMIntegration != nil {
-		config.enableSIEMIntegration = *props.EnableSIEMIntegration
+		b.config.enableSIEMIntegration = *props.EnableSIEMIntegration
 	}
 	if props.EnableLogAnalysis != nil {
-		config.enableLogAnalysis = *props.EnableLogAnalysis
+		b.config.enableLogAnalysis = *props.EnableLogAnalysis
 	}
 	if props.EnableComplianceReporting != nil {
-		config.enableComplianceReporting = *props.EnableComplianceReporting
+		b.config.enableComplianceReporting = *props.EnableComplianceReporting
+	}
+}
+
+// applyAdvancedProps applies advanced configuration properties
+func (b *auditingConfigBuilder) applyAdvancedProps(props *AuditingProps) {
+	if props.LogRetentionDays != nil {
+		b.config.logRetentionDays = props.LogRetentionDays
 	}
 	if props.Environment != nil {
-		config.environment = *props.Environment
+		b.config.environment = *props.Environment
 	}
 	if props.EnableEncryption != nil {
-		config.enableEncryption = *props.EnableEncryption
+		b.config.enableEncryption = *props.EnableEncryption
 	}
 	if props.EnableCrossAccountAccess != nil {
-		config.enableCrossAccountAccess = *props.EnableCrossAccountAccess
+		b.config.enableCrossAccountAccess = *props.EnableCrossAccountAccess
 	}
 	if props.EnableIntegrityChecking != nil {
-		config.enableIntegrityChecking = *props.EnableIntegrityChecking
+		b.config.enableIntegrityChecking = *props.EnableIntegrityChecking
 	}
 	if props.EnableDashboard != nil {
-		config.enableDashboard = *props.EnableDashboard
+		b.config.enableDashboard = *props.EnableDashboard
 	}
 	if props.EnableAlerting != nil {
-		config.enableAlerting = *props.EnableAlerting
+		b.config.enableAlerting = *props.EnableAlerting
 	}
 	if props.EnableImmutableLogs != nil {
-		config.enableImmutableLogs = *props.EnableImmutableLogs
+		b.config.enableImmutableLogs = *props.EnableImmutableLogs
 	}
 	if props.EnableRegulatoryCompliance != nil {
-		config.enableRegulatoryCompliance = *props.EnableRegulatoryCompliance
+		b.config.enableRegulatoryCompliance = *props.EnableRegulatoryCompliance
 	}
+}
 
-	return config
+// build returns the configured auditing config
+func (b *auditingConfigBuilder) build() *auditingConstructConfig {
+	return b.config
 }
 
 // build constructs the complete auditing construct
@@ -505,50 +544,54 @@ func (b *auditingConstructBuilder) setupMonitoring(applicationLogGroup, database
 // createLogGroup creates a CloudWatch log group with encryption
 func createLogGroup(scope constructs.Construct, id string, logGroupName string, encryptionKey awskms.Key, retentionDays *float64) awslogs.LogGroup {
 	return awslogs.NewLogGroup(scope, jsii.String(id), &awslogs.LogGroupProps{
-		LogGroupName: jsii.String(logGroupName),
-		Retention: func() awslogs.RetentionDays {
-			switch {
-			case *retentionDays <= 1:
-				return awslogs.RetentionDays_ONE_DAY
-			case *retentionDays <= 3:
-				return awslogs.RetentionDays_THREE_DAYS
-			case *retentionDays <= 5:
-				return awslogs.RetentionDays_FIVE_DAYS
-			case *retentionDays <= 7:
-				return awslogs.RetentionDays_ONE_WEEK
-			case *retentionDays <= 14:
-				return awslogs.RetentionDays_TWO_WEEKS
-			case *retentionDays <= 30:
-				return awslogs.RetentionDays_ONE_MONTH
-			case *retentionDays <= 60:
-				return awslogs.RetentionDays_TWO_MONTHS
-			case *retentionDays <= 90:
-				return awslogs.RetentionDays_THREE_MONTHS
-			case *retentionDays <= 120:
-				return awslogs.RetentionDays_FOUR_MONTHS
-			case *retentionDays <= 150:
-				return awslogs.RetentionDays_FIVE_MONTHS
-			case *retentionDays <= 180:
-				return awslogs.RetentionDays_SIX_MONTHS
-			case *retentionDays <= 365:
-				return awslogs.RetentionDays_ONE_YEAR
-			case *retentionDays <= 400:
-				return awslogs.RetentionDays_THIRTEEN_MONTHS
-			case *retentionDays <= 545:
-				return awslogs.RetentionDays_EIGHTEEN_MONTHS
-			case *retentionDays <= 730:
-				return awslogs.RetentionDays_TWO_YEARS
-			case *retentionDays <= 1827:
-				return awslogs.RetentionDays_FIVE_YEARS
-			case *retentionDays <= 3653:
-				return awslogs.RetentionDays_TEN_YEARS
-			default:
-				return awslogs.RetentionDays_INFINITE
-			}
-		}(),
+		LogGroupName:  jsii.String(logGroupName),
+		Retention:     mapRetentionDays(retentionDays),
 		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
 		EncryptionKey: encryptionKey,
 	})
+}
+
+// retentionMapping defines the mapping between days and retention constants
+type retentionMapping struct {
+	maxDays   float64
+	retention awslogs.RetentionDays
+}
+
+// mapRetentionDays maps numeric days to CloudWatch retention constants
+func mapRetentionDays(days *float64) awslogs.RetentionDays {
+	if days == nil {
+		return awslogs.RetentionDays_INFINITE
+	}
+
+	// Define retention mappings in ascending order
+	mappings := []retentionMapping{
+		{1, awslogs.RetentionDays_ONE_DAY},
+		{3, awslogs.RetentionDays_THREE_DAYS},
+		{5, awslogs.RetentionDays_FIVE_DAYS},
+		{7, awslogs.RetentionDays_ONE_WEEK},
+		{14, awslogs.RetentionDays_TWO_WEEKS},
+		{30, awslogs.RetentionDays_ONE_MONTH},
+		{60, awslogs.RetentionDays_TWO_MONTHS},
+		{90, awslogs.RetentionDays_THREE_MONTHS},
+		{120, awslogs.RetentionDays_FOUR_MONTHS},
+		{150, awslogs.RetentionDays_FIVE_MONTHS},
+		{180, awslogs.RetentionDays_SIX_MONTHS},
+		{365, awslogs.RetentionDays_ONE_YEAR},
+		{400, awslogs.RetentionDays_THIRTEEN_MONTHS},
+		{545, awslogs.RetentionDays_EIGHTEEN_MONTHS},
+		{730, awslogs.RetentionDays_TWO_YEARS},
+		{1827, awslogs.RetentionDays_FIVE_YEARS},
+		{3653, awslogs.RetentionDays_TEN_YEARS},
+	}
+
+	// Find the appropriate retention period
+	for _, mapping := range mappings {
+		if *days <= mapping.maxDays {
+			return mapping.retention
+		}
+	}
+
+	return awslogs.RetentionDays_INFINITE
 }
 
 // createFirehoseDeliveryStream creates a Kinesis Firehose delivery stream
@@ -623,7 +666,7 @@ func createAuditLambdaFunction(scope constructs.Construct, id string, props *Aud
 	Timeout      awscdk.Duration
 	FunctionName string
 	Description  string
-	Permissions  string // "read" or "readwrite"
+	Permissions  string // PermissionRead or PermissionReadWrite
 }) awslambda.Function {
 	// Create environment variables
 	environment := &map[string]*string{
@@ -644,16 +687,17 @@ func createAuditLambdaFunction(scope constructs.Construct, id string, props *Aud
 	})
 
 	// Grant appropriate S3 permissions
-	if config.Permissions == "read" {
+	switch config.Permissions {
+	case "read":
 		bucket.GrantRead(awsiam.IGrantable(function), jsii.String("*"))
-	} else if config.Permissions == "readwrite" {
+	case PermissionReadWrite:
 		bucket.GrantReadWrite(awsiam.IGrantable(function), jsii.String("*"))
 	}
 
 	// Grant KMS permissions if encryption is enabled
 	if encryptionKey != nil {
 		encryptionKey.GrantDecrypt(awsiam.IGrantable(function))
-		if config.Permissions == "readwrite" {
+		if config.Permissions == PermissionReadWrite {
 			encryptionKey.GrantEncrypt(awsiam.IGrantable(function))
 		}
 	}
@@ -672,7 +716,7 @@ func createLogProcessingFunction(scope constructs.Construct, props *AuditingProp
 		FunctionName: fmt.Sprintf("%s-log-processing", *props.AppName),
 		Description:  "Real-time audit log processing function",
 		Timeout:      awscdk.Duration_Minutes(jsii.Number(5)),
-		Permissions:  "readwrite",
+		Permissions:  PermissionReadWrite,
 	})
 
 	// Add additional Kinesis permissions to the role
@@ -772,7 +816,7 @@ func createAuditComplianceFunction(scope constructs.Construct, props *AuditingPr
 	}{
 		FunctionSuffix: "compliance-reporting",
 		Description:    "Audit compliance reporting function",
-		Permissions:    "readwrite",
+		Permissions:    PermissionReadWrite,
 		RuleID:         "ComplianceReportRule",
 		Schedule:       awsevents.Schedule_Rate(awscdk.Duration_Days(jsii.Number(7))),
 	})

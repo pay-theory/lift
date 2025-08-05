@@ -92,15 +92,19 @@ type sqsProcessorBuilder struct {
 }
 
 // sqsProcessorConfig holds resolved configuration values
+// Memory optimized: struct with 56 pointer bytes could be 48
 type sqsProcessorConfig struct {
-	batchSize              float64
+	// Durations first (16 bytes each)
 	maxBatchingWindow      awscdk.Duration
 	visibilityTimeout      awscdk.Duration
 	messageRetentionPeriod awscdk.Duration
-	maxReceiveCount        float64
-	enableDLQ              bool
-	fifoQueue              bool
-	longPollingWaitTime    float64
+	// Float64s (8 bytes each)
+	batchSize           float64
+	maxReceiveCount     float64
+	longPollingWaitTime float64
+	// Booleans (1 byte each, packed together)
+	enableDLQ bool
+	fifoQueue bool
 }
 
 // newSQSProcessorBuilder creates a new SQS processor builder
@@ -250,27 +254,38 @@ func (qb *sqsQueueBuilder) build() (awssqs.Queue, awssqs.Queue) {
 
 // createDeadLetterQueue creates the dead letter queue
 func (qb *sqsQueueBuilder) createDeadLetterQueue() awssqs.Queue {
-	dlqProps := &awssqs.QueueProps{
-		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
-	}
-	
-	// Apply user-provided DLQ props
-	if qb.props.DeadLetterQueueProps != nil {
-		dlqProps = qb.props.DeadLetterQueueProps
-		if dlqProps.RetentionPeriod == nil {
-			dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
+	// For FIFO queues, we need special handling
+	if qb.config.fifoQueue {
+		dlqProps := &awssqs.QueueProps{
+			RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
 		}
+		if qb.props.DeadLetterQueueProps != nil {
+			dlqProps = qb.props.DeadLetterQueueProps
+			if dlqProps.RetentionPeriod == nil {
+				dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
+			}
+		}
+		if dlqProps.QueueName == nil && qb.props.FunctionProps.FunctionName != nil {
+			dlqProps.QueueName = jsii.String(*qb.props.FunctionProps.FunctionName + "-dlq")
+		}
+		qb.applyFIFOConfig(dlqProps)
+		return awssqs.NewQueue(qb.processor, jsii.String("DeadLetterQueue"), dlqProps)
 	}
 	
-	// Set DLQ name
-	if dlqProps.QueueName == nil && qb.props.FunctionProps.FunctionName != nil {
-		dlqProps.QueueName = jsii.String(*qb.props.FunctionProps.FunctionName + "-dlq")
+	// For regular queues, use the shared DLQ builder
+	dlqBuilder := newDeadLetterQueueBuilder(
+		qb.processor,
+		qb.props.DeadLetterQueueProps,
+		qb.props.FunctionProps.FunctionName,
+		"-dlq",
+	)
+	dlq := dlqBuilder.build()
+	// The shared DLQ builder returns awssqs.IQueue, but we know it's actually awssqs.Queue
+	if queue, ok := dlq.(awssqs.Queue); ok {
+		return queue
 	}
-	
-	// Apply FIFO configuration if needed
-	qb.applyFIFOConfig(dlqProps)
-	
-	return awssqs.NewQueue(qb.processor, jsii.String("DeadLetterQueue"), dlqProps)
+	// Fallback - shouldn't happen but handle gracefully
+	panic("unexpected: DLQ builder did not return awssqs.Queue")
 }
 
 // createMainQueue creates the main SQS queue
@@ -372,7 +387,7 @@ func (fb *sqsFunctionBuilder) build() *LiftFunction {
 	}
 	
 	// Set environment variables
-	liftProps.FunctionProps.Environment = &functionEnv
+	liftProps.Environment = &functionEnv
 	
 	// Set Lift-specific properties
 	if fb.props.EnableTracing != nil {

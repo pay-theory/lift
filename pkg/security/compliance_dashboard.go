@@ -440,80 +440,158 @@ func (cd *ComplianceDashboard) Stop() error {
 func (cd *ComplianceDashboard) GetDashboardMetrics(ctx context.Context, timeRange TimeRange) (*DashboardMetrics, error) {
 	cd.mu.RLock()
 	defer cd.mu.RUnlock()
+	
+	builder := newDashboardMetricsBuilder(cd, ctx, timeRange)
+	return builder.build()
+}
 
-	// Check cache first
-	if cd.config.CacheEnabled && cd.cache != nil {
-		cacheKey := fmt.Sprintf("dashboard_metrics_%d_%d", timeRange.Start.Unix(), timeRange.End.Unix())
-		if cached, found := cd.cache.Get(cacheKey); found {
-			if metrics, ok := cached.(*DashboardMetrics); ok {
-				return metrics, nil
-			}
+// dashboardMetricsBuilder builds dashboard metrics
+type dashboardMetricsBuilder struct {
+	dashboard *ComplianceDashboard
+	ctx       context.Context
+	timeRange TimeRange
+	metrics   *DashboardMetrics
+	cacheKey  string
+}
+
+// newDashboardMetricsBuilder creates a new metrics builder
+func newDashboardMetricsBuilder(dashboard *ComplianceDashboard, ctx context.Context, timeRange TimeRange) *dashboardMetricsBuilder {
+	return &dashboardMetricsBuilder{
+		dashboard: dashboard,
+		ctx:       ctx,
+		timeRange: timeRange,
+		metrics: &DashboardMetrics{
+			Timestamp: time.Now(),
+		},
+		cacheKey: fmt.Sprintf("dashboard_metrics_%d_%d", timeRange.Start.Unix(), timeRange.End.Unix()),
+	}
+}
+
+// build constructs the dashboard metrics
+func (b *dashboardMetricsBuilder) build() (*DashboardMetrics, error) {
+	// Try cache first
+	if cached := b.checkCache(); cached != nil {
+		return cached, nil
+	}
+	
+	// Build metrics
+	b.collectEngineMetrics()
+	b.collectAlertMetrics()
+	b.generateSummary()
+	b.cacheResult()
+	
+	return b.metrics, nil
+}
+
+// checkCache checks if metrics are in cache
+func (b *dashboardMetricsBuilder) checkCache() *DashboardMetrics {
+	if !b.dashboard.config.CacheEnabled || b.dashboard.cache == nil {
+		return nil
+	}
+	
+	if cached, found := b.dashboard.cache.Get(b.cacheKey); found {
+		if metrics, ok := cached.(*DashboardMetrics); ok {
+			return metrics
 		}
 	}
+	
+	return nil
+}
 
-	metrics := &DashboardMetrics{
-		Timestamp: time.Now(),
+// collectEngineMetrics collects metrics from the metrics engine
+func (b *dashboardMetricsBuilder) collectEngineMetrics() {
+	if b.dashboard.metricsEngine == nil {
+		return
 	}
+	
+	b.collectComplianceMetrics()
+	b.collectRiskMetrics()
+	b.collectAuditMetrics()
+	b.collectPerformanceMetrics()
+	b.collectCustomMetrics()
+}
 
-	// Get compliance metrics
-	if cd.metricsEngine != nil {
-		complianceMetrics, err := cd.metricsEngine.CalculateComplianceMetrics(ctx, timeRange)
-		if err == nil {
-			metrics.ComplianceMetrics = complianceMetrics
-		}
-
-		// Get risk metrics
-		riskMetrics, err := cd.metricsEngine.CalculateRiskMetrics(ctx, timeRange)
-		if err == nil {
-			metrics.RiskMetrics = riskMetrics
-		}
-
-		// Get audit metrics
-		auditMetrics, err := cd.metricsEngine.CalculateAuditMetrics(ctx, timeRange)
-		if err == nil {
-			metrics.AuditMetrics = auditMetrics
-		}
-
-		// Get performance metrics
-		performanceMetrics, err := cd.metricsEngine.CalculatePerformanceMetrics(ctx, timeRange)
-		if err == nil {
-			metrics.PerformanceMetrics = performanceMetrics
-		}
-
-		// Get custom metrics if enabled
-		if cd.config.CustomMetricsEnabled {
-			customQueries := cd.getCustomMetricQueries(timeRange)
-			customMetrics, err := cd.metricsEngine.CalculateCustomMetrics(ctx, customQueries)
-			if err == nil {
-				metrics.CustomMetrics = customMetrics
-			}
-		}
+// collectComplianceMetrics collects compliance metrics
+func (b *dashboardMetricsBuilder) collectComplianceMetrics() {
+	metrics, err := b.dashboard.metricsEngine.CalculateComplianceMetrics(b.ctx, b.timeRange)
+	if err == nil {
+		b.metrics.ComplianceMetrics = metrics
 	}
+}
 
-	// Get active alerts
-	if cd.alertManager != nil {
-		alerts, err := cd.alertManager.GetActiveAlerts(ctx)
-		if err == nil {
-			metrics.Alerts = alerts
-		}
-
-		// Check for new alerts
-		newAlerts, err := cd.alertManager.CheckThresholds(ctx, metrics)
-		if err == nil {
-			metrics.Alerts = append(metrics.Alerts, newAlerts...)
-		}
+// collectRiskMetrics collects risk metrics
+func (b *dashboardMetricsBuilder) collectRiskMetrics() {
+	metrics, err := b.dashboard.metricsEngine.CalculateRiskMetrics(b.ctx, b.timeRange)
+	if err == nil {
+		b.metrics.RiskMetrics = metrics
 	}
+}
 
-	// Generate summary
-	metrics.Summary = cd.generateSummary(metrics)
-
-	// Cache the result
-	if cd.config.CacheEnabled && cd.cache != nil {
-		cacheKey := fmt.Sprintf("dashboard_metrics_%d_%d", timeRange.Start.Unix(), timeRange.End.Unix())
-		cd.cache.Set(cacheKey, metrics, cd.config.CacheTTL)
+// collectAuditMetrics collects audit metrics
+func (b *dashboardMetricsBuilder) collectAuditMetrics() {
+	metrics, err := b.dashboard.metricsEngine.CalculateAuditMetrics(b.ctx, b.timeRange)
+	if err == nil {
+		b.metrics.AuditMetrics = metrics
 	}
+}
 
-	return metrics, nil
+// collectPerformanceMetrics collects performance metrics
+func (b *dashboardMetricsBuilder) collectPerformanceMetrics() {
+	metrics, err := b.dashboard.metricsEngine.CalculatePerformanceMetrics(b.ctx, b.timeRange)
+	if err == nil {
+		b.metrics.PerformanceMetrics = metrics
+	}
+}
+
+// collectCustomMetrics collects custom metrics if enabled
+func (b *dashboardMetricsBuilder) collectCustomMetrics() {
+	if !b.dashboard.config.CustomMetricsEnabled {
+		return
+	}
+	
+	queries := b.dashboard.getCustomMetricQueries(b.timeRange)
+	metrics, err := b.dashboard.metricsEngine.CalculateCustomMetrics(b.ctx, queries)
+	if err == nil {
+		b.metrics.CustomMetrics = metrics
+	}
+}
+
+// collectAlertMetrics collects alert information
+func (b *dashboardMetricsBuilder) collectAlertMetrics() {
+	if b.dashboard.alertManager == nil {
+		return
+	}
+	
+	b.collectActiveAlerts()
+	b.checkNewAlerts()
+}
+
+// collectActiveAlerts gets active alerts
+func (b *dashboardMetricsBuilder) collectActiveAlerts() {
+	alerts, err := b.dashboard.alertManager.GetActiveAlerts(b.ctx)
+	if err == nil {
+		b.metrics.Alerts = alerts
+	}
+}
+
+// checkNewAlerts checks for new alerts based on thresholds
+func (b *dashboardMetricsBuilder) checkNewAlerts() {
+	newAlerts, err := b.dashboard.alertManager.CheckThresholds(b.ctx, b.metrics)
+	if err == nil {
+		b.metrics.Alerts = append(b.metrics.Alerts, newAlerts...)
+	}
+}
+
+// generateSummary creates a summary of the metrics
+func (b *dashboardMetricsBuilder) generateSummary() {
+	b.metrics.Summary = b.dashboard.generateSummary(b.metrics)
+}
+
+// cacheResult stores the metrics in cache
+func (b *dashboardMetricsBuilder) cacheResult() {
+	if b.dashboard.config.CacheEnabled && b.dashboard.cache != nil {
+		b.dashboard.cache.Set(b.cacheKey, b.metrics, b.dashboard.config.CacheTTL)
+	}
 }
 
 // GetWidget returns a specific widget's data

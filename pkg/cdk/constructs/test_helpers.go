@@ -3,24 +3,9 @@ package constructs
 import (
 	"testing"
 
-	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
 	"github.com/stretchr/testify/require"
 )
-
-// synthesizeTemplate synthesizes a CDK stack and returns the template
-func synthesizeTemplate(t *testing.T, stack awscdk.Stack) assertions.Template {
-	app := stack.Node().Root()
-	appTyped, ok := app.(awscdk.App)
-	require.True(t, ok, "Root node must be an App")
-	
-	synth := appTyped.Synth(nil)
-	
-	stackArtifact := synth.GetStackByName(stack.StackName())
-	require.NotNil(t, stackArtifact)
-	
-	return assertions.Template_FromStack(stack, nil)
-}
 
 // findResourcesByType finds all resources of a given type in the template
 func findResourcesByType(template assertions.Template, resourceType string) map[string]map[string]interface{} {
@@ -50,11 +35,6 @@ func findResourcesByType(template assertions.Template, resourceType string) map[
 	}
 	
 	return result
-}
-
-// assertResourceExists asserts that a resource of a given type exists
-func assertResourceExists(_ *testing.T, template assertions.Template, resourceType string) {
-	template.HasResourceProperties(&resourceType, nil)
 }
 
 // assertResourceCount asserts the count of resources of a given type

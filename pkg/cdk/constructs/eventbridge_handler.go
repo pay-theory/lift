@@ -191,20 +191,13 @@ func (b *eventBridgeHandlerBuilder) setupDeadLetterQueue() {
 		return
 	}
 	
-	dlqProps := &awssqs.QueueProps{}
-	if b.props.DeadLetterQueueProps != nil {
-		dlqProps = b.props.DeadLetterQueueProps
-	}
-
-	// Set DLQ defaults
-	if dlqProps.RetentionPeriod == nil {
-		dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
-	}
-	if dlqProps.QueueName == nil && b.props.FunctionProps.FunctionName != nil {
-		dlqProps.QueueName = jsii.String(*b.props.FunctionProps.FunctionName + "-eventbridge-dlq")
-	}
-
-	b.handler.DeadLetterQueue = awssqs.NewQueue(b.handler, jsii.String("DeadLetterQueue"), dlqProps)
+	dlqBuilder := newDeadLetterQueueBuilder(
+		b.handler,
+		b.props.DeadLetterQueueProps,
+		b.props.FunctionProps.FunctionName,
+		"-eventbridge-dlq",
+	)
+	b.handler.DeadLetterQueue = dlqBuilder.build()
 }
 
 // setupFunction creates the Lambda function with EventBridge environment variables
@@ -230,7 +223,7 @@ func (b *eventBridgeHandlerBuilder) setupFunction() {
 	}
 
 	// Override environment
-	liftProps.FunctionProps.Environment = &functionEnv
+	liftProps.Environment = &functionEnv
 
 	// Set Lift-specific properties
 	if b.props.EnableTracing != nil {
@@ -393,7 +386,7 @@ func (rb *eventBridgeRuleBuilder) configureRulePattern(ruleProps *awsevents.Rule
 // enableMonitoring adds CloudWatch alarms and metrics for the EventBridge handler
 func (e *EventBridgeHandler) enableMonitoring() {
 	if e.Function != nil {
-		function := e.Function.GetFunction()
+		function := e.Function.Function
 
 		// Function error rate alarm
 		awscloudwatch.NewAlarm(e, jsii.String("FunctionErrorAlarm"), &awscloudwatch.AlarmProps{

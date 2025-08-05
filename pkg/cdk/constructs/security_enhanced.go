@@ -224,135 +224,175 @@ func (s *EnhancedSecurity) getPort(port float64, protocol awsec2.Protocol) awsec
 }
 
 func (s *EnhancedSecurity) configureWAF(props *EnhancedSecurityProps) {
-	// Create WAF rules
-	var rules []awswafv2.CfnWebACL_RuleProperty
-	priority := float64(1)
+	builder := newWAFBuilder(s, props)
+	s.WAF = builder.build()
+}
 
-	// Rate limiting rule
-	if props.WAFConfig.EnableRateLimit != nil && *props.WAFConfig.EnableRateLimit {
-		rateLimit := props.WAFConfig.RateLimit
-		if rateLimit == nil {
-			rateLimit = jsii.Number(2000)
+// wafBuilder builds WAF configurations
+type wafBuilder struct {
+	security *EnhancedSecurity
+	props    *EnhancedSecurityProps
+	rules    []awswafv2.CfnWebACL_RuleProperty
+	priority float64
+}
+
+// newWAFBuilder creates a new WAF builder
+func newWAFBuilder(security *EnhancedSecurity, props *EnhancedSecurityProps) *wafBuilder {
+	return &wafBuilder{
+		security: security,
+		props:    props,
+		rules:    []awswafv2.CfnWebACL_RuleProperty{},
+		priority: 1,
+	}
+}
+
+// build constructs the WAF Web ACL
+func (b *wafBuilder) build() awswafv2.CfnWebACL {
+	b.addRateLimitRule()
+	b.addManagedRules()
+	b.addIPRules()
+	b.addGeoBlockingRule()
+	
+	return b.createWebACL()
+}
+
+// addRateLimitRule adds rate limiting rule if enabled
+func (b *wafBuilder) addRateLimitRule() {
+	if b.props.WAFConfig.EnableRateLimit == nil || !*b.props.WAFConfig.EnableRateLimit {
+		return
+	}
+	
+	rateLimit := b.props.WAFConfig.RateLimit
+	if rateLimit == nil {
+		rateLimit = jsii.Number(2000)
+	}
+
+	b.rules = append(b.rules, awswafv2.CfnWebACL_RuleProperty{
+		Name:     jsii.String("RateLimitRule"),
+		Priority: jsii.Number(b.priority),
+		Statement: &awswafv2.CfnWebACL_StatementProperty{
+			RateBasedStatement: &awswafv2.CfnWebACL_RateBasedStatementProperty{
+				Limit:            rateLimit,
+				AggregateKeyType: jsii.String("IP"),
+			},
+		},
+		Action: &awswafv2.CfnWebACL_RuleActionProperty{
+			Block: &awswafv2.CfnWebACL_BlockActionProperty{
+				CustomResponse: &awswafv2.CfnWebACL_CustomResponseProperty{
+					ResponseCode:          jsii.Number(429),
+					CustomResponseBodyKey: jsii.String("RateLimitExceeded"),
+				},
+			},
+		},
+		VisibilityConfig: b.createVisibilityConfig("RateLimitRule"),
+	})
+	b.priority++
+}
+
+// addManagedRules adds AWS managed rule sets
+func (b *wafBuilder) addManagedRules() {
+	managedRules := []struct {
+		enabled  *bool
+		name     string
+		ruleSet  string
+	}{
+		{b.props.WAFConfig.EnableSQLiProtection, "SQLiProtection", "AWSManagedRulesSQLiRuleSet"},
+		{b.props.WAFConfig.EnableXSSProtection, "XSSProtection", "AWSManagedRulesCommonRuleSet"},
+		{b.props.WAFConfig.EnableKnownBadInputs, "KnownBadInputs", "AWSManagedRulesKnownBadInputsRuleSet"},
+	}
+	
+	for _, rule := range managedRules {
+		if rule.enabled != nil && *rule.enabled {
+			b.rules = append(b.rules, createManagedWAFRule(rule.name, rule.ruleSet, int(b.priority)))
+			b.priority++
 		}
-
-		rules = append(rules, awswafv2.CfnWebACL_RuleProperty{
-			Name:     jsii.String("RateLimitRule"),
-			Priority: jsii.Number(priority),
-			Statement: &awswafv2.CfnWebACL_StatementProperty{
-				RateBasedStatement: &awswafv2.CfnWebACL_RateBasedStatementProperty{
-					Limit:            rateLimit,
-					AggregateKeyType: jsii.String("IP"),
-				},
-			},
-			Action: &awswafv2.CfnWebACL_RuleActionProperty{
-				Block: &awswafv2.CfnWebACL_BlockActionProperty{
-					CustomResponse: &awswafv2.CfnWebACL_CustomResponseProperty{
-						ResponseCode:          jsii.Number(429),
-						CustomResponseBodyKey: jsii.String("RateLimitExceeded"),
-					},
-				},
-			},
-			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
-				SampledRequestsEnabled:   jsii.Bool(true),
-				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:               jsii.String("RateLimitRule"),
-			},
-		})
-		priority++
 	}
+}
 
-	// SQL injection protection
-	if props.WAFConfig.EnableSQLiProtection != nil && *props.WAFConfig.EnableSQLiProtection {
-		rule := createManagedWAFRule("SQLiProtection", "AWSManagedRulesSQLiRuleSet", int(priority))
-		rules = append(rules, rule)
-		priority++
+// addIPRules adds IP whitelist and blacklist rules
+func (b *wafBuilder) addIPRules() {
+	// IP whitelist
+	if b.props.WAFConfig.IPWhitelist != nil && len(*b.props.WAFConfig.IPWhitelist) > 0 {
+		b.rules = append(b.rules, b.createIPRule("IPWhitelist", "Whitelist", true))
+		b.priority++
 	}
-
-	// XSS protection
-	if props.WAFConfig.EnableXSSProtection != nil && *props.WAFConfig.EnableXSSProtection {
-		rule := createManagedWAFRule("XSSProtection", "AWSManagedRulesCommonRuleSet", int(priority))
-		rules = append(rules, rule)
-		priority++
+	
+	// IP blacklist
+	if b.props.WAFConfig.IPBlacklist != nil && len(*b.props.WAFConfig.IPBlacklist) > 0 {
+		b.rules = append(b.rules, b.createIPRule("IPBlacklist", "Blacklist", false))
+		b.priority++
 	}
+}
 
-	// Known bad inputs
-	if props.WAFConfig.EnableKnownBadInputs != nil && *props.WAFConfig.EnableKnownBadInputs {
-		rule := createManagedWAFRule("KnownBadInputs", "AWSManagedRulesKnownBadInputsRuleSet", int(priority))
-		rules = append(rules, rule)
-		priority++
+// createIPRule creates an IP-based rule
+func (b *wafBuilder) createIPRule(name, ipSetName string, allow bool) awswafv2.CfnWebACL_RuleProperty {
+	ipList := b.props.WAFConfig.IPWhitelist
+	if !allow {
+		ipList = b.props.WAFConfig.IPBlacklist
 	}
-
-	// IP whitelist rule
-	if props.WAFConfig.IPWhitelist != nil && len(*props.WAFConfig.IPWhitelist) > 0 {
-		rules = append(rules, awswafv2.CfnWebACL_RuleProperty{
-			Name:     jsii.String("IPWhitelist"),
-			Priority: jsii.Number(priority),
-			Statement: &awswafv2.CfnWebACL_StatementProperty{
-				IpSetReferenceStatement: &awswafv2.CfnWebACL_IPSetReferenceStatementProperty{
-					Arn: s.createIPSet("Whitelist", props.WAFConfig.IPWhitelist),
-				},
+	
+	rule := awswafv2.CfnWebACL_RuleProperty{
+		Name:     jsii.String(name),
+		Priority: jsii.Number(b.priority),
+		Statement: &awswafv2.CfnWebACL_StatementProperty{
+			IpSetReferenceStatement: &awswafv2.CfnWebACL_IPSetReferenceStatementProperty{
+				Arn: b.security.createIPSet(ipSetName, ipList),
 			},
-			Action: &awswafv2.CfnWebACL_RuleActionProperty{
-				Allow: &map[string]interface{}{},
-			},
-			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
-				SampledRequestsEnabled:   jsii.Bool(true),
-				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:               jsii.String("IPWhitelist"),
-			},
-		})
-		priority++
+		},
+		VisibilityConfig: b.createVisibilityConfig(name),
 	}
-
-	// IP blacklist rule
-	if props.WAFConfig.IPBlacklist != nil && len(*props.WAFConfig.IPBlacklist) > 0 {
-		rules = append(rules, awswafv2.CfnWebACL_RuleProperty{
-			Name:     jsii.String("IPBlacklist"),
-			Priority: jsii.Number(priority),
-			Statement: &awswafv2.CfnWebACL_StatementProperty{
-				IpSetReferenceStatement: &awswafv2.CfnWebACL_IPSetReferenceStatementProperty{
-					Arn: s.createIPSet("Blacklist", props.WAFConfig.IPBlacklist),
-				},
-			},
-			Action: &awswafv2.CfnWebACL_RuleActionProperty{
-				Block: &awswafv2.CfnWebACL_BlockActionProperty{},
-			},
-			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
-				SampledRequestsEnabled:   jsii.Bool(true),
-				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:               jsii.String("IPBlacklist"),
-			},
-		})
-		priority++
-	}
-
-	// Geo blocking rule
-	if props.WAFConfig.GeoBlocking != nil && len(*props.WAFConfig.GeoBlocking) > 0 {
-		countryCodes := make([]*string, len(*props.WAFConfig.GeoBlocking))
-		for i, country := range *props.WAFConfig.GeoBlocking {
-			countryCodes[i] = jsii.String(country)
+	
+	if allow {
+		rule.Action = &awswafv2.CfnWebACL_RuleActionProperty{
+			Allow: &map[string]interface{}{},
 		}
+	} else {
+		rule.Action = &awswafv2.CfnWebACL_RuleActionProperty{
+			Block: &awswafv2.CfnWebACL_BlockActionProperty{},
+		}
+	}
+	
+	return rule
+}
 
-		rules = append(rules, awswafv2.CfnWebACL_RuleProperty{
-			Name:     jsii.String("GeoBlocking"),
-			Priority: jsii.Number(priority),
-			Statement: &awswafv2.CfnWebACL_StatementProperty{
-				GeoMatchStatement: &awswafv2.CfnWebACL_GeoMatchStatementProperty{
-					CountryCodes: &countryCodes,
-				},
-			},
-			Action: &awswafv2.CfnWebACL_RuleActionProperty{
-				Block: &awswafv2.CfnWebACL_BlockActionProperty{},
-			},
-			VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
-				SampledRequestsEnabled:   jsii.Bool(true),
-				CloudWatchMetricsEnabled: jsii.Bool(true),
-				MetricName:               jsii.String("GeoBlocking"),
-			},
-		})
+// addGeoBlockingRule adds geographical blocking rule
+func (b *wafBuilder) addGeoBlockingRule() {
+	if b.props.WAFConfig.GeoBlocking == nil || len(*b.props.WAFConfig.GeoBlocking) == 0 {
+		return
+	}
+	
+	countryCodes := make([]*string, len(*b.props.WAFConfig.GeoBlocking))
+	for i, country := range *b.props.WAFConfig.GeoBlocking {
+		countryCodes[i] = jsii.String(country)
 	}
 
-	// Custom response bodies
+	b.rules = append(b.rules, awswafv2.CfnWebACL_RuleProperty{
+		Name:     jsii.String("GeoBlocking"),
+		Priority: jsii.Number(b.priority),
+		Statement: &awswafv2.CfnWebACL_StatementProperty{
+			GeoMatchStatement: &awswafv2.CfnWebACL_GeoMatchStatementProperty{
+				CountryCodes: &countryCodes,
+			},
+		},
+		Action: &awswafv2.CfnWebACL_RuleActionProperty{
+			Block: &awswafv2.CfnWebACL_BlockActionProperty{},
+		},
+		VisibilityConfig: b.createVisibilityConfig("GeoBlocking"),
+	})
+	b.priority++
+}
+
+// createVisibilityConfig creates a standard visibility configuration
+func (b *wafBuilder) createVisibilityConfig(metricName string) *awswafv2.CfnWebACL_VisibilityConfigProperty {
+	return &awswafv2.CfnWebACL_VisibilityConfigProperty{
+		SampledRequestsEnabled:   jsii.Bool(true),
+		CloudWatchMetricsEnabled: jsii.Bool(true),
+		MetricName:               jsii.String(metricName),
+	}
+}
+
+// createWebACL creates the final Web ACL
+func (b *wafBuilder) createWebACL() awswafv2.CfnWebACL {
 	customResponseBodies := map[string]awswafv2.CfnWebACL_CustomResponseBodyProperty{
 		"RateLimitExceeded": {
 			ContentType: jsii.String("APPLICATION_JSON"),
@@ -364,31 +404,27 @@ func (s *EnhancedSecurity) configureWAF(props *EnhancedSecurityProps) {
 		},
 	}
 
-	// Create WAF Web ACL
-	s.WAF = awswafv2.NewCfnWebACL(s.Construct, jsii.String("WebACL"), &awswafv2.CfnWebACLProps{
+	return awswafv2.NewCfnWebACL(b.security.Construct, jsii.String("WebACL"), &awswafv2.CfnWebACLProps{
 		Scope:                jsii.String("REGIONAL"),
 		DefaultAction:        &awswafv2.CfnWebACL_DefaultActionProperty{Allow: &map[string]interface{}{}},
-		Rules:                &rules,
+		Rules:                &b.rules,
 		CustomResponseBodies: customResponseBodies,
 		VisibilityConfig: &awswafv2.CfnWebACL_VisibilityConfigProperty{
 			SampledRequestsEnabled:   jsii.Bool(true),
 			CloudWatchMetricsEnabled: jsii.Bool(true),
-			MetricName:               jsii.String(fmt.Sprintf("%sWAF", *props.ApplicationName)),
+			MetricName:               jsii.String(fmt.Sprintf("%sWAF", *b.props.ApplicationName)),
 		},
 		Tags: &[]*awscdk.CfnTag{
 			{
 				Key:   jsii.String("Environment"),
-				Value: props.Environment,
+				Value: b.props.Environment,
 			},
 			{
 				Key:   jsii.String("Application"),
-				Value: props.ApplicationName,
+				Value: b.props.ApplicationName,
 			},
 		},
 	})
-
-	// Create WAF logging configuration
-	s.createWAFLogging(props)
 }
 
 func (s *EnhancedSecurity) createIPSet(name string, ips *[]*string) *string {
@@ -428,32 +464,6 @@ func createManagedWAFRule(ruleName string, managedRuleGroupName string, priority
 	}
 }
 
-func (s *EnhancedSecurity) createWAFLogging(props *EnhancedSecurityProps) {
-	// Create log group for WAF logs
-	wafLogGroup := awslogs.NewLogGroup(s.Construct, jsii.String("WAFLogGroup"), &awslogs.LogGroupProps{
-		LogGroupName:  jsii.String(fmt.Sprintf("/aws/wafv2/%s", *props.ApplicationName)),
-		Retention:     awslogs.RetentionDays_ONE_MONTH,
-		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-	})
-
-	// Create WAF logging configuration
-	awswafv2.NewCfnLoggingConfiguration(s.Construct, jsii.String("WAFLogging"), &awswafv2.CfnLoggingConfigurationProps{
-		ResourceArn:           s.WAF.AttrArn(),
-		LogDestinationConfigs: &[]*string{wafLogGroup.LogGroupArn()},
-		RedactedFields: &[]awswafv2.CfnLoggingConfiguration_FieldToMatchProperty{
-			{
-				SingleHeader: &awswafv2.CfnLoggingConfiguration_SingleHeaderProperty{
-					Name: jsii.String("authorization"),
-				},
-			},
-			{
-				SingleHeader: &awswafv2.CfnLoggingConfiguration_SingleHeaderProperty{
-					Name: jsii.String("cookie"),
-				},
-			},
-		},
-	})
-}
 
 func (s *EnhancedSecurity) createSecrets(props *EnhancedSecurityProps) {
 	for _, secretConfig := range props.Secrets {

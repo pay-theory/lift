@@ -30,112 +30,159 @@ type LiftTable struct {
 
 // NewLiftTable creates a new DynamoDB table with Lift-optimized defaults
 func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps) *LiftTable {
-	this := constructs.NewConstruct(scope, id)
+	builder := newLiftTableBuilder(scope, id, props)
+	return builder.build()
+}
 
-	// Default to on-demand billing
-	billingMode := awsdynamodb.BillingMode_PAY_PER_REQUEST
+// liftTableBuilder builds DynamoDB tables optimized for DynamORM
+type liftTableBuilder struct {
+	scope       constructs.Construct
+	id          *string
+	props       *LiftTableProps
+	billingMode awsdynamodb.BillingMode
+}
 
-	// If capacity is specified, use provisioned mode
-	if props.ReadCapacity != nil || props.WriteCapacity != nil {
-		billingMode = awsdynamodb.BillingMode_PROVISIONED
+// newLiftTableBuilder creates a new lift table builder
+func newLiftTableBuilder(scope constructs.Construct, id *string, props *LiftTableProps) *liftTableBuilder {
+	return &liftTableBuilder{
+		scope: scope,
+		id:    id,
+		props: props,
 	}
+}
 
-	// Define partition key - DynamORM expects field names as attribute names
-	partitionKeyName := props.PartitionKeyName
-	if partitionKeyName == nil {
-		// This is incorrect - we should require the key name or detect it from the model
-		// For now, we'll require it to be specified
+// build constructs the complete LiftTable
+func (b *liftTableBuilder) build() *LiftTable {
+	this := constructs.NewConstruct(b.scope, b.id)
+	
+	b.determineBillingMode()
+	tableProps := b.createTableProps()
+	table := b.createTable(this, tableProps)
+	b.configureAutoScaling(table)
+	
+	return &LiftTable{
+		Construct: this,
+		Table:     table,
+	}
+}
+
+// determineBillingMode determines the appropriate billing mode
+func (b *liftTableBuilder) determineBillingMode() {
+	if b.props.ReadCapacity != nil || b.props.WriteCapacity != nil {
+		b.billingMode = awsdynamodb.BillingMode_PROVISIONED
+	} else {
+		b.billingMode = awsdynamodb.BillingMode_PAY_PER_REQUEST
+	}
+}
+
+// createTableProps creates the base table properties
+func (b *liftTableBuilder) createTableProps() *awsdynamodb.TableProps {
+	tableProps := &awsdynamodb.TableProps{
+		TableName:     b.props.TableName,
+		PartitionKey:  b.createPartitionKey(),
+		BillingMode:   b.billingMode,
+		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
+	}
+	
+	b.configureSortKey(tableProps)
+	b.configureCapacity(tableProps)
+	
+	return tableProps
+}
+
+// createPartitionKey creates the partition key attribute
+func (b *liftTableBuilder) createPartitionKey() *awsdynamodb.Attribute {
+	if b.props.PartitionKeyName == nil {
 		panic("PartitionKeyName is required in LiftTableProps to match DynamORM model field name")
 	}
-
-	partitionKey := &awsdynamodb.Attribute{
-		Name: partitionKeyName,
+	
+	return &awsdynamodb.Attribute{
+		Name: b.props.PartitionKeyName,
 		Type: awsdynamodb.AttributeType_STRING,
 	}
+}
 
-	// Define sort key if provided
-	var sortKey *awsdynamodb.Attribute
-	if props.SortKeyName != nil {
-		sortKey = &awsdynamodb.Attribute{
-			Name: props.SortKeyName,
+// configureSortKey configures the sort key if provided
+func (b *liftTableBuilder) configureSortKey(tableProps *awsdynamodb.TableProps) {
+	if b.props.SortKeyName != nil {
+		tableProps.SortKey = &awsdynamodb.Attribute{
+			Name: b.props.SortKeyName,
 			Type: awsdynamodb.AttributeType_STRING,
 		}
 	}
+}
 
-	// Create table properties matching DynamORM model field names
-	tableProps := &awsdynamodb.TableProps{
-		TableName:     props.TableName,
-		PartitionKey:  partitionKey,
-		BillingMode:   billingMode,
-		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
+// configureCapacity configures capacity for provisioned billing
+func (b *liftTableBuilder) configureCapacity(tableProps *awsdynamodb.TableProps) {
+	if b.billingMode != awsdynamodb.BillingMode_PROVISIONED {
+		return
 	}
-
-	// Only add sort key if provided
-	if sortKey != nil {
-		tableProps.SortKey = sortKey
+	
+	if b.props.ReadCapacity != nil {
+		tableProps.ReadCapacity = b.props.ReadCapacity
+	} else {
+		tableProps.ReadCapacity = jsii.Number(5)
 	}
-
-	// Configure capacity for provisioned mode
-	if billingMode == awsdynamodb.BillingMode_PROVISIONED {
-		if props.ReadCapacity != nil {
-			tableProps.ReadCapacity = props.ReadCapacity
-		} else {
-			tableProps.ReadCapacity = jsii.Number(5)
-		}
-		if props.WriteCapacity != nil {
-			tableProps.WriteCapacity = props.WriteCapacity
-		} else {
-			tableProps.WriteCapacity = jsii.Number(5)
-		}
+	
+	if b.props.WriteCapacity != nil {
+		tableProps.WriteCapacity = b.props.WriteCapacity
+	} else {
+		tableProps.WriteCapacity = jsii.Number(5)
 	}
+}
 
-	// Enable point-in-time recovery
-	if props.EnablePointInTimeRecovery != nil && *props.EnablePointInTimeRecovery {
+// createTable creates the DynamoDB table with advanced features
+func (b *liftTableBuilder) createTable(construct constructs.Construct, tableProps *awsdynamodb.TableProps) awsdynamodb.Table {
+	b.configureAdvancedFeatures(tableProps)
+	return awsdynamodb.NewTable(construct, jsii.String("Table"), tableProps)
+}
+
+// configureAdvancedFeatures configures advanced DynamoDB features
+func (b *liftTableBuilder) configureAdvancedFeatures(tableProps *awsdynamodb.TableProps) {
+	if b.props.EnablePointInTimeRecovery != nil && *b.props.EnablePointInTimeRecovery {
 		tableProps.PointInTimeRecoverySpecification = &awsdynamodb.PointInTimeRecoverySpecification{
 			PointInTimeRecoveryEnabled: jsii.Bool(true),
 		}
 	}
 
-	// Enable streams
-	if props.EnableStreams != nil && *props.EnableStreams {
-		if props.StreamViewType != "" {
-			tableProps.Stream = props.StreamViewType
+	if b.props.EnableStreams != nil && *b.props.EnableStreams {
+		if b.props.StreamViewType != "" {
+			tableProps.Stream = b.props.StreamViewType
 		} else {
 			tableProps.Stream = awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES
 		}
 	}
 
-	// Set TTL attribute
-	if props.TimeToLiveAttribute != nil {
-		tableProps.TimeToLiveAttribute = props.TimeToLiveAttribute
+	if b.props.TimeToLiveAttribute != nil {
+		tableProps.TimeToLiveAttribute = b.props.TimeToLiveAttribute
+	}
+}
+
+// configureAutoScaling configures auto-scaling for provisioned billing
+func (b *liftTableBuilder) configureAutoScaling(table awsdynamodb.Table) {
+	if b.billingMode != awsdynamodb.BillingMode_PROVISIONED {
+		return
+	}
+	
+	if b.props.EnableAutoScaling == nil || !*b.props.EnableAutoScaling {
+		return
 	}
 
-	// Create the table with only pk/sk - GSIs must be added separately using table.AddGlobalSecondaryIndex()
-	table := awsdynamodb.NewTable(this, jsii.String("Table"), tableProps)
+	readScaling := table.AutoScaleReadCapacity(&awsdynamodb.EnableScalingProps{
+		MinCapacity: jsii.Number(5),
+		MaxCapacity: jsii.Number(1000),
+	})
+	readScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
+		TargetUtilizationPercent: jsii.Number(70),
+	})
 
-	// Configure auto-scaling for provisioned mode
-	if billingMode == awsdynamodb.BillingMode_PROVISIONED && props.EnableAutoScaling != nil && *props.EnableAutoScaling {
-		readScaling := table.AutoScaleReadCapacity(&awsdynamodb.EnableScalingProps{
-			MinCapacity: jsii.Number(5),
-			MaxCapacity: jsii.Number(1000),
-		})
-		readScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
-			TargetUtilizationPercent: jsii.Number(70),
-		})
-
-		writeScaling := table.AutoScaleWriteCapacity(&awsdynamodb.EnableScalingProps{
-			MinCapacity: jsii.Number(5),
-			MaxCapacity: jsii.Number(1000),
-		})
-		writeScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
-			TargetUtilizationPercent: jsii.Number(70),
-		})
-	}
-
-	return &LiftTable{
-		Construct: this,
-		Table:     table,
-	}
+	writeScaling := table.AutoScaleWriteCapacity(&awsdynamodb.EnableScalingProps{
+		MinCapacity: jsii.Number(5),
+		MaxCapacity: jsii.Number(1000),
+	})
+	writeScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
+		TargetUtilizationPercent: jsii.Number(70),
+	})
 }
 
 // GrantReadWrite grants read/write permissions to a Lambda function

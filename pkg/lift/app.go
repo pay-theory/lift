@@ -267,89 +267,166 @@ func (a *App) IsLambda() bool {
 
 // HandleRequest processes an incoming Lambda request
 func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
-	// Ensure the app is started (transfers middleware to router)
-	if err := a.Start(); err != nil {
+	builder := newRequestHandlerBuilder(a, ctx, event)
+	return builder.build()
+}
+
+// requestHandlerBuilder builds and executes Lambda request handling
+type requestHandlerBuilder struct {
+	app      *App
+	ctx      context.Context
+	event    any
+	liftCtx  *Context
+	request  *Request
+	routeErr error
+}
+
+// newRequestHandlerBuilder creates a new request handler builder
+func newRequestHandlerBuilder(app *App, ctx context.Context, event any) *requestHandlerBuilder {
+	return &requestHandlerBuilder{
+		app:   app,
+		ctx:   ctx,
+		event: event,
+	}
+}
+
+// build executes the complete request handling pipeline
+func (b *requestHandlerBuilder) build() (any, error) {
+	if err := b.ensureAppStarted(); err != nil {
 		return nil, err
 	}
+	
+	if err := b.parseEvent(); err != nil {
+		return nil, err
+	}
+	
+	b.createContext()
+	b.configureContext()
+	b.routeRequest()
+	
+	if b.routeErr != nil {
+		return b.app.handleError(b.liftCtx, b.routeErr)
+	}
+	
+	if err := b.liftCtx.FlushResponse(); err != nil {
+		return nil, err
+	}
+	
+	return b.liftCtx.Response, nil
+}
 
-	// Parse the event into a Request
-	req, err := a.parseEvent(event)
+// ensureAppStarted ensures the app is properly initialized
+func (b *requestHandlerBuilder) ensureAppStarted() error {
+	return b.app.Start()
+}
+
+// parseEvent converts the Lambda event to a Request
+func (b *requestHandlerBuilder) parseEvent() error {
+	req, err := b.app.parseEvent(b.event)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	b.request = req
+	return nil
+}
 
-	// Create enhanced context
-	liftCtx := NewContext(ctx, req)
+// createContext creates the enhanced Lift context
+func (b *requestHandlerBuilder) createContext() {
+	b.liftCtx = NewContext(b.ctx, b.request)
+}
 
-	// Enable response buffering if any middleware needs it
-	if a.hasInterceptingMiddleware {
-		liftCtx.EnableResponseBuffering()
+// configureContext sets up the context with app dependencies
+func (b *requestHandlerBuilder) configureContext() {
+	if b.app.hasInterceptingMiddleware {
+		b.liftCtx.EnableResponseBuffering()
 	}
+	
+	if b.app.logger != nil {
+		b.liftCtx.Logger = b.app.logger
+	}
+	if b.app.metrics != nil {
+		b.liftCtx.Metrics = b.app.metrics
+	}
+	if b.app.db != nil {
+		b.liftCtx.DB = b.app.db
+	}
+}
 
-	// Set dependencies if available
-	if a.logger != nil {
-		liftCtx.Logger = a.logger
-	}
-	if a.metrics != nil {
-		liftCtx.Metrics = a.metrics
-	}
-	if a.db != nil {
-		liftCtx.DB = a.db
-	}
-
-	// Route based on trigger type
-	var routeErr error
+// routeRequest routes the request based on trigger type
+func (b *requestHandlerBuilder) routeRequest() {
 	switch {
-	case req.TriggerType == adapters.TriggerWebSocket:
-		// WebSocket event, use WebSocket routing
-		routeKey := ""
-		if metadata, ok := req.Metadata["routeKey"].(string); ok {
-			routeKey = metadata
-		}
-
-		handler := a.RouteWebSocket(routeKey)
-		if handler == nil {
-			routeErr = NewLiftError("WEBSOCKET_ROUTE_NOT_FOUND", fmt.Sprintf("No handler for WebSocket route: %s", routeKey), 404)
-		} else {
-			// Apply middleware and execute handler
-			finalHandler := handler
-			for i := len(a.middleware) - 1; i >= 0; i-- {
-				finalHandler = a.middleware[i](finalHandler)
-			}
-
-			// Execute with automatic connection management if enabled
-			if a.wsOptions != nil && a.wsOptions.EnableAutoConnectionManagement {
-				finalHandler = wrapWithConnectionManagement(finalHandler, a.wsOptions.ConnectionStore)
-			}
-
-			if err := finalHandler.Handle(liftCtx); err != nil {
-				routeErr = err
-			}
-		}
-	case req.TriggerType != adapters.TriggerAPIGateway && req.TriggerType != adapters.TriggerAPIGatewayV2 && req.TriggerType != adapters.TriggerUnknown:
-		// Non-HTTP event, use event router
-		if err := a.eventRouter.HandleEvent(liftCtx); err != nil {
-			routeErr = err
-		}
+	case b.request.TriggerType == adapters.TriggerWebSocket:
+		b.routeWebSocket()
+	case b.isEventTrigger():
+		b.routeEvent()
 	default:
-		// HTTP event, use regular router
-		if err := a.router.Handle(liftCtx); err != nil {
-			routeErr = err
-		}
+		b.routeHTTP()
 	}
+}
 
-	// Handle any routing errors
-	if routeErr != nil {
-		return a.handleError(liftCtx, routeErr)
+// isEventTrigger checks if this is a non-HTTP event trigger
+func (b *requestHandlerBuilder) isEventTrigger() bool {
+	return b.request.TriggerType != adapters.TriggerAPIGateway && 
+		b.request.TriggerType != adapters.TriggerAPIGatewayV2 && 
+		b.request.TriggerType != adapters.TriggerUnknown
+}
+
+// routeWebSocket handles WebSocket routing
+func (b *requestHandlerBuilder) routeWebSocket() {
+	routeKey := b.extractRouteKey()
+	handler := b.app.RouteWebSocket(routeKey)
+	
+	if handler == nil {
+		b.routeErr = NewLiftError("WEBSOCKET_ROUTE_NOT_FOUND", 
+			fmt.Sprintf("No handler for WebSocket route: %s", routeKey), 404)
+		return
 	}
-
-	// Flush response buffer if enabled
-	if err := liftCtx.FlushResponse(); err != nil {
-		return nil, err
+	
+	finalHandler := b.applyMiddleware(handler)
+	finalHandler = b.applyConnectionManagement(finalHandler)
+	
+	if err := finalHandler.Handle(b.liftCtx); err != nil {
+		b.routeErr = err
 	}
+}
 
-	// Return the response
-	return liftCtx.Response, nil
+// extractRouteKey gets the WebSocket route key from metadata
+func (b *requestHandlerBuilder) extractRouteKey() string {
+	if metadata, ok := b.request.Metadata["routeKey"].(string); ok {
+		return metadata
+	}
+	return ""
+}
+
+// applyMiddleware wraps the handler with middleware
+func (b *requestHandlerBuilder) applyMiddleware(handler Handler) Handler {
+	finalHandler := handler
+	for i := len(b.app.middleware) - 1; i >= 0; i-- {
+		finalHandler = b.app.middleware[i](finalHandler)
+	}
+	return finalHandler
+}
+
+// applyConnectionManagement adds WebSocket connection management if enabled
+func (b *requestHandlerBuilder) applyConnectionManagement(handler Handler) Handler {
+	if b.app.wsOptions != nil && b.app.wsOptions.EnableAutoConnectionManagement {
+		return wrapWithConnectionManagement(handler, b.app.wsOptions.ConnectionStore)
+	}
+	return handler
+}
+
+// routeEvent handles non-HTTP event routing
+func (b *requestHandlerBuilder) routeEvent() {
+	if err := b.app.eventRouter.HandleEvent(b.liftCtx); err != nil {
+		b.routeErr = err
+	}
+}
+
+// routeHTTP handles HTTP request routing
+func (b *requestHandlerBuilder) routeHTTP() {
+	if err := b.app.router.Handle(b.liftCtx); err != nil {
+		b.routeErr = err
+	}
 }
 
 // parseEvent converts a Lambda event to our Request structure
@@ -627,10 +704,14 @@ func (v *handlerValidator) validateNoInDoubleOut(t reflect.Type) handlerPattern 
 }
 
 // handlerExecutor handles the execution of different handler patterns
+// Memory optimized: struct with 48 pointer bytes could be 32
 type handlerExecutor struct {
-	value   reflect.Value
-	pattern handlerPattern
+	// reflect.Value (24 bytes)
+	value reflect.Value
+	// reflect.Type (16 bytes - interface)
 	funcType reflect.Type
+	// enum (8 bytes on 64-bit)
+	pattern handlerPattern
 }
 
 // createReflectedHandler creates a Handler from a reflected function

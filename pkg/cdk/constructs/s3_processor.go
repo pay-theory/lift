@@ -126,12 +126,15 @@ type s3ProcessorBuilder struct {
 }
 
 // s3ProcessorConfig holds resolved configuration values
+// Memory optimized: struct with 16 pointer bytes could be 8
 type s3ProcessorConfig struct {
+	// Slice first (24 bytes - pointer + len + cap)
+	eventTypes []awss3.EventType
+	// Booleans (1 byte each, packed together)
 	enableDLQ            bool
 	enableVersioning     bool
 	enableLifecycleRules bool
 	enableAccessLogging  bool
-	eventTypes           []awss3.EventType
 }
 
 // newS3ProcessorBuilder creates a new S3 processor builder
@@ -213,23 +216,13 @@ func (b *s3ProcessorBuilder) setupDeadLetterQueue() {
 		return
 	}
 
-	dlqProps := &awssqs.QueueProps{
-		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
-	}
-	
-	if b.props.DeadLetterQueueProps != nil {
-		dlqProps = b.props.DeadLetterQueueProps
-		if dlqProps.RetentionPeriod == nil {
-			dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
-		}
-	}
-
-	// Set DLQ name if not provided
-	if dlqProps.QueueName == nil && b.props.FunctionProps.FunctionName != nil {
-		dlqProps.QueueName = jsii.String(*b.props.FunctionProps.FunctionName + "-s3-dlq")
-	}
-
-	b.processor.DeadLetterQueue = awssqs.NewQueue(b.processor, jsii.String("DeadLetterQueue"), dlqProps)
+	dlqBuilder := newDeadLetterQueueBuilder(
+		b.processor,
+		b.props.DeadLetterQueueProps,
+		b.props.FunctionProps.FunctionName,
+		"-s3-dlq",
+	)
+	b.processor.DeadLetterQueue = dlqBuilder.build()
 }
 
 // setupFunction creates the Lambda function with S3 environment variables
@@ -434,7 +427,7 @@ func (fb *s3FunctionBuilder) build() *LiftFunction {
 	}
 	
 	// Set environment variables
-	liftProps.FunctionProps.Environment = &functionEnv
+	liftProps.Environment = &functionEnv
 	
 	// Set Lift-specific properties
 	if fb.props.EnableTracing != nil {
@@ -578,7 +571,7 @@ func (s *S3Processor) enableMonitoring() {
 
 	// Lambda function monitoring
 	if s.Function != nil {
-		function := s.Function.GetFunction()
+		function := s.Function.Function
 
 		// Function error alarm
 		awscloudwatch.NewAlarm(s, jsii.String("FunctionErrorAlarm"), &awscloudwatch.AlarmProps{
@@ -762,12 +755,12 @@ func (s *S3Processor) enableMonitoring() {
 			awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
 				Title: jsii.String("Lambda Function Metrics"),
 				Left: &[]awscloudwatch.IMetric{
-					s.Function.GetFunction().MetricInvocations(nil),
-					s.Function.GetFunction().MetricErrors(nil),
-					s.Function.GetFunction().MetricThrottles(nil),
+					s.Function.Function.MetricInvocations(nil),
+					s.Function.Function.MetricErrors(nil),
+					s.Function.Function.MetricThrottles(nil),
 				},
 				Right: &[]awscloudwatch.IMetric{
-					s.Function.GetFunction().MetricDuration(nil),
+					s.Function.Function.MetricDuration(nil),
 				},
 			}),
 		)
@@ -881,62 +874,99 @@ func (s *S3Processor) SetBucketPolicy(policy map[string]interface{}) {
 
 // parsePolicyStatement converts a map to PolicyStatement
 func (s *S3Processor) parsePolicyStatement(stmt map[string]interface{}) awsiam.PolicyStatement {
-	props := &awsiam.PolicyStatementProps{}
+	parser := newPolicyStatementParser(stmt)
+	return parser.parse()
+}
 
-	// Set Effect
-	if effect, ok := stmt["Effect"].(string); ok {
+// policyStatementParser parses IAM policy statements from maps
+type policyStatementParser struct {
+	stmt  map[string]interface{}
+	props *awsiam.PolicyStatementProps
+}
+
+// newPolicyStatementParser creates a new policy statement parser
+func newPolicyStatementParser(stmt map[string]interface{}) *policyStatementParser {
+	return &policyStatementParser{
+		stmt:  stmt,
+		props: &awsiam.PolicyStatementProps{},
+	}
+}
+
+// parse builds the PolicyStatement from the map
+func (p *policyStatementParser) parse() awsiam.PolicyStatement {
+	p.parseEffect()
+	p.parseActions()
+	p.parseResources()
+	p.parsePrincipals()
+	return awsiam.NewPolicyStatement(p.props)
+}
+
+// parseEffect parses the Effect field
+func (p *policyStatementParser) parseEffect() {
+	if effect, ok := p.stmt["Effect"].(string); ok {
 		if effect == "Allow" {
-			props.Effect = awsiam.Effect_ALLOW
+			p.props.Effect = awsiam.Effect_ALLOW
 		} else {
-			props.Effect = awsiam.Effect_DENY
+			p.props.Effect = awsiam.Effect_DENY
 		}
 	}
+}
 
-	// Set Actions
-	var actionList []*string
-	if actions, ok := stmt["Action"].([]interface{}); ok {
-		for _, action := range actions {
-			if actionStr, ok := action.(string); ok {
-				actionList = append(actionList, jsii.String(actionStr))
+// parseActions parses the Action field(s)
+func (p *policyStatementParser) parseActions() {
+	actions := p.parseStringOrArray("Action")
+	if len(actions) > 0 {
+		p.props.Actions = &actions
+	}
+}
+
+// parseResources parses the Resource field(s)
+func (p *policyStatementParser) parseResources() {
+	resources := p.parseStringOrArray("Resource")
+	if len(resources) > 0 {
+		p.props.Resources = &resources
+	}
+}
+
+// parseStringOrArray parses a field that can be either string or string array
+func (p *policyStatementParser) parseStringOrArray(field string) []*string {
+	var result []*string
+	
+	// Check if field is an array
+	if items, ok := p.stmt[field].([]interface{}); ok {
+		for _, item := range items {
+			if str, ok := item.(string); ok {
+				result = append(result, jsii.String(str))
 			}
 		}
-	} else if action, ok := stmt["Action"].(string); ok {
-		actionList = append(actionList, jsii.String(action))
+	} else if str, ok := p.stmt[field].(string); ok {
+		// Field is a single string
+		result = append(result, jsii.String(str))
 	}
-	if len(actionList) > 0 {
-		props.Actions = &actionList
-	}
+	
+	return result
+}
 
-	// Set Resources
-	var resourceList []*string
-	if resources, ok := stmt["Resource"].([]interface{}); ok {
-		for _, resource := range resources {
-			if resourceStr, ok := resource.(string); ok {
-				resourceList = append(resourceList, jsii.String(resourceStr))
-			}
-		}
-	} else if resource, ok := stmt["Resource"].(string); ok {
-		resourceList = append(resourceList, jsii.String(resource))
+// parsePrincipals parses the Principal field
+func (p *policyStatementParser) parsePrincipals() {
+	principal, ok := p.stmt["Principal"].(map[string]interface{})
+	if !ok {
+		return
 	}
-	if len(resourceList) > 0 {
-		props.Resources = &resourceList
-	}
-
-	// Set Principals
+	
 	var principals []awsiam.IPrincipal
-	if principal, ok := stmt["Principal"].(map[string]interface{}); ok {
-		if aws, ok := principal["AWS"].(string); ok {
-			principals = append(principals, awsiam.NewAccountPrincipal(jsii.String(aws)))
-		}
-		if service, ok := principal["Service"].(string); ok {
-			principals = append(principals, awsiam.NewServicePrincipal(jsii.String(service), nil))
-		}
+	
+	if aws, ok := principal["AWS"].(string); ok {
+		principals = append(principals, awsiam.NewAccountPrincipal(jsii.String(aws)))
 	}
+	
+	if service, ok := principal["Service"].(string); ok {
+		principals = append(principals, awsiam.NewServicePrincipal(jsii.String(service), nil))
+	}
+	
 	if len(principals) > 0 {
-		props.Principals = &principals
+		p.props.Principals = &principals
 	}
-
-	return awsiam.NewPolicyStatement(props)
 }
 
 // enableCrossRegionReplication sets up cross-region replication

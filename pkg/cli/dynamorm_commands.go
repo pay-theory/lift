@@ -852,13 +852,17 @@ func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynam
 }
 
 // tableAnalysisBuilder builds table analysis
+// Memory optimized: struct with 64 pointer bytes could be 56
 type tableAnalysisBuilder struct {
-	cmd       *DynamORMMigrateCommand
-	ctx       context.Context
-	client    *dynamodb.Client
+	// Pointers first (8 bytes each)
+	cmd      *DynamORMMigrateCommand
+	client   *dynamodb.Client
+	table    *types.TableDescription
+	analysis *TableAnalysis
+	// Interface (16 bytes)
+	ctx context.Context
+	// String (16 bytes)
 	tableName string
-	table     *types.TableDescription
-	analysis  *TableAnalysis
 }
 
 // newTableAnalysisBuilder creates a new table analysis builder

@@ -63,186 +63,252 @@ type MonitoredFunction struct {
 
 // NewMonitoredFunction creates a Lambda function with comprehensive monitoring
 func NewMonitoredFunction(scope constructs.Construct, id *string, props *MonitoredFunctionProps) *MonitoredFunction {
-	this := constructs.NewConstruct(scope, id)
+	builder := newMonitoredFunctionBuilder(scope, id, props)
+	return builder.build()
+}
 
-	// Set defaults
-	if props.EnableDashboard == nil {
-		props.EnableDashboard = jsii.Bool(true)
+// monitoredFunctionBuilder builds monitored Lambda functions with comprehensive observability
+type monitoredFunctionBuilder struct {
+	scope     constructs.Construct
+	id        *string
+	props     *MonitoredFunctionProps
+	construct constructs.Construct
+	function  *LiftFunction
+	alarms    map[string]awscloudwatch.Alarm
+}
+
+// newMonitoredFunctionBuilder creates a new monitored function builder
+func newMonitoredFunctionBuilder(scope constructs.Construct, id *string, props *MonitoredFunctionProps) *monitoredFunctionBuilder {
+	return &monitoredFunctionBuilder{
+		scope:  scope,
+		id:     id,
+		props:  props,
+		alarms: make(map[string]awscloudwatch.Alarm),
 	}
-	if props.EnableLambdaInsights == nil {
-		props.EnableLambdaInsights = jsii.Bool(true)
-	}
-	if props.LogLevel == nil {
-		props.LogLevel = jsii.String("INFO")
-	}
-	if props.MetricsNamespace == nil {
-		props.MetricsNamespace = jsii.String("Lift/Functions")
-	}
+}
 
-	// Set alarm defaults
-	if props.AlarmConfig == nil {
-		props.AlarmConfig = &AlarmConfig{}
-	}
-	if props.AlarmConfig.EnableErrorAlarm == nil {
-		props.AlarmConfig.EnableErrorAlarm = jsii.Bool(true)
-	}
-	if props.AlarmConfig.ErrorRateThreshold == nil {
-		props.AlarmConfig.ErrorRateThreshold = jsii.Number(1) // 1% error rate
-	}
-	if props.AlarmConfig.EnableLatencyAlarm == nil {
-		props.AlarmConfig.EnableLatencyAlarm = jsii.Bool(true)
-	}
-	if props.AlarmConfig.LatencyThreshold == nil {
-		props.AlarmConfig.LatencyThreshold = jsii.Number(3000) // 3 seconds
-	}
-	if props.AlarmConfig.EnableThrottleAlarm == nil {
-		props.AlarmConfig.EnableThrottleAlarm = jsii.Bool(true)
-	}
-	if props.AlarmConfig.ThrottleThreshold == nil {
-		props.AlarmConfig.ThrottleThreshold = jsii.Number(5) // 5 throttles
-	}
-
-	// Enable Lambda Insights
-	if *props.EnableLambdaInsights {
-		props.InsightsVersion = awslambda.LambdaInsightsVersion_VERSION_1_0_229_0()
-	}
-
-	// Add monitoring environment variables
-	if props.Environment == nil {
-		props.Environment = &map[string]*string{}
-	}
-	env := *props.Environment
-	env["LOG_LEVEL"] = props.LogLevel
-	env["METRICS_NAMESPACE"] = props.MetricsNamespace
-	env["MONITORING_ENABLED"] = jsii.String("true")
-	props.Environment = &env
-
-	// Create the base Lift function
-	liftFn := NewLiftFunction(this, jsii.String("Function"), &props.LiftFunctionProps)
-
-	// Create CloudWatch dashboard if enabled
-	var dashboard awscloudwatch.Dashboard
-	if *props.EnableDashboard {
-		dashboardName := props.DashboardName
-		if dashboardName == nil {
-			dashboardName = jsii.String(fmt.Sprintf("%s-dashboard", *id))
-		}
-		dashboard = awscloudwatch.NewDashboard(this, jsii.String("Dashboard"), &awscloudwatch.DashboardProps{
-			DashboardName: dashboardName,
-		})
-
-		// Add widgets to dashboard
-		dashboard.AddWidgets(
-			createInvocationsWidget(liftFn.Function),
-			createErrorsWidget(liftFn.Function),
-			createLatencyWidget(liftFn.Function),
-			createConcurrentExecutionsWidget(liftFn.Function),
-		)
-	}
-
-	// Create alarms
-	alarms := make(map[string]awscloudwatch.Alarm)
-
-	// Helper function to create and configure alarms
-	createAlarm := func(enabled bool, metric awscloudwatch.Metric, alarmId, alarmKeySuffix, nameSuffix, description string, threshold *float64, evaluationPeriods float64) {
-		if enabled {
-			alarm := metric.CreateAlarm(this, jsii.String(alarmId), &awscloudwatch.CreateAlarmOptions{
-				AlarmName:         jsii.String(fmt.Sprintf("%s-%s", *liftFn.Function.FunctionName(), nameSuffix)),
-				AlarmDescription:  jsii.String(description),
-				Threshold:         threshold,
-				EvaluationPeriods: jsii.Number(evaluationPeriods),
-				TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
-			})
-			alarms[alarmKeySuffix] = alarm
-
-			if props.AlarmConfig.AlarmTopic != nil {
-				alarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(props.AlarmConfig.AlarmTopic))
-			}
-		}
-	}
-
-	// Error rate alarm
-	createAlarm(
-		*props.AlarmConfig.EnableErrorAlarm,
-		liftFn.Function.MetricErrors(&awscloudwatch.MetricOptions{
-			Period: awscdk.Duration_Minutes(jsii.Number(5)),
-		}),
-		"ErrorAlarm",
-		"errors",
-		"errors",
-		"Lambda function error rate too high",
-		props.AlarmConfig.ErrorRateThreshold,
-		2,
-	)
-
-	// Latency alarm
-	createAlarm(
-		*props.AlarmConfig.EnableLatencyAlarm,
-		liftFn.Function.MetricDuration(&awscloudwatch.MetricOptions{
-			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-			Statistic: jsii.String("Average"),
-		}),
-		"LatencyAlarm",
-		"latency",
-		"latency",
-		"Lambda function latency too high",
-		props.AlarmConfig.LatencyThreshold,
-		2,
-	)
-
-	// Throttles alarm
-	createAlarm(
-		*props.AlarmConfig.EnableThrottleAlarm,
-		liftFn.Function.MetricThrottles(&awscloudwatch.MetricOptions{
-			Period: awscdk.Duration_Minutes(jsii.Number(5)),
-		}),
-		"ThrottleAlarm",
-		"throttles",
-		"throttles",
-		"Lambda function throttling detected",
-		props.AlarmConfig.ThrottleThreshold,
-		1,
-	)
-
-	// Concurrent executions alarm
-	if props.AlarmConfig.EnableConcurrentAlarm != nil && *props.AlarmConfig.EnableConcurrentAlarm {
-		// Use custom metric for concurrent executions
-		concurrentMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:  jsii.String("AWS/Lambda"),
-			MetricName: jsii.String("ConcurrentExecutions"),
-			DimensionsMap: &map[string]*string{
-				"FunctionName": liftFn.Function.FunctionName(),
-			},
-			Period: awscdk.Duration_Minutes(jsii.Number(5)),
-		})
-
-		concurrentAlarm := concurrentMetric.CreateAlarm(this, jsii.String("ConcurrentAlarm"), &awscloudwatch.CreateAlarmOptions{
-			AlarmName:         jsii.String(fmt.Sprintf("%s-concurrent", *liftFn.Function.FunctionName())),
-			AlarmDescription:  jsii.String("Lambda function concurrent executions too high"),
-			Threshold:         props.AlarmConfig.ConcurrentThreshold,
-			EvaluationPeriods: jsii.Number(2),
-			TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-		alarms["concurrent"] = concurrentAlarm
-
-		if props.AlarmConfig.AlarmTopic != nil {
-			concurrentAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(props.AlarmConfig.AlarmTopic))
-		}
-	}
-
+// build constructs the complete monitored function
+func (b *monitoredFunctionBuilder) build() *MonitoredFunction {
+	b.construct = constructs.NewConstruct(b.scope, b.id)
+	
+	b.setDefaults()
+	b.configureLambdaInsights()
+	b.configureEnvironment()
+	b.createFunction()
+	
+	dashboard := b.createDashboard()
+	b.createAlarms()
+	
 	monitored := &MonitoredFunction{
-		Construct: this,
-		Function:  liftFn,
+		Construct: b.construct,
+		Function:  b.function,
 		Dashboard: dashboard,
-		Alarms:    alarms,
+		Alarms:    b.alarms,
+	}
+	
+	b.setupLogInsights(monitored)
+	return monitored
+}
+
+// setDefaults applies default configuration values
+func (b *monitoredFunctionBuilder) setDefaults() {
+	if b.props.EnableDashboard == nil {
+		b.props.EnableDashboard = jsii.Bool(true)
+	}
+	if b.props.EnableLambdaInsights == nil {
+		b.props.EnableLambdaInsights = jsii.Bool(true)
+	}
+	if b.props.LogLevel == nil {
+		b.props.LogLevel = jsii.String("INFO")
+	}
+	if b.props.MetricsNamespace == nil {
+		b.props.MetricsNamespace = jsii.String("Lift/Functions")
+	}
+	
+	b.setAlarmDefaults()
+}
+
+// setAlarmDefaults applies default alarm configuration
+func (b *monitoredFunctionBuilder) setAlarmDefaults() {
+	if b.props.AlarmConfig == nil {
+		b.props.AlarmConfig = &AlarmConfig{}
+	}
+	if b.props.AlarmConfig.EnableErrorAlarm == nil {
+		b.props.AlarmConfig.EnableErrorAlarm = jsii.Bool(true)
+	}
+	if b.props.AlarmConfig.ErrorRateThreshold == nil {
+		b.props.AlarmConfig.ErrorRateThreshold = jsii.Number(1) // 1% error rate
+	}
+	if b.props.AlarmConfig.EnableLatencyAlarm == nil {
+		b.props.AlarmConfig.EnableLatencyAlarm = jsii.Bool(true)
+	}
+	if b.props.AlarmConfig.LatencyThreshold == nil {
+		b.props.AlarmConfig.LatencyThreshold = jsii.Number(3000) // 3 seconds
+	}
+	if b.props.AlarmConfig.EnableThrottleAlarm == nil {
+		b.props.AlarmConfig.EnableThrottleAlarm = jsii.Bool(true)
+	}
+	if b.props.AlarmConfig.ThrottleThreshold == nil {
+		b.props.AlarmConfig.ThrottleThreshold = jsii.Number(5) // 5 throttles
+	}
+}
+
+// configureLambdaInsights enables Lambda Insights if requested
+func (b *monitoredFunctionBuilder) configureLambdaInsights() {
+	if *b.props.EnableLambdaInsights {
+		b.props.InsightsVersion = awslambda.LambdaInsightsVersion_VERSION_1_0_229_0()
+	}
+}
+
+// configureEnvironment sets up monitoring environment variables
+func (b *monitoredFunctionBuilder) configureEnvironment() {
+	if b.props.Environment == nil {
+		b.props.Environment = &map[string]*string{}
+	}
+	env := *b.props.Environment
+	env["LOG_LEVEL"] = b.props.LogLevel
+	env["METRICS_NAMESPACE"] = b.props.MetricsNamespace
+	env["MONITORING_ENABLED"] = jsii.String("true")
+	b.props.Environment = &env
+}
+
+// createFunction creates the base Lift function
+func (b *monitoredFunctionBuilder) createFunction() {
+	b.function = NewLiftFunction(b.construct, jsii.String("Function"), &b.props.LiftFunctionProps)
+}
+
+// createDashboard creates CloudWatch dashboard if enabled
+func (b *monitoredFunctionBuilder) createDashboard() awscloudwatch.Dashboard {
+	if !*b.props.EnableDashboard {
+		return nil
 	}
 
-	// Add log insights queries if enabled
-	if *props.EnableDashboard && props.EnableLogInsightsQueries != nil && *props.EnableLogInsightsQueries {
+	dashboardName := b.props.DashboardName
+	if dashboardName == nil {
+		dashboardName = jsii.String(fmt.Sprintf("%s-dashboard", *b.id))
+	}
+	
+	dashboard := awscloudwatch.NewDashboard(b.construct, jsii.String("Dashboard"), &awscloudwatch.DashboardProps{
+		DashboardName: dashboardName,
+	})
+
+	// Add widgets to dashboard
+	dashboard.AddWidgets(
+		createInvocationsWidget(b.function.Function),
+		createErrorsWidget(b.function.Function),
+		createLatencyWidget(b.function.Function),
+		createConcurrentExecutionsWidget(b.function.Function),
+	)
+	
+	return dashboard
+}
+
+// createAlarms creates CloudWatch alarms for the function
+func (b *monitoredFunctionBuilder) createAlarms() {
+	b.createErrorAlarm()
+	b.createLatencyAlarm()
+	b.createThrottleAlarm()
+	b.createConcurrentAlarm()
+}
+
+// createErrorAlarm creates error rate alarm
+func (b *monitoredFunctionBuilder) createErrorAlarm() {
+	if !*b.props.AlarmConfig.EnableErrorAlarm {
+		return
+	}
+	
+	metric := b.function.Function.MetricErrors(&awscloudwatch.MetricOptions{
+		Period: awscdk.Duration_Minutes(jsii.Number(5)),
+	})
+	
+	alarm := b.createAlarm(metric, "ErrorAlarm", "errors", "Lambda function error rate too high",
+		b.props.AlarmConfig.ErrorRateThreshold, 2)
+	b.alarms["errors"] = alarm
+}
+
+// createLatencyAlarm creates latency alarm
+func (b *monitoredFunctionBuilder) createLatencyAlarm() {
+	if !*b.props.AlarmConfig.EnableLatencyAlarm {
+		return
+	}
+	
+	metric := b.function.Function.MetricDuration(&awscloudwatch.MetricOptions{
+		Period:    awscdk.Duration_Minutes(jsii.Number(5)),
+		Statistic: jsii.String("Average"),
+	})
+	
+	alarm := b.createAlarm(metric, "LatencyAlarm", "latency", "Lambda function latency too high",
+		b.props.AlarmConfig.LatencyThreshold, 2)
+	b.alarms["latency"] = alarm
+}
+
+// createThrottleAlarm creates throttle alarm
+func (b *monitoredFunctionBuilder) createThrottleAlarm() {
+	if !*b.props.AlarmConfig.EnableThrottleAlarm {
+		return
+	}
+	
+	metric := b.function.Function.MetricThrottles(&awscloudwatch.MetricOptions{
+		Period: awscdk.Duration_Minutes(jsii.Number(5)),
+	})
+	
+	alarm := b.createAlarm(metric, "ThrottleAlarm", "throttles", "Lambda function throttling detected",
+		b.props.AlarmConfig.ThrottleThreshold, 1)
+	b.alarms["throttles"] = alarm
+}
+
+// createConcurrentAlarm creates concurrent executions alarm
+func (b *monitoredFunctionBuilder) createConcurrentAlarm() {
+	if b.props.AlarmConfig.EnableConcurrentAlarm == nil || !*b.props.AlarmConfig.EnableConcurrentAlarm {
+		return
+	}
+	
+	concurrentMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
+		Namespace:  jsii.String("AWS/Lambda"),
+		MetricName: jsii.String("ConcurrentExecutions"),
+		DimensionsMap: &map[string]*string{
+			"FunctionName": b.function.Function.FunctionName(),
+		},
+		Period: awscdk.Duration_Minutes(jsii.Number(5)),
+	})
+
+	alarm := concurrentMetric.CreateAlarm(b.construct, jsii.String("ConcurrentAlarm"), &awscloudwatch.CreateAlarmOptions{
+		AlarmName:         jsii.String(fmt.Sprintf("%s-concurrent", *b.function.Function.FunctionName())),
+		AlarmDescription:  jsii.String("Lambda function concurrent executions too high"),
+		Threshold:         b.props.AlarmConfig.ConcurrentThreshold,
+		EvaluationPeriods: jsii.Number(2),
+		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+	})
+	
+	if b.props.AlarmConfig.AlarmTopic != nil {
+		alarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(b.props.AlarmConfig.AlarmTopic))
+	}
+	
+	b.alarms["concurrent"] = alarm
+}
+
+// createAlarm helper method to create and configure alarms
+func (b *monitoredFunctionBuilder) createAlarm(metric awscloudwatch.Metric, alarmId, nameSuffix, description string, threshold *float64, evaluationPeriods float64) awscloudwatch.Alarm {
+	alarm := metric.CreateAlarm(b.construct, jsii.String(alarmId), &awscloudwatch.CreateAlarmOptions{
+		AlarmName:         jsii.String(fmt.Sprintf("%s-%s", *b.function.Function.FunctionName(), nameSuffix)),
+		AlarmDescription:  jsii.String(description),
+		Threshold:         threshold,
+		EvaluationPeriods: jsii.Number(evaluationPeriods),
+		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
+	})
+
+	if b.props.AlarmConfig.AlarmTopic != nil {
+		alarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(b.props.AlarmConfig.AlarmTopic))
+	}
+
+	return alarm
+}
+
+// setupLogInsights configures log insights queries if enabled
+func (b *monitoredFunctionBuilder) setupLogInsights(monitored *MonitoredFunction) {
+	if *b.props.EnableDashboard && b.props.EnableLogInsightsQueries != nil && *b.props.EnableLogInsightsQueries {
 		monitored.AddCommonLogInsightsQueries()
 	}
-
-	return monitored
 }
 
 // GetFunction returns the underlying Lambda function

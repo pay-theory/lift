@@ -46,142 +46,223 @@ type SecureFunction struct {
 
 // NewSecureFunction creates a Lambda function with enhanced security
 func NewSecureFunction(scope constructs.Construct, id *string, props *SecureFunctionProps) *SecureFunction {
-	this := constructs.NewConstruct(scope, id)
+	builder := newSecureFunctionBuilder(scope, id, props)
+	return builder.build()
+}
 
-	// Set defaults
-	if props.EnableKMSEncryption == nil {
-		props.EnableKMSEncryption = jsii.Bool(true)
+// secureFunctionBuilder builds Lambda functions with enhanced security features
+type secureFunctionBuilder struct {
+	scope         constructs.Construct
+	id            *string
+	props         *SecureFunctionProps
+	construct     constructs.Construct
+	vpc           awsec2.IVpc
+	vpcSubnets    *awsec2.SubnetSelection
+	securityGroup awsec2.ISecurityGroup
+	kmsKey        awskms.IKey
+	function      *LiftFunction
+}
+
+// newSecureFunctionBuilder creates a new secure function builder
+func newSecureFunctionBuilder(scope constructs.Construct, id *string, props *SecureFunctionProps) *secureFunctionBuilder {
+	return &secureFunctionBuilder{
+		scope: scope,
+		id:    id,
+		props: props,
 	}
-	if props.PrivateOnly == nil {
-		props.PrivateOnly = jsii.Bool(false)
+}
+
+// build constructs the complete secure function
+func (b *secureFunctionBuilder) build() *SecureFunction {
+	b.construct = constructs.NewConstruct(b.scope, b.id)
+	
+	b.setDefaults()
+	b.setupVPC()
+	b.configureSubnets()
+	b.createSecurityGroup()
+	b.setupEncryption()
+	b.configureFunctionProps()
+	b.createFunction()
+	b.applySecrets()
+	b.applyPermissions()
+	b.applyAdditionalPolicies()
+	
+	return &SecureFunction{
+		Construct:     b.construct,
+		Function:      b.function,
+		SecurityGroup: b.securityGroup,
+		KmsKey:        b.kmsKey,
+		Vpc:           b.vpc,
+		VpcEndpoints:  make(map[string]awsec2.InterfaceVpcEndpoint),
+	}
+}
+
+// setDefaults applies default configuration values
+func (b *secureFunctionBuilder) setDefaults() {
+	if b.props.EnableKMSEncryption == nil {
+		b.props.EnableKMSEncryption = jsii.Bool(true)
+	}
+	if b.props.PrivateOnly == nil {
+		b.props.PrivateOnly = jsii.Bool(false)
+	}
+}
+
+// setupVPC creates or uses existing VPC
+func (b *secureFunctionBuilder) setupVPC() {
+	if b.props.Vpc != nil {
+		b.vpc = b.props.Vpc
+		return
+	}
+	
+	// Create a new VPC
+	b.vpc = b.createVPC()
+}
+
+// createVPC creates a new VPC with appropriate configuration
+func (b *secureFunctionBuilder) createVPC() awsec2.IVpc {
+	subnetConfig := b.getSubnetConfiguration()
+	natGateways := jsii.Number(1)
+	
+	if *b.props.PrivateOnly {
+		natGateways = jsii.Number(0)
 	}
 
-	// Create or use VPC
-	var vpc awsec2.IVpc
-	if props.Vpc != nil {
-		vpc = props.Vpc
-	} else {
-		// Create a secure VPC with appropriate subnet configuration
-		var subnetConfig []*awsec2.SubnetConfiguration
-		if *props.PrivateOnly {
-			// For private-only, create isolated subnets with no NAT
-			subnetConfig = []*awsec2.SubnetConfiguration{
-				{
-					Name:       jsii.String("Isolated"),
-					SubnetType: awsec2.SubnetType_PRIVATE_ISOLATED,
-					CidrMask:   jsii.Number(24),
-				},
-			}
-		} else {
-			// Standard configuration with public and private subnets
-			subnetConfig = []*awsec2.SubnetConfiguration{
-				{
-					Name:       jsii.String("Public"),
-					SubnetType: awsec2.SubnetType_PUBLIC,
-					CidrMask:   jsii.Number(24),
-				},
-				{
-					Name:       jsii.String("Private"),
-					SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-					CidrMask:   jsii.Number(24),
-				},
-			}
-		}
+	return awsec2.NewVpc(b.construct, jsii.String("SecureVpc"), &awsec2.VpcProps{
+		MaxAzs:              jsii.Number(2),
+		NatGateways:         natGateways,
+		SubnetConfiguration: &subnetConfig,
+		EnableDnsHostnames:  jsii.Bool(true),
+		EnableDnsSupport:    jsii.Bool(true),
+	})
+}
 
-		natGateways := jsii.Number(1)
-		if *props.PrivateOnly {
-			natGateways = jsii.Number(0)
-		}
-
-		vpc = awsec2.NewVpc(this, jsii.String("SecureVpc"), &awsec2.VpcProps{
-			MaxAzs:              jsii.Number(2),
-			NatGateways:         natGateways,
-			SubnetConfiguration: &subnetConfig,
-			EnableDnsHostnames:  jsii.Bool(true),
-			EnableDnsSupport:    jsii.Bool(true),
-		})
-	}
-
-	// Configure subnets
-	vpcSubnets := props.VpcSubnets
-	if vpcSubnets == nil {
-		if *props.PrivateOnly {
-			vpcSubnets = &awsec2.SubnetSelection{
+// getSubnetConfiguration returns subnet configuration based on privacy settings
+func (b *secureFunctionBuilder) getSubnetConfiguration() []*awsec2.SubnetConfiguration {
+	if *b.props.PrivateOnly {
+		return []*awsec2.SubnetConfiguration{
+			{
+				Name:       jsii.String("Isolated"),
 				SubnetType: awsec2.SubnetType_PRIVATE_ISOLATED,
-			}
-		} else {
-			vpcSubnets = &awsec2.SubnetSelection{
-				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-			}
+				CidrMask:   jsii.Number(24),
+			},
 		}
 	}
+	
+	return []*awsec2.SubnetConfiguration{
+		{
+			Name:       jsii.String("Public"),
+			SubnetType: awsec2.SubnetType_PUBLIC,
+			CidrMask:   jsii.Number(24),
+		},
+		{
+			Name:       jsii.String("Private"),
+			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			CidrMask:   jsii.Number(24),
+		},
+	}
+}
 
-	// Create security group
-	securityGroup := awsec2.NewSecurityGroup(this, jsii.String("SecurityGroup"), &awsec2.SecurityGroupProps{
-		Vpc:              vpc,
+// configureSubnets sets up VPC subnets for the function
+func (b *secureFunctionBuilder) configureSubnets() {
+	if b.props.VpcSubnets != nil {
+		b.vpcSubnets = b.props.VpcSubnets
+		return
+	}
+	
+	if *b.props.PrivateOnly {
+		b.vpcSubnets = &awsec2.SubnetSelection{
+			SubnetType: awsec2.SubnetType_PRIVATE_ISOLATED,
+		}
+	} else {
+		b.vpcSubnets = &awsec2.SubnetSelection{
+			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+		}
+	}
+}
+
+// createSecurityGroup creates and configures the security group
+func (b *secureFunctionBuilder) createSecurityGroup() {
+	b.securityGroup = awsec2.NewSecurityGroup(b.construct, jsii.String("SecurityGroup"), &awsec2.SecurityGroupProps{
+		Vpc:              b.vpc,
 		Description:      jsii.String("Security group for secure Lambda function"),
-		AllowAllOutbound: jsii.Bool(!*props.PrivateOnly),
+		AllowAllOutbound: jsii.Bool(!*b.props.PrivateOnly),
 	})
 
-	// Add default egress rules for AWS services if not private only
-	if !*props.PrivateOnly {
-		// Allow HTTPS for AWS API calls
-		securityGroup.AddEgressRule(
+	// Add default egress rules if not private only
+	if !*b.props.PrivateOnly {
+		b.securityGroup.AddEgressRule(
 			awsec2.Peer_AnyIpv4(),
 			awsec2.Port_Tcp(jsii.Number(443)),
 			jsii.String("Allow HTTPS for AWS API calls"),
 			jsii.Bool(false),
 		)
 	}
+}
 
-	// Create or use KMS key
-	var kmsKey awskms.IKey
-	if *props.EnableKMSEncryption {
-		if props.KmsKey != nil {
-			kmsKey = props.KmsKey
-		} else {
-			kmsKey = awskms.NewKey(this, jsii.String("KmsKey"), &awskms.KeyProps{
-				Description:       jsii.String("KMS key for Lambda function encryption"),
-				EnableKeyRotation: jsii.Bool(true),
-				RemovalPolicy:     awscdk.RemovalPolicy_DESTROY,
-				PendingWindow:     awscdk.Duration_Days(jsii.Number(7)),
-			})
-
-			// Add alias for easier identification
-			kmsKey.AddAlias(jsii.String(*id + "-key"))
-		}
-		props.EnvironmentEncryption = kmsKey
+// setupEncryption configures KMS encryption
+func (b *secureFunctionBuilder) setupEncryption() {
+	if !*b.props.EnableKMSEncryption {
+		return
 	}
-
-	// Configure VPC for the function
-	props.Vpc = vpc
-	props.VpcSubnets = vpcSubnets
-	props.SecurityGroups = &[]awsec2.ISecurityGroup{securityGroup}
-
-	// Add additional security groups if provided
-	if props.SecurityGroupIds != nil {
-		for _, sgId := range *props.SecurityGroupIds {
-			sg := awsec2.SecurityGroup_FromSecurityGroupId(this, sgId, sgId, &awsec2.SecurityGroupImportOptions{})
-			*props.SecurityGroups = append(*props.SecurityGroups, sg)
-		}
+	
+	if b.props.KmsKey != nil {
+		b.kmsKey = b.props.KmsKey
+	} else {
+		b.kmsKey = awskms.NewKey(b.construct, jsii.String("KmsKey"), &awskms.KeyProps{
+			Description:       jsii.String("KMS key for Lambda function encryption"),
+			EnableKeyRotation: jsii.Bool(true),
+			RemovalPolicy:     awscdk.RemovalPolicy_DESTROY,
+			PendingWindow:     awscdk.Duration_Days(jsii.Number(7)),
+		})
+		b.kmsKey.AddAlias(jsii.String(*b.id + "-key"))
 	}
+	
+	b.props.EnvironmentEncryption = b.kmsKey
+}
 
-	// Enable AWS X-Ray tracing for security monitoring
-	props.Tracing = awslambda.Tracing_ACTIVE
+// configureFunctionProps sets up Lambda function properties
+func (b *secureFunctionBuilder) configureFunctionProps() {
+	b.props.Vpc = b.vpc
+	b.props.VpcSubnets = b.vpcSubnets
+	b.props.SecurityGroups = &[]awsec2.ISecurityGroup{b.securityGroup}
+	b.props.Tracing = awslambda.Tracing_ACTIVE
+	
+	b.addAdditionalSecurityGroups()
+}
 
-	// Create the base Lift function
-	liftFn := NewLiftFunction(this, jsii.String("Function"), &props.LiftFunctionProps)
-
-	// Add secrets as environment variables
-	if props.Secrets != nil {
-		for name, secret := range *props.Secrets {
-			liftFn.Function.AddEnvironment(jsii.String(name), secret.SecretValue().ToString(), nil)
-			secret.GrantRead(liftFn.Function, nil)
-		}
+// addAdditionalSecurityGroups adds user-provided security groups
+func (b *secureFunctionBuilder) addAdditionalSecurityGroups() {
+	if b.props.SecurityGroupIds == nil {
+		return
 	}
+	
+	for _, sgId := range *b.props.SecurityGroupIds {
+		sg := awsec2.SecurityGroup_FromSecurityGroupId(b.construct, sgId, sgId, &awsec2.SecurityGroupImportOptions{})
+		*b.props.SecurityGroups = append(*b.props.SecurityGroups, sg)
+	}
+}
 
+// createFunction creates the Lambda function
+func (b *secureFunctionBuilder) createFunction() {
+	b.function = NewLiftFunction(b.construct, jsii.String("Function"), &b.props.LiftFunctionProps)
+}
+
+// applySecrets adds secrets as environment variables
+func (b *secureFunctionBuilder) applySecrets() {
+	if b.props.Secrets == nil {
+		return
+	}
+	
+	for name, secret := range *b.props.Secrets {
+		b.function.Function.AddEnvironment(jsii.String(name), secret.SecretValue().ToString(), nil)
+		secret.GrantRead(b.function.Function, nil)
+	}
+}
+
+// applyPermissions adds necessary IAM permissions
+func (b *secureFunctionBuilder) applyPermissions() {
 	// Add VPC endpoint permissions
-	liftFn.Function.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+	b.function.Function.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 		Actions: &[]*string{
 			jsii.String("ec2:CreateNetworkInterface"),
 			jsii.String("ec2:DescribeNetworkInterfaces"),
@@ -193,25 +274,20 @@ func NewSecureFunction(scope constructs.Construct, id *string, props *SecureFunc
 	}))
 
 	// Add KMS permissions if encryption is enabled
-	if kmsKey != nil {
-		kmsKey.GrantDecrypt(liftFn.Function)
-		kmsKey.GrantEncrypt(liftFn.Function)
+	if b.kmsKey != nil {
+		b.kmsKey.GrantDecrypt(b.function.Function)
+		b.kmsKey.GrantEncrypt(b.function.Function)
 	}
+}
 
-	// Add additional security policies
-	if props.AdditionalPolicies != nil {
-		for _, policy := range *props.AdditionalPolicies {
-			liftFn.Function.AddToRolePolicy(policy)
-		}
+// applyAdditionalPolicies adds user-provided security policies
+func (b *secureFunctionBuilder) applyAdditionalPolicies() {
+	if b.props.AdditionalPolicies == nil {
+		return
 	}
-
-	return &SecureFunction{
-		Construct:     this,
-		Function:      liftFn,
-		SecurityGroup: securityGroup,
-		KmsKey:        kmsKey,
-		Vpc:           vpc,
-		VpcEndpoints:  make(map[string]awsec2.InterfaceVpcEndpoint),
+	
+	for _, policy := range *b.props.AdditionalPolicies {
+		b.function.Function.AddToRolePolicy(policy)
 	}
 }
 

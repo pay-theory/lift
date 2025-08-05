@@ -67,188 +67,256 @@ type EventDrivenAPI struct {
 
 // NewEventDrivenAPI creates a new event-driven API pattern using DynamORM
 func NewEventDrivenAPI(scope constructs.Construct, id *string, props *EventDrivenAPIProps) *EventDrivenAPI {
-	this := &EventDrivenAPI{}
-	constructs.NewConstruct_Override(this, scope, id)
+	builder := newEventDrivenAPIBuilder(scope, id, props)
+	return builder.build()
+}
 
-	// Set defaults
+// eventDrivenAPIBuilder builds event-driven API components
+type eventDrivenAPIBuilder struct {
+	scope  constructs.Construct
+	id     *string
+	props  *EventDrivenAPIProps
+	api    *EventDrivenAPI
+	config *eventDrivenAPIConfig
+}
+
+// eventDrivenAPIConfig holds resolved configuration values
+type eventDrivenAPIConfig struct {
+	appName               string
+	apiName               string
+	eventBusName          string
+	eventSource           string
+	detailType            string
+	enableRequestTracking bool
+}
+
+// newEventDrivenAPIBuilder creates a new event-driven API builder
+func newEventDrivenAPIBuilder(scope constructs.Construct, id *string, props *EventDrivenAPIProps) *eventDrivenAPIBuilder {
+	return &eventDrivenAPIBuilder{
+		scope:  scope,
+		id:     id,
+		props:  props,
+		config: buildEventDrivenAPIConfig(props),
+	}
+}
+
+// buildEventDrivenAPIConfig resolves configuration values with defaults
+func buildEventDrivenAPIConfig(props *EventDrivenAPIProps) *eventDrivenAPIConfig {
 	if props == nil {
 		props = &EventDrivenAPIProps{}
 	}
 
-	appName := "event-driven-api"
+	config := &eventDrivenAPIConfig{
+		appName:               "event-driven-api",
+		eventBusName:          "default",
+		detailType:            "APIRequest",
+		enableRequestTracking: true,
+	}
+
+	// Apply provided values
 	if props.AppName != nil {
-		appName = *props.AppName
+		config.appName = *props.AppName
 	}
-
-	apiName := appName + "-api"
-	if props.ApiName != nil {
-		apiName = *props.ApiName
-	}
-
-	eventBusName := "default"
 	if props.EventBusName != nil {
-		eventBusName = *props.EventBusName
+		config.eventBusName = *props.EventBusName
 	}
-
-	eventSource := appName
-	if props.EventSource != nil {
-		eventSource = *props.EventSource
-	}
-
-	detailType := "APIRequest"
 	if props.DetailType != nil {
-		detailType = *props.DetailType
+		config.detailType = *props.DetailType
 	}
-
-	enableRequestTracking := true
 	if props.EnableRequestTracking != nil {
-		enableRequestTracking = *props.EnableRequestTracking
+		config.enableRequestTracking = *props.EnableRequestTracking
 	}
 
-	// Create request tracking table using DynamORM if enabled
-	if enableRequestTracking {
-		requestTrackingProps := &liftconstructs.RequestTrackingTableProps{
-			TableName: jsii.String(appName + "-requests"),
-			// GSIs for correlation, status, and user indexes are now defined in DynamORM models
-			// Example model:
-			// type Request struct {
-			//     PK            string `dynamorm:"pk"`                          // request#{request_id}
-			//     SK            string `dynamorm:"sk"`                          // metadata
-			//     CorrelationID string `dynamorm:"index:correlation-index,pk"`  // For correlation queries
-			//     Status        string `dynamorm:"index:status-index,pk"`       // For status queries
-			//     UserID        string `dynamorm:"index:user-index,pk"`         // For user queries
-			// }
-		}
-
-		// Override with user-provided props
-		if props.RequestTrackingTableProps != nil {
-			requestTrackingProps = props.RequestTrackingTableProps
-		}
-
-		this.RequestTrackingTable = liftconstructs.NewRequestTrackingTable(this, jsii.String("RequestTracking"), requestTrackingProps)
+	// Derive other values
+	config.apiName = config.appName + "-api"
+	if props.ApiName != nil {
+		config.apiName = *props.ApiName
+	}
+	config.eventSource = config.appName
+	if props.EventSource != nil {
+		config.eventSource = *props.EventSource
 	}
 
-	// Create API handler function
+	return config
+}
+
+// build constructs the complete event-driven API
+func (b *eventDrivenAPIBuilder) build() *EventDrivenAPI {
+	b.api = &EventDrivenAPI{}
+	constructs.NewConstruct_Override(b.api, b.scope, b.id)
+
+	b.setupRequestTracking()
+	b.setupAPIFunction()
+	b.setupAPI()
+	b.setupEventHandler()
+	b.setupMonitoring()
+
+	return b.api
+}
+
+// setupRequestTracking creates the request tracking table if enabled
+func (b *eventDrivenAPIBuilder) setupRequestTracking() {
+	if !b.config.enableRequestTracking {
+		return
+	}
+
+	requestTrackingProps := &liftconstructs.RequestTrackingTableProps{
+		TableName: jsii.String(b.config.appName + "-requests"),
+	}
+
+	// Override with user-provided props
+	if b.props.RequestTrackingTableProps != nil {
+		requestTrackingProps = b.props.RequestTrackingTableProps
+	}
+
+	b.api.RequestTrackingTable = liftconstructs.NewRequestTrackingTable(b.api, jsii.String("RequestTracking"), requestTrackingProps)
+}
+
+// setupAPIFunction creates the API handler Lambda function
+func (b *eventDrivenAPIBuilder) setupAPIFunction() {
+	// Create environment variables
+	apiEnv := b.buildAPIEnvironment()
+
+	// Create API function properties
+	apiFunctionProps := b.props.FunctionProps
+	apiFunctionProps.FunctionName = jsii.String(b.config.appName + "-api-handler")
+	apiFunctionProps.Environment = &apiEnv
+	b.applyFunctionConfig(&apiFunctionProps)
+
+	// Create Lift function
+	b.api.APIFunction = liftconstructs.NewLiftFunction(b.api, jsii.String("APIFunction"), &liftconstructs.LiftFunctionProps{
+		FunctionProps:     apiFunctionProps,
+		EnableTracing:     b.props.EnableTracing,
+		EnableMultiTenant: b.props.EnableMultiTenant,
+	})
+
+	// Grant permissions
+	if b.api.RequestTrackingTable != nil {
+		b.api.RequestTrackingTable.GrantReadWrite(b.api.APIFunction.Function)
+	}
+}
+
+// setupAPI creates the HTTP API Gateway
+func (b *eventDrivenAPIBuilder) setupAPI() {
+	b.api.API = liftconstructs.NewLiftAPI(b.api, jsii.String("API"), &liftconstructs.LiftAPIProps{
+		Name:                jsii.String(b.config.apiName),
+		Description:         jsii.String("Event-driven API with async processing"),
+		EnableCORS:          b.props.EnableCORS,
+		EnableAccessLogging: b.props.EnableAccessLogging,
+		ThrottleRateLimit:   b.props.ThrottleRateLimit,
+		ThrottleBurstLimit:  b.props.ThrottleBurstLimit,
+	})
+
+	// Add routes to API
+	b.api.API.AddLambdaRoute(jsii.String("/submit"), "POST", b.api.APIFunction.Function)
+	b.api.API.AddLambdaRoute(jsii.String("/status/{requestId}"), "GET", b.api.APIFunction.Function)
+}
+
+// setupEventHandler creates the EventBridge handler
+func (b *eventDrivenAPIBuilder) setupEventHandler() {
+	// Create environment variables
+	eventEnv := b.buildEventEnvironment()
+
+	// Create event function properties
+	eventFunctionProps := b.props.FunctionProps
+	eventFunctionProps.FunctionName = jsii.String(b.config.appName + "-event-processor")
+	eventFunctionProps.Environment = &eventEnv
+	b.applyFunctionConfig(&eventFunctionProps)
+
+	// Create EventBridge handler
+	eventHandler, err := liftconstructs.NewEventBridgeHandler(b.api, jsii.String("EventHandler"), &liftconstructs.EventBridgeHandlerProps{
+		FunctionProps:     eventFunctionProps,
+		EnableTracing:     b.props.EnableTracing,
+		EnableMultiTenant: b.props.EnableMultiTenant,
+		RuleProps: &awsevents.RuleProps{
+			RuleName:    jsii.String(b.config.appName + "-processor-rule"),
+			Description: jsii.String("Process async API requests"),
+			EventPattern: &awsevents.EventPattern{
+				Source:     &[]*string{jsii.String(b.config.eventSource)},
+				DetailType: &[]*string{jsii.String(b.config.detailType)},
+			},
+		},
+	})
+
+	if err != nil {
+		fmt.Printf("Warning: Failed to create EventBridge handler: %v\n", err)
+		b.api.EventHandler = nil
+	} else {
+		b.api.EventHandler = eventHandler
+		// Grant permissions
+		if b.api.RequestTrackingTable != nil {
+			b.api.RequestTrackingTable.GrantReadWrite(b.api.EventHandler.Function.Function)
+		}
+	}
+}
+
+// setupMonitoring enables monitoring if requested
+func (b *eventDrivenAPIBuilder) setupMonitoring() {
+	if b.props.EnableMonitoring != nil && *b.props.EnableMonitoring {
+		b.api.enableMonitoring(b.props)
+	}
+}
+
+// buildAPIEnvironment creates environment variables for the API function
+func (b *eventDrivenAPIBuilder) buildAPIEnvironment() map[string]*string {
 	apiEnv := make(map[string]*string)
-	if props.Environment != nil {
-		for k, v := range *props.Environment {
+	
+	// Copy user environment variables
+	if b.props.Environment != nil {
+		for k, v := range *b.props.Environment {
 			apiEnv[k] = v
 		}
 	}
 
-	// Add environment variables for event-driven pattern
-	apiEnv["EVENT_BUS_NAME"] = jsii.String(eventBusName)
-	apiEnv["EVENT_SOURCE"] = jsii.String(eventSource)
-	apiEnv["EVENT_DETAIL_TYPE"] = jsii.String(detailType)
-	if this.RequestTrackingTable != nil {
-		apiEnv["REQUEST_TRACKING_TABLE"] = this.RequestTrackingTable.GetTableName()
-		apiEnv["REQUEST_TRACKING_TABLE_ARN"] = this.RequestTrackingTable.GetTableArn()
-
-		// GSI names are now determined by DynamORM model struct tags
-		// The index names in the model would be like "correlation-index", "status-index", etc.
+	// Add event-driven pattern variables
+	apiEnv["EVENT_BUS_NAME"] = jsii.String(b.config.eventBusName)
+	apiEnv["EVENT_SOURCE"] = jsii.String(b.config.eventSource)
+	apiEnv["EVENT_DETAIL_TYPE"] = jsii.String(b.config.detailType)
+	
+	// Add request tracking variables
+	if b.api.RequestTrackingTable != nil {
+		apiEnv["REQUEST_TRACKING_TABLE"] = b.api.RequestTrackingTable.GetTableName()
+		apiEnv["REQUEST_TRACKING_TABLE_ARN"] = b.api.RequestTrackingTable.GetTableArn()
 	}
 
-	// Create API function
-	apiFunctionProps := props.FunctionProps
-	apiFunctionProps.FunctionName = jsii.String(appName + "-api-handler")
-	apiFunctionProps.Environment = &apiEnv
-	if props.MemorySize != nil {
-		apiFunctionProps.MemorySize = props.MemorySize
-	}
-	if props.Timeout != nil {
-		apiFunctionProps.Timeout = awscdk.Duration_Seconds(props.Timeout)
-	}
+	return apiEnv
+}
 
-	this.APIFunction = liftconstructs.NewLiftFunction(this, jsii.String("APIFunction"), &liftconstructs.LiftFunctionProps{
-		FunctionProps:     apiFunctionProps,
-		EnableTracing:     props.EnableTracing,
-		EnableMultiTenant: props.EnableMultiTenant,
-	})
-
-	// Grant permissions to API function
-	if this.RequestTrackingTable != nil {
-		this.RequestTrackingTable.GrantReadWrite(this.APIFunction.Function)
-	}
-
-	// Create HTTP API
-	this.API = liftconstructs.NewLiftAPI(this, jsii.String("API"), &liftconstructs.LiftAPIProps{
-		Name:                jsii.String(apiName),
-		Description:         jsii.String("Event-driven API with async processing"),
-		EnableCORS:          props.EnableCORS,
-		EnableAccessLogging: props.EnableAccessLogging,
-		ThrottleRateLimit:   props.ThrottleRateLimit,
-		ThrottleBurstLimit:  props.ThrottleBurstLimit,
-	})
-
-	// Add routes to API
-	this.API.AddLambdaRoute(jsii.String("/submit"), "POST", this.APIFunction.Function)
-	this.API.AddLambdaRoute(jsii.String("/status/{requestId}"), "GET", this.APIFunction.Function)
-
-	// Create EventBridge handler
+// buildEventEnvironment creates environment variables for the event function
+func (b *eventDrivenAPIBuilder) buildEventEnvironment() map[string]*string {
 	eventEnv := make(map[string]*string)
-	if props.Environment != nil {
-		for k, v := range *props.Environment {
+	
+	// Copy user environment variables
+	if b.props.Environment != nil {
+		for k, v := range *b.props.Environment {
 			eventEnv[k] = v
 		}
 	}
 
-	// Add environment variables for event processing
-	if this.RequestTrackingTable != nil {
-		eventEnv["REQUEST_TRACKING_TABLE"] = this.RequestTrackingTable.GetTableName()
-		eventEnv["REQUEST_TRACKING_TABLE_ARN"] = this.RequestTrackingTable.GetTableArn()
+	// Add request tracking variables
+	if b.api.RequestTrackingTable != nil {
+		eventEnv["REQUEST_TRACKING_TABLE"] = b.api.RequestTrackingTable.GetTableName()
+		eventEnv["REQUEST_TRACKING_TABLE_ARN"] = b.api.RequestTrackingTable.GetTableArn()
 	}
 
-	// Create event processing function
-	eventFunctionProps := props.FunctionProps
-	eventFunctionProps.FunctionName = jsii.String(appName + "-event-processor")
-	eventFunctionProps.Environment = &eventEnv
-	if props.MemorySize != nil {
-		eventFunctionProps.MemorySize = props.MemorySize
-	}
-	if props.Timeout != nil {
-		eventFunctionProps.Timeout = awscdk.Duration_Seconds(props.Timeout)
-	}
+	return eventEnv
+}
 
-	eventHandler, err := liftconstructs.NewEventBridgeHandler(this, jsii.String("EventHandler"), &liftconstructs.EventBridgeHandlerProps{
-		FunctionProps:     eventFunctionProps,
-		EnableTracing:     props.EnableTracing,
-		EnableMultiTenant: props.EnableMultiTenant,
-		RuleProps: &awsevents.RuleProps{
-			RuleName:    jsii.String(appName + "-processor-rule"),
-			Description: jsii.String("Process async API requests"),
-			EventPattern: &awsevents.EventPattern{
-				Source:     &[]*string{jsii.String(eventSource)},
-				DetailType: &[]*string{jsii.String(detailType)},
-			},
-		},
-	})
-	if err != nil {
-		// Log error and create a minimal setup
-		fmt.Printf("Warning: Failed to create EventBridge handler: %v\n", err)
-		// Set to nil to indicate failure
-		this.EventHandler = nil
-	} else {
-		this.EventHandler = eventHandler
+// applyFunctionConfig applies memory size and timeout configuration
+func (b *eventDrivenAPIBuilder) applyFunctionConfig(functionProps *awslambda.FunctionProps) {
+	if b.props.MemorySize != nil {
+		functionProps.MemorySize = b.props.MemorySize
 	}
-
-	// Grant permissions to event handler
-	if this.RequestTrackingTable != nil && this.EventHandler != nil {
-		this.RequestTrackingTable.GrantReadWrite(this.EventHandler.Function.Function)
+	if b.props.Timeout != nil {
+		functionProps.Timeout = awscdk.Duration_Seconds(b.props.Timeout)
 	}
-
-	// Enable monitoring if requested
-	if props.EnableMonitoring != nil && *props.EnableMonitoring {
-		this.enableMonitoring(props)
-	}
-
-	return this
 }
 
 // enableMonitoring adds CloudWatch alarms and metrics
 func (e *EventDrivenAPI) enableMonitoring(_ *EventDrivenAPIProps) {
 	// Basic monitoring implementation with Lambda function metrics only
 	if e.APIFunction != nil {
-		function := e.APIFunction.GetFunction()
+		function := e.APIFunction.Function
 
 		// Function error alarm
 		awscloudwatch.NewAlarm(e, jsii.String("FunctionErrorAlarm"), &awscloudwatch.AlarmProps{

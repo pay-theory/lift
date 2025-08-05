@@ -79,16 +79,21 @@ type dynamoStreamProcessorBuilder struct {
 }
 
 // dynamoStreamProcessorConfig holds resolved configuration values
+// Memory optimized: 96 → 80 bytes (16 bytes saved)
 type dynamoStreamProcessorConfig struct {
-	batchSize              float64
-	maxBatchingWindow      awscdk.Duration
-	startingPosition       awslambda.StartingPosition
-	maxRecordAge           awscdk.Duration
-	bisectBatchOnError     bool
-	retryAttempts          float64
+	// Durations (16 bytes each)
+	maxBatchingWindow awscdk.Duration
+	maxRecordAge      awscdk.Duration
+	// StartingPosition (16 bytes)
+	startingPosition awslambda.StartingPosition
+	// Float64s (8 bytes each)
+	batchSize             float64
+	retryAttempts         float64
+	parallelizationFactor float64
+	// Booleans (1 byte each, packed together)
+	bisectBatchOnError      bool
 	reportBatchItemFailures bool
-	parallelizationFactor  float64
-	enableDLQ              bool
+	enableDLQ               bool
 }
 
 // newDynamoStreamProcessorBuilder creates a new DynamoDB stream processor builder
@@ -190,23 +195,13 @@ func (b *dynamoStreamProcessorBuilder) setupDeadLetterQueue() {
 		return
 	}
 
-	dlqProps := &awssqs.QueueProps{
-		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
-	}
-	
-	if b.props.DeadLetterQueueProps != nil {
-		dlqProps = b.props.DeadLetterQueueProps
-		if dlqProps.RetentionPeriod == nil {
-			dlqProps.RetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
-		}
-	}
-
-	// Set DLQ name if not provided
-	if dlqProps.QueueName == nil && b.props.FunctionProps.FunctionName != nil {
-		dlqProps.QueueName = jsii.String(*b.props.FunctionProps.FunctionName + "-stream-dlq")
-	}
-
-	b.processor.DeadLetterQueue = awssqs.NewQueue(b.processor, jsii.String("DeadLetterQueue"), dlqProps)
+	dlqBuilder := newDeadLetterQueueBuilder(
+		b.processor,
+		b.props.DeadLetterQueueProps,
+		b.props.FunctionProps.FunctionName,
+		"-stream-dlq",
+	)
+	b.processor.DeadLetterQueue = dlqBuilder.build()
 }
 
 // setupFunction creates the Lambda function with DynamoDB environment variables
@@ -265,7 +260,7 @@ func (fb *dynamoStreamFunctionBuilder) build() *LiftFunction {
 	fb.setDefaultFunctionProps(liftProps)
 	
 	// Set environment variables
-	liftProps.FunctionProps.Environment = &functionEnv
+	liftProps.Environment = &functionEnv
 	
 	// Set Lift-specific properties
 	if fb.props.EnableTracing != nil {

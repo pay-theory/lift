@@ -202,12 +202,15 @@ func createSecurityMiddleware(config SecurityConfig) Middleware {
 }
 
 // securityProcessor handles security processing logic
+// Memory optimized: struct with 104 pointer bytes could be 80
 type securityProcessor struct {
-	config          SecurityConfig
-	ipValidator     *ipValidator
-	headerApplier   *securityHeaderApplier
-	roleValidator   *roleValidator
-	auditLogger     *securityAuditLogger
+	// Pointers first (8 bytes each)
+	ipValidator   *ipValidator
+	headerApplier *securityHeaderApplier
+	roleValidator *roleValidator
+	auditLogger   *securityAuditLogger
+	// SecurityConfig struct (depends on its size, treating as large struct)
+	config SecurityConfig
 }
 
 // newSecurityProcessor creates a new security processor
