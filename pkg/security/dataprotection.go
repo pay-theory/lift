@@ -241,6 +241,12 @@ func (dpm *DataProtectionManager) classifyField(field string, value any) DataCla
 		return DataPublic
 	}
 
+	// ID fields (anything ending with _id) should be public (not redacted)
+	// These are typically non-sensitive identifiers needed for debugging and correlation
+	if strings.HasSuffix(fieldLower, "_id") {
+		return DataPublic
+	}
+
 	// Key fields should be public (not redacted) - check BEFORE other patterns
 	// Exact matches for key-related field names
 	keyExactMatches := []string{
