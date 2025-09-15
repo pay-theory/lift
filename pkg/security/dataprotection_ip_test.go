@@ -164,7 +164,7 @@ func TestDataClassificationPriority(t *testing.T) {
 	}{
 		{"client_ip_address", DataPublic},    // Contains both "client" and "ip"
 		{"source_ip_token", DataPublic},      // Contains both "token" and "ip"
-		{"api_key", DataRestricted},          // Contains "api" and "key" but not IP pattern
+		{"api_key", DataInternal},            // Contains "api" and "key" - now classified as internal
 		{"stripe_customer_id", DataInternal}, // Contains "stripe" but not a sensitive pattern
 	}
 
