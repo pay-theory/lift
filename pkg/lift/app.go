@@ -469,11 +469,11 @@ func (a *App) logEventDebug(event any) {
     if !a.config.Debug || a.logger == nil {
         return
     }
-    a.logger.WithField("event_type", fmt.Sprintf("%T", event)).Debug("Parsing Lambda event")
+    a.logger.WithField("event_type", sanitizeForLog(fmt.Sprintf("%T", event))).Debug("Parsing Lambda event")
     if eventMap, ok := event.(map[string]any); ok {
         fields := make([]string, 0, len(eventMap))
         for key := range eventMap {
-            fields = append(fields, key)
+            fields = append(fields, sanitizeForLog(key))
         }
         a.logger.WithField("fields", fields).Debug("Event fields detected")
     }
@@ -492,9 +492,9 @@ func (a *App) tryPreferredAdapters(event any) (*Request, bool) {
         if req, err := adapter.Adapt(event); err == nil {
             if a.config.Debug && a.logger != nil {
                 a.logger.WithFields(map[string]interface{}{
-                    "trigger_type": tt,
-                    "method":       req.Method,
-                    "path":         req.Path,
+                    "trigger_type": sanitizeForLog(string(tt)),
+                    "method":       sanitizeForLog(req.Method),
+                    "path":         sanitizeForLog(req.Path),
                     "preferred":    true,
                 }).Debug("Parsed Lambda event with preferred adapter")
             }
@@ -509,15 +509,15 @@ func (a *App) detectAndAdaptEvent(event any) (*Request, error) {
     adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
     if err != nil {
         if a.config.Debug && a.logger != nil {
-            a.logger.WithField("error", err.Error()).Error("Failed to parse Lambda event")
+            a.logger.WithField("error", sanitizeForLog(err.Error())).Error("Failed to parse Lambda event")
         }
         return nil, err
     }
     if a.config.Debug && a.logger != nil {
         a.logger.WithFields(map[string]interface{}{
-            "trigger_type": adapterRequest.TriggerType,
-            "method":       adapterRequest.Method,
-            "path":         adapterRequest.Path,
+            "trigger_type": sanitizeForLog(string(adapterRequest.TriggerType)),
+            "method":       sanitizeForLog(adapterRequest.Method),
+            "path":         sanitizeForLog(adapterRequest.Path),
         }).Debug("Successfully parsed Lambda event")
     }
     return NewRequest(adapterRequest), nil
@@ -958,10 +958,14 @@ func (a *App) RunLocalTest() {
 	defer cancel()
 
 	// Run the test event locally
-	if _, err := a.HandleRequest(ctx, rawEvent); err != nil {
-		// Log error but don't return it since this is for debugging
-		fmt.Printf("Debug: Error handling request: %v\n", err)
-	}
+    if _, err := a.HandleRequest(ctx, rawEvent); err != nil {
+        // Log error but don't return it since this is for debugging
+        if a.logger != nil {
+            a.logger.WithField("error", sanitizeForLog(err.Error())).Debug("Error handling request")
+        } else {
+            fmt.Printf("Debug: Error handling request: %v\n", err)
+        }
+    }
 }
 
 // WithDebug enables debug mode for the application
@@ -977,7 +981,32 @@ func WithDebug() AppOption {
 
 // WithConfig sets a custom configuration for the application
 func WithConfig(config *Config) AppOption {
-	return func(app *App) {
-		app.config = config
-	}
+    return func(app *App) {
+        app.config = config
+    }
+}
+
+// sanitizeForLog removes control characters and truncates untrusted input
+// to avoid log injection and excessively large log entries.
+func sanitizeForLog(s string) string {
+    if s == "" {
+        return s
+    }
+    // Remove CR/LF and non-printable control characters
+    b := make([]rune, 0, len(s))
+    for _, r := range s {
+        if r == '\n' || r == '\r' {
+            continue
+        }
+        if r < 0x20 && r != '\t' { // allow tab, drop other control chars
+            continue
+        }
+        b = append(b, r)
+    }
+    cleaned := string(b)
+    const maxLen = 512
+    if len(cleaned) > maxLen {
+        return cleaned[:maxLen]
+    }
+    return cleaned
 }
