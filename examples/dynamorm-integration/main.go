@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"time"
+    "fmt"
+    "log"
+    "time"
 
-	"github.com/pay-theory/lift/pkg/dynamorm"
-	"github.com/pay-theory/lift/pkg/lift"
+    "github.com/pay-theory/lift/pkg/dynamorm"
+    "github.com/pay-theory/lift/pkg/lift"
 )
 
 // User represents a user model for DynamORM
@@ -33,217 +33,214 @@ type UserResponse struct {
 }
 
 func main() {
-	// Create a new Lift application
-	app := lift.New()
+    // Create a new Lift application
+    app := lift.New()
 
-	// Configure DynamORM middleware
-	app.Use(dynamorm.WithDynamORM(&dynamorm.DynamORMConfig{
-		TableName:       "lift_users",
-		Region:          "us-east-1",
-		Endpoint:        "http://localhost:8000", // For local DynamoDB testing
-		TenantIsolation: true,                    // Enable tenant isolation
-		AutoTransaction: true,                    // Enable automatic transactions
-		ConsistentRead:  false,                   // Use eventually consistent reads
-	}))
+    // Configure DynamORM middleware
+    app.Use(dynamorm.WithDynamORM(&dynamorm.DynamORMConfig{
+        TableName:       "lift_users",
+        Region:          "us-east-1",
+        Endpoint:        "http://localhost:8000", // For local DynamoDB testing
+        TenantIsolation: true,                    // Enable tenant isolation
+        AutoTransaction: true,                    // Enable automatic transactions
+        ConsistentRead:  false,                   // Use eventually consistent reads
+    }))
 
-	// Health check endpoint
-	if err := app.GET("/health", func(ctx *lift.Context) error {
-		return ctx.JSON(map[string]string{
-			"status":  "healthy",
-			"service": "dynamorm-integration-demo",
-		})
-	}); err != nil {
-		log.Fatalf("Failed to register health endpoint: %v", err)
-	}
+    // Register routes
+    registerDynamormRoutes(app)
 
-	// Create user endpoint
-	if err := app.POST("/users", func(ctx *lift.Context) error {
-		var req CreateUserRequest
-		if err := ctx.ParseRequest(&req); err != nil {
-			return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400).WithCause(err)
-		}
+    // Start the application
+    if err := app.Start(); err != nil {
+        panic(fmt.Sprintf("Failed to start app: %v", err))
+    }
 
-		// Get DynamORM instance from context
-		db, err := dynamorm.TenantDB(ctx)
-		if err != nil {
-			return err
-		}
+    fmt.Println("DynamORM Integration Demo started successfully!")
+    fmt.Println("Endpoints:")
+    fmt.Println("  GET    /health")
+    fmt.Println("  POST   /users")
+    fmt.Println("  GET    /users/:id")
+    fmt.Println("  PUT    /users/:id")
+    fmt.Println("  DELETE /users/:id")
+    fmt.Println("  GET    /users")
+    fmt.Println("")
+    fmt.Println("Features demonstrated:")
+    fmt.Println("  ✅ DynamORM integration")
+    fmt.Println("  ✅ Tenant isolation")
+    fmt.Println("  ✅ Automatic transactions")
+    fmt.Println("  ✅ CRUD operations")
+    fmt.Println("  ✅ Error handling")
+}
 
-		// Create new user
-		user := &User{
-			ID:        fmt.Sprintf("user_%d", time.Now().UnixNano()),
-			TenantID:  ctx.TenantID(),
-			Email:     req.Email,
-			Name:      req.Name,
-			Active:    true,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		}
+func registerDynamormRoutes(app *lift.App) {
+    mustGET := func(path string, h func(*lift.Context) error) {
+        if err := app.GET(path, h); err != nil {
+            log.Fatalf("Failed to register GET %s: %v", path, err)
+        }
+    }
+    mustPOST := func(path string, h func(*lift.Context) error) {
+        if err := app.POST(path, h); err != nil {
+            log.Fatalf("Failed to register POST %s: %v", path, err)
+        }
+    }
+    mustPUT := func(path string, h func(*lift.Context) error) {
+        if err := app.PUT(path, h); err != nil {
+            log.Fatalf("Failed to register PUT %s: %v", path, err)
+        }
+    }
+    mustDELETE := func(path string, h func(*lift.Context) error) {
+        if err := app.DELETE(path, h); err != nil {
+            log.Fatalf("Failed to register DELETE %s: %v", path, err)
+        }
+    }
 
-		// Save user to DynamoDB
-		if err := db.Put(ctx.Context, user); err != nil {
-			return lift.NewLiftError("INTERNAL_ERROR", "Failed to create user", 500).WithCause(err)
-		}
+    // Health check endpoint
+    mustGET("/health", handleHealth)
 
-		return ctx.JSON(UserResponse{
-			User:    user,
-			Message: "User created successfully",
-		})
-	}); err != nil {
-		log.Fatalf("Failed to register POST /users: %v", err)
-	}
+    // CRUD endpoints
+    mustPOST("/users", handleCreateUser)
+    mustGET("/users/:id", handleGetUser)
+    mustPUT("/users/:id", handleUpdateUser)
+    mustDELETE("/users/:id", handleDeleteUser)
+    mustGET("/users", handleListUsers)
+}
 
-	// Get user endpoint
-	if err := app.GET("/users/:id", func(ctx *lift.Context) error {
-		userID := ctx.Param("id")
+func handleHealth(ctx *lift.Context) error {
+    return ctx.JSON(map[string]string{
+        "status":  "healthy",
+        "service": "dynamorm-integration-demo",
+    })
+}
 
-		// Get DynamORM instance from context
-		db, err := dynamorm.TenantDB(ctx)
-		if err != nil {
-			return err
-		}
+func handleCreateUser(ctx *lift.Context) error {
+    var req CreateUserRequest
+    if err := ctx.ParseRequest(&req); err != nil {
+        return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400).WithCause(err)
+    }
 
-		// Retrieve user from DynamoDB
-		var user User
-		if err := db.Get(ctx.Context, userID, &user); err != nil {
-			return lift.NotFound("User not found").WithCause(err)
-		}
+    // Get DynamORM instance from context
+    db, err := dynamorm.TenantDB(ctx)
+    if err != nil {
+        return err
+    }
 
-		// Verify tenant isolation
-		if user.TenantID != ctx.TenantID() {
-			return lift.NotFound("User not found")
-		}
+    // Create new user
+    user := &User{
+        ID:        fmt.Sprintf("user_%d", time.Now().UnixNano()),
+        TenantID:  ctx.TenantID(),
+        Email:     req.Email,
+        Name:      req.Name,
+        Active:    true,
+        CreatedAt: time.Now(),
+        UpdatedAt: time.Now(),
+    }
 
-		return ctx.JSON(UserResponse{
-			User:    &user,
-			Message: "User retrieved successfully",
-		})
-	}); err != nil {
-		log.Fatalf("Failed to register GET /users/:id: %v", err)
-	}
+    // Save user to DynamoDB
+    if err := db.Put(ctx.Context, user); err != nil {
+        return lift.NewLiftError("INTERNAL_ERROR", "Failed to create user", 500).WithCause(err)
+    }
 
-	// Update user endpoint
-	if err := app.PUT("/users/:id", func(ctx *lift.Context) error {
-		userID := ctx.Param("id")
+    return ctx.JSON(UserResponse{
+        User:    user,
+        Message: "User created successfully",
+    })
+}
 
-		var req CreateUserRequest
-		if err := ctx.ParseRequest(&req); err != nil {
-			return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400).WithCause(err)
-		}
+func handleGetUser(ctx *lift.Context) error {
+    userID := ctx.Param("id")
 
-		// Get DynamORM instance from context
-		db, err := dynamorm.TenantDB(ctx)
-		if err != nil {
-			return err
-		}
+    db, err := dynamorm.TenantDB(ctx)
+    if err != nil {
+        return err
+    }
 
-		// Retrieve existing user
-		var user User
-		if err := db.Get(ctx.Context, userID, &user); err != nil {
-			return lift.NotFound("User not found").WithCause(err)
-		}
+    var user User
+    if err := db.Get(ctx.Context, userID, &user); err != nil {
+        return lift.NotFound("User not found").WithCause(err)
+    }
 
-		// Verify tenant isolation
-		if user.TenantID != ctx.TenantID() {
-			return lift.NotFound("User not found")
-		}
+    if user.TenantID != ctx.TenantID() {
+        return lift.NotFound("User not found")
+    }
 
-		// Update user fields
-		user.Email = req.Email
-		user.Name = req.Name
-		user.UpdatedAt = time.Now()
+    return ctx.JSON(UserResponse{
+        User:    &user,
+        Message: "User retrieved successfully",
+    })
+}
 
-		// Save updated user
-		if err := db.Put(ctx.Context, &user); err != nil {
-			return lift.NewLiftError("INTERNAL_ERROR", "Failed to update user", 500).WithCause(err)
-		}
+func handleUpdateUser(ctx *lift.Context) error {
+    userID := ctx.Param("id")
 
-		return ctx.JSON(UserResponse{
-			User:    &user,
-			Message: "User updated successfully",
-		})
-	}); err != nil {
-		log.Fatalf("Failed to register PUT /users/:id: %v", err)
-	}
+    var req CreateUserRequest
+    if err := ctx.ParseRequest(&req); err != nil {
+        return lift.NewLiftError("BAD_REQUEST", "Invalid request body", 400).WithCause(err)
+    }
 
-	// Delete user endpoint
-	if err := app.DELETE("/users/:id", func(ctx *lift.Context) error {
-		userID := ctx.Param("id")
+    db, err := dynamorm.TenantDB(ctx)
+    if err != nil {
+        return err
+    }
 
-		// Get DynamORM instance from context
-		db, err := dynamorm.TenantDB(ctx)
-		if err != nil {
-			return err
-		}
+    var user User
+    if err := db.Get(ctx.Context, userID, &user); err != nil {
+        return lift.NotFound("User not found").WithCause(err)
+    }
 
-		// Verify user exists and belongs to tenant
-		var user User
-		if err := db.Get(ctx.Context, userID, &user); err != nil {
-			return lift.NotFound("User not found").WithCause(err)
-		}
+    if user.TenantID != ctx.TenantID() {
+        return lift.NotFound("User not found")
+    }
 
-		if user.TenantID != ctx.TenantID() {
-			return lift.NotFound("User not found")
-		}
+    user.Email = req.Email
+    user.Name = req.Name
+    user.UpdatedAt = time.Now()
 
-		// Delete user
-		if err := db.Delete(ctx.Context, userID); err != nil {
-			return lift.NewLiftError("INTERNAL_ERROR", "Failed to delete user", 500).WithCause(err)
-		}
+    if err := db.Put(ctx.Context, &user); err != nil {
+        return lift.NewLiftError("INTERNAL_ERROR", "Failed to update user", 500).WithCause(err)
+    }
 
-		return ctx.JSON(map[string]string{
-			"message": "User deleted successfully",
-		})
-	}); err != nil {
-		log.Fatalf("Failed to register DELETE /users/:id: %v", err)
-	}
+    return ctx.JSON(UserResponse{
+        User:    &user,
+        Message: "User updated successfully",
+    })
+}
 
-	// List users for tenant
-	if err := app.GET("/users", func(ctx *lift.Context) error {
-		// Get DynamORM instance from context
-		db, err := dynamorm.TenantDB(ctx)
-		if err != nil {
-			return err
-		}
+func handleDeleteUser(ctx *lift.Context) error {
+    userID := ctx.Param("id")
 
-		// Query users for this tenant
-		query := &dynamorm.Query{
-			PartitionKey: ctx.TenantID(),
-			IndexName:    "GSI1", // Assuming GSI1 is set up for tenant queries
-			Limit:        50,
-		}
+    db, err := dynamorm.TenantDB(ctx)
+    if err != nil {
+        return err
+    }
 
-		result, err := db.Query(ctx.Context, query)
-		if err != nil {
-			return lift.NewLiftError("INTERNAL_ERROR", "Failed to list users", 500).WithCause(err)
-		}
+    var user User
+    if err := db.Get(ctx.Context, userID, &user); err != nil {
+        return lift.NotFound("User not found").WithCause(err)
+    }
+    if user.TenantID != ctx.TenantID() {
+        return lift.NotFound("User not found")
+    }
+    if err := db.Delete(ctx.Context, userID); err != nil {
+        return lift.NewLiftError("INTERNAL_ERROR", "Failed to delete user", 500).WithCause(err)
+    }
+    return ctx.JSON(map[string]string{"message": "User deleted successfully"})
+}
 
-		return ctx.JSON(map[string]any{
-			"users": result.Items,
-			"count": result.Count,
-		})
-	}); err != nil {
-		log.Fatalf("Failed to register GET /users: %v", err)
-	}
-
-	// Start the application
-	if err := app.Start(); err != nil {
-		panic(fmt.Sprintf("Failed to start app: %v", err))
-	}
-
-	fmt.Println("DynamORM Integration Demo started successfully!")
-	fmt.Println("Endpoints:")
-	fmt.Println("  GET    /health")
-	fmt.Println("  POST   /users")
-	fmt.Println("  GET    /users/:id")
-	fmt.Println("  PUT    /users/:id")
-	fmt.Println("  DELETE /users/:id")
-	fmt.Println("  GET    /users")
-	fmt.Println("")
-	fmt.Println("Features demonstrated:")
-	fmt.Println("  ✅ DynamORM integration")
-	fmt.Println("  ✅ Tenant isolation")
-	fmt.Println("  ✅ Automatic transactions")
-	fmt.Println("  ✅ CRUD operations")
-	fmt.Println("  ✅ Error handling")
+func handleListUsers(ctx *lift.Context) error {
+    db, err := dynamorm.TenantDB(ctx)
+    if err != nil {
+        return err
+    }
+    query := &dynamorm.Query{
+        PartitionKey: ctx.TenantID(),
+        IndexName:    "GSI1", // Assuming GSI1 is set up for tenant queries
+        Limit:        50,
+    }
+    result, err := db.Query(ctx.Context, query)
+    if err != nil {
+        return lift.NewLiftError("INTERNAL_ERROR", "Failed to list users", 500).WithCause(err)
+    }
+    return ctx.JSON(map[string]any{
+        "users": result.Items,
+        "count": result.Count,
+    })
 }

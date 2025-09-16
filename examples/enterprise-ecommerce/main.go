@@ -639,84 +639,68 @@ func main() {
 
 // setupAPIRoutes configures all the API routes for the e-commerce platform
 func setupAPIRoutes(app *lift.App) error {
-	// Health check endpoint
-	if err := app.GET("/api/v1/health", healthCheck); err != nil {
-		return err
-	}
+    type route struct {
+        handler func(*lift.Context) error
+        method  string
+        path    string
+    }
 
-	// Tenant management endpoints (admin only)
-	if err := app.POST("/api/v1/tenants", createTenant); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/tenants", listTenants); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/tenants/:id", getTenant); err != nil {
-		return err
-	}
+    routes := []route{
+        // Health check
+        {method: "GET", path: "/api/v1/health", handler: healthCheck},
 
-	// Product management endpoints (tenant-scoped)
-	if err := app.POST("/api/v1/products", createProduct); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/products", listProducts); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/products/search", searchProducts); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/products/:id", getProduct); err != nil {
-		return err
-	}
-	if err := app.PUT("/api/v1/products/:id/inventory", updateProductInventory); err != nil {
-		return err
-	}
+        // Tenant management
+        {method: "POST", path: "/api/v1/tenants", handler: createTenant},
+        {method: "GET", path: "/api/v1/tenants", handler: listTenants},
+        {method: "GET", path: "/api/v1/tenants/:id", handler: getTenant},
 
-	// Customer management endpoints (tenant-scoped)
-	if err := app.POST("/api/v1/customers", createCustomer); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/customers", listCustomers); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/customers/:id", getCustomer); err != nil {
-		return err
-	}
-	if err := app.POST("/api/v1/customers/auth", authenticateCustomer); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/customers/:id/orders", getCustomerOrders); err != nil {
-		return err
-	}
+        // Products
+        {method: "POST", path: "/api/v1/products", handler: createProduct},
+        {method: "GET", path: "/api/v1/products", handler: listProducts},
+        {method: "GET", path: "/api/v1/products/search", handler: searchProducts},
+        {method: "GET", path: "/api/v1/products/:id", handler: getProduct},
+        {method: "PUT", path: "/api/v1/products/:id/inventory", handler: updateProductInventory},
 
-	// Order management endpoints (tenant-scoped)
-	if err := app.POST("/api/v1/orders", createOrder); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/orders", listOrders); err != nil {
-		return err
-	}
-	if err := app.GET("/api/v1/orders/:id", getOrder); err != nil {
-		return err
-	}
-	if err := app.PUT("/api/v1/orders/:id/status", updateOrderStatus); err != nil {
-		return err
-	}
+        // Customers
+        {method: "POST", path: "/api/v1/customers", handler: createCustomer},
+        {method: "GET", path: "/api/v1/customers", handler: listCustomers},
+        {method: "GET", path: "/api/v1/customers/:id", handler: getCustomer},
+        {method: "POST", path: "/api/v1/customers/auth", handler: authenticateCustomer},
+        {method: "GET", path: "/api/v1/customers/:id/orders", handler: getCustomerOrders},
 
-	// Shopping cart endpoints (customer-scoped)
-	if err := app.GET("/api/v1/cart", getCart); err != nil {
-		return err
-	}
-	if err := app.POST("/api/v1/cart/items", addToCart); err != nil {
-		return err
-	}
-	if err := app.PUT("/api/v1/cart/:cartId/items/:itemId", updateCartItem); err != nil {
-		return err
-	}
-	if err := app.DELETE("/api/v1/cart/:cartId/items/:itemId", removeFromCart); err != nil {
-		return err
-	}
-	return app.POST("/api/v1/cart/:cartId/checkout", checkout)
+        // Orders
+        {method: "POST", path: "/api/v1/orders", handler: createOrder},
+        {method: "GET", path: "/api/v1/orders", handler: listOrders},
+        {method: "GET", path: "/api/v1/orders/:id", handler: getOrder},
+        {method: "PUT", path: "/api/v1/orders/:id/status", handler: updateOrderStatus},
+
+        // Cart
+        {method: "GET", path: "/api/v1/cart", handler: getCart},
+        {method: "POST", path: "/api/v1/cart/items", handler: addToCart},
+        {method: "PUT", path: "/api/v1/cart/:cartId/items/:itemId", handler: updateCartItem},
+        {method: "DELETE", path: "/api/v1/cart/:cartId/items/:itemId", handler: removeFromCart},
+        {method: "POST", path: "/api/v1/cart/:cartId/checkout", handler: checkout},
+    }
+
+    for _, r := range routes {
+        var err error
+        switch r.method {
+        case "GET":
+            err = app.GET(r.path, r.handler)
+        case "POST":
+            err = app.POST(r.path, r.handler)
+        case "PUT":
+            err = app.PUT(r.path, r.handler)
+        case "DELETE":
+            err = app.DELETE(r.path, r.handler)
+        default:
+            err = fmt.Errorf("unsupported method: %s", r.method)
+        }
+        if err != nil {
+            return err
+        }
+    }
+    return nil
 }
 
 func healthCheck(ctx *lift.Context) error {

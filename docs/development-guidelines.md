@@ -6,7 +6,7 @@ This document outlines the development standards and best practices for the Lift
 
 ### 1. No Panic Statements
 - **Always return errors** instead of panicking in production code
-- Use structured errors with `lift.NewError()` for consistent error responses
+- Use structured errors with `lift.NewLiftError()` for consistent error responses
 - **Exception**: CDK construct initialization may use panic as these run at infrastructure definition time, not runtime
   - Must include clear error messages: `panic(fmt.Sprintf("ConstructName validation failed: %v", err))`
   - Document why panic is acceptable in a comment

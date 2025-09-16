@@ -23,14 +23,14 @@ type WebSocketAuthConfig struct {
 // WebSocketAuth creates authentication middleware for WebSocket connections
 func WebSocketAuth(config WebSocketAuthConfig) lift.Middleware {
 	handler, err := newWebSocketAuthHandler(config)
-	if err != nil {
-		// Return middleware that returns the initialization error
-		return func(next lift.Handler) lift.Handler {
-			return lift.HandlerFunc(func(ctx *lift.Context) error {
-				return err
-			})
-		}
-	}
+    if err != nil {
+        // Return middleware that returns the initialization error
+        return func(_ lift.Handler) lift.Handler {
+            return lift.HandlerFunc(func(_ *lift.Context) error {
+                return err
+            })
+        }
+    }
 	
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
@@ -55,10 +55,10 @@ func WebSocketAuthFromHeader(headerName string) func(ctx *lift.Context) string {
 
 // webSocketAuthHandler handles WebSocket authentication workflow
 type webSocketAuthHandler struct {
-	config          WebSocketAuthConfig
-	tokenExtractor  tokenExtractor
-	validator       *JWTValidator
-	contextManager  *securityContextManager
+    validator      *JWTValidator
+    contextManager *securityContextManager
+    tokenExtractor tokenExtractor
+    config         WebSocketAuthConfig
 }
 
 // newWebSocketAuthHandler creates a new WebSocket auth handler

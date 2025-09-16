@@ -1,9 +1,7 @@
 package constructs
 
 import (
-	"fmt"
-
-	"github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
@@ -69,9 +67,9 @@ type streamProcessorBuilder struct {
 
 // streamProcessorConfig holds resolved configuration values
 type streamProcessorConfig struct {
-	batchSize        float64
-	enableDLQ        bool
-	startingPosition awslambda.StartingPosition
+    startingPosition awslambda.StartingPosition
+    batchSize        float64
+    enableDLQ        bool
 }
 
 // newStreamProcessorBuilder creates a new stream processor builder
@@ -132,10 +130,9 @@ func (b *streamProcessorBuilder) createDeadLetterQueue() {
 		return
 	}
 
-	dlqProps := &awssqs.QueueProps{
-		QueueName:       jsii.String(fmt.Sprintf("%s-dlq", *b.props.FunctionProps.FunctionName)),
-		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
-	}
+    dlqProps := &awssqs.QueueProps{
+        RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
+    }
 	
 	if b.props.DeadLetterQueueProps != nil {
 		dlqProps = b.props.DeadLetterQueueProps

@@ -268,11 +268,12 @@ func (pd *PulumiDeployer) GetStackOutputs(ctx context.Context) (map[string]any, 
 
 // checkPulumiCLI verifies that Pulumi CLI is available and functional
 func (pd *PulumiDeployer) checkPulumiCLI() error {
-	cmd := exec.Command(pd.pulumiCmd, "version") // #nosec G204 - pulumiCmd is validated during initialization
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pulumi CLI not available or not working: %w", err)
-	}
-	return nil
+    ctx := context.Background()
+    cmd := exec.CommandContext(ctx, pd.pulumiCmd, "version") // #nosec G204 - pulumiCmd is validated during initialization
+    if err := cmd.Run(); err != nil {
+        return fmt.Errorf("pulumi CLI not available or not working: %w", err)
+    }
+    return nil
 }
 
 // runPulumiCommand executes a Pulumi CLI command

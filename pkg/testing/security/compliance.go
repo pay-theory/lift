@@ -325,72 +325,44 @@ func (p *PCIDSSComplianceChecker) Validate(ctx context.Context, system SystemInf
 }
 
 func (p *PCIDSSComplianceChecker) validatePCIRequirement(ctx context.Context, system SystemInfo, req Requirement) RequirementResult {
-	reqResult := RequirementResult{
-		ID:          req.ID,
-		Description: req.Description,
-		Status:      ComplianceStatusFail,
-		Evidence:    make([]Evidence, 0),
-		Notes:       "",
-	}
+    reqResult := RequirementResult{
+        ID:          req.ID,
+        Description: req.Description,
+        Status:      ComplianceStatusFail,
+        Evidence:    make([]Evidence, 0),
+        Notes:       "",
+    }
 
-	switch req.ID {
-	case "1": // Firewall configuration
-		if p.checkFirewallConfig(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "2": // No vendor defaults
-		if p.checkVendorDefaults(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "3": // Protect stored data
-		if p.checkStoredDataProtection(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-			reqResult.Evidence = append(reqResult.Evidence, Evidence{
-				Type:        "encryption",
-				Description: "Cardholder data encryption verified",
-				Data:        "Payment data encrypted at rest",
-				Timestamp:   time.Now(),
-			})
-		}
-	case "4": // Encrypt transmission
-		if p.checkTransmissionEncryption(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "5": // Anti-malware
-		if p.checkAntiMalware(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "6": // Secure systems
-		if p.checkSecureSystems(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "7": // Restrict access
-		if p.checkAccessRestriction(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "8": // Authentication
-		if p.checkAuthentication(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "9": // Physical access
-		if p.checkPhysicalAccess(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "10": // Monitoring
-		if p.checkMonitoring(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "11": // Testing
-		if p.checkSecurityTesting(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	case "12": // Security policy
-		if p.checkSecurityPolicy(ctx, system) {
-			reqResult.Status = ComplianceStatusPass
-		}
-	}
+    checkers := map[string]func(context.Context, SystemInfo) bool{
+        "1":  p.checkFirewallConfig,
+        "2":  p.checkVendorDefaults,
+        "3":  p.checkStoredDataProtection,
+        "4":  p.checkTransmissionEncryption,
+        "5":  p.checkAntiMalware,
+        "6":  p.checkSecureSystems,
+        "7":  p.checkAccessRestriction,
+        "8":  p.checkAuthentication,
+        "9":  p.checkPhysicalAccess,
+        "10": p.checkMonitoring,
+        "11": p.checkSecurityTesting,
+        "12": p.checkSecurityPolicy,
+    }
 
-	return reqResult
+    if checker, ok := checkers[req.ID]; ok {
+        if checker(ctx, system) {
+            reqResult.Status = ComplianceStatusPass
+            if req.ID == "3" { // add evidence for stored data protection
+                reqResult.Evidence = append(reqResult.Evidence, Evidence{
+                    Type:        "encryption",
+                    Description: "Cardholder data encryption verified",
+                    Data:        "Payment data encrypted at rest",
+                    Timestamp:   time.Now(),
+                })
+            }
+        }
+    }
+
+    return reqResult
 }
 
 func (p *PCIDSSComplianceChecker) checkFirewallConfig(_ context.Context, _ SystemInfo) bool {

@@ -13,7 +13,10 @@ import (
 type WebSocketHandler func(ctx *Context) error
 
 
-// WebSocketOptions configures WebSocket support
+// WebSocketOptions configures WebSocket support for an App. When automatic
+// connection management is enabled, Lift will store and remove connection
+// records using the provided ConnectionStore on connect/disconnect events, and
+// will route unmatched routes to DefaultHandler when set.
 // Memory optimized: 32 → 24 bytes (8 bytes saved)
 type WebSocketOptions struct {
 	// Interfaces first (8 bytes each)
@@ -364,7 +367,9 @@ type ConnectionStore interface {
 	CountActive(ctx context.Context) (int64, error) // Count total active connections
 }
 
-// Connection represents a WebSocket connection
+// Connection represents a WebSocket connection record persisted by a
+// ConnectionStore implementation. The struct carries optional metadata, user
+// and tenant identifiers to support multi‑tenant routing and audit trails.
 // Memory optimized: 72 → 64 bytes (8 bytes saved)
 type Connection struct {
 	// Map first (8 bytes)

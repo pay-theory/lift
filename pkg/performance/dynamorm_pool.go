@@ -1,22 +1,24 @@
 package performance
 
 import (
-	"context"
-	"fmt"
-	"sync"
-	"time"
+    "context"
+    "fmt"
+    "sync"
+    "time"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+    "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+    "github.com/pay-theory/lift/pkg/lift"
 )
 
 // DynamORMPool wraps DynamORM with connection pooling for improved performance
 // Memory optimized: 56 → 24 bytes (32 bytes saved)
 type DynamORMPool struct {
-	sessions map[string]*PooledSession
-	pool     *ConnectionPool
-	config   *PooledDynamORMConfig
-	mu       sync.RWMutex
-	closed   bool
+    sessions map[string]*PooledSession
+    pool     *ConnectionPool
+    config   *PooledDynamORMConfig
+    metrics  lift.MetricsCollector
+    mu       sync.RWMutex
+    closed   bool
 }
 
 // PooledDynamORMConfig holds configuration for pooled DynamORM operations
@@ -71,11 +73,17 @@ func NewDynamORMPool(ctx context.Context, config *PooledDynamORMConfig) (*DynamO
 		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
-	return &DynamORMPool{
-		pool:     pool,
-		config:   config,
-		sessions: make(map[string]*PooledSession),
-	}, nil
+    return &DynamORMPool{
+        pool:     pool,
+        config:   config,
+        sessions: make(map[string]*PooledSession),
+    }, nil
+}
+
+// WithMetrics attaches a metrics collector to the pool (optional).
+func (p *DynamORMPool) WithMetrics(metrics lift.MetricsCollector) *DynamORMPool {
+    p.metrics = metrics
+    return p
 }
 
 // GetSession returns a DynamORM session, creating one if necessary
@@ -261,11 +269,12 @@ func (p *DynamORMPool) StartMaintenanceRoutine(ctx context.Context, interval tim
 				}
 				cleaned := p.CleanupIdleSessions(maxIdle)
 
-				if p.config.EnableMetrics && cleaned > 0 {
-					// TODO: Send cleanup metrics to metrics system
-					// For now, track internally without logging
-					_ = cleaned
-				}
+                if p.config.EnableMetrics && cleaned > 0 && p.metrics != nil {
+                    // Record cleanup count
+                    p.metrics.Counter(p.config.MetricsPrefix+".cleanup.count").Add(float64(cleaned))
+                    // Record last cleaned gauge
+                    p.metrics.Gauge(p.config.MetricsPrefix+".cleanup.last_cleaned").Set(float64(cleaned))
+                }
 
 			case <-ctx.Done():
 				return

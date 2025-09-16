@@ -1,12 +1,13 @@
 package constructs
 
 import (
-	"testing"
+    "testing"
 
-	"github.com/aws/aws-cdk-go/awscdk/v2"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/jsii-runtime-go"
-	"github.com/stretchr/testify/assert"
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/assertions"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+    "github.com/aws/jsii-runtime-go"
+    "github.com/stretchr/testify/assert"
 )
 
 func TestDynamoStreamProcessor_BasicCreation(t *testing.T) {
@@ -106,6 +107,31 @@ func TestDynamoStreamProcessor_HelperMethods_Basic(t *testing.T) {
 	processor.GrantStreamRead(otherFunction)
 	processor.GrantReadData(otherFunction)
 	processor.GrantWriteData(otherFunction)
+}
+
+func TestDynamoStreamProcessor_MonitoringEnabled(t *testing.T) {
+    app := awscdk.NewApp(nil)
+    stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
+
+    processor := NewDynamoStreamProcessor(stack, jsii.String("MonitoredStreamProcessor"), &DynamoStreamProcessorProps{
+        FunctionProps: awslambda.FunctionProps{
+            FunctionName: jsii.String("monitored-stream-processor"),
+            Code:         awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
+            Handler:      jsii.String("index.handler"),
+            Runtime:      awslambda.Runtime_NODEJS_18_X(),
+        },
+        EnableMonitoring: jsii.Bool(true),
+    })
+
+    if processor == nil {
+        t.Fatal("Processor should be created")
+    }
+
+    template := assertions.Template_FromStack(stack, nil)
+
+    // Should create at least one CloudWatch alarm and exactly one dashboard
+    template.HasResourceProperties(jsii.String("AWS::CloudWatch::Alarm"), map[string]interface{}{})
+    template.ResourceCountIs(jsii.String("AWS::CloudWatch::Dashboard"), jsii.Number(1))
 }
 
 func TestDynamoStreamProcessor_NilProps_Basic(t *testing.T) {

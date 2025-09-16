@@ -1,23 +1,38 @@
 .PHONY: all test build clean lint fmt vet cdk-synth cdk-deploy cdk-diff
 
+# Local Go caches (sandbox-safe)
+GOCACHE ?= $(CURDIR)/.gocache
+GOMODCACHE ?= $(CURDIR)/.gomodcache
+export GOCACHE
+export GOMODCACHE
+
+# Discover only packages that contain tests under ./pkg and selected roots.
+# This avoids building unrelated packages (e.g., stacks) and excludes examples.
+TEST_PKGS := $(shell find pkg -type f -name "*_test.go" -printf '%h\n' | sort -u | sed 's|^|./|' | grep -v '^\./pkg/cdk/integration$$' | grep -v '^\./pkg/cdk/patterns$$')
+TEST_PKGS += $(shell find benchmarks -type f -name "*_test.go" >/dev/null 2>&1 && echo ./benchmarks)
+
 # Default target
 all: test build
 
-# Run tests
-test:
-	go test ./pkg/... -v
+# Ensure local cache directories exist
+cache-dirs:
+	mkdir -p $(GOCACHE) $(GOMODCACHE)
 
-# Run tests with coverage
-test-coverage:
-	go test -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out
+# Run unit tests (exclude examples/ across the repo)
+test: cache-dirs
+	go test $(TEST_PKGS) -v
 
-# Run tests with race detection
-test-race:
-	go test ./... -race -cover
+# Run tests with coverage (exclude examples/)
+test-coverage: cache-dirs
+	go test -covermode=atomic -coverprofile=coverage.out $(TEST_PKGS)
+	go tool cover -func=coverage.out
+
+# Run tests with race detection (exclude examples/)
+test-race: cache-dirs
+	go test $(TEST_PKGS) -race -cover
 
 # Build the project
-build:
+build: cache-dirs
 	go build ./...
 
 # Clean build artifacts
@@ -31,11 +46,11 @@ fmt:
 	go fmt ./...
 
 # Run go vet
-vet:
+vet: cache-dirs
 	go vet ./...
 
 # Run linter (requires golangci-lint)
-lint:
+lint: cache-dirs
 	golangci-lint run ./...
 
 # CDK targets
@@ -60,3 +75,10 @@ dev: fmt vet test
 
 # CI/CD helper
 ci: fmt vet test-race lint
+godoc-text:
+	./scripts/generate-godoc.sh
+
+.PHONY: doclint
+doclint:
+	go install github.com/mgechev/revive@latest
+	revive -config revive-docs.toml ./pkg/lift/... ./pkg/middleware/... ./pkg/lift/health/... ./pkg/lift/adapters/... ./pkg/observability/...

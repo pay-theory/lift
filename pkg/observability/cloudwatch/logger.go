@@ -59,7 +59,7 @@ type CloudWatchLoggerOptions struct {
 }
 
 // NewCloudWatchLogger creates a new CloudWatch logger instance
-func NewCloudWatchLogger(config observability.LoggerConfig, client observability.CloudWatchLogsClient, opts ...CloudWatchLoggerOptions) (*CloudWatchLogger, error) {
+func NewCloudWatchLogger(config observability.LoggerConfig, client observability.CloudWatchLogsClient, opts ...CloudWatchLoggerOptions) (observability.StructuredLogger, error) {
 	if config.BatchSize <= 0 {
 		config.BatchSize = 25 // CloudWatch Logs max batch size
 	}
@@ -109,7 +109,7 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 	logger.shared.wg.Add(1)
 	go logger.flushLoop()
 
-	return logger, nil
+    return logger, nil
 }
 
 // Debug logs a debug message (with enhanced sanitization for security)
@@ -212,11 +212,11 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]an
 
 // logEntryBuilder builds and processes log entries
 type logEntryBuilder struct {
-	logger     *CloudWatchLogger
-	level      string
-	message    string
-	fieldMaps  []map[string]any
-	entry      *observability.LogEntry
+    logger     *CloudWatchLogger
+    entry      *observability.LogEntry
+    level      string
+    message    string
+    fieldMaps  []map[string]any
 }
 
 // newLogEntryBuilder creates a new log entry builder

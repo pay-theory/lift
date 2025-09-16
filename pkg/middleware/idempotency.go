@@ -261,7 +261,7 @@ func (s *idempotencyService) replayError(record *IdempotencyRecord) error {
 }
 
 // handleConcurrent handles concurrent requests with the same key
-func (s *idempotencyService) handleConcurrent(ctx *lift.Context, key string, record *IdempotencyRecord) error {
+func (s *idempotencyService) handleConcurrent(_ *lift.Context, _ string, _ *IdempotencyRecord) error {
 	return lift.NewLiftError("IDEMPOTENCY_CONFLICT", "A request with this idempotency key is already being processed", 409)
 }
 

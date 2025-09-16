@@ -4,19 +4,21 @@ import (
 	"fmt"
 )
 
-// EventBridgeAdapter handles EventBridge events
+// EventBridgeAdapter adapts Amazon EventBridge events into the normalized
+// Request structure used by Lift.
 type EventBridgeAdapter struct {
 	BaseAdapter
 }
 
-// NewEventBridgeAdapter creates a new EventBridge adapter
+// NewEventBridgeAdapter creates a new EventBridge adapter.
 func NewEventBridgeAdapter() *EventBridgeAdapter {
 	return &EventBridgeAdapter{
 		BaseAdapter: BaseAdapter{triggerType: TriggerEventBridge},
 	}
 }
 
-// CanHandle checks if this adapter can handle the given event
+// CanHandle reports whether the adapter recognizes the given raw event as an
+// EventBridge event.
 func (a *EventBridgeAdapter) CanHandle(event any) bool {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -33,7 +35,8 @@ func (a *EventBridgeAdapter) CanHandle(event any) bool {
 	return hasSource && hasDetailType && hasDetail && hasTime
 }
 
-// Validate checks if the event has the required EventBridge structure
+// Validate checks that the raw event has the required EventBridge fields before
+// adapting it.
 func (a *EventBridgeAdapter) Validate(event any) error {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -51,7 +54,7 @@ func (a *EventBridgeAdapter) Validate(event any) error {
 	return nil
 }
 
-// Adapt converts an EventBridge event to a normalized Request
+// Adapt converts an EventBridge event into a normalized Request.
 func (a *EventBridgeAdapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)

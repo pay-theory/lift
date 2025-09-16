@@ -656,17 +656,23 @@ func enableComplianceStandard(scope constructs.Construct, framework ComplianceFr
 // createComplianceFunction creates a Lambda function for compliance automation
 func createComplianceFunction(scope constructs.Construct, props *ComplianceStackProps, bucket awss3.Bucket, key awskms.Key) awslambda.Function {
 
-	function := CreateStandardLambdaFunction(scope, "ComplianceFunction", bucket, key, LambdaFunctionConfig{
-		FunctionName: fmt.Sprintf("%s-compliance-automation", *props.AppName),
-		Description:  "Compliance automation and reporting function",
-		Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
-		Permissions:  PermissionReadWrite,
-		Environment: map[string]*string{
-			"COMPLIANCE_BUCKET": bucket.BucketName(),
-			"APP_NAME":          props.AppName,
-			"ENVIRONMENT":       props.Environment,
-		},
-	})
+    // Ensure non-nil environment variables for JSII
+    env := props.Environment
+    if env == nil {
+        env = jsii.String("prod")
+    }
+
+    function := CreateStandardLambdaFunction(scope, "ComplianceFunction", bucket, key, LambdaFunctionConfig{
+        FunctionName: fmt.Sprintf("%s-compliance-automation", *props.AppName),
+        Description:  "Compliance automation and reporting function",
+        Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
+        Permissions:  PermissionReadWrite,
+        Environment: map[string]*string{
+            "COMPLIANCE_BUCKET": bucket.BucketName(),
+            "APP_NAME":          props.AppName,
+            "ENVIRONMENT":       env,
+        },
+    })
 
 	// Add additional compliance-specific permissions
 	if roleInterface := function.Role(); roleInterface != nil {
@@ -720,12 +726,17 @@ func storeComplianceConfiguration(scope constructs.Construct, props *ComplianceS
 		})
 	}
 
-	// Store data retention policy
-	awsssm.NewStringParameter(scope, jsii.String("DataRetentionPolicy"), &awsssm.StringParameterProps{
-		ParameterName: jsii.String(fmt.Sprintf("/%s/compliance/data-retention-days", *props.AppName)),
-		StringValue:   jsii.String(fmt.Sprintf("%.0f", *props.DataRetentionDays)),
-		Description:   jsii.String("Data retention period in days"),
-	})
+    // Store data retention policy
+    // Default to 2555 days (7 years) if not provided
+    days := 2555.0
+    if props.DataRetentionDays != nil {
+        days = *props.DataRetentionDays
+    }
+    awsssm.NewStringParameter(scope, jsii.String("DataRetentionPolicy"), &awsssm.StringParameterProps{
+        ParameterName: jsii.String(fmt.Sprintf("/%s/compliance/data-retention-days", *props.AppName)),
+        StringValue:   jsii.String(fmt.Sprintf("%.0f", days)),
+        Description:   jsii.String("Data retention period in days"),
+    })
 }
 
 // GetComplianceStatus returns the current compliance status

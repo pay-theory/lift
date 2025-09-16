@@ -117,13 +117,13 @@ func (bm *bulkheadManager) handleRequest(ctx *lift.Context, next lift.Handler) e
 }
 
 // bulkheadRequestHandler handles a single request through the bulkhead
-type bulkheadRequestHandler struct {
-	manager   *bulkheadManager
-	ctx       *lift.Context
-	tenantID  string
-	operation string
-	priority  int
-	start     time.Time
+type bulkheadRequestHandler struct { //nolint:govet // fieldalignment: accepted tradeoff to keep readable grouping
+    tenantID  string
+    operation string
+    manager   *bulkheadManager
+    ctx       *lift.Context
+    start     time.Time
+    priority  int
 }
 
 // newBulkheadRequestHandler creates a new request handler

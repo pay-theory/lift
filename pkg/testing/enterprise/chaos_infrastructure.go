@@ -753,7 +753,7 @@ func (v *experimentSafetyValidator) validateTimeWindow(rule PolicyRule) {
 }
 
 // validateApproval validates approval requirements
-func (v *experimentSafetyValidator) validateApproval(rule PolicyRule) {
+func (v *experimentSafetyValidator) validateApproval(_ PolicyRule) {
 	for _, fault := range v.experiment.Faults {
 		if fault.Severity == CriticalSeverity {
 			v.violations = append(v.violations, "Critical severity experiments require approval")

@@ -38,12 +38,11 @@ func (dlqb *deadLetterQueueBuilder) build() awssqs.IQueue {
 		}
 	}
 
-	// Set DLQ name if not provided
-	if dlqProps.QueueName == nil && dlqb.functionName != nil {
-		dlqProps.QueueName = jsii.String(*dlqb.functionName + dlqb.queueSuffix)
-	}
+    // Do NOT set a default QueueName. Let CDK auto-generate a unique physical name
+    // unless the user explicitly provided one in props. Explicit names can collide
+    // across apps/accounts; auto-naming avoids "queue already exists" errors.
 
-	return awssqs.NewQueue(dlqb.scope, jsii.String("DeadLetterQueue"), dlqProps)
+    return awssqs.NewQueue(dlqb.scope, jsii.String("DeadLetterQueue"), dlqProps)
 }
 
 // propertyMerger provides generic property merging functionality

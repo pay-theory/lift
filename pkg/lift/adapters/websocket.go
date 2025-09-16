@@ -6,19 +6,21 @@ import (
 	"strings"
 )
 
-// WebSocketAdapter handles API Gateway WebSocket events
+// WebSocketAdapter adapts API Gateway WebSocket events into the normalized
+// Request structure used by Lift.
 type WebSocketAdapter struct {
 	BaseAdapter
 }
 
-// NewWebSocketAdapter creates a new WebSocket adapter
+// NewWebSocketAdapter creates a new WebSocket adapter.
 func NewWebSocketAdapter() *WebSocketAdapter {
 	return &WebSocketAdapter{
 		BaseAdapter: BaseAdapter{triggerType: TriggerWebSocket},
 	}
 }
 
-// CanHandle checks if this adapter can handle the given event
+// CanHandle reports whether the adapter recognizes the given raw event as an
+// API Gateway WebSocket event.
 func (a *WebSocketAdapter) CanHandle(event any) bool {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -40,7 +42,8 @@ func (a *WebSocketAdapter) CanHandle(event any) bool {
 	return hasConnectionID && (hasRouteKey || hasEventType)
 }
 
-// Validate checks if the event has the required WebSocket structure
+// Validate checks that the raw event has the required WebSocket fields before
+// adapting it.
 func (a *WebSocketAdapter) Validate(event any) error {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -66,7 +69,7 @@ func (a *WebSocketAdapter) Validate(event any) error {
 	return nil
 }
 
-// Adapt converts a WebSocket event to a normalized Request
+// Adapt converts a WebSocket event into a normalized Request.
 func (a *WebSocketAdapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)

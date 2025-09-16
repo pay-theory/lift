@@ -2,6 +2,11 @@ package main
 
 import (
 	"log"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -356,9 +361,19 @@ func authenticateCustomer(ctx *lift.Context) error {
 		return ctx.Unauthorized("Invalid credentials", err)
 	}
 
-	// In production, generate JWT token
-	// TODO: Implement proper JWT generation
-	token := "placeholder_token" // #nosec G101 - This is a placeholder for demonstration
+    // Issue a signed JWT token (HS256) for demo purposes
+    token, err := generateDemoJWT(map[string]any{
+        "sub": customer.ID,
+        "ten": tenantID,
+        "iat": time.Now().Unix(),
+        "exp": time.Now().Add(15 * time.Minute).Unix(),
+        "aud": "ecommerce-demo",
+        "iss": "lift-demo",
+        "email": customer.Email,
+    })
+    if err != nil {
+        return ctx.SystemError("Failed to generate token", err)
+    }
 
 	log.Printf("ECOMMERCE AUDIT: Customer authenticated - Tenant: %s, Customer: %s, Email: %s",
 		tenantID, customer.ID, customer.Email)
@@ -368,6 +383,35 @@ func authenticateCustomer(ctx *lift.Context) error {
 		"token":            token,
 		"authenticated_at": time.Now(),
 	})
+}
+
+// generateDemoJWT creates a minimal HS256 JWT without external deps.
+// In production use a battle-tested JWT library and managed secrets.
+func generateDemoJWT(claims map[string]any) (string, error) {
+    header := map[string]string{"alg": "HS256", "typ": "JWT"}
+
+    headerJSON, err := json.Marshal(header)
+    if err != nil { return "", err }
+    payloadJSON, err := json.Marshal(claims)
+    if err != nil { return "", err }
+
+    b64 := func(b []byte) string {
+        return base64.RawURLEncoding.EncodeToString(b)
+    }
+
+    signingInput := b64(headerJSON) + "." + b64(payloadJSON)
+    secret := []byte(getJWTSecret())
+    mac := hmac.New(sha256.New, secret)
+    _, _ = mac.Write([]byte(signingInput))
+    sig := mac.Sum(nil)
+
+    return signingInput + "." + b64(sig), nil
+}
+
+func getJWTSecret() string {
+    if v := os.Getenv("JWT_SECRET"); v != "" { return v }
+    // Development-only default; override via env in real deployments
+    return "dev-demo-secret-change-me"
 }
 
 // Order handlers

@@ -129,9 +129,9 @@ func (m *circuitBreakerManager) handleRequest(ctx *lift.Context, next lift.Handl
 
 // circuitBreakerRequestHandler handles a single request through the circuit breaker
 type circuitBreakerRequestHandler struct {
-	config  CircuitBreakerConfig
-	breaker *circuitBreaker
-	ctx     *lift.Context
+    breaker *circuitBreaker
+    ctx     *lift.Context
+    config  CircuitBreakerConfig
 }
 
 // newCircuitBreakerRequestHandler creates a new request handler
@@ -265,9 +265,9 @@ func (h *circuitBreakerRequestHandler) buildMetricTags(action string) map[string
 
 // circuitBreakerMetricsRecorder handles metrics recording
 type circuitBreakerMetricsRecorder struct {
-	config  CircuitBreakerConfig
-	breaker *circuitBreaker
-	ctx     *lift.Context
+    breaker *circuitBreaker
+    ctx     *lift.Context
+    config  CircuitBreakerConfig
 }
 
 // newCircuitBreakerMetricsRecorder creates a new metrics recorder

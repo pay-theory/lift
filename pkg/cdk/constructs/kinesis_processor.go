@@ -238,7 +238,7 @@ func (sb *kinesisStreamBuilder) configureEncryption(streamProps *awskinesis.Stre
 
 
 // configureEventSource configures the Kinesis event source for the Lambda function
-func (b *kinesisProcessorBuilder) configureEventSource(stream awskinesis.IStream, function *LiftFunction, dlq awssqs.IQueue) {
+func (b *kinesisProcessorBuilder) configureEventSource(stream awskinesis.IStream, function *LiftFunction, _ awssqs.IQueue) {
 	eventSourceBuilder := newKinesisEventSourceBuilder(b.props)
 	eventSource := eventSourceBuilder.build(stream)
 	function.Function.AddEventSource(eventSource)

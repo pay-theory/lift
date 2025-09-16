@@ -229,7 +229,7 @@ app.WithConfig(config)
 api := app.Group("/api")
 
 // JWT authentication
-jwtMiddleware, _ := middleware.JWTAuth(middleware.JWTConfig{
+jwtMiddleware := middleware.JWTAuth(middleware.JWTConfig{
     Secret: os.Getenv("JWT_SECRET"),
 })
 api.Use(jwtMiddleware)
@@ -556,7 +556,7 @@ Compared to traditional web frameworks:
 ### JWT Authentication
 ```go
 // Built-in JWT validation
-jwtMiddleware, _ := middleware.JWTAuth(middleware.JWTConfig{
+jwtMiddleware := middleware.JWTAuth(middleware.JWTConfig{
     Secret: os.Getenv("JWT_SECRET"),
 })
 app.Use(jwtMiddleware)

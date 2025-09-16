@@ -1,41 +1,47 @@
 package patterns
 
 import (
-	"fmt"
+    "fmt"
 
-	"github.com/aws/aws-cdk-go/awscdk/v2"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatchactions"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsevents"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
-	"github.com/aws/constructs-go/constructs/v10"
-	"github.com/aws/jsii-runtime-go"
-	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatchactions"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awsevents"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awssns"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+    liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
 // EventOrchestratorProps defines properties for an event orchestrator pattern
 type EventOrchestratorProps struct {
-	DefaultFunctionProps awslambda.FunctionProps
-	EnableEventArchive   *bool
-	EventBusName         *string
-	AppName                *string
-	EventRoutingTableProps *liftconstructs.EventRoutingTableProps
-	DefaultMemorySize      *float64
-	DefaultTimeout         *float64
-	DefaultEnvironment     *map[string]*string
-	EventRetentionDays     *float64
-	EnableEventRouting     *bool
-	EnableSagaPattern      *bool
-	ArchiveRetentionDays   *float64
-	EnableEventCorrelation *bool
-	MaxRetryAttempts       *float64
-	RetryBackoffRate       *float64
-	EnableTracing          *bool
-	EnableMultiTenant      *bool
-	EnableMonitoring       *bool
-	EventSources           []EventSourceConfig
+    // Pointers and maps first for better alignment
+    DefaultEnvironment     *map[string]*string
+    EventRoutingTableProps *liftconstructs.EventRoutingTableProps
+    EventBusName           *string
+    AppName                *string
+    EnableEventArchive     *bool
+    EnableEventRouting     *bool
+    EnableSagaPattern      *bool
+    EnableEventCorrelation *bool
+    EnableTracing          *bool
+    EnableMultiTenant      *bool
+    EnableMonitoring       *bool
+    MaxRetryAttempts       *float64
+    RetryBackoffRate       *float64
+    DefaultMemorySize      *float64
+    DefaultTimeout         *float64
+    EventRetentionDays     *float64
+    ArchiveRetentionDays   *float64
+    // Optional: specify the actual DLQ to monitor, or its name, to avoid relying on name conventions
+    DLQQueue     awssqs.IQueue
+    DLQQueueName *string
+    // Non-pointer struct fields
+    DefaultFunctionProps awslambda.FunctionProps
+    EventSources         []EventSourceConfig
 }
 
 // EventSourceConfig defines configuration for an event source
@@ -49,7 +55,7 @@ type EventSourceConfig struct {
 
 // EventOrchestrator represents a multi-source event orchestration pattern
 type EventOrchestrator struct {
-	constructs.Construct
+    constructs.Construct
 
 	// Event routing table (DynamORM-based)
 	EventRoutingTable *liftconstructs.EventRoutingTable
@@ -63,8 +69,11 @@ type EventOrchestrator struct {
 	// Correlation function (if enabled)
 	CorrelationFunction *liftconstructs.LiftFunction
 
-	// Dead letter handler
-	DLQHandler *liftconstructs.LiftFunction
+    // Dead letter handler
+    DLQHandler *liftconstructs.LiftFunction
+
+    // Dead letter queue (created by the orchestrator by default)
+    DLQQueue awssqs.IQueue
 }
 
 // NewEventOrchestrator creates a new event orchestrator pattern using DynamORM
@@ -144,20 +153,44 @@ func buildEventOrchestratorConfig(props *EventOrchestratorProps) *eventOrchestra
 
 // build constructs the complete event orchestrator
 func (b *eventOrchestratorBuilder) build() *EventOrchestrator {
-	// Create event routing table
-	b.setupEventRoutingTable()
-	
-	// Create core functions
-	b.setupOrchestratorFunction()
-	b.setupCorrelationFunction()
-	
-	// Create event source handlers
-	b.setupEventSourceHandlers()
-	
-	// Setup monitoring
-	b.setupMonitoring()
+    // Create event routing table
+    b.setupEventRoutingTable()
+
+    // Create core functions
+    b.setupOrchestratorFunction()
+    b.setupCorrelationFunction()
+
+    // Create event source handlers
+    b.setupEventSourceHandlers()
+
+    // Create a DLQ resource for the orchestrator (unless provided via props)
+    b.setupDLQ()
+
+    // Setup monitoring
+    b.setupMonitoring()
 
 	return b.orchestrator
+}
+
+// setupDLQ creates a dedicated DLQ SQS queue for the orchestrator if not provided
+func (b *eventOrchestratorBuilder) setupDLQ() {
+    // If user passed a queue via props, use it
+    if b.props != nil && b.props.DLQQueue != nil {
+        b.orchestrator.DLQQueue = b.props.DLQQueue
+        return
+    }
+
+    // Otherwise create a new queue with sensible defaults; avoid explicit QueueName to prevent collisions
+    qProps := &awssqs.QueueProps{
+        RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
+    }
+
+    // If a queue name override is provided, honor it
+    if b.props != nil && b.props.DLQQueueName != nil {
+        qProps.QueueName = b.props.DLQQueueName
+    }
+
+    b.orchestrator.DLQQueue = awssqs.NewQueue(b.orchestrator, jsii.String("OrchestratorDLQ"), qProps)
 }
 
 // setupEventRoutingTable creates event routing table if enabled
@@ -533,29 +566,53 @@ func (e *EventOrchestrator) enableMonitoring(props *EventOrchestratorProps) {
 	})
 	sagaAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
 
-	// 5. DLQ metrics (if DLQs exist)
-	if e.DLQHandler != nil {
-		dlqMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:  jsii.String("AWS/SQS"),
-			MetricName: jsii.String("ApproximateNumberOfMessages"),
-			DimensionsMap: &map[string]*string{
-				"QueueName": jsii.String(fmt.Sprintf("%s-dlq", appName)),
-			},
-			Statistic: jsii.String("Maximum"),
-			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-		})
+    // 5. DLQ metrics (if DLQ handler exists and DLQ is configured)
+    if e.DLQHandler != nil {
+        var dlqMetric awscloudwatch.IMetric
+        switch {
+        case e.DLQQueue != nil:
+            dlqMetric = e.DLQQueue.MetricApproximateNumberOfMessagesVisible(&awscloudwatch.MetricOptions{
+                Period:    awscdk.Duration_Minutes(jsii.Number(5)),
+                Statistic: jsii.String("Maximum"),
+            })
+        case props != nil && props.DLQQueue != nil:
+            dlqMetric = props.DLQQueue.MetricApproximateNumberOfMessagesVisible(&awscloudwatch.MetricOptions{
+                Period:    awscdk.Duration_Minutes(jsii.Number(5)),
+                Statistic: jsii.String("Maximum"),
+            })
+        case props != nil && props.DLQQueueName != nil:
+            dlqMetric = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
+                Namespace:  jsii.String("AWS/SQS"),
+                MetricName: jsii.String("ApproximateNumberOfMessages"),
+                DimensionsMap: &map[string]*string{
+                    "QueueName": props.DLQQueueName,
+                },
+                Statistic: jsii.String("Maximum"),
+                Period:    awscdk.Duration_Minutes(jsii.Number(5)),
+            })
+        default:
+            dlqMetric = awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
+                Namespace:  jsii.String("AWS/SQS"),
+                MetricName: jsii.String("ApproximateNumberOfMessages"),
+                DimensionsMap: &map[string]*string{
+                    "QueueName": jsii.String(fmt.Sprintf("%s-dlq", appName)),
+                },
+                Statistic: jsii.String("Maximum"),
+                Period:    awscdk.Duration_Minutes(jsii.Number(5)),
+            })
+        }
 
-		dlqAlarm := awscloudwatch.NewAlarm(e, jsii.String("DLQAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:          jsii.String(fmt.Sprintf("%s-dlq-messages", appName)),
-			AlarmDescription:   jsii.String("Messages in dead letter queue"),
-			Metric:             dlqMetric,
-			Threshold:          jsii.Number(10),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			EvaluationPeriods:  jsii.Number(1),
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-		dlqAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
-	}
+        dlqAlarm := awscloudwatch.NewAlarm(e, jsii.String("DLQAlarm"), &awscloudwatch.AlarmProps{
+            AlarmName:          jsii.String(fmt.Sprintf("%s-dlq-messages", appName)),
+            AlarmDescription:   jsii.String("Messages in dead letter queue"),
+            Metric:             dlqMetric,
+            Threshold:          jsii.Number(10),
+            ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
+            EvaluationPeriods:  jsii.Number(1),
+            TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+        })
+        dlqAlarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(alertTopic))
+    }
 
 	// Create CloudWatch Dashboard
 	e.createMonitoringDashboard(appName, alertTopic)

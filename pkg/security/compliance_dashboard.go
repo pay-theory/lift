@@ -441,7 +441,7 @@ func (cd *ComplianceDashboard) GetDashboardMetrics(ctx context.Context, timeRang
 	cd.mu.RLock()
 	defer cd.mu.RUnlock()
 	
-	builder := newDashboardMetricsBuilder(cd, ctx, timeRange)
+    builder := newDashboardMetricsBuilder(ctx, cd, timeRange)
 	return builder.build()
 }
 
@@ -455,16 +455,16 @@ type dashboardMetricsBuilder struct {
 }
 
 // newDashboardMetricsBuilder creates a new metrics builder
-func newDashboardMetricsBuilder(dashboard *ComplianceDashboard, ctx context.Context, timeRange TimeRange) *dashboardMetricsBuilder {
-	return &dashboardMetricsBuilder{
-		dashboard: dashboard,
-		ctx:       ctx,
-		timeRange: timeRange,
-		metrics: &DashboardMetrics{
-			Timestamp: time.Now(),
-		},
-		cacheKey: fmt.Sprintf("dashboard_metrics_%d_%d", timeRange.Start.Unix(), timeRange.End.Unix()),
-	}
+func newDashboardMetricsBuilder(ctx context.Context, dashboard *ComplianceDashboard, timeRange TimeRange) *dashboardMetricsBuilder {
+    return &dashboardMetricsBuilder{
+        dashboard: dashboard,
+        ctx:       ctx,
+        timeRange: timeRange,
+        metrics: &DashboardMetrics{
+            Timestamp: time.Now(),
+        },
+        cacheKey: fmt.Sprintf("dashboard_metrics_%d_%d", timeRange.Start.Unix(), timeRange.End.Unix()),
+    }
 }
 
 // build constructs the dashboard metrics

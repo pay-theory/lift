@@ -462,9 +462,9 @@ func (sp *soc2Processor) executeWithMonitoring(ctx LiftContext, next LiftHandler
 
 // executionResult captures handler execution results
 type executionResult struct {
-	err      error
-	duration time.Duration
-	status   string
+    err      error
+    status   string
+    duration time.Duration
 }
 
 // soc2AuditManager manages SOC 2 audit sessions

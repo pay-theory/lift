@@ -150,7 +150,7 @@ func newBasicMetricsHandler(config ObservabilityConfig) *basicMetricsHandler {
 }
 
 // before handles metrics setup before request processing
-func (m *basicMetricsHandler) before(ctx *lift.Context, operation string) {
+func (m *basicMetricsHandler) before(ctx *lift.Context, _ string) {
 	if m.config.Metrics == nil {
 		return
 	}

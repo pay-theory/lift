@@ -463,8 +463,8 @@ func (ph *xrayPanicHandler) handlePanicRecovery(ctx *lift.Context, panicValue an
 
 // xrayAnnotationManager handles adding annotations and metadata
 type xrayAnnotationManager struct {
-	config XRayConfig
-	tracer *XRayTracer
+    tracer *XRayTracer
+    config XRayConfig
 }
 
 // newAnnotationManager creates a new annotation manager

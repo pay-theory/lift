@@ -4,19 +4,21 @@ import (
 	"fmt"
 )
 
-// SQSAdapter handles SQS events
+// SQSAdapter adapts Amazon SQS events into the normalized Request structure
+// used by Lift.
 type SQSAdapter struct {
 	BaseAdapter
 }
 
-// NewSQSAdapter creates a new SQS adapter
+// NewSQSAdapter creates a new SQS adapter.
 func NewSQSAdapter() *SQSAdapter {
 	return &SQSAdapter{
 		BaseAdapter: BaseAdapter{triggerType: TriggerSQS},
 	}
 }
 
-// CanHandle checks if this adapter can handle the given event
+// CanHandle reports whether the adapter recognizes the given raw event as an
+// SQS event.
 func (a *SQSAdapter) CanHandle(event any) bool {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -46,13 +48,14 @@ func (a *SQSAdapter) CanHandle(event any) bool {
 	return eventSource == "aws:sqs"
 }
 
-// Validate checks if the event has the required SQS structure
+// Validate checks that the raw event has the required SQS record structure
+// before adapting it.
 func (a *SQSAdapter) Validate(event any) error {
 	requiredFields := []string{"eventSource", "body", "receiptHandle"}
 	return validateRecordsEvent(event, "aws:sqs", requiredFields)
 }
 
-// Adapt converts an SQS event to a normalized Request
+// Adapt converts an SQS event into a normalized Request.
 func (a *SQSAdapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)

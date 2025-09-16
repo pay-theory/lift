@@ -70,10 +70,10 @@ func applyJWTDefaults(config JWTConfig) JWTConfig {
 
 // jwtProcessor handles JWT processing logic
 type jwtProcessor struct {
-	config        JWTConfig
-	pathSkipper   *jwtPathSkipper
-	tokenHandler  *jwtTokenHandler
-	claimsHandler *jwtClaimsHandler
+    pathSkipper   *jwtPathSkipper
+    tokenHandler  *jwtTokenHandler
+    claimsHandler *jwtClaimsHandler
+    config        JWTConfig
 }
 
 // newJWTProcessor creates a new JWT processor

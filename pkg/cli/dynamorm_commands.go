@@ -847,8 +847,8 @@ func awsConfig(ctx context.Context, region string) (aws.Config, error) {
 }
 
 func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynamodb.Client, tableName string) (*TableAnalysis, error) {
-	builder := newTableAnalysisBuilder(c, ctx, client, tableName)
-	return builder.build()
+    builder := newTableAnalysisBuilder(ctx, c, client, tableName)
+    return builder.build()
 }
 
 // tableAnalysisBuilder builds table analysis
@@ -866,13 +866,13 @@ type tableAnalysisBuilder struct {
 }
 
 // newTableAnalysisBuilder creates a new table analysis builder
-func newTableAnalysisBuilder(cmd *DynamORMMigrateCommand, ctx context.Context, client *dynamodb.Client, tableName string) *tableAnalysisBuilder {
-	return &tableAnalysisBuilder{
-		cmd:       cmd,
-		ctx:       ctx,
-		client:    client,
-		tableName: tableName,
-	}
+func newTableAnalysisBuilder(ctx context.Context, cmd *DynamORMMigrateCommand, client *dynamodb.Client, tableName string) *tableAnalysisBuilder {
+    return &tableAnalysisBuilder{
+        cmd:       cmd,
+        ctx:       ctx,
+        client:    client,
+        tableName: tableName,
+    }
 }
 
 // build constructs the complete table analysis

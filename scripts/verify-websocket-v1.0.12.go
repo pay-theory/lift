@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
-	"strings"
+    "context"
+    "fmt"
+    "os"
+    "os/exec"
+    "strings"
 )
 
 func main() {
@@ -12,7 +13,8 @@ func main() {
 
 	// Check Go version
 	fmt.Println("1. Checking Go version...")
-	goVersion, err := exec.Command("go", "version").Output()
+    ctx := context.Background()
+    goVersion, err := exec.CommandContext(ctx, "go", "version").Output()
 	if err != nil {
 		fmt.Printf("   ❌ Error: %v\n", err)
 	} else {
@@ -21,7 +23,7 @@ func main() {
 
 	// Check if Lift is installed
 	fmt.Println("\n2. Checking Lift installation...")
-	modList, err := exec.Command("go", "list", "-m", "github.com/pay-theory/lift").Output()
+    modList, err := exec.CommandContext(ctx, "go", "list", "-m", "github.com/pay-theory/lift").Output()
 	if err != nil {
 		fmt.Printf("   ❌ Lift not found in go.mod\n")
 		fmt.Println("   Run: go get github.com/pay-theory/lift@v1.0.12")
@@ -77,7 +79,7 @@ func main() {
 
 	// Try to build it
 	fmt.Println("   Building test file...")
-	buildCmd := exec.Command("go", "build", "-o", "test_websocket", "test_websocket.go")
+    buildCmd := exec.CommandContext(ctx, "go", "build", "-o", "test_websocket", "test_websocket.go")
 	buildOutput, err := buildCmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("   ❌ Build failed:\n%s\n", buildOutput)
@@ -95,7 +97,7 @@ func main() {
 
 		// Run the test
 		fmt.Println("   Running test...")
-		runCmd := exec.Command("./test_websocket")
+        runCmd := exec.CommandContext(ctx, "./test_websocket")
 		runOutput, err := runCmd.Output()
 		if err != nil {
 			fmt.Printf("   ❌ Run failed: %v\n", err)
@@ -112,7 +114,7 @@ func main() {
 	}
 
 	for _, dep := range deps {
-		modCheck, err := exec.Command("go", "list", "-m", dep).Output() // #nosec G204 - dep is from controlled slice
+        modCheck, err := exec.CommandContext(ctx, "go", "list", "-m", dep).Output() // #nosec G204 - dep is from controlled slice
 		if err != nil {
 			fmt.Printf("   ❌ Missing: %s\n", dep)
 			fmt.Printf("      Run: go get %s\n", dep)

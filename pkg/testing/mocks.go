@@ -1189,11 +1189,11 @@ func (m *MockCloudWatchMetricsClient) GetMetricStatistics(_ context.Context, nam
 
 // metricQuery represents a query for metrics
 type metricQuery struct {
-	namespace  string
-	metricName string
-	dimensions map[string]string
-	startTime  time.Time
-	endTime    time.Time
+    startTime  time.Time
+    endTime    time.Time
+    dimensions map[string]string
+    namespace  string
+    metricName string
 }
 
 // metricMatcher handles metric filtering and matching
@@ -1316,13 +1316,13 @@ func (sc *statisticsCalculator) minimum() float64 {
 		return 0
 	}
 	
-	min := sc.values[0]
-	for _, v := range sc.values[1:] {
-		if v < min {
-			min = v
-		}
-	}
-	return min
+    minVal := sc.values[0]
+    for _, v := range sc.values[1:] {
+        if v < minVal {
+            minVal = v
+        }
+    }
+    return minVal
 }
 
 // maximum finds the maximum value
@@ -1331,13 +1331,13 @@ func (sc *statisticsCalculator) maximum() float64 {
 		return 0
 	}
 	
-	max := sc.values[0]
-	for _, v := range sc.values[1:] {
-		if v > max {
-			max = v
-		}
-	}
-	return max
+    maxVal := sc.values[0]
+    for _, v := range sc.values[1:] {
+        if v > maxVal {
+            maxVal = v
+        }
+    }
+    return maxVal
 }
 
 // MockCloudWatchAlarmsClient provides a mock implementation of CloudWatch Alarms

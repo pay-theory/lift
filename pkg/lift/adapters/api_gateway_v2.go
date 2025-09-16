@@ -6,19 +6,21 @@ import (
 	"strings"
 )
 
-// APIGatewayV2Adapter handles API Gateway V2 (HTTP API) events
+// APIGatewayV2Adapter adapts API Gateway V2 (HTTP API) events into the
+// normalized Request structure used by Lift.
 type APIGatewayV2Adapter struct {
 	BaseAdapter
 }
 
-// NewAPIGatewayV2Adapter creates a new API Gateway V2 adapter
+// NewAPIGatewayV2Adapter creates a new API Gateway V2 adapter.
 func NewAPIGatewayV2Adapter() *APIGatewayV2Adapter {
 	return &APIGatewayV2Adapter{
 		BaseAdapter: BaseAdapter{triggerType: TriggerAPIGatewayV2},
 	}
 }
 
-// CanHandle checks if this adapter can handle the given event
+// CanHandle reports whether the adapter recognizes the given raw event as an
+// API Gateway V2 request.
 func (a *APIGatewayV2Adapter) CanHandle(event any) bool {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -40,7 +42,8 @@ func (a *APIGatewayV2Adapter) CanHandle(event any) bool {
 	return false
 }
 
-// Validate checks if the event has the required API Gateway V2 structure
+// Validate checks that the raw event has the required API Gateway V2 structure
+// before adapting it.
 func (a *APIGatewayV2Adapter) Validate(event any) error {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -63,7 +66,7 @@ func (a *APIGatewayV2Adapter) Validate(event any) error {
 	return nil
 }
 
-// Adapt converts an API Gateway V2 event to a normalized Request
+// Adapt converts an API Gateway V2 event into a normalized Request.
 func (a *APIGatewayV2Adapter) Adapt(rawEvent any) (*Request, error) {
 	adapter := newAPIGatewayV2EventAdapter(a, rawEvent)
 	return adapter.build()

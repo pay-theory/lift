@@ -8,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/lift/adapters"
+	"github.com/pay-theory/lift/pkg/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,14 +17,14 @@ func TestJWTAuthentication(t *testing.T) {
 	// #nosec G101 -- Test secret for unit testing only
 	secret := "test-secret"
 
-	// Create app with JWT auth
-	app := lift.New(
-		lift.WithJWTAuth(lift.JWTAuthConfig{
-			Secret:    secret,
-			Algorithm: "HS256",
-			SkipPaths: []string{"/public"},
-		}),
-	)
+    // Create app with JWT auth (canonical middleware)
+    app := lift.New()
+    app.Use(middleware.JWTAuth(middleware.JWTConfig{
+        Secret:    secret,
+        Algorithm: "HS256",
+        TokenLookup: "header:Authorization",
+        SkipPaths: []string{"/public"},
+    }))
 
 	// Public endpoint
 	if err := app.GET("/public", func(ctx *lift.Context) error {

@@ -11,19 +11,21 @@ const (
 	defaultRoute = "$default"
 )
 
-// APIGatewayAdapter handles API Gateway V1 (REST API) events
+// APIGatewayAdapter adapts API Gateway V1 (REST API) events into the
+// normalized Request structure used by Lift.
 type APIGatewayAdapter struct {
 	BaseAdapter
 }
 
-// NewAPIGatewayAdapter creates a new API Gateway V1 adapter
+// NewAPIGatewayAdapter creates a new API Gateway V1 adapter.
 func NewAPIGatewayAdapter() *APIGatewayAdapter {
 	return &APIGatewayAdapter{
 		BaseAdapter: BaseAdapter{triggerType: TriggerAPIGateway},
 	}
 }
 
-// CanHandle checks if this adapter can handle the given event
+// CanHandle reports whether the adapter recognizes the given raw event as an
+// API Gateway V1 request.
 func (a *APIGatewayAdapter) CanHandle(event any) bool {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -50,7 +52,8 @@ func (a *APIGatewayAdapter) CanHandle(event any) bool {
 	return false
 }
 
-// Validate checks if the event has the required API Gateway V1 structure
+// Validate checks that the raw event has the required API Gateway V1 fields
+// before adapting it.
 func (a *APIGatewayAdapter) Validate(event any) error {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -68,7 +71,7 @@ func (a *APIGatewayAdapter) Validate(event any) error {
 	return nil
 }
 
-// Adapt converts an API Gateway V1 event to a normalized Request
+// Adapt converts an API Gateway V1 event into a normalized Request.
 func (a *APIGatewayAdapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)

@@ -1,13 +1,13 @@
 package security
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"strings"
-	"sync"
-	"time"
+    "context"
+    "encoding/json"
+    "fmt"
+    "log"
+    "strings"
+    "sync"
+    "time"
 )
 
 // Request represents the minimal request interface needed
@@ -332,44 +332,41 @@ func (cf *ComplianceFramework) IsFrameworkEnabled(framework string) bool {
 	return false
 }
 
+// Note: header/query sanitization helpers are defined in test files only.
 // sanitizeHeaders removes sensitive information from HTTP headers
 // This is used by tests to verify header sanitization
 func (cf *ComplianceFramework) sanitizeHeaders(headers map[string][]string) map[string]string {
-	sanitized := make(map[string]string)
-	for key, values := range headers {
-		if len(values) > 0 {
-			// Convert to lowercase for case-insensitive comparison
-			lowerKey := strings.ToLower(key)
-			// Redact sensitive headers
-			if strings.Contains(lowerKey, "auth") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || 
-			   strings.Contains(lowerKey, "cookie") || strings.Contains(lowerKey, "key") {
-				sanitized[key] = "[REDACTED]"
-			} else {
-				sanitized[key] = values[0]
-			}
-		}
-	}
-	return sanitized
+    sanitized := make(map[string]string)
+    for key, values := range headers {
+        if len(values) == 0 {
+            continue
+        }
+        lowerKey := strings.ToLower(key)
+        if strings.Contains(lowerKey, "auth") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "cookie") || strings.Contains(lowerKey, "key") {
+            sanitized[key] = "[REDACTED]"
+        } else {
+            sanitized[key] = values[0]
+        }
+    }
+    return sanitized
 }
 
 // sanitizeQueryParams removes sensitive information from query parameters
 // This is used by tests to verify query parameter sanitization
 func (cf *ComplianceFramework) sanitizeQueryParams(params map[string][]string) map[string]string {
-	sanitized := make(map[string]string)
-	for key, values := range params {
-		if len(values) > 0 {
-			// Convert to lowercase for case-insensitive comparison
-			lowerKey := strings.ToLower(key)
-			// Redact sensitive parameters
-			if strings.Contains(lowerKey, "password") || strings.Contains(lowerKey, "token") ||
-				strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "key") {
-				sanitized[key] = "[REDACTED]"
-			} else {
-				sanitized[key] = values[0]
-			}
-		}
-	}
-	return sanitized
+    sanitized := make(map[string]string)
+    for key, values := range params {
+        if len(values) == 0 {
+            continue
+        }
+        lowerKey := strings.ToLower(key)
+        if strings.Contains(lowerKey, "password") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "key") {
+            sanitized[key] = "[REDACTED]"
+        } else {
+            sanitized[key] = values[0]
+        }
+    }
+    return sanitized
 }
 
 // AddCustomRule adds a custom compliance rule
@@ -528,7 +525,7 @@ func (h *complianceAuditHandler) handleViolations(ctx LiftContext, session *audi
 }
 
 // logViolation logs a specific compliance violation
-func (h *complianceAuditHandler) logViolation(ctx LiftContext, session *auditSession, framework string, violation ComplianceViolation) {
+func (h *complianceAuditHandler) logViolation(_ LiftContext, session *auditSession, framework string, violation ComplianceViolation) {
 	if h.framework.auditor == nil || session.id == "" {
 		return
 	}
@@ -599,6 +596,12 @@ func (h *complianceAuditHandler) generateAuditID() string {
 
 // auditSession represents an active audit session
 type auditSession struct {
-	id        string
-	startTime time.Time
+    startTime time.Time
+    id        string
 }
+
+// Prevent unused-function linter warnings for helpers used in tests/build variants.
+var (
+    _ = (*ComplianceFramework).sanitizeHeaders
+    _ = (*ComplianceFramework).sanitizeQueryParams
+)

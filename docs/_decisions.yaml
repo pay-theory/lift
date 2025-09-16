@@ -22,7 +22,7 @@ decisions:
             example: |
               app.POST("/api/process", func(ctx *lift.Context) error {
                   // Custom parsing logic
-                  return ctx.JSON(200, result)
+                  return ctx.JSON(result)
               })
           if_no:
             choice: "Consider if Lambda is right choice"
@@ -54,7 +54,7 @@ decisions:
         example: |
           func (r *Request) Validate(ctx *lift.Context) error {
               if r.StartDate.After(r.EndDate) {
-                  return lift.BadRequest("start date must be before end date")
+                  return lift.ValidationError("start date must be before end date")
               }
               return nil
           }
@@ -65,12 +65,15 @@ decisions:
         example: |
           func HandleRequest(ctx *lift.Context) error {
               var req Request
-              ctx.Bind(&req)
+              if err := ctx.ParseRequest(&req); err != nil {
+                  return err
+              }
               
               limits := getLimitsForTenant(ctx.TenantID())
               if req.Amount > limits.MaxAmount {
-                  return lift.BadRequest("exceeds tenant limit")
+                  return lift.ValidationError("exceeds tenant limit")
               }
+              return nil
           }
   
   choosing_middleware:
@@ -96,7 +99,7 @@ decisions:
           // API routes
           api := app.Group("/api")
           api.Use(middleware.CORS(corsConfig))
-          api.Use(middleware.JWT(jwtConfig))
+          api.Use(middleware.JWTAuth(jwtConfig))
           api.Use(middleware.RateLimitUser())
       
       - condition: "Public endpoints"
@@ -121,9 +124,9 @@ decisions:
         choice: "Return lift.Error with appropriate status"
         reason: "Provides consistent error format"
         examples:
-          bad_request: "return lift.BadRequest(err)"
+          bad_request: "return lift.ValidationError(err.Error())"
           not_found: "return lift.NotFound('user not found')"
-          unauthorized: "return lift.Unauthorized()"
+          unauthorized: "return lift.Unauthorized('authentication required')"
           forbidden: "return lift.Forbidden('insufficient permissions')"
           
       - condition: "Server error (database, external service)"
@@ -135,14 +138,14 @@ decisions:
                   "error", err,
                   "query", query,
                   "user_id", userID)
-              return lift.InternalError("failed to process request")
+              return lift.SystemError("failed to process request")
           }
           
       - condition: "Validation error"
         choice: "Return detailed validation errors"
         reason: "Help clients fix their requests"
         example: |
-          return lift.NewError(400, "validation failed", map[string]interface{}{
+          return lift.NewLiftError("VALIDATION_ERROR", "validation failed", 400).WithDetails(map[string]any{
               "errors": map[string]string{
                   "email": "invalid format",
                   "age": "must be at least 18",
@@ -207,7 +210,7 @@ decisions:
           func GetUser(ctx *lift.Context) error {
               var user User
               err := dynamorm.Get(&user, ctx.Param("id"), ctx.TenantID())
-              return ctx.JSON(200, user)
+              return ctx.JSON(user)
           }
           
       - condition: "Using RDS (PostgreSQL/MySQL)"
@@ -225,7 +228,7 @@ decisions:
               err := db.QueryRowContext(ctx, 
                   "SELECT * FROM users WHERE id = $1 AND tenant_id = $2",
                   ctx.Param("id"), ctx.TenantID()).Scan(&user)
-              return ctx.JSON(200, user)
+              return ctx.JSON(user)
           }
           
       - condition: "Using external API"

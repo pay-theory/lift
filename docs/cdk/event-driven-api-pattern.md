@@ -346,7 +346,7 @@ func getRequestStatus(ctx *lift.Context) error {
     
     status, err := queryRequestStatus(requestId)
     if err != nil {
-        return lift.NewError(404, "Request not found")
+        return lift.NotFound("Request not found")
     }
     
     return ctx.JSON(status)

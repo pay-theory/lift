@@ -131,7 +131,7 @@ func (vm *ValidationMiddleware) validateRequest(ctx *lift.Context) error {
 	return nil
 }
 
-func (vm *ValidationMiddleware) validateResponse(ctx *lift.Context) error {
+func (vm *ValidationMiddleware) validateResponse(_ *lift.Context) error {
 	// Response validation would require intercepting the response data
 	// This is not implemented in the current version as it would need
 	// response buffering to be enabled at the application level
@@ -300,15 +300,15 @@ func (vm *ValidationMiddleware) validateRange(field string, value any, minVal, m
 
 // rangeValidator handles range validation for different value types
 // Memory optimized: struct with 72 pointer bytes could be 64
-type rangeValidator struct {
-	// Pointer first (8 bytes)
-	vm *ValidationMiddleware
-	// String (16 bytes)
-	field string
-	// Interfaces (16 bytes each)
-	value  any
-	minVal any
-	maxVal any
+type rangeValidator struct { //nolint:govet // fieldalignment: all fields are pointer-bearing; meaningful packing would require invasive refactor
+    // Interfaces (16 bytes each)
+    value  any
+    minVal any
+    maxVal any
+    // String (16 bytes)
+    field string
+    // Pointer (8 bytes)
+    vm *ValidationMiddleware
 }
 
 // newRangeValidator creates a new range validator

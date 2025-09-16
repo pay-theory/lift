@@ -8,14 +8,16 @@ import (
 	"github.com/pay-theory/lift/pkg/security"
 )
 
-// SecurityContext extends the Context with security functionality
+// SecurityContext wraps a Lift Context with additional security helpers for
+// principals, authorization checks, audit logging, and request identity.
 type SecurityContext struct {
 	*Context
 	principal *security.Principal
 	requestID string
 }
 
-// NewSecurityContext wraps an existing Context with security features
+// NewSecurityContext wraps an existing Context with security features and
+// generates a per-request ID used for audit trails.
 func NewSecurityContext(ctx *Context) *SecurityContext {
 	return &SecurityContext{
 		Context:   ctx,
@@ -23,7 +25,9 @@ func NewSecurityContext(ctx *Context) *SecurityContext {
 	}
 }
 
-// SetPrincipal sets the authenticated principal
+// SetPrincipal attaches the authenticated principal to the context and exposes
+// common fields (user_id, tenant_id, roles, etc.) via Context values. It also
+// records request tracking fields on the principal.
 func (sc *SecurityContext) SetPrincipal(principal *security.Principal) {
 	sc.principal = principal
 
@@ -42,17 +46,18 @@ func (sc *SecurityContext) SetPrincipal(principal *security.Principal) {
 	principal.UserAgent = sc.GetUserAgent()
 }
 
-// GetPrincipal returns the authenticated principal
+// GetPrincipal returns the authenticated principal (if any).
 func (sc *SecurityContext) GetPrincipal() *security.Principal {
 	return sc.principal
 }
 
-// RequestID returns the unique request ID
+// RequestID returns the unique security request ID associated with this
+// SecurityContext.
 func (sc *SecurityContext) RequestID() string {
 	return sc.requestID
 }
 
-// HasRole checks if the principal has a specific role
+// HasRole reports whether the principal has the specified role.
 func (sc *SecurityContext) HasRole(role string) bool {
 	if sc.principal == nil {
 		return false
@@ -60,7 +65,8 @@ func (sc *SecurityContext) HasRole(role string) bool {
 	return sc.principal.HasRole(role)
 }
 
-// HasPermission checks if the principal can access a resource
+// HasPermission reports whether the principal is authorized for the given
+// resource and action.
 func (sc *SecurityContext) HasPermission(resource, action string) bool {
 	if sc.principal == nil {
 		return false
@@ -68,12 +74,13 @@ func (sc *SecurityContext) HasPermission(resource, action string) bool {
 	return sc.principal.CanAccessResource(resource, action)
 }
 
-// IsAuthenticated checks if the request has an authenticated principal
+// IsAuthenticated reports whether a non-expired principal is attached.
 func (sc *SecurityContext) IsAuthenticated() bool {
 	return sc.principal != nil && !sc.principal.IsExpired()
 }
 
-// GetClientIP extracts the client IP address from the request
+// GetClientIP extracts the client IP address from the request using standard
+// headers and request context.
 func (sc *SecurityContext) GetClientIP() string {
 	// Use headers directly from the request
 	headers := sc.Request.Headers
@@ -92,12 +99,13 @@ func (sc *SecurityContext) GetClientIP() string {
 	return ip
 }
 
-// GetUserAgent returns the User-Agent header
+// GetUserAgent returns the User-Agent header value for the request.
 func (sc *SecurityContext) GetUserAgent() string {
 	return sc.Header("User-Agent")
 }
 
-// ValidateIP checks if the client IP is in the allowed range
+// ValidateIP checks whether the client IP belongs to one of the provided CIDR
+// ranges.
 func (sc *SecurityContext) ValidateIP(allowedCIDRs []string) bool {
 	clientIP := sc.GetClientIP()
 	if clientIP == "unknown" {
@@ -123,7 +131,8 @@ func (sc *SecurityContext) ValidateIP(allowedCIDRs []string) bool {
 	return false
 }
 
-// ValidateTenant ensures the request is for the correct tenant
+// ValidateTenant reports whether the request is scoped to the expected tenant
+// identifier.
 func (sc *SecurityContext) ValidateTenant(expectedTenantID string) bool {
 	currentTenantID := sc.TenantID()
 	if currentTenantID == "" {
@@ -133,7 +142,8 @@ func (sc *SecurityContext) ValidateTenant(expectedTenantID string) bool {
 	return currentTenantID == expectedTenantID
 }
 
-// ToAuditMap returns a map suitable for audit logging
+// ToAuditMap returns a map of request and principal fields suitable for audit
+// logging.
 func (sc *SecurityContext) ToAuditMap() map[string]any {
 	auditData := map[string]any{
 		"request_id":  sc.requestID,
@@ -158,7 +168,8 @@ func (sc *SecurityContext) ToAuditMap() map[string]any {
 	return auditData
 }
 
-// RequireAuthentication returns an error if not authenticated
+// RequireAuthentication returns a LiftError if the request is not
+// authenticated.
 func (sc *SecurityContext) RequireAuthentication() error {
 	if !sc.IsAuthenticated() {
 		return NewLiftError("UNAUTHORIZED", "Authentication required", 401)
@@ -166,7 +177,7 @@ func (sc *SecurityContext) RequireAuthentication() error {
 	return nil
 }
 
-// RequireRole returns an error if the principal doesn't have the required role
+// RequireRole returns a LiftError if the principal lacks the specified role.
 func (sc *SecurityContext) RequireRole(role string) error {
 	if err := sc.RequireAuthentication(); err != nil {
 		return err
@@ -179,7 +190,8 @@ func (sc *SecurityContext) RequireRole(role string) error {
 	return nil
 }
 
-// RequirePermission returns an error if the principal doesn't have the required permission
+// RequirePermission returns a LiftError if the principal is not authorized for
+// the given resource action.
 func (sc *SecurityContext) RequirePermission(resource, action string) error {
 	if err := sc.RequireAuthentication(); err != nil {
 		return err
@@ -192,7 +204,8 @@ func (sc *SecurityContext) RequirePermission(resource, action string) error {
 	return nil
 }
 
-// RequireTenant returns an error if the principal doesn't belong to the expected tenant
+// RequireTenant returns a LiftError if the principal is not scoped to the
+// expected tenant.
 func (sc *SecurityContext) RequireTenant(expectedTenantID string) error {
 	if err := sc.RequireAuthentication(); err != nil {
 		return err

@@ -159,10 +159,10 @@ func HealthCheckObservability(config EnhancedObservabilityConfig) func() error {
 
 // observabilityHandler coordinates logging, metrics, and tracing components
 type observabilityHandler struct {
-	config  EnhancedObservabilityConfig
-	logger  *loggingHandler
-	metrics *metricsHandler
-	tracer  *tracingHandler
+    logger  *loggingHandler
+    metrics *metricsHandler
+    tracer  *tracingHandler
+    config  EnhancedObservabilityConfig
 }
 
 // newObservabilityHandler creates a new handler with the given configuration
@@ -242,8 +242,8 @@ func (h *observabilityHandler) determineStatusCode(ctx *lift.Context, err error)
 
 // loggingHandler handles the logging aspect of observability
 type loggingHandler struct {
-	config EnhancedObservabilityConfig
-	logger observability.StructuredLogger
+    logger observability.StructuredLogger
+    config EnhancedObservabilityConfig
 }
 
 // newLoggingHandler creates a new logging handler
@@ -333,9 +333,9 @@ func (l *loggingHandler) after(ctx *lift.Context, operation string, duration tim
 
 // metricsHandler handles the metrics aspect of observability
 type metricsHandler struct {
-	config    EnhancedObservabilityConfig
-	collector observability.MetricsCollector
-	baseTags  map[string]string
+    collector observability.MetricsCollector
+    baseTags  map[string]string
+    config    EnhancedObservabilityConfig
 }
 
 // newMetricsHandler creates a new metrics handler
@@ -353,7 +353,7 @@ func newMetricsHandler(config EnhancedObservabilityConfig) *metricsHandler {
 }
 
 // before handles metrics setup before request processing
-func (m *metricsHandler) before(ctx *lift.Context, operation, tenantID, userID string) {
+func (m *metricsHandler) before(ctx *lift.Context, operation, tenantID, _ string) {
 	if !m.config.EnableMetrics || m.collector == nil {
 		return
 	}
@@ -504,7 +504,7 @@ func (t *tracingHandler) before(ctx *lift.Context, operation, tenantID, userID s
 }
 
 // after handles tracing after request processing
-func (t *tracingHandler) after(ctx *lift.Context, operation string, duration time.Duration, statusCode int, err error) {
+func (t *tracingHandler) after(ctx *lift.Context, _ string, duration time.Duration, statusCode int, err error) {
 	if !t.config.EnableTracing {
 		return
 	}

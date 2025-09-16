@@ -48,21 +48,29 @@ func DefaultConfig() *Config {
 type AppOption func(*App)
 
 // App represents the main application container
-type App struct {
-	db                        any
-	metrics                   MetricsCollector
-	logger                    Logger
-	features                  map[string]bool
-	router                    *Router
-	eventRouter               *EventRouter
-	config                    *Config
-	adapterRegistry           *adapters.AdapterRegistry
-	wsOptions                 *WebSocketOptions
-	wsRoutes                  map[string]WebSocketHandler
-	middleware                []Middleware
-	mu                        sync.RWMutex
-	started                   bool
-	hasInterceptingMiddleware bool
+type App struct { //nolint:govet // fieldalignment: keep readable order; negligible impact
+    // Interfaces (16 bytes) first
+    logger            Logger
+    metrics           MetricsCollector
+    db                any
+
+    // Pointers (8 bytes)
+    router            *Router
+    eventRouter       *EventRouter
+    config            *Config
+    adapterRegistry   *adapters.AdapterRegistry
+    wsOptions         *WebSocketOptions
+
+    // Maps/slices (24 bytes)
+    wsRoutes          map[string]WebSocketHandler
+    middleware        []Middleware
+    preferredAdapters []adapters.TriggerType
+    features          map[string]bool
+
+    // Sync primitives and small scalars last
+    mu                        sync.RWMutex
+    started                   bool
+    hasInterceptingMiddleware bool
 }
 
 // New creates a new Lift application
@@ -85,9 +93,12 @@ func New(options ...AppOption) *App {
 	return app
 }
 
-// Use adds middleware to the application
-func (a *App) Use(middleware Middleware) *App {
-	a.middleware = append(a.middleware, middleware)
+// Use adds middleware to the application. Middleware is executed in the order
+// it is added (last added runs closest to the handler), and applies to all
+// routes (HTTP and non‑HTTP) handled by this App.
+func (a *App) Use(mw func(Handler) Handler) *App {
+	// Accept generic middleware func type for better interop across packages
+	a.middleware = append(a.middleware, Middleware(mw))
 
 	// Note: Since Middleware is a function type, not an interface,
 	// we'll need to handle response interception detection differently
@@ -181,14 +192,21 @@ func (a *App) WithLogger(logger Logger) *App {
 
 // WithMetrics sets the metrics collector
 func (a *App) WithMetrics(metrics MetricsCollector) *App {
-	a.metrics = metrics
-	return a
+    a.metrics = metrics
+    return a
 }
 
 // WithDatabase sets the database connection
 func (a *App) WithDatabase(db any) *App {
-	a.db = db
-	return a
+    a.db = db
+    return a
+}
+
+// WithPreferredAdapters sets an ordered list of preferred event adapters for parsing Lambda events.
+// If set, the app will try these adapters (in order) before falling back to auto-detection.
+func (a *App) WithPreferredAdapters(order ...adapters.TriggerType) *App {
+    a.preferredAdapters = append([]adapters.TriggerType(nil), order...)
+    return a
 }
 
 // Group creates a new route group with the specified prefix
@@ -201,8 +219,8 @@ func (a *App) Group(prefix string) *RouteGroup {
 
 // RouteGroup represents a group of routes with a common prefix
 type RouteGroup struct {
-	app    *App
-	prefix string
+    app    *App
+    prefix string
 }
 
 // GET registers a GET route in this group
@@ -232,10 +250,16 @@ func (rg *RouteGroup) PATCH(path string, handler any) error {
 
 // Group creates a sub-group with an additional prefix
 func (rg *RouteGroup) Group(prefix string) *RouteGroup {
-	return &RouteGroup{
-		app:    rg.app,
-		prefix: rg.prefix + prefix,
-	}
+    return &RouteGroup{
+        app:    rg.app,
+        prefix: rg.prefix + prefix,
+    }
+}
+
+// Use attaches middleware to this route group. Delegates to app-level chain.
+func (rg *RouteGroup) Use(mw func(Handler) Handler) *RouteGroup {
+    rg.app.Use(mw)
+    return rg
 }
 
 // Start prepares the application for handling requests
@@ -267,7 +291,7 @@ func (a *App) IsLambda() bool {
 
 // HandleRequest processes an incoming Lambda request
 func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
-	builder := newRequestHandlerBuilder(a, ctx, event)
+    builder := newRequestHandlerBuilder(ctx, a, event)
 	return builder.build()
 }
 
@@ -282,12 +306,12 @@ type requestHandlerBuilder struct {
 }
 
 // newRequestHandlerBuilder creates a new request handler builder
-func newRequestHandlerBuilder(app *App, ctx context.Context, event any) *requestHandlerBuilder {
-	return &requestHandlerBuilder{
-		app:   app,
-		ctx:   ctx,
-		event: event,
-	}
+func newRequestHandlerBuilder(ctx context.Context, app *App, event any) *requestHandlerBuilder {
+    return &requestHandlerBuilder{
+        app:   app,
+        ctx:   ctx,
+        event: event,
+    }
 }
 
 // build executes the complete request handling pipeline
@@ -431,43 +455,72 @@ func (b *requestHandlerBuilder) routeHTTP() {
 
 // parseEvent converts a Lambda event to our Request structure
 func (a *App) parseEvent(event any) (*Request, error) {
-	// Debug logging if enabled
-	if a.config.Debug {
-		if a.logger != nil {
-			// Log the raw event for debugging
-			a.logger.WithField("event_type", fmt.Sprintf("%T", event)).Debug("Parsing Lambda event")
+    a.logEventDebug(event)
 
-			// Log event fields if it's a map
-			if eventMap, ok := event.(map[string]any); ok {
-				fields := make([]string, 0, len(eventMap))
-				for key := range eventMap {
-					fields = append(fields, key)
-				}
-				a.logger.WithField("fields", fields).Debug("Event fields detected")
-			}
-		}
-	}
+    if req, ok := a.tryPreferredAdapters(event); ok {
+        return req, nil
+    }
 
-	// Use the adapter registry to automatically detect and parse the event
-	adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
-	if err != nil {
-		if a.config.Debug && a.logger != nil {
-			a.logger.WithField("error", err.Error()).Error("Failed to parse Lambda event")
-		}
-		return nil, err
-	}
+    return a.detectAndAdaptEvent(event)
+}
 
-	// Log successful parsing
-	if a.config.Debug && a.logger != nil {
-		a.logger.WithFields(map[string]interface{}{
-			"trigger_type": adapterRequest.TriggerType,
-			"method":       adapterRequest.Method,
-			"path":         adapterRequest.Path,
-		}).Debug("Successfully parsed Lambda event")
-	}
+// logEventDebug logs useful debug information about the incoming event
+func (a *App) logEventDebug(event any) {
+    if !a.config.Debug || a.logger == nil {
+        return
+    }
+    a.logger.WithField("event_type", fmt.Sprintf("%T", event)).Debug("Parsing Lambda event")
+    if eventMap, ok := event.(map[string]any); ok {
+        fields := make([]string, 0, len(eventMap))
+        for key := range eventMap {
+            fields = append(fields, key)
+        }
+        a.logger.WithField("fields", fields).Debug("Event fields detected")
+    }
+}
 
-	// Properly wrap the adapter request using NewRequest to copy all fields
-	return NewRequest(adapterRequest), nil
+// tryPreferredAdapters attempts to parse using preferred adapters first
+func (a *App) tryPreferredAdapters(event any) (*Request, bool) {
+    if len(a.preferredAdapters) == 0 {
+        return nil, false
+    }
+    for _, tt := range a.preferredAdapters {
+        adapter, ok := a.adapterRegistry.GetAdapter(tt)
+        if !ok || !adapter.CanHandle(event) {
+            continue
+        }
+        if req, err := adapter.Adapt(event); err == nil {
+            if a.config.Debug && a.logger != nil {
+                a.logger.WithFields(map[string]interface{}{
+                    "trigger_type": tt,
+                    "method":       req.Method,
+                    "path":         req.Path,
+                    "preferred":    true,
+                }).Debug("Parsed Lambda event with preferred adapter")
+            }
+            return NewRequest(req), true
+        }
+    }
+    return nil, false
+}
+
+// detectAndAdaptEvent uses the registry to detect and adapt events
+func (a *App) detectAndAdaptEvent(event any) (*Request, error) {
+    adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
+    if err != nil {
+        if a.config.Debug && a.logger != nil {
+            a.logger.WithField("error", err.Error()).Error("Failed to parse Lambda event")
+        }
+        return nil, err
+    }
+    if a.config.Debug && a.logger != nil {
+        a.logger.WithFields(map[string]interface{}{
+            "trigger_type": adapterRequest.TriggerType,
+            "method":       adapterRequest.Method,
+            "path":         adapterRequest.Path,
+        }).Debug("Successfully parsed Lambda event")
+    }
+    return NewRequest(adapterRequest), nil
 }
 
 // handleError processes errors and returns appropriate responses
@@ -706,12 +759,12 @@ func (v *handlerValidator) validateNoInDoubleOut(t reflect.Type) handlerPattern 
 // handlerExecutor handles the execution of different handler patterns
 // Memory optimized: struct with 48 pointer bytes could be 32
 type handlerExecutor struct {
-	// reflect.Value (24 bytes)
-	value reflect.Value
-	// reflect.Type (16 bytes - interface)
-	funcType reflect.Type
-	// enum (8 bytes on 64-bit)
-	pattern handlerPattern
+    // reflect.Type (16 bytes - interface)
+    funcType reflect.Type
+    // reflect.Value (24 bytes)
+    value reflect.Value
+    // enum (8 bytes on 64-bit)
+    pattern handlerPattern
 }
 
 // createReflectedHandler creates a Handler from a reflected function

@@ -199,7 +199,7 @@ v1.POST("/users", CreateUserV1)
 
 // CORRECT: Protected routes
 api := app.Group("/api")
-api.Use(middleware.JWT(jwtConfig))
+api.Use(middleware.JWTAuth(jwtConfig))
 api.GET("/profile", GetProfile)
 api.PUT("/profile", UpdateProfile)
 
@@ -648,7 +648,7 @@ app.Use(middleware.CORS([]string{"https://app.example.com", "https://www.example
 app.Use(middleware.CORS([]string{"*"}))
 ```
 
-#### `middleware.JWT(config JWTConfig)`
+#### `middleware.JWTAuth(config JWTConfig)`
 
 **Purpose:** Validate JWT tokens  
 **When to use:** Protected routes  
@@ -659,11 +659,11 @@ app.Use(middleware.CORS([]string{"*"}))
 import "github.com/pay-theory/lift/pkg/middleware"
 
 api := app.Group("/api")
-api.Use(middleware.JWT(middleware.JWTConfig{
+api.Use(middleware.JWTAuth(middleware.JWTConfig{
     Secret: os.Getenv("JWT_SECRET"),
 }))
 
-// Or use JWTAuth function
+// Or use explicit JWTAuth configuration
 api.Use(middleware.JWTAuth(middleware.JWTConfig{
     Secret:    os.Getenv("JWT_SECRET"),
     Algorithm: "HS256",
@@ -709,7 +709,7 @@ app.Use(limiter)
 ```go
 // CORRECT: User-based limiting
 api := app.Group("/api")
-api.Use(middleware.JWT(jwtConfig))
+api.Use(middleware.JWTAuth(jwtConfig))
 
 userLimiter, err := middleware.UserRateLimitWithLimited(100, 15*time.Minute)
 if err != nil {
@@ -929,7 +929,7 @@ func main() {
     api := app.Group("/api")
     
     // JWT middleware
-    jwtMiddleware, _ := middleware.JWTAuth(middleware.JWTConfig{
+    jwtMiddleware := middleware.JWTAuth(middleware.JWTConfig{
         Secret: os.Getenv("JWT_SECRET"),
     })
     api.Use(jwtMiddleware)

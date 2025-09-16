@@ -369,9 +369,9 @@ func (p *DefaultConnectionPool) cleanup() {
 
 // poolResourceCleaner handles cleanup of pool resources
 type poolResourceCleaner struct {
-	config PoolConfig
-	logger lift.Logger
-	now    time.Time
+    now    time.Time
+    logger lift.Logger
+    config PoolConfig
 }
 
 // newPoolResourceCleaner creates a new pool resource cleaner

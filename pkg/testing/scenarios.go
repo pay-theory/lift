@@ -229,9 +229,9 @@ func (rc *responseCollector) getLatencies() []time.Duration {
 
 // workerPool manages concurrent workers
 type workerPool struct {
-	concurrency int
-	duration    time.Duration
-	doneSignal  chan bool
+    doneSignal  chan bool
+    concurrency int
+    duration    time.Duration
 }
 
 // newWorkerPool creates a new worker pool
@@ -418,84 +418,69 @@ func (sr *ScenarioRunner) runScenariosSequential(t *testing.T, scenarios []TestS
 
 // executeScenario executes a single scenario with retry logic
 func (sr *ScenarioRunner) executeScenario(t *testing.T, scenario TestScenario) {
-	if scenario.Skip {
-		t.Skip(scenario.SkipReason)
-		return
-	}
+    if scenario.Skip {
+        t.Skip(scenario.SkipReason)
+        return
+    }
 
-	var lastErr error
+    var lastErr error
 
-	for attempt := 0; attempt <= sr.retryAttempts; attempt++ {
-		if attempt > 0 {
-			t.Logf("Retrying scenario %s (attempt %d/%d)", scenario.Name, attempt+1, sr.retryAttempts+1)
-			time.Sleep(sr.retryDelay)
-		}
+    for attempt := 0; attempt <= sr.retryAttempts; attempt++ {
+        if attempt > 0 {
+            t.Logf("Retrying scenario %s (attempt %d/%d)", scenario.Name, attempt+1, sr.retryAttempts+1)
+            time.Sleep(sr.retryDelay)
+        }
 
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					lastErr = fmt.Errorf("scenario panicked: %v", r)
-				}
-			}()
-
-			// Setup with timeout
-			if scenario.Setup != nil {
-				setupCtx, cancel := context.WithTimeout(context.Background(), sr.setupTimeout)
-				defer cancel()
-
-				done := make(chan error, 1)
-				go func() {
-					done <- scenario.Setup(sr.app)
-				}()
-
-				select {
-				case err := <-done:
-					if err != nil {
-						lastErr = fmt.Errorf("setup failed: %w", err)
-						return
-					}
-				case <-setupCtx.Done():
-					lastErr = fmt.Errorf("setup timed out after %v", sr.setupTimeout)
-					return
-				}
-			}
-
-			// Execute request
-			resp := scenario.Request(sr.app)
-
-			// Run assertions
-			scenario.Assertions(t, resp)
-
-			// Cleanup with timeout
-			if scenario.Cleanup != nil {
-				cleanupCtx, cancel := context.WithTimeout(context.Background(), sr.cleanupTimeout)
-				defer cancel()
-
-				done := make(chan error, 1)
-				go func() {
-					done <- scenario.Cleanup(sr.app)
-				}()
-
-				select {
-				case err := <-done:
-					if err != nil {
-						t.Logf("Cleanup warning: %v", err)
-					}
-				case <-cleanupCtx.Done():
-					t.Logf("Cleanup timed out after %v", sr.cleanupTimeout)
-				}
-			}
-
-			lastErr = nil // Success
-		}()
-
-		if lastErr == nil {
-			return // Success
-		}
-	}
+        lastErr = sr.tryExecuteScenario(t, scenario)
+        if lastErr == nil {
+            return
+        }
+    }
 
 	// All attempts failed
 	require.NoError(t, lastErr, "Scenario failed after %d attempts", sr.retryAttempts+1)
+}
+
+// tryExecuteScenario runs one attempt with panic protection, setup/cleanup timeouts
+func (sr *ScenarioRunner) tryExecuteScenario(t *testing.T, scenario TestScenario) (err error) {
+    defer func() {
+        if r := recover(); r != nil {
+            err = fmt.Errorf("scenario panicked: %v", r)
+        }
+    }()
+
+    // Setup
+    if scenario.Setup != nil {
+        if serr := sr.runWithTimeout("setup", sr.setupTimeout, scenario.Setup); serr != nil {
+            return fmt.Errorf("setup failed: %w", serr)
+        }
+    }
+
+    // Execute request and assertions
+    resp := scenario.Request(sr.app)
+    scenario.Assertions(t, resp)
+
+    // Cleanup
+    if scenario.Cleanup != nil {
+        if cerr := sr.runWithTimeout("cleanup", sr.cleanupTimeout, scenario.Cleanup); cerr != nil {
+            t.Logf("Cleanup warning: %v", cerr)
+        }
+    }
+    return nil
+}
+
+// runWithTimeout executes a scenario phase with a timeout
+func (sr *ScenarioRunner) runWithTimeout(_ string, timeout time.Duration, fn func(*TestApp) error) error {
+    ctx, cancel := context.WithTimeout(context.Background(), timeout)
+    defer cancel()
+    done := make(chan error, 1)
+    go func() { done <- fn(sr.app) }()
+    select {
+    case err := <-done:
+        return err
+    case <-ctx.Done():
+        return fmt.Errorf("operation timed out after %v", timeout)
+    }
 }
 
 // TestScenario represents a complete test scenario

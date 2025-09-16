@@ -282,22 +282,10 @@ func (b *eventBridgeHandlerBuilder) setupTarget() {
 
 // applyUserTargetProps applies user-provided target properties
 func (b *eventBridgeHandlerBuilder) applyUserTargetProps(targetProps *awseventstargets.LambdaFunctionProps) {
-	if b.props.TargetProps == nil {
-		return
-	}
-	
-	if b.props.TargetProps.Event != nil {
-		targetProps.Event = b.props.TargetProps.Event
-	}
-	if b.props.TargetProps.MaxEventAge != nil {
-		targetProps.MaxEventAge = b.props.TargetProps.MaxEventAge
-	}
-	if b.props.TargetProps.RetryAttempts != nil {
-		targetProps.RetryAttempts = b.props.TargetProps.RetryAttempts
-	}
-	if b.props.TargetProps.DeadLetterQueue != nil {
-		targetProps.DeadLetterQueue = b.props.TargetProps.DeadLetterQueue
-	}
+    if b.props.TargetProps == nil {
+        return
+    }
+    applyNonNilStructFields(targetProps, b.props.TargetProps)
 }
 
 // setupPermissions grants necessary permissions

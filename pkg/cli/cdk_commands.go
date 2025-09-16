@@ -375,8 +375,9 @@ func (c *CDKDeployCommand) buildFunction() error {
 		return err
 	}
 
-	// Build for Lambda
-	cmd := exec.Command("go", "build", "-o", "dist/bootstrap", "./cmd/main.go")
+    // Build for Lambda
+    ctx := context.Background()
+    cmd := exec.CommandContext(ctx, "go", "build", "-o", "dist/bootstrap", "./cmd/main.go")
 	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=arm64")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

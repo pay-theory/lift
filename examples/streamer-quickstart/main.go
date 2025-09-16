@@ -9,11 +9,18 @@ import (
 )
 
 func main() {
-	// Create Lift app with WebSocket support
-	app := lift.New(lift.WithWebSocketSupport())
+    // Create Lift app with WebSocket support
+    app := lift.New(lift.WithWebSocketSupport())
+
+    // Helper to register WS handlers without repetitive error checks
+    mustWS := func(route string, h func(*lift.Context) error) {
+        if err := app.WebSocket(route, h); err != nil {
+            log.Fatalf("Failed to register WebSocket %s handler: %v", route, err)
+        }
+    }
 
 	// Handle new connections
-	if err := app.WebSocket("$connect", func(ctx *lift.Context) error {
+    mustWS("$connect", func(ctx *lift.Context) error {
 		connectionID, ok := ctx.Request.Metadata["connectionId"].(string)
 		if !ok {
 			return ctx.Status(400).JSON(map[string]string{
@@ -37,12 +44,10 @@ func main() {
 			"message":      "Connected successfully",
 			"connectionId": connectionID,
 		})
-	}); err != nil {
-		log.Fatalf("Failed to register WebSocket $connect handler: %v", err)
-	}
+    })
 
 	// Handle disconnections
-	if err := app.WebSocket("$disconnect", func(ctx *lift.Context) error {
+    mustWS("$disconnect", func(ctx *lift.Context) error {
 		connectionID, ok := ctx.Request.Metadata["connectionId"].(string)
 		if !ok {
 			log.Printf("Warning: Missing connection ID in disconnect event")
@@ -56,12 +61,10 @@ func main() {
 		// The connection will be automatically removed if using ConnectionStore
 
 		return nil // No response needed for disconnect
-	}); err != nil {
-		log.Fatalf("Failed to register WebSocket $disconnect handler: %v", err)
-	}
+    })
 
 	// Handle incoming messages
-	if err := app.WebSocket("message", func(ctx *lift.Context) error {
+    mustWS("message", func(ctx *lift.Context) error {
 		connectionID, ok := ctx.Request.Metadata["connectionId"].(string)
 		if !ok {
 			return ctx.Status(400).JSON(map[string]string{
@@ -129,12 +132,10 @@ func main() {
 				"error": "Unknown action",
 			})
 		}
-	}); err != nil {
-		log.Fatalf("Failed to register WebSocket message handler: %v", err)
-	}
+    })
 
 	// Handle any other routes with a default handler
-	if err := app.WebSocket("$default", func(ctx *lift.Context) error {
+    mustWS("$default", func(ctx *lift.Context) error {
 		routeKey, ok := ctx.Request.Metadata["routeKey"].(string)
 		if !ok {
 			routeKey = "unknown"
@@ -143,9 +144,7 @@ func main() {
 			"error": "Unknown route",
 			"route": routeKey,
 		})
-	}); err != nil {
-		log.Fatalf("Failed to register WebSocket $default handler: %v", err)
-	}
+    })
 
 	// Start the Lambda handler
 	lambda.Start(app.WebSocketHandler())

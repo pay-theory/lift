@@ -14,37 +14,39 @@ import (
 
 // HealthEndpoints provides HTTP endpoints for health checks
 type HealthEndpoints struct {
-	manager              HealthManager
-	corsOrigins          []string
-	timeout              time.Duration
-	enableDetailedErrors bool
-	enableCORS           bool
+    // Interfaces/slices first
+    logger               lift.Logger // optional structured logger
+    manager              HealthManager
+    corsOrigins          []string
+    // 8-byte aligned duration next
+    timeout              time.Duration
+    // small scalars last (packed together)
+    enableDetailedErrors bool
+    enableCORS           bool
 }
 
 // HealthEndpointsConfig configures health endpoints
 type HealthEndpointsConfig struct {
-	// CORSOrigins allowed CORS origins (24 bytes - slice first)
-	CORSOrigins []string
-
-	// Timeout for health checks (8 bytes)
-	Timeout time.Duration
-
-	// EnableDetailedErrors whether to include detailed error information
-	EnableDetailedErrors bool
-
-	// EnableCORS whether to enable CORS headers
-	EnableCORS bool
+    // Interfaces/slices first
+    Logger      lift.Logger
+    CORSOrigins []string
+    // 8-byte aligned
+    Timeout time.Duration
+    // small scalars last
+    EnableDetailedErrors bool
+    EnableCORS           bool
 }
 
 // NewHealthEndpoints creates new health endpoints
 func NewHealthEndpoints(manager HealthManager, config HealthEndpointsConfig) *HealthEndpoints {
-	return &HealthEndpoints{
-		manager:              manager,
-		enableDetailedErrors: config.EnableDetailedErrors,
-		enableCORS:           config.EnableCORS,
-		corsOrigins:          config.CORSOrigins,
-		timeout:              config.Timeout,
-	}
+    return &HealthEndpoints{
+        manager:              manager,
+        enableDetailedErrors: config.EnableDetailedErrors,
+        enableCORS:           config.EnableCORS,
+        corsOrigins:          config.CORSOrigins,
+        timeout:              config.Timeout,
+        logger:               config.Logger,
+    }
 }
 
 // DefaultHealthEndpointsConfig returns sensible defaults
@@ -215,10 +217,9 @@ func (he *HealthEndpoints) ComponentsHandler(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set(lift.HeaderContentType, lift.ContentTypeJSON)
 	w.WriteHeader(statusCode)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		// Log error but can't change status code at this point
-		log.Printf("Failed to encode health check response: %v", err)
-	}
+    if err := json.NewEncoder(w).Encode(response); err != nil {
+        he.logError("Failed to encode health check response", err)
+    }
 }
 
 // healthStatusToHTTPStatus converts health status to HTTP status code
@@ -261,14 +262,13 @@ func (he *HealthEndpoints) healthStatusToResponse(status HealthStatus) HealthRes
 
 // writeJSONResponse writes a JSON health response
 func (he *HealthEndpoints) writeJSONResponse(w http.ResponseWriter, statusCode int, status HealthStatus) {
-	response := he.healthStatusToResponse(status)
+    response := he.healthStatusToResponse(status)
 
 	w.Header().Set(lift.HeaderContentType, lift.ContentTypeJSON)
 	w.WriteHeader(statusCode)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		// Log error but can't change status code at this point
-		log.Printf("Failed to encode health check response: %v", err)
-	}
+    if err := json.NewEncoder(w).Encode(response); err != nil {
+        he.logError("Failed to encode health check response", err)
+    }
 }
 
 // writePlainTextResponse writes a plain text health response
@@ -281,10 +281,9 @@ func (he *HealthEndpoints) writePlainTextResponse(w http.ResponseWriter, statusC
 		message = fmt.Sprintf("%s: %s", status.Status, status.Message)
 	}
 
-	if _, err := fmt.Fprint(w, message); err != nil {
-		// Log error but can't change status code at this point
-		log.Printf("Failed to write plain text response: %v", err)
-	}
+    if _, err := fmt.Fprint(w, message); err != nil {
+        he.logError("Failed to write plain text response", err)
+    }
 }
 
 // writeError writes an error response
@@ -298,10 +297,9 @@ func (he *HealthEndpoints) writeError(w http.ResponseWriter, statusCode int, mes
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
-	if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
-		// Log error but can't change status code at this point
-		log.Printf("Failed to encode error response: %v", err)
-	}
+    if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+        he.logError("Failed to encode error response", err)
+    }
 }
 
 // setCORSHeaders sets CORS headers if enabled
@@ -326,6 +324,15 @@ func (he *HealthEndpoints) wantsPlainText(r *http.Request) bool {
 	return strings.Contains(accept, "text/plain") ||
 		strings.Contains(accept, "text/*") ||
 		(accept == "" && r.URL.Query().Get("format") == "text")
+}
+
+// logError logs via structured logger if available, else falls back to std log
+func (he *HealthEndpoints) logError(msg string, err error) {
+    if he.logger != nil {
+        he.logger.Error(msg, map[string]any{"error": err.Error()})
+        return
+    }
+    log.Printf("%s: %v", msg, err)
 }
 
 // HealthMiddleware provides middleware for automatic health monitoring

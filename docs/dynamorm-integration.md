@@ -360,7 +360,7 @@ func handler(ctx *lift.Context) error {
     
     err := dynamorm.Put(ctx.Context, db, tableName, user).Execute()
     if err != nil {
-        return lift.NewError(500, "Failed to create user", nil)
+        return lift.NewLiftError("SYSTEM_ERROR", "Failed to create user", 500)
     }
     
     return ctx.JSON(user)
@@ -375,7 +375,7 @@ func listTenantUsers(ctx *lift.Context) error {
     tenantID := ctx.TenantID()
     
     if tenantID == "" {
-        return lift.NewError(400, "Tenant ID required", nil)
+        return lift.ValidationError("Tenant ID required")
     }
     
     // Query all users for the tenant
@@ -386,7 +386,7 @@ func listTenantUsers(ctx *lift.Context) error {
         Execute()
     
     if err != nil {
-        return lift.NewError(500, "Failed to query users", nil)
+        return lift.NewLiftError("SYSTEM_ERROR", "Failed to query users", 500)
     }
     
     return ctx.JSON(users)

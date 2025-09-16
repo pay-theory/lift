@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
@@ -603,51 +604,43 @@ type CORSConfig struct {
 
 // CORS middleware function
 func CORS(config CORSConfig) lift.Middleware {
-	return func(next lift.Handler) lift.Handler {
-		return lift.HandlerFunc(func(ctx *lift.Context) error {
-			origin := ctx.Header("Origin")
+    return func(next lift.Handler) lift.Handler {
+        return lift.HandlerFunc(func(ctx *lift.Context) error {
+            origin := ctx.Header("Origin")
 
-			// Check if origin is allowed
-			allowed := false
-			for _, allowedOrigin := range config.AllowOrigins {
-				if allowedOrigin == "*" || allowedOrigin == origin {
-					allowed = true
-					break
-				}
-			}
+            if isOriginAllowed(origin, config.AllowOrigins) {
+                applyCORSHeaders(ctx, config, origin)
+            }
 
-			if allowed {
-				ctx.Response.Header("Access-Control-Allow-Origin", origin)
-				if len(config.AllowMethods) > 0 {
-					methods := ""
-					for i, method := range config.AllowMethods {
-						if i > 0 {
-							methods += ", "
-						}
-						methods += method
-					}
-					ctx.Response.Header("Access-Control-Allow-Methods", methods)
-				}
-				if len(config.AllowHeaders) > 0 {
-					headers := ""
-					for i, header := range config.AllowHeaders {
-						if i > 0 {
-							headers += ", "
-						}
-						headers += header
-					}
-					ctx.Response.Header("Access-Control-Allow-Headers", headers)
-				}
-			}
+            if ctx.Request.Method == "OPTIONS" {
+                ctx.Response.StatusCode = 204
+                return nil
+            }
 
-			if ctx.Request.Method == "OPTIONS" {
-				ctx.Response.StatusCode = 204
-				return nil
-			}
+            return next.Handle(ctx)
+        })
+    }
+}
 
-			return next.Handle(ctx)
-		})
-	}
+// helper: check if origin is allowed
+func isOriginAllowed(origin string, allow []string) bool {
+    for _, allowedOrigin := range allow {
+        if allowedOrigin == "*" || allowedOrigin == origin {
+            return true
+        }
+    }
+    return false
+}
+
+// helper: apply CORS headers
+func applyCORSHeaders(ctx *lift.Context, config CORSConfig, origin string) {
+    ctx.Response.Header("Access-Control-Allow-Origin", origin)
+    if len(config.AllowMethods) > 0 {
+        ctx.Response.Header("Access-Control-Allow-Methods", strings.Join(config.AllowMethods, ", "))
+    }
+    if len(config.AllowHeaders) > 0 {
+        ctx.Response.Header("Access-Control-Allow-Headers", strings.Join(config.AllowHeaders, ", "))
+    }
 }
 
 // Logger middleware function

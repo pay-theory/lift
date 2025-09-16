@@ -17,11 +17,11 @@ patterns:
       
       func HandleCreateUser(ctx *lift.Context) error {
           var req CreateUserRequest
-          if err := ctx.Bind(&req); err != nil {
-              return lift.BadRequest(err)
+          if err := ctx.ParseRequest(&req); err != nil {
+              return lift.ValidationError(err.Error())
           }
           // Business logic
-          return ctx.JSON(200, response)
+          return ctx.JSON(response)
       }
     anti_patterns:
       - name: "Raw Lambda Handler"
@@ -87,7 +87,7 @@ patterns:
                   "order_id": "123",
                   "status": "created",
               }
-              return ctx.JSON(200, resp)
+          return ctx.JSON(resp)
           }
   
   middleware_composition:
@@ -102,7 +102,7 @@ patterns:
       
       // API group with auth
       api := app.Group("/api")
-      api.Use(middleware.JWT(jwtConfig))
+      api.Use(middleware.JWTAuth(jwtConfig))
       api.Use(middleware.RateLimitUser())
       
       // Admin group with additional checks
@@ -120,7 +120,7 @@ patterns:
               // Don't do auth in every handler
               token := ctx.Header("Authorization")
               if !validateToken(token) {
-                  return lift.Unauthorized()
+                  return lift.Unauthorized("authentication required")
               }
               
               // Don't check roles in handlers
@@ -189,14 +189,14 @@ patterns:
           if err != nil {
               // Internal errors are logged but not exposed
               ctx.Logger.Error("database error", "error", err)
-              return lift.InternalError("failed to get user")
+              return lift.SystemError("failed to get user")
           }
           
-          return ctx.JSON(200, user)
+          return ctx.JSON(user)
       }
       
       // With details
-      return lift.NewError(400, "validation failed", map[string]interface{}{
+      return lift.NewLiftError("VALIDATION_ERROR", "validation failed", 400).WithDetails(map[string]any{
           "field": "email",
           "error": "invalid format",
       })
@@ -232,7 +232,7 @@ patterns:
               WHERE tenant_id = ? AND user_id = ?
           `, tenantID, userID)
           
-          return ctx.JSON(200, data)
+          return ctx.JSON(data)
       }
       
       // For admin endpoints
@@ -243,7 +243,7 @@ patterns:
           }
           
           tenants := db.GetAllTenants()
-          return ctx.JSON(200, tenants)
+          return ctx.JSON(tenants)
       }
     anti_patterns:
       - name: "Manual Tenant Extraction"
@@ -466,6 +466,6 @@ patterns:
           app.timeout = 30 * time.Second
           
           // Don't hardcode environment values
-          app.Use(middleware.JWT(middleware.JWTConfig{
+          app.Use(middleware.JWTAuth(middleware.JWTConfig{
               Secret: "my-secret-key", // Use environment variables!
           }))

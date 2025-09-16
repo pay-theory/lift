@@ -1,6 +1,8 @@
 package lift
 
-// Logger represents a structured logger
+// Logger represents a structured, leveled logger used throughout Lift.
+// Implementations should be safe for concurrent use and support per‑entry fields
+// as well as derived loggers with contextual fields (via WithField/WithFields).
 type Logger interface {
 	Debug(message string, fields ...map[string]any)
 	Info(message string, fields ...map[string]any)
@@ -10,7 +12,9 @@ type Logger interface {
 	WithFields(fields map[string]any) Logger
 }
 
-// MetricsCollector represents a metrics collection interface
+// MetricsCollector collects application metrics. Implementations typically map
+// to a backend (e.g., CloudWatch) and expose common primitives. Optional tags
+// can be provided to attach dimensions to a metric.
 type MetricsCollector interface {
 	Counter(name string, tags ...map[string]string) Counter
 	Histogram(name string, tags ...map[string]string) Histogram
@@ -18,18 +22,19 @@ type MetricsCollector interface {
 	Flush() error
 }
 
-// Counter represents a counter metric
+// Counter is a monotonically increasing counter.
 type Counter interface {
 	Inc()
 	Add(value float64)
 }
 
-// Histogram represents a histogram metric
+// Histogram records observations (e.g., durations) that can be aggregated into
+// percentiles or distributions by the backend.
 type Histogram interface {
 	Observe(value float64)
 }
 
-// Gauge represents a gauge metric
+// Gauge is an instantaneous value that can go up or down.
 type Gauge interface {
 	Set(value float64)
 	Inc()

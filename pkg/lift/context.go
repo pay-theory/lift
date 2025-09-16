@@ -322,6 +322,7 @@ func (c *Context) BadRequest(message string, err error) error {
 }
 
 // NotFound sends a 404 Not Found response
+// Deprecated: Prefer returning lift.NotFound(...) and let error middleware handle formatting.
 func (c *Context) NotFound(message string, err error) error {
 	c.Response.StatusCode = 404
 	response := map[string]any{
@@ -361,6 +362,7 @@ func (c *Context) Forbidden(message string, err error) error {
 }
 
 // SystemError sends a 500 Internal Server Error response
+// Deprecated: Prefer returning lift.SystemError(...) and let error middleware handle formatting.
 func (c *Context) SystemError(message string, err error) error {
 	c.Response.StatusCode = 500
 	response := map[string]any{
@@ -382,6 +384,7 @@ func (c *Context) SystemError(message string, err error) error {
 }
 
 // Unauthorized sends a 401 Unauthorized response
+// Deprecated: Prefer returning lift.Unauthorized(...) and let error middleware handle formatting.
 func (c *Context) Unauthorized(message string, err error) error {
 	c.Response.StatusCode = 401
 	response := map[string]any{

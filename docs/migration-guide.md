@@ -209,10 +209,10 @@ func getUser(ctx *lift.Context) error {
         
         // Automatic logging with context
         ctx.Logger.Error("Database error", "error", err, "user_id", userID)
-        return lift.InternalError()
+        return lift.SystemError("internal error")
     }
     
-    return ctx.JSON(200, user)
+    return ctx.JSON(user)
 }
 ```
 
@@ -310,7 +310,7 @@ func main() {
     
     // Auth group (same pattern)
     api := app.Group("/api")
-    api.Use(middleware.JWT(jwtConfig))
+    api.Use(middleware.JWTAuth(jwtConfig))
     api.GET("/profile", getProfile)
     api.PUT("/profile", updateProfile)
     
@@ -334,8 +334,8 @@ func createUser(ctx *lift.Context, req CreateUserRequest) (User, error) {
 | Gin | Lift |
 |-----|------|
 | `gin.Context` | `lift.Context` |
-| `c.ShouldBindJSON()` | `ctx.Bind()` or `lift.SimpleHandler` |
-| `c.JSON(code, obj)` | `ctx.JSON(code, obj)` |
+| `c.ShouldBindJSON()` | `ctx.ParseRequest()` or `lift.SimpleHandler` |
+| `c.JSON(code, obj)` | `ctx.Status(code).JSON(obj)` or `ctx.JSON(obj)` |
 | `c.Param("id")` | `ctx.Param("id")` |
 | `c.Query("q")` | `ctx.Query("q")` |
 | `c.GetHeader("X")` | `ctx.Header("X")` |
@@ -380,7 +380,7 @@ func init() {
     
     // Group with JWT
     api := e.Group("/api")
-    api.Use(middleware.JWT([]byte("secret")))
+    api.Use(middleware.JWTAuth(middleware.JWTConfig{Secret: os.Getenv("JWT_SECRET")}))
     api.GET("/profile", getProfile)
     
     echoLambda = echoadapter.New(e)
@@ -432,8 +432,8 @@ func main() {
     
     // Group with JWT (better config)
     api := app.Group("/api")
-    api.Use(middleware.JWT(middleware.JWTConfig{
-        Secret: []byte(os.Getenv("JWT_SECRET")),
+    api.Use(middleware.JWTAuth(middleware.JWTConfig{
+        Secret: os.Getenv("JWT_SECRET"),
     }))
     api.GET("/profile", getProfile)
     
@@ -454,11 +454,11 @@ func createUser(ctx *lift.Context, req CreateUserRequest) (User, error) {
 | Echo | Lift |
 |------|------|
 | `echo.Context` | `lift.Context` |
-| `c.Bind()` | `ctx.Bind()` |
+| `c.Bind()` | `ctx.ParseRequest()` |
 | `c.JSON()` | `ctx.JSON()` |
 | `c.Param()` | `ctx.Param()` |
 | `c.QueryParam()` | `ctx.Query()` |
-| `echo.NewHTTPError()` | `lift.NewError()` |
+| `echo.NewHTTPError()` | `lift.NewLiftError()` |
 | `e.Group()` | `app.Group()` |
 
 ## From Serverless Express
@@ -511,7 +511,7 @@ func main() {
     
     // Protected routes (cleaner)
     api := app.Group("/api")
-    api.Use(middleware.JWT(jwtConfig))
+    api.Use(middleware.JWTAuth(jwtConfig))
     api.GET("/profile", getProfile)
     
     lambda.Start(app.HandleRequest)
@@ -522,7 +522,7 @@ func main() {
 
 | Express | Lift |
 |---------|------|
-| `req.body` | Auto-parsed with `ctx.Bind()` |
+| `req.body` | Auto-parsed with `ctx.ParseRequest()` |
 | `req.params.id` | `ctx.Param("id")` |
 | `req.query.q` | `ctx.Query("q")` |
 | `res.json()` | `ctx.JSON()` |
@@ -597,7 +597,7 @@ func getUser(ctx *lift.Context) error {
         return lift.NotFound("user not found")
     }
     
-    return ctx.JSON(200, user)
+    return ctx.JSON(user)
 }
 ```
 
@@ -900,8 +900,8 @@ func authenticate(request events.APIGatewayProxyRequest) (*User, error) {
 
 // After: Middleware-based
 api := app.Group("/api")
-api.Use(middleware.JWT(middleware.JWTConfig{
-    Secret: []byte(os.Getenv("JWT_SECRET")),
+api.Use(middleware.JWTAuth(middleware.JWTConfig{
+    Secret: os.Getenv("JWT_SECRET"),
     Claims: &CustomClaims{},
 }))
 ```
@@ -915,9 +915,8 @@ return events.APIGatewayProxyResponse{
 }, nil
 
 // After: Structured errors
-return lift.NewError(400, "Invalid input", map[string]string{
-    "field": "email",
-})
+return lift.NewLiftError("VALIDATION_ERROR", "Invalid input", 400).
+    WithDetails(map[string]any{"field": "email"})
 ```
 
 ### Pattern: Logging Migration

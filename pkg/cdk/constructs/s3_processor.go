@@ -319,22 +319,10 @@ func (bb *s3BucketBuilder) createBaseBucketProps() *awss3.BucketProps {
 
 // applyUserBucketProps applies user-provided bucket properties
 func (bb *s3BucketBuilder) applyUserBucketProps(bucketProps *awss3.BucketProps) {
-	if bb.props.BucketProps == nil {
-		return
-	}
-	
-	if bb.props.BucketProps.BucketName != nil {
-		bucketProps.BucketName = bb.props.BucketProps.BucketName
-	}
-	if bb.props.BucketProps.Versioned != nil {
-		bucketProps.Versioned = bb.props.BucketProps.Versioned
-	}
-	if bb.props.BucketProps.BlockPublicAccess != nil {
-		bucketProps.BlockPublicAccess = bb.props.BucketProps.BlockPublicAccess
-	}
-	if bb.props.BucketProps.EncryptionKey != nil {
-		bucketProps.EncryptionKey = bb.props.BucketProps.EncryptionKey
-	}
+    if bb.props.BucketProps == nil {
+        return
+    }
+    applyNonNilStructFields(bucketProps, bb.props.BucketProps)
 }
 
 // setDefaultBucketName sets a default bucket name if none provided
@@ -398,7 +386,7 @@ func (bb *s3BucketBuilder) shouldEnableReplication() bool {
 }
 
 // enableCrossRegionReplication enables cross-region replication
-func (bb *s3BucketBuilder) enableCrossRegionReplication(mainBucket awss3.IBucket) {
+func (bb *s3BucketBuilder) enableCrossRegionReplication(_ awss3.IBucket) {
 	bb.processor.enableCrossRegionReplication()
 }
 
@@ -570,70 +558,9 @@ func (s *S3Processor) enableMonitoring() {
 	})
 
 	// Lambda function monitoring
-	if s.Function != nil {
-		function := s.Function.Function
-
-		// Function error alarm
-		awscloudwatch.NewAlarm(s, jsii.String("FunctionErrorAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-errors", *s.Bucket.BucketName())),
-			AlarmDescription: jsii.String("S3 processor function errors"),
-			Metric: function.MetricErrors(&awscloudwatch.MetricOptions{
-				Period: awscdk.Duration_Minutes(jsii.Number(5)),
-			}),
-			Threshold:          jsii.Number(5),
-			EvaluationPeriods:  jsii.Number(2),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-
-		// Function throttles alarm
-		awscloudwatch.NewAlarm(s, jsii.String("FunctionThrottleAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-throttles", *s.Bucket.BucketName())),
-			AlarmDescription: jsii.String("S3 processor function throttled"),
-			Metric: function.MetricThrottles(&awscloudwatch.MetricOptions{
-				Period: awscdk.Duration_Minutes(jsii.Number(5)),
-			}),
-			Threshold:          jsii.Number(1),
-			EvaluationPeriods:  jsii.Number(1),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-
-		// Function duration alarm
-		awscloudwatch.NewAlarm(s, jsii.String("FunctionDurationAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-processor-duration", *s.Bucket.BucketName())),
-			AlarmDescription: jsii.String("S3 processor taking too long"),
-			Metric: function.MetricDuration(&awscloudwatch.MetricOptions{
-				Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-				Statistic: awscloudwatch.Stats_AVERAGE(),
-			}),
-			Threshold:          jsii.Number(30000), // 30 seconds
-			EvaluationPeriods:  jsii.Number(2),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-
-		// Function concurrent executions alarm
-		concurrentExecutionsMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:  jsii.String("AWS/Lambda"),
-			MetricName: jsii.String("ConcurrentExecutions"),
-			DimensionsMap: &map[string]*string{
-				"FunctionName": function.FunctionName(),
-			},
-			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-			Statistic: awscloudwatch.Stats_MAXIMUM(),
-		})
-
-		awscloudwatch.NewAlarm(s, jsii.String("FunctionConcurrencyAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:          jsii.String(fmt.Sprintf("%s-processor-concurrency", *s.Bucket.BucketName())),
-			AlarmDescription:   jsii.String("S3 processor high concurrent executions"),
-			Metric:             concurrentExecutionsMetric,
-			Threshold:          jsii.Number(900), // Near default Lambda limit
-			EvaluationPeriods:  jsii.Number(2),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-	}
+    if s.Function != nil {
+        EnableS3LambdaMonitoring(s, s.Bucket.BucketName(), s.Function.Function)
+    }
 
 	// S3 bucket metrics
 	var client4xxErrorsMetric awscloudwatch.IMetric

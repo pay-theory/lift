@@ -57,10 +57,10 @@ func (s *Sanitizer) SanitizeFieldValue(key string, value any) any {
 
 // fieldSanitizationProcessor handles field value sanitization
 type fieldSanitizationProcessor struct {
-	sanitizer  *Sanitizer
-	key        string
-	keyLower   string
-	value      any
+    sanitizer *Sanitizer
+    key       string
+    value     any
+    keyLower  string
 }
 
 // newFieldSanitizationProcessor creates a new field sanitization processor
@@ -129,8 +129,8 @@ func (p *fieldSanitizationProcessor) applySanitization(classification security.D
 
 // classificationHandler handles sanitization for different data classifications
 type classificationHandler struct {
-	keyLower string
-	value    any
+    value    any
+    keyLower string
 }
 
 // newClassificationHandler creates a new classification handler

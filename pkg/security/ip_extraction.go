@@ -113,8 +113,8 @@ func (h *headerStrategy) extractIP(e *ipExtractor) string {
 
 // contextStrategy extracts IP from request context
 type contextStrategy struct {
-	path  []string
-	label string
+    label string
+    path  []string
 }
 
 // extractIP implements the extraction logic for context-based strategies

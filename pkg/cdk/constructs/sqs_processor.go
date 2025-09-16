@@ -311,22 +311,10 @@ func (qb *sqsQueueBuilder) createMainQueue(dlqConfig *awssqs.DeadLetterQueue) aw
 
 // applyUserQueueProps applies user-provided queue properties
 func (qb *sqsQueueBuilder) applyUserQueueProps(queueProps *awssqs.QueueProps) {
-	if qb.props.QueueProps == nil {
-		return
-	}
-	
-	if qb.props.QueueProps.QueueName != nil {
-		queueProps.QueueName = qb.props.QueueProps.QueueName
-	}
-	if qb.props.QueueProps.VisibilityTimeout != nil {
-		queueProps.VisibilityTimeout = qb.props.QueueProps.VisibilityTimeout
-	}
-	if qb.props.QueueProps.RetentionPeriod != nil {
-		queueProps.RetentionPeriod = qb.props.QueueProps.RetentionPeriod
-	}
-	if qb.props.QueueProps.ReceiveMessageWaitTime != nil {
-		queueProps.ReceiveMessageWaitTime = qb.props.QueueProps.ReceiveMessageWaitTime
-	}
+    if qb.props.QueueProps == nil {
+        return
+    }
+    applyNonNilStructFields(queueProps, qb.props.QueueProps)
 }
 
 // applyFIFOConfig applies FIFO queue configuration

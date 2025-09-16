@@ -1,0 +1,33 @@
+name: Docs
+
+on:
+  push:
+    branches: [ premain, main ]
+  pull_request:
+    branches: [ premain, main ]
+
+jobs:
+  doc-lint-and-export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Lint exported doc comments (revive)
+        run: |
+          make doclint
+
+      - name: Generate godoc text
+        run: |
+          make godoc-text
+
+      - name: Upload godoc.txt artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: godoc.txt
+          path: docs/godoc.txt
+

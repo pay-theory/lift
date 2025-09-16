@@ -4,19 +4,21 @@ import (
 	"fmt"
 )
 
-// S3Adapter handles S3 events
+// S3Adapter adapts Amazon S3 events into the normalized Request structure used
+// by Lift.
 type S3Adapter struct {
 	BaseAdapter
 }
 
-// NewS3Adapter creates a new S3 adapter
+// NewS3Adapter creates a new S3 adapter.
 func NewS3Adapter() *S3Adapter {
 	return &S3Adapter{
 		BaseAdapter: BaseAdapter{triggerType: TriggerS3},
 	}
 }
 
-// CanHandle checks if this adapter can handle the given event
+// CanHandle reports whether the adapter recognizes the given raw event as an
+// S3 event.
 func (a *S3Adapter) CanHandle(event any) bool {
 	eventMap, ok := event.(map[string]any)
 	if !ok {
@@ -46,13 +48,14 @@ func (a *S3Adapter) CanHandle(event any) bool {
 	return eventSource == "aws:s3"
 }
 
-// Validate checks if the event has the required S3 structure
+// Validate checks that the raw event has the required S3 record structure
+// before adapting it.
 func (a *S3Adapter) Validate(event any) error {
 	requiredFields := []string{"eventSource", "eventName", "s3"}
 	return validateRecordsEvent(event, "aws:s3", requiredFields)
 }
 
-// Adapt converts an S3 event to a normalized Request
+// Adapt converts an S3 event into a normalized Request.
 func (a *S3Adapter) Adapt(rawEvent any) (*Request, error) {
 	if err := a.Validate(rawEvent); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)

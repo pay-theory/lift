@@ -42,11 +42,13 @@ app.GET("/users", GetUsers)
 app.GET("/users/", GetUsers) // Also register with trailing slash
 
 // SOLUTION 3: Debug with logging
-app.Use(func(ctx *lift.Context) error {
-    ctx.Logger.Info("Incoming request",
-        "method", ctx.Request.Method,
-        "path", ctx.Request.Path)
-    return ctx.Next()
+app.Use(func(next lift.Handler) lift.Handler {
+    return lift.HandlerFunc(func(ctx *lift.Context) error {
+        ctx.Logger.Info("Incoming request",
+            "method", ctx.Request.Method,
+            "path", ctx.Request.Path)
+        return next.Handle(ctx)
+    })
 })
 ```
 
@@ -64,7 +66,7 @@ app.Use(func(ctx *lift.Context) error {
 // PROBLEM: Unsafe type assertion
 func Handler(ctx *lift.Context) error {
     user := ctx.Get("user").(*User) // Panics if nil!
-    return ctx.JSON(200, user)
+    return ctx.JSON(user)
 }
 
 // SOLUTION 1: Check for nil
@@ -74,7 +76,7 @@ func Handler(ctx *lift.Context) error {
         return lift.Unauthorized("user not found in context")
     }
     user := val.(*User)
-    return ctx.JSON(200, user)
+    return ctx.JSON(user)
 }
 
 // SOLUTION 2: Use type assertion with ok
@@ -83,14 +85,14 @@ func Handler(ctx *lift.Context) error {
     if !ok {
         return lift.Unauthorized("invalid user context")
     }
-    return ctx.JSON(200, user)
+    return ctx.JSON(user)
 }
 
 // SOLUTION 3: Ensure middleware sets value
 func AuthMiddleware(ctx *lift.Context) error {
     token := ctx.Header("Authorization")
     if token == "" {
-        return lift.Unauthorized()
+        return lift.Unauthorized("authentication required")
     }
     
     user := validateToken(token)
@@ -129,8 +131,8 @@ type Request struct {
 
 func Handler(ctx *lift.Context) error {
     var req Request
-    if err := ctx.Bind(&req); err != nil {
-        return lift.BadRequest("invalid JSON types")
+    if err := ctx.ParseRequest(&req); err != nil {
+        return lift.ValidationError("invalid JSON types")
     }
     
     // Convert types
@@ -174,13 +176,13 @@ func (f *FlexBool) UnmarshalJSON(data []byte) error {
 // PROBLEM: Parameter name mismatch
 app.GET("/users/:id", func(ctx *lift.Context) error {
     userID := ctx.Param("userId") // Wrong name! Returns ""
-    return ctx.JSON(200, map[string]string{"id": userID})
+    return ctx.JSON(map[string]string{"id": userID})
 })
 
 // SOLUTION: Use exact parameter name from route
 app.GET("/users/:id", func(ctx *lift.Context) error {
     userID := ctx.Param("id") // Matches :id in route
-    return ctx.JSON(200, map[string]string{"id": userID})
+    return ctx.JSON(map[string]string{"id": userID})
 })
 
 // Multiple parameters
@@ -189,10 +191,10 @@ app.GET("/orgs/:orgId/users/:userId", func(ctx *lift.Context) error {
     userID := ctx.Param("userId")   // Matches :userId
     
     if orgID == "" || userID == "" {
-        return lift.BadRequest("missing parameters")
+        return lift.ValidationError("missing parameters")
     }
     
-    return ctx.JSON(200, map[string]string{
+    return ctx.JSON(map[string]string{
         "org":  orgID,
         "user": userID,
     })
@@ -260,7 +262,7 @@ func UploadHandler(ctx *lift.Context) error {
     // For S3, get presigned URL instead
     presignedURL := generatePresignedURL()
     
-    return ctx.JSON(200, map[string]string{
+    return ctx.JSON(map[string]string{
         "upload_url": presignedURL,
         "method": "PUT",
     })
@@ -285,7 +287,7 @@ func UploadHandler(ctx *lift.Context) error {
 // PROBLEM: Long-running operation
 func SlowHandler(ctx *lift.Context) error {
     time.Sleep(30 * time.Second) // Lambda times out!
-    return ctx.JSON(200, "done")
+    return ctx.JSON("done")
 }
 
 // SOLUTION 1: Make handler timeout-aware
@@ -305,7 +307,7 @@ func TimeoutAwareHandler(ctx *lift.Context) error {
             if time.Until(deadline) < 5*time.Second {
                 // Save progress and return
                 saveProgress(i)
-                return ctx.JSON(200, map[string]interface{}{
+                return ctx.JSON(map[string]interface{}{
                     "processed": i,
                     "continue": true,
                 })
@@ -313,7 +315,7 @@ func TimeoutAwareHandler(ctx *lift.Context) error {
         }
     }
     
-    return ctx.JSON(200, "completed")
+    return ctx.JSON("completed")
 }
 
 // SOLUTION 2: Use async processing
@@ -330,11 +332,11 @@ func AsyncHandler(ctx *lift.Context) error {
     })
     
     if err != nil {
-        return lift.InternalError()
+        return lift.SystemError("failed to enqueue job")
     }
     
     // Return immediately with job ID
-    return ctx.JSON(202, map[string]string{
+    return ctx.Status(202).JSON(map[string]string{
         "job_id": jobID,
         "status": "processing",
     })
@@ -373,9 +375,9 @@ app.Use(
 // For auth middleware
 api := app.Group("/api")
 api.Use(
-    middleware.CORS(),        // 1. CORS before auth
-    middleware.JWT(),         // 2. Authenticate
-    middleware.RateLimit(),   // 3. Rate limit authenticated users
+    middleware.CORS([]string{"*"}),
+    middleware.JWTAuth(middleware.JWTConfig{Secret: os.Getenv("JWT_SECRET")}),
+    // Add rate limiting middleware as needed (e.g., middleware.UserRateLimitWithLimited)
 )
 
 // Visual middleware flow:
@@ -422,7 +424,7 @@ public.GET("/status", Status)
 
 // API routes - require auth
 api := app.Group("/api")
-api.Use(middleware.JWT())
+api.Use(middleware.JWTAuth(middleware.JWTConfig{Secret: os.Getenv("JWT_SECRET")}))
 api.Use(middleware.RateLimitUser())
 api.GET("/profile", GetProfile)
 ```
@@ -441,13 +443,13 @@ api.GET("/profile", GetProfile)
 **Solution:**
 ```go
 // PROBLEM: Hard-coded secret
-api.Use(middleware.JWT(middleware.JWTConfig{
-    Secret: []byte("test-secret"), // Different in production!
+api.Use(middleware.JWTAuth(middleware.JWTConfig{
+    Secret: "test-secret", // Different in production!
 }))
 
 // SOLUTION 1: Use environment variable
-api.Use(middleware.JWT(middleware.JWTConfig{
-    Secret: []byte(os.Getenv("JWT_SECRET")),
+api.Use(middleware.JWTAuth(middleware.JWTConfig{
+    Secret: os.Getenv("JWT_SECRET"),
     Claims: &CustomClaims{},
 }))
 
@@ -457,9 +459,9 @@ if err != nil {
     panic(err)
 }
 
-api.Use(middleware.JWT(middleware.JWTConfig{
+api.Use(middleware.JWTAuth(middleware.JWTConfig{
     PublicKey: publicKey,
-    SigningMethod: "RS256",
+    Algorithm: "RS256",
 }))
 
 // SOLUTION 3: Debug token issues
@@ -491,7 +493,7 @@ api.Use(func(ctx *lift.Context) error {
 **Solution:**
 ```go
 // PROBLEM: Default claims don't match token
-api.Use(middleware.JWT(middleware.JWTConfig{
+api.Use(middleware.JWTAuth(middleware.JWTConfig{
     Secret: secret,
     // Using default jwt.MapClaims
 }))
@@ -511,7 +513,7 @@ type CustomClaims struct {
     Roles    []string `json:"roles"`
 }
 
-api.Use(middleware.JWT(middleware.JWTConfig{
+api.Use(middleware.JWTAuth(middleware.JWTConfig{
     Secret: secret,
     Claims: &CustomClaims{}, // Use custom structure
 }))
@@ -525,7 +527,7 @@ func Handler(ctx *lift.Context) error {
     tenantID := claims.TenantID
     isAdmin := contains(claims.Roles, "admin")
     
-    return ctx.JSON(200, map[string]interface{}{
+    return ctx.JSON(map[string]interface{}{
         "user": userID,
         "tenant": tenantID,
         "admin": isAdmin,
@@ -571,7 +573,7 @@ func init() {
 func Handler(ctx *lift.Context) error {
     // Use pre-initialized services
     data := db.Query("SELECT ...")
-    return ctx.JSON(200, data)
+    return ctx.JSON(data)
 }
 
 // SOLUTION 2: Lazy initialization
@@ -610,7 +612,7 @@ var cache = make(map[string]interface{})
 func Handler(ctx *lift.Context) error {
     // Cache grows forever!
     cache[ctx.RequestID()] = getLargeData()
-    return ctx.JSON(200, "ok")
+    return ctx.JSON("ok")
 }
 
 // SOLUTION 1: Use bounded cache
@@ -620,7 +622,7 @@ var cache, _ = lru.New(1000) // Max 1000 items
 
 func Handler(ctx *lift.Context) error {
     cache.Add(ctx.RequestID(), getData())
-    return ctx.JSON(200, "ok")
+    return ctx.JSON("ok")
 }
 
 // SOLUTION 2: Clear data after use
@@ -631,7 +633,7 @@ func Handler(ctx *lift.Context) error {
     // Clear reference for GC
     data = nil
     
-    return ctx.JSON(200, result)
+    return ctx.JSON(result)
 }
 
 // SOLUTION 3: Stream instead of loading all
@@ -647,7 +649,7 @@ func Handler(ctx *lift.Context) error {
         count++
     }
     
-    return ctx.JSON(200, map[string]int{"processed": count})
+    return ctx.JSON(map[string]int{"processed": count})
 }
 ```
 

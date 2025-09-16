@@ -553,8 +553,8 @@ func createLogGroup(scope constructs.Construct, id string, logGroupName string, 
 
 // retentionMapping defines the mapping between days and retention constants
 type retentionMapping struct {
-	maxDays   float64
-	retention awslogs.RetentionDays
+    retention awslogs.RetentionDays
+    maxDays   float64
 }
 
 // mapRetentionDays maps numeric days to CloudWatch retention constants
@@ -564,25 +564,25 @@ func mapRetentionDays(days *float64) awslogs.RetentionDays {
 	}
 
 	// Define retention mappings in ascending order
-	mappings := []retentionMapping{
-		{1, awslogs.RetentionDays_ONE_DAY},
-		{3, awslogs.RetentionDays_THREE_DAYS},
-		{5, awslogs.RetentionDays_FIVE_DAYS},
-		{7, awslogs.RetentionDays_ONE_WEEK},
-		{14, awslogs.RetentionDays_TWO_WEEKS},
-		{30, awslogs.RetentionDays_ONE_MONTH},
-		{60, awslogs.RetentionDays_TWO_MONTHS},
-		{90, awslogs.RetentionDays_THREE_MONTHS},
-		{120, awslogs.RetentionDays_FOUR_MONTHS},
-		{150, awslogs.RetentionDays_FIVE_MONTHS},
-		{180, awslogs.RetentionDays_SIX_MONTHS},
-		{365, awslogs.RetentionDays_ONE_YEAR},
-		{400, awslogs.RetentionDays_THIRTEEN_MONTHS},
-		{545, awslogs.RetentionDays_EIGHTEEN_MONTHS},
-		{730, awslogs.RetentionDays_TWO_YEARS},
-		{1827, awslogs.RetentionDays_FIVE_YEARS},
-		{3653, awslogs.RetentionDays_TEN_YEARS},
-	}
+    mappings := []retentionMapping{
+        {retention: awslogs.RetentionDays_ONE_DAY, maxDays: 1},
+        {retention: awslogs.RetentionDays_THREE_DAYS, maxDays: 3},
+        {retention: awslogs.RetentionDays_FIVE_DAYS, maxDays: 5},
+        {retention: awslogs.RetentionDays_ONE_WEEK, maxDays: 7},
+        {retention: awslogs.RetentionDays_TWO_WEEKS, maxDays: 14},
+        {retention: awslogs.RetentionDays_ONE_MONTH, maxDays: 30},
+        {retention: awslogs.RetentionDays_TWO_MONTHS, maxDays: 60},
+        {retention: awslogs.RetentionDays_THREE_MONTHS, maxDays: 90},
+        {retention: awslogs.RetentionDays_FOUR_MONTHS, maxDays: 120},
+        {retention: awslogs.RetentionDays_FIVE_MONTHS, maxDays: 150},
+        {retention: awslogs.RetentionDays_SIX_MONTHS, maxDays: 180},
+        {retention: awslogs.RetentionDays_ONE_YEAR, maxDays: 365},
+        {retention: awslogs.RetentionDays_THIRTEEN_MONTHS, maxDays: 400},
+        {retention: awslogs.RetentionDays_EIGHTEEN_MONTHS, maxDays: 545},
+        {retention: awslogs.RetentionDays_TWO_YEARS, maxDays: 730},
+        {retention: awslogs.RetentionDays_FIVE_YEARS, maxDays: 1827},
+        {retention: awslogs.RetentionDays_TEN_YEARS, maxDays: 3653},
+    }
 
 	// Find the appropriate retention period
 	for _, mapping := range mappings {

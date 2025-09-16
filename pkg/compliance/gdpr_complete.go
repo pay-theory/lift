@@ -261,30 +261,30 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 		return nil, fmt.Errorf("data subject ID is required")
 	}
 
-	builder := newDataExportBuilder(g, ctx, dataSubjectID, requestID)
-	return builder.build()
+    builder := newDataExportBuilder(ctx, g, dataSubjectID, requestID)
+    return builder.build()
 }
 
 // dataExportBuilder orchestrates the data export process
 type dataExportBuilder struct {
-	service       *GDPRCompleteService
-	ctx           context.Context
-	dataSubjectID string
-	requestID     string
-	auditID       string
-	exportRecord  *DataExportRecord
-	exportData    map[string]interface{}
+    exportRecord  *DataExportRecord
+    service       *GDPRCompleteService
+    exportData    map[string]interface{}
+    ctx           context.Context
+    dataSubjectID string
+    requestID     string
+    auditID       string
 }
 
 // newDataExportBuilder creates a new data export builder
-func newDataExportBuilder(service *GDPRCompleteService, ctx context.Context, dataSubjectID, requestID string) *dataExportBuilder {
-	return &dataExportBuilder{
-		service:       service,
-		ctx:           ctx,
-		dataSubjectID: dataSubjectID,
-		requestID:     requestID,
-		exportData:    make(map[string]interface{}),
-	}
+func newDataExportBuilder(ctx context.Context, service *GDPRCompleteService, dataSubjectID, requestID string) *dataExportBuilder {
+    return &dataExportBuilder{
+        service:       service,
+        ctx:           ctx,
+        dataSubjectID: dataSubjectID,
+        requestID:     requestID,
+        exportData:    make(map[string]interface{}),
+    }
 }
 
 // build executes the complete export process
@@ -467,7 +467,7 @@ func (b *dataExportBuilder) buildExportPath() string {
 }
 
 // finalizeExport completes the export process
-func (b *dataExportBuilder) finalizeExport(data []byte) error {
+func (b *dataExportBuilder) finalizeExport(_ []byte) error {
 	// Update export record
 	now := time.Now()
 	b.exportRecord.Status = "completed"

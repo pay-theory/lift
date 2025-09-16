@@ -174,9 +174,8 @@ func main() {
     app := lift.New()
     
     // JWT middleware automatically extracts tenant ID from token
-    app.Use(middleware.JWT(middleware.JWTConfig{
-        SecretKey:       os.Getenv("JWT_SECRET"),
-        RequireTenantID: true, // This enforces tenant ID in JWT
+    app.Use(middleware.JWTAuth(middleware.JWTConfig{
+        Secret: os.Getenv("JWT_SECRET"),
     }))
     
     app.POST("/api/users", createUserHandler)

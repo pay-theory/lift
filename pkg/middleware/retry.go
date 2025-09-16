@@ -356,12 +356,12 @@ func (rm *retryManager) GetStats() RetryStats {
 
 // retryExecution manages a single retry execution
 type retryExecution struct {
-	manager    *retryManager
-	ctx        *lift.Context
-	handler    lift.Handler
-	startTime  time.Time
-	totalDelay time.Duration
-	lastErr    error
+    startTime  time.Time
+    handler    lift.Handler
+    lastErr    error
+    manager    *retryManager
+    ctx        *lift.Context
+    totalDelay time.Duration
 }
 
 // newRetryExecution creates a new retry execution
@@ -417,8 +417,8 @@ func (re *retryExecution) executeAttempt(totalCtx context.Context, attempt int) 
 	attemptCtx := re.createAttemptContext(totalCtx)
 	
 	// Execute handler
-	executor := newAttemptExecutor(re.ctx, re.handler, attemptCtx)
-	err, duration := executor.execute()
+    executor := newAttemptExecutor(attemptCtx, re.ctx, re.handler)
+    duration, err := executor.execute()
 	
 	// Record metrics
 	re.recordAttemptMetrics(attempt, err, duration)
@@ -525,16 +525,16 @@ type attemptExecutor struct {
 }
 
 // newAttemptExecutor creates a new attempt executor
-func newAttemptExecutor(ctx *lift.Context, handler lift.Handler, attemptCtx context.Context) *attemptExecutor {
-	return &attemptExecutor{
-		ctx:        ctx,
-		handler:    handler,
-		attemptCtx: attemptCtx,
-	}
+func newAttemptExecutor(attemptCtx context.Context, ctx *lift.Context, handler lift.Handler) *attemptExecutor {
+    return &attemptExecutor{
+        ctx:        ctx,
+        handler:    handler,
+        attemptCtx: attemptCtx,
+    }
 }
 
 // execute runs the attempt and returns error and duration
-func (ae *attemptExecutor) execute() (error, time.Duration) {
+func (ae *attemptExecutor) execute() (time.Duration, error) {
 	// Save original context
 	originalCtx := ae.ctx.Context
 	ae.ctx.Context = ae.attemptCtx
@@ -547,7 +547,7 @@ func (ae *attemptExecutor) execute() (error, time.Duration) {
 	// Restore original context
 	ae.ctx.Context = originalCtx
 	
-	return err, duration
+    return duration, err
 }
 
 // attemptResult represents the result of an attempt
@@ -577,7 +577,7 @@ func newAttemptResultHandler(manager *retryManager, execution *retryExecution) *
 }
 
 // handleResult processes the result of an attempt
-func (arh *attemptResultHandler) handleResult(attempt int, err error, duration time.Duration) *attemptResult {
+func (arh *attemptResultHandler) handleResult(attempt int, err error, _ time.Duration) *attemptResult {
 	totalDuration := time.Since(arh.execution.startTime)
 	
 	if err == nil {

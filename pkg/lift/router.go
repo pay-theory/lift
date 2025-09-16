@@ -45,21 +45,30 @@ func (r *Router) AddRoute(method, path string, handler Handler) {
 
 // addExactRoute adds a route without parameters
 func (r *Router) addExactRoute(method, path string, handler Handler) {
-	if r.routes[method] == nil {
-		r.routes[method] = make(map[string]Handler)
-	}
-	r.routes[method][path] = handler
+    if r.routes[method] == nil {
+        r.routes[method] = make(map[string]Handler)
+    }
+    if _, exists := r.routes[method][path]; exists {
+        panic(fmt.Sprintf("duplicate route registration: %s %s", method, path))
+    }
+    r.routes[method][path] = handler
 }
 
 // addParamRoute adds a route with parameters
 func (r *Router) addParamRoute(method, path string, handler Handler) {
-	params := extractParams(path)
-	route := &paramRoute{
-		pattern: path,
-		handler: handler,
-		params:  params,
-	}
-	r.paramRoutes[method] = append(r.paramRoutes[method], route)
+    params := extractParams(path)
+    route := &paramRoute{
+        pattern: path,
+        handler: handler,
+        params:  params,
+    }
+    // Prevent duplicate parameter route patterns
+    for _, existing := range r.paramRoutes[method] {
+        if existing.pattern == path {
+            panic(fmt.Sprintf("duplicate parameter route registration: %s %s", method, path))
+        }
+    }
+    r.paramRoutes[method] = append(r.paramRoutes[method], route)
 }
 
 // SetMiddleware sets the global middleware stack
@@ -69,14 +78,15 @@ func (r *Router) SetMiddleware(middleware []Middleware) {
 
 // Handle processes a request through the router
 func (r *Router) Handle(ctx *Context) error {
-	method := ctx.Request.Method
-	path := ctx.Request.Path
+    method := ctx.Request.Method
+    path := ctx.Request.Path
 
-	// Find the handler
-	handler, params := r.findHandler(method, path)
-	if handler == nil {
-		return fmt.Errorf("route not found: %s %s", method, path)
-	}
+    // Find the handler
+    handler, params := r.findHandler(method, path)
+    if handler == nil {
+        // Return a structured 404 error for unmatched routes
+        return NotFound(fmt.Sprintf("route not found: %s %s", method, path))
+    }
 
 	// Set path parameters in context
 	for key, value := range params {
@@ -114,7 +124,8 @@ func (r *Router) findHandler(method, path string) (Handler, map[string]string) {
 	return nil, nil
 }
 
-// extractParams extracts parameter names from a route pattern
+// extractParams extracts parameter names from a route pattern. Parameters are
+// denoted by a leading ':' (e.g., /users/:id/posts/:postId yields [id, postId]).
 func extractParams(pattern string) []string {
 	parts := strings.Split(pattern, "/")
 	var params []string
@@ -128,7 +139,8 @@ func extractParams(pattern string) []string {
 	return params
 }
 
-// matchPattern checks if a path matches a pattern and returns parameters
+// matchPattern checks whether a concrete path matches a route pattern and, if
+// so, returns a map of parameter values keyed by parameter name.
 func matchPattern(pattern, path string) map[string]string {
 	patternParts := strings.Split(pattern, "/")
 	pathParts := strings.Split(path, "/")

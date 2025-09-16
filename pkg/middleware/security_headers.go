@@ -53,9 +53,9 @@ func SecurityHeaders(config SecurityHeadersConfig) lift.Middleware {
 
 // securityHeaderApplier applies security headers based on configuration
 type securityHeaderApplier struct {
-	config            SecurityHeadersConfig
-	headerSetters     []headerSetter
-	conditionalSetter *conditionalHeaderSetter
+    headerSetters     []headerSetter
+    conditionalSetter *conditionalHeaderSetter
+    config            SecurityHeadersConfig
 }
 
 // newSecurityHeaderApplier creates a new security header applier

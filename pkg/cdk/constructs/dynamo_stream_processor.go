@@ -411,70 +411,9 @@ func (d *DynamoStreamProcessor) enableMonitoring() {
 		DisplayName: jsii.String(fmt.Sprintf("Stream alarms for %s", *d.StreamingTable.GetTableName())),
 	})
 
-	if d.Function != nil && d.Function.Function != nil {
-		function := d.Function.Function
-
-		// Function error rate alarm
-		awscloudwatch.NewAlarm(d, jsii.String("FunctionErrorAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-stream-processor-errors", *d.StreamingTable.GetTableName())),
-			AlarmDescription: jsii.String("Stream processor function errors"),
-			Metric: function.MetricErrors(&awscloudwatch.MetricOptions{
-				Period: awscdk.Duration_Minutes(jsii.Number(5)),
-			}),
-			Threshold:          jsii.Number(5),
-			EvaluationPeriods:  jsii.Number(2),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-
-		// Function throttles alarm
-		awscloudwatch.NewAlarm(d, jsii.String("FunctionThrottleAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-stream-processor-throttles", *d.StreamingTable.GetTableName())),
-			AlarmDescription: jsii.String("Stream processor function throttled"),
-			Metric: function.MetricThrottles(&awscloudwatch.MetricOptions{
-				Period: awscdk.Duration_Minutes(jsii.Number(5)),
-			}),
-			Threshold:          jsii.Number(1),
-			EvaluationPeriods:  jsii.Number(1),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-
-		// Function duration alarm
-		awscloudwatch.NewAlarm(d, jsii.String("FunctionDurationAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:        jsii.String(fmt.Sprintf("%s-stream-processor-duration", *d.StreamingTable.GetTableName())),
-			AlarmDescription: jsii.String("Stream processor taking too long"),
-			Metric: function.MetricDuration(&awscloudwatch.MetricOptions{
-				Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-				Statistic: awscloudwatch.Stats_AVERAGE(),
-			}),
-			Threshold:          jsii.Number(30000), // 30 seconds
-			EvaluationPeriods:  jsii.Number(2),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-
-		// Iterator age alarm - critical for stream processing
-		iteratorAgeMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
-			Namespace:  jsii.String("AWS/Lambda"),
-			MetricName: jsii.String("IteratorAge"),
-			DimensionsMap: &map[string]*string{
-				"FunctionName": function.FunctionName(),
-			},
-			Period:    awscdk.Duration_Minutes(jsii.Number(5)),
-			Statistic: awscloudwatch.Stats_MAXIMUM(),
-		})
-
-		awscloudwatch.NewAlarm(d, jsii.String("IteratorAgeAlarm"), &awscloudwatch.AlarmProps{
-			AlarmName:          jsii.String(fmt.Sprintf("%s-iterator-age", *d.StreamingTable.GetTableName())),
-			AlarmDescription:   jsii.String("Stream iterator age is too high"),
-			Metric:             iteratorAgeMetric,
-			Threshold:          jsii.Number(60000), // 1 minute in milliseconds
-			EvaluationPeriods:  jsii.Number(2),
-			ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_THRESHOLD,
-			TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
-		})
-	}
+    if d.Function != nil && d.Function.Function != nil {
+        EnableStreamLambdaMonitoring(d, d.StreamingTable.GetTableName(), d.Function.Function)
+    }
 
 	// DynamoDB table metrics
 	if d.StreamingTable != nil {

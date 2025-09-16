@@ -91,15 +91,16 @@ type Results struct {
 
 // ScenarioStats contains statistics for a specific scenario
 type ScenarioStats struct {
-	ErrorsByType   map[string]int64 `json:"errors_by_type"`
-	ErrorsByStatus map[int]int64    `json:"errors_by_status"`
-	Name           string           `json:"name"`
-	Count          int64            `json:"count"`
-	SuccessCount   int64            `json:"success_count"`
-	ErrorCount     int64            `json:"error_count"`
-	MeanLatency    time.Duration    `json:"mean_latency"`
-	MinLatency     time.Duration    `json:"min_latency"`
-	MaxLatency     time.Duration    `json:"max_latency"`
+    ErrorsByType   map[string]int64 `json:"errors_by_type"`
+    ErrorsByStatus map[int]int64    `json:"errors_by_status"`
+    Name           string           `json:"name"`
+    Count          int64            `json:"count"`
+    SuccessCount   int64            `json:"success_count"`
+    ErrorCount     int64            `json:"error_count"`
+    MeanLatency    time.Duration    `json:"mean_latency"`
+    MinLatency     time.Duration    `json:"min_latency"`
+    MaxLatency     time.Duration    `json:"max_latency"`
+    sumLatency     time.Duration    `json:"-"`
 }
 
 // NewLoadTest creates a new load test
@@ -346,8 +347,9 @@ func (lt *LoadTest) recordResult(scenarioName string, result *ScenarioResult, du
 
 	// Update scenario stats
 	stats := lt.results.ScenarioStats[scenarioName]
-	stats.Count++
-	stats.SuccessCount++
+    stats.Count++
+    stats.SuccessCount++
+    stats.sumLatency += duration
 
 	if duration < stats.MinLatency {
 		stats.MinLatency = duration
@@ -474,13 +476,11 @@ func (lt *LoadTest) calculateStats() {
 	}
 
 	// Calculate scenario statistics
-	for _, stats := range lt.results.ScenarioStats {
-		if stats.Count > 0 {
-			// TODO: This would require tracking latencies per scenario
-			// For now, we'll leave mean latency as zero
-			_ = stats
-		}
-	}
+    for _, stats := range lt.results.ScenarioStats {
+        if stats.Count > 0 {
+            stats.MeanLatency = stats.sumLatency / time.Duration(stats.Count)
+        }
+    }
 }
 
 // PrintResults prints a summary of the results

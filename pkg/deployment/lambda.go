@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -354,8 +355,8 @@ func (c *ResourceHealthChecker) Name() string {
 }
 
 func (c *ResourceHealthChecker) Check(ctx context.Context) health.HealthStatus {
-	checker := newResourceCheckBuilder(c, ctx)
-	return checker.build()
+    checker := newResourceCheckBuilder(ctx, c)
+    return checker.build()
 }
 
 // resourceCheckBuilder builds resource health checks
@@ -368,13 +369,13 @@ type resourceCheckBuilder struct {
 }
 
 // newResourceCheckBuilder creates a new resource check builder
-func newResourceCheckBuilder(checker *ResourceHealthChecker, ctx context.Context) *resourceCheckBuilder {
-	return &resourceCheckBuilder{
-		checker: checker,
-		ctx:     ctx,
-		start:   time.Now(),
-		issues:  []string{},
-	}
+func newResourceCheckBuilder(ctx context.Context, checker *ResourceHealthChecker) *resourceCheckBuilder {
+    return &resourceCheckBuilder{
+        checker: checker,
+        ctx:     ctx,
+        start:   time.Now(),
+        issues:  []string{},
+    }
 }
 
 // build performs all health checks
@@ -660,11 +661,23 @@ func (b *memoryCheckBuilder) checkGCPauseTimes() {
 
 // checkGCFrequency checks garbage collection frequency
 func (b *memoryCheckBuilder) checkGCFrequency() {
-	if b.memStats.NumGC == 0 {
-		return
-	}
-	
-	gcRate := float64(b.memStats.NumGC) / time.Since(time.Unix(0, int64(b.memStats.LastGC))).Minutes()
+    if b.memStats.NumGC == 0 {
+        return
+    }
+    
+    // Convert LastGC safely to int64 to avoid overflow (gosec G115)
+    lastGC := b.memStats.LastGC
+    if lastGC > uint64(math.MaxInt64) {
+        lastGC = uint64(math.MaxInt64)
+    }
+    // Compute delta minutes using float math to avoid narrowing casts
+    lastGCSec := float64(lastGC) / 1e9
+    nowSec := float64(time.Now().UnixNano()) / 1e9
+    minutes := (nowSec - lastGCSec) / 60.0
+    if minutes <= 0 {
+        return
+    }
+    gcRate := float64(b.memStats.NumGC) / minutes
 	if gcRate > 60 { // More than 60 GC cycles per minute
 		b.issues = append(b.issues, fmt.Sprintf("High GC frequency: %.1f cycles/minute", gcRate))
 	}

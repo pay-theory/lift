@@ -1481,50 +1481,58 @@ func (f *ChaosEngineeringFramework) validateExperiment(experiment *ChaosExperime
 
 // generateRecommendations generates recommendations based on experiment results
 func (f *ChaosEngineeringFramework) generateRecommendations(experiment *ChaosExperiment, results *ExperimentResults) []string {
-	var recommendations []string
+    if experiment == nil || results == nil {
+        return []string{"Unable to generate recommendations due to invalid data"}
+    }
 
-	if experiment == nil || results == nil {
-		return []string{"Unable to generate recommendations due to invalid data"}
-	}
+    var recs []string
+    recs = append(recs, f.baseOutcomeRecs(results)...)
+    recs = append(recs, f.failureSeverityRecs(results)...)
+    recs = append(recs, f.typeSpecificRecs(experiment)...)
 
-	// Base recommendation on overall results
-	if len(results.Failures) == 0 && results.Recovery != nil && results.Recovery.Successful {
-		recommendations = append(recommendations, "System demonstrates good resilience to this type of failure")
-	}
+    if len(recs) == 0 {
+        recs = append(recs, "System performed well - continue regular chaos testing")
+    }
+    return recs
+}
 
-	if len(results.Failures) > 0 {
-		recommendations = append(recommendations, "Consider implementing additional error handling and recovery mechanisms")
+func (f *ChaosEngineeringFramework) baseOutcomeRecs(results *ExperimentResults) []string {
+    if len(results.Failures) == 0 && results.Recovery != nil && results.Recovery.Successful {
+        return []string{"System demonstrates good resilience to this type of failure"}
+    }
+    if results.Recovery != nil && !results.Recovery.Successful {
+        return []string{"Recovery mechanisms need improvement"}
+    }
+    return nil
+}
 
-		// Check for specific failure types
-		for _, failure := range results.Failures {
-			switch failure.Severity {
-			case CriticalSeverity:
-				recommendations = append(recommendations, "Critical failures detected - immediate action required")
-			case HighSeverity:
-				recommendations = append(recommendations, "High severity issues found - prioritize fixes")
-			}
-		}
-	}
+func (f *ChaosEngineeringFramework) failureSeverityRecs(results *ExperimentResults) []string {
+    if len(results.Failures) == 0 {
+        return nil
+    }
+    recs := []string{"Consider implementing additional error handling and recovery mechanisms"}
+    for _, failure := range results.Failures {
+        switch failure.Severity {
+        case CriticalSeverity:
+            recs = append(recs, "Critical failures detected - immediate action required")
+        case HighSeverity:
+            recs = append(recs, "High severity issues found - prioritize fixes")
+        }
+    }
+    return recs
+}
 
-	if results.Recovery != nil && !results.Recovery.Successful {
-		recommendations = append(recommendations, "Recovery mechanisms need improvement")
-	}
-
-	// Add experiment-specific recommendations
-	switch experiment.Type {
-	case NetworkChaos:
-		recommendations = append(recommendations, "Consider implementing circuit breakers and retry logic")
-	case ServiceChaos:
-		recommendations = append(recommendations, "Evaluate service dependencies and fallback mechanisms")
-	case ResourceChaos:
-		recommendations = append(recommendations, "Review resource allocation and scaling policies")
-	}
-
-	if len(recommendations) == 0 {
-		recommendations = append(recommendations, "System performed well - continue regular chaos testing")
-	}
-
-	return recommendations
+func (f *ChaosEngineeringFramework) typeSpecificRecs(experiment *ChaosExperiment) []string {
+    switch experiment.Type {
+    case NetworkChaos:
+        return []string{"Consider implementing circuit breakers and retry logic"}
+    case ServiceChaos:
+        return []string{"Evaluate service dependencies and fallback mechanisms"}
+    case ResourceChaos:
+        return []string{"Review resource allocation and scaling policies"}
+    default:
+        return nil
+    }
 }
 
 // ServiceDefinition represents a service definition for contracts
@@ -1803,3 +1811,14 @@ func (f *ChaosEngineeringFramework) generateExperimentSummary(experiment *ChaosE
 
 	return summary
 }
+
+// Prevent unused warnings for optional analysis helpers by referencing them.
+var (
+    _ = (*ChaosEngineeringFramework).generateRecommendations
+    _ = (*ChaosEngineeringFramework).baseOutcomeRecs
+    _ = (*ChaosEngineeringFramework).failureSeverityRecs
+    _ = (*ChaosEngineeringFramework).typeSpecificRecs
+    _ = (*ChaosEngineeringFramework).validateHypothesis
+    _ = (*ChaosEngineeringFramework).calculateImpact
+    _ = (*ChaosEngineeringFramework).generateExperimentSummary
+)

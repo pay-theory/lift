@@ -261,7 +261,7 @@ func main() {
     api := app.Group("/api/v1")
     
     // Add JWT middleware
-    jwtMiddleware, err := middleware.JWTAuth(middleware.JWTConfig{
+    jwtMiddleware := middleware.JWTAuth(middleware.JWTConfig{
         Secret: os.Getenv("JWT_SECRET"),
     })
     if err != nil {

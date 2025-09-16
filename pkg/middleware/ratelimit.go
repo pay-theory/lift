@@ -144,9 +144,9 @@ func (p *rateLimitProcessor) shouldSkipRequest(ctx *lift.Context) bool {
 
 // rateLimitHandler handles a single rate limit check
 type rateLimitHandler struct {
-	limiter *rateLimiter
-	config  RateLimitConfig
-	key     string
+    limiter *rateLimiter
+    key     string
+    config  RateLimitConfig
 }
 
 // newRateLimitHandler creates a new rate limit handler
@@ -315,12 +315,12 @@ func (r *rateLimiter) checkLimit(ctx context.Context, key string, liftCtx *lift.
 
 // rateLimitChecker encapsulates rate limit checking logic
 type rateLimitChecker struct {
-	limiter     *rateLimiter
-	key         string
-	liftCtx     *lift.Context
-	now         time.Time
-	windowStart time.Time
-	limit       int
+    now         time.Time
+    windowStart time.Time
+    limiter     *rateLimiter
+    liftCtx     *lift.Context
+    key         string
+    limit       int
 }
 
 // newRateLimitChecker creates a new rate limit checker
