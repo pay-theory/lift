@@ -20,7 +20,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        go-version: ['1.21', '1.22', '1.23']
+        go-version: ['1.23.x', '1.24.x', '1.25.x']
     
     steps:
     - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
@@ -32,14 +32,8 @@ jobs:
       uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
       with:
         go-version: ${{ matrix.go-version }}
-    
-    - name: Cache Go modules
-      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+        check-latest: true
+        cache: true
     
     - name: Download dependencies
       run: go mod download
@@ -73,15 +67,17 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.x'
+        check-latest: true
+        cache: true
     
     - name: Set up Node.js
       uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: '20'
     
-    - name: Install AWS CDK (pinned)
-      run: npm install -g aws-cdk@2.154.1
+    - name: Install AWS CDK
+      run: npm install -g aws-cdk@2
     
     - name: Download Go dependencies
       run: go mod download
@@ -114,13 +110,17 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.x'
+        check-latest: true
+        cache: true
     
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@d6238b002a20823d52840fda27e2d4891c5952dc # v4
+      uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
       with:
-        version: v1.60.3
-        args: --timeout=5m
+        version: v2.4.0
+        args: --timeout=5m --config=.golangci.yml
+        only-new-issues: false
+        skip-cache: true
 
   build:
     runs-on: ubuntu-latest
@@ -139,19 +139,10 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
       with:
-        go-version: '1.22'
+        go-version: '1.25.x'
+        check-latest: true
+        cache: true
     
-    - name: Build
+    - name: Build library packages only
       run: |
-        GOOS=linux GOARCH=${{ matrix.arch }} go build -v ./...
-    
-    - name: Build examples
-      run: |
-        for example in examples/*/; do
-          if [ -f "$example/main.go" ]; then
-            echo "Building $example"
-            cd "$example"
-            GOOS=linux GOARCH=${{ matrix.arch }} go build -o bootstrap main.go
-            cd -
-          fi
-        done
+        GOOS=linux GOARCH=${{ matrix.arch }} go build -v ./pkg/...

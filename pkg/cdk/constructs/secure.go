@@ -225,8 +225,9 @@ func (b *secureFunctionBuilder) configureFunctionProps() {
     // Apply VPC-related settings to the underlying FunctionProps (promoted field)
     b.props.FunctionProps.Vpc = b.vpc
     b.props.FunctionProps.VpcSubnets = b.vpcSubnets
-    b.props.FunctionProps.SecurityGroups = &[]awsec2.ISecurityGroup{b.securityGroup}
-    b.props.FunctionProps.Tracing = awslambda.Tracing_ACTIVE
+    // FunctionProps is embedded, so fields are promoted; use direct selectors.
+    b.props.SecurityGroups = &[]awsec2.ISecurityGroup{b.securityGroup}
+    b.props.Tracing = awslambda.Tracing_ACTIVE
 
     	b.addAdditionalSecurityGroups()
 }

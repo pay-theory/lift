@@ -51,7 +51,7 @@ vet: cache-dirs
 
 # Run linter (requires golangci-lint)
 lint: cache-dirs
-	golangci-lint run ./...
+	golangci-lint run --config .golangci.yml ./...
 
 # CDK targets
 cdk-synth:
