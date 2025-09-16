@@ -295,27 +295,27 @@ func registerDemoServices(registry *services.ServiceRegistry) {
 }
 
 func setupDemoRoutes(app *lift.App) {
-    // Helpers to reduce repetitive error checks
-    mustGET := func(path string, h func(*lift.Context) error) {
-        if err := app.GET(path, h); err != nil {
-            log.Fatalf("Failed to register GET %s: %v", path, err)
-        }
-    }
-    mustPOST := func(path string, h func(*lift.Context) error) {
-        if err := app.POST(path, h); err != nil {
-            log.Fatalf("Failed to register POST %s: %v", path, err)
-        }
-    }
+	// Helpers to reduce repetitive error checks
+	mustGET := func(path string, h func(*lift.Context) error) {
+		if err := app.GET(path, h); err != nil {
+			log.Fatalf("Failed to register GET %s: %v", path, err)
+		}
+	}
+	mustPOST := func(path string, h func(*lift.Context) error) {
+		if err := app.POST(path, h); err != nil {
+			log.Fatalf("Failed to register POST %s: %v", path, err)
+		}
+	}
 
-    // List registered services
-    mustGET("/demo/services", func(ctx *lift.Context) error {
-        // Get service client from context
-        client := services.GetServiceClient(ctx)
-        if client == nil {
-            return ctx.Status(500).JSON(map[string]string{
-                "error": "Service client not available",
-            })
-        }
+	// List registered services
+	mustGET("/demo/services", func(ctx *lift.Context) error {
+		// Get service client from context
+		client := services.GetServiceClient(ctx)
+		if client == nil {
+			return ctx.Status(500).JSON(map[string]string{
+				"error": "Service client not available",
+			})
+		}
 
 		// Get registry from client (simplified for demo)
 		services := []map[string]any{
@@ -337,10 +337,10 @@ func setupDemoRoutes(app *lift.App) {
 			"services": services,
 			"total":    len(services),
 		})
-    })
+	})
 
 	// Test service discovery
-    mustGET("/demo/discovery", func(ctx *lift.Context) error {
+	mustGET("/demo/discovery", func(ctx *lift.Context) error {
 		serviceName := ctx.Query("service")
 		if serviceName == "" {
 			serviceName = "user-service"
@@ -381,10 +381,10 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		return ctx.JSON(discoveryResult)
-    })
+	})
 
 	// Test load balancing
-    mustGET("/demo/loadbalancer", func(ctx *lift.Context) error {
+	mustGET("/demo/loadbalancer", func(ctx *lift.Context) error {
 		strategy := ctx.Query("strategy")
 		if strategy == "" {
 			strategy = "round_robin"
@@ -423,10 +423,10 @@ func setupDemoRoutes(app *lift.App) {
 			"requests": 10,
 			"results":  results,
 		})
-    })
+	})
 
 	// Test inter-service communication
-    mustPOST("/demo/service-call", func(ctx *lift.Context) error {
+	mustPOST("/demo/service-call", func(ctx *lift.Context) error {
 		var request struct {
 			Data    any    `json:"data"`
 			Service string `json:"service"`
@@ -474,10 +474,10 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		return ctx.JSON(serviceCall)
-    })
+	})
 
 	// Performance statistics
-    mustGET("/demo/stats", func(ctx *lift.Context) error {
+	mustGET("/demo/stats", func(ctx *lift.Context) error {
 		stats := map[string]any{
 			"service_registry": map[string]any{
 				"registered_services": 2,
@@ -509,7 +509,7 @@ func setupDemoRoutes(app *lift.App) {
 		}
 
 		return ctx.JSON(stats)
-    })
+	})
 }
 
 // Helper functions

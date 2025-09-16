@@ -4,4 +4,3 @@
 // events. Applications rarely use this package directly; the App parses events
 // via the registry and routes them through the unified Context.
 package adapters
-

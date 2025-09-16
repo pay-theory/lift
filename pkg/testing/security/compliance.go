@@ -325,44 +325,44 @@ func (p *PCIDSSComplianceChecker) Validate(ctx context.Context, system SystemInf
 }
 
 func (p *PCIDSSComplianceChecker) validatePCIRequirement(ctx context.Context, system SystemInfo, req Requirement) RequirementResult {
-    reqResult := RequirementResult{
-        ID:          req.ID,
-        Description: req.Description,
-        Status:      ComplianceStatusFail,
-        Evidence:    make([]Evidence, 0),
-        Notes:       "",
-    }
+	reqResult := RequirementResult{
+		ID:          req.ID,
+		Description: req.Description,
+		Status:      ComplianceStatusFail,
+		Evidence:    make([]Evidence, 0),
+		Notes:       "",
+	}
 
-    checkers := map[string]func(context.Context, SystemInfo) bool{
-        "1":  p.checkFirewallConfig,
-        "2":  p.checkVendorDefaults,
-        "3":  p.checkStoredDataProtection,
-        "4":  p.checkTransmissionEncryption,
-        "5":  p.checkAntiMalware,
-        "6":  p.checkSecureSystems,
-        "7":  p.checkAccessRestriction,
-        "8":  p.checkAuthentication,
-        "9":  p.checkPhysicalAccess,
-        "10": p.checkMonitoring,
-        "11": p.checkSecurityTesting,
-        "12": p.checkSecurityPolicy,
-    }
+	checkers := map[string]func(context.Context, SystemInfo) bool{
+		"1":  p.checkFirewallConfig,
+		"2":  p.checkVendorDefaults,
+		"3":  p.checkStoredDataProtection,
+		"4":  p.checkTransmissionEncryption,
+		"5":  p.checkAntiMalware,
+		"6":  p.checkSecureSystems,
+		"7":  p.checkAccessRestriction,
+		"8":  p.checkAuthentication,
+		"9":  p.checkPhysicalAccess,
+		"10": p.checkMonitoring,
+		"11": p.checkSecurityTesting,
+		"12": p.checkSecurityPolicy,
+	}
 
-    if checker, ok := checkers[req.ID]; ok {
-        if checker(ctx, system) {
-            reqResult.Status = ComplianceStatusPass
-            if req.ID == "3" { // add evidence for stored data protection
-                reqResult.Evidence = append(reqResult.Evidence, Evidence{
-                    Type:        "encryption",
-                    Description: "Cardholder data encryption verified",
-                    Data:        "Payment data encrypted at rest",
-                    Timestamp:   time.Now(),
-                })
-            }
-        }
-    }
+	if checker, ok := checkers[req.ID]; ok {
+		if checker(ctx, system) {
+			reqResult.Status = ComplianceStatusPass
+			if req.ID == "3" { // add evidence for stored data protection
+				reqResult.Evidence = append(reqResult.Evidence, Evidence{
+					Type:        "encryption",
+					Description: "Cardholder data encryption verified",
+					Data:        "Payment data encrypted at rest",
+					Timestamp:   time.Now(),
+				})
+			}
+		}
+	}
 
-    return reqResult
+	return reqResult
 }
 
 func (p *PCIDSSComplianceChecker) checkFirewallConfig(_ context.Context, _ SystemInfo) bool {

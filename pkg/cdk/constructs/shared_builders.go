@@ -30,7 +30,7 @@ func (dlqb *deadLetterQueueBuilder) build() awssqs.IQueue {
 	dlqProps := &awssqs.QueueProps{
 		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
 	}
-	
+
 	if dlqb.props != nil {
 		dlqProps = dlqb.props
 		if dlqProps.RetentionPeriod == nil {
@@ -38,11 +38,11 @@ func (dlqb *deadLetterQueueBuilder) build() awssqs.IQueue {
 		}
 	}
 
-    // Do NOT set a default QueueName. Let CDK auto-generate a unique physical name
-    // unless the user explicitly provided one in props. Explicit names can collide
-    // across apps/accounts; auto-naming avoids "queue already exists" errors.
+	// Do NOT set a default QueueName. Let CDK auto-generate a unique physical name
+	// unless the user explicitly provided one in props. Explicit names can collide
+	// across apps/accounts; auto-naming avoids "queue already exists" errors.
 
-    return awssqs.NewQueue(dlqb.scope, jsii.String("DeadLetterQueue"), dlqProps)
+	return awssqs.NewQueue(dlqb.scope, jsii.String("DeadLetterQueue"), dlqProps)
 }
 
 // propertyMerger provides generic property merging functionality

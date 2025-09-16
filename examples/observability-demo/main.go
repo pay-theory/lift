@@ -153,7 +153,6 @@ func demoCloudWatchLoggerMock() {
 		stats.EntriesLogged, stats.EntriesDropped, stats.FlushCount)
 }
 
-
 func demoMultiTenantLogging() {
 	// Create mock client
 	mockClient := cloudwatch.NewMockCloudWatchLogsClient()

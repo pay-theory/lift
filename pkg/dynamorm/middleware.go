@@ -6,9 +6,9 @@ import (
 
 	"github.com/pay-theory/dynamorm/pkg/core"
 	"github.com/pay-theory/dynamorm/pkg/session"
+
 	"github.com/pay-theory/lift/pkg/lift"
 )
-
 
 // DynamORMConfig holds configuration for DynamORM integration
 type DynamORMConfig struct {

@@ -180,19 +180,19 @@ func buildS3ProcessorConfig(props *S3ProcessorProps) *s3ProcessorConfig {
 func (b *s3ProcessorBuilder) build() *S3Processor {
 	// Create or use existing bucket
 	b.setupBucket()
-	
+
 	// Create dead letter queue if enabled
 	b.setupDeadLetterQueue()
-	
+
 	// Create Lambda function
 	b.setupFunction()
-	
+
 	// Configure event source
 	b.setupEventSource()
-	
+
 	// Setup permissions
 	b.setupPermissions()
-	
+
 	// Add monitoring if enabled
 	b.setupMonitoring()
 
@@ -276,33 +276,33 @@ func newS3BucketBuilder(processor *S3Processor, props *S3ProcessorProps, config 
 func (bb *s3BucketBuilder) build() (awss3.IBucket, awss3.IBucket) {
 	// Create main bucket
 	mainBucket := bb.createMainBucket()
-	
+
 	// Create replication bucket if needed
 	var replicationBucket awss3.IBucket
 	if bb.shouldEnableReplication() {
 		replicationBucket = bb.props.ReplicationBucket
 		bb.enableCrossRegionReplication(mainBucket)
 	}
-	
+
 	return mainBucket, replicationBucket
 }
 
 // createMainBucket creates the main S3 bucket
 func (bb *s3BucketBuilder) createMainBucket() awss3.IBucket {
 	bucketProps := bb.createBaseBucketProps()
-	
+
 	// Apply user-provided bucket props
 	bb.applyUserBucketProps(bucketProps)
-	
+
 	// Set default bucket name if needed
 	bb.setDefaultBucketName(bucketProps)
-	
+
 	// Configure access logging
 	bb.configureAccessLogging(bucketProps)
-	
+
 	// Configure lifecycle rules
 	bb.configureLifecycleRules(bucketProps)
-	
+
 	return awss3.NewBucket(bb.processor, jsii.String("Bucket"), bucketProps)
 }
 
@@ -319,10 +319,10 @@ func (bb *s3BucketBuilder) createBaseBucketProps() *awss3.BucketProps {
 
 // applyUserBucketProps applies user-provided bucket properties
 func (bb *s3BucketBuilder) applyUserBucketProps(bucketProps *awss3.BucketProps) {
-    if bb.props.BucketProps == nil {
-        return
-    }
-    applyNonNilStructFields(bucketProps, bb.props.BucketProps)
+	if bb.props.BucketProps == nil {
+		return
+	}
+	applyNonNilStructFields(bucketProps, bb.props.BucketProps)
 }
 
 // setDefaultBucketName sets a default bucket name if none provided
@@ -338,7 +338,7 @@ func (bb *s3BucketBuilder) configureAccessLogging(bucketProps *awss3.BucketProps
 	if !bb.config.enableAccessLogging || bb.props.AccessLogsBucket == nil {
 		return
 	}
-	
+
 	bucketProps.ServerAccessLogsBucket = bb.props.AccessLogsBucket
 	if bb.props.AccessLogsPrefix != nil {
 		bucketProps.ServerAccessLogsPrefix = bb.props.AccessLogsPrefix
@@ -350,7 +350,7 @@ func (bb *s3BucketBuilder) configureLifecycleRules(bucketProps *awss3.BucketProp
 	if !bb.config.enableLifecycleRules {
 		return
 	}
-	
+
 	if bb.props.LifecycleRules != nil {
 		bucketProps.LifecycleRules = bb.props.LifecycleRules
 	} else {
@@ -408,15 +408,15 @@ func newS3FunctionBuilder(processor *S3Processor, props *S3ProcessorProps) *s3Fu
 func (fb *s3FunctionBuilder) build() *LiftFunction {
 	// Prepare environment variables
 	functionEnv := fb.prepareFunctionEnvironment()
-	
+
 	// Create LiftFunction properties
 	liftProps := &LiftFunctionProps{
 		FunctionProps: fb.props.FunctionProps,
 	}
-	
+
 	// Set environment variables
 	liftProps.Environment = &functionEnv
-	
+
 	// Set Lift-specific properties
 	if fb.props.EnableTracing != nil {
 		liftProps.EnableTracing = fb.props.EnableTracing
@@ -424,21 +424,21 @@ func (fb *s3FunctionBuilder) build() *LiftFunction {
 	if fb.props.EnableMultiTenant != nil {
 		liftProps.EnableMultiTenant = fb.props.EnableMultiTenant
 	}
-	
+
 	return NewLiftFunction(fb.processor, jsii.String("Function"), liftProps)
 }
 
 // prepareFunctionEnvironment prepares environment variables for the function
 func (fb *s3FunctionBuilder) prepareFunctionEnvironment() map[string]*string {
 	functionEnv := make(map[string]*string)
-	
+
 	// Copy existing environment variables
 	if fb.props.FunctionProps.Environment != nil {
 		for k, v := range *fb.props.FunctionProps.Environment {
 			functionEnv[k] = v
 		}
 	}
-	
+
 	// Add S3-specific environment variables
 	functionEnv["S3_BUCKET_NAME"] = fb.processor.Bucket.BucketName()
 	functionEnv["S3_BUCKET_ARN"] = fb.processor.Bucket.BucketArn()
@@ -448,7 +448,7 @@ func (fb *s3FunctionBuilder) prepareFunctionEnvironment() map[string]*string {
 	if fb.processor.ReplicationBucket != nil {
 		functionEnv["S3_REPLICATION_BUCKET_NAME"] = fb.processor.ReplicationBucket.BucketName()
 	}
-	
+
 	return functionEnv
 }
 
@@ -474,13 +474,13 @@ func (esb *s3EventSourceBuilder) build() awslambdaeventsources.S3EventSource {
 	eventSourceProps := &awslambdaeventsources.S3EventSourceProps{
 		Events: &esb.config.eventTypes,
 	}
-	
+
 	// Add key filters if provided
 	esb.addKeyFilters(eventSourceProps)
-	
+
 	// Apply user-provided event source properties
 	esb.applyUserEventSourceProps(eventSourceProps)
-	
+
 	// Create event source
 	return esb.createEventSource(eventSourceProps)
 }
@@ -488,7 +488,7 @@ func (esb *s3EventSourceBuilder) build() awslambdaeventsources.S3EventSource {
 // addKeyFilters adds key prefix and suffix filters
 func (esb *s3EventSourceBuilder) addKeyFilters(eventSourceProps *awslambdaeventsources.S3EventSourceProps) {
 	filters := []*awss3.NotificationKeyFilter{}
-	
+
 	if esb.props.KeyPrefix != nil {
 		filters = append(filters, &awss3.NotificationKeyFilter{
 			Prefix: esb.props.KeyPrefix,
@@ -499,7 +499,7 @@ func (esb *s3EventSourceBuilder) addKeyFilters(eventSourceProps *awslambdaevents
 			Suffix: esb.props.KeySuffix,
 		})
 	}
-	
+
 	if len(filters) > 0 {
 		eventSourceProps.Filters = &filters
 	}
@@ -510,7 +510,7 @@ func (esb *s3EventSourceBuilder) applyUserEventSourceProps(eventSourceProps *aws
 	if esb.props.EventSourceProps == nil {
 		return
 	}
-	
+
 	if esb.props.EventSourceProps.Events != nil {
 		eventSourceProps.Events = esb.props.EventSourceProps.Events
 	}
@@ -538,7 +538,7 @@ func (esb *s3EventSourceBuilder) configureExternalBucketNotification() {
 	if esb.props.ExternalBucket == nil {
 		return
 	}
-	
+
 	esb.props.ExternalBucket.AddEventNotification(
 		awss3.EventType_OBJECT_CREATED,
 		awss3notifications.NewLambdaDestination(esb.processor.Function.Function),
@@ -558,9 +558,9 @@ func (s *S3Processor) enableMonitoring() {
 	})
 
 	// Lambda function monitoring
-    if s.Function != nil {
-        EnableS3LambdaMonitoring(s, s.Bucket.BucketName(), s.Function.Function)
-    }
+	if s.Function != nil {
+		EnableS3LambdaMonitoring(s, s.Bucket.BucketName(), s.Function.Function)
+	}
 
 	// S3 bucket metrics
 	var client4xxErrorsMetric awscloudwatch.IMetric
@@ -858,7 +858,7 @@ func (p *policyStatementParser) parseResources() {
 // parseStringOrArray parses a field that can be either string or string array
 func (p *policyStatementParser) parseStringOrArray(field string) []*string {
 	var result []*string
-	
+
 	// Check if field is an array
 	if items, ok := p.stmt[field].([]interface{}); ok {
 		for _, item := range items {
@@ -870,7 +870,7 @@ func (p *policyStatementParser) parseStringOrArray(field string) []*string {
 		// Field is a single string
 		result = append(result, jsii.String(str))
 	}
-	
+
 	return result
 }
 
@@ -880,17 +880,17 @@ func (p *policyStatementParser) parsePrincipals() {
 	if !ok {
 		return
 	}
-	
+
 	var principals []awsiam.IPrincipal
-	
+
 	if aws, ok := principal["AWS"].(string); ok {
 		principals = append(principals, awsiam.NewAccountPrincipal(jsii.String(aws)))
 	}
-	
+
 	if service, ok := principal["Service"].(string); ok {
 		principals = append(principals, awsiam.NewServicePrincipal(jsii.String(service), nil))
 	}
-	
+
 	if len(principals) > 0 {
 		p.props.Principals = &principals
 	}
@@ -915,23 +915,23 @@ func (s *S3Processor) enableCrossRegionReplication() {
 		if sourceBucket, ok := s.Bucket.(awss3.Bucket); ok {
 			if cfnBucket, ok := sourceBucket.Node().DefaultChild().(awss3.CfnBucket); ok {
 
-			replicationConfig := &awss3.CfnBucket_ReplicationConfigurationProperty{
-				Role: replicationRole.RoleArn(),
-				Rules: &[]awss3.CfnBucket_ReplicationRuleProperty{
-					{
-						Id:       jsii.String("ReplicateAll"),
-						Status:   jsii.String("Enabled"),
-						Priority: jsii.Number(1),
-						Filter:   &awss3.CfnBucket_ReplicationRuleFilterProperty{},
-						Destination: &awss3.CfnBucket_ReplicationDestinationProperty{
-							Bucket:       s.ReplicationBucket.BucketArn(),
-							StorageClass: jsii.String("STANDARD_IA"),
+				replicationConfig := &awss3.CfnBucket_ReplicationConfigurationProperty{
+					Role: replicationRole.RoleArn(),
+					Rules: &[]awss3.CfnBucket_ReplicationRuleProperty{
+						{
+							Id:       jsii.String("ReplicateAll"),
+							Status:   jsii.String("Enabled"),
+							Priority: jsii.Number(1),
+							Filter:   &awss3.CfnBucket_ReplicationRuleFilterProperty{},
+							Destination: &awss3.CfnBucket_ReplicationDestinationProperty{
+								Bucket:       s.ReplicationBucket.BucketArn(),
+								StorageClass: jsii.String("STANDARD_IA"),
+							},
 						},
 					},
-				},
-			}
+				}
 
-			cfnBucket.SetReplicationConfiguration(replicationConfig)
+				cfnBucket.SetReplicationConfiguration(replicationConfig)
 			}
 		}
 	}

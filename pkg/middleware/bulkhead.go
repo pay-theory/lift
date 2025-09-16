@@ -59,9 +59,9 @@ type ResourceStats struct {
 func BulkheadMiddleware(config BulkheadConfig) lift.Middleware {
 	// Apply default configuration
 	config = applyBulkheadDefaults(config)
-	
+
 	manager := newBulkheadManager(config)
-	
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return manager.handleRequest(ctx, next)
@@ -118,12 +118,12 @@ func (bm *bulkheadManager) handleRequest(ctx *lift.Context, next lift.Handler) e
 
 // bulkheadRequestHandler handles a single request through the bulkhead
 type bulkheadRequestHandler struct { //nolint:govet // fieldalignment: accepted tradeoff to keep readable grouping
-    tenantID  string
-    operation string
-    manager   *bulkheadManager
-    ctx       *lift.Context
-    start     time.Time
-    priority  int
+	tenantID  string
+	operation string
+	manager   *bulkheadManager
+	ctx       *lift.Context
+	start     time.Time
+	priority  int
 }
 
 // newBulkheadRequestHandler creates a new request handler
@@ -145,13 +145,13 @@ func (h *bulkheadRequestHandler) handle(next lift.Handler) error {
 	if err != nil {
 		return h.handleRejection(err, waitTime)
 	}
-	
+
 	// Ensure resources are released
 	defer h.releaseResources(acquired, waitTime)
-	
+
 	// Record successful acquisition
 	h.recordAcquisition(waitTime)
-	
+
 	// Execute the handler
 	return next.Handle(h.ctx)
 }
@@ -160,10 +160,10 @@ func (h *bulkheadRequestHandler) handle(next lift.Handler) error {
 func (h *bulkheadRequestHandler) handleRejection(err error, waitTime time.Duration) error {
 	// Log the rejection
 	h.logRejection(waitTime)
-	
+
 	// Record rejection metrics
 	h.recordRejection(waitTime)
-	
+
 	// Execute rejection handler
 	return h.manager.config.RejectionHandler(h.ctx, err.Error())
 }
@@ -192,12 +192,12 @@ func (h *bulkheadRequestHandler) recordRejection(waitTime time.Duration) {
 // releaseResources ensures resources are properly released
 func (h *bulkheadRequestHandler) releaseResources(acquired *acquiredResources, waitTime time.Duration) {
 	h.manager.releaseResources(acquired, h.tenantID, h.operation)
-	
+
 	duration := time.Since(h.start)
-	
+
 	// Record completion metrics
 	h.recordCompletion(duration, waitTime)
-	
+
 	// Log completion
 	h.logCompletion(duration, waitTime)
 }
@@ -374,7 +374,7 @@ func (bm *bulkheadManager) buildMetricTags(tenantID, operation, result string) m
 	tags := map[string]string{
 		"bulkhead_name": bm.config.Name,
 	}
-	
+
 	if result != "" {
 		tags["result"] = result
 	}

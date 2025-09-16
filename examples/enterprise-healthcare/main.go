@@ -1,19 +1,19 @@
 package main
 
 import (
-    "context"
-    "crypto/aes"
-    "crypto/cipher"
-    "crypto/rand"
-    "crypto/sha256"
-    "encoding/base64"
-    "fmt"
-    "io"
-    "log"
-    "strings"
-    "time"
+	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"io"
+	"log"
+	"strings"
+	"time"
 
-    "github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/lift"
 )
 
 // Add missing middleware functions
@@ -48,47 +48,47 @@ type CORSConfig struct {
 
 // CORS middleware function
 func CORS(config CORSConfig) lift.Middleware {
-    // Precompute strings and origin policy to reduce runtime branching
-    methodsCSV := strings.Join(config.AllowMethods, ", ")
-    headersCSV := strings.Join(config.AllowHeaders, ", ")
-    allowAll := false
-    allowedOrigins := make(map[string]struct{}, len(config.AllowOrigins))
-    for _, o := range config.AllowOrigins {
-        if o == "*" {
-            allowAll = true
-        } else if o != "" {
-            allowedOrigins[o] = struct{}{}
-        }
-    }
+	// Precompute strings and origin policy to reduce runtime branching
+	methodsCSV := strings.Join(config.AllowMethods, ", ")
+	headersCSV := strings.Join(config.AllowHeaders, ", ")
+	allowAll := false
+	allowedOrigins := make(map[string]struct{}, len(config.AllowOrigins))
+	for _, o := range config.AllowOrigins {
+		if o == "*" {
+			allowAll = true
+		} else if o != "" {
+			allowedOrigins[o] = struct{}{}
+		}
+	}
 
-    isAllowed := func(origin string) bool {
-        if allowAll {
-            return true
-        }
-        _, ok := allowedOrigins[origin]
-        return ok
-    }
+	isAllowed := func(origin string) bool {
+		if allowAll {
+			return true
+		}
+		_, ok := allowedOrigins[origin]
+		return ok
+	}
 
-    return func(next lift.Handler) lift.Handler {
-        return lift.HandlerFunc(func(ctx *lift.Context) error {
-            origin := ctx.Header("Origin")
-            if origin != "" && isAllowed(origin) {
-                ctx.Response.Header("Access-Control-Allow-Origin", origin)
-                if methodsCSV != "" {
-                    ctx.Response.Header("Access-Control-Allow-Methods", methodsCSV)
-                }
-                if headersCSV != "" {
-                    ctx.Response.Header("Access-Control-Allow-Headers", headersCSV)
-                }
-            }
+	return func(next lift.Handler) lift.Handler {
+		return lift.HandlerFunc(func(ctx *lift.Context) error {
+			origin := ctx.Header("Origin")
+			if origin != "" && isAllowed(origin) {
+				ctx.Response.Header("Access-Control-Allow-Origin", origin)
+				if methodsCSV != "" {
+					ctx.Response.Header("Access-Control-Allow-Methods", methodsCSV)
+				}
+				if headersCSV != "" {
+					ctx.Response.Header("Access-Control-Allow-Headers", headersCSV)
+				}
+			}
 
-            if ctx.Request.Method == "OPTIONS" {
-                ctx.Response.StatusCode = 204
-                return nil
-            }
-            return next.Handle(ctx)
-        })
-    }
+			if ctx.Request.Method == "OPTIONS" {
+				ctx.Response.StatusCode = 204
+				return nil
+			}
+			return next.Handle(ctx)
+		})
+	}
 }
 
 // Logger middleware function

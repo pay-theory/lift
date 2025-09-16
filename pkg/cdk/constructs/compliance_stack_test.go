@@ -16,10 +16,10 @@ func createComplianceFrameworkTestStack(appName string, frameworks []ComplianceF
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
 
 	NewComplianceStack(stack, "TestComplianceStack", &ComplianceStackProps{
-		AppName: jsii.String(appName),
+		AppName:              jsii.String(appName),
 		ComplianceFrameworks: &frameworks,
-		EnableConfig:      jsii.Bool(true),
-		EnableSecurityHub: jsii.Bool(true),
+		EnableConfig:         jsii.Bool(true),
+		EnableSecurityHub:    jsii.Bool(true),
 	})
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -365,23 +365,23 @@ func TestComplianceStack_ComplianceStatus(t *testing.T) {
 	cloudtrailEnabledVal := status["cloudtrail_enabled"]
 	cloudtrailEnabled, ok := cloudtrailEnabledVal.(bool)
 	assert.True(t, ok && cloudtrailEnabled)
-	
+
 	configEnabledVal := status["config_enabled"]
 	configEnabled, ok := configEnabledVal.(bool)
 	assert.True(t, ok && configEnabled)
-	
+
 	guarddutyEnabledVal := status["guardduty_enabled"]
 	guarddutyEnabled, ok := guarddutyEnabledVal.(bool)
 	assert.True(t, ok && guarddutyEnabled)
-	
+
 	securityhubEnabledVal := status["securityhub_enabled"]
 	securityhubEnabled, ok := securityhubEnabledVal.(bool)
 	assert.True(t, ok && securityhubEnabled)
-	
+
 	encryptionEnabledVal := status["encryption_enabled"]
 	encryptionEnabled, ok := encryptionEnabledVal.(bool)
 	assert.True(t, ok && encryptionEnabled)
-	
+
 	functionEnabledVal := status["function_enabled"]
 	functionEnabled, ok := functionEnabledVal.(bool)
 	assert.True(t, ok && functionEnabled)

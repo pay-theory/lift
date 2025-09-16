@@ -69,9 +69,9 @@ type RateLimitResult struct {
 func RateLimitMiddleware(config RateLimitConfig) lift.Middleware {
 	// Apply default configuration
 	config = applyRateLimitDefaults(config)
-	
+
 	processor := newRateLimitProcessor(&rateLimiter{config: config}, config)
-	
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return processor.process(ctx, next)
@@ -128,10 +128,10 @@ func (p *rateLimitProcessor) process(ctx *lift.Context, next lift.Handler) error
 	if p.shouldSkipRequest(ctx) {
 		return next.Handle(ctx)
 	}
-	
+
 	// Generate rate limit key
 	key := p.limiter.generateKey(ctx)
-	
+
 	// Execute rate limit check
 	handler := newRateLimitHandler(p.limiter, p.config, key)
 	return handler.handle(ctx, next)
@@ -144,9 +144,9 @@ func (p *rateLimitProcessor) shouldSkipRequest(ctx *lift.Context) bool {
 
 // rateLimitHandler handles a single rate limit check
 type rateLimitHandler struct {
-    limiter *rateLimiter
-    key     string
-    config  RateLimitConfig
+	limiter *rateLimiter
+	key     string
+	config  RateLimitConfig
 }
 
 // newRateLimitHandler creates a new rate limit handler
@@ -165,15 +165,15 @@ func (h *rateLimitHandler) handle(ctx *lift.Context, next lift.Handler) error {
 	if err != nil {
 		return h.handleCheckError(ctx, err, next)
 	}
-	
+
 	// Add rate limit headers
 	h.limiter.addHeaders(ctx, result)
-	
+
 	// Check if request is allowed
 	if !result.Allowed {
 		return h.handleRateLimitExceeded(ctx, result)
 	}
-	
+
 	// Execute handler and handle success
 	return h.executeAndHandleSuccess(ctx, next)
 }
@@ -202,7 +202,7 @@ func (h *rateLimitHandler) handleRateLimitExceeded(ctx *lift.Context, result *Ra
 			"reset_at":  result.ResetAt,
 		})
 	}
-	
+
 	// Return 429 Too Many Requests
 	ctx.Response.Status(429)
 	return ctx.Response.JSON(map[string]any{
@@ -217,12 +217,12 @@ func (h *rateLimitHandler) handleRateLimitExceeded(ctx *lift.Context, result *Ra
 // executeAndHandleSuccess executes the handler and handles successful requests
 func (h *rateLimitHandler) executeAndHandleSuccess(ctx *lift.Context, next lift.Handler) error {
 	err := next.Handle(ctx)
-	
+
 	// Handle successful request decrement if configured
 	if h.config.SkipSuccessful && err == nil && ctx.Response.StatusCode < 400 {
 		h.handleSuccessfulDecrement(ctx)
 	}
-	
+
 	return err
 }
 
@@ -315,12 +315,12 @@ func (r *rateLimiter) checkLimit(ctx context.Context, key string, liftCtx *lift.
 
 // rateLimitChecker encapsulates rate limit checking logic
 type rateLimitChecker struct {
-    now         time.Time
-    windowStart time.Time
-    limiter     *rateLimiter
-    liftCtx     *lift.Context
-    key         string
-    limit       int
+	now         time.Time
+	windowStart time.Time
+	limiter     *rateLimiter
+	liftCtx     *lift.Context
+	key         string
+	limit       int
 }
 
 // newRateLimitChecker creates a new rate limit checker
@@ -341,21 +341,21 @@ func (c *rateLimitChecker) check(ctx context.Context) (*RateLimitResult, error) 
 	// Try to get existing entry
 	var entry RateLimitEntry
 	err := c.limiter.config.DynamORM.Get(ctx, c.key, &entry)
-	
+
 	if err != nil {
 		return c.handleNewEntry(ctx)
 	}
-	
+
 	// Check if we're in a new window
 	if entry.WindowStart.Before(c.windowStart) {
 		return c.handleWindowReset(ctx, &entry)
 	}
-	
+
 	// Check if limit exceeded
 	if entry.Count >= c.limit {
 		return c.handleLimitExceeded(&entry)
 	}
-	
+
 	// Increment counter and allow request
 	return c.handleAllowedRequest(ctx, &entry)
 }
@@ -369,12 +369,12 @@ func (c *rateLimitChecker) handleNewEntry(ctx context.Context) (*RateLimitResult
 		LastRequest: c.now,
 		TTL:         c.now.Add(c.limiter.config.TTL).Unix(),
 	}
-	
+
 	err := c.limiter.config.DynamORM.Put(ctx, entry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rate limit entry: %w", err)
 	}
-	
+
 	return c.createAllowedResult(c.limit - 1), nil
 }
 
@@ -384,12 +384,12 @@ func (c *rateLimitChecker) handleWindowReset(ctx context.Context, entry *RateLim
 	entry.WindowStart = c.windowStart
 	entry.LastRequest = c.now
 	entry.TTL = c.now.Add(c.limiter.config.TTL).Unix()
-	
+
 	err := c.limiter.config.DynamORM.Put(ctx, *entry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reset rate limit entry: %w", err)
 	}
-	
+
 	return c.createAllowedResult(c.limit - 1), nil
 }
 
@@ -400,7 +400,7 @@ func (c *rateLimitChecker) handleLimitExceeded(entry *RateLimitEntry) (*RateLimi
 	if retryAfter < 0 {
 		retryAfter = 0
 	}
-	
+
 	return &RateLimitResult{
 		Allowed:     false,
 		Limit:       c.limit,
@@ -416,12 +416,12 @@ func (c *rateLimitChecker) handleAllowedRequest(ctx context.Context, entry *Rate
 	entry.Count++
 	entry.LastRequest = c.now
 	entry.TTL = c.now.Add(c.limiter.config.TTL).Unix()
-	
+
 	err := c.limiter.config.DynamORM.Put(ctx, *entry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update rate limit entry: %w", err)
 	}
-	
+
 	return c.createAllowedResult(c.limit - entry.Count), nil
 }
 

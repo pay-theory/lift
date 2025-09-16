@@ -129,25 +129,25 @@ func newBenchmarkArgsParser() *benchmarkArgsParser {
 // parse processes the arguments
 func (p *benchmarkArgsParser) parse(args []string) (*BenchmarkConfig, error) {
 	p.args = args
-	
+
 	for p.index = 0; p.index < len(args); p.index++ {
 		if err := p.parseFlag(); err != nil {
 			return nil, err
 		}
 	}
-	
+
 	return p.validate()
 }
 
 // parseFlag parses a single flag
 func (p *benchmarkArgsParser) parseFlag() error {
 	flag := p.args[p.index]
-	
+
 	handler, exists := p.getFlagHandlers()[flag]
 	if !exists {
 		return nil // Ignore unknown flags
 	}
-	
+
 	return handler()
 }
 
@@ -189,7 +189,7 @@ func (p *benchmarkArgsParser) parseConcurrencyFlag() error {
 	if err != nil {
 		return err
 	}
-	
+
 	var concurrency int
 	if _, err := fmt.Sscanf(value, "%d", &concurrency); err != nil {
 		return fmt.Errorf("invalid concurrency value: %s", value)
@@ -204,7 +204,7 @@ func (p *benchmarkArgsParser) parseDurationFlag() error {
 	if err != nil {
 		return err
 	}
-	
+
 	duration, err := time.ParseDuration(value)
 	if err != nil {
 		return fmt.Errorf("invalid duration value: %s", value)

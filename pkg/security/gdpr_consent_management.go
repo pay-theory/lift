@@ -885,22 +885,22 @@ func (v *consentValidator) validate() error {
 	if err := v.validateRequired(); err != nil {
 		return err
 	}
-	
+
 	// Legal basis validation
 	if err := v.validateLegalBasis(); err != nil {
 		return err
 	}
-	
+
 	// Time-based validation
 	if err := v.validateExpiry(); err != nil {
 		return err
 	}
-	
+
 	// Configuration-based validations
 	if err := v.validateConfigRequirements(); err != nil {
 		return err
 	}
-	
+
 	// GDPR compliance validations
 	return v.validateGDPRRequirements()
 }
@@ -910,19 +910,19 @@ func (v *consentValidator) validateRequired() error {
 	if v.consent == nil {
 		return fmt.Errorf("consent record is required")
 	}
-	
+
 	if v.consent.DataSubjectID == "" {
 		return fmt.Errorf("data subject ID is required")
 	}
-	
+
 	if !v.hasPurpose() {
 		return fmt.Errorf("purpose is required")
 	}
-	
+
 	if v.consent.LegalBasis == "" {
 		return fmt.Errorf("legal basis is required")
 	}
-	
+
 	return nil
 }
 
@@ -934,24 +934,24 @@ func (v *consentValidator) hasPurpose() bool {
 // validateLegalBasis validates the legal basis value
 func (v *consentValidator) validateLegalBasis() error {
 	validBases := v.getValidLegalBases()
-	
+
 	for _, validBasis := range validBases {
 		if v.consent.LegalBasis == validBasis {
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("invalid legal basis")
 }
 
 // getValidLegalBases returns valid legal basis values
 func (v *consentValidator) getValidLegalBases() []string {
 	return []string{
-		"consent", 
-		"contract", 
-		"legal_obligation", 
-		"vital_interests", 
-		"public_task", 
+		"consent",
+		"contract",
+		"legal_obligation",
+		"vital_interests",
+		"public_task",
 		"legitimate_interests",
 	}
 }
@@ -961,11 +961,11 @@ func (v *consentValidator) validateExpiry() error {
 	if v.consent.ExpiryDate == nil {
 		return nil
 	}
-	
+
 	if v.consent.ExpiryDate.Before(time.Now()) {
 		return fmt.Errorf("consent has expired")
 	}
-	
+
 	return nil
 }
 
@@ -974,11 +974,11 @@ func (v *consentValidator) validateConfigRequirements() error {
 	if v.manager.config.GranularConsentRequired && !v.consent.Granular {
 		return fmt.Errorf("granular consent is required")
 	}
-	
+
 	if v.manager.config.ConsentProofRequired && v.consent.ConsentProof == nil {
 		return fmt.Errorf("consent proof is required")
 	}
-	
+
 	return nil
 }
 
@@ -987,15 +987,15 @@ func (v *consentValidator) validateGDPRRequirements() error {
 	if !v.consent.Specific {
 		return fmt.Errorf("consent must be specific")
 	}
-	
+
 	if !v.consent.Informed {
 		return fmt.Errorf("consent must be informed")
 	}
-	
+
 	if !v.consent.Unambiguous {
 		return fmt.Errorf("consent must be unambiguous")
 	}
-	
+
 	return nil
 }
 

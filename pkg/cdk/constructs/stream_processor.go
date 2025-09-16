@@ -1,7 +1,7 @@
 package constructs
 
 import (
-    "github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
@@ -13,23 +13,23 @@ import (
 // Memory optimized: 792 → 784 bytes (8 bytes saved)
 type StreamProcessorProps struct {
 	// Pointers first (8 bytes each)
-	StreamingTable *StreamingTable
-	DeadLetterQueueProps *awssqs.QueueProps
-	EventSourceProps *awslambdaeventsources.DynamoEventSourceProps
+	StreamingTable          *StreamingTable
+	DeadLetterQueueProps    *awssqs.QueueProps
+	EventSourceProps        *awslambdaeventsources.DynamoEventSourceProps
 	BatchSize               *float64
 	RetryAttempts           *float64
 	ParallelizationFactor   *float64
-	EnableDeadLetterQueue *bool
+	EnableDeadLetterQueue   *bool
 	BisectBatchOnError      *bool
 	ReportBatchItemFailures *bool
 	// Duration structs (16 bytes each)
-	MaxBatchingWindow       awscdk.Duration
-	MaxRecordAge            awscdk.Duration
-	TumblingWindow          awscdk.Duration
+	MaxBatchingWindow awscdk.Duration
+	MaxRecordAge      awscdk.Duration
+	TumblingWindow    awscdk.Duration
 	// Large struct
 	FunctionProps awslambda.FunctionProps
 	// Medium types
-	StartingPosition        awslambda.StartingPosition
+	StartingPosition awslambda.StartingPosition
 }
 
 // StreamProcessor processes DynamoDB streams with Lambda
@@ -67,9 +67,9 @@ type streamProcessorBuilder struct {
 
 // streamProcessorConfig holds resolved configuration values
 type streamProcessorConfig struct {
-    startingPosition awslambda.StartingPosition
-    batchSize        float64
-    enableDLQ        bool
+	startingPosition awslambda.StartingPosition
+	batchSize        float64
+	enableDLQ        bool
 }
 
 // newStreamProcessorBuilder creates a new stream processor builder
@@ -130,21 +130,21 @@ func (b *streamProcessorBuilder) createDeadLetterQueue() {
 		return
 	}
 
-    dlqProps := &awssqs.QueueProps{
-        RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
-    }
-	
+	dlqProps := &awssqs.QueueProps{
+		RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)),
+	}
+
 	if b.props.DeadLetterQueueProps != nil {
 		dlqProps = b.props.DeadLetterQueueProps
 	}
-	
+
 	b.processor.DeadLetterQueue = awssqs.NewQueue(b.construct, jsii.String("DLQ"), dlqProps)
 }
 
 // createFunction creates the Lambda function
 func (b *streamProcessorBuilder) createFunction() {
 	functionProps := b.props.FunctionProps
-	
+
 	// Configure DLQ if enabled
 	if b.config.enableDLQ && b.processor.DeadLetterQueue != nil {
 		functionProps.DeadLetterQueueEnabled = jsii.Bool(true)
@@ -165,7 +165,7 @@ func (b *streamProcessorBuilder) setupEnvironment(functionProps *awslambda.Funct
 	if functionProps.Environment == nil {
 		functionProps.Environment = &map[string]*string{}
 	}
-	
+
 	env := *functionProps.Environment
 	env["DYNAMODB_STREAM_ARN"] = b.processor.Table.GetStreamArn()
 	env["DYNAMODB_TABLE_NAME"] = b.processor.Table.Table.TableName()
@@ -175,7 +175,7 @@ func (b *streamProcessorBuilder) setupEnvironment(functionProps *awslambda.Funct
 // createEventSource creates and configures the DynamoDB event source
 func (b *streamProcessorBuilder) createEventSource() {
 	eventSourceProps := b.buildEventSourceProps()
-	
+
 	// Override with user-provided props if any
 	if b.props.EventSourceProps != nil {
 		eventSourceProps = b.props.EventSourceProps
@@ -200,7 +200,7 @@ func (b *streamProcessorBuilder) buildEventSourceProps() *awslambdaeventsources.
 
 	// Apply optional settings
 	b.applyOptionalEventSourceSettings(eventSourceProps)
-	
+
 	return eventSourceProps
 }
 

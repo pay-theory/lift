@@ -456,7 +456,7 @@ func (imas *InMemoryAuditStorage) BatchStore(_ context.Context, entries []AuditL
 func (imas *InMemoryAuditStorage) Query(_ context.Context, filter AuditFilter) ([]AuditLogEntry, error) {
 	imas.mu.RLock()
 	defer imas.mu.RUnlock()
-	
+
 	query := newAuditQuery(imas.entries, filter)
 	return query.execute()
 }
@@ -483,14 +483,14 @@ func (q *auditQuery) execute() ([]AuditLogEntry, error) {
 		if !q.matchesAuditID(auditID) {
 			continue
 		}
-		
+
 		q.processEntries(entries)
-		
+
 		if q.limitReached() {
 			break
 		}
 	}
-	
+
 	return q.results, nil
 }
 
@@ -504,7 +504,7 @@ func (q *auditQuery) processEntries(entries []AuditLogEntry) {
 	for _, entry := range entries {
 		if q.entryMatches(entry) {
 			q.results = append(q.results, entry)
-			
+
 			if q.limitReached() {
 				return
 			}
@@ -540,11 +540,11 @@ func (q *auditQuery) matchesTimeRange(entry AuditLogEntry) bool {
 	if !q.filter.Since.IsZero() && entry.Timestamp.Before(q.filter.Since) {
 		return false
 	}
-	
+
 	if !q.filter.Until.IsZero() && entry.Timestamp.After(q.filter.Until) {
 		return false
 	}
-	
+
 	return true
 }
 

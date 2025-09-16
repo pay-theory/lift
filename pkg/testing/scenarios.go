@@ -14,9 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pay-theory/lift/pkg/lift"
 )
 
 // LoadTestResult represents the result of a load test
@@ -74,7 +75,7 @@ func NewLoadTester(app *TestApp, config *LoadTestConfig) *LoadTester {
 func (lt *LoadTester) RunLoadTest(ctx context.Context, request func(*TestApp) *TestResponse) (*LoadTestResult, error) {
 	// Create load test execution context
 	execution := newLoadTestExecution(lt, request)
-	
+
 	// Run the load test
 	return execution.run(ctx)
 }
@@ -106,13 +107,13 @@ func (lte *loadTestExecution) run(ctx context.Context) (*LoadTestResult, error) 
 	// Start worker pool
 	lte.workers = newWorkerPool(lte.loadTester.config.ConcurrentUsers, lte.loadTester.config.Duration)
 	lte.workers.start(ctx, lte.executeRequest)
-	
+
 	// Collect results
 	lte.collectResponses(ctx)
-	
+
 	// Finalize results
 	lte.finalizeResult()
-	
+
 	return lte.result, nil
 }
 
@@ -126,9 +127,9 @@ func (lte *loadTestExecution) executeRequest() {
 func (lte *loadTestExecution) collectResponses(ctx context.Context) {
 	timeout := time.NewTimer(lte.loadTester.config.Duration + 10*time.Second)
 	defer timeout.Stop()
-	
+
 	done := lte.workers.done()
-	
+
 	for {
 		select {
 		case resp := <-lte.collector.responses():
@@ -146,7 +147,7 @@ func (lte *loadTestExecution) collectResponses(ctx context.Context) {
 // processResponse processes a single response
 func (lte *loadTestExecution) processResponse(resp *TestResponse) {
 	lte.result.TotalRequests++
-	
+
 	if resp.GetStatusCode() >= 200 && resp.GetStatusCode() < 400 {
 		lte.result.SuccessfulRequests++
 	} else {
@@ -155,7 +156,7 @@ func (lte *loadTestExecution) processResponse(resp *TestResponse) {
 			lte.result.Errors = append(lte.result.Errors, resp.err.Error())
 		}
 	}
-	
+
 	// Record latency (placeholder for now)
 	lte.collector.recordLatency(time.Millisecond * 10)
 }
@@ -164,7 +165,7 @@ func (lte *loadTestExecution) processResponse(resp *TestResponse) {
 func (lte *loadTestExecution) finalizeResult() {
 	lte.result.EndTime = time.Now()
 	lte.result.Duration = lte.result.EndTime.Sub(lte.result.StartTime)
-	
+
 	// Calculate latency metrics
 	metrics := newLatencyMetrics(lte.collector.getLatencies())
 	lte.result.MinLatency = metrics.min()
@@ -172,7 +173,7 @@ func (lte *loadTestExecution) finalizeResult() {
 	lte.result.AverageLatency = metrics.average()
 	lte.result.P95Latency = metrics.percentile(95)
 	lte.result.P99Latency = metrics.percentile(99)
-	
+
 	// Calculate rates
 	lte.calculateRates()
 }
@@ -182,7 +183,7 @@ func (lte *loadTestExecution) calculateRates() {
 	if lte.result.Duration > 0 {
 		lte.result.RequestsPerSecond = float64(lte.result.TotalRequests) / lte.result.Duration.Seconds()
 	}
-	
+
 	if lte.result.TotalRequests > 0 {
 		lte.result.ErrorRate = float64(lte.result.FailedRequests) / float64(lte.result.TotalRequests)
 	}
@@ -190,9 +191,9 @@ func (lte *loadTestExecution) calculateRates() {
 
 // responseCollector collects test responses
 type responseCollector struct {
-	respChan   chan *TestResponse
-	latencies  []time.Duration
-	mu         sync.Mutex
+	respChan  chan *TestResponse
+	latencies []time.Duration
+	mu        sync.Mutex
 }
 
 // newResponseCollector creates a new response collector
@@ -229,9 +230,9 @@ func (rc *responseCollector) getLatencies() []time.Duration {
 
 // workerPool manages concurrent workers
 type workerPool struct {
-    doneSignal  chan bool
-    concurrency int
-    duration    time.Duration
+	doneSignal  chan bool
+	concurrency int
+	duration    time.Duration
 }
 
 // newWorkerPool creates a new worker pool
@@ -254,7 +255,7 @@ func (wp *workerPool) start(ctx context.Context, task func()) {
 func (wp *workerPool) runWorker(ctx context.Context, task func()) {
 	timer := time.NewTimer(wp.duration)
 	defer timer.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -284,14 +285,14 @@ func newLatencyMetrics(latencies []time.Duration) *latencyMetrics {
 	if len(latencies) == 0 {
 		return &latencyMetrics{values: []time.Duration{}}
 	}
-	
+
 	// Sort latencies for percentile calculation
 	sorted := make([]time.Duration, len(latencies))
 	copy(sorted, latencies)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i] < sorted[j]
 	})
-	
+
 	return &latencyMetrics{values: sorted}
 }
 
@@ -316,7 +317,7 @@ func (lm *latencyMetrics) average() time.Duration {
 	if len(lm.values) == 0 {
 		return 0
 	}
-	
+
 	var total time.Duration
 	for _, v := range lm.values {
 		total += v
@@ -329,7 +330,7 @@ func (lm *latencyMetrics) percentile(p int) time.Duration {
 	if len(lm.values) == 0 || len(lm.values) < 20 {
 		return 0
 	}
-	
+
 	index := int(float64(len(lm.values)) * float64(p) / 100.0)
 	if index >= len(lm.values) {
 		index = len(lm.values) - 1
@@ -418,24 +419,24 @@ func (sr *ScenarioRunner) runScenariosSequential(t *testing.T, scenarios []TestS
 
 // executeScenario executes a single scenario with retry logic
 func (sr *ScenarioRunner) executeScenario(t *testing.T, scenario TestScenario) {
-    if scenario.Skip {
-        t.Skip(scenario.SkipReason)
-        return
-    }
+	if scenario.Skip {
+		t.Skip(scenario.SkipReason)
+		return
+	}
 
-    var lastErr error
+	var lastErr error
 
-    for attempt := 0; attempt <= sr.retryAttempts; attempt++ {
-        if attempt > 0 {
-            t.Logf("Retrying scenario %s (attempt %d/%d)", scenario.Name, attempt+1, sr.retryAttempts+1)
-            time.Sleep(sr.retryDelay)
-        }
+	for attempt := 0; attempt <= sr.retryAttempts; attempt++ {
+		if attempt > 0 {
+			t.Logf("Retrying scenario %s (attempt %d/%d)", scenario.Name, attempt+1, sr.retryAttempts+1)
+			time.Sleep(sr.retryDelay)
+		}
 
-        lastErr = sr.tryExecuteScenario(t, scenario)
-        if lastErr == nil {
-            return
-        }
-    }
+		lastErr = sr.tryExecuteScenario(t, scenario)
+		if lastErr == nil {
+			return
+		}
+	}
 
 	// All attempts failed
 	require.NoError(t, lastErr, "Scenario failed after %d attempts", sr.retryAttempts+1)
@@ -443,44 +444,44 @@ func (sr *ScenarioRunner) executeScenario(t *testing.T, scenario TestScenario) {
 
 // tryExecuteScenario runs one attempt with panic protection, setup/cleanup timeouts
 func (sr *ScenarioRunner) tryExecuteScenario(t *testing.T, scenario TestScenario) (err error) {
-    defer func() {
-        if r := recover(); r != nil {
-            err = fmt.Errorf("scenario panicked: %v", r)
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("scenario panicked: %v", r)
+		}
+	}()
 
-    // Setup
-    if scenario.Setup != nil {
-        if serr := sr.runWithTimeout("setup", sr.setupTimeout, scenario.Setup); serr != nil {
-            return fmt.Errorf("setup failed: %w", serr)
-        }
-    }
+	// Setup
+	if scenario.Setup != nil {
+		if serr := sr.runWithTimeout("setup", sr.setupTimeout, scenario.Setup); serr != nil {
+			return fmt.Errorf("setup failed: %w", serr)
+		}
+	}
 
-    // Execute request and assertions
-    resp := scenario.Request(sr.app)
-    scenario.Assertions(t, resp)
+	// Execute request and assertions
+	resp := scenario.Request(sr.app)
+	scenario.Assertions(t, resp)
 
-    // Cleanup
-    if scenario.Cleanup != nil {
-        if cerr := sr.runWithTimeout("cleanup", sr.cleanupTimeout, scenario.Cleanup); cerr != nil {
-            t.Logf("Cleanup warning: %v", cerr)
-        }
-    }
-    return nil
+	// Cleanup
+	if scenario.Cleanup != nil {
+		if cerr := sr.runWithTimeout("cleanup", sr.cleanupTimeout, scenario.Cleanup); cerr != nil {
+			t.Logf("Cleanup warning: %v", cerr)
+		}
+	}
+	return nil
 }
 
 // runWithTimeout executes a scenario phase with a timeout
 func (sr *ScenarioRunner) runWithTimeout(_ string, timeout time.Duration, fn func(*TestApp) error) error {
-    ctx, cancel := context.WithTimeout(context.Background(), timeout)
-    defer cancel()
-    done := make(chan error, 1)
-    go func() { done <- fn(sr.app) }()
-    select {
-    case err := <-done:
-        return err
-    case <-ctx.Done():
-        return fmt.Errorf("operation timed out after %v", timeout)
-    }
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- fn(sr.app) }()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("operation timed out after %v", timeout)
+	}
 }
 
 // TestScenario represents a complete test scenario

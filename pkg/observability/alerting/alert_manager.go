@@ -476,19 +476,19 @@ func (am *AlertManager) executeActions(ctx context.Context, alert *Alert, rule *
 		}
 
 		// Execute action in background
-        go func(ch AlertChannel, a *Alert) {
-            if err := ch.Send(ctx, a); err != nil {
-                // Record a non-fatal send error as an alert event
-                am.mu.Lock()
-                a.Events = append(a.Events, AlertEvent{
-                    ID:        fmt.Sprintf("event-%d", time.Now().UnixNano()),
-                    Type:      AlertEventUpdated,
-                    Timestamp: time.Now(),
-                    Message:   fmt.Sprintf("action send failed on channel %s: %v", ch.GetType(), err),
-                })
-                am.mu.Unlock()
-            }
-        }(channel, alert)
+		go func(ch AlertChannel, a *Alert) {
+			if err := ch.Send(ctx, a); err != nil {
+				// Record a non-fatal send error as an alert event
+				am.mu.Lock()
+				a.Events = append(a.Events, AlertEvent{
+					ID:        fmt.Sprintf("event-%d", time.Now().UnixNano()),
+					Type:      AlertEventUpdated,
+					Timestamp: time.Now(),
+					Message:   fmt.Sprintf("action send failed on channel %s: %v", ch.GetType(), err),
+				})
+				am.mu.Unlock()
+			}
+		}(channel, alert)
 	}
 
 	return nil

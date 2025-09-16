@@ -54,12 +54,12 @@ func newLiftTableBuilder(scope constructs.Construct, id *string, props *LiftTabl
 // build constructs the complete LiftTable
 func (b *liftTableBuilder) build() *LiftTable {
 	this := constructs.NewConstruct(b.scope, b.id)
-	
+
 	b.determineBillingMode()
 	tableProps := b.createTableProps()
 	table := b.createTable(this, tableProps)
 	b.configureAutoScaling(table)
-	
+
 	return &LiftTable{
 		Construct: this,
 		Table:     table,
@@ -83,10 +83,10 @@ func (b *liftTableBuilder) createTableProps() *awsdynamodb.TableProps {
 		BillingMode:   b.billingMode,
 		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
 	}
-	
+
 	b.configureSortKey(tableProps)
 	b.configureCapacity(tableProps)
-	
+
 	return tableProps
 }
 
@@ -95,7 +95,7 @@ func (b *liftTableBuilder) createPartitionKey() *awsdynamodb.Attribute {
 	if b.props.PartitionKeyName == nil {
 		panic("PartitionKeyName is required in LiftTableProps to match DynamORM model field name")
 	}
-	
+
 	return &awsdynamodb.Attribute{
 		Name: b.props.PartitionKeyName,
 		Type: awsdynamodb.AttributeType_STRING,
@@ -117,13 +117,13 @@ func (b *liftTableBuilder) configureCapacity(tableProps *awsdynamodb.TableProps)
 	if b.billingMode != awsdynamodb.BillingMode_PROVISIONED {
 		return
 	}
-	
+
 	if b.props.ReadCapacity != nil {
 		tableProps.ReadCapacity = b.props.ReadCapacity
 	} else {
 		tableProps.ReadCapacity = jsii.Number(5)
 	}
-	
+
 	if b.props.WriteCapacity != nil {
 		tableProps.WriteCapacity = b.props.WriteCapacity
 	} else {
@@ -163,7 +163,7 @@ func (b *liftTableBuilder) configureAutoScaling(table awsdynamodb.Table) {
 	if b.billingMode != awsdynamodb.BillingMode_PROVISIONED {
 		return
 	}
-	
+
 	if b.props.EnableAutoScaling == nil || !*b.props.EnableAutoScaling {
 		return
 	}

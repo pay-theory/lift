@@ -25,7 +25,7 @@ func NewRequestTrackingTable(scope constructs.Construct, id *string, props *Requ
 	baseProps := &BaseManagementTableProps{
 		DefaultTableName: "request-tracking",
 	}
-	
+
 	if props != nil {
 		baseProps.TableName = props.TableName
 		baseProps.TimeToLiveAttribute = props.TimeToLiveAttribute

@@ -4,55 +4,115 @@ run:
   # Lambda-optimized settings
   timeout: 10m
   concurrency: 4
-  tests: false  # Exclude test files from linting
+  tests: false # Exclude test files from linting
   issues-exit-code: 1
   modules-download-mode: readonly
-  relative-path-mode: cfg
-  # Skip vendor, test data, examples, and test files
-  skip-dirs-use-default: true
-  skip-dirs:
-    - examples
-    - testdata
-  skip-files:
-    - ".*_test\\.go$"
 
 output:
-  format: colored-line-number
-  print-issued-lines: true
-  print-linter-name: true
+  formats:
+    text:
+      path: stdout
+      print-issued-lines: true
+      print-linter-name: true
 
 linters:
   default: none
   enable:
     # Essential for Lambda/serverless
-    - errcheck      # Critical for Lambda error handling
-    - govet         # Catch common mistakes
-    - ineffassign   # Detect inefficient assignments
-    - staticcheck   # Comprehensive static analysis
-    - unused        # Remove dead code for smaller binaries
-    
+    - errcheck # Critical for Lambda error handling
+    - govet # Catch common mistakes
+    - ineffassign # Detect inefficient assignments
+    - staticcheck # Comprehensive static analysis
+    - unused # Remove dead code for smaller binaries
+
     # Performance-critical for Lambda
-    - bodyclose     # Prevent resource leaks
-    - noctx         # Ensure context usage (important for Lambda)
-    - prealloc      # Pre-allocate slices for performance
-    - unconvert     # Remove unnecessary conversions
-    
+    - bodyclose # Prevent resource leaks
+    - noctx # Ensure context usage (important for Lambda)
+    - prealloc # Pre-allocate slices for performance
+    - unconvert # Remove unnecessary conversions
+
     # Code quality & maintainability
-    - misspell      # Catch typos
-    - revive        # Comprehensive style guide
-    - gocognit      # Cognitive complexity
-    - gocyclo       # Cyclomatic complexity
-    - dupl          # Duplicate code detection
-    
+    - misspell # Catch typos
+    - revive # Comprehensive style guide
+    - gocognit # Cognitive complexity
+    - gocyclo # Cyclomatic complexity
+    - dupl # Duplicate code detection
+
     # Security & best practices
-    - gosec         # Security issues
-    - copyloopvar   # Loop variable issues
-    
+    - gosec # Security issues
+    - copyloopvar # Loop variable issues
+
     # API/Framework specific
-    - godox         # TODO/FIXME tracking
-    - gocritic      # Opinionated best practices
-    - goconst       # Extract constants
-    
+    - godox # TODO/FIXME tracking
+    - gocritic # Opinionated best practices
+    - goconst # Extract constants
+
+  exclusions:
+    paths:
+      - examples
+      - testdata
+      - ".*_test\\.go$"
+
+    rules:
+      # Test files can be more relaxed
+      - path: _test\.go
+        linters:
+          - dupl
+          - gosec
+          - goconst
+          - errcheck
+          - gocritic
+          - revive # Test naming can be different
+          - unused # Test helpers might look unused
+
+      # Example files might have different patterns
+      - path: examples/
+        linters:
+          - godox
+          - gocyclo
+          - revive # Examples can have different naming
+          - gocritic # Examples can be less optimal
+          - unused # Example code might have unused parts
+
+      # Allow TODO/FIXME in specific files
+      - path: "(.*)?_test\\.go"
+        text: "TODO|FIXME"
+        linters:
+          - godox
+
+      # Context methods are ok to not use all params
+      - path: pkg/lift/context\.go
+        text: "unused-parameter"
+        linters:
+          - revive
+
+      # Type assertions in middleware are expected
+      - path: pkg/middleware/
+        text: "type assertion"
+        linters:
+          - forcetypeassert
+
+      # Don't enforce naming changes on exported APIs (breaking changes)
+      - text: "(exported|should have comment|should not use underscores|should be|receiver name)"
+        linters:
+          - revive
+          - golint
+          - stylecheck
+
+      # Don't require package comments for internal packages
+      - path: pkg/testing/
+        text: "package comment"
+        linters:
+          - revive
+          - golint
+
+      # CDK code has different patterns due to jsii constraints
+      - path: pkg/cdk/
+        linters:
+          - revive # CDK naming follows different conventions
+          - gocritic # CDK patterns can be repetitive
+          - unused # CDK structs might have unused exported fields
+
   settings:
     errcheck:
       # Lambda functions must handle errors properly
@@ -62,7 +122,7 @@ linters:
       exclude-functions:
         - (*github.com/stretchr/testify/assert.Assertions).NotNil
         - (*github.com/stretchr/testify/assert.Assertions).Nil
-    
+
     govet:
       enable-all: true
       # Lambda context handling is critical
@@ -73,17 +133,17 @@ linters:
             - (github.com/pay-theory/lift/pkg/lift.Context).Logger.Error
             - (github.com/pay-theory/lift/pkg/lift.Context).Logger.Warn
             - (github.com/pay-theory/lift/pkg/lift.Context).Logger.Debug
-    
+
     gocyclo:
       # Lambda handlers should be simple
       min-complexity: 15
-    
+
     dupl:
       threshold: 100
-    
+
     misspell:
       locale: US
-    
+
     revive:
       # Conservative rules that don't require breaking changes
       rules:
@@ -115,99 +175,29 @@ linters:
         - name: unused-parameter
         - name: unreachable-code
         - name: redefines-builtin-id
-    
+
     gosec:
       # Lambda-specific security settings
       excludes:
-        - G104  # We use errcheck for this
+        - G104 # We use errcheck for this
       config:
         global:
           audit: true
-    
+
     goconst:
       min-len: 3
       min-occurrences: 3
-    
-    noctx:
-      # All Lambda/HTTP calls must use context
-      enabled: true
-
-issues:
-  # Be strict with new code
-  new: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  
-  exclude-rules:
-    # Test files can be more relaxed
-    - path: _test\.go
-      linters:
-        - dupl
-        - gosec
-        - goconst
-        - errcheck
-        - gocritic
-        - revive  # Test naming can be different
-        - unused  # Test helpers might look unused
-    
-    # Example files might have different patterns
-    - path: examples/
-      linters:
-        - godox
-        - gocyclo
-        - revive    # Examples can have different naming
-        - gocritic  # Examples can be less optimal
-        - unused    # Example code might have unused parts
-    
-    # Allow TODO/FIXME in specific files
-    - path: "(.*)?_test\\.go"
-      text: "TODO|FIXME"
-      linters:
-        - godox
-    
-    # Context methods are ok to not use all params
-    - path: pkg/lift/context\.go
-      text: "unused-parameter"
-      linters:
-        - revive
-    
-    # Type assertions in middleware are expected
-    - path: pkg/middleware/
-      text: "type assertion"
-      linters:
-        - forcetypeassert
-    
-    # Don't enforce naming changes on exported APIs (breaking changes)
-    - text: "(exported|should have comment|should not use underscores|should be|receiver name)"
-      linters:
-        - revive
-        - golint
-        - stylecheck
-    
-    # Don't require package comments for internal packages
-    - path: pkg/testing/
-      text: "package comment"
-      linters:
-        - revive
-        - golint
-    
-    # CDK code has different patterns due to jsii constraints
-    - path: pkg/cdk/
-      linters:
-        - revive     # CDK naming follows different conventions
-        - gocritic   # CDK patterns can be repetitive
-        - unused     # CDK structs might have unused exported fields
-
-  exclude-use-default: false
-  
-  # Don't exclude these important checks
-  exclude:
-    # We want to enforce error checks even in defers
-    - "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*print(f|ln)?|os\\.(Un)?Setenv). is not checked"
 
 formatters:
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/pay-theory/lift
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/pay-theory/lift
 
+issues:
+  max-same-issues: 0

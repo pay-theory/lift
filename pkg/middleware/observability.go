@@ -21,10 +21,10 @@ type ObservabilityConfig struct {
 func ObservabilityMiddleware(config ObservabilityConfig) lift.Middleware {
 	// Set defaults
 	config = setObservabilityMiddlewareDefaults(config)
-	
+
 	// Create coordinated handler
 	handler := newBasicObservabilityHandler(config)
-	
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return handler.handle(ctx, next)
@@ -44,9 +44,9 @@ func setObservabilityMiddlewareDefaults(config ObservabilityConfig) Observabilit
 
 // basicObservabilityHandler coordinates basic logging and metrics
 type basicObservabilityHandler struct {
-	config     ObservabilityConfig
-	logger     *basicLogHandler
-	metrics    *basicMetricsHandler
+	config  ObservabilityConfig
+	logger  *basicLogHandler
+	metrics *basicMetricsHandler
 }
 
 // newBasicObservabilityHandler creates a new basic observability handler
@@ -62,19 +62,19 @@ func newBasicObservabilityHandler(config ObservabilityConfig) *basicObservabilit
 func (h *basicObservabilityHandler) handle(ctx *lift.Context, next lift.Handler) error {
 	start := time.Now()
 	operation := h.config.OperationNameFunc(ctx)
-	
+
 	// Setup logging and metrics
 	h.logger.before(ctx)
 	h.metrics.before(ctx, operation)
-	
+
 	// Execute handler
 	err := next.Handle(ctx)
-	
+
 	// Complete logging and metrics
 	duration := time.Since(start)
 	h.logger.after(ctx, duration, err)
 	h.metrics.after(ctx, operation, duration, err)
-	
+
 	return err
 }
 
@@ -93,13 +93,13 @@ func (l *basicLogHandler) before(ctx *lift.Context) {
 	if l.config.Logger == nil {
 		return
 	}
-	
+
 	// Create context logger
 	contextLogger := l.config.Logger.
 		WithRequestID(ctx.RequestID).
 		WithTenantID(ctx.TenantID()).
 		WithUserID(ctx.UserID())
-	
+
 	// Add trace context if available
 	if traceID := ctx.Request.Headers["X-Trace-Id"]; traceID != "" {
 		contextLogger = contextLogger.WithTraceID(traceID)
@@ -107,9 +107,9 @@ func (l *basicLogHandler) before(ctx *lift.Context) {
 	if spanID := ctx.Request.Headers["X-Span-Id"]; spanID != "" {
 		contextLogger = contextLogger.WithSpanID(spanID)
 	}
-	
+
 	ctx.Logger = contextLogger
-	
+
 	// Log request start
 	ctx.Logger.Info("Request started", map[string]any{
 		"method":     ctx.Request.Method,
@@ -125,12 +125,12 @@ func (l *basicLogHandler) after(ctx *lift.Context, duration time.Duration, err e
 	if ctx.Logger == nil {
 		return
 	}
-	
+
 	logFields := map[string]any{
 		"duration": duration.String(),
 		"status":   ctx.Response.StatusCode,
 	}
-	
+
 	if err != nil {
 		logFields["error"] = "[SANITIZED_ERROR]" // Sanitized for security
 		ctx.Logger.Error("Request failed", logFields)
@@ -154,14 +154,14 @@ func (m *basicMetricsHandler) before(ctx *lift.Context, _ string) {
 	if m.config.Metrics == nil {
 		return
 	}
-	
+
 	// Record request count
 	tenantMetrics := m.config.Metrics.WithTags(map[string]string{
 		"tenant_id": ctx.TenantID(),
 		"method":    ctx.Request.Method,
 		"path":      ctx.Request.Path,
 	})
-	
+
 	counter := tenantMetrics.Counter("requests.total")
 	counter.Inc()
 }
@@ -171,14 +171,14 @@ func (m *basicMetricsHandler) after(ctx *lift.Context, operation string, duratio
 	if m.config.Metrics == nil {
 		return
 	}
-	
+
 	// Record response metrics based on success/error
 	if err != nil {
 		m.recordErrorMetrics(ctx, duration)
 	} else {
 		m.recordSuccessMetrics(ctx, duration)
 	}
-	
+
 	// Record operation-specific metrics
 	m.recordOperationMetrics(operation, duration)
 }
@@ -191,10 +191,10 @@ func (m *basicMetricsHandler) recordErrorMetrics(ctx *lift.Context, duration tim
 		"path":      ctx.Request.Path,
 		"error":     "true",
 	})
-	
+
 	errorCounter := errorMetrics.Counter("requests.errors")
 	errorCounter.Inc()
-	
+
 	// Record latency even for errors
 	histogram := errorMetrics.Histogram("requests.duration")
 	histogram.Observe(float64(duration.Milliseconds()))
@@ -208,11 +208,11 @@ func (m *basicMetricsHandler) recordSuccessMetrics(ctx *lift.Context, duration t
 		"path":      ctx.Request.Path,
 		"status":    fmt.Sprintf("%d", ctx.Response.StatusCode),
 	})
-	
+
 	// Record latency
 	histogram := successMetrics.Histogram("requests.duration")
 	histogram.Observe(float64(duration.Milliseconds()))
-	
+
 	// Record response size if available
 	m.recordResponseSize(ctx, successMetrics)
 }
@@ -222,7 +222,7 @@ func (m *basicMetricsHandler) recordResponseSize(ctx *lift.Context, metrics obse
 	if ctx.Response.Body == nil {
 		return
 	}
-	
+
 	var size int
 	switch v := ctx.Response.Body.(type) {
 	case string:
@@ -235,7 +235,7 @@ func (m *basicMetricsHandler) recordResponseSize(ctx *lift.Context, metrics obse
 			size = len(data)
 		}
 	}
-	
+
 	if size > 0 {
 		gauge := metrics.Gauge("response.size")
 		gauge.Set(float64(size))
@@ -247,7 +247,7 @@ func (m *basicMetricsHandler) recordOperationMetrics(operation string, duration 
 	// Record operation-specific counters
 	operationCounter := m.config.Metrics.Counter(fmt.Sprintf("operation.%s", operation))
 	operationCounter.Inc()
-	
+
 	// Record operation duration
 	operationHistogram := m.config.Metrics.Histogram(fmt.Sprintf("operation.%s.duration", operation))
 	operationHistogram.Observe(float64(duration.Milliseconds()))

@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
+
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
 	"github.com/pay-theory/lift/pkg/utils/sanitization"
@@ -109,7 +110,7 @@ func NewCloudWatchLogger(config observability.LoggerConfig, client observability
 	logger.shared.wg.Add(1)
 	go logger.flushLoop()
 
-    return logger, nil
+	return logger, nil
 }
 
 // Debug logs a debug message (with enhanced sanitization for security)
@@ -212,11 +213,11 @@ func (l *CloudWatchLogger) log(level, message string, fieldMaps ...map[string]an
 
 // logEntryBuilder builds and processes log entries
 type logEntryBuilder struct {
-    logger     *CloudWatchLogger
-    entry      *observability.LogEntry
-    level      string
-    message    string
-    fieldMaps  []map[string]any
+	logger    *CloudWatchLogger
+	entry     *observability.LogEntry
+	level     string
+	message   string
+	fieldMaps []map[string]any
 }
 
 // newLogEntryBuilder creates a new log entry builder
@@ -234,7 +235,7 @@ func (b *logEntryBuilder) build() {
 	if !b.shouldLog() {
 		return
 	}
-	
+
 	b.createEntry()
 	b.addContextFields()
 	b.mergeFieldMaps()
@@ -313,7 +314,7 @@ func (b *logEntryBuilder) handleErrorNotification() {
 	if b.level != "ERROR" || b.logger.snsNotifier == nil {
 		return
 	}
-	
+
 	go b.sendAsyncNotification(b.entry)
 }
 
@@ -321,7 +322,7 @@ func (b *logEntryBuilder) handleErrorNotification() {
 func (b *logEntryBuilder) sendAsyncNotification(e *observability.LogEntry) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	if err := b.logger.snsNotifier.NotifyError(ctx, e); err != nil {
 		atomic.AddInt64(&b.logger.shared.stats.errorCount, 1)
 		b.logger.shared.stats.lastError = fmt.Sprintf("SNS notification failed: %v", err)
@@ -401,7 +402,7 @@ func (h *logBatchHandler) flushAndReset() {
 func (h *logBatchHandler) shutdown(buffer chan *observability.LogEntry) {
 	// Flush current batch
 	h.flushIfNeeded()
-	
+
 	// Drain remaining buffer entries
 	h.drainBuffer(buffer)
 }

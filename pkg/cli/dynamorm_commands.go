@@ -847,8 +847,8 @@ func awsConfig(ctx context.Context, region string) (aws.Config, error) {
 }
 
 func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynamodb.Client, tableName string) (*TableAnalysis, error) {
-    builder := newTableAnalysisBuilder(ctx, c, client, tableName)
-    return builder.build()
+	builder := newTableAnalysisBuilder(ctx, c, client, tableName)
+	return builder.build()
 }
 
 // tableAnalysisBuilder builds table analysis
@@ -867,12 +867,12 @@ type tableAnalysisBuilder struct {
 
 // newTableAnalysisBuilder creates a new table analysis builder
 func newTableAnalysisBuilder(ctx context.Context, cmd *DynamORMMigrateCommand, client *dynamodb.Client, tableName string) *tableAnalysisBuilder {
-    return &tableAnalysisBuilder{
-        cmd:       cmd,
-        ctx:       ctx,
-        client:    client,
-        tableName: tableName,
-    }
+	return &tableAnalysisBuilder{
+		cmd:       cmd,
+		ctx:       ctx,
+		client:    client,
+		tableName: tableName,
+	}
 }
 
 // build constructs the complete table analysis
@@ -929,7 +929,7 @@ func (tab *tableAnalysisBuilder) initializeAnalysis() {
 // analyzeKeySchema analyzes primary key schema
 func (tab *tableAnalysisBuilder) analyzeKeySchema() {
 	keyAnalyzer := newKeySchemaAnalyzer(tab.cmd, tab.table.AttributeDefinitions)
-	
+
 	for _, key := range tab.table.KeySchema {
 		spec := keyAnalyzer.analyzeKey(key)
 		if spec == nil {
@@ -948,7 +948,7 @@ func (tab *tableAnalysisBuilder) analyzeKeySchema() {
 // analyzeGlobalSecondaryIndexes analyzes all GSIs
 func (tab *tableAnalysisBuilder) analyzeGlobalSecondaryIndexes() {
 	gsiAnalyzer := newGSIAnalyzer(tab.cmd, tab.table.AttributeDefinitions)
-	
+
 	for _, gsi := range tab.table.GlobalSecondaryIndexes {
 		gsiAnalysis := gsiAnalyzer.analyzeGSI(gsi)
 		tab.analysis.GlobalSecondaryIndexes = append(tab.analysis.GlobalSecondaryIndexes, gsiAnalysis)
@@ -958,7 +958,7 @@ func (tab *tableAnalysisBuilder) analyzeGlobalSecondaryIndexes() {
 // analyzeLocalSecondaryIndexes analyzes all LSIs
 func (tab *tableAnalysisBuilder) analyzeLocalSecondaryIndexes() {
 	lsiAnalyzer := newLSIAnalyzer(tab.cmd, tab.table.AttributeDefinitions)
-	
+
 	for _, lsi := range tab.table.LocalSecondaryIndexes {
 		lsiAnalysis := lsiAnalyzer.analyzeLSI(lsi)
 		tab.analysis.LocalSecondaryIndexes = append(tab.analysis.LocalSecondaryIndexes, lsiAnalysis)
@@ -973,9 +973,9 @@ func (tab *tableAnalysisBuilder) analyzeTTL() {
 
 // analyzeStreams analyzes DynamoDB streams configuration
 func (tab *tableAnalysisBuilder) analyzeStreams() {
-	if tab.table.StreamSpecification != nil && 
-	   tab.table.StreamSpecification.StreamEnabled != nil && 
-	   *tab.table.StreamSpecification.StreamEnabled {
+	if tab.table.StreamSpecification != nil &&
+		tab.table.StreamSpecification.StreamEnabled != nil &&
+		*tab.table.StreamSpecification.StreamEnabled {
 		tab.analysis.StreamSpec = &StreamSpec{
 			Enabled:   true,
 			ViewType:  string(tab.table.StreamSpecification.StreamViewType),
@@ -1050,7 +1050,7 @@ func (ga *gsiAnalyzer) analyzeGSI(gsi types.GlobalSecondaryIndexDescription) GSI
 	}
 
 	keyAnalyzer := newKeySchemaAnalyzer(ga.cmd, ga.attributes)
-	
+
 	for _, key := range gsi.KeySchema {
 		spec := keyAnalyzer.analyzeKey(key)
 		if spec == nil {

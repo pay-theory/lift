@@ -220,4 +220,3 @@ type BenchmarkComparison struct {
 	Improvement float64
 	MemoryDelta int64
 }
-

@@ -40,7 +40,7 @@ func main() {
 	// Create Lift app with the logger
 	app := lift.New()
 	app.WithLogger(logger)
-	
+
 	// Set up defer after app is created to ensure cleanup happens
 	defer func() {
 		if err := logger.Close(); err != nil {

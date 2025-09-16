@@ -18,26 +18,26 @@ import (
 // Memory optimized: 816 → 808 bytes (8 bytes saved)
 type DynamoStreamProcessorProps struct {
 	// Pointers first (8 bytes each)
-	StreamingTableProps *StreamingTableProps
-	DeadLetterQueueProps *awssqs.QueueProps
-	EventSourceProps *awslambdaeventsources.DynamoEventSourceProps
+	StreamingTableProps     *StreamingTableProps
+	DeadLetterQueueProps    *awssqs.QueueProps
+	EventSourceProps        *awslambdaeventsources.DynamoEventSourceProps
 	BatchSize               *float64
 	RetryAttempts           *float64
 	ParallelizationFactor   *float64
-	EnableDeadLetterQueue *bool
+	EnableDeadLetterQueue   *bool
 	BisectBatchOnError      *bool
 	ReportBatchItemFailures *bool
-	EnableTracing     *bool
-	EnableMultiTenant *bool
-	EnableMonitoring  *bool
+	EnableTracing           *bool
+	EnableMultiTenant       *bool
+	EnableMonitoring        *bool
 	// Duration structs (16 bytes each)
-	MaxBatchingWindow       awscdk.Duration
-	MaxRecordAge            awscdk.Duration
-	TumblingWindow          awscdk.Duration
+	MaxBatchingWindow awscdk.Duration
+	MaxRecordAge      awscdk.Duration
+	TumblingWindow    awscdk.Duration
 	// Large struct
 	FunctionProps awslambda.FunctionProps
 	// Medium types
-	StartingPosition        awslambda.StartingPosition
+	StartingPosition awslambda.StartingPosition
 }
 
 // DynamoStreamProcessor represents a DynamoDB table with stream processor using DynamORM
@@ -108,15 +108,15 @@ func newDynamoStreamProcessorBuilder(processor *DynamoStreamProcessor, props *Dy
 // buildDynamoStreamProcessorConfig resolves configuration values with defaults
 func buildDynamoStreamProcessorConfig(props *DynamoStreamProcessorProps) *dynamoStreamProcessorConfig {
 	config := &dynamoStreamProcessorConfig{
-		batchSize:              float64(10),
-		maxBatchingWindow:      awscdk.Duration_Seconds(jsii.Number(5)),
-		startingPosition:       awslambda.StartingPosition_LATEST,
-		maxRecordAge:           awscdk.Duration_Hours(jsii.Number(24)),
-		bisectBatchOnError:     false,
-		retryAttempts:          float64(10000),
+		batchSize:               float64(10),
+		maxBatchingWindow:       awscdk.Duration_Seconds(jsii.Number(5)),
+		startingPosition:        awslambda.StartingPosition_LATEST,
+		maxRecordAge:            awscdk.Duration_Hours(jsii.Number(24)),
+		bisectBatchOnError:      false,
+		retryAttempts:           float64(10000),
 		reportBatchItemFailures: true,
-		parallelizationFactor:  float64(1),
-		enableDLQ:              true,
+		parallelizationFactor:   float64(1),
+		enableDLQ:               true,
 	}
 
 	// Apply provided values
@@ -155,19 +155,19 @@ func buildDynamoStreamProcessorConfig(props *DynamoStreamProcessorProps) *dynamo
 func (b *dynamoStreamProcessorBuilder) build() *DynamoStreamProcessor {
 	// Create streaming table
 	b.setupStreamingTable()
-	
+
 	// Create dead letter queue if enabled
 	b.setupDeadLetterQueue()
-	
+
 	// Create Lambda function
 	b.setupFunction()
-	
+
 	// Configure event source
 	b.setupEventSource()
-	
+
 	// Setup permissions
 	b.setupPermissions()
-	
+
 	// Add monitoring if enabled
 	b.setupMonitoring()
 
@@ -250,18 +250,18 @@ func newDynamoStreamFunctionBuilder(processor *DynamoStreamProcessor, props *Dyn
 func (fb *dynamoStreamFunctionBuilder) build() *LiftFunction {
 	// Prepare environment variables
 	functionEnv := fb.prepareFunctionEnvironment()
-	
+
 	// Create LiftFunction properties
 	liftProps := &LiftFunctionProps{
 		FunctionProps: fb.props.FunctionProps,
 	}
-	
+
 	// Set default code and runtime if not provided
 	fb.setDefaultFunctionProps(liftProps)
-	
+
 	// Set environment variables
 	liftProps.Environment = &functionEnv
-	
+
 	// Set Lift-specific properties
 	if fb.props.EnableTracing != nil {
 		liftProps.EnableTracing = fb.props.EnableTracing
@@ -269,21 +269,21 @@ func (fb *dynamoStreamFunctionBuilder) build() *LiftFunction {
 	if fb.props.EnableMultiTenant != nil {
 		liftProps.EnableMultiTenant = fb.props.EnableMultiTenant
 	}
-	
+
 	return NewLiftFunction(fb.processor, jsii.String("Function"), liftProps)
 }
 
 // prepareFunctionEnvironment prepares environment variables for the function
 func (fb *dynamoStreamFunctionBuilder) prepareFunctionEnvironment() map[string]*string {
 	functionEnv := make(map[string]*string)
-	
+
 	// Copy existing environment variables
 	if fb.props.FunctionProps.Environment != nil {
 		for k, v := range *fb.props.FunctionProps.Environment {
 			functionEnv[k] = v
 		}
 	}
-	
+
 	// Add DynamoDB-specific environment variables
 	functionEnv["DYNAMODB_TABLE_NAME"] = fb.processor.StreamingTable.GetTableName()
 	functionEnv["DYNAMODB_TABLE_ARN"] = fb.processor.StreamingTable.GetTableArn()
@@ -293,7 +293,7 @@ func (fb *dynamoStreamFunctionBuilder) prepareFunctionEnvironment() map[string]*
 	if fb.processor.DeadLetterQueue != nil {
 		functionEnv["DYNAMODB_DLQ_URL"] = fb.processor.DeadLetterQueue.QueueUrl()
 	}
-	
+
 	return functionEnv
 }
 
@@ -330,19 +330,19 @@ func newDynamoStreamEventSourceBuilder(processor *DynamoStreamProcessor, props *
 func (esb *dynamoStreamEventSourceBuilder) build() awslambdaeventsources.DynamoEventSource {
 	// Create base event source properties
 	eventSourceProps := esb.createBaseEventSourceProps()
-	
+
 	// Set tumbling window if specified
 	if esb.props.TumblingWindow != nil {
 		eventSourceProps.TumblingWindow = esb.props.TumblingWindow
 	}
-	
+
 	// Apply user-provided event source properties
 	esb.applyUserEventSourceProps(eventSourceProps)
-	
+
 	// Create event source and add to function
 	eventSource := awslambdaeventsources.NewDynamoEventSource(esb.processor.StreamingTable.Table, eventSourceProps)
 	esb.processor.Function.Function.AddEventSource(eventSource)
-	
+
 	return eventSource
 }
 
@@ -365,9 +365,9 @@ func (esb *dynamoStreamEventSourceBuilder) applyUserEventSourceProps(eventSource
 	if esb.props.EventSourceProps == nil {
 		return
 	}
-	
+
 	props := esb.props.EventSourceProps
-	
+
 	if props.StartingPosition != "" {
 		eventSourceProps.StartingPosition = props.StartingPosition
 	}
@@ -411,9 +411,9 @@ func (d *DynamoStreamProcessor) enableMonitoring() {
 		DisplayName: jsii.String(fmt.Sprintf("Stream alarms for %s", *d.StreamingTable.GetTableName())),
 	})
 
-    if d.Function != nil && d.Function.Function != nil {
-        EnableStreamLambdaMonitoring(d, d.StreamingTable.GetTableName(), d.Function.Function)
-    }
+	if d.Function != nil && d.Function.Function != nil {
+		EnableStreamLambdaMonitoring(d, d.StreamingTable.GetTableName(), d.Function.Function)
+	}
 
 	// DynamoDB table metrics
 	if d.StreamingTable != nil {

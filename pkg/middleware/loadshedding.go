@@ -97,12 +97,12 @@ type LoadSheddingStats struct {
 func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 	// Apply default configuration
 	config = applyLoadSheddingDefaults(config)
-	
+
 	manager := newLoadSheddingManager(config)
-	
+
 	// Start background metrics collection
 	go manager.metricsCollector()
-	
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return manager.handleRequest(ctx, next)
@@ -133,7 +133,7 @@ func (b *loadSheddingDefaultsBuilder) build() LoadSheddingConfig {
 	b.applyMetricsDefaults()
 	b.applyResponseDefaults()
 	b.applyFunctionDefaults()
-	
+
 	return b.config
 }
 
@@ -222,7 +222,7 @@ func (lsm *loadSheddingManager) handleRequest(ctx *lift.Context, next lift.Handl
 	if !lsm.config.Enabled {
 		return next.Handle(ctx)
 	}
-	
+
 	handler := newLoadSheddingHandler(lsm, ctx)
 	return handler.handle(next)
 }
@@ -248,12 +248,12 @@ func (h *loadSheddingHandler) handle(next lift.Handler) error {
 	// Update active request count
 	h.incrementActiveRequests()
 	defer h.decrementActiveRequests()
-	
+
 	// Check if request should be shed
 	if h.shouldShedRequest() {
 		return h.handleShedding()
 	}
-	
+
 	// Execute request and record metrics
 	return h.executeAndRecordMetrics(next)
 }
@@ -277,15 +277,15 @@ func (h *loadSheddingHandler) shouldShedRequest() bool {
 func (h *loadSheddingHandler) handleShedding() error {
 	// Record shedding metrics
 	h.recordSheddingMetrics()
-	
+
 	// Log shedding event
 	h.logSheddingEvent()
-	
+
 	// Record shedding in metrics system
 	if h.manager.config.EnableMetrics && h.manager.config.Metrics != nil {
 		h.manager.recordShedding(h.ctx)
 	}
-	
+
 	return h.manager.config.SheddingHandler(h.ctx)
 }
 
@@ -314,10 +314,10 @@ func (h *loadSheddingHandler) executeAndRecordMetrics(next lift.Handler) error {
 	// Execute request
 	err := next.Handle(h.ctx)
 	duration := time.Since(h.start)
-	
+
 	// Record request metrics
 	h.recordRequestMetrics(duration, err)
-	
+
 	return err
 }
 
@@ -325,11 +325,11 @@ func (h *loadSheddingHandler) executeAndRecordMetrics(next lift.Handler) error {
 func (h *loadSheddingHandler) recordRequestMetrics(duration time.Duration, err error) {
 	atomic.AddInt64(&h.manager.metrics.TotalRequests, 1)
 	h.manager.recordLatency(duration)
-	
+
 	if err != nil {
 		h.manager.recordError()
 	}
-	
+
 	// Record success metrics in metrics system
 	if h.manager.config.EnableMetrics && h.manager.config.Metrics != nil {
 		h.manager.recordSuccess(h.ctx, duration)

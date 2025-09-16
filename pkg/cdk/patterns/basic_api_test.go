@@ -138,9 +138,9 @@ func TestNewBasicAPI_CustomConfiguration(_ *testing.T) {
 
 	// When
 	NewBasicAPI(stack, jsii.String("BasicAPI"), &BasicAPIProps{
-		ApiName:               jsii.String("test-api"),
-		Code:                  awslambda.Code_FromAsset(jsii.String("."), nil),
-		Handler:               jsii.String("main"),
+		ApiName:     jsii.String("test-api"),
+		Code:        awslambda.Code_FromAsset(jsii.String("."), nil),
+		Handler:     jsii.String("main"),
 		MemorySize:  jsii.Number(1024),
 		Timeout:     jsii.Number(60),
 		Environment: &env,

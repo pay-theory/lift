@@ -67,14 +67,14 @@ func (ls *LogService) GetRecentLogs(limit int) []LogEntry {
 	ls.mu.RLock()
 	defer ls.mu.RUnlock()
 
-    if limit <= 0 || limit > len(ls.logs) {
-        limit = len(ls.logs)
-    }
-    // Hard-cap to prevent excessive allocations even if analysis
-    // cannot infer len(ls.logs) is bounded by ls.maxLogs.
-    if limit > ls.maxLogs {
-        limit = ls.maxLogs
-    }
+	if limit <= 0 || limit > len(ls.logs) {
+		limit = len(ls.logs)
+	}
+	// Hard-cap to prevent excessive allocations even if analysis
+	// cannot infer len(ls.logs) is bounded by ls.maxLogs.
+	if limit > ls.maxLogs {
+		limit = ls.maxLogs
+	}
 
 	// Return the most recent logs
 	start := len(ls.logs) - limit
@@ -82,15 +82,15 @@ func (ls *LogService) GetRecentLogs(limit int) []LogEntry {
 		start = 0
 	}
 
-    // Copy into a bounded slice to avoid allocating based on a potentially
-    // large, user-influenced value.
-    subset := ls.logs[start:]
-    if len(subset) > limit {
-        subset = subset[:limit]
-    }
-    result := make([]LogEntry, len(subset))
-    copy(result, subset)
-    return result
+	// Copy into a bounded slice to avoid allocating based on a potentially
+	// large, user-influenced value.
+	subset := ls.logs[start:]
+	if len(subset) > limit {
+		subset = subset[:limit]
+	}
+	result := make([]LogEntry, len(subset))
+	copy(result, subset)
+	return result
 }
 
 // GetLogsSince returns logs since a given timestamp

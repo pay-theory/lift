@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
@@ -85,7 +86,7 @@ func newLiftAppBuilder(scope constructs.Construct, id *string, props *LiftAppPro
 func (b *liftAppBuilder) build() *LiftApp {
 	b.construct = constructs.NewConstruct(b.scope, b.id)
 	b.app = &LiftApp{Construct: b.construct}
-	
+
 	b.prepareEnvironment()
 	b.createFunction()
 	b.setupDatabase()
@@ -93,7 +94,7 @@ func (b *liftAppBuilder) build() *LiftApp {
 	b.createAPI()
 	b.setupRoutes()
 	b.createOutputs()
-	
+
 	return b.app
 }
 
@@ -248,7 +249,7 @@ func (b *liftAppBuilder) setupRoutes() {
 // createOutputs creates CloudFormation outputs
 func (b *liftAppBuilder) createOutputs() {
 	stack := awscdk.Stack_Of(b.construct)
-	
+
 	awscdk.NewCfnOutput(stack, jsii.String("ApiUrl"), &awscdk.CfnOutputProps{
 		Value:       b.app.API.GetUrl(),
 		Description: jsii.String("API Gateway endpoint URL"),

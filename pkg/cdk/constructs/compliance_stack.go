@@ -198,21 +198,21 @@ func buildComplianceStackConfig(props *ComplianceStackProps) *complianceStackCon
 func (b *complianceStackBuilder) build() *ComplianceStack {
 	// Create encryption resources
 	encryptionKey := b.setupEncryption()
-	
+
 	// Create storage resources
 	complianceBucket := b.setupComplianceBucket(encryptionKey)
 	complianceLogGroup := b.setupComplianceLogGroup(encryptionKey)
-	
+
 	// Create monitoring and auditing services
 	cloudTrail := b.setupCloudTrail(complianceBucket, complianceLogGroup)
 	configRecorder := b.setupConfig(complianceBucket)
 	guardDutyDetector := b.setupGuardDuty()
 	securityHub := b.setupSecurityHub()
-	
+
 	// Create automation and reporting
 	complianceFunction := b.setupComplianceFunction(complianceBucket, encryptionKey)
 	b.setupComplianceReports(complianceBucket, complianceFunction)
-	
+
 	// Store configuration
 	b.storeConfiguration()
 
@@ -234,7 +234,7 @@ func (b *complianceStackBuilder) setupEncryption() awskms.Key {
 	if !b.config.enableEncryption {
 		return nil
 	}
-	
+
 	if b.props.EncryptionKey != nil {
 		if key, ok := b.props.EncryptionKey.(awskms.Key); ok {
 			return key
@@ -394,7 +394,7 @@ func (ekb *encryptionKeyBuilder) build() awskms.Key {
 			},
 		}),
 	})
-	
+
 	// Add alias for easier identification
 	encryptionKey.AddAlias(jsii.String(fmt.Sprintf("alias/%s-compliance", *ekb.props.AppName)))
 	return encryptionKey
@@ -656,41 +656,41 @@ func enableComplianceStandard(scope constructs.Construct, framework ComplianceFr
 // createComplianceFunction creates a Lambda function for compliance automation
 func createComplianceFunction(scope constructs.Construct, props *ComplianceStackProps, bucket awss3.Bucket, key awskms.Key) awslambda.Function {
 
-    // Ensure non-nil environment variables for JSII
-    env := props.Environment
-    if env == nil {
-        env = jsii.String("prod")
-    }
+	// Ensure non-nil environment variables for JSII
+	env := props.Environment
+	if env == nil {
+		env = jsii.String("prod")
+	}
 
-    function := CreateStandardLambdaFunction(scope, "ComplianceFunction", bucket, key, LambdaFunctionConfig{
-        FunctionName: fmt.Sprintf("%s-compliance-automation", *props.AppName),
-        Description:  "Compliance automation and reporting function",
-        Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
-        Permissions:  PermissionReadWrite,
-        Environment: map[string]*string{
-            "COMPLIANCE_BUCKET": bucket.BucketName(),
-            "APP_NAME":          props.AppName,
-            "ENVIRONMENT":       env,
-        },
-    })
+	function := CreateStandardLambdaFunction(scope, "ComplianceFunction", bucket, key, LambdaFunctionConfig{
+		FunctionName: fmt.Sprintf("%s-compliance-automation", *props.AppName),
+		Description:  "Compliance automation and reporting function",
+		Timeout:      awscdk.Duration_Minutes(jsii.Number(15)),
+		Permissions:  PermissionReadWrite,
+		Environment: map[string]*string{
+			"COMPLIANCE_BUCKET": bucket.BucketName(),
+			"APP_NAME":          props.AppName,
+			"ENVIRONMENT":       env,
+		},
+	})
 
 	// Add additional compliance-specific permissions
 	if roleInterface := function.Role(); roleInterface != nil {
 		if functionRole, ok := roleInterface.(awsiam.Role); ok {
 			functionRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Effect: awsiam.Effect_ALLOW,
-		Actions: &[]*string{
-			jsii.String("config:GetComplianceDetailsByConfigRule"),
-			jsii.String("config:GetComplianceDetailsByResource"),
-			jsii.String("config:DescribeConfigRules"),
-			jsii.String("config:DescribeComplianceByConfigRule"),
-			jsii.String("securityhub:GetFindings"),
-			jsii.String("securityhub:BatchImportFindings"),
-			jsii.String("guardduty:GetFindings"),
-			jsii.String("cloudtrail:LookupEvents"),
-		},
-		Resources: &[]*string{jsii.String("*")},
-	}))
+				Effect: awsiam.Effect_ALLOW,
+				Actions: &[]*string{
+					jsii.String("config:GetComplianceDetailsByConfigRule"),
+					jsii.String("config:GetComplianceDetailsByResource"),
+					jsii.String("config:DescribeConfigRules"),
+					jsii.String("config:DescribeComplianceByConfigRule"),
+					jsii.String("securityhub:GetFindings"),
+					jsii.String("securityhub:BatchImportFindings"),
+					jsii.String("guardduty:GetFindings"),
+					jsii.String("cloudtrail:LookupEvents"),
+				},
+				Resources: &[]*string{jsii.String("*")},
+			}))
 		}
 	}
 
@@ -726,17 +726,17 @@ func storeComplianceConfiguration(scope constructs.Construct, props *ComplianceS
 		})
 	}
 
-    // Store data retention policy
-    // Default to 2555 days (7 years) if not provided
-    days := 2555.0
-    if props.DataRetentionDays != nil {
-        days = *props.DataRetentionDays
-    }
-    awsssm.NewStringParameter(scope, jsii.String("DataRetentionPolicy"), &awsssm.StringParameterProps{
-        ParameterName: jsii.String(fmt.Sprintf("/%s/compliance/data-retention-days", *props.AppName)),
-        StringValue:   jsii.String(fmt.Sprintf("%.0f", days)),
-        Description:   jsii.String("Data retention period in days"),
-    })
+	// Store data retention policy
+	// Default to 2555 days (7 years) if not provided
+	days := 2555.0
+	if props.DataRetentionDays != nil {
+		days = *props.DataRetentionDays
+	}
+	awsssm.NewStringParameter(scope, jsii.String("DataRetentionPolicy"), &awsssm.StringParameterProps{
+		ParameterName: jsii.String(fmt.Sprintf("/%s/compliance/data-retention-days", *props.AppName)),
+		StringValue:   jsii.String(fmt.Sprintf("%.0f", days)),
+		Description:   jsii.String("Data retention period in days"),
+	})
 }
 
 // GetComplianceStatus returns the current compliance status

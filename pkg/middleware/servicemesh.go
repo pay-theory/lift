@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/servicediscovery"
 	"github.com/aws/aws-sdk-go-v2/service/servicediscovery/types"
 	"github.com/google/uuid"
+
 	"github.com/pay-theory/lift/pkg/lift"
 )
 

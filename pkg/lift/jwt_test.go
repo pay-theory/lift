@@ -17,14 +17,14 @@ func TestJWTAuthentication(t *testing.T) {
 	// #nosec G101 -- Test secret for unit testing only
 	secret := "test-secret"
 
-    // Create app with JWT auth (canonical middleware)
-    app := lift.New()
-    app.Use(middleware.JWTAuth(middleware.JWTConfig{
-        Secret:    secret,
-        Algorithm: "HS256",
-        TokenLookup: "header:Authorization",
-        SkipPaths: []string{"/public"},
-    }))
+	// Create app with JWT auth (canonical middleware)
+	app := lift.New()
+	app.Use(middleware.JWTAuth(middleware.JWTConfig{
+		Secret:      secret,
+		Algorithm:   "HS256",
+		TokenLookup: "header:Authorization",
+		SkipPaths:   []string{"/public"},
+	}))
 
 	// Public endpoint
 	if err := app.GET("/public", func(ctx *lift.Context) error {

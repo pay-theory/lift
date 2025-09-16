@@ -7,9 +7,10 @@ import (
 
 	"github.com/pay-theory/dynamorm"
 	"github.com/pay-theory/dynamorm/pkg/session"
-	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/limited"
 	"go.uber.org/zap"
+
+	"github.com/pay-theory/lift/pkg/lift"
 )
 
 // LimitedConfig holds configuration for the limited-based rate limiter

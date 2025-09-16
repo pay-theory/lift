@@ -43,7 +43,7 @@ func DefaultSecurityHeadersConfig() SecurityHeadersConfig {
 // SecurityHeaders returns the security headers middleware
 func SecurityHeaders(config SecurityHeadersConfig) lift.Middleware {
 	applier := newSecurityHeaderApplier(config)
-	
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return applier.apply(ctx, next)
@@ -53,9 +53,9 @@ func SecurityHeaders(config SecurityHeadersConfig) lift.Middleware {
 
 // securityHeaderApplier applies security headers based on configuration
 type securityHeaderApplier struct {
-    headerSetters     []headerSetter
-    conditionalSetter *conditionalHeaderSetter
-    config            SecurityHeadersConfig
+	headerSetters     []headerSetter
+	conditionalSetter *conditionalHeaderSetter
+	config            SecurityHeadersConfig
 }
 
 // newSecurityHeaderApplier creates a new security header applier
@@ -63,13 +63,13 @@ func newSecurityHeaderApplier(config SecurityHeadersConfig) *securityHeaderAppli
 	applier := &securityHeaderApplier{
 		config: config,
 	}
-	
+
 	// Initialize header setters
 	applier.initializeHeaderSetters()
-	
+
 	// Initialize conditional setter for HSTS
 	applier.conditionalSetter = newConditionalHeaderSetter(config)
-	
+
 	return applier
 }
 
@@ -83,7 +83,7 @@ func (sha *securityHeaderApplier) initializeHeaderSetters() {
 		newSimpleHeaderSetter("Referrer-Policy", sha.config.ReferrerPolicy),
 		newSimpleHeaderSetter("Permissions-Policy", sha.config.PermissionsPolicy),
 	}
-	
+
 	// Add custom headers
 	for key, value := range sha.config.CustomHeaders {
 		sha.headerSetters = append(sha.headerSetters, newSimpleHeaderSetter(key, value))
@@ -96,18 +96,18 @@ func (sha *securityHeaderApplier) apply(ctx *lift.Context, next lift.Handler) er
 	if sha.shouldSkipInDevelopment(ctx) {
 		return next.Handle(ctx)
 	}
-	
+
 	// Apply all simple headers
 	for _, setter := range sha.headerSetters {
 		setter.setHeader(ctx)
 	}
-	
+
 	// Apply conditional headers (HSTS)
 	sha.conditionalSetter.applyConditionalHeaders(ctx)
-	
+
 	// Apply cache control for sensitive paths
 	sha.applyCacheControl(ctx)
-	
+
 	return next.Handle(ctx)
 }
 
@@ -116,7 +116,7 @@ func (sha *securityHeaderApplier) shouldSkipInDevelopment(ctx *lift.Context) boo
 	if sha.config.IncludeInDevelopment {
 		return false
 	}
-	
+
 	env := ctx.Get("environment")
 	return env == "development"
 }

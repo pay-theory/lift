@@ -57,10 +57,10 @@ func (s *Sanitizer) SanitizeFieldValue(key string, value any) any {
 
 // fieldSanitizationProcessor handles field value sanitization
 type fieldSanitizationProcessor struct {
-    sanitizer *Sanitizer
-    key       string
-    value     any
-    keyLower  string
+	sanitizer *Sanitizer
+	key       string
+	value     any
+	keyLower  string
 }
 
 // newFieldSanitizationProcessor creates a new field sanitization processor
@@ -79,15 +79,15 @@ func (p *fieldSanitizationProcessor) sanitize() any {
 	if AllowedFields[p.keyLower] {
 		return p.value
 	}
-	
+
 	// If no data protection manager, redact everything for safety
 	if p.sanitizer.dataProtectionManager == nil {
 		return redactedValue
 	}
-	
+
 	// Get data classification
 	classification := p.getDataClassification()
-	
+
 	// Apply sanitization based on classification
 	return p.applySanitization(classification)
 }
@@ -99,12 +99,12 @@ func (p *fieldSanitizationProcessor) getDataClassification() security.DataClassi
 		map[string]any{p.key: p.value},
 		map[string]any{"source": "sanitizer"},
 	)
-	
+
 	// Get the classification for this specific field
 	if fieldClass, exists := dataCtx.Fields[p.key]; exists {
 		return fieldClass
 	}
-	
+
 	// Use overall classification if field-specific not found
 	return dataCtx.Classification
 }
@@ -112,7 +112,7 @@ func (p *fieldSanitizationProcessor) getDataClassification() security.DataClassi
 // applySanitization applies the appropriate sanitization based on classification
 func (p *fieldSanitizationProcessor) applySanitization(classification security.DataClassification) any {
 	handler := newClassificationHandler(p.keyLower, p.value)
-	
+
 	switch classification {
 	case security.DataRestricted:
 		return handler.handleRestricted()
@@ -129,8 +129,8 @@ func (p *fieldSanitizationProcessor) applySanitization(classification security.D
 
 // classificationHandler handles sanitization for different data classifications
 type classificationHandler struct {
-    value    any
-    keyLower string
+	value    any
+	keyLower string
 }
 
 // newClassificationHandler creates a new classification handler
@@ -147,7 +147,7 @@ func (h *classificationHandler) handleRestricted() any {
 	if !ok {
 		return redactedValue
 	}
-	
+
 	// Clean the string to check if it's a number
 	cleaned := strings.ReplaceAll(strings.ReplaceAll(str, " ", ""), "-", "")
 	if len(cleaned) >= 4 && isNumeric(cleaned) {
@@ -155,7 +155,7 @@ func (h *classificationHandler) handleRestricted() any {
 		masked := strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
 		return masked
 	}
-	
+
 	return redactedValue
 }
 
@@ -170,22 +170,22 @@ func (h *classificationHandler) handleInternal() any {
 	if !ok {
 		return h.value
 	}
-	
+
 	// Handle user-generated content
 	if isUserContentField(h.keyLower) {
 		return h.sanitizeUserContent(str)
 	}
-	
+
 	// Handle error messages
 	if h.isErrorField() {
 		return h.sanitizeErrorMessage(str)
 	}
-	
+
 	// Handle large strings
 	if len(str) > 200 {
 		return fmt.Sprintf("[LARGE_STRING_%d_CHARS]", len(str))
 	}
-	
+
 	return h.value
 }
 

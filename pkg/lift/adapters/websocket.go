@@ -79,7 +79,7 @@ func (a *WebSocketAdapter) Adapt(rawEvent any) (*Request, error) {
 	if !ok {
 		return nil, fmt.Errorf("event must be a map[string]any, got %T", rawEvent)
 	}
-	
+
 	requestContext, ok := eventMap["requestContext"].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("requestContext must be a map[string]any")

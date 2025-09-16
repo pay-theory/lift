@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
@@ -41,9 +42,9 @@ func DefaultJWTConfig() JWTConfig {
 func JWTAuth(config JWTConfig) lift.Middleware {
 	// Apply default configuration
 	config = applyJWTDefaults(config)
-	
+
 	processor := newJWTProcessor(config)
-	
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return processor.process(ctx, next)
@@ -70,10 +71,10 @@ func applyJWTDefaults(config JWTConfig) JWTConfig {
 
 // jwtProcessor handles JWT processing logic
 type jwtProcessor struct {
-    pathSkipper   *jwtPathSkipper
-    tokenHandler  *jwtTokenHandler
-    claimsHandler *jwtClaimsHandler
-    config        JWTConfig
+	pathSkipper   *jwtPathSkipper
+	tokenHandler  *jwtTokenHandler
+	claimsHandler *jwtClaimsHandler
+	config        JWTConfig
 }
 
 // newJWTProcessor creates a new JWT processor
@@ -92,18 +93,18 @@ func (p *jwtProcessor) process(ctx *lift.Context, next lift.Handler) error {
 	if p.pathSkipper.shouldSkip(ctx.Request.Path) {
 		return next.Handle(ctx)
 	}
-	
+
 	// Process token
 	token, err := p.tokenHandler.processToken(ctx)
 	if err != nil {
 		return p.config.ErrorHandler(ctx, err)
 	}
-	
+
 	// Process claims
 	if err := p.claimsHandler.processClaims(ctx, token); err != nil {
 		return p.config.ErrorHandler(ctx, err)
 	}
-	
+
 	// Continue to next handler
 	return next.Handle(ctx)
 }
@@ -145,18 +146,18 @@ func (th *jwtTokenHandler) processToken(ctx *lift.Context) (*jwt.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Parse token
 	token, err := parseToken(tokenString, th.config)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Validate token
 	if !token.Valid {
 		return nil, fmt.Errorf("invalid token")
 	}
-	
+
 	return token, nil
 }
 
@@ -177,14 +178,14 @@ func (ch *jwtClaimsHandler) processClaims(ctx *lift.Context, token *jwt.Token) e
 	if err != nil {
 		return err
 	}
-	
+
 	// Validate claims if validator provided
 	if ch.config.Validator != nil {
 		if err := ch.config.Validator(claims); err != nil {
 			return err
 		}
 	}
-	
+
 	// Set claims in context
 	ctx.SetClaims(claims)
 	return nil

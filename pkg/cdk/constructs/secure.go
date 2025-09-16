@@ -75,7 +75,7 @@ func newSecureFunctionBuilder(scope constructs.Construct, id *string, props *Sec
 // build constructs the complete secure function
 func (b *secureFunctionBuilder) build() *SecureFunction {
 	b.construct = constructs.NewConstruct(b.scope, b.id)
-	
+
 	b.setDefaults()
 	b.setupVPC()
 	b.configureSubnets()
@@ -86,7 +86,7 @@ func (b *secureFunctionBuilder) build() *SecureFunction {
 	b.applySecrets()
 	b.applyPermissions()
 	b.applyAdditionalPolicies()
-	
+
 	return &SecureFunction{
 		Construct:     b.construct,
 		Function:      b.function,
@@ -113,7 +113,7 @@ func (b *secureFunctionBuilder) setupVPC() {
 		b.vpc = b.props.Vpc
 		return
 	}
-	
+
 	// Create a new VPC
 	b.vpc = b.createVPC()
 }
@@ -122,7 +122,7 @@ func (b *secureFunctionBuilder) setupVPC() {
 func (b *secureFunctionBuilder) createVPC() awsec2.IVpc {
 	subnetConfig := b.getSubnetConfiguration()
 	natGateways := jsii.Number(1)
-	
+
 	if *b.props.PrivateOnly {
 		natGateways = jsii.Number(0)
 	}
@@ -147,7 +147,7 @@ func (b *secureFunctionBuilder) getSubnetConfiguration() []*awsec2.SubnetConfigu
 			},
 		}
 	}
-	
+
 	return []*awsec2.SubnetConfiguration{
 		{
 			Name:       jsii.String("Public"),
@@ -168,7 +168,7 @@ func (b *secureFunctionBuilder) configureSubnets() {
 		b.vpcSubnets = b.props.VpcSubnets
 		return
 	}
-	
+
 	if *b.props.PrivateOnly {
 		b.vpcSubnets = &awsec2.SubnetSelection{
 			SubnetType: awsec2.SubnetType_PRIVATE_ISOLATED,
@@ -204,7 +204,7 @@ func (b *secureFunctionBuilder) setupEncryption() {
 	if !*b.props.EnableKMSEncryption {
 		return
 	}
-	
+
 	if b.props.KmsKey != nil {
 		b.kmsKey = b.props.KmsKey
 	} else {
@@ -216,20 +216,20 @@ func (b *secureFunctionBuilder) setupEncryption() {
 		})
 		b.kmsKey.AddAlias(jsii.String(*b.id + "-key"))
 	}
-	
+
 	b.props.EnvironmentEncryption = b.kmsKey
 }
 
 // configureFunctionProps sets up Lambda function properties
 func (b *secureFunctionBuilder) configureFunctionProps() {
-    // Apply VPC-related settings to the underlying FunctionProps (promoted field)
-    b.props.FunctionProps.Vpc = b.vpc
-    b.props.FunctionProps.VpcSubnets = b.vpcSubnets
-    // FunctionProps is embedded, so fields are promoted; use direct selectors.
-    b.props.SecurityGroups = &[]awsec2.ISecurityGroup{b.securityGroup}
-    b.props.Tracing = awslambda.Tracing_ACTIVE
+	// Apply VPC-related settings to the underlying FunctionProps (promoted field)
+	b.props.FunctionProps.Vpc = b.vpc
+	b.props.FunctionProps.VpcSubnets = b.vpcSubnets
+	// FunctionProps is embedded, so fields are promoted; use direct selectors.
+	b.props.SecurityGroups = &[]awsec2.ISecurityGroup{b.securityGroup}
+	b.props.Tracing = awslambda.Tracing_ACTIVE
 
-    	b.addAdditionalSecurityGroups()
+	b.addAdditionalSecurityGroups()
 }
 
 // addAdditionalSecurityGroups adds user-provided security groups
@@ -237,7 +237,7 @@ func (b *secureFunctionBuilder) addAdditionalSecurityGroups() {
 	if b.props.SecurityGroupIds == nil {
 		return
 	}
-	
+
 	for _, sgId := range *b.props.SecurityGroupIds {
 		sg := awsec2.SecurityGroup_FromSecurityGroupId(b.construct, sgId, sgId, &awsec2.SecurityGroupImportOptions{})
 		*b.props.SecurityGroups = append(*b.props.SecurityGroups, sg)
@@ -254,7 +254,7 @@ func (b *secureFunctionBuilder) applySecrets() {
 	if b.props.Secrets == nil {
 		return
 	}
-	
+
 	for name, secret := range *b.props.Secrets {
 		b.function.Function.AddEnvironment(jsii.String(name), secret.SecretValue().ToString(), nil)
 		secret.GrantRead(b.function.Function, nil)
@@ -287,7 +287,7 @@ func (b *secureFunctionBuilder) applyAdditionalPolicies() {
 	if b.props.AdditionalPolicies == nil {
 		return
 	}
-	
+
 	for _, policy := range *b.props.AdditionalPolicies {
 		b.function.Function.AddToRolePolicy(policy)
 	}

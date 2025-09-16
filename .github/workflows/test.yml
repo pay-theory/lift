@@ -84,6 +84,12 @@ jobs:
     - name: Download Go dependencies
       run: go mod download
     
+    - name: Prepare CDK assets (dummy)
+      run: |
+        # Create placeholder asset directory expected by examples
+        mkdir -p pkg/cdk/lambda
+        echo "placeholder" > pkg/cdk/lambda/README.md
+    
     - name: Test CDK constructs compilation
       run: |
         cd pkg/cdk/examples/basic-api

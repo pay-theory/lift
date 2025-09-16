@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsservicediscovery"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
@@ -276,7 +277,7 @@ func (mds *microserviceDefaultsSetter) applyContainerDefaults() {
 	if mds.props.ContainerConfig == nil {
 		mds.props.ContainerConfig = &ContainerConfig{}
 	}
-	
+
 	containerSetter := newContainerDefaultsSetter(mds.props.ContainerConfig)
 	containerSetter.applyDefaults()
 }
@@ -286,7 +287,7 @@ func (mds *microserviceDefaultsSetter) applyServiceDiscoveryDefaults() {
 	if mds.props.ServiceDiscovery == nil {
 		mds.props.ServiceDiscovery = &ServiceDiscoveryConfig{}
 	}
-	
+
 	discoverySetter := newServiceDiscoveryDefaultsSetter(mds.props.ServiceDiscovery, mds.props.ServiceName)
 	discoverySetter.applyDefaults()
 }
@@ -296,7 +297,7 @@ func (mds *microserviceDefaultsSetter) applyAutoScalingDefaults() {
 	if mds.props.AutoScaling == nil {
 		mds.props.AutoScaling = &AutoScalingConfig{}
 	}
-	
+
 	scalingSetter := newAutoScalingDefaultsSetter(mds.props.AutoScaling)
 	scalingSetter.applyDefaults()
 }
@@ -306,7 +307,7 @@ func (mds *microserviceDefaultsSetter) applyHealthCheckDefaults() {
 	if mds.props.HealthCheck == nil {
 		mds.props.HealthCheck = &HealthCheckConfig{}
 	}
-	
+
 	healthSetter := newHealthCheckDefaultsSetter(mds.props.HealthCheck)
 	healthSetter.applyDefaults()
 }

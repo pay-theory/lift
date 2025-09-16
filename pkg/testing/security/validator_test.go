@@ -453,10 +453,10 @@ func TestRiskLevels(t *testing.T) {
 
 func TestSecurityConfig(t *testing.T) {
 	config := SecurityConfig{
-		MaxScanTime:       30 * time.Second,
-		ThreatThreshold:   SeverityMedium,
-		ComplianceLevel:   ComplianceLevelStandard,
-		ReportFormat:      ReportFormatJSON,
+		MaxScanTime:     30 * time.Second,
+		ThreatThreshold: SeverityMedium,
+		ComplianceLevel: ComplianceLevelStandard,
+		ReportFormat:    ReportFormatJSON,
 	}
 
 	if config.MaxScanTime <= 0 {

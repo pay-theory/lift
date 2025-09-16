@@ -2,6 +2,7 @@ package aws
 
 import (
 	"errors"
+
 	"github.com/aws/smithy-go"
 )
 

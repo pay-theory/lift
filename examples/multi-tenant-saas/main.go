@@ -777,4 +777,3 @@ func main() {
 	// Start the Lambda handler
 	lambda.Start(app.HandleRequest)
 }
-

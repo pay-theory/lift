@@ -383,12 +383,12 @@ func (n *NoOpStructuredLogger) WithRequestID(_ string) observability.StructuredL
 	return n
 }
 func (n *NoOpStructuredLogger) WithTenantID(_ string) observability.StructuredLogger { return n }
-func (n *NoOpStructuredLogger) WithUserID(_ string) observability.StructuredLogger     { return n }
-func (n *NoOpStructuredLogger) WithTraceID(_ string) observability.StructuredLogger   { return n }
-func (n *NoOpStructuredLogger) WithSpanID(_ string) observability.StructuredLogger     { return n }
-func (n *NoOpStructuredLogger) Flush(_ context.Context) error                             { return nil }
-func (n *NoOpStructuredLogger) Close() error                                                { return nil }
-func (n *NoOpStructuredLogger) IsHealthy() bool                                             { return true }
+func (n *NoOpStructuredLogger) WithUserID(_ string) observability.StructuredLogger   { return n }
+func (n *NoOpStructuredLogger) WithTraceID(_ string) observability.StructuredLogger  { return n }
+func (n *NoOpStructuredLogger) WithSpanID(_ string) observability.StructuredLogger   { return n }
+func (n *NoOpStructuredLogger) Flush(_ context.Context) error                        { return nil }
+func (n *NoOpStructuredLogger) Close() error                                         { return nil }
+func (n *NoOpStructuredLogger) IsHealthy() bool                                      { return true }
 func (n *NoOpStructuredLogger) GetStats() observability.LoggerStats {
 	return observability.LoggerStats{}
 }

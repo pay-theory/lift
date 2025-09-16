@@ -90,22 +90,22 @@ func newMonitoredFunctionBuilder(scope constructs.Construct, id *string, props *
 // build constructs the complete monitored function
 func (b *monitoredFunctionBuilder) build() *MonitoredFunction {
 	b.construct = constructs.NewConstruct(b.scope, b.id)
-	
+
 	b.setDefaults()
 	b.configureLambdaInsights()
 	b.configureEnvironment()
 	b.createFunction()
-	
+
 	dashboard := b.createDashboard()
 	b.createAlarms()
-	
+
 	monitored := &MonitoredFunction{
 		Construct: b.construct,
 		Function:  b.function,
 		Dashboard: dashboard,
 		Alarms:    b.alarms,
 	}
-	
+
 	b.setupLogInsights(monitored)
 	return monitored
 }
@@ -124,7 +124,7 @@ func (b *monitoredFunctionBuilder) setDefaults() {
 	if b.props.MetricsNamespace == nil {
 		b.props.MetricsNamespace = jsii.String("Lift/Functions")
 	}
-	
+
 	b.setAlarmDefaults()
 }
 
@@ -187,7 +187,7 @@ func (b *monitoredFunctionBuilder) createDashboard() awscloudwatch.Dashboard {
 	if dashboardName == nil {
 		dashboardName = jsii.String(fmt.Sprintf("%s-dashboard", *b.id))
 	}
-	
+
 	dashboard := awscloudwatch.NewDashboard(b.construct, jsii.String("Dashboard"), &awscloudwatch.DashboardProps{
 		DashboardName: dashboardName,
 	})
@@ -199,7 +199,7 @@ func (b *monitoredFunctionBuilder) createDashboard() awscloudwatch.Dashboard {
 		createLatencyWidget(b.function.Function),
 		createConcurrentExecutionsWidget(b.function.Function),
 	)
-	
+
 	return dashboard
 }
 
@@ -216,11 +216,11 @@ func (b *monitoredFunctionBuilder) createErrorAlarm() {
 	if !*b.props.AlarmConfig.EnableErrorAlarm {
 		return
 	}
-	
+
 	metric := b.function.Function.MetricErrors(&awscloudwatch.MetricOptions{
 		Period: awscdk.Duration_Minutes(jsii.Number(5)),
 	})
-	
+
 	alarm := b.createAlarm(metric, "ErrorAlarm", "errors", "Lambda function error rate too high",
 		b.props.AlarmConfig.ErrorRateThreshold, 2)
 	b.alarms["errors"] = alarm
@@ -231,12 +231,12 @@ func (b *monitoredFunctionBuilder) createLatencyAlarm() {
 	if !*b.props.AlarmConfig.EnableLatencyAlarm {
 		return
 	}
-	
+
 	metric := b.function.Function.MetricDuration(&awscloudwatch.MetricOptions{
 		Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 		Statistic: jsii.String("Average"),
 	})
-	
+
 	alarm := b.createAlarm(metric, "LatencyAlarm", "latency", "Lambda function latency too high",
 		b.props.AlarmConfig.LatencyThreshold, 2)
 	b.alarms["latency"] = alarm
@@ -247,11 +247,11 @@ func (b *monitoredFunctionBuilder) createThrottleAlarm() {
 	if !*b.props.AlarmConfig.EnableThrottleAlarm {
 		return
 	}
-	
+
 	metric := b.function.Function.MetricThrottles(&awscloudwatch.MetricOptions{
 		Period: awscdk.Duration_Minutes(jsii.Number(5)),
 	})
-	
+
 	alarm := b.createAlarm(metric, "ThrottleAlarm", "throttles", "Lambda function throttling detected",
 		b.props.AlarmConfig.ThrottleThreshold, 1)
 	b.alarms["throttles"] = alarm
@@ -262,7 +262,7 @@ func (b *monitoredFunctionBuilder) createConcurrentAlarm() {
 	if b.props.AlarmConfig.EnableConcurrentAlarm == nil || !*b.props.AlarmConfig.EnableConcurrentAlarm {
 		return
 	}
-	
+
 	concurrentMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
 		Namespace:  jsii.String("AWS/Lambda"),
 		MetricName: jsii.String("ConcurrentExecutions"),
@@ -279,11 +279,11 @@ func (b *monitoredFunctionBuilder) createConcurrentAlarm() {
 		EvaluationPeriods: jsii.Number(2),
 		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 	})
-	
+
 	if b.props.AlarmConfig.AlarmTopic != nil {
 		alarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(b.props.AlarmConfig.AlarmTopic))
 	}
-	
+
 	b.alarms["concurrent"] = alarm
 }
 

@@ -282,14 +282,14 @@ func (c *CacheMiddleware) hashQueryParams(params map[string]string) uint64 {
 		keys = append(keys, k)
 	}
 
-    for _, k := range keys {
-        // hash.Hash Write never returns an error; still capture return values
-        // to satisfy linters and make intent explicit.
-        _, _ = h.Write([]byte(k))
-        _, _ = h.Write([]byte("="))
-        _, _ = h.Write([]byte(params[k]))
-        _, _ = h.Write([]byte("&"))
-    }
+	for _, k := range keys {
+		// hash.Hash Write never returns an error; still capture return values
+		// to satisfy linters and make intent explicit.
+		_, _ = h.Write([]byte(k))
+		_, _ = h.Write([]byte("="))
+		_, _ = h.Write([]byte(params[k]))
+		_, _ = h.Write([]byte("&"))
+	}
 
 	return h.Sum64()
 }

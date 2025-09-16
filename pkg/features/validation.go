@@ -301,14 +301,14 @@ func (vm *ValidationMiddleware) validateRange(field string, value any, minVal, m
 // rangeValidator handles range validation for different value types
 // Memory optimized: struct with 72 pointer bytes could be 64
 type rangeValidator struct { //nolint:govet // fieldalignment: all fields are pointer-bearing; meaningful packing would require invasive refactor
-    // Interfaces (16 bytes each)
-    value  any
-    minVal any
-    maxVal any
-    // String (16 bytes)
-    field string
-    // Pointer (8 bytes)
-    vm *ValidationMiddleware
+	// Interfaces (16 bytes each)
+	value  any
+	minVal any
+	maxVal any
+	// String (16 bytes)
+	field string
+	// Pointer (8 bytes)
+	vm *ValidationMiddleware
 }
 
 // newRangeValidator creates a new range validator
@@ -339,18 +339,18 @@ func (r *rangeValidator) validate() *ValidationError {
 // validateStringRange validates string length ranges
 func (r *rangeValidator) validateStringRange(str string) *ValidationError {
 	length := len(str)
-	
+
 	if err := r.checkMinLength(length, "String length must be at least %d", "MIN_LENGTH"); err != nil {
 		return err
 	}
-	
+
 	return r.checkMaxLength(length, "String length must be at most %d", "MAX_LENGTH")
 }
 
 // validateNumericRange validates numeric value ranges
 func (r *rangeValidator) validateNumericRange(num any) *ValidationError {
 	numValue := r.vm.toFloat64(num)
-	
+
 	if r.minVal != nil {
 		if minValue := r.vm.toFloat64(r.minVal); numValue < minValue {
 			return &ValidationError{
@@ -361,7 +361,7 @@ func (r *rangeValidator) validateNumericRange(num any) *ValidationError {
 			}
 		}
 	}
-	
+
 	if r.maxVal != nil {
 		if maxValue := r.vm.toFloat64(r.maxVal); numValue > maxValue {
 			return &ValidationError{
@@ -372,18 +372,18 @@ func (r *rangeValidator) validateNumericRange(num any) *ValidationError {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
 // validateArrayRange validates array length ranges
 func (r *rangeValidator) validateArrayRange(arr []any) *ValidationError {
 	length := len(arr)
-	
+
 	if err := r.checkMinLength(length, "Array length must be at least %d", "MIN_ITEMS"); err != nil {
 		return err
 	}
-	
+
 	return r.checkMaxLength(length, "Array length must be at most %d", "MAX_ITEMS")
 }
 

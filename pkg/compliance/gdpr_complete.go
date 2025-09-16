@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/google/uuid"
+
 	"github.com/pay-theory/lift/pkg/dynamorm"
 	"github.com/pay-theory/lift/pkg/security"
 )
@@ -261,30 +262,30 @@ func (g *GDPRCompleteService) ExportUserData(ctx context.Context, dataSubjectID 
 		return nil, fmt.Errorf("data subject ID is required")
 	}
 
-    builder := newDataExportBuilder(ctx, g, dataSubjectID, requestID)
-    return builder.build()
+	builder := newDataExportBuilder(ctx, g, dataSubjectID, requestID)
+	return builder.build()
 }
 
 // dataExportBuilder orchestrates the data export process
 type dataExportBuilder struct {
-    exportRecord  *DataExportRecord
-    service       *GDPRCompleteService
-    exportData    map[string]interface{}
-    ctx           context.Context
-    dataSubjectID string
-    requestID     string
-    auditID       string
+	exportRecord  *DataExportRecord
+	service       *GDPRCompleteService
+	exportData    map[string]interface{}
+	ctx           context.Context
+	dataSubjectID string
+	requestID     string
+	auditID       string
 }
 
 // newDataExportBuilder creates a new data export builder
 func newDataExportBuilder(ctx context.Context, service *GDPRCompleteService, dataSubjectID, requestID string) *dataExportBuilder {
-    return &dataExportBuilder{
-        service:       service,
-        ctx:           ctx,
-        dataSubjectID: dataSubjectID,
-        requestID:     requestID,
-        exportData:    make(map[string]interface{}),
-    }
+	return &dataExportBuilder{
+		service:       service,
+		ctx:           ctx,
+		dataSubjectID: dataSubjectID,
+		requestID:     requestID,
+		exportData:    make(map[string]interface{}),
+	}
 }
 
 // build executes the complete export process
@@ -351,7 +352,7 @@ func (b *dataExportBuilder) initializeExportRecord() error {
 // collectUserData gathers data from all configured sources
 func (b *dataExportBuilder) collectUserData() error {
 	tables := b.service.getUserDataTables()
-	
+
 	for _, table := range tables {
 		if err := b.collectFromTable(table); err != nil {
 			return err
@@ -432,7 +433,7 @@ func (b *dataExportBuilder) encryptExportData(data []byte) ([]byte, error) {
 		b.updateExportStatus(statusFailed)
 		return nil, fmt.Errorf("failed to encrypt export data: %w", err)
 	}
-	
+
 	b.exportRecord.EncryptionKey = base64.StdEncoding.EncodeToString(key)
 	return encrypted, nil
 }
@@ -440,7 +441,7 @@ func (b *dataExportBuilder) encryptExportData(data []byte) ([]byte, error) {
 // uploadExportData uploads the processed data to S3
 func (b *dataExportBuilder) uploadExportData(data []byte) error {
 	exportPath := b.buildExportPath()
-	
+
 	if err := b.service.uploadToS3(b.ctx, b.service.config.DataExportBucket, exportPath, data); err != nil {
 		b.updateExportStatus(statusFailed)
 		return fmt.Errorf("failed to upload export to S3: %w", err)
@@ -448,7 +449,7 @@ func (b *dataExportBuilder) uploadExportData(data []byte) error {
 
 	b.exportRecord.ExportPath = exportPath
 	b.exportRecord.FileSizeBytes = int64(len(data))
-	
+
 	return nil
 }
 

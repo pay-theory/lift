@@ -356,12 +356,12 @@ func (rm *retryManager) GetStats() RetryStats {
 
 // retryExecution manages a single retry execution
 type retryExecution struct {
-    startTime  time.Time
-    handler    lift.Handler
-    lastErr    error
-    manager    *retryManager
-    ctx        *lift.Context
-    totalDelay time.Duration
+	startTime  time.Time
+	handler    lift.Handler
+	lastErr    error
+	manager    *retryManager
+	ctx        *lift.Context
+	totalDelay time.Duration
 }
 
 // newRetryExecution creates a new retry execution
@@ -377,14 +377,14 @@ func newRetryExecution(manager *retryManager, ctx *lift.Context, handler lift.Ha
 // execute runs the retry execution
 func (re *retryExecution) execute() error {
 	totalCtx := re.createTotalTimeoutContext()
-	
+
 	for attempt := 1; attempt <= re.manager.config.MaxAttempts; attempt++ {
 		result := re.executeAttempt(totalCtx, attempt)
-		
+
 		if result.shouldReturn() {
 			return result.err
 		}
-		
+
 		// Prepare for next attempt
 		if attempt < re.manager.config.MaxAttempts {
 			if err := re.waitForNextAttempt(totalCtx, attempt); err != nil {
@@ -392,7 +392,7 @@ func (re *retryExecution) execute() error {
 			}
 		}
 	}
-	
+
 	return re.lastErr
 }
 
@@ -401,7 +401,7 @@ func (re *retryExecution) createTotalTimeoutContext() context.Context {
 	if re.manager.config.TotalTimeout <= 0 {
 		return re.ctx.Context
 	}
-	
+
 	ctx, cancel := context.WithTimeout(re.ctx.Context, re.manager.config.TotalTimeout)
 	// Store cancel func in a goroutine-safe way would be needed in production
 	go func() {
@@ -415,14 +415,14 @@ func (re *retryExecution) createTotalTimeoutContext() context.Context {
 func (re *retryExecution) executeAttempt(totalCtx context.Context, attempt int) *attemptResult {
 	// Create attempt context
 	attemptCtx := re.createAttemptContext(totalCtx)
-	
+
 	// Execute handler
-    executor := newAttemptExecutor(attemptCtx, re.ctx, re.handler)
-    duration, err := executor.execute()
-	
+	executor := newAttemptExecutor(attemptCtx, re.ctx, re.handler)
+	duration, err := executor.execute()
+
 	// Record metrics
 	re.recordAttemptMetrics(attempt, err, duration)
-	
+
 	// Handle result
 	resultHandler := newAttemptResultHandler(re.manager, re)
 	return resultHandler.handleResult(attempt, err, duration)
@@ -433,7 +433,7 @@ func (re *retryExecution) createAttemptContext(totalCtx context.Context) context
 	if re.manager.config.PerAttemptTimeout <= 0 {
 		return totalCtx
 	}
-	
+
 	ctx, cancel := context.WithTimeout(totalCtx, re.manager.config.PerAttemptTimeout)
 	go func() {
 		<-ctx.Done()
@@ -453,20 +453,20 @@ func (re *retryExecution) recordAttemptMetrics(attempt int, err error, duration 
 func (re *retryExecution) waitForNextAttempt(totalCtx context.Context, attempt int) error {
 	delay := re.manager.calculateDelay(attempt, re.totalDelay)
 	re.totalDelay += delay
-	
+
 	// Check if delay would exceed total timeout
 	if re.manager.config.TotalTimeout > 0 && time.Since(re.startTime)+delay > re.manager.config.TotalTimeout {
 		return re.handleTimeoutExceeded(attempt)
 	}
-	
+
 	// Log retry
 	re.logRetry(attempt, delay)
-	
+
 	// Call retry callback
 	if re.manager.config.OnRetry != nil {
 		re.manager.config.OnRetry(attempt, re.lastErr, delay)
 	}
-	
+
 	// Wait for delay
 	select {
 	case <-time.After(delay):
@@ -480,7 +480,7 @@ func (re *retryExecution) waitForNextAttempt(totalCtx context.Context, attempt i
 func (re *retryExecution) handleTimeoutExceeded(attempt int) error {
 	totalDuration := time.Since(re.startTime)
 	re.manager.recordFailure(attempt, totalDuration, re.totalDelay, re.lastErr)
-	
+
 	if re.manager.config.Logger != nil {
 		re.manager.config.Logger.Error("Request failed due to total timeout", map[string]any{
 			"retry_name":     re.manager.config.Name,
@@ -489,11 +489,11 @@ func (re *retryExecution) handleTimeoutExceeded(attempt int) error {
 			"total_duration": totalDuration.String(),
 		})
 	}
-	
+
 	if re.manager.config.OnGiveUp != nil {
 		re.manager.config.OnGiveUp(attempt, re.lastErr)
 	}
-	
+
 	return re.lastErr
 }
 
@@ -526,11 +526,11 @@ type attemptExecutor struct {
 
 // newAttemptExecutor creates a new attempt executor
 func newAttemptExecutor(attemptCtx context.Context, ctx *lift.Context, handler lift.Handler) *attemptExecutor {
-    return &attemptExecutor{
-        ctx:        ctx,
-        handler:    handler,
-        attemptCtx: attemptCtx,
-    }
+	return &attemptExecutor{
+		ctx:        ctx,
+		handler:    handler,
+		attemptCtx: attemptCtx,
+	}
 }
 
 // execute runs the attempt and returns error and duration
@@ -538,16 +538,16 @@ func (ae *attemptExecutor) execute() (time.Duration, error) {
 	// Save original context
 	originalCtx := ae.ctx.Context
 	ae.ctx.Context = ae.attemptCtx
-	
+
 	// Execute handler
 	start := time.Now()
 	err := ae.handler.Handle(ae.ctx)
 	duration := time.Since(start)
-	
+
 	// Restore original context
 	ae.ctx.Context = originalCtx
-	
-    return duration, err
+
+	return duration, err
 }
 
 // attemptResult represents the result of an attempt
@@ -579,28 +579,28 @@ func newAttemptResultHandler(manager *retryManager, execution *retryExecution) *
 // handleResult processes the result of an attempt
 func (arh *attemptResultHandler) handleResult(attempt int, err error, _ time.Duration) *attemptResult {
 	totalDuration := time.Since(arh.execution.startTime)
-	
+
 	if err == nil {
 		// Success
 		arh.handleSuccess(attempt, totalDuration)
 		return &attemptResult{err: nil, shouldRetry: false, finalFailure: false}
 	}
-	
+
 	// Error occurred
 	arh.execution.lastErr = err
-	
+
 	// Check if we should retry
 	if !arh.manager.shouldRetry(err, attempt) {
 		arh.handleNonRetryableError(attempt, totalDuration, err)
 		return &attemptResult{err: err, shouldRetry: false, finalFailure: true}
 	}
-	
+
 	// Check if max attempts reached
 	if attempt >= arh.manager.config.MaxAttempts {
 		arh.handleMaxAttemptsReached(attempt, totalDuration, err)
 		return &attemptResult{err: err, shouldRetry: false, finalFailure: true}
 	}
-	
+
 	// Will retry
 	return &attemptResult{err: err, shouldRetry: true, finalFailure: false}
 }
@@ -608,7 +608,7 @@ func (arh *attemptResultHandler) handleResult(attempt int, err error, _ time.Dur
 // handleSuccess handles a successful attempt
 func (arh *attemptResultHandler) handleSuccess(attempt int, totalDuration time.Duration) {
 	arh.manager.recordSuccess(attempt, totalDuration, arh.execution.totalDelay)
-	
+
 	if arh.manager.config.Logger != nil {
 		arh.manager.config.Logger.Info("Request succeeded", map[string]any{
 			"retry_name":     arh.manager.config.Name,
@@ -622,7 +622,7 @@ func (arh *attemptResultHandler) handleSuccess(attempt int, totalDuration time.D
 // handleNonRetryableError handles errors that should not be retried
 func (arh *attemptResultHandler) handleNonRetryableError(attempt int, totalDuration time.Duration, err error) {
 	arh.manager.recordFailure(attempt, totalDuration, arh.execution.totalDelay, err)
-	
+
 	if arh.manager.config.Logger != nil {
 		arh.manager.config.Logger.Error("Request failed (not retryable)", map[string]any{
 			"retry_name":     arh.manager.config.Name,
@@ -631,7 +631,7 @@ func (arh *attemptResultHandler) handleNonRetryableError(attempt int, totalDurat
 			"total_duration": totalDuration.String(),
 		})
 	}
-	
+
 	if arh.manager.config.OnGiveUp != nil {
 		arh.manager.config.OnGiveUp(attempt, err)
 	}
@@ -640,7 +640,7 @@ func (arh *attemptResultHandler) handleNonRetryableError(attempt int, totalDurat
 // handleMaxAttemptsReached handles when max attempts have been reached
 func (arh *attemptResultHandler) handleMaxAttemptsReached(attempt int, totalDuration time.Duration, err error) {
 	arh.manager.recordFailure(attempt, totalDuration, arh.execution.totalDelay, err)
-	
+
 	if arh.manager.config.Logger != nil {
 		arh.manager.config.Logger.Error("Request failed after max attempts", map[string]any{
 			"retry_name":     arh.manager.config.Name,
@@ -650,7 +650,7 @@ func (arh *attemptResultHandler) handleMaxAttemptsReached(attempt int, totalDura
 			"total_delay":    arh.execution.totalDelay.String(),
 		})
 	}
-	
+
 	if arh.manager.config.OnGiveUp != nil {
 		arh.manager.config.OnGiveUp(attempt, err)
 	}
