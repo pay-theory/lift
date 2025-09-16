@@ -83,6 +83,10 @@ logs/
 coverage.txt
 coverage.html
 coverage.out
+cover.out
+*.cover
+*.coverprofile
+coverage/
 
 # Benchmark results
 benchmark_results/
@@ -93,5 +97,10 @@ benchmark_results/
 node_modules/
 reference
 
-.gomodcache
-.gocache
+# Go caches (never commit)
+.gomodcache/
+.gocache/
+
+# direnv and local env shells
+.direnv/
+.envrc
