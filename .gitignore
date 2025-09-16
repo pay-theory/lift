@@ -90,5 +90,7 @@ benchmark_results/
 
 # Cache directories
 .cache/
-node_modules/ 
+node_modules/
 reference
+
+.gomodcache
