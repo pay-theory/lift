@@ -67,15 +67,15 @@ func newLiftFunctionBuilder(scope constructs.Construct, id *string, props *LiftF
 // build constructs the complete Lift function
 func (b *liftFunctionBuilder) build() *LiftFunction {
 	b.construct = constructs.NewConstruct(b.scope, b.id)
-	
+
 	b.setLiftDefaults()
 	b.configureTracing()
 	b.configureConcurrency()
 	b.configureEnvironment()
 	b.configureDynamORM()
-	
+
 	function := awslambda.NewFunction(b.construct, jsii.String("Resource"), &b.props.FunctionProps)
-	
+
 	return &LiftFunction{
 		Construct: b.construct,
 		Function:  function,
@@ -117,10 +117,10 @@ func (b *liftFunctionBuilder) configureEnvironment() {
 	if b.props.Environment == nil {
 		b.props.Environment = &map[string]*string{}
 	}
-	
+
 	env := *b.props.Environment
 	env["LIFT_VERSION"] = jsii.String("1.0.0")
-	
+
 	if b.props.EnableMultiTenant != nil && *b.props.EnableMultiTenant {
 		env["LIFT_MULTI_TENANT"] = jsii.String(trueStr)
 	}
@@ -134,7 +134,7 @@ func (b *liftFunctionBuilder) configureDynamORM() {
 	if b.props.EnableDynamORM == nil || !*b.props.EnableDynamORM {
 		return
 	}
-	
+
 	env := *b.props.Environment
 	env["DYNAMORM_REGION"] = awscdk.Stack_Of(b.construct).Region()
 
@@ -152,6 +152,6 @@ func (b *liftFunctionBuilder) configureDynamORM() {
 	// Set default retry configuration
 	env["DYNAMORM_RETRY_MAX_ATTEMPTS"] = jsii.String("3")
 	env["DYNAMORM_RETRY_BASE_DELAY"] = jsii.String("100")
-	
+
 	b.props.Environment = &env
 }

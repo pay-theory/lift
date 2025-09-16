@@ -14,10 +14,10 @@ func TestJWTValidator(t *testing.T) {
 	config := security.JWTConfig{
 		SigningMethod: "HS256",
 		// #nosec G101 -- Test secret for unit testing only
-		SecretKey:     "test-secret",
-		Issuer:        "test-issuer",
-		Audience:      []string{"test-audience"},
-		MaxAge:        time.Hour,
+		SecretKey: "test-secret",
+		Issuer:    "test-issuer",
+		Audience:  []string{"test-audience"},
+		MaxAge:    time.Hour,
 	}
 
 	validator, err := NewJWTValidator(config)

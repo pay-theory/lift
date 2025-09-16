@@ -60,7 +60,7 @@ func createTypedManagementTable(scope constructs.Construct, id *string, props in
 	baseProps := &BaseManagementTableProps{
 		DefaultTableName: config.DefaultTableName,
 	}
-	
+
 	// Extract common properties using type assertion
 	switch p := props.(type) {
 	case *ConnectionTableProps:

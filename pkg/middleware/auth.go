@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/security"
 )
@@ -139,19 +140,19 @@ func (v *standardClaimsValidator) validate() error {
 	if err := v.validateExpiration(); err != nil {
 		return err
 	}
-	
+
 	if err := v.validateNotBefore(); err != nil {
 		return err
 	}
-	
+
 	if err := v.validateMaxAge(); err != nil {
 		return err
 	}
-	
+
 	if err := v.validateIssuer(); err != nil {
 		return err
 	}
-	
+
 	return v.validateAudience()
 }
 
@@ -160,11 +161,11 @@ func (v *standardClaimsValidator) validateExpiration() error {
 	if v.claims.ExpiresAt == nil {
 		return nil
 	}
-	
+
 	if v.claims.ExpiresAt.Before(v.now) {
 		return fmt.Errorf("token has expired")
 	}
-	
+
 	return nil
 }
 
@@ -173,11 +174,11 @@ func (v *standardClaimsValidator) validateNotBefore() error {
 	if v.claims.NotBefore == nil {
 		return nil
 	}
-	
+
 	if v.claims.NotBefore.After(v.now) {
 		return fmt.Errorf("token not valid yet")
 	}
-	
+
 	return nil
 }
 
@@ -186,12 +187,12 @@ func (v *standardClaimsValidator) validateMaxAge() error {
 	if v.claims.IssuedAt == nil || v.validator.config.MaxAge <= 0 {
 		return nil
 	}
-	
+
 	maxAge := v.claims.IssuedAt.Add(v.validator.config.MaxAge)
 	if v.now.After(maxAge) {
 		return fmt.Errorf("token exceeds maximum age")
 	}
-	
+
 	return nil
 }
 
@@ -200,11 +201,11 @@ func (v *standardClaimsValidator) validateIssuer() error {
 	if v.validator.config.Issuer == "" {
 		return nil
 	}
-	
+
 	if v.claims.Issuer != v.validator.config.Issuer {
 		return fmt.Errorf("token validation failed: issuer mismatch")
 	}
-	
+
 	return nil
 }
 
@@ -213,11 +214,11 @@ func (v *standardClaimsValidator) validateAudience() error {
 	if len(v.validator.config.Audience) == 0 {
 		return nil
 	}
-	
+
 	if v.isValidAudience() {
 		return nil
 	}
-	
+
 	return fmt.Errorf("token validation failed: audience mismatch")
 }
 

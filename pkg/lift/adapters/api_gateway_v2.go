@@ -99,19 +99,19 @@ func (b *apiGatewayV2EventAdapter) build() (*Request, error) {
 	if err := b.validate(); err != nil {
 		return nil, err
 	}
-	
+
 	b.extractEventMap()
 	b.extractContexts()
 	b.extractHTTPInfo()
 	b.extractHeaders()
 	b.extractParameters()
-	
+
 	if err := b.extractBody(); err != nil {
 		return nil, err
 	}
-	
+
 	b.extractMetadata()
-	
+
 	return b.request, nil
 }
 
@@ -146,7 +146,7 @@ func (b *apiGatewayV2EventAdapter) extractHTTPInfo() {
 func (b *apiGatewayV2EventAdapter) processPath() string {
 	path := extractStringField(b.httpContext, "path")
 	stage := extractStringField(b.requestContext, "stage")
-	
+
 	return b.stripStagePrefix(path, stage)
 }
 
@@ -155,24 +155,24 @@ func (b *apiGatewayV2EventAdapter) stripStagePrefix(path, stage string) string {
 	if stage == "" || stage == "$default" {
 		return path
 	}
-	
+
 	stagePrefix := "/" + stage
-	
+
 	if path == stagePrefix {
 		return "/"
 	}
-	
+
 	if strings.HasPrefix(path, stagePrefix+"/") {
 		return strings.TrimPrefix(path, stagePrefix)
 	}
-	
+
 	return path
 }
 
 // extractHeaders extracts and normalizes headers
 func (b *apiGatewayV2EventAdapter) extractHeaders() {
 	headers := make(map[string]string)
-	
+
 	if headersMap := extractMapField(b.eventMap, "headers"); len(headersMap) > 0 {
 		for k, v := range headersMap {
 			if str, ok := v.(string); ok {
@@ -180,7 +180,7 @@ func (b *apiGatewayV2EventAdapter) extractHeaders() {
 			}
 		}
 	}
-	
+
 	b.request.Headers = headers
 }
 
@@ -214,11 +214,11 @@ func (b *apiGatewayV2EventAdapter) extractBody() error {
 	if bodyStr == "" {
 		return nil
 	}
-	
+
 	if b.isBase64Encoded() {
 		return b.decodeBase64Body(bodyStr)
 	}
-	
+
 	b.request.Body = []byte(bodyStr)
 	return nil
 }

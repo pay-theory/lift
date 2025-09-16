@@ -653,7 +653,7 @@ func (drb *dynamoDBResourceBuilder) generateTables(template *InfrastructureTempl
 	for _, tableConfig := range drb.dbConfig.Tables {
 		tableBuilder := newDynamoDBTableBuilder(drb.ig, drb.dbConfig, tableConfig)
 		table := tableBuilder.build()
-		
+
 		tableName := fmt.Sprintf("DynamoTable%s", cases.Title(language.English).String(tableConfig.Name))
 		template.Resources[tableName] = table
 	}
@@ -719,11 +719,11 @@ func (dtb *dynamoDBTableBuilder) configureEncryption(table *Resource) {
 	sseSpec := map[string]any{
 		"SSEEnabled": true,
 	}
-	
+
 	if dtb.dbConfig.Encryption.KMSKeyId != "" {
 		sseSpec["KMSMasterKeyId"] = dtb.dbConfig.Encryption.KMSKeyId
 	}
-	
+
 	table.Properties["SSESpecification"] = sseSpec
 }
 
@@ -749,8 +749,8 @@ func (dtb *dynamoDBTableBuilder) configureGlobalIndexes(table *Resource) {
 
 // globalSecondaryIndexBuilder builds GSI configurations
 type globalSecondaryIndexBuilder struct {
-	ig          *InfrastructureGenerator
-	gsiConfigs  []GlobalIndexConfig
+	ig         *InfrastructureGenerator
+	gsiConfigs []GlobalIndexConfig
 }
 
 // newGlobalSecondaryIndexBuilder creates a new GSI builder
@@ -764,12 +764,12 @@ func newGlobalSecondaryIndexBuilder(ig *InfrastructureGenerator, gsiConfigs []Gl
 // buildAll creates all GSI configurations
 func (gsib *globalSecondaryIndexBuilder) buildAll() []map[string]any {
 	gsis := make([]map[string]any, 0, len(gsib.gsiConfigs))
-	
+
 	for _, gsi := range gsib.gsiConfigs {
 		gsiDef := gsib.buildSingleGSI(gsi)
 		gsis = append(gsis, gsiDef)
 	}
-	
+
 	return gsis
 }
 

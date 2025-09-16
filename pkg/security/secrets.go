@@ -1,14 +1,14 @@
 package security
 
 import (
-    "context"
-    "encoding/json"
-    "errors"
-    "fmt"
-    "log"
-    "strings"
-    "sync"
-    "time"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -96,14 +96,14 @@ func NewSecretCache(ttl time.Duration) *SecretCache {
 // GetSecret retrieves a secret from AWS Secrets Manager (with caching)
 func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (string, error) {
 	// Check cache first (encrypted or plain text)
-    if asm.useEncryption && asm.encryptedCache != nil {
-        if value, err := asm.encryptedCache.Get(name); err != nil {
-            // Log cache retrieval error, but continue to fetch from AWS
-            log.Printf("secrets cache get failed: key=%s err=%v", name, err)
-        } else if value != "" {
-            return value, nil
-        }
-    } else if asm.cache != nil {
+	if asm.useEncryption && asm.encryptedCache != nil {
+		if value, err := asm.encryptedCache.Get(name); err != nil {
+			// Log cache retrieval error, but continue to fetch from AWS
+			log.Printf("secrets cache get failed: key=%s err=%v", name, err)
+		} else if value != "" {
+			return value, nil
+		}
+	} else if asm.cache != nil {
 		if value := asm.cache.Get(name); value != "" {
 			return value, nil
 		}
@@ -132,10 +132,10 @@ func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (strin
 	// Cache the secret (encrypted or plain text)
 	if asm.useEncryption && asm.encryptedCache != nil {
 		// Best effort cache update - log errors but don't fail
-        if err := asm.encryptedCache.Set(name, value); err != nil {
-            // Cache failure is not critical, just log it
-            log.Printf("secrets cache set failed: key=%s err=%v", name, err)
-        }
+		if err := asm.encryptedCache.Set(name, value); err != nil {
+			// Cache failure is not critical, just log it
+			log.Printf("secrets cache set failed: key=%s err=%v", name, err)
+		}
 	} else if asm.cache != nil {
 		asm.cache.Set(name, value)
 	}

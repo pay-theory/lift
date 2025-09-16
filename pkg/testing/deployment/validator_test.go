@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	envBlue = "blue"
+	envBlue  = "blue"
 	envGreen = "green"
 )
 

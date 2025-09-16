@@ -4,4 +4,3 @@
 // status propagation. The endpoints accept a HealthManager implementation and
 // can log via an optional structured logger.
 package health
-

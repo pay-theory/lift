@@ -11,11 +11,11 @@ import (
 // Memory optimized: 56 → 48 bytes (8 bytes saved)
 type StreamingTableProps struct {
 	// Pointers first (8 bytes each)
-	TableName *string
+	TableName           *string
 	TimeToLiveAttribute *string
-	ReadCapacity *float64
-	WriteCapacity *float64
-	EnableAutoScaling *bool
+	ReadCapacity        *float64
+	WriteCapacity       *float64
+	EnableAutoScaling   *bool
 	// Enum last
 	StreamViewType awsdynamodb.StreamViewType
 }

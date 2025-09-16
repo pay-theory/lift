@@ -111,13 +111,13 @@ func newKinesisProcessorBuilder(scope constructs.Construct, id *string, props *K
 // build constructs the complete Kinesis processor
 func (b *kinesisProcessorBuilder) build() *KinesisProcessor {
 	b.construct = constructs.NewConstruct(b.scope, b.id)
-	
+
 	stream := b.createOrGetStream()
 	function := b.createFunction(stream)
 	dlq := b.createDLQ(function)
 	b.configureEventSource(stream, function, dlq)
 	b.grantPermissions(stream, function, dlq)
-	
+
 	return &KinesisProcessor{
 		Construct: b.construct,
 		Stream:    stream,
@@ -131,7 +131,7 @@ func (b *kinesisProcessorBuilder) createOrGetStream() awskinesis.IStream {
 	if b.props.ExistingStream != nil {
 		return b.props.ExistingStream
 	}
-	
+
 	streamBuilder := newKinesisStreamBuilder(b.construct, b.props)
 	return streamBuilder.build()
 }
@@ -139,10 +139,10 @@ func (b *kinesisProcessorBuilder) createOrGetStream() awskinesis.IStream {
 // createFunction creates the Lambda function with environment variables
 func (b *kinesisProcessorBuilder) createFunction(stream awskinesis.IStream) *LiftFunction {
 	function := NewLiftFunction(b.construct, jsii.String("Function"), b.props.FunctionProps)
-	
+
 	function.Function.AddEnvironment(jsii.String("KINESIS_STREAM_ARN"), stream.StreamArn(), nil)
 	function.Function.AddEnvironment(jsii.String("KINESIS_STREAM_NAME"), stream.StreamName(), nil)
-	
+
 	return function
 }
 
@@ -152,11 +152,11 @@ func (b *kinesisProcessorBuilder) createDLQ(function *LiftFunction) awssqs.IQueu
 	if b.props.EnableDLQ != nil {
 		enableDLQ = *b.props.EnableDLQ
 	}
-	
+
 	if !enableDLQ {
 		return nil
 	}
-	
+
 	dlqBuilder := newDeadLetterQueueBuilder(
 		b.construct,
 		b.props.DLQProps,
@@ -164,7 +164,7 @@ func (b *kinesisProcessorBuilder) createDLQ(function *LiftFunction) awssqs.IQueu
 		"-kinesis-dlq",
 	)
 	dlq := dlqBuilder.build()
-	
+
 	function.Function.AddEnvironment(jsii.String("KINESIS_DLQ_URL"), dlq.QueueUrl(), nil)
 	return dlq
 }
@@ -195,12 +195,12 @@ func (sb *kinesisStreamBuilder) createStreamProps() *awskinesis.StreamProps {
 	if streamProps == nil {
 		streamProps = &awskinesis.StreamProps{}
 	}
-	
+
 	sb.configureStreamMode(streamProps)
 	sb.configureShardCount(streamProps)
 	sb.configureRetention(streamProps)
 	sb.configureEncryption(streamProps)
-	
+
 	return streamProps
 }
 
@@ -235,7 +235,6 @@ func (sb *kinesisStreamBuilder) configureEncryption(streamProps *awskinesis.Stre
 		streamProps.Encryption = *sb.props.Encryption
 	}
 }
-
 
 // configureEventSource configures the Kinesis event source for the Lambda function
 func (b *kinesisProcessorBuilder) configureEventSource(stream awskinesis.IStream, function *LiftFunction, _ awssqs.IQueue) {
@@ -276,11 +275,11 @@ func (esb *kinesisEventSourceBuilder) createEventSourceProps() *awslambdaeventso
 	if eventSourceProps == nil {
 		eventSourceProps = &awslambdaeventsources.KinesisEventSourceProps{}
 	}
-	
+
 	esb.configureBatching(eventSourceProps)
 	esb.configureProcessing(eventSourceProps)
 	esb.configureErrorHandling(eventSourceProps)
-	
+
 	return eventSourceProps
 }
 
@@ -291,13 +290,13 @@ func (esb *kinesisEventSourceBuilder) configureBatching(props *awslambdaeventsou
 	} else if props.BatchSize == nil {
 		props.BatchSize = jsii.Number(100)
 	}
-	
+
 	if esb.props.MaxBatchingWindowSeconds != nil {
 		props.MaxBatchingWindow = awscdk.Duration_Seconds(esb.props.MaxBatchingWindowSeconds)
 	} else if props.MaxBatchingWindow == nil {
 		props.MaxBatchingWindow = awscdk.Duration_Seconds(jsii.Number(5))
 	}
-	
+
 	if esb.props.ParallelizationFactor != nil {
 		props.ParallelizationFactor = esb.props.ParallelizationFactor
 	}
@@ -315,11 +314,11 @@ func (esb *kinesisEventSourceBuilder) configureErrorHandling(props *awslambdaeve
 	if esb.props.RetryAttempts != nil {
 		props.RetryAttempts = esb.props.RetryAttempts
 	}
-	
+
 	if esb.props.MaxRecordAgeSeconds != nil {
 		props.MaxRecordAge = awscdk.Duration_Seconds(esb.props.MaxRecordAgeSeconds)
 	}
-	
+
 	// Note: BisectBatchOnFunctionError may not be available in this CDK version
 	// if esb.props.BisectBatchOnError != nil {
 	//	props.BisectBatchOnFunctionError = esb.props.BisectBatchOnError

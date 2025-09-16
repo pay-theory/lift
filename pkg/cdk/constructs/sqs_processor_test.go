@@ -10,7 +10,6 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-
 func TestSQSProcessor_DefaultConfiguration(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)

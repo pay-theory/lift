@@ -1,13 +1,13 @@
 package security
 
 import (
-    "context"
-    "encoding/json"
-    "fmt"
-    "log"
-    "strings"
-    "sync"
-    "time"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+	"time"
 )
 
 // Request represents the minimal request interface needed
@@ -271,7 +271,7 @@ func (cf *ComplianceFramework) SetReporter(reporter ComplianceReporter) {
 // ComplianceAudit creates middleware for compliance auditing
 func (cf *ComplianceFramework) ComplianceAudit() LiftMiddleware {
 	handler := newComplianceAuditHandler(cf)
-	
+
 	return func(next LiftHandler) LiftHandler {
 		return LiftHandlerFunc(func(ctx LiftContext) error {
 			return handler.handle(ctx, next)
@@ -336,37 +336,37 @@ func (cf *ComplianceFramework) IsFrameworkEnabled(framework string) bool {
 // sanitizeHeaders removes sensitive information from HTTP headers
 // This is used by tests to verify header sanitization
 func (cf *ComplianceFramework) sanitizeHeaders(headers map[string][]string) map[string]string {
-    sanitized := make(map[string]string)
-    for key, values := range headers {
-        if len(values) == 0 {
-            continue
-        }
-        lowerKey := strings.ToLower(key)
-        if strings.Contains(lowerKey, "auth") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "cookie") || strings.Contains(lowerKey, "key") {
-            sanitized[key] = "[REDACTED]"
-        } else {
-            sanitized[key] = values[0]
-        }
-    }
-    return sanitized
+	sanitized := make(map[string]string)
+	for key, values := range headers {
+		if len(values) == 0 {
+			continue
+		}
+		lowerKey := strings.ToLower(key)
+		if strings.Contains(lowerKey, "auth") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "cookie") || strings.Contains(lowerKey, "key") {
+			sanitized[key] = "[REDACTED]"
+		} else {
+			sanitized[key] = values[0]
+		}
+	}
+	return sanitized
 }
 
 // sanitizeQueryParams removes sensitive information from query parameters
 // This is used by tests to verify query parameter sanitization
 func (cf *ComplianceFramework) sanitizeQueryParams(params map[string][]string) map[string]string {
-    sanitized := make(map[string]string)
-    for key, values := range params {
-        if len(values) == 0 {
-            continue
-        }
-        lowerKey := strings.ToLower(key)
-        if strings.Contains(lowerKey, "password") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "key") {
-            sanitized[key] = "[REDACTED]"
-        } else {
-            sanitized[key] = values[0]
-        }
-    }
-    return sanitized
+	sanitized := make(map[string]string)
+	for key, values := range params {
+		if len(values) == 0 {
+			continue
+		}
+		lowerKey := strings.ToLower(key)
+		if strings.Contains(lowerKey, "password") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "key") {
+			sanitized[key] = "[REDACTED]"
+		} else {
+			sanitized[key] = values[0]
+		}
+	}
+	return sanitized
 }
 
 // AddCustomRule adds a custom compliance rule
@@ -442,21 +442,21 @@ func newComplianceAuditHandler(framework *ComplianceFramework) *complianceAuditH
 // handle processes a request with compliance auditing
 func (h *complianceAuditHandler) handle(ctx LiftContext, next LiftHandler) error {
 	start := time.Now()
-	
+
 	// Start audit session
 	session := h.startAuditSession(ctx, start)
-	
+
 	// Validate compliance before processing
 	if err := h.validateCompliance(ctx, session); err != nil {
 		return err
 	}
-	
+
 	// Execute handler
 	err := next.Handle(ctx)
-	
+
 	// Complete audit session
 	h.completeAuditSession(ctx, session, start, err)
-	
+
 	return err
 }
 
@@ -466,16 +466,16 @@ func (h *complianceAuditHandler) startAuditSession(ctx LiftContext, start time.T
 		id:        h.generateAuditID(),
 		startTime: start,
 	}
-	
+
 	if h.framework.auditor != nil {
 		session.id = h.framework.auditor.StartAudit(ctx)
-		
+
 		auditRequest := h.createAuditRequest(ctx, start)
 		if err := h.framework.auditor.LogRequest(session.id, auditRequest); err != nil {
 			ctx.Logger().Error("Failed to log audit request", "error", err)
 		}
 	}
-	
+
 	return session
 }
 
@@ -484,13 +484,13 @@ func (h *complianceAuditHandler) validateCompliance(ctx LiftContext, session *au
 	if h.framework.validator == nil {
 		return nil
 	}
-	
+
 	for _, framework := range h.framework.config.EnabledFrameworks {
 		if err := h.validateFramework(ctx, session, framework); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -501,11 +501,11 @@ func (h *complianceAuditHandler) validateFramework(ctx LiftContext, session *aud
 		ctx.Logger().Error("Compliance validation failed", "framework", framework, "error", err)
 		return nil // Continue processing despite validation errors
 	}
-	
+
 	if !result.Compliant {
 		return h.handleViolations(ctx, session, framework, result.Violations)
 	}
-	
+
 	return nil
 }
 
@@ -515,12 +515,12 @@ func (h *complianceAuditHandler) handleViolations(ctx LiftContext, session *audi
 	for _, violation := range violations {
 		h.logViolation(ctx, session, framework, violation)
 	}
-	
+
 	// Check for critical violations
 	if h.framework.hasCriticalViolations(violations) {
 		return fmt.Errorf("request violates compliance requirements")
 	}
-	
+
 	return nil
 }
 
@@ -529,7 +529,7 @@ func (h *complianceAuditHandler) logViolation(_ LiftContext, session *auditSessi
 	if h.framework.auditor == nil || session.id == "" {
 		return
 	}
-	
+
 	securityEvent := &SecurityEvent{
 		EventType:   "compliance_violation",
 		Severity:    violation.Severity,
@@ -542,7 +542,7 @@ func (h *complianceAuditHandler) logViolation(_ LiftContext, session *auditSessi
 		Timestamp: time.Now(),
 		Resolved:  false,
 	}
-	
+
 	if err := h.framework.auditor.LogSecurityEvent(session.id, securityEvent); err != nil {
 		log.Printf("Warning: failed to log security event: %v", err)
 	}
@@ -553,7 +553,7 @@ func (h *complianceAuditHandler) completeAuditSession(ctx LiftContext, session *
 	if h.framework.auditor == nil || session.id == "" {
 		return
 	}
-	
+
 	auditResponse := h.createAuditResponse(ctx, start, err)
 	if logErr := h.framework.auditor.LogResponse(session.id, auditResponse); logErr != nil {
 		ctx.Logger().Error("Failed to log audit response", "error", logErr)
@@ -596,12 +596,12 @@ func (h *complianceAuditHandler) generateAuditID() string {
 
 // auditSession represents an active audit session
 type auditSession struct {
-    startTime time.Time
-    id        string
+	startTime time.Time
+	id        string
 }
 
 // Prevent unused-function linter warnings for helpers used in tests/build variants.
 var (
-    _ = (*ComplianceFramework).sanitizeHeaders
-    _ = (*ComplianceFramework).sanitizeQueryParams
+	_ = (*ComplianceFramework).sanitizeHeaders
+	_ = (*ComplianceFramework).sanitizeQueryParams
 )

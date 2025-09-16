@@ -27,8 +27,8 @@ type RateLimitedFunctionProps struct {
 	LiftFunctionProps
 	// Pointers (8 bytes each)
 	WindowSeconds *float64
-	Limit *float64
-	TableName *string
+	Limit         *float64
+	TableName     *string
 	EnableMetrics *bool
 	// Smaller types last
 	RateLimitType RateLimitType

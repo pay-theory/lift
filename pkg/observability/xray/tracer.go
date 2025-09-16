@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-xray-sdk-go/xray"
+
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
@@ -55,7 +56,7 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 	segmentMgr := newSegmentManager(config)
 	panicHandler := newPanicHandler(config)
 	annotationMgr := newAnnotationManager(config, tracer)
-	
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return segmentMgr.withSegment(ctx, func(segment *xray.Segment) error {
@@ -63,15 +64,15 @@ func XRayMiddleware(config XRayConfig) lift.Middleware {
 				annotationMgr.addRequestAnnotations(segment, ctx)
 				annotationMgr.addRequestMetadata(segment, ctx)
 				annotationMgr.addTraceHeaders(ctx, segment)
-				
+
 				// Execute handler with panic recovery and timing
 				start := time.Now()
 				err := panicHandler.safeExecute(ctx, segment, next)
 				duration := time.Since(start)
-				
+
 				// Add response data
 				annotationMgr.addResponseData(segment, ctx, duration, err)
-				
+
 				return err
 			})
 		})
@@ -399,13 +400,13 @@ func newSegmentManager(config XRayConfig) *xraySegmentManager {
 func (sm *xraySegmentManager) withSegment(ctx *lift.Context, fn func(*xray.Segment) error) error {
 	newCtx, segment := xray.BeginSegment(ctx.Context, sm.config.ServiceName)
 	ctx.Context = newCtx
-	
+
 	defer func() {
 		if segment != nil {
 			segment.Close(nil)
 		}
 	}()
-	
+
 	return fn(segment)
 }
 
@@ -426,7 +427,7 @@ func (ph *xrayPanicHandler) safeExecute(ctx *lift.Context, segment *xray.Segment
 	defer func() {
 		if r := recover(); r != nil {
 			panicErr := fmt.Errorf("panic in request handler: %v", r)
-			
+
 			// Log to X-Ray if possible
 			if segment != nil {
 				if xrayErr := segment.AddError(panicErr); xrayErr != nil {
@@ -434,7 +435,7 @@ func (ph *xrayPanicHandler) safeExecute(ctx *lift.Context, segment *xray.Segment
 				}
 				segment.Close(panicErr)
 			}
-			
+
 			if ph.config.RecoverPanics {
 				ph.handlePanicRecovery(ctx, r)
 				err = panicErr
@@ -443,7 +444,7 @@ func (ph *xrayPanicHandler) safeExecute(ctx *lift.Context, segment *xray.Segment
 			}
 		}
 	}()
-	
+
 	return next.Handle(ctx)
 }
 
@@ -452,7 +453,7 @@ func (ph *xrayPanicHandler) handlePanicRecovery(ctx *lift.Context, panicValue an
 	ctx.Response.StatusCode = http.StatusInternalServerError
 	ctx.Response.Body = []byte(`{"error":"internal server error"}`)
 	ctx.Response.Headers[lift.HeaderContentType] = lift.ContentTypeJSON
-	
+
 	if ctx.Logger != nil {
 		ctx.Logger.Error("Recovered from panic", map[string]any{
 			"panic": panicValue,
@@ -463,8 +464,8 @@ func (ph *xrayPanicHandler) handlePanicRecovery(ctx *lift.Context, panicValue an
 
 // xrayAnnotationManager handles adding annotations and metadata
 type xrayAnnotationManager struct {
-    tracer *XRayTracer
-    config XRayConfig
+	tracer *XRayTracer
+	config XRayConfig
 }
 
 // newAnnotationManager creates a new annotation manager
@@ -479,7 +480,7 @@ func newAnnotationManager(config XRayConfig, tracer *XRayTracer) *xrayAnnotation
 func (am *xrayAnnotationManager) addRequestAnnotations(segment *xray.Segment, ctx *lift.Context) {
 	// Add standard annotations
 	am.tracer.addStandardAnnotations(segment, ctx)
-	
+
 	// Add custom annotations from config
 	if am.config.Annotations != nil {
 		for key, value := range am.config.Annotations {
@@ -494,7 +495,7 @@ func (am *xrayAnnotationManager) addRequestAnnotations(segment *xray.Segment, ct
 func (am *xrayAnnotationManager) addRequestMetadata(segment *xray.Segment, ctx *lift.Context) {
 	// Add standard metadata
 	am.tracer.addStandardMetadata(segment, ctx)
-	
+
 	// Add custom metadata from config
 	if am.config.Metadata != nil {
 		for key, value := range am.config.Metadata {
@@ -511,7 +512,7 @@ func (am *xrayAnnotationManager) addTraceHeaders(ctx *lift.Context, segment *xra
 		if ctx.Request.Headers == nil {
 			ctx.Request.Headers = make(map[string]string)
 		}
-		
+
 		if traceID := segment.TraceID; traceID != "" {
 			ctx.Request.Headers["X-Trace-Id"] = traceID
 		}
@@ -529,7 +530,7 @@ func (am *xrayAnnotationManager) addResponseData(segment *xray.Segment, ctx *lif
 	}); addErr != nil {
 		_ = addErr // Silently ignore XRay errors
 	}
-	
+
 	// Handle errors
 	if err != nil {
 		am.addErrorData(segment, err)
@@ -538,7 +539,7 @@ func (am *xrayAnnotationManager) addResponseData(segment *xray.Segment, ctx *lif
 			_ = annoErr // Silently ignore XRay errors
 		}
 	}
-	
+
 	// Add response information
 	if annoErr := segment.AddAnnotation("http.status_code", ctx.Response.StatusCode); annoErr != nil {
 		_ = annoErr // Silently ignore XRay errors

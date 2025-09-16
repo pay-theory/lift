@@ -35,7 +35,7 @@ func CreateStandardLambdaFunction(scope constructs.Construct, id string, bucket 
 	} else {
 		bucket.GrantRead(role, nil)
 	}
-	
+
 	if encryptionKey != nil {
 		encryptionKey.GrantEncryptDecrypt(role)
 	}

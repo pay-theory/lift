@@ -101,9 +101,9 @@ type eventBridgeHandlerBuilder struct {
 
 // eventBridgeHandlerConfig holds resolved configuration values
 type eventBridgeHandlerConfig struct {
-	maxEventAge    awscdk.Duration
-	retryAttempts  float64
-	enableDLQ      bool
+	maxEventAge   awscdk.Duration
+	retryAttempts float64
+	enableDLQ     bool
 }
 
 // newEventBridgeHandlerBuilder creates a new EventBridge handler builder
@@ -120,7 +120,7 @@ func buildEventBridgeHandlerConfig(props *EventBridgeHandlerProps) *eventBridgeH
 	if props == nil {
 		props = &EventBridgeHandlerProps{}
 	}
-	
+
 	config := &eventBridgeHandlerConfig{
 		maxEventAge:   awscdk.Duration_Hours(jsii.Number(1)),
 		retryAttempts: float64(3),
@@ -145,24 +145,24 @@ func buildEventBridgeHandlerConfig(props *EventBridgeHandlerProps) *eventBridgeH
 func (b *eventBridgeHandlerBuilder) build() (*EventBridgeHandler, error) {
 	// Setup event bus
 	b.setupEventBus()
-	
+
 	// Setup dead letter queue
 	b.setupDeadLetterQueue()
-	
+
 	// Setup Lambda function
 	b.setupFunction()
-	
+
 	// Setup EventBridge rule
 	if err := b.setupRule(); err != nil {
 		return nil, err
 	}
-	
+
 	// Setup Lambda target
 	b.setupTarget()
-	
+
 	// Grant permissions
 	b.setupPermissions()
-	
+
 	// Setup monitoring
 	b.setupMonitoring()
 
@@ -190,7 +190,7 @@ func (b *eventBridgeHandlerBuilder) setupDeadLetterQueue() {
 	if !b.config.enableDLQ {
 		return
 	}
-	
+
 	dlqBuilder := newDeadLetterQueueBuilder(
 		b.handler,
 		b.props.DeadLetterQueueProps,
@@ -242,16 +242,16 @@ func (b *eventBridgeHandlerBuilder) setupRule() error {
 		b.handler.Rule = b.props.ExistingRule
 		return nil
 	}
-	
+
 	// Validate event pattern and schedule
 	if b.props.EventPattern != nil && b.props.ScheduleExpression != nil {
 		return fmt.Errorf("EventPattern and ScheduleExpression cannot both be specified")
 	}
-	
+
 	// Create new rule
 	ruleBuilder := newEventBridgeRuleBuilder(b.handler, b.props)
 	b.handler.Rule = ruleBuilder.build()
-	
+
 	return nil
 }
 
@@ -282,10 +282,10 @@ func (b *eventBridgeHandlerBuilder) setupTarget() {
 
 // applyUserTargetProps applies user-provided target properties
 func (b *eventBridgeHandlerBuilder) applyUserTargetProps(targetProps *awseventstargets.LambdaFunctionProps) {
-    if b.props.TargetProps == nil {
-        return
-    }
-    applyNonNilStructFields(targetProps, b.props.TargetProps)
+	if b.props.TargetProps == nil {
+		return
+	}
+	applyNonNilStructFields(targetProps, b.props.TargetProps)
 }
 
 // setupPermissions grants necessary permissions
@@ -323,7 +323,7 @@ func (rb *eventBridgeRuleBuilder) build() awsevents.Rule {
 
 	// Apply user-provided rule props
 	rb.applyUserRuleProps(ruleProps)
-	
+
 	// Configure event pattern or schedule
 	rb.configureRulePattern(ruleProps)
 
@@ -340,7 +340,7 @@ func (rb *eventBridgeRuleBuilder) applyUserRuleProps(ruleProps *awsevents.RulePr
 	if rb.props.RuleProps == nil {
 		return
 	}
-	
+
 	if rb.props.RuleProps.RuleName != nil {
 		ruleProps.RuleName = rb.props.RuleProps.RuleName
 	}

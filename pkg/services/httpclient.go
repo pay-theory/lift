@@ -94,7 +94,7 @@ func NewSecureHTTPClient(config SecureHTTPClientConfig) *http.Client {
 		TLSHandshakeTimeout: config.TLSHandshakeTimeout,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: config.InsecureSkipVerify, // #nosec G402 - configurable for development/testing
-			MinVersion:         tls.VersionTLS12, // Minimum TLS 1.2
+			MinVersion:         tls.VersionTLS12,          // Minimum TLS 1.2
 		},
 
 		// Connection pooling (prevent resource exhaustion)

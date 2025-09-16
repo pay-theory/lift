@@ -483,7 +483,7 @@ func (f *ContractTestingFramework) validateHeaders(headers map[string]string) *V
 
 // validateSchema validates data against a schema definition
 func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefinition) (*ValidationCheck, error) {
-    check := &ValidationCheck{
+	check := &ValidationCheck{
 		ID:          fmt.Sprintf("schema-%d", time.Now().Unix()),
 		Name:        "Schema Validation",
 		Description: "Validates data against schema definition",
@@ -494,79 +494,78 @@ func (f *ContractTestingFramework) validateSchema(data any, schema *SchemaDefini
 		Errors:      []string{},
 		Warnings:    []string{},
 		Metadata:    make(map[string]any),
-    }
+	}
 
-    if schema == nil {
-        check.Valid = false
-        check.Status = string(JobFailed)
-        check.Errors = append(check.Errors, "Schema definition is required")
-        return check, nil
-    }
+	if schema == nil {
+		check.Valid = false
+		check.Status = string(JobFailed)
+		check.Errors = append(check.Errors, "Schema definition is required")
+		return check, nil
+	}
 
-    // Type-specific validations (delegated to helpers to reduce complexity)
-    switch schema.Type {
-    case "string":
-        validateStringSchema(data, schema, check)
-    case "number", "integer":
-        validateNumberSchema(data, schema, check)
-    case "object":
-        validateObjectSchemaRequired(data, schema, check)
-    }
+	// Type-specific validations (delegated to helpers to reduce complexity)
+	switch schema.Type {
+	case "string":
+		validateStringSchema(data, schema, check)
+	case "number", "integer":
+		validateNumberSchema(data, schema, check)
+	case "object":
+		validateObjectSchemaRequired(data, schema, check)
+	}
 
-    return check, nil
+	return check, nil
 }
 
 // helper: validate string constraints
 func validateStringSchema(data any, schema *SchemaDefinition, check *ValidationCheck) {
-    str, ok := data.(string)
-    if !ok {
-        return
-    }
-    if schema.MinLength != nil && len(str) < *schema.MinLength {
-        check.Valid = false
-        check.Status = string(JobFailed)
-        check.Errors = append(check.Errors, fmt.Sprintf("String too short: %d < %d", len(str), *schema.MinLength))
-    }
-    if schema.MaxLength != nil && len(str) > *schema.MaxLength {
-        check.Valid = false
-        check.Status = string(JobFailed)
-        check.Errors = append(check.Errors, fmt.Sprintf("String too long: %d > %d", len(str), *schema.MaxLength))
-    }
+	str, ok := data.(string)
+	if !ok {
+		return
+	}
+	if schema.MinLength != nil && len(str) < *schema.MinLength {
+		check.Valid = false
+		check.Status = string(JobFailed)
+		check.Errors = append(check.Errors, fmt.Sprintf("String too short: %d < %d", len(str), *schema.MinLength))
+	}
+	if schema.MaxLength != nil && len(str) > *schema.MaxLength {
+		check.Valid = false
+		check.Status = string(JobFailed)
+		check.Errors = append(check.Errors, fmt.Sprintf("String too long: %d > %d", len(str), *schema.MaxLength))
+	}
 }
 
 // helper: validate numeric constraints
 func validateNumberSchema(data any, schema *SchemaDefinition, check *ValidationCheck) {
-    num, ok := data.(float64)
-    if !ok {
-        return
-    }
-    if schema.Minimum != nil && num < *schema.Minimum {
-        check.Valid = false
-        check.Status = string(JobFailed)
-        check.Errors = append(check.Errors, fmt.Sprintf("Number too small: %f < %f", num, *schema.Minimum))
-    }
-    if schema.Maximum != nil && num > *schema.Maximum {
-        check.Valid = false
-        check.Status = string(JobFailed)
-        check.Errors = append(check.Errors, fmt.Sprintf("Number too large: %f > %f", num, *schema.Maximum))
-    }
+	num, ok := data.(float64)
+	if !ok {
+		return
+	}
+	if schema.Minimum != nil && num < *schema.Minimum {
+		check.Valid = false
+		check.Status = string(JobFailed)
+		check.Errors = append(check.Errors, fmt.Sprintf("Number too small: %f < %f", num, *schema.Minimum))
+	}
+	if schema.Maximum != nil && num > *schema.Maximum {
+		check.Valid = false
+		check.Status = string(JobFailed)
+		check.Errors = append(check.Errors, fmt.Sprintf("Number too large: %f > %f", num, *schema.Maximum))
+	}
 }
 
 // helper: validate required fields for object
 func validateObjectSchemaRequired(data any, schema *SchemaDefinition, check *ValidationCheck) {
-    obj, ok := data.(map[string]any)
-    if !ok {
-        return
-    }
-    for _, required := range schema.Required {
-        if _, exists := obj[required]; !exists {
-            check.Valid = false
-            check.Status = string(JobFailed)
-            check.Errors = append(check.Errors, fmt.Sprintf("Missing required field: %s", required))
-        }
-    }
+	obj, ok := data.(map[string]any)
+	if !ok {
+		return
+	}
+	for _, required := range schema.Required {
+		if _, exists := obj[required]; !exists {
+			check.Valid = false
+			check.Status = string(JobFailed)
+			check.Errors = append(check.Errors, fmt.Sprintf("Missing required field: %s", required))
+		}
+	}
 }
-
 
 // Contract Testing Implementation leverages existing framework
 
@@ -610,7 +609,7 @@ func (f *ContractTestingFramework) generateValidationSummary(results []*Contract
 	total := len(results)
 	passed := 0
 	failed := 0
-	
+
 	for _, result := range results {
 		if result.Status == TestStatusPassed {
 			passed++
@@ -618,44 +617,44 @@ func (f *ContractTestingFramework) generateValidationSummary(results []*Contract
 			failed++
 		}
 	}
-	
+
 	return fmt.Sprintf("Contract Validation Summary: Total=%d, Passed=%d, Failed=%d", total, passed, failed)
 }
 
 // calculateValidationStatus calculates the overall validation status
 func (f *ContractTestingFramework) calculateValidationStatus(validations map[string]*InteractionValidation) TestStatus {
-    if len(validations) == 0 {
-        return TestStatus("unknown")
-    }
-    for _, validation := range validations {
-        if validation.Status == string(JobFailed) {
-            return TestStatusFailed
-        }
-    }
-    return TestStatusPassed
+	if len(validations) == 0 {
+		return TestStatus("unknown")
+	}
+	for _, validation := range validations {
+		if validation.Status == string(JobFailed) {
+			return TestStatusFailed
+		}
+	}
+	return TestStatusPassed
 }
 
 // calculateInteractionStatus calculates the status of an interaction
 func (f *ContractTestingFramework) calculateInteractionStatus(checks map[string]*ValidationCheck) TestStatus {
-    if len(checks) == 0 {
-        return TestStatus("unknown")
-    }
-    for _, check := range checks {
-        if check.Status == string(JobFailed) {
-            return TestStatusFailed
-        }
-    }
-    return TestStatusPassed
+	if len(checks) == 0 {
+		return TestStatus("unknown")
+	}
+	for _, check := range checks {
+		if check.Status == string(JobFailed) {
+			return TestStatusFailed
+		}
+	}
+	return TestStatusPassed
 }
- 
+
 // Reference certain internal helpers to avoid unused warnings in builds
 var (
-    _ = (*ContractTestingFramework).validateSchema
-    _ = validateStringSchema
-    _ = validateNumberSchema
-    _ = validateObjectSchemaRequired
-    _ = (*ContractTestingFramework).validateType
-    _ = (*ContractTestingFramework).generateValidationSummary
-    _ = (*ContractTestingFramework).calculateValidationStatus
-    _ = (*ContractTestingFramework).calculateInteractionStatus
+	_ = (*ContractTestingFramework).validateSchema
+	_ = validateStringSchema
+	_ = validateNumberSchema
+	_ = validateObjectSchemaRequired
+	_ = (*ContractTestingFramework).validateType
+	_ = (*ContractTestingFramework).generateValidationSummary
+	_ = (*ContractTestingFramework).calculateValidationStatus
+	_ = (*ContractTestingFramework).calculateInteractionStatus
 )

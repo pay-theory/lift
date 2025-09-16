@@ -107,8 +107,8 @@ func TestDataProtectionManager_ClassifyData(t *testing.T) {
 				"key":         DataInternal,
 				"api_key":     DataInternal,
 				"access_key":  DataInternal,
-				"secret_key":  DataRestricted,  // Contains "secret"
-				"private_key": DataRestricted,  // Contains "private"
+				"secret_key":  DataRestricted, // Contains "secret"
+				"private_key": DataRestricted, // Contains "private"
 				"public_key":  DataInternal,
 			},
 		},

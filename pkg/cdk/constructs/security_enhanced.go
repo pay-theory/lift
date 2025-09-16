@@ -252,7 +252,7 @@ func (b *wafBuilder) build() awswafv2.CfnWebACL {
 	b.addManagedRules()
 	b.addIPRules()
 	b.addGeoBlockingRule()
-	
+
 	return b.createWebACL()
 }
 
@@ -261,7 +261,7 @@ func (b *wafBuilder) addRateLimitRule() {
 	if b.props.WAFConfig.EnableRateLimit == nil || !*b.props.WAFConfig.EnableRateLimit {
 		return
 	}
-	
+
 	rateLimit := b.props.WAFConfig.RateLimit
 	if rateLimit == nil {
 		rateLimit = jsii.Number(2000)
@@ -292,15 +292,15 @@ func (b *wafBuilder) addRateLimitRule() {
 // addManagedRules adds AWS managed rule sets
 func (b *wafBuilder) addManagedRules() {
 	managedRules := []struct {
-		enabled  *bool
-		name     string
-		ruleSet  string
+		enabled *bool
+		name    string
+		ruleSet string
 	}{
 		{b.props.WAFConfig.EnableSQLiProtection, "SQLiProtection", "AWSManagedRulesSQLiRuleSet"},
 		{b.props.WAFConfig.EnableXSSProtection, "XSSProtection", "AWSManagedRulesCommonRuleSet"},
 		{b.props.WAFConfig.EnableKnownBadInputs, "KnownBadInputs", "AWSManagedRulesKnownBadInputsRuleSet"},
 	}
-	
+
 	for _, rule := range managedRules {
 		if rule.enabled != nil && *rule.enabled {
 			b.rules = append(b.rules, createManagedWAFRule(rule.name, rule.ruleSet, int(b.priority)))
@@ -316,7 +316,7 @@ func (b *wafBuilder) addIPRules() {
 		b.rules = append(b.rules, b.createIPRule("IPWhitelist", "Whitelist", true))
 		b.priority++
 	}
-	
+
 	// IP blacklist
 	if b.props.WAFConfig.IPBlacklist != nil && len(*b.props.WAFConfig.IPBlacklist) > 0 {
 		b.rules = append(b.rules, b.createIPRule("IPBlacklist", "Blacklist", false))
@@ -330,7 +330,7 @@ func (b *wafBuilder) createIPRule(name, ipSetName string, allow bool) awswafv2.C
 	if !allow {
 		ipList = b.props.WAFConfig.IPBlacklist
 	}
-	
+
 	rule := awswafv2.CfnWebACL_RuleProperty{
 		Name:     jsii.String(name),
 		Priority: jsii.Number(b.priority),
@@ -341,7 +341,7 @@ func (b *wafBuilder) createIPRule(name, ipSetName string, allow bool) awswafv2.C
 		},
 		VisibilityConfig: b.createVisibilityConfig(name),
 	}
-	
+
 	if allow {
 		rule.Action = &awswafv2.CfnWebACL_RuleActionProperty{
 			Allow: &map[string]interface{}{},
@@ -351,7 +351,7 @@ func (b *wafBuilder) createIPRule(name, ipSetName string, allow bool) awswafv2.C
 			Block: &awswafv2.CfnWebACL_BlockActionProperty{},
 		}
 	}
-	
+
 	return rule
 }
 
@@ -360,7 +360,7 @@ func (b *wafBuilder) addGeoBlockingRule() {
 	if b.props.WAFConfig.GeoBlocking == nil || len(*b.props.WAFConfig.GeoBlocking) == 0 {
 		return
 	}
-	
+
 	countryCodes := make([]*string, len(*b.props.WAFConfig.GeoBlocking))
 	for i, country := range *b.props.WAFConfig.GeoBlocking {
 		countryCodes[i] = jsii.String(country)
@@ -463,7 +463,6 @@ func createManagedWAFRule(ruleName string, managedRuleGroupName string, priority
 		},
 	}
 }
-
 
 func (s *EnhancedSecurity) createSecrets(props *EnhancedSecurityProps) {
 	for _, secretConfig := range props.Secrets {

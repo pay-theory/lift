@@ -440,8 +440,8 @@ func (cd *ComplianceDashboard) Stop() error {
 func (cd *ComplianceDashboard) GetDashboardMetrics(ctx context.Context, timeRange TimeRange) (*DashboardMetrics, error) {
 	cd.mu.RLock()
 	defer cd.mu.RUnlock()
-	
-    builder := newDashboardMetricsBuilder(ctx, cd, timeRange)
+
+	builder := newDashboardMetricsBuilder(ctx, cd, timeRange)
 	return builder.build()
 }
 
@@ -456,15 +456,15 @@ type dashboardMetricsBuilder struct {
 
 // newDashboardMetricsBuilder creates a new metrics builder
 func newDashboardMetricsBuilder(ctx context.Context, dashboard *ComplianceDashboard, timeRange TimeRange) *dashboardMetricsBuilder {
-    return &dashboardMetricsBuilder{
-        dashboard: dashboard,
-        ctx:       ctx,
-        timeRange: timeRange,
-        metrics: &DashboardMetrics{
-            Timestamp: time.Now(),
-        },
-        cacheKey: fmt.Sprintf("dashboard_metrics_%d_%d", timeRange.Start.Unix(), timeRange.End.Unix()),
-    }
+	return &dashboardMetricsBuilder{
+		dashboard: dashboard,
+		ctx:       ctx,
+		timeRange: timeRange,
+		metrics: &DashboardMetrics{
+			Timestamp: time.Now(),
+		},
+		cacheKey: fmt.Sprintf("dashboard_metrics_%d_%d", timeRange.Start.Unix(), timeRange.End.Unix()),
+	}
 }
 
 // build constructs the dashboard metrics
@@ -473,13 +473,13 @@ func (b *dashboardMetricsBuilder) build() (*DashboardMetrics, error) {
 	if cached := b.checkCache(); cached != nil {
 		return cached, nil
 	}
-	
+
 	// Build metrics
 	b.collectEngineMetrics()
 	b.collectAlertMetrics()
 	b.generateSummary()
 	b.cacheResult()
-	
+
 	return b.metrics, nil
 }
 
@@ -488,13 +488,13 @@ func (b *dashboardMetricsBuilder) checkCache() *DashboardMetrics {
 	if !b.dashboard.config.CacheEnabled || b.dashboard.cache == nil {
 		return nil
 	}
-	
+
 	if cached, found := b.dashboard.cache.Get(b.cacheKey); found {
 		if metrics, ok := cached.(*DashboardMetrics); ok {
 			return metrics
 		}
 	}
-	
+
 	return nil
 }
 
@@ -503,7 +503,7 @@ func (b *dashboardMetricsBuilder) collectEngineMetrics() {
 	if b.dashboard.metricsEngine == nil {
 		return
 	}
-	
+
 	b.collectComplianceMetrics()
 	b.collectRiskMetrics()
 	b.collectAuditMetrics()
@@ -548,7 +548,7 @@ func (b *dashboardMetricsBuilder) collectCustomMetrics() {
 	if !b.dashboard.config.CustomMetricsEnabled {
 		return
 	}
-	
+
 	queries := b.dashboard.getCustomMetricQueries(b.timeRange)
 	metrics, err := b.dashboard.metricsEngine.CalculateCustomMetrics(b.ctx, queries)
 	if err == nil {
@@ -561,7 +561,7 @@ func (b *dashboardMetricsBuilder) collectAlertMetrics() {
 	if b.dashboard.alertManager == nil {
 		return
 	}
-	
+
 	b.collectActiveAlerts()
 	b.checkNewAlerts()
 }

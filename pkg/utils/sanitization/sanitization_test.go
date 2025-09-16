@@ -93,7 +93,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    "user@example.com",
 			expected: "user@example.com", // Email is classified as DataInternal by dataprotection
 		},
-		
+
 		// Key fields (DataInternal - should not be redacted)
 		{
 			name:     "key field",
@@ -131,7 +131,7 @@ func TestSanitizeFieldValue(t *testing.T) {
 			value:    "custom-key-value",
 			expected: "custom-key-value",
 		},
-		
+
 		// Key fields that should be redacted (contain secret/private)
 		{
 			name:     "secret_key field",

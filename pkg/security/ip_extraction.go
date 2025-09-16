@@ -45,7 +45,7 @@ func newIPExtractor(headers map[string]string, requestContext map[string]any) *i
 		requestContext:  requestContext,
 		relevantHeaders: make(map[string]string),
 	}
-	
+
 	// Configure extraction strategies in priority order
 	e.strategies = []ipExtractionStrategy{
 		&headerStrategy{name: "X-Forwarded-For", multiValue: true},
@@ -56,7 +56,7 @@ func newIPExtractor(headers map[string]string, requestContext map[string]any) *i
 		&contextStrategy{path: []string{"identity", "sourceIp"}, label: "requestContext.identity.sourceIp"},
 		&contextStrategy{path: []string{"sourceIp"}, label: "requestContext.sourceIp"},
 	}
-	
+
 	return e
 }
 
@@ -67,7 +67,7 @@ func (e *ipExtractor) extract() (string, error) {
 			return ip, nil
 		}
 	}
-	
+
 	return "", &IPExtractionError{
 		Message: "no valid IP address found in headers or request context",
 		Headers: e.relevantHeaders,
@@ -91,9 +91,9 @@ func (h *headerStrategy) extractIP(e *ipExtractor) string {
 	if !ok || value == "" {
 		return ""
 	}
-	
+
 	e.relevantHeaders[h.name] = value
-	
+
 	if h.multiValue {
 		// Handle comma-separated list of IPs
 		ips := strings.Split(value, ",")
@@ -107,14 +107,14 @@ func (h *headerStrategy) extractIP(e *ipExtractor) string {
 		// Single IP value
 		return stripPort(value)
 	}
-	
+
 	return ""
 }
 
 // contextStrategy extracts IP from request context
 type contextStrategy struct {
-    label string
-    path  []string
+	label string
+	path  []string
 }
 
 // extractIP implements the extraction logic for context-based strategies
@@ -122,16 +122,16 @@ func (c *contextStrategy) extractIP(e *ipExtractor) string {
 	if e.requestContext == nil {
 		return ""
 	}
-	
+
 	value := c.navigateContext(e.requestContext, c.path)
 	if value == "" {
 		return ""
 	}
-	
+
 	if isValidIP(value) {
 		return stripPort(value)
 	}
-	
+
 	// Record for error reporting even if invalid
 	e.relevantHeaders[c.label] = value
 	return ""
@@ -140,7 +140,7 @@ func (c *contextStrategy) extractIP(e *ipExtractor) string {
 // navigateContext traverses the context map following the given path
 func (c *contextStrategy) navigateContext(context map[string]any, path []string) string {
 	current := any(context)
-	
+
 	for _, key := range path {
 		if m, ok := current.(map[string]any); ok {
 			current = m[key]
@@ -148,11 +148,11 @@ func (c *contextStrategy) navigateContext(context map[string]any, path []string)
 			return ""
 		}
 	}
-	
+
 	if str, ok := current.(string); ok {
 		return str
 	}
-	
+
 	return ""
 }
 

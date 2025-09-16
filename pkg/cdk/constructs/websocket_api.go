@@ -91,20 +91,20 @@ func NewWebSocketAPI(scope constructs.Construct, id *string, props *WebSocketAPI
 
 // webSocketAPIBuilder builds WebSocket API components
 type webSocketAPIBuilder struct {
-	api     *WebSocketAPI
-	props   *WebSocketAPIProps
-	config  *webSocketAPIConfig
+	api    *WebSocketAPI
+	props  *WebSocketAPIProps
+	config *webSocketAPIConfig
 }
 
 // webSocketAPIConfig holds resolved configuration values
 type webSocketAPIConfig struct {
-	apiName                     string
-	description                 string
-	routeSelectionExpression    string
-	stageName                   string
-	enableConnectionManagement  bool
-	autoDeploy                  bool
-	enableAccessLogging         bool
+	apiName                    string
+	description                string
+	routeSelectionExpression   string
+	stageName                  string
+	enableConnectionManagement bool
+	autoDeploy                 bool
+	enableAccessLogging        bool
 }
 
 // newWebSocketAPIBuilder creates a new WebSocket API builder
@@ -121,15 +121,15 @@ func buildWebSocketAPIConfig(props *WebSocketAPIProps) *webSocketAPIConfig {
 	if props == nil {
 		props = &WebSocketAPIProps{}
 	}
-	
+
 	config := &webSocketAPIConfig{
-		apiName:                     "WebSocketAPI",
-		description:                 "Lift WebSocket API with DynamORM",
-		routeSelectionExpression:    "$request.body.action",
-		stageName:                   "prod",
-		enableConnectionManagement:  true,
-		autoDeploy:                  true,
-		enableAccessLogging:         true,
+		apiName:                    "WebSocketAPI",
+		description:                "Lift WebSocket API with DynamORM",
+		routeSelectionExpression:   "$request.body.action",
+		stageName:                  "prod",
+		enableConnectionManagement: true,
+		autoDeploy:                 true,
+		enableAccessLogging:        true,
 	}
 
 	// Apply provided values
@@ -162,20 +162,20 @@ func buildWebSocketAPIConfig(props *WebSocketAPIProps) *webSocketAPIConfig {
 func (b *webSocketAPIBuilder) build() *WebSocketAPI {
 	// Setup access logging
 	b.setupAccessLogging()
-	
+
 	// Setup WebSocket API
 	b.setupWebSocketAPI()
-	
+
 	// Setup connection table
 	b.setupConnectionTable()
-	
+
 	// Validate and setup routes
 	b.validateRequiredFunctions()
 	b.setupRoutes()
-	
+
 	// Setup stage
 	b.setupStage()
-	
+
 	// Grant permissions
 	b.api.grantApiGatewayInvokePermissions()
 
@@ -187,7 +187,7 @@ func (b *webSocketAPIBuilder) setupAccessLogging() {
 	if !b.config.enableAccessLogging {
 		return
 	}
-	
+
 	if b.props.AccessLogGroup != nil {
 		b.api.AccessLogGroup = b.props.AccessLogGroup
 	} else {
@@ -222,7 +222,7 @@ func (b *webSocketAPIBuilder) setupConnectionTable() {
 	if !b.config.enableConnectionManagement {
 		return
 	}
-	
+
 	// Set defaults for connection table
 	connectionTableProps := &ConnectionTableProps{}
 	if b.props.ConnectionTableProps != nil {
@@ -255,10 +255,10 @@ func (b *webSocketAPIBuilder) validateRequiredFunctions() {
 func (b *webSocketAPIBuilder) setupRoutes() {
 	// Initialize routes map
 	b.api.Routes = make(map[string]awsapigatewayv2.WebSocketRoute)
-	
+
 	// Add standard routes
 	b.addStandardRoutes()
-	
+
 	// Add custom routes
 	b.addCustomRoutes()
 }
@@ -292,7 +292,7 @@ func (b *webSocketAPIBuilder) addCustomRoutes() {
 	if b.props.Routes == nil {
 		return
 	}
-	
+
 	for _, routeConfig := range b.props.Routes {
 		if routeConfig.RouteKey != nil && routeConfig.Function != nil {
 			b.api.AddRoute(*routeConfig.RouteKey, routeConfig.Function, routeConfig)
@@ -319,7 +319,7 @@ func (b *webSocketAPIBuilder) configureThrottling(stageProps *awsapigatewayv2.We
 	if b.props.ThrottleRateLimit == nil && b.props.ThrottleBurstLimit == nil {
 		return
 	}
-	
+
 	throttleSettings := &awsapigatewayv2.ThrottleSettings{}
 	if b.props.ThrottleRateLimit != nil {
 		throttleSettings.RateLimit = b.props.ThrottleRateLimit

@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
@@ -260,7 +261,7 @@ func (b *eventDrivenAPIBuilder) setupMonitoring() {
 // buildAPIEnvironment creates environment variables for the API function
 func (b *eventDrivenAPIBuilder) buildAPIEnvironment() map[string]*string {
 	apiEnv := make(map[string]*string)
-	
+
 	// Copy user environment variables
 	if b.props.Environment != nil {
 		for k, v := range *b.props.Environment {
@@ -272,7 +273,7 @@ func (b *eventDrivenAPIBuilder) buildAPIEnvironment() map[string]*string {
 	apiEnv["EVENT_BUS_NAME"] = jsii.String(b.config.eventBusName)
 	apiEnv["EVENT_SOURCE"] = jsii.String(b.config.eventSource)
 	apiEnv["EVENT_DETAIL_TYPE"] = jsii.String(b.config.detailType)
-	
+
 	// Add request tracking variables
 	if b.api.RequestTrackingTable != nil {
 		apiEnv["REQUEST_TRACKING_TABLE"] = b.api.RequestTrackingTable.GetTableName()
@@ -285,7 +286,7 @@ func (b *eventDrivenAPIBuilder) buildAPIEnvironment() map[string]*string {
 // buildEventEnvironment creates environment variables for the event function
 func (b *eventDrivenAPIBuilder) buildEventEnvironment() map[string]*string {
 	eventEnv := make(map[string]*string)
-	
+
 	// Copy user environment variables
 	if b.props.Environment != nil {
 		for k, v := range *b.props.Environment {

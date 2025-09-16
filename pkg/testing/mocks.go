@@ -1174,14 +1174,14 @@ func (m *MockCloudWatchMetricsClient) GetMetricStatistics(_ context.Context, nam
 		startTime:  startTime,
 		endTime:    endTime,
 	}
-	
+
 	matcher := newMetricMatcher(m.metrics)
 	values := matcher.findMatchingValues(query)
-	
+
 	if len(values) == 0 {
 		return make(map[Statistic]float64), nil
 	}
-	
+
 	// Calculate requested statistics
 	calculator := newStatisticsCalculator(values)
 	return calculator.calculate(statistics), nil
@@ -1189,11 +1189,11 @@ func (m *MockCloudWatchMetricsClient) GetMetricStatistics(_ context.Context, nam
 
 // metricQuery represents a query for metrics
 type metricQuery struct {
-    startTime  time.Time
-    endTime    time.Time
-    dimensions map[string]string
-    namespace  string
-    metricName string
+	startTime  time.Time
+	endTime    time.Time
+	dimensions map[string]string
+	namespace  string
+	metricName string
 }
 
 // metricMatcher handles metric filtering and matching
@@ -1212,14 +1212,14 @@ func (mm *metricMatcher) findMatchingValues(query *metricQuery) []float64 {
 	if !exists {
 		return nil
 	}
-	
+
 	var values []float64
 	for _, metric := range namespaceMetrics {
 		if mm.matches(metric, query) {
 			values = append(values, metric.Value)
 		}
 	}
-	
+
 	return values
 }
 
@@ -1229,12 +1229,12 @@ func (mm *metricMatcher) matches(metric *MockMetricDatum, query *metricQuery) bo
 	if metric.MetricName != query.metricName {
 		return false
 	}
-	
+
 	// Check time range
 	if metric.Timestamp.Before(query.startTime) || metric.Timestamp.After(query.endTime) {
 		return false
 	}
-	
+
 	// Check dimensions
 	return mm.dimensionsMatch(metric.Dimensions, query.dimensions)
 }
@@ -1244,13 +1244,13 @@ func (mm *metricMatcher) dimensionsMatch(metricDims, queryDims map[string]string
 	if queryDims == nil {
 		return true
 	}
-	
+
 	for k, v := range queryDims {
 		if metricDims[k] != v {
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -1267,11 +1267,11 @@ func newStatisticsCalculator(values []float64) *statisticsCalculator {
 // calculate computes the requested statistics
 func (sc *statisticsCalculator) calculate(statistics []Statistic) map[Statistic]float64 {
 	result := make(map[Statistic]float64)
-	
+
 	for _, stat := range statistics {
 		result[stat] = sc.computeStatistic(stat)
 	}
-	
+
 	return result
 }
 
@@ -1315,14 +1315,14 @@ func (sc *statisticsCalculator) minimum() float64 {
 	if len(sc.values) == 0 {
 		return 0
 	}
-	
-    minVal := sc.values[0]
-    for _, v := range sc.values[1:] {
-        if v < minVal {
-            minVal = v
-        }
-    }
-    return minVal
+
+	minVal := sc.values[0]
+	for _, v := range sc.values[1:] {
+		if v < minVal {
+			minVal = v
+		}
+	}
+	return minVal
 }
 
 // maximum finds the maximum value
@@ -1330,14 +1330,14 @@ func (sc *statisticsCalculator) maximum() float64 {
 	if len(sc.values) == 0 {
 		return 0
 	}
-	
-    maxVal := sc.values[0]
-    for _, v := range sc.values[1:] {
-        if v > maxVal {
-            maxVal = v
-        }
-    }
-    return maxVal
+
+	maxVal := sc.values[0]
+	for _, v := range sc.values[1:] {
+		if v > maxVal {
+			maxVal = v
+		}
+	}
+	return maxVal
 }
 
 // MockCloudWatchAlarmsClient provides a mock implementation of CloudWatch Alarms

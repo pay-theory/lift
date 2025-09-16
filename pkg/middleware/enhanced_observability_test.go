@@ -57,18 +57,18 @@ func (m *mockLogger) Debug(msg string, fields ...map[string]any) {
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockLogger) WithField(_ string, _ any) lift.Logger  { return m }
+func (m *mockLogger) WithField(_ string, _ any) lift.Logger   { return m }
 func (m *mockLogger) WithFields(_ map[string]any) lift.Logger { return m }
 
 func (m *mockLogger) WithRequestID(_ string) observability.StructuredLogger { return m }
-func (m *mockLogger) WithTenantID(_ string) observability.StructuredLogger   { return m }
-func (m *mockLogger) WithUserID(_ string) observability.StructuredLogger       { return m }
-func (m *mockLogger) WithTraceID(_ string) observability.StructuredLogger     { return m }
-func (m *mockLogger) WithSpanID(_ string) observability.StructuredLogger       { return m }
+func (m *mockLogger) WithTenantID(_ string) observability.StructuredLogger  { return m }
+func (m *mockLogger) WithUserID(_ string) observability.StructuredLogger    { return m }
+func (m *mockLogger) WithTraceID(_ string) observability.StructuredLogger   { return m }
+func (m *mockLogger) WithSpanID(_ string) observability.StructuredLogger    { return m }
 
 func (m *mockLogger) Flush(_ context.Context) error { return nil }
-func (m *mockLogger) Close() error                    { return nil }
-func (m *mockLogger) IsHealthy() bool                 { return m.healthy }
+func (m *mockLogger) Close() error                  { return nil }
+func (m *mockLogger) IsHealthy() bool               { return m.healthy }
 func (m *mockLogger) GetStats() observability.LoggerStats {
 	return observability.LoggerStats{
 		EntriesLogged:  int64(len(m.logs)),
@@ -112,7 +112,7 @@ func (m *mockMetrics) WithTag(key, value string) observability.MetricsCollector 
 }
 
 func (m *mockMetrics) RecordBatch(_ []*observability.MetricEntry) error { return nil }
-func (m *mockMetrics) Close() error                                           { return nil }
+func (m *mockMetrics) Close() error                                     { return nil }
 func (m *mockMetrics) GetStats() observability.MetricsStats {
 	return observability.MetricsStats{
 		MetricsRecorded: int64(len(m.metrics)),

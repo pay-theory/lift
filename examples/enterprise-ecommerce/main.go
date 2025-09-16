@@ -639,68 +639,68 @@ func main() {
 
 // setupAPIRoutes configures all the API routes for the e-commerce platform
 func setupAPIRoutes(app *lift.App) error {
-    type route struct {
-        handler func(*lift.Context) error
-        method  string
-        path    string
-    }
+	type route struct {
+		handler func(*lift.Context) error
+		method  string
+		path    string
+	}
 
-    routes := []route{
-        // Health check
-        {method: "GET", path: "/api/v1/health", handler: healthCheck},
+	routes := []route{
+		// Health check
+		{method: "GET", path: "/api/v1/health", handler: healthCheck},
 
-        // Tenant management
-        {method: "POST", path: "/api/v1/tenants", handler: createTenant},
-        {method: "GET", path: "/api/v1/tenants", handler: listTenants},
-        {method: "GET", path: "/api/v1/tenants/:id", handler: getTenant},
+		// Tenant management
+		{method: "POST", path: "/api/v1/tenants", handler: createTenant},
+		{method: "GET", path: "/api/v1/tenants", handler: listTenants},
+		{method: "GET", path: "/api/v1/tenants/:id", handler: getTenant},
 
-        // Products
-        {method: "POST", path: "/api/v1/products", handler: createProduct},
-        {method: "GET", path: "/api/v1/products", handler: listProducts},
-        {method: "GET", path: "/api/v1/products/search", handler: searchProducts},
-        {method: "GET", path: "/api/v1/products/:id", handler: getProduct},
-        {method: "PUT", path: "/api/v1/products/:id/inventory", handler: updateProductInventory},
+		// Products
+		{method: "POST", path: "/api/v1/products", handler: createProduct},
+		{method: "GET", path: "/api/v1/products", handler: listProducts},
+		{method: "GET", path: "/api/v1/products/search", handler: searchProducts},
+		{method: "GET", path: "/api/v1/products/:id", handler: getProduct},
+		{method: "PUT", path: "/api/v1/products/:id/inventory", handler: updateProductInventory},
 
-        // Customers
-        {method: "POST", path: "/api/v1/customers", handler: createCustomer},
-        {method: "GET", path: "/api/v1/customers", handler: listCustomers},
-        {method: "GET", path: "/api/v1/customers/:id", handler: getCustomer},
-        {method: "POST", path: "/api/v1/customers/auth", handler: authenticateCustomer},
-        {method: "GET", path: "/api/v1/customers/:id/orders", handler: getCustomerOrders},
+		// Customers
+		{method: "POST", path: "/api/v1/customers", handler: createCustomer},
+		{method: "GET", path: "/api/v1/customers", handler: listCustomers},
+		{method: "GET", path: "/api/v1/customers/:id", handler: getCustomer},
+		{method: "POST", path: "/api/v1/customers/auth", handler: authenticateCustomer},
+		{method: "GET", path: "/api/v1/customers/:id/orders", handler: getCustomerOrders},
 
-        // Orders
-        {method: "POST", path: "/api/v1/orders", handler: createOrder},
-        {method: "GET", path: "/api/v1/orders", handler: listOrders},
-        {method: "GET", path: "/api/v1/orders/:id", handler: getOrder},
-        {method: "PUT", path: "/api/v1/orders/:id/status", handler: updateOrderStatus},
+		// Orders
+		{method: "POST", path: "/api/v1/orders", handler: createOrder},
+		{method: "GET", path: "/api/v1/orders", handler: listOrders},
+		{method: "GET", path: "/api/v1/orders/:id", handler: getOrder},
+		{method: "PUT", path: "/api/v1/orders/:id/status", handler: updateOrderStatus},
 
-        // Cart
-        {method: "GET", path: "/api/v1/cart", handler: getCart},
-        {method: "POST", path: "/api/v1/cart/items", handler: addToCart},
-        {method: "PUT", path: "/api/v1/cart/:cartId/items/:itemId", handler: updateCartItem},
-        {method: "DELETE", path: "/api/v1/cart/:cartId/items/:itemId", handler: removeFromCart},
-        {method: "POST", path: "/api/v1/cart/:cartId/checkout", handler: checkout},
-    }
+		// Cart
+		{method: "GET", path: "/api/v1/cart", handler: getCart},
+		{method: "POST", path: "/api/v1/cart/items", handler: addToCart},
+		{method: "PUT", path: "/api/v1/cart/:cartId/items/:itemId", handler: updateCartItem},
+		{method: "DELETE", path: "/api/v1/cart/:cartId/items/:itemId", handler: removeFromCart},
+		{method: "POST", path: "/api/v1/cart/:cartId/checkout", handler: checkout},
+	}
 
-    for _, r := range routes {
-        var err error
-        switch r.method {
-        case "GET":
-            err = app.GET(r.path, r.handler)
-        case "POST":
-            err = app.POST(r.path, r.handler)
-        case "PUT":
-            err = app.PUT(r.path, r.handler)
-        case "DELETE":
-            err = app.DELETE(r.path, r.handler)
-        default:
-            err = fmt.Errorf("unsupported method: %s", r.method)
-        }
-        if err != nil {
-            return err
-        }
-    }
-    return nil
+	for _, r := range routes {
+		var err error
+		switch r.method {
+		case "GET":
+			err = app.GET(r.path, r.handler)
+		case "POST":
+			err = app.POST(r.path, r.handler)
+		case "PUT":
+			err = app.PUT(r.path, r.handler)
+		case "DELETE":
+			err = app.DELETE(r.path, r.handler)
+		default:
+			err = fmt.Errorf("unsupported method: %s", r.method)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func healthCheck(ctx *lift.Context) error {

@@ -122,7 +122,6 @@ func TestRateLimitedFunctionIntegration(t *testing.T) {
 			},
 		})
 
-
 		// Verify function references
 		assert.NotNil(t, fn.GetFunction())
 		assert.NotNil(t, fn.GetTable())

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"math"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -355,8 +355,8 @@ func (c *ResourceHealthChecker) Name() string {
 }
 
 func (c *ResourceHealthChecker) Check(ctx context.Context) health.HealthStatus {
-    checker := newResourceCheckBuilder(ctx, c)
-    return checker.build()
+	checker := newResourceCheckBuilder(ctx, c)
+	return checker.build()
 }
 
 // resourceCheckBuilder builds resource health checks
@@ -370,12 +370,12 @@ type resourceCheckBuilder struct {
 
 // newResourceCheckBuilder creates a new resource check builder
 func newResourceCheckBuilder(ctx context.Context, checker *ResourceHealthChecker) *resourceCheckBuilder {
-    return &resourceCheckBuilder{
-        checker: checker,
-        ctx:     ctx,
-        start:   time.Now(),
-        issues:  []string{},
-    }
+	return &resourceCheckBuilder{
+		checker: checker,
+		ctx:     ctx,
+		start:   time.Now(),
+		issues:  []string{},
+	}
 }
 
 // build performs all health checks
@@ -387,7 +387,7 @@ func (b *resourceCheckBuilder) build() health.HealthStatus {
 	b.checkFileDescriptors()
 	b.checkDiskSpace()
 	b.checkNetworkConnectivity()
-	
+
 	return b.buildStatus()
 }
 
@@ -418,10 +418,10 @@ func (b *resourceCheckBuilder) checkGoroutines() {
 // checkMemory checks memory usage
 func (b *resourceCheckBuilder) checkMemory() {
 	runtime.ReadMemStats(&b.memStats)
-	
+
 	allocMB := float64(b.memStats.Alloc) / 1024 / 1024
 	sysMB := float64(b.memStats.Sys) / 1024 / 1024
-	
+
 	if b.memStats.Alloc > b.memStats.Sys/2 {
 		b.issues = append(b.issues, fmt.Sprintf("High memory usage: %.1fMB allocated of %.1fMB system", allocMB, sysMB))
 	}
@@ -441,7 +441,7 @@ func (b *resourceCheckBuilder) checkFileDescriptors() {
 	if !b.checker.checkFileDescriptors() {
 		return
 	}
-	
+
 	openFiles := b.checker.estimateOpenFiles()
 	if openFiles > b.checker.maxOpenFiles {
 		b.issues = append(b.issues, fmt.Sprintf("High file descriptor usage: estimated %d open files", openFiles))
@@ -453,13 +453,13 @@ func (b *resourceCheckBuilder) checkDiskSpace() {
 	if !b.checker.checkDiskSpace {
 		return
 	}
-	
+
 	availableMB, err := b.checker.getDiskSpaceMB()
 	if err != nil {
 		b.issues = append(b.issues, fmt.Sprintf("Failed to check disk space: %v", err))
 		return
 	}
-	
+
 	if availableMB < b.checker.minDiskSpaceMB {
 		b.issues = append(b.issues, fmt.Sprintf("Low disk space: %dMB available (min: %dMB)", availableMB, b.checker.minDiskSpaceMB))
 	}
@@ -470,7 +470,7 @@ func (b *resourceCheckBuilder) checkNetworkConnectivity() {
 	if !b.checker.checkNetworkConnectivity {
 		return
 	}
-	
+
 	if err := b.checker.checkNetwork(b.ctx); err != nil {
 		b.issues = append(b.issues, fmt.Sprintf("Network connectivity issue: %v", err))
 	}
@@ -480,12 +480,12 @@ func (b *resourceCheckBuilder) checkNetworkConnectivity() {
 func (b *resourceCheckBuilder) buildStatus() health.HealthStatus {
 	status := health.StatusHealthy
 	message := "All resources are healthy"
-	
+
 	if len(b.issues) > 0 {
 		status = health.StatusUnhealthy
 		message = fmt.Sprintf("Resource issues detected: %v", b.issues)
 	}
-	
+
 	return health.HealthStatus{
 		Status:    status,
 		Timestamp: time.Now(),
@@ -590,7 +590,7 @@ func (b *memoryCheckBuilder) build() health.HealthStatus {
 	b.checkGCPerformance()
 	b.checkMemoryLeaks()
 	b.checkMemoryEfficiency()
-	
+
 	return b.buildStatus()
 }
 
@@ -618,7 +618,7 @@ func (b *memoryCheckBuilder) readMemoryStats() {
 // checkTotalMemory checks total memory usage
 func (b *memoryCheckBuilder) checkTotalMemory() {
 	if b.allocMB > float64(b.checker.maxMemoryMB) {
-		b.issues = append(b.issues, fmt.Sprintf("Memory usage too high: %.1fMB (max: %dMB)", 
+		b.issues = append(b.issues, fmt.Sprintf("Memory usage too high: %.1fMB (max: %dMB)",
 			b.allocMB, b.checker.maxMemoryMB))
 	}
 }
@@ -626,7 +626,7 @@ func (b *memoryCheckBuilder) checkTotalMemory() {
 // checkHeapUsage checks heap memory usage
 func (b *memoryCheckBuilder) checkHeapUsage() {
 	if b.heapInUseMB > float64(b.checker.maxHeapMB) {
-		b.issues = append(b.issues, fmt.Sprintf("Heap usage too high: %.1fMB (max: %dMB)", 
+		b.issues = append(b.issues, fmt.Sprintf("Heap usage too high: %.1fMB (max: %dMB)",
 			b.heapInUseMB, b.checker.maxHeapMB))
 	}
 }
@@ -636,7 +636,7 @@ func (b *memoryCheckBuilder) checkGCPerformance() {
 	if !b.checker.enableGCStats {
 		return
 	}
-	
+
 	b.checkGCPauseTimes()
 	b.checkGCFrequency()
 }
@@ -645,39 +645,39 @@ func (b *memoryCheckBuilder) checkGCPerformance() {
 func (b *memoryCheckBuilder) checkGCPauseTimes() {
 	gcPauses := b.memStats.PauseNs[:]
 	var maxRecentPause uint64
-	
+
 	for i := 0; i < 10 && i < len(gcPauses); i++ {
 		if gcPauses[i] > maxRecentPause {
 			maxRecentPause = gcPauses[i]
 		}
 	}
-	
+
 	maxRecentPauseMs := float64(maxRecentPause) / 1000000
 	if maxRecentPauseMs > b.checker.maxGCPauseMs {
-		b.issues = append(b.issues, fmt.Sprintf("High GC pause time: %.2fms (max: %.2fms)", 
+		b.issues = append(b.issues, fmt.Sprintf("High GC pause time: %.2fms (max: %.2fms)",
 			maxRecentPauseMs, b.checker.maxGCPauseMs))
 	}
 }
 
 // checkGCFrequency checks garbage collection frequency
 func (b *memoryCheckBuilder) checkGCFrequency() {
-    if b.memStats.NumGC == 0 {
-        return
-    }
-    
-    // Convert LastGC safely to int64 to avoid overflow (gosec G115)
-    lastGC := b.memStats.LastGC
-    if lastGC > uint64(math.MaxInt64) {
-        lastGC = uint64(math.MaxInt64)
-    }
-    // Compute delta minutes using float math to avoid narrowing casts
-    lastGCSec := float64(lastGC) / 1e9
-    nowSec := float64(time.Now().UnixNano()) / 1e9
-    minutes := (nowSec - lastGCSec) / 60.0
-    if minutes <= 0 {
-        return
-    }
-    gcRate := float64(b.memStats.NumGC) / minutes
+	if b.memStats.NumGC == 0 {
+		return
+	}
+
+	// Convert LastGC safely to int64 to avoid overflow (gosec G115)
+	lastGC := b.memStats.LastGC
+	if lastGC > uint64(math.MaxInt64) {
+		lastGC = uint64(math.MaxInt64)
+	}
+	// Compute delta minutes using float math to avoid narrowing casts
+	lastGCSec := float64(lastGC) / 1e9
+	nowSec := float64(time.Now().UnixNano()) / 1e9
+	minutes := (nowSec - lastGCSec) / 60.0
+	if minutes <= 0 {
+		return
+	}
+	gcRate := float64(b.memStats.NumGC) / minutes
 	if gcRate > 60 { // More than 60 GC cycles per minute
 		b.issues = append(b.issues, fmt.Sprintf("High GC frequency: %.1f cycles/minute", gcRate))
 	}
@@ -696,7 +696,7 @@ func (b *memoryCheckBuilder) checkMemoryEfficiency() {
 	if b.memStats.Sys == 0 {
 		return
 	}
-	
+
 	wasteRatio := float64(b.memStats.Sys-b.memStats.Alloc) / float64(b.memStats.Sys)
 	if wasteRatio > 0.5 { // More than 50% wasted
 		b.issues = append(b.issues, fmt.Sprintf("High memory waste ratio: %.1f%% unused", wasteRatio*100))
@@ -706,14 +706,14 @@ func (b *memoryCheckBuilder) checkMemoryEfficiency() {
 // buildStatus creates the final health status
 func (b *memoryCheckBuilder) buildStatus() health.HealthStatus {
 	status := health.StatusHealthy
-	message := fmt.Sprintf("Memory healthy: %.1fMB allocated, %.1fMB heap in use", 
+	message := fmt.Sprintf("Memory healthy: %.1fMB allocated, %.1fMB heap in use",
 		b.allocMB, b.heapInUseMB)
-	
+
 	if len(b.issues) > 0 {
 		status = health.StatusUnhealthy
 		message = fmt.Sprintf("Memory issues detected: %v", b.issues)
 	}
-	
+
 	return health.HealthStatus{
 		Status:    status,
 		Timestamp: time.Now(),

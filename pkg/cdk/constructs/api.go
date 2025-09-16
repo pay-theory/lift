@@ -69,7 +69,7 @@ func (l *LiftAPI) GetResourceName() *string {
 // NewLiftAPI creates a new API Gateway HTTP API optimized for Lift
 func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *LiftAPI {
 	this := constructs.NewConstruct(scope, id)
-	
+
 	builder := newLiftAPIBuilder(this, props)
 	return builder.build()
 }
@@ -92,16 +92,16 @@ func newLiftAPIBuilder(construct constructs.Construct, props *LiftAPIProps) *lif
 func (b *liftAPIBuilder) build() *LiftAPI {
 	// Create log group for access logging
 	logGroup := b.createLogGroup()
-	
+
 	// Create HTTP API
 	httpApi := b.createHttpAPI()
-	
+
 	// Create stage
 	stage := b.createStage(httpApi, logGroup)
-	
+
 	// Configure custom domain
 	b.configureDomain(httpApi, stage)
-	
+
 	return &LiftAPI{
 		Construct: b.construct,
 		HttpAPI:   httpApi,
@@ -115,11 +115,11 @@ func (b *liftAPIBuilder) createLogGroup() awslogs.ILogGroup {
 	if b.props.EnableAccessLogging == nil || !*b.props.EnableAccessLogging {
 		return nil
 	}
-	
+
 	if b.props.AccessLogGroup != nil {
 		return b.props.AccessLogGroup
 	}
-	
+
 	return awslogs.NewLogGroup(b.construct, jsii.String("AccessLogs"), &awslogs.LogGroupProps{
 		LogGroupName:  jsii.String("/aws/apigateway/" + *b.props.Name),
 		Retention:     awslogs.RetentionDays_ONE_WEEK,
@@ -133,17 +133,17 @@ func (b *liftAPIBuilder) createHttpAPI() awsapigatewayv2.HttpApi {
 		ApiName:     b.props.Name,
 		Description: b.props.Description,
 	}
-	
+
 	// Configure CORS if enabled
 	if b.props.EnableCORS != nil && *b.props.EnableCORS {
 		apiProps.CorsPreflight = b.createCORSConfig()
 	}
-	
+
 	// Set default authorizer if provided
 	if b.props.DefaultAuthorizer != nil {
 		apiProps.DefaultAuthorizer = b.props.DefaultAuthorizer
 	}
-	
+
 	return awsapigatewayv2.NewHttpApi(b.construct, jsii.String("HttpApi"), apiProps)
 }
 
@@ -181,21 +181,21 @@ func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup a
 	if b.props.StageName != nil {
 		stageName = *b.props.StageName
 	}
-	
+
 	// Check if we need a custom stage
 	if !b.needsCustomStage(stageName) {
 		return httpApi.DefaultStage()
 	}
-	
+
 	// Create custom stage
 	stage := b.createCustomStage(httpApi, stageName)
-	
+
 	// Configure access logging
 	b.configureAccessLogging(stage, logGroup)
-	
+
 	// Configure detailed metrics
 	b.configureDetailedMetrics(stage)
-	
+
 	return stage
 }
 
@@ -215,26 +215,26 @@ func (b *liftAPIBuilder) createCustomStage(httpApi awsapigatewayv2.HttpApi, stag
 		StageName:  jsii.String(stageName),
 		AutoDeploy: jsii.Bool(true),
 	}
-	
+
 	// Configure throttling if specified
 	if b.props.ThrottleRateLimit != nil || b.props.ThrottleBurstLimit != nil {
 		stageProps.Throttle = b.createThrottleSettings()
 	}
-	
+
 	return awsapigatewayv2.NewHttpStage(b.construct, jsii.String("Stage"), stageProps)
 }
 
 // createThrottleSettings creates throttle configuration
 func (b *liftAPIBuilder) createThrottleSettings() *awsapigatewayv2.ThrottleSettings {
 	throttleSettings := &awsapigatewayv2.ThrottleSettings{}
-	
+
 	if b.props.ThrottleRateLimit != nil {
 		throttleSettings.RateLimit = b.props.ThrottleRateLimit
 	}
 	if b.props.ThrottleBurstLimit != nil {
 		throttleSettings.BurstLimit = b.props.ThrottleBurstLimit
 	}
-	
+
 	return throttleSettings
 }
 
@@ -243,18 +243,18 @@ func (b *liftAPIBuilder) configureAccessLogging(stage awsapigatewayv2.IHttpStage
 	if logGroup == nil {
 		return
 	}
-	
+
 	accessLogSettings := &awsapigatewayv2.CfnStage_AccessLogSettingsProperty{
 		DestinationArn: logGroup.LogGroupArn(),
 		Format:         jsii.String(`$context.requestId $context.requestTime "$context.httpMethod $context.path $context.protocol" $context.status $context.responseLength $context.error.message $context.error.responseType`),
 	}
-	
+
 	if defaultChild := stage.Node().DefaultChild(); defaultChild != nil {
 		if cfnStage, ok := defaultChild.(awsapigatewayv2.CfnStage); ok {
 			cfnStage.SetAccessLogSettings(accessLogSettings)
 		}
 	}
-	
+
 	// Grant write permissions to API Gateway service
 	logGroup.Grant(awsiam.NewServicePrincipal(jsii.String("apigateway.amazonaws.com"), nil), jsii.String("logs:PutLogEvents"))
 }
@@ -264,7 +264,7 @@ func (b *liftAPIBuilder) configureDetailedMetrics(stage awsapigatewayv2.IHttpSta
 	if b.props.EnableDetailedMetrics == nil || !*b.props.EnableDetailedMetrics {
 		return
 	}
-	
+
 	if defaultChild := stage.Node().DefaultChild(); defaultChild != nil {
 		if cfnStage, ok := defaultChild.(awsapigatewayv2.CfnStage); ok {
 			cfnStage.AddPropertyOverride(jsii.String("DetailedMetricsEnabled"), jsii.Bool(true))
@@ -277,15 +277,15 @@ func (b *liftAPIBuilder) configureDomain(httpApi awsapigatewayv2.HttpApi, stage 
 	if b.props.DomainName == nil || b.props.CertificateArn == nil {
 		return
 	}
-	
+
 	// Create certificate from ARN
 	cert := awscertificatemanager.Certificate_FromCertificateArn(b.construct, jsii.String("Certificate"), b.props.CertificateArn)
-	
+
 	domainName := awsapigatewayv2.NewDomainName(b.construct, jsii.String("DomainName"), &awsapigatewayv2.DomainNameProps{
 		DomainName:  b.props.DomainName,
 		Certificate: cert,
 	})
-	
+
 	awsapigatewayv2.NewApiMapping(b.construct, jsii.String("ApiMapping"), &awsapigatewayv2.ApiMappingProps{
 		Api:        httpApi,
 		DomainName: domainName,

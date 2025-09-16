@@ -26,13 +26,13 @@ const (
 
 // DataProtectionConfig holds configuration for data protection
 type DataProtectionConfig struct {
-    FieldClassifications  map[string]DataClassification        `json:"field_classifications"`
-    RegionRestrictions    map[DataClassification][]string      `json:"region_restrictions"`
-    RetentionPolicies     map[DataClassification]time.Duration `json:"retention_policies"`
-    AccessControls        map[DataClassification][]string      `json:"access_controls"`
-    MaskingRules          map[string]MaskingRule               `json:"masking_rules"`
-    EncryptionKey         string                               `json:"encryption_key"`
-    DefaultClassification DataClassification                   `json:"default_classification"`
+	FieldClassifications  map[string]DataClassification        `json:"field_classifications"`
+	RegionRestrictions    map[DataClassification][]string      `json:"region_restrictions"`
+	RetentionPolicies     map[DataClassification]time.Duration `json:"retention_policies"`
+	AccessControls        map[DataClassification][]string      `json:"access_controls"`
+	MaskingRules          map[string]MaskingRule               `json:"masking_rules"`
+	EncryptionKey         string                               `json:"encryption_key"`
+	DefaultClassification DataClassification                   `json:"default_classification"`
 }
 
 // MaskingRule defines how to mask sensitive data
@@ -44,10 +44,10 @@ type MaskingRule struct {
 
 // DataProtectionManager handles data classification and protection
 type DataProtectionManager struct { //nolint:govet // fieldalignment: struct dominated by pointer fields; refactor would be invasive
-    config    DataProtectionConfig
-    encryptor *AESEncryptor
-    tokenizer *DataTokenizer
-    mu        sync.RWMutex
+	config    DataProtectionConfig
+	encryptor *AESEncryptor
+	tokenizer *DataTokenizer
+	mu        sync.RWMutex
 }
 
 // DataContext represents data with its classification and metadata
@@ -65,26 +65,26 @@ type DataContext struct {
 
 // DataProtectionRequest represents a request to access protected data
 type DataProtectionRequest struct { //nolint:govet // fieldalignment: API shape preferred; further packing has limited value
-    Fields         []string           `json:"fields"`
-    UserID         string             `json:"user_id"`
-    TenantID       string             `json:"tenant_id"`
-    DataType       string             `json:"data_type"`
-    Purpose        string             `json:"purpose"`
-    Region         string             `json:"region"`
-    Classification DataClassification `json:"classification"`
-    Metadata       map[string]any     `json:"metadata"`
+	Fields         []string           `json:"fields"`
+	UserID         string             `json:"user_id"`
+	TenantID       string             `json:"tenant_id"`
+	DataType       string             `json:"data_type"`
+	Purpose        string             `json:"purpose"`
+	Region         string             `json:"region"`
+	Classification DataClassification `json:"classification"`
+	Metadata       map[string]any     `json:"metadata"`
 }
 
 // DataAccessResult represents the result of a data access request
 type DataAccessResult struct { //nolint:govet // fieldalignment: API shape preferred; further packing has limited value
-    Restrictions  []string       `json:"restrictions,omitempty"`
-    Violations    []string       `json:"violations,omitempty"`
-    Data          any            `json:"data,omitempty"`
-    MaskedData    any            `json:"masked_data,omitempty"`
-    Metadata      map[string]any `json:"metadata,omitempty"`
-    ExpiresAt     time.Time      `json:"expires_at,omitempty"`
-    Allowed       bool           `json:"allowed"`
-    AuditRequired bool           `json:"audit_required"`
+	Restrictions  []string       `json:"restrictions,omitempty"`
+	Violations    []string       `json:"violations,omitempty"`
+	Data          any            `json:"data,omitempty"`
+	MaskedData    any            `json:"masked_data,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
+	ExpiresAt     time.Time      `json:"expires_at,omitempty"`
+	Allowed       bool           `json:"allowed"`
+	AuditRequired bool           `json:"audit_required"`
 }
 
 // AESEncryptor handles AES encryption/decryption
@@ -174,140 +174,140 @@ func (dpm *DataProtectionManager) classifyDataMap(data map[string]any, fieldClas
 
 // classifyField classifies a single field
 func (dpm *DataProtectionManager) classifyField(field string, value any) DataClassification {
-    // Explicit config overrides
-    if classification, exists := dpm.config.FieldClassifications[field]; exists {
-        return classification
-    }
+	// Explicit config overrides
+	if classification, exists := dpm.config.FieldClassifications[field]; exists {
+		return classification
+	}
 
-    fl := strings.ToLower(field)
+	fl := strings.ToLower(field)
 
-    // Structured, readable checks
-    if dpm.isSensitiveNumberField(fl) {
-        return DataRestricted
-    }
-    if dpm.isIPField(fl) {
-        return DataPublic
-    }
-    if dpm.isIDField(fl) {
-        return DataPublic
-    }
-    if cls, ok := dpm.classifyKeyField(fl); ok {
-        return cls
-    }
-    if cls, ok := dpm.classifyHighSensitivityKeyword(fl); ok {
-        return cls
-    }
-    if cls, ok := dpm.classifyByCategoryPatterns(fl); ok {
-        return cls
-    }
+	// Structured, readable checks
+	if dpm.isSensitiveNumberField(fl) {
+		return DataRestricted
+	}
+	if dpm.isIPField(fl) {
+		return DataPublic
+	}
+	if dpm.isIDField(fl) {
+		return DataPublic
+	}
+	if cls, ok := dpm.classifyKeyField(fl); ok {
+		return cls
+	}
+	if cls, ok := dpm.classifyHighSensitivityKeyword(fl); ok {
+		return cls
+	}
+	if cls, ok := dpm.classifyByCategoryPatterns(fl); ok {
+		return cls
+	}
 
-    // Value-based detection (e.g., CC, SSN)
-    if strValue, ok := value.(string); ok {
-        if dpm.isRestrictedValue(strValue) {
-            return DataRestricted
-        }
-    }
+	// Value-based detection (e.g., CC, SSN)
+	if strValue, ok := value.(string); ok {
+		if dpm.isRestrictedValue(strValue) {
+			return DataRestricted
+		}
+	}
 
-    return dpm.config.DefaultClassification
+	return dpm.config.DefaultClassification
 }
 
 // Helper predicates and classifiers to reduce cognitive complexity
 func (dpm *DataProtectionManager) isSensitiveNumberField(fl string) bool {
-    switch fl {
-    case "account_number", "business_tin_ssn_number", "card_num", "card_number", "cardnumber",
-        "dda_number", "ein", "employer_identification_number", "merchant_tax_id", "number",
-        "owner_tin_ssn_number", "social_security", "social_security_number", "ssn", "tax_id",
-        "tax_identification_number", "taxid", "tin":
-        return true
-    default:
-        return false
-    }
+	switch fl {
+	case "account_number", "business_tin_ssn_number", "card_num", "card_number", "cardnumber",
+		"dda_number", "ein", "employer_identification_number", "merchant_tax_id", "number",
+		"owner_tin_ssn_number", "social_security", "social_security_number", "ssn", "tax_id",
+		"tax_identification_number", "taxid", "tin":
+		return true
+	default:
+		return false
+	}
 }
 
 func (dpm *DataProtectionManager) isIPField(fl string) bool {
-    switch fl {
-    case "ip_address", "ipaddress", "client_ip", "source_ip", "remote_ip", "x_forwarded_for",
-        "x_real_ip", "cf_connecting_ip", "x-forwarded-for", "x-real-ip", "cf-connecting-ip",
-        "sourceip", "clientip", "remoteip", "server_ip", "user_ip", "host_ip", "ip":
-        return true
-    }
-    if strings.HasSuffix(fl, "_ip") || strings.HasPrefix(fl, "ip_") || strings.Contains(fl, "_ip_") {
-        return true
-    }
-    if strings.Contains(fl, "forwarded") && strings.Contains(fl, "ip") {
-        return true
-    }
-    return false
+	switch fl {
+	case "ip_address", "ipaddress", "client_ip", "source_ip", "remote_ip", "x_forwarded_for",
+		"x_real_ip", "cf_connecting_ip", "x-forwarded-for", "x-real-ip", "cf-connecting-ip",
+		"sourceip", "clientip", "remoteip", "server_ip", "user_ip", "host_ip", "ip":
+		return true
+	}
+	if strings.HasSuffix(fl, "_ip") || strings.HasPrefix(fl, "ip_") || strings.Contains(fl, "_ip_") {
+		return true
+	}
+	if strings.Contains(fl, "forwarded") && strings.Contains(fl, "ip") {
+		return true
+	}
+	return false
 }
 
 func (dpm *DataProtectionManager) isIDField(fl string) bool {
-    return strings.HasSuffix(fl, "_id")
+	return strings.HasSuffix(fl, "_id")
 }
 
 func (dpm *DataProtectionManager) classifyKeyField(fl string) (DataClassification, bool) {
-    switch fl {
-    case "key", "keys", "apikey", "api_key", "access_key", "secret_key", "encryption_key",
-        "signing_key", "public_key", "private_key", "key_id", "key_name", "key_type", "key_version",
-        "key_arn", "master_key", "data_key", "kms_key", "session_key":
-        if strings.Contains(fl, "secret") || strings.Contains(fl, "private") {
-            return DataRestricted, true
-        }
-        return DataInternal, true
-    }
-    if fl == "key" || strings.HasSuffix(fl, "_key") || strings.HasPrefix(fl, "key_") ||
-        strings.HasSuffix(fl, "_keys") || strings.HasPrefix(fl, "keys_") {
-        if strings.Contains(fl, "secret") || strings.Contains(fl, "private") {
-            return DataRestricted, true
-        }
-        return DataInternal, true
-    }
-    return "", false
+	switch fl {
+	case "key", "keys", "apikey", "api_key", "access_key", "secret_key", "encryption_key",
+		"signing_key", "public_key", "private_key", "key_id", "key_name", "key_type", "key_version",
+		"key_arn", "master_key", "data_key", "kms_key", "session_key":
+		if strings.Contains(fl, "secret") || strings.Contains(fl, "private") {
+			return DataRestricted, true
+		}
+		return DataInternal, true
+	}
+	if fl == "key" || strings.HasSuffix(fl, "_key") || strings.HasPrefix(fl, "key_") ||
+		strings.HasSuffix(fl, "_keys") || strings.HasPrefix(fl, "keys_") {
+		if strings.Contains(fl, "secret") || strings.Contains(fl, "private") {
+			return DataRestricted, true
+		}
+		return DataInternal, true
+	}
+	return "", false
 }
 
 func (dpm *DataProtectionManager) classifyHighSensitivityKeyword(fl string) (DataClassification, bool) {
-    for _, sensitive := range []string{
-        "password", "token", "secret", "auth", "credential",
-        "email", "phone", "ssn", "card", "account", "routing",
-        "pin", "cvv", "security", "private", "confidential",
-    } {
-        if strings.Contains(fl, sensitive) {
-            switch sensitive {
-            case "ssn", "card", "account", "routing", "cvv", "pin":
-                return DataRestricted, true
-            case "password", "token", "secret", "auth", "credential", "private":
-                return DataConfidential, true
-            case "email", "phone":
-                return DataInternal, true
-            default:
-                return DataConfidential, true
-            }
-        }
-    }
-    return "", false
+	for _, sensitive := range []string{
+		"password", "token", "secret", "auth", "credential",
+		"email", "phone", "ssn", "card", "account", "routing",
+		"pin", "cvv", "security", "private", "confidential",
+	} {
+		if strings.Contains(fl, sensitive) {
+			switch sensitive {
+			case "ssn", "card", "account", "routing", "cvv", "pin":
+				return DataRestricted, true
+			case "password", "token", "secret", "auth", "credential", "private":
+				return DataConfidential, true
+			case "email", "phone":
+				return DataInternal, true
+			default:
+				return DataConfidential, true
+			}
+		}
+	}
+	return "", false
 }
 
 func (dpm *DataProtectionManager) classifyByCategoryPatterns(fl string) (DataClassification, bool) {
-    for _, pattern := range []string{"tax_id", "passport", "driver_license", "bank_account", "medical_record", "health_record", "diagnosis", "prescription"} {
-        if strings.Contains(fl, pattern) {
-            return DataRestricted, true
-        }
-    }
-    for _, pattern := range []string{"salary", "income", "financial", "revenue", "profit"} {
-        if strings.Contains(fl, pattern) {
-            return DataConfidential, true
-        }
-    }
-    for _, pattern := range []string{"body", "request_body", "response_body", "user_input", "query", "search", "message", "comment", "description"} {
-        if strings.Contains(fl, pattern) {
-            return DataInternal, true
-        }
-    }
-    for _, pattern := range []string{"address", "name", "birth", "employee", "organization"} {
-        if strings.Contains(fl, pattern) {
-            return DataInternal, true
-        }
-    }
-    return "", false
+	for _, pattern := range []string{"tax_id", "passport", "driver_license", "bank_account", "medical_record", "health_record", "diagnosis", "prescription"} {
+		if strings.Contains(fl, pattern) {
+			return DataRestricted, true
+		}
+	}
+	for _, pattern := range []string{"salary", "income", "financial", "revenue", "profit"} {
+		if strings.Contains(fl, pattern) {
+			return DataConfidential, true
+		}
+	}
+	for _, pattern := range []string{"body", "request_body", "response_body", "user_input", "query", "search", "message", "comment", "description"} {
+		if strings.Contains(fl, pattern) {
+			return DataInternal, true
+		}
+	}
+	for _, pattern := range []string{"address", "name", "birth", "employee", "organization"} {
+		if strings.Contains(fl, pattern) {
+			return DataInternal, true
+		}
+	}
+	return "", false
 }
 
 // isRestrictedValue checks if a value matches restricted data patterns
@@ -744,13 +744,13 @@ func DataProtection(config DataProtectionConfig) LiftMiddleware {
 	manager, err := NewDataProtectionManager(config)
 	if err != nil {
 		// Return a middleware that always returns an error
-        return func(_ LiftHandler) LiftHandler {
-            return LiftHandlerFunc(func(_ LiftContext) error {
-                // Don't expose internal implementation details
-                return fmt.Errorf("data protection service unavailable: configuration error")
-            })
-        }
-    }
+		return func(_ LiftHandler) LiftHandler {
+			return LiftHandlerFunc(func(_ LiftContext) error {
+				// Don't expose internal implementation details
+				return fmt.Errorf("data protection service unavailable: configuration error")
+			})
+		}
+	}
 
 	return func(next LiftHandler) LiftHandler {
 		return LiftHandlerFunc(func(ctx LiftContext) error {

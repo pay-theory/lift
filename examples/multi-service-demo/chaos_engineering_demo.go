@@ -5,7 +5,7 @@ package main
 
 // This file previously contained demo functions for:
 // - Network latency experiments
-// - Service unavailability experiments  
+// - Service unavailability experiments
 // - Resource exhaustion experiments
 // - Resilience metrics
 
