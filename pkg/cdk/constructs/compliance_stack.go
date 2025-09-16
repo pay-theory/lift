@@ -1,5 +1,26 @@
 package constructs
 
+// Package constructs provides high‑level CDK constructs for building a compliance stack.
+// It wires together AWS services such as CloudTrail, Config, GuardDuty, Security Hub,
+// KMS, S3 and Lambda to deliver a turnkey solution that can be customized via
+// `ComplianceStackProps`. The construct is deliberately opinionated but extensible.
+//
+// Example usage:
+//
+//   import (
+//       "github.com/aws/aws-cdk-go/awscdk/v2"
+//       "github.com/yourorg/lift/pkg/cdk/constructs"
+//   )
+//
+//   app := awscdk.NewApp(nil)
+//   stack := awscdk.NewStack(app, jsii.String("ComplianceStack"), &awscdk.StackProps{})
+//   constructs.NewComplianceStack(stack, "MyCompliance", &constructs.ComplianceStackProps{
+//       AppName:              jsii.String(\"myapp\"),
+//       ComplianceFrameworks: &[]constructs.ComplianceFramework{constructs.SOC2},
+//       EnableCloudTrail:    jsii.Bool(true),
+//   })
+//
+
 import (
 	"fmt"
 
@@ -19,7 +40,16 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-// ComplianceFramework defines the compliance framework to implement
+// ComplianceFramework enumerates the supported compliance frameworks that can be enabled
+// by the `ComplianceStack`. The value is used to drive AWS Config rule creation and
+// Security Hub standard enablement.
+//
+// Example:
+//
+//	fw := constructs.SOC2          // Service Organization Control 2
+//	props := &constructs.ComplianceStackProps{
+//	    ComplianceFrameworks: &[]constructs.ComplianceFramework{fw},
+//	}
 type ComplianceFramework string
 
 const (
@@ -37,7 +67,17 @@ const (
 	GDPR ComplianceFramework = "GDPR"
 )
 
-// ComplianceStackProps defines properties for ComplianceStack
+// ComplianceStackProps configures the behaviour of a `ComplianceStack`. All fields are
+// optional; sensible defaults are applied when values are omitted.
+//
+// Example:
+//
+//	props := &constructs.ComplianceStackProps{
+//	    AppName:               jsii.String(\"myapp\"),
+//	    EnableCloudTrail:      jsii.Bool(true),
+//	    ComplianceFrameworks:  &[]constructs.ComplianceFramework{constructs.SOC2, constructs.HIPAA},
+//	    DataRetentionDays:     jsii.Number(3650), // ten years
+//	}
 type ComplianceStackProps struct {
 	// Application name for resource naming
 	AppName *string
@@ -94,7 +134,14 @@ type ComplianceStackProps struct {
 	NotificationTopicArn *string
 }
 
-// ComplianceStack creates a comprehensive compliance stack
+// ComplianceStack is the concrete CDK construct that aggregates all resources required for
+// a compliance‑focused deployment. It exposes references to the underlying AWS services so
+// callers can further customise or attach additional permissions.
+//
+// Example:
+//
+//	cs := constructs.NewComplianceStack(stack, \"MyCompliance\", props)
+//	fmt.Println(\"CloudTrail enabled?\", cs.CloudTrail != nil)
 type ComplianceStack struct {
 	constructs.Construct
 	CloudTrail         awscloudtrail.Trail
@@ -107,7 +154,15 @@ type ComplianceStack struct {
 	ComplianceFunction awslambda.Function
 }
 
-// NewComplianceStack creates a new compliance stack construct
+// NewComplianceStack is the public constructor for the `ComplianceStack` CDK construct.
+// It validates input and wires together all sub‑components. The returned value can be
+// used directly or stored in a variable for later reference.
+//
+// Example:
+//
+//	cs := constructs.NewComplianceStack(app, \"Compliance\", &constructs.ComplianceStackProps{
+//	    AppName: jsii.String(\"demo\"),
+//	})
 func NewComplianceStack(scope constructs.Construct, id string, props *ComplianceStackProps) *ComplianceStack {
 	this := constructs.NewConstruct(scope, &id)
 
@@ -739,7 +794,16 @@ func storeComplianceConfiguration(scope constructs.Construct, props *ComplianceS
 	})
 }
 
-// GetComplianceStatus returns the current compliance status
+// GetComplianceStatus reports which optional services have been instantiated in the stack.
+// The returned map contains boolean flags keyed by service name, useful for health‑checks
+// or conditional logic in downstream constructs.
+//
+// Example:
+//
+//	status := cs.GetComplianceStatus()
+//	if status[\"cloudtrail_enabled\"].(bool) {
+//	    // do something
+//	}
 func (c *ComplianceStack) GetComplianceStatus() map[string]interface{} {
 	return map[string]interface{}{
 		"cloudtrail_enabled":  c.CloudTrail != nil,
@@ -751,7 +815,13 @@ func (c *ComplianceStack) GetComplianceStatus() map[string]interface{} {
 	}
 }
 
-// AddComplianceRule adds a new compliance rule to the stack
+// AddComplianceRule creates an additional AWS Config rule and attaches it to the stack.
+// This method is handy when custom rules need to be introduced after the initial construct
+// creation.
+//
+// Example:
+//
+//	cs.AddComplianceRule(\"CustomS3Encryption\", \"S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED\")
 func (c *ComplianceStack) AddComplianceRule(ruleId string, ruleName string) {
 	// Create a Config rule using CfnConfigRule
 	awsconfig.NewCfnConfigRule(c.Construct, jsii.String(ruleId), &awsconfig.CfnConfigRuleProps{

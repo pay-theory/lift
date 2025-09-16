@@ -327,30 +327,8 @@ func (e *DynamORMEventStore) createEventTable() {
 	tableProps.SortKeyName = jsii.String("SK")
 	e.EventTable = NewLiftTable(e, jsii.String("EventTable"), tableProps)
 
-	// Add GSIs if enabled
-	if e.props.EnableGSIs != nil && *e.props.EnableGSIs {
-		e.addEventTableGSIs()
-	}
-
 	// DynamORM configuration is now handled through model struct tags
 	// Multi-tenant GSIs are defined in DynamORM models
-}
-
-// addEventTableGSIs adds Global Secondary Indexes to the event table
-func (e *DynamORMEventStore) addEventTableGSIs() {
-	// GSIs are now defined in DynamORM models using struct tags
-	// Example model for events:
-	//
-	// type Event struct {
-	//     PK            string `dynamorm:"pk"`                          // event#{aggregate_id}
-	//     SK            string `dynamorm:"sk"`                          // seq#{sequence}
-	//     EventType     string `dynamorm:"index:event-type,pk"`         // For querying by type
-	//     CreatedAt     string `dynamorm:"index:event-type,sk"`         // For sorting by time
-	//     AggregateType string `dynamorm:"index:aggregate-type,pk"`     // For aggregate queries
-	//     CorrelationID string `dynamorm:"index:correlation,pk"`        // For correlation tracking
-	//     EventDay      string `dynamorm:"index:timeline,pk"`          // For timeline queries
-	//     // ... other fields
-	// }
 }
 
 // createSnapshotTable creates the snapshot table

@@ -1,3 +1,8 @@
+// Package constructs provides AWS CDK constructs for Lift applications.
+//
+// This package contains high-level CDK constructs that implement Lift's best practices
+// for AWS infrastructure. The constructs include optimized configurations for API
+// Gateway, Lambda functions, DynamoDB tables, and other AWS services.
 package constructs
 
 import (
@@ -12,7 +17,12 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-// LiftAPIProps defines properties for creating a Lift API Gateway
+// LiftAPIProps defines properties for creating a Lift API Gateway.
+//
+// This struct contains all configurable properties for creating a Lift-optimized
+// API Gateway HTTP API. The properties include basic API configuration, CORS
+// settings, custom domain configuration, access logging, throttling, and security
+// features like API key requirements and request validation.
 type LiftAPIProps struct {
 	// Name of the API
 	Name *string
@@ -43,7 +53,10 @@ type LiftAPIProps struct {
 	DefaultAuthorizer awsapigatewayv2.IHttpRouteAuthorizer
 }
 
-// RequestValidator defines validation rules for API requests
+// RequestValidator defines validation rules for API requests.
+//
+// This struct specifies how to validate incoming API requests, including body
+// validation against a JSON schema and parameter validation.
 type RequestValidator struct {
 	// Validate request body
 	ValidateBody *bool
@@ -53,7 +66,12 @@ type RequestValidator struct {
 	BodySchema interface{}
 }
 
-// LiftAPI is an API Gateway HTTP API construct for Lift applications
+// LiftAPI is an API Gateway HTTP API construct for Lift applications.
+//
+// This construct creates a complete HTTP API Gateway with Lift-optimized defaults
+// including CORS support, access logging, custom domains, throttling, and security
+// features. It provides methods to easily add Lambda integrations and configure
+// API-specific features.
 type LiftAPI struct {
 	constructs.Construct
 	HttpAPI  awsapigatewayv2.HttpApi
@@ -61,12 +79,33 @@ type LiftAPI struct {
 	LogGroup awslogs.ILogGroup
 }
 
-// GetResourceName returns the API name
+// GetResourceName returns the API name.
+//
+// This method returns the name of the API Gateway resource, which is useful for
+// monitoring and identification purposes.
+//
+// Returns:
+//   - The API name as a string pointer
 func (l *LiftAPI) GetResourceName() *string {
 	return l.HttpAPI.ApiId()
 }
 
-// NewLiftAPI creates a new API Gateway HTTP API optimized for Lift
+// NewLiftAPI creates a new API Gateway HTTP API optimized for Lift.
+//
+// This function creates a new HTTP API with all Lift-optimized features including:
+// - CORS configuration (if enabled)
+// - Access logging (if enabled)
+// - Custom domain mapping (if configured)
+// - Throttling settings (if specified)
+// - Default authorizer (if provided)
+//
+// Parameters:
+//   - scope: The CDK construct scope
+//   - id: The construct ID
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new LiftAPI instance
 func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *LiftAPI {
 	this := constructs.NewConstruct(scope, id)
 
@@ -74,13 +113,25 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 	return builder.build()
 }
 
-// liftAPIBuilder builds Lift API components
+// liftAPIBuilder builds Lift API components.
+//
+// This builder struct encapsulates the logic for creating and configuring
+// all components of a Lift API Gateway.
 type liftAPIBuilder struct {
 	construct constructs.Construct
 	props     *LiftAPIProps
 }
 
-// newLiftAPIBuilder creates a new Lift API builder
+// newLiftAPIBuilder creates a new Lift API builder.
+//
+// This function initializes a new builder with the given scope and properties.
+//
+// Parameters:
+//   - construct: The CDK construct scope
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new liftAPIBuilder instance
 func newLiftAPIBuilder(construct constructs.Construct, props *LiftAPIProps) *liftAPIBuilder {
 	return &liftAPIBuilder{
 		construct: construct,
@@ -88,7 +139,16 @@ func newLiftAPIBuilder(construct constructs.Construct, props *LiftAPIProps) *lif
 	}
 }
 
-// build constructs the complete Lift API
+// build constructs the complete Lift API.
+//
+// This method orchestrates the creation of all API components including:
+// - Log group for access logging
+// - HTTP API with CORS configuration
+// - API stage with throttling
+// - Custom domain mapping (if configured)
+//
+// Returns:
+//   - A fully configured LiftAPI instance
 func (b *liftAPIBuilder) build() *LiftAPI {
 	// Create log group for access logging
 	logGroup := b.createLogGroup()
@@ -110,7 +170,14 @@ func (b *liftAPIBuilder) build() *LiftAPI {
 	}
 }
 
-// createLogGroup creates the access log group if needed
+// createLogGroup creates the access log group if needed.
+//
+// This method creates a CloudWatch log group for API access logs if access
+// logging is enabled in the properties. If a log group is already provided in
+// the properties, it uses that instead of creating a new one.
+//
+// Returns:
+//   - A CloudWatch log group or nil if access logging is disabled
 func (b *liftAPIBuilder) createLogGroup() awslogs.ILogGroup {
 	if b.props.EnableAccessLogging == nil || !*b.props.EnableAccessLogging {
 		return nil
@@ -127,7 +194,13 @@ func (b *liftAPIBuilder) createLogGroup() awslogs.ILogGroup {
 	})
 }
 
-// createHttpAPI creates the HTTP API with CORS configuration
+// createHttpAPI creates the HTTP API with CORS configuration.
+//
+// This method creates the HTTP API with basic configuration and CORS support
+// if enabled. It also sets up the default authorizer if one is provided.
+//
+// Returns:
+//   - A configured HttpApi instance
 func (b *liftAPIBuilder) createHttpAPI() awsapigatewayv2.HttpApi {
 	apiProps := &awsapigatewayv2.HttpApiProps{
 		ApiName:     b.props.Name,
@@ -147,7 +220,16 @@ func (b *liftAPIBuilder) createHttpAPI() awsapigatewayv2.HttpApi {
 	return awsapigatewayv2.NewHttpApi(b.construct, jsii.String("HttpApi"), apiProps)
 }
 
-// createCORSConfig creates CORS preflight configuration
+// createCORSConfig creates CORS preflight configuration.
+//
+// This method creates a CORS configuration that allows:
+// - All origins (*)
+// - Common HTTP methods (GET, POST, PUT, DELETE, OPTIONS)
+// - Common headers (Content-Type, Authorization, etc.)
+// - Custom headers (X-Tenant-ID, X-Request-ID, X-Api-Key)
+//
+// Returns:
+//   - A CORS preflight configuration object
 func (b *liftAPIBuilder) createCORSConfig() *awsapigatewayv2.CorsPreflightOptions {
 	return &awsapigatewayv2.CorsPreflightOptions{
 		AllowOrigins: &[]*string{jsii.String("*")},
@@ -175,7 +257,17 @@ func (b *liftAPIBuilder) createCORSConfig() *awsapigatewayv2.CorsPreflightOption
 	}
 }
 
-// createStage creates the API stage with configuration
+// createStage creates the API stage with configuration.
+//
+// This method creates either the default stage or a custom stage with
+// additional configuration like access logging and detailed metrics.
+//
+// Parameters:
+//   - httpApi: The HTTP API instance
+//   - logGroup: The CloudWatch log group for access logs
+//
+// Returns:
+//   - A configured HttpStage instance
 func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup awslogs.ILogGroup) awsapigatewayv2.IHttpStage {
 	stageName := "$default"
 	if b.props.StageName != nil {
@@ -199,7 +291,16 @@ func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup a
 	return stage
 }
 
-// needsCustomStage determines if a custom stage is needed
+// needsCustomStage determines if a custom stage is needed.
+//
+// This method checks if any configuration requires a custom stage instead of
+// using the default stage.
+//
+// Parameters:
+//   - stageName: The name of the stage
+//
+// Returns:
+//   - true if a custom stage is needed, false otherwise
 func (b *liftAPIBuilder) needsCustomStage(stageName string) bool {
 	return stageName != "$default" ||
 		b.props.ThrottleRateLimit != nil ||
@@ -208,7 +309,16 @@ func (b *liftAPIBuilder) needsCustomStage(stageName string) bool {
 		(b.props.EnableDetailedMetrics != nil && *b.props.EnableDetailedMetrics)
 }
 
-// createCustomStage creates a custom stage with throttling
+// createCustomStage creates a custom stage with throttling.
+//
+// This method creates a custom stage with optional throttling configuration.
+//
+// Parameters:
+//   - httpApi: The HTTP API instance
+//   - stageName: The name of the stage
+//
+// Returns:
+//   - A configured HttpStage instance
 func (b *liftAPIBuilder) createCustomStage(httpApi awsapigatewayv2.HttpApi, stageName string) awsapigatewayv2.IHttpStage {
 	stageProps := &awsapigatewayv2.HttpStageProps{
 		HttpApi:    httpApi,
@@ -224,7 +334,12 @@ func (b *liftAPIBuilder) createCustomStage(httpApi awsapigatewayv2.HttpApi, stag
 	return awsapigatewayv2.NewHttpStage(b.construct, jsii.String("Stage"), stageProps)
 }
 
-// createThrottleSettings creates throttle configuration
+// createThrottleSettings creates throttle configuration.
+//
+// This method creates throttle settings based on the properties provided.
+//
+// Returns:
+//   - A ThrottleSettings object with rate and burst limits
 func (b *liftAPIBuilder) createThrottleSettings() *awsapigatewayv2.ThrottleSettings {
 	throttleSettings := &awsapigatewayv2.ThrottleSettings{}
 
@@ -238,7 +353,15 @@ func (b *liftAPIBuilder) createThrottleSettings() *awsapigatewayv2.ThrottleSetti
 	return throttleSettings
 }
 
-// configureAccessLogging configures access logging for the stage
+// configureAccessLogging configures access logging for the stage.
+//
+// This method sets up access logging for the API stage, including:
+// - Log format configuration
+// - IAM permissions for API Gateway to write logs
+//
+// Parameters:
+//   - stage: The API stage
+//   - logGroup: The CloudWatch log group
 func (b *liftAPIBuilder) configureAccessLogging(stage awsapigatewayv2.IHttpStage, logGroup awslogs.ILogGroup) {
 	if logGroup == nil {
 		return
@@ -259,7 +382,13 @@ func (b *liftAPIBuilder) configureAccessLogging(stage awsapigatewayv2.IHttpStage
 	logGroup.Grant(awsiam.NewServicePrincipal(jsii.String("apigateway.amazonaws.com"), nil), jsii.String("logs:PutLogEvents"))
 }
 
-// configureDetailedMetrics enables detailed metrics if requested
+// configureDetailedMetrics enables detailed metrics if requested.
+//
+// This method enables detailed CloudWatch metrics for the API stage if
+// configured in the properties.
+//
+// Parameters:
+//   - stage: The API stage
 func (b *liftAPIBuilder) configureDetailedMetrics(stage awsapigatewayv2.IHttpStage) {
 	if b.props.EnableDetailedMetrics == nil || !*b.props.EnableDetailedMetrics {
 		return
@@ -272,7 +401,13 @@ func (b *liftAPIBuilder) configureDetailedMetrics(stage awsapigatewayv2.IHttpSta
 	}
 }
 
-// configureDomain configures custom domain mapping if provided
+// configureDomain configures custom domain mapping if provided.
+//
+// This method sets up a custom domain name with SSL certificate for the API.
+//
+// Parameters:
+//   - httpApi: The HTTP API instance
+//   - stage: The API stage
 func (b *liftAPIBuilder) configureDomain(httpApi awsapigatewayv2.HttpApi, stage awsapigatewayv2.IHttpStage) {
 	if b.props.DomainName == nil || b.props.CertificateArn == nil {
 		return
@@ -293,12 +428,25 @@ func (b *liftAPIBuilder) configureDomain(httpApi awsapigatewayv2.HttpApi, stage 
 	})
 }
 
-// AddLambdaRoute adds a Lambda function as a route to the API
+// AddLambdaRoute adds a Lambda function as a route to the API.
+//
+// This method adds a new route to the API that integrates with a Lambda function.
+// It uses the default integration settings.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - method: The HTTP method (GET, POST, etc.)
+//   - fn: The Lambda function to integrate with
 func (api *LiftAPI) AddLambdaRoute(path *string, method awsapigatewayv2.HttpMethod, fn awslambda.IFunction) {
 	api.AddLambdaRouteWithOptions(path, method, fn, nil)
 }
 
-// RouteOptions defines options for API routes
+// RouteOptions defines options for API routes.
+//
+// This struct contains optional configuration for API routes including:
+// - Custom authorizer
+// - Request validation
+// - Route-specific throttling
 type RouteOptions struct {
 	// Authorizer for this route
 	Authorizer awsapigatewayv2.IHttpRouteAuthorizer
@@ -309,7 +457,18 @@ type RouteOptions struct {
 	ThrottleBurstLimit *float64
 }
 
-// AddLambdaRouteWithOptions adds a Lambda function as a route with additional options
+// AddLambdaRouteWithOptions adds a Lambda function as a route with additional options.
+//
+// This method adds a new route with custom configuration including:
+// - Custom authorizer
+// - Request validation
+// - Route-specific throttling
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - method: The HTTP method (GET, POST, etc.)
+//   - fn: The Lambda function to integrate with
+//   - options: Additional route configuration
 func (api *LiftAPI) AddLambdaRouteWithOptions(path *string, method awsapigatewayv2.HttpMethod, fn awslambda.IFunction, options *RouteOptions) {
 	integration := awsapigatewayv2integrations.NewHttpLambdaIntegration(
 		jsii.String("LambdaIntegration"),
@@ -335,7 +494,14 @@ func (api *LiftAPI) AddLambdaRouteWithOptions(path *string, method awsapigateway
 	api.HttpAPI.AddRoutes(routeOptions)
 }
 
-// AddRoutes adds multiple routes from a route definition map
+// AddRoutes adds multiple routes from a route definition map.
+//
+// This method adds multiple routes to the API in bulk format. The routes parameter
+// is a nested map where the outer key is the path and the inner map contains
+// method-function pairs.
+//
+// Parameters:
+//   - routes: A map of paths to method-function mappings
 func (api *LiftAPI) AddRoutes(routes map[string]map[string]awslambda.IFunction) {
 	for path, methods := range routes {
 		for method, fn := range methods {
@@ -345,7 +511,13 @@ func (api *LiftAPI) AddRoutes(routes map[string]map[string]awslambda.IFunction) 
 	}
 }
 
-// EnableApiKeyAuth enables API key authentication for the API
+// EnableApiKeyAuth enables API key authentication for the API.
+//
+// This method configures API key authentication for the API using a Lambda
+// authorizer. It returns the authorizer that can be used for specific routes.
+//
+// Returns:
+//   - The API key authorizer
 func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 	// HTTP APIs don't have built-in API key support, so we use a Lambda authorizer
 	authorizer := NewAPIKeyAuthorizer(api, jsii.String("APIKeyAuth"), &APIKeyAuthorizerProps{
@@ -357,17 +529,36 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 	return authorizer.Authorizer
 }
 
-// GetUrl returns the URL of the API
+// GetUrl returns the URL of the API.
+//
+// This method returns the base URL of the API Gateway endpoint.
+//
+// Returns:
+//   - The API URL as a string pointer
 func (api *LiftAPI) GetUrl() *string {
 	return api.HttpAPI.Url()
 }
 
-// GetArn returns the ARN of the API
+// GetArn returns the ARN of the API.
+//
+// This method returns the ARN (Amazon Resource Name) of the API Gateway.
+//
+// Returns:
+//   - The API ARN as a string pointer
 func (api *LiftAPI) GetArn() *string {
 	return api.HttpAPI.ApiId()
 }
 
-// GrantInvoke grants invoke permissions to a principal
+// GrantInvoke grants invoke permissions to a principal.
+//
+// This method grants permission to invoke the API to the specified principal.
+// It's useful for cross-service integrations.
+//
+// Parameters:
+//   - grantee: The principal to grant invoke permissions to
+//
+// Returns:
+//   - The IAM grant
 func (api *LiftAPI) GrantInvoke(grantee awsiam.IGrantable) awsiam.Grant {
 	return awsiam.Grant_AddToPrincipal(&awsiam.GrantOnPrincipalOptions{
 		Grantee:      grantee,

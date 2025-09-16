@@ -13,6 +13,9 @@ import (
 )
 
 // Tenant represents a tenant in the multi-tenant DynamORM system
+// Tenant represents a tenant in a multi-tenant system.
+// It includes metadata such as creation and update timestamps, primary and sort keys,
+// tenant ID, entity type, and other relevant information.
 type Tenant struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -29,6 +32,9 @@ type Tenant struct {
 }
 
 // User represents a user within a tenant using DynamORM patterns
+// User represents a user in a multi-tenant system.
+// It includes metadata such as creation and update timestamps, primary and sort keys,
+// tenant ID, entity type, and other relevant information.
 type User struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -44,6 +50,9 @@ type User struct {
 }
 
 // Project represents a project within a tenant using DynamORM patterns
+// Project represents a project in a multi-tenant system.
+// It includes metadata such as creation and update timestamps, primary and sort keys,
+// tenant ID, entity type, and other relevant information.
 type Project struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -59,24 +68,32 @@ type Project struct {
 }
 
 // Request DTOs
+// CreateTenantRequest represents a request to create a new tenant.
+// It includes fields for the tenant's name, email, and plan.
 type CreateTenantRequest struct {
 	Name  string `json:"name" validate:"required,min=2,max=100"`
 	Email string `json:"email" validate:"required,email"`
 	Plan  string `json:"plan" validate:"required,oneof=free pro enterprise"`
 }
 
+// CreateUserRequest represents a request to create a new user.
+// It includes fields for the user's email, name, and role.
 type CreateUserRequest struct {
 	Email string `json:"email" validate:"required,email"`
 	Name  string `json:"name" validate:"required,min=2,max=100"`
 	Role  string `json:"role" validate:"required,oneof=admin user viewer"`
 }
 
+// CreateProjectRequest represents a request to create a new project.
+// It includes fields for the project's name and description.
 type CreateProjectRequest struct {
 	Name        string `json:"name" validate:"required,min=2,max=100"`
 	Description string `json:"description" validate:"max=500"`
 }
 
 // Mock DynamORM service to demonstrate patterns
+// DynamORMService provides a service for interacting with DynamoDB.
+// It includes methods for creating, reading, updating, and deleting items in DynamoDB.
 type DynamORMService struct {
 	tableName string
 }
@@ -104,6 +121,8 @@ func (s *DynamORMService) QueryByTenant(_ context.Context, tenantID string, enti
 }
 
 // Services implementing DynamORM patterns
+// TenantService provides a service for managing tenants.
+// It includes methods for creating, reading, updating, and deleting tenants.
 type TenantService struct {
 	db *DynamORMService
 }
@@ -144,6 +163,8 @@ func (s *TenantService) GetTenant(ctx context.Context, id string) (*Tenant, erro
 	return tenant, nil
 }
 
+// UserService provides a service for managing users.
+// It includes methods for creating, reading, updating, and deleting users.
 type UserService struct {
 	db *DynamORMService
 }
@@ -177,6 +198,8 @@ func (s *UserService) GetUsersByTenant(ctx context.Context, tenantID string) ([]
 	return users, err
 }
 
+// ProjectService provides a service for managing projects.
+// It includes methods for creating, reading, updating, and deleting projects.
 type ProjectService struct {
 	db *DynamORMService
 }
@@ -211,6 +234,8 @@ func (s *ProjectService) GetProjectsByTenant(ctx context.Context, tenantID strin
 }
 
 // Handlers with tenant isolation
+// TenantHandlers provides HTTP handlers for managing tenants.
+// It includes methods for handling HTTP requests related to tenants.
 type TenantHandlers struct {
 	service *TenantService
 }
@@ -253,6 +278,8 @@ func (h *TenantHandlers) GetTenant(ctx *lift.Context) error {
 	return ctx.JSON(tenant)
 }
 
+// UserHandlers provides HTTP handlers for managing users.
+// It includes methods for handling HTTP requests related to users.
 type UserHandlers struct {
 	service *UserService
 }
@@ -303,6 +330,8 @@ func (h *UserHandlers) ListUsers(ctx *lift.Context) error {
 	})
 }
 
+// ProjectHandlers provides HTTP handlers for managing projects.
+// It includes methods for handling HTTP requests related to projects.
 type ProjectHandlers struct {
 	service *ProjectService
 }

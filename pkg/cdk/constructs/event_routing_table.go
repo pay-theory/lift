@@ -20,6 +20,7 @@ type EventRoutingTable struct {
 }
 
 // NewEventRoutingTable creates a new event routing table
+//
 // The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
 func NewEventRoutingTable(scope constructs.Construct, id *string, props *EventRoutingTableProps) *EventRoutingTable {
 	// Create the table using shared factory

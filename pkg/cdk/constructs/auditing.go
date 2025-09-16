@@ -1,3 +1,8 @@
+// Package constructs provides AWS CDK constructs for Lift applications.
+//
+// This package contains high-level CDK constructs that implement Lift's best practices
+// for AWS infrastructure. The constructs include optimized configurations for API
+// Gateway, Lambda functions, DynamoDB tables, and other AWS services.
 package constructs
 
 import (
@@ -35,53 +40,122 @@ const (
 
 // AuditingProps defines properties for the Auditing construct
 type AuditingProps struct {
-	EncryptionKey              awskms.IKey
-	AuditBucket                awss3.IBucket
-	EnableComplianceReporting  *bool
-	EnableImmutableLogs        *bool
-	EnableDatabaseLogs         *bool
-	EnableRealTimeProcessing   *bool
-	EnableTamperProtection     *bool
-	EnableLogAggregation       *bool
-	LogRetentionDays           *float64
-	EnableSIEMIntegration      *bool
-	SIEMEndpoint               *string
-	EnableLogAnalysis          *bool
-	ComplianceFrameworks       *[]string
-	EnableApplicationLogs      *bool
-	AppName                    *string
-	EnableCloudTrail           *bool
-	EnableEncryption           *bool
-	EnableCrossAccountAccess   *bool
-	CrossAccountRoleArns       *[]*string
-	EnableIntegrityChecking    *bool
-	EnableDashboard            *bool
-	EnableAlerting             *bool
-	AlertTopicArn              *string
-	Environment                *string
+	// EncryptionKey is the KMS key used for encrypting audit logs
+	EncryptionKey awskms.IKey
+	// AuditBucket is the S3 bucket used for storing audit logs
+	AuditBucket awss3.IBucket
+	// EnableComplianceReporting enables compliance reporting features
+	EnableComplianceReporting *bool
+	// EnableImmutableLogs makes audit logs immutable to prevent tampering
+	EnableImmutableLogs *bool
+	// EnableDatabaseLogs enables database query logging
+	EnableDatabaseLogs *bool
+	// EnableRealTimeProcessing enables real-time log processing
+	EnableRealTimeProcessing *bool
+	// EnableTamperProtection enables tamper protection for audit logs
+	EnableTamperProtection *bool
+	// EnableLogAggregation enables log aggregation from multiple sources
+	EnableLogAggregation *bool
+	// LogRetentionDays specifies how many days to retain logs
+	LogRetentionDays *float64
+	// EnableSIEMIntegration enables integration with SIEM systems
+	EnableSIEMIntegration *bool
+	// SIEMEndpoint is the endpoint for SIEM integration
+	SIEMEndpoint *string
+	// EnableLogAnalysis enables automated log analysis
+	EnableLogAnalysis *bool
+	// ComplianceFrameworks specifies which compliance frameworks to support
+	ComplianceFrameworks *[]string
+	// EnableApplicationLogs enables application-level logging
+	EnableApplicationLogs *bool
+	// AppName is the name of the application being audited
+	AppName *string
+	// EnableCloudTrail enables AWS CloudTrail for API call logging
+	EnableCloudTrail *bool
+	// EnableEncryption enables encryption for logs at rest and in transit
+	EnableEncryption *bool
+	// EnableCrossAccountAccess enables cross-account access for audit logs
+	EnableCrossAccountAccess *bool
+	// CrossAccountRoleArns specifies the ARNs of roles for cross-account access
+	CrossAccountRoleArns *[]*string
+	// EnableIntegrityChecking enables integrity checking for audit logs
+	EnableIntegrityChecking *bool
+	// EnableDashboard enables a CloudWatch dashboard for audit logs
+	EnableDashboard *bool
+	// EnableAlerting enables CloudWatch alerts for audit logs
+	EnableAlerting *bool
+	// AlertTopicArn is the ARN of the SNS topic for alerts
+	AlertTopicArn *string
+	// Environment specifies the deployment environment (dev, test, prod)
+	Environment *string
+	// EnableRegulatoryCompliance enables features for regulatory compliance
 	EnableRegulatoryCompliance *bool
-	AuditLevel                 AuditLevel
+	// AuditLevel specifies the level of audit logging (BASIC, DETAILED, COMPREHENSIVE)
+	AuditLevel AuditLevel
 }
 
 // AuditingConstruct creates comprehensive audit logging infrastructure
+//
+// This construct sets up a complete audit logging infrastructure including:
+// - CloudWatch log groups for different types of logs
+// - KMS encryption for logs
+// - CloudTrail for API call logging
+// - S3 bucket for log storage
+// - Lambda functions for log processing
+// - CloudWatch dashboard for monitoring
+// - Kinesis Firehose for log delivery
+// - Kinesis stream for log collection
+// - Lambda functions for compliance and integrity checking
+// - CloudWatch alarms for alerting
 type AuditingConstruct struct {
+	// AuditLogGroup is the CloudWatch log group for audit logs
 	AuditLogGroup awslogs.LogGroup
+	// Embedded Construct for CDK compatibility
 	constructs.Construct
-	EncryptionKey          awskms.Key
-	CloudTrail             awscloudtrail.Trail
-	ApplicationLogGroup    awslogs.LogGroup
-	DatabaseLogGroup       awslogs.LogGroup
-	AuditBucket            awss3.Bucket
-	LogProcessingFunction  awslambda.Function
-	AuditDashboard         awscloudwatch.Dashboard
+	// EncryptionKey is the KMS key used for encrypting logs
+	EncryptionKey awskms.Key
+	// CloudTrail is the CloudTrail instance for API call logging
+	CloudTrail awscloudtrail.Trail
+	// ApplicationLogGroup is the CloudWatch log group for application logs
+	ApplicationLogGroup awslogs.LogGroup
+	// DatabaseLogGroup is the CloudWatch log group for database logs
+	DatabaseLogGroup awslogs.LogGroup
+	// AuditBucket is the S3 bucket for storing audit logs
+	AuditBucket awss3.Bucket
+	// LogProcessingFunction is the Lambda function for processing logs
+	LogProcessingFunction awslambda.Function
+	// AuditDashboard is the CloudWatch dashboard for monitoring audit logs
+	AuditDashboard awscloudwatch.Dashboard
+	// FirehoseDeliveryStream is the Kinesis Firehose for log delivery
 	FirehoseDeliveryStream awskinesisfirehose.CfnDeliveryStream
-	LogStream              awskinesis.Stream
-	ComplianceFunction     awslambda.Function
-	IntegrityFunction      awslambda.Function
-	AuditAlarms            []awscloudwatch.Alarm
+	// LogStream is the Kinesis stream for log collection
+	LogStream awskinesis.Stream
+	// ComplianceFunction is the Lambda function for compliance checking
+	ComplianceFunction awslambda.Function
+	// IntegrityFunction is the Lambda function for integrity checking
+	IntegrityFunction awslambda.Function
+	// AuditAlarms is a list of CloudWatch alarms for audit log alerting
+	AuditAlarms []awscloudwatch.Alarm
 }
 
 // NewAuditingConstruct creates a new auditing construct
+//
+// This function creates a new auditing construct with the following features:
+// - Configurable audit logging level (BASIC, DETAILED, COMPREHENSIVE)
+// - Optional encryption for logs at rest and in transit
+// - Optional CloudTrail for API call logging
+// - Optional SIEM integration
+// - Optional log analysis
+// - Optional compliance reporting
+// - Optional dashboard and alerting
+//
+// Parameters:
+//   - scope: The CDK construct scope
+//   - id: The construct ID
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new AuditingConstruct instance
 func NewAuditingConstruct(scope constructs.Construct, id string, props *AuditingProps) *AuditingConstruct {
 	this := constructs.NewConstruct(scope, &id)
 

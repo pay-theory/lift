@@ -9,6 +9,10 @@ import (
 )
 
 // LiftTableProps extends DynamoDB table properties with Lift-specific configuration
+//
+// This struct contains all configurable properties for creating a Lift-optimized
+// DynamoDB table. The properties include basic table configuration, advanced
+// features like point-in-time recovery, streams, auto-scaling, and TTL settings.
 type LiftTableProps struct {
 	TableName                 *string
 	PartitionKeyName          *string
@@ -23,12 +27,35 @@ type LiftTableProps struct {
 }
 
 // LiftTable is a DynamoDB table construct optimized for Lift applications
+//
+// This construct creates a DynamoDB table with Lift-optimized defaults including:
+// - Point-in-time recovery (if enabled)
+// - DynamoDB streams (if enabled)
+// - Auto-scaling (if enabled)
+// - TTL (if configured)
+//
+// The table is configured with sensible defaults for production workloads.
 type LiftTable struct {
 	constructs.Construct
 	Table awsdynamodb.Table
 }
 
 // NewLiftTable creates a new DynamoDB table with Lift-optimized defaults
+//
+// This function creates a new DynamoDB table with all Lift-optimized features including:
+// - Appropriate billing mode (provisioned or pay-per-request)
+// - Point-in-time recovery (if enabled)
+// - DynamoDB streams (if enabled)
+// - Auto-scaling (if enabled)
+// - TTL (if configured)
+//
+// Parameters:
+//   - scope: The CDK construct scope
+//   - id: The construct ID
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new LiftTable instance
 func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps) *LiftTable {
 	builder := newLiftTableBuilder(scope, id, props)
 	return builder.build()
@@ -186,26 +213,58 @@ func (b *liftTableBuilder) configureAutoScaling(table awsdynamodb.Table) {
 }
 
 // GrantReadWrite grants read/write permissions to a Lambda function
+//
+// This method grants the specified Lambda function read and write permissions
+// to the DynamoDB table. This is typically used to allow Lambda functions to
+// perform CRUD operations on the table.
+//
+// Parameters:
+//   - fn: The Lambda function to grant permissions to
 func (t *LiftTable) GrantReadWrite(fn awslambda.IFunction) {
 	t.Table.GrantReadWriteData(fn)
 }
 
 // GetTableName returns the table name
+//
+// This method returns the name of the DynamoDB table. This is useful for
+// configuration and when setting up environment variables for applications
+// that need to access the table.
+//
+// Returns:
+//   - The table name
 func (t *LiftTable) GetTableName() *string {
 	return t.Table.TableName()
 }
 
 // GetTableArn returns the table ARN
+//
+// This method returns the ARN (Amazon Resource Name) of the DynamoDB table.
+// This is useful for cross-service integrations and IAM permissions.
+//
+// Returns:
+//   - The table ARN
 func (t *LiftTable) GetTableArn() *string {
 	return t.Table.TableArn()
 }
 
-// GetResourceName returns the resource name for monitoring (implements MonitorableResource interface)
+// GetResourceName returns the resource name for monitoring
+//
+// This method returns the resource name for monitoring purposes. It implements
+// the MonitorableResource interface.
+//
+// Returns:
+//   - The resource name (table name)
 func (t *LiftTable) GetResourceName() *string {
 	return t.Table.TableName()
 }
 
 // GetStreamArn returns the DynamoDB stream ARN if streams are enabled
+//
+// This method returns the ARN of the DynamoDB stream if streams are enabled
+// on the table. This is useful for setting up event-driven architectures.
+//
+// Returns:
+//   - The stream ARN, or nil if streams are not enabled
 func (t *LiftTable) GetStreamArn() *string {
 	return t.Table.TableStreamArn()
 }

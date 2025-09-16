@@ -402,48 +402,321 @@ type UpdateCartItemRequest struct {
 
 // Service interfaces
 type TenantService interface {
+	// CreateTenant creates a new tenant with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - req: The request to create a tenant
+	// Returns:
+	//   - The created tenant
+	//   - An error if the creation fails
 	CreateTenant(ctx context.Context, req CreateTenantRequest) (*Tenant, error)
+
+	// GetTenant retrieves a tenant by their ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the tenant
+	// Returns:
+	//   - The retrieved tenant
+	//   - An error if the retrieval fails
 	GetTenant(ctx context.Context, id string) (*Tenant, error)
+
+	// GetTenantByDomain retrieves a tenant by their domain.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - domain: The domain of the tenant
+	// Returns:
+	//   - The retrieved tenant
+	//   - An error if the retrieval fails
 	GetTenantByDomain(ctx context.Context, domain string) (*Tenant, error)
+
+	// UpdateTenant updates a tenant's information.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the tenant
+	//   - tenant: The updated tenant information
+	// Returns:
+	//   - An error if the update fails
 	UpdateTenant(ctx context.Context, id string, tenant *Tenant) error
+
+	// ListTenants lists all tenants with pagination.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - limit: The maximum number of tenants to retrieve
+	//   - offset: The offset for pagination
+	// Returns:
+	//   - A list of tenants
+	//   - An error if the retrieval fails
 	ListTenants(ctx context.Context, limit, offset int) ([]Tenant, error)
+
+	// DeactivateTenant deactivates a tenant by their ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the tenant
+	// Returns:
+	//   - An error if the deactivation fails
 	DeactivateTenant(ctx context.Context, id string) error
 }
 
 type ProductService interface {
+	// CreateProduct creates a new product with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - req: The request to create a product
+	// Returns:
+	//   - The created product
+	//   - An error if the creation fails
 	CreateProduct(ctx context.Context, tenantID string, req CreateProductRequest) (*Product, error)
+
+	// GetProduct retrieves a product by its ID and tenant ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the product
+	// Returns:
+	//   - The retrieved product
+	//   - An error if the retrieval fails
 	GetProduct(ctx context.Context, tenantID, id string) (*Product, error)
+
+	// UpdateProduct updates a product's information.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the product
+	//   - product: The updated product information
+	// Returns:
+	//   - An error if the update fails
 	UpdateProduct(ctx context.Context, tenantID, id string, product *Product) error
+
+	// DeleteProduct deletes a product by its ID and tenant ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the product
+	// Returns:
+	//   - An error if the deletion fails
 	DeleteProduct(ctx context.Context, tenantID, id string) error
+
+	// ListProducts lists all products for a tenant with optional filters.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - filters: Optional filters for the products
+	// Returns:
+	//   - A list of products
+	//   - An error if the retrieval fails
 	ListProducts(ctx context.Context, tenantID string, filters ProductFilters) ([]Product, error)
+
+	// SearchProducts searches for products based on a query and optional filters.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - query: The search query
+	//   - filters: Optional filters for the products
+	// Returns:
+	//   - A list of products matching the query
+	//   - An error if the search fails
 	SearchProducts(ctx context.Context, tenantID, query string, filters ProductFilters) ([]Product, error)
+
+	// UpdateInventory updates the inventory quantity of a product.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - productID: The ID of the product
+	//   - quantity: The new quantity
+	// Returns:
+	//   - An error if the update fails
 	UpdateInventory(ctx context.Context, tenantID, productID string, quantity int) error
 }
 
 type CustomerService interface {
+	// CreateCustomer creates a new customer with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - req: The request to create a customer
+	// Returns:
+	//   - The created customer
+	//   - An error if the creation fails
 	CreateCustomer(ctx context.Context, tenantID string, req CreateCustomerRequest) (*Customer, error)
+
+	// GetCustomer retrieves a customer by their ID and tenant ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the customer
+	// Returns:
+	//   - The retrieved customer
+	//   - An error if the retrieval fails
 	GetCustomer(ctx context.Context, tenantID, id string) (*Customer, error)
+
+	// UpdateCustomer updates a customer's information.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the customer
+	//   - customer: The updated customer information
+	// Returns:
+	//   - An error if the update fails
 	UpdateCustomer(ctx context.Context, tenantID, id string, customer *Customer) error
+
+	// ListCustomers lists all customers for a tenant with pagination.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - limit: The maximum number of customers to retrieve
+	//   - offset: The offset for pagination
+	// Returns:
+	//   - A list of customers
+	//   - An error if the retrieval fails
 	ListCustomers(ctx context.Context, tenantID string, limit, offset int) ([]Customer, error)
+
+	// AuthenticateCustomer authenticates a customer by their email and password.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - email: The email of the customer
+	//   - password: The password of the customer
+	// Returns:
+	//   - The authenticated customer
+	//   - An error if the authentication fails
 	AuthenticateCustomer(ctx context.Context, tenantID, email, password string) (*Customer, error)
 }
 
 type OrderService interface {
+	// CreateOrder creates a new order with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - req: The request to create an order
+	// Returns:
+	//   - The created order
+	//   - An error if the creation fails
 	CreateOrder(ctx context.Context, tenantID string, req CreateOrderRequest) (*Order, error)
+
+	// GetOrder retrieves an order by its ID and tenant ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the order
+	// Returns:
+	//   - The retrieved order
+	//   - An error if the retrieval fails
 	GetOrder(ctx context.Context, tenantID, id string) (*Order, error)
+
+	// UpdateOrderStatus updates the status of an order.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the order
+	//   - status: The new status of the order
+	// Returns:
+	//   - An error if the update fails
 	UpdateOrderStatus(ctx context.Context, tenantID, id string, status OrderStatus) error
+
+	// ListOrders lists all orders for a tenant with optional filters.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - filters: Optional filters for the orders
+	// Returns:
+	//   - A list of orders
+	//   - An error if the retrieval fails
 	ListOrders(ctx context.Context, tenantID string, filters OrderFilters) ([]Order, error)
+
+	// GetCustomerOrders retrieves all orders for a customer by their ID and tenant ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - customerID: The ID of the customer
+	// Returns:
+	//   - A list of orders for the customer
+	//   - An error if the retrieval fails
 	GetCustomerOrders(ctx context.Context, tenantID, customerID string) ([]Order, error)
+
+	// CancelOrder cancels an order by its ID and tenant ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the order
+	// Returns:
+	//   - An error if the cancellation fails
 	CancelOrder(ctx context.Context, tenantID, id string) error
+
+	// RefundOrder refunds an order by its ID and tenant ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - id: The ID of the order
+	//   - amount: The amount to refund
+	// Returns:
+	//   - An error if the refund fails
 	RefundOrder(ctx context.Context, tenantID, id string, amount Money) error
 }
 
 type CartService interface {
+	// GetCart retrieves a shopping cart by its ID and tenant ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - customerID: The ID of the customer
+	// Returns:
+	//   - The retrieved shopping cart
+	//   - An error if the retrieval fails
 	GetCart(ctx context.Context, tenantID, customerID string) (*ShoppingCart, error)
+
+	// AddToCart adds an item to a shopping cart.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - customerID: The ID of the customer
+	//   - req: The request to add an item to the cart
+	// Returns:
+	//   - The updated shopping cart
+	//   - An error if the addition fails
 	AddToCart(ctx context.Context, tenantID, customerID string, req AddToCartRequest) (*ShoppingCart, error)
+
+	// UpdateCartItem updates an item in a shopping cart.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - cartID: The ID of the cart
+	//   - itemID: The ID of the item
+	//   - req: The request to update the item
+	// Returns:
+	//   - The updated shopping cart
+	//   - An error if the update fails
 	UpdateCartItem(ctx context.Context, tenantID, cartID, itemID string, req UpdateCartItemRequest) (*ShoppingCart, error)
+
+	// RemoveFromCart removes an item from a shopping cart.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - cartID: The ID of the cart
+	//   - itemID: The ID of the item
+	// Returns:
+	//   - The updated shopping cart
+	//   - An error if the removal fails
 	RemoveFromCart(ctx context.Context, tenantID, cartID, itemID string) (*ShoppingCart, error)
+
+	// ClearCart clears all items from a shopping cart.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - cartID: The ID of the cart
+	// Returns:
+	//   - An error if the clearing fails
 	ClearCart(ctx context.Context, tenantID, cartID string) error
+
+	// ConvertCartToOrder converts a shopping cart to an order.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - tenantID: The ID of the tenant
+	//   - cartID: The ID of the cart
+	//   - orderReq: The request to create an order
+	// Returns:
+	//   - The created order
+	//   - An error if the conversion fails
 	ConvertCartToOrder(ctx context.Context, tenantID, cartID string, orderReq CreateOrderRequest) (*Order, error)
 }
 

@@ -14,7 +14,8 @@ import (
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 )
 
-// Config represents the application configuration
+// Config represents the application configuration.
+// It includes settings for logging, CORS, timeouts, and other application-wide configurations.
 type Config struct {
 	LogLevel        string   `json:"log_level"`
 	AllowedOrigins  []string `json:"allowed_origins"`
@@ -28,7 +29,8 @@ type Config struct {
 	RequireTenantID bool     `json:"require_tenant_id"`
 }
 
-// DefaultConfig returns a configuration with sensible defaults
+// DefaultConfig returns a configuration with sensible defaults.
+// It provides a baseline configuration that can be customized further.
 func DefaultConfig() *Config {
 	return &Config{
 		MaxRequestSize:  10 * 1024 * 1024, // 10MB
@@ -44,10 +46,33 @@ func DefaultConfig() *Config {
 	}
 }
 
-// AppOption is a function that configures an App
+// AppOption is a function that configures an App.
+// It allows for functional configuration of the App struct.
 type AppOption func(*App)
 
-// App represents the main application container
+// App represents the main application container.
+// It is the central structure for configuring and running a Lift application.
+// The App struct holds the configuration, middleware, routes, and other application-wide settings.
+// App represents a Lift application. It is the main entry point for creating
+// and configuring a serverless application. The App struct holds the
+// configuration, middleware, routes, and other application-wide settings.
+//
+// Fields:
+//   - logger: The logger used by the application
+//   - metrics: The metrics collector used by the application
+//   - db: A generic database connection
+//   - router: The router used to match incoming requests to handlers
+//   - eventRouter: The event router used to match incoming events to handlers
+//   - config: The application configuration
+//   - adapterRegistry: The registry of event adapters
+//   - wsOptions: WebSocket options
+//   - wsRoutes: WebSocket routes
+//   - middleware: The middleware stack
+//   - preferredAdapters: The preferred event adapters
+//   - features: Feature flags
+//   - mu: A mutex for synchronizing access to the App
+//   - started: Whether the application has been started
+//   - hasInterceptingMiddleware: Whether the application has intercepting middleware
 type App struct { //nolint:govet // fieldalignment: keep readable order; negligible impact
 	// Interfaces (16 bytes) first
 	logger  Logger
@@ -73,7 +98,37 @@ type App struct { //nolint:govet // fieldalignment: keep readable order; negligi
 	hasInterceptingMiddleware bool
 }
 
-// New creates a new Lift application
+// New creates a new Lift application with the given options.
+// The options are applied in the order they are provided.
+//
+// Parameters:
+//   - options: A variadic list of AppOption functions to configure the application
+//
+// Returns:
+//   - A pointer to the newly created App
+//
+// Example:
+//
+//	app := lift.New(
+//	    lift.WithConfig(&lift.Config{LogLevel: "DEBUG"}),
+//	    lift.WithLogger(myLogger),
+//	)
+//
+// New creates a new Lift application with the given options. The options are
+// applied in the order they are provided.
+//
+// Parameters:
+//   - options: A variadic list of AppOption functions to configure the application
+//
+// Returns:
+//   - A pointer to the newly created App
+//
+// Example:
+//
+//	app := lift.New(
+//	    lift.WithConfig(&lift.Config{LogLevel: "DEBUG"}),
+//	    lift.WithLogger(myLogger),
+//	)
 func New(options ...AppOption) *App {
 	app := &App{
 		router:          NewRouter(),
@@ -93,7 +148,9 @@ func New(options ...AppOption) *App {
 	return app
 }
 
-// Use adds middleware to the application. Middleware is executed in the order
+// Use adds middleware to the application.
+// Middleware is executed in the order it is added (last added runs closest to the handler),
+// and applies to all routes (HTTP and non-HTTP) handled by this App.
 // it is added (last added runs closest to the handler), and applies to all
 // routes (HTTP and non‑HTTP) handled by this App.
 func (a *App) Use(mw func(Handler) Handler) *App {
@@ -108,32 +165,75 @@ func (a *App) Use(mw func(Handler) Handler) *App {
 	return a
 }
 
-// GET registers a GET route
+// GET registers a GET route.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) GET(path string, handler any) error {
 	return a.Handle("GET", path, handler)
 }
 
-// POST registers a POST route
+// POST registers a POST route.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) POST(path string, handler any) error {
 	return a.Handle("POST", path, handler)
 }
 
-// PUT registers a PUT route
+// PUT registers a PUT route.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) PUT(path string, handler any) error {
 	return a.Handle("PUT", path, handler)
 }
 
-// DELETE registers a DELETE route
+// DELETE registers a DELETE route.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) DELETE(path string, handler any) error {
 	return a.Handle("DELETE", path, handler)
 }
 
-// PATCH registers a PATCH route
+// PATCH registers a PATCH route.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) PATCH(path string, handler any) error {
 	return a.Handle("PATCH", path, handler)
 }
 
-// Handle registers a route with the specified method and path
+// Handle registers a route with the specified method and path.
+//
+// Parameters:
+//   - method: The HTTP method for the route
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) Handle(method, path string, handler any) error {
 	// Check if this is an event trigger type
 	triggerType := parseTriggerType(method)
@@ -178,25 +278,49 @@ func (a *App) Handle(method, path string, handler any) error {
 	return nil
 }
 
-// WithConfig sets the application configuration
+// WithConfig sets the application configuration.
+//
+// Parameters:
+//   - config: A pointer to the Config struct
+//
+// Returns:
+//   - A pointer to the App
 func (a *App) WithConfig(config *Config) *App {
 	a.config = config
 	return a
 }
 
-// WithLogger sets the application logger
+// WithLogger sets the application logger.
+//
+// Parameters:
+//   - logger: A Logger instance
+//
+// Returns:
+//   - A pointer to the App
 func (a *App) WithLogger(logger Logger) *App {
 	a.logger = logger
 	return a
 }
 
-// WithMetrics sets the metrics collector
+// WithMetrics sets the metrics collector.
+//
+// Parameters:
+//   - metrics: A MetricsCollector instance
+//
+// Returns:
+//   - A pointer to the App
 func (a *App) WithMetrics(metrics MetricsCollector) *App {
 	a.metrics = metrics
 	return a
 }
 
-// WithDatabase sets the database connection
+// WithDatabase sets the database connection.
+//
+// Parameters:
+//   - db: A database connection
+//
+// Returns:
+//   - A pointer to the App
 func (a *App) WithDatabase(db any) *App {
 	a.db = db
 	return a
@@ -204,12 +328,24 @@ func (a *App) WithDatabase(db any) *App {
 
 // WithPreferredAdapters sets an ordered list of preferred event adapters for parsing Lambda events.
 // If set, the app will try these adapters (in order) before falling back to auto-detection.
+//
+// Parameters:
+//   - order: A variadic list of TriggerType
+//
+// Returns:
+//   - A pointer to the App
 func (a *App) WithPreferredAdapters(order ...adapters.TriggerType) *App {
 	a.preferredAdapters = append([]adapters.TriggerType(nil), order...)
 	return a
 }
 
-// Group creates a new route group with the specified prefix
+// Group creates a new route group with the specified prefix.
+//
+// Parameters:
+//   - prefix: The URL prefix for the route group
+//
+// Returns:
+//   - A pointer to the RouteGroup
 func (a *App) Group(prefix string) *RouteGroup {
 	return &RouteGroup{
 		app:    a,
@@ -217,38 +353,80 @@ func (a *App) Group(prefix string) *RouteGroup {
 	}
 }
 
-// RouteGroup represents a group of routes with a common prefix
+// RouteGroup represents a group of routes with a common prefix.
+// It allows for organizing routes under a common URL prefix.
 type RouteGroup struct {
 	app    *App
 	prefix string
 }
 
-// GET registers a GET route in this group
+// GET registers a GET route in this group.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (rg *RouteGroup) GET(path string, handler any) error {
 	return rg.app.GET(rg.prefix+path, handler)
 }
 
-// POST registers a POST route in this group
+// POST registers a POST route in this group.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (rg *RouteGroup) POST(path string, handler any) error {
 	return rg.app.POST(rg.prefix+path, handler)
 }
 
-// PUT registers a PUT route in this group
+// PUT registers a PUT route in this group.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (rg *RouteGroup) PUT(path string, handler any) error {
 	return rg.app.PUT(rg.prefix+path, handler)
 }
 
-// DELETE registers a DELETE route in this group
+// DELETE registers a DELETE route in this group.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (rg *RouteGroup) DELETE(path string, handler any) error {
 	return rg.app.DELETE(rg.prefix+path, handler)
 }
 
-// PATCH registers a PATCH route in this group
+// PATCH registers a PATCH route in this group.
+//
+// Parameters:
+//   - path: The URL path for the route
+//   - handler: The handler function for the route
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (rg *RouteGroup) PATCH(path string, handler any) error {
 	return rg.app.PATCH(rg.prefix+path, handler)
 }
 
-// Group creates a sub-group with an additional prefix
+// Group creates a sub-group with an additional prefix.
+//
+// Parameters:
+//   - prefix: The additional URL prefix for the sub-group
+//
+// Returns:
+//   - A pointer to the RouteGroup
 func (rg *RouteGroup) Group(prefix string) *RouteGroup {
 	return &RouteGroup{
 		app:    rg.app,
@@ -257,12 +435,21 @@ func (rg *RouteGroup) Group(prefix string) *RouteGroup {
 }
 
 // Use attaches middleware to this route group. Delegates to app-level chain.
+//
+// Parameters:
+//   - mw: The middleware function
+//
+// Returns:
+//   - A pointer to the RouteGroup
 func (rg *RouteGroup) Use(mw func(Handler) Handler) *RouteGroup {
 	rg.app.Use(mw)
 	return rg
 }
 
-// Start prepares the application for handling requests
+// Start prepares the application for handling requests.
+//
+// Returns:
+//   - An error if the application is already started
 func (a *App) Start() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -278,7 +465,10 @@ func (a *App) Start() error {
 	return nil
 }
 
-// IsLambda returns true if the code is running in an AWS Lambda environment
+// IsLambda returns true if the code is running in an AWS Lambda environment.
+//
+// Returns:
+//   - A boolean indicating if the code is running in AWS Lambda
 func (a *App) IsLambda() bool {
 	// Check for AWS Lambda-specific environment variables
 	// AWS_LAMBDA_FUNCTION_NAME is set in all Lambda runtime environments
@@ -289,13 +479,22 @@ func (a *App) IsLambda() bool {
 		os.Getenv("AWS_EXECUTION_ENV") != ""
 }
 
-// HandleRequest processes an incoming Lambda request
+// HandleRequest processes an incoming Lambda request.
+//
+// Parameters:
+//   - ctx: The context for the request
+//   - event: The Lambda event
+//
+// Returns:
+//   - The response from the handler
+//   - An error if the request handling fails
 func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 	builder := newRequestHandlerBuilder(ctx, a, event)
 	return builder.build()
 }
 
-// requestHandlerBuilder builds and executes Lambda request handling
+// requestHandlerBuilder builds and executes Lambda request handling.
+// It is responsible for constructing the request handling pipeline.
 type requestHandlerBuilder struct {
 	app      *App
 	ctx      context.Context
@@ -305,7 +504,15 @@ type requestHandlerBuilder struct {
 	routeErr error
 }
 
-// newRequestHandlerBuilder creates a new request handler builder
+// newRequestHandlerBuilder creates a new request handler builder.
+//
+// Parameters:
+//   - ctx: The context for the request
+//   - app: The App instance
+//   - event: The Lambda event
+//
+// Returns:
+//   - A pointer to the requestHandlerBuilder
 func newRequestHandlerBuilder(ctx context.Context, app *App, event any) *requestHandlerBuilder {
 	return &requestHandlerBuilder{
 		app:   app,
@@ -314,7 +521,11 @@ func newRequestHandlerBuilder(ctx context.Context, app *App, event any) *request
 	}
 }
 
-// build executes the complete request handling pipeline
+// build executes the complete request handling pipeline.
+//
+// Returns:
+//   - The response from the handler
+//   - An error if the request handling fails
 func (b *requestHandlerBuilder) build() (any, error) {
 	if err := b.ensureAppStarted(); err != nil {
 		return nil, err
@@ -339,12 +550,18 @@ func (b *requestHandlerBuilder) build() (any, error) {
 	return b.liftCtx.Response, nil
 }
 
-// ensureAppStarted ensures the app is properly initialized
+// ensureAppStarted ensures the app is properly initialized.
+//
+// Returns:
+//   - An error if the application fails to start
 func (b *requestHandlerBuilder) ensureAppStarted() error {
 	return b.app.Start()
 }
 
-// parseEvent converts the Lambda event to a Request
+// parseEvent converts the Lambda event to a Request.
+//
+// Returns:
+//   - An error if the event parsing fails
 func (b *requestHandlerBuilder) parseEvent() error {
 	req, err := b.app.parseEvent(b.event)
 	if err != nil {
@@ -354,12 +571,14 @@ func (b *requestHandlerBuilder) parseEvent() error {
 	return nil
 }
 
-// createContext creates the enhanced Lift context
+// createContext creates the enhanced Lift context.
+// It initializes the context with the request and other dependencies.
 func (b *requestHandlerBuilder) createContext() {
 	b.liftCtx = NewContext(b.ctx, b.request)
 }
 
-// configureContext sets up the context with app dependencies
+// configureContext sets up the context with app dependencies.
+// It configures the context with the logger, metrics, and database.
 func (b *requestHandlerBuilder) configureContext() {
 	if b.app.hasInterceptingMiddleware {
 		b.liftCtx.EnableResponseBuffering()
@@ -376,7 +595,8 @@ func (b *requestHandlerBuilder) configureContext() {
 	}
 }
 
-// routeRequest routes the request based on trigger type
+// routeRequest routes the request based on trigger type.
+// It determines the type of request and routes it accordingly.
 func (b *requestHandlerBuilder) routeRequest() {
 	switch {
 	case b.request.TriggerType == adapters.TriggerWebSocket:
@@ -388,14 +608,18 @@ func (b *requestHandlerBuilder) routeRequest() {
 	}
 }
 
-// isEventTrigger checks if this is a non-HTTP event trigger
+// isEventTrigger checks if this is a non-HTTP event trigger.
+//
+// Returns:
+//   - A boolean indicating if the request is a non-HTTP event
 func (b *requestHandlerBuilder) isEventTrigger() bool {
 	return b.request.TriggerType != adapters.TriggerAPIGateway &&
 		b.request.TriggerType != adapters.TriggerAPIGatewayV2 &&
 		b.request.TriggerType != adapters.TriggerUnknown
 }
 
-// routeWebSocket handles WebSocket routing
+// routeWebSocket handles WebSocket routing.
+// It routes WebSocket requests to the appropriate handler.
 func (b *requestHandlerBuilder) routeWebSocket() {
 	routeKey := b.extractRouteKey()
 	handler := b.app.RouteWebSocket(routeKey)
@@ -414,7 +638,10 @@ func (b *requestHandlerBuilder) routeWebSocket() {
 	}
 }
 
-// extractRouteKey gets the WebSocket route key from metadata
+// extractRouteKey gets the WebSocket route key from metadata.
+//
+// Returns:
+//   - The route key as a string
 func (b *requestHandlerBuilder) extractRouteKey() string {
 	if metadata, ok := b.request.Metadata["routeKey"].(string); ok {
 		return metadata
@@ -422,7 +649,13 @@ func (b *requestHandlerBuilder) extractRouteKey() string {
 	return ""
 }
 
-// applyMiddleware wraps the handler with middleware
+// applyMiddleware wraps the handler with middleware.
+//
+// Parameters:
+//   - handler: The handler to wrap
+//
+// Returns:
+//   - The wrapped handler
 func (b *requestHandlerBuilder) applyMiddleware(handler Handler) Handler {
 	finalHandler := handler
 	for i := len(b.app.middleware) - 1; i >= 0; i-- {
@@ -431,7 +664,13 @@ func (b *requestHandlerBuilder) applyMiddleware(handler Handler) Handler {
 	return finalHandler
 }
 
-// applyConnectionManagement adds WebSocket connection management if enabled
+// applyConnectionManagement adds WebSocket connection management if enabled.
+//
+// Parameters:
+//   - handler: The handler to wrap
+//
+// Returns:
+//   - The wrapped handler
 func (b *requestHandlerBuilder) applyConnectionManagement(handler Handler) Handler {
 	if b.app.wsOptions != nil && b.app.wsOptions.EnableAutoConnectionManagement {
 		return wrapWithConnectionManagement(handler, b.app.wsOptions.ConnectionStore)
@@ -439,21 +678,30 @@ func (b *requestHandlerBuilder) applyConnectionManagement(handler Handler) Handl
 	return handler
 }
 
-// routeEvent handles non-HTTP event routing
+// routeEvent handles non-HTTP event routing.
+// It routes non-HTTP events to the appropriate handler.
 func (b *requestHandlerBuilder) routeEvent() {
 	if err := b.app.eventRouter.HandleEvent(b.liftCtx); err != nil {
 		b.routeErr = err
 	}
 }
 
-// routeHTTP handles HTTP request routing
+// routeHTTP handles HTTP request routing.
+// It routes HTTP requests to the appropriate handler.
 func (b *requestHandlerBuilder) routeHTTP() {
 	if err := b.app.router.Handle(b.liftCtx); err != nil {
 		b.routeErr = err
 	}
 }
 
-// parseEvent converts a Lambda event to our Request structure
+// parseEvent converts a Lambda event to our Request structure.
+//
+// Parameters:
+//   - event: The Lambda event
+//
+// Returns:
+//   - The parsed Request
+//   - An error if the event parsing fails
 func (a *App) parseEvent(event any) (*Request, error) {
 	a.logEventDebug(event)
 
@@ -464,7 +712,8 @@ func (a *App) parseEvent(event any) (*Request, error) {
 	return a.detectAndAdaptEvent(event)
 }
 
-// logEventDebug logs useful debug information about the incoming event
+// logEventDebug logs useful debug information about the incoming event.
+// It logs debug information if debug mode is enabled.
 func (a *App) logEventDebug(event any) {
 	if !a.config.Debug || a.logger == nil {
 		return
@@ -476,7 +725,14 @@ func (a *App) logEventDebug(event any) {
 	}
 }
 
-// tryPreferredAdapters attempts to parse using preferred adapters first
+// tryPreferredAdapters attempts to parse using preferred adapters first.
+//
+// Parameters:
+//   - event: The Lambda event
+//
+// Returns:
+//   - The parsed Request
+//   - A boolean indicating if the parsing was successful
 func (a *App) tryPreferredAdapters(event any) (*Request, bool) {
 	if len(a.preferredAdapters) == 0 {
 		return nil, false
@@ -494,7 +750,14 @@ func (a *App) tryPreferredAdapters(event any) (*Request, bool) {
 	return nil, false
 }
 
-// detectAndAdaptEvent uses the registry to detect and adapt events
+// detectAndAdaptEvent uses the registry to detect and adapt events.
+//
+// Parameters:
+//   - event: The Lambda event
+//
+// Returns:
+//   - The parsed Request
+//   - An error if the event parsing fails
 func (a *App) detectAndAdaptEvent(event any) (*Request, error) {
 	adapterRequest, err := a.adapterRegistry.DetectAndAdapt(event)
 	if err != nil {
@@ -508,7 +771,15 @@ func (a *App) detectAndAdaptEvent(event any) (*Request, error) {
 	return NewRequest(adapterRequest), nil
 }
 
-// handleError processes errors and returns appropriate responses
+// handleError processes errors and returns appropriate responses.
+//
+// Parameters:
+//   - ctx: The context for the request
+//   - err: The error to handle
+//
+// Returns:
+//   - The error response
+//   - An error if the error handling fails
 func (a *App) handleError(ctx *Context, err error) (any, error) {
 	// Handle Lift errors properly by setting appropriate status codes
 	if liftErr, ok := err.(*LiftError); ok {
@@ -539,7 +810,15 @@ func (a *App) handleError(ctx *Context, err error) (any, error) {
 	return ctx.Response, nil
 }
 
-// HandleTestRequest processes a test request directly through the router
+// HandleTestRequest processes a test request directly through the router.
+// This is used by the testing framework to bypass event parsing.
+//
+// Parameters:
+//   - ctx: The context for the request
+//
+// Returns:
+//   - An error if the request handling fails
+//
 // This is used by the testing framework to bypass event parsing
 func (a *App) HandleTestRequest(ctx *Context) error {
 	// Ensure the app is started
@@ -573,12 +852,22 @@ func (a *App) HandleTestRequest(ctx *Context) error {
 	return nil
 }
 
-// GetEventRouter returns the EventRouter for accessing event routes (mainly for testing)
+// GetEventRouter returns the EventRouter for accessing event routes (mainly for testing).
+//
+// Returns:
+//   - The EventRouter
 func (a *App) GetEventRouter() *EventRouter {
 	return a.eventRouter
 }
 
-// SQS registers a handler for SQS events
+// SQS registers a handler for SQS events.
+//
+// Parameters:
+//   - pattern: The pattern for the SQS event
+//   - handler: The handler function for the event
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) SQS(pattern string, handler any) error {
 	h, err := a.convertEventHandler(handler)
 	if err != nil {
@@ -588,7 +877,14 @@ func (a *App) SQS(pattern string, handler any) error {
 	return nil
 }
 
-// S3 registers a handler for S3 events
+// S3 registers a handler for S3 events.
+//
+// Parameters:
+//   - pattern: The pattern for the S3 event
+//   - handler: The handler function for the event
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) S3(pattern string, handler any) error {
 	h, err := a.convertEventHandler(handler)
 	if err != nil {
@@ -598,7 +894,14 @@ func (a *App) S3(pattern string, handler any) error {
 	return nil
 }
 
-// EventBridge registers a handler for EventBridge events
+// EventBridge registers a handler for EventBridge events.
+//
+// Parameters:
+//   - pattern: The pattern for the EventBridge event
+//   - handler: The handler function for the event
+//
+// Returns:
+//   - An error if the handler type is unsupported
 func (a *App) EventBridge(pattern string, handler any) error {
 	h, err := a.convertEventHandler(handler)
 	if err != nil {
@@ -608,7 +911,14 @@ func (a *App) EventBridge(pattern string, handler any) error {
 	return nil
 }
 
-// convertEventHandler converts various handler types to EventHandler
+// convertEventHandler converts various handler types to EventHandler.
+//
+// Parameters:
+//   - handler: The handler to convert
+//
+// Returns:
+//   - The converted EventHandler
+//   - An error if the conversion fails
 func (a *App) convertEventHandler(handler any) (EventHandler, error) {
 	// Check if it's already an EventHandler
 	if eh, ok := handler.(EventHandler); ok {
@@ -632,7 +942,14 @@ func (a *App) convertEventHandler(handler any) (EventHandler, error) {
 	}), nil
 }
 
-// convertHandlerUsingReflection converts various handler function types to the Handler interface using reflection
+// convertHandlerUsingReflection converts various handler function types to the Handler interface using reflection.
+//
+// Parameters:
+//   - handler: The handler to convert
+//
+// Returns:
+//   - The converted Handler
+//   - An error if the conversion fails
 func convertHandlerUsingReflection(handler any) (Handler, error) {
 	v := reflect.ValueOf(handler)
 	t := reflect.TypeOf(handler)
@@ -651,7 +968,14 @@ func convertHandlerUsingReflection(handler any) (Handler, error) {
 	return createReflectedHandler(v, t), nil
 }
 
-// validateHandlerSignature validates that the handler function has a supported signature
+// validateHandlerSignature validates that the handler function has a supported signature.
+//
+// Parameters:
+//   - t: The reflect.Type of the handler function
+//
+// Returns:
+//   - An error if the signature is unsupported
+//
 // handlerPattern represents the different handler signature patterns supported
 type handlerPattern int
 
@@ -680,7 +1004,13 @@ func validateHandlerSignature(t reflect.Type) error {
 	return nil
 }
 
-// identifyPattern determines which handler pattern a function type matches
+// identifyPattern determines which handler pattern a function type matches.
+//
+// Parameters:
+//   - t: The reflect.Type of the handler function
+//
+// Returns:
+//   - The handlerPattern
 func (v *handlerValidator) identifyPattern(t reflect.Type) handlerPattern {
 	numIn := t.NumIn()
 	numOut := t.NumOut()
@@ -699,7 +1029,13 @@ func (v *handlerValidator) identifyPattern(t reflect.Type) handlerPattern {
 	}
 }
 
-// validateSingleInOut validates patterns: func(*Context) error OR func(RequestModel) error
+// validateSingleInOut validates patterns: func(*Context) error OR func(RequestModel) error.
+//
+// Parameters:
+//   - t: The reflect.Type of the handler function
+//
+// Returns:
+//   - The handlerPattern
 func (v *handlerValidator) validateSingleInOut(t reflect.Type) handlerPattern {
 	if !isErrorType(t.Out(0)) {
 		return patternUnsupported
@@ -712,7 +1048,13 @@ func (v *handlerValidator) validateSingleInOut(t reflect.Type) handlerPattern {
 	return patternModelError
 }
 
-// validateSingleInDoubleOut validates patterns: func(*Context) (any, error) OR func(RequestModel) (ResponseModel, error)
+// validateSingleInDoubleOut validates patterns: func(*Context) (any, error) OR func(RequestModel) (ResponseModel, error).
+//
+// Parameters:
+//   - t: The reflect.Type of the handler function
+//
+// Returns:
+//   - The handlerPattern
 func (v *handlerValidator) validateSingleInDoubleOut(t reflect.Type) handlerPattern {
 	if !isInterfaceType(t.Out(0)) || !isErrorType(t.Out(1)) {
 		return patternUnsupported
@@ -725,7 +1067,13 @@ func (v *handlerValidator) validateSingleInDoubleOut(t reflect.Type) handlerPatt
 	return patternModelResponse
 }
 
-// validateNoInSingleOut validates pattern: func() error
+// validateNoInSingleOut validates pattern: func() error.
+//
+// Parameters:
+//   - t: The reflect.Type of the handler function
+//
+// Returns:
+//   - The handlerPattern
 func (v *handlerValidator) validateNoInSingleOut(t reflect.Type) handlerPattern {
 	if isErrorType(t.Out(0)) {
 		return patternSimpleError
@@ -733,7 +1081,13 @@ func (v *handlerValidator) validateNoInSingleOut(t reflect.Type) handlerPattern 
 	return patternUnsupported
 }
 
-// validateNoInDoubleOut validates pattern: func() (any, error)
+// validateNoInDoubleOut validates pattern: func() (any, error).
+//
+// Parameters:
+//   - t: The reflect.Type of the handler function
+//
+// Returns:
+//   - The handlerPattern
 func (v *handlerValidator) validateNoInDoubleOut(t reflect.Type) handlerPattern {
 	if isInterfaceType(t.Out(0)) && isErrorType(t.Out(1)) {
 		return patternSimpleResponse
@@ -741,7 +1095,8 @@ func (v *handlerValidator) validateNoInDoubleOut(t reflect.Type) handlerPattern 
 	return patternUnsupported
 }
 
-// handlerExecutor handles the execution of different handler patterns
+// handlerExecutor handles the execution of different handler patterns.
+// It is responsible for executing the handler function based on its signature.
 // Memory optimized: struct with 48 pointer bytes could be 32
 type handlerExecutor struct {
 	// reflect.Type (16 bytes - interface)
@@ -752,7 +1107,14 @@ type handlerExecutor struct {
 	pattern handlerPattern
 }
 
-// createReflectedHandler creates a Handler from a reflected function
+// createReflectedHandler creates a Handler from a reflected function.
+//
+// Parameters:
+//   - v: The reflect.Value of the handler function
+//   - t: The reflect.Type of the handler function
+//
+// Returns:
+//   - The Handler
 func createReflectedHandler(v reflect.Value, t reflect.Type) Handler {
 	validator := &handlerValidator{}
 	pattern := validator.identifyPattern(t)
@@ -768,7 +1130,13 @@ func createReflectedHandler(v reflect.Value, t reflect.Type) Handler {
 	})
 }
 
-// execute runs the handler function based on its identified pattern
+// execute runs the handler function based on its identified pattern.
+//
+// Parameters:
+//   - ctx: The context for the request
+//
+// Returns:
+//   - An error if the execution fails
 func (e *handlerExecutor) execute(ctx *Context) error {
 	callArgs, err := e.prepareArgs(ctx)
 	if err != nil {
@@ -779,7 +1147,14 @@ func (e *handlerExecutor) execute(ctx *Context) error {
 	return e.handleResults(ctx, results)
 }
 
-// prepareArgs prepares the arguments for the function call based on the pattern
+// prepareArgs prepares the arguments for the function call based on the pattern.
+//
+// Parameters:
+//   - ctx: The context for the request
+//
+// Returns:
+//   - The arguments for the function call
+//   - An error if the preparation fails
 func (e *handlerExecutor) prepareArgs(ctx *Context) ([]reflect.Value, error) {
 	switch e.pattern {
 	case patternContextError, patternContextResponse:
@@ -796,7 +1171,14 @@ func (e *handlerExecutor) prepareArgs(ctx *Context) ([]reflect.Value, error) {
 	}
 }
 
-// prepareModelArgs prepares arguments for model-based handlers
+// prepareModelArgs prepares arguments for model-based handlers.
+//
+// Parameters:
+//   - ctx: The context for the request
+//
+// Returns:
+//   - The arguments for the function call
+//   - An error if the preparation fails
 func (e *handlerExecutor) prepareModelArgs(ctx *Context) ([]reflect.Value, error) {
 	requestType := e.funcType.In(0)
 	requestValue := reflect.New(requestType).Interface()
@@ -808,7 +1190,14 @@ func (e *handlerExecutor) prepareModelArgs(ctx *Context) ([]reflect.Value, error
 	return []reflect.Value{reflect.ValueOf(requestValue).Elem()}, nil
 }
 
-// handleResults processes the return values from the handler function
+// handleResults processes the return values from the handler function.
+//
+// Parameters:
+//   - ctx: The context for the request
+//   - results: The return values from the handler function
+//
+// Returns:
+//   - An error if the result handling fails
 func (e *handlerExecutor) handleResults(ctx *Context, results []reflect.Value) error {
 	switch len(results) {
 	case 1:
@@ -820,7 +1209,13 @@ func (e *handlerExecutor) handleResults(ctx *Context, results []reflect.Value) e
 	}
 }
 
-// handleSingleResult handles functions that return only an error
+// handleSingleResult handles functions that return only an error.
+//
+// Parameters:
+//   - result: The return value from the handler function
+//
+// Returns:
+//   - An error if the result handling fails
 func (e *handlerExecutor) handleSingleResult(result reflect.Value) error {
 	if result.IsNil() {
 		return nil
@@ -833,7 +1228,15 @@ func (e *handlerExecutor) handleSingleResult(result reflect.Value) error {
 	return fmt.Errorf("handler returned non-error value: %v", result.Interface())
 }
 
-// handleDoubleResult handles functions that return (value, error)
+// handleDoubleResult handles functions that return (value, error).
+//
+// Parameters:
+//   - ctx: The context for the request
+//   - valueResult: The value returned by the handler function
+//   - errorResult: The error returned by the handler function
+//
+// Returns:
+//   - An error if the result handling fails
 func (e *handlerExecutor) handleDoubleResult(ctx *Context, valueResult, errorResult reflect.Value) error {
 	if !errorResult.IsNil() {
 		if err, ok := errorResult.Interface().(error); ok {
@@ -849,7 +1252,8 @@ func (e *handlerExecutor) handleDoubleResult(ctx *Context, valueResult, errorRes
 	return nil
 }
 
-// Helper functions for type checking
+// Helper functions for type checking.
+// These functions are used to validate the types of handler functions.
 
 func isContextType(t reflect.Type) bool {
 	// Check if it's a pointer to Context
@@ -871,7 +1275,13 @@ func isInterfaceType(_ reflect.Type) bool {
 	return true
 }
 
-// parseTriggerType converts a string to a TriggerType
+// parseTriggerType converts a string to a TriggerType.
+//
+// Parameters:
+//   - s: The string to convert
+//
+// Returns:
+//   - The TriggerType
 func parseTriggerType(s string) TriggerType {
 	switch s {
 	case "SQS":
@@ -891,7 +1301,8 @@ func parseTriggerType(s string) TriggerType {
 	}
 }
 
-// RunLocalTest runs local testing logic when not in Lambda environment
+// RunLocalTest runs local testing logic when not in Lambda environment.
+// It is used to run tests locally without deploying to AWS Lambda.
 func (a *App) RunLocalTest() {
 	if a.IsLambda() {
 		return
@@ -953,7 +1364,10 @@ func (a *App) RunLocalTest() {
 	}
 }
 
-// WithDebug enables debug mode for the application
+// WithDebug enables debug mode for the application.
+//
+// Returns:
+//   - An AppOption function that enables debug mode
 func WithDebug() AppOption {
 	return func(app *App) {
 		app.config.Debug = true
@@ -964,7 +1378,13 @@ func WithDebug() AppOption {
 	}
 }
 
-// WithConfig sets a custom configuration for the application
+// WithConfig sets a custom configuration for the application.
+//
+// Parameters:
+//   - config: A pointer to the Config struct
+//
+// Returns:
+//   - An AppOption function that sets the configuration
 func WithConfig(config *Config) AppOption {
 	return func(app *App) {
 		app.config = config

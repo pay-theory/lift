@@ -82,32 +82,146 @@ type RefundPaymentRequest struct {
 
 // Service interfaces (would be implemented with actual business logic)
 type AccountService interface {
+	// CreateAccount creates a new account with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - req: The request to create an account
+	// Returns:
+	//   - The created account
+	//   - An error if the creation fails
 	CreateAccount(_ context.Context, req CreateAccountRequest) (*Account, error)
+
+	// GetAccount retrieves an account by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the account
+	// Returns:
+	//   - The retrieved account
+	//   - An error if the retrieval fails
 	GetAccount(_ context.Context, id string) (*Account, error)
+
+	// GetBalance retrieves the balance of an account by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - accountID: The ID of the account
+	// Returns:
+	//   - The balance of the account
+	//   - An error if the retrieval fails
 	GetBalance(_ context.Context, accountID string) (float64, error)
+
+	// UpdateBalance updates the balance of an account by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - accountID: The ID of the account
+	//   - amount: The amount to update the balance by
+	// Returns:
+	//   - An error if the update fails
 	UpdateBalance(_ context.Context, accountID string, amount float64) error
 }
 
 type TransactionService interface {
+	// CreateTransaction creates a new transaction with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - req: The request to create a transaction
+	// Returns:
+	//   - The created transaction
+	//   - An error if the creation fails
 	CreateTransaction(_ context.Context, req CreateTransactionRequest) (*Transaction, error)
+
+	// GetTransaction retrieves a transaction by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the transaction
+	// Returns:
+	//   - The retrieved transaction
+	//   - An error if the retrieval fails
 	GetTransaction(_ context.Context, id string) (*Transaction, error)
+
+	// GetAccountTransactions retrieves all transactions for an account by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - accountID: The ID of the account
+	// Returns:
+	//   - A list of transactions for the account
+	//   - An error if the retrieval fails
 	GetAccountTransactions(_ context.Context, accountID string) ([]Transaction, error)
 }
 
 type PaymentService interface {
+	// ProcessPayment processes a payment with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - req: The request to process a payment
+	// Returns:
+	//   - The processed payment
+	//   - An error if the processing fails
 	ProcessPayment(_ context.Context, req ProcessPaymentRequest) (*Payment, error)
+
+	// GetPayment retrieves a payment by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the payment
+	// Returns:
+	//   - The retrieved payment
+	//   - An error if the retrieval fails
 	GetPayment(_ context.Context, id string) (*Payment, error)
+
+	// RefundPayment refunds a payment with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - req: The request to refund a payment
+	// Returns:
+	//   - The refunded payment
+	//   - An error if the refund fails
 	RefundPayment(_ context.Context, req RefundPaymentRequest) (*Payment, error)
 }
 
 type ComplianceService interface {
+	// ValidateTransaction validates a transaction.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - transaction: The transaction to validate
+	// Returns:
+	//   - An error if the validation fails
 	ValidateTransaction(_ context.Context, transaction *Transaction) error
+
+	// AuditPayment audits a payment.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - payment: The payment to audit
+	// Returns:
+	//   - An error if the audit fails
 	AuditPayment(_ context.Context, payment *Payment) error
+
+	// GenerateReport generates a report of the specified type.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - reportType: The type of report to generate
+	// Returns:
+	//   - The generated report
+	//   - An error if the report generation fails
 	GenerateReport(_ context.Context, reportType string) (any, error)
 }
 
 type FraudDetectionService interface {
+	// AnalyzePayment analyzes a payment for fraud.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - payment: The payment to analyze
+	// Returns:
+	//   - The fraud score
+	//   - An error if the analysis fails
 	AnalyzePayment(_ context.Context, payment *Payment) (float64, error)
+
+	// CheckRisk checks the risk of a transaction.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - accountID: The ID of the account
+	//   - amount: The amount of the transaction
+	// Returns:
+	//   - A boolean indicating if the transaction is risky
+	//   - An error if the risk check fails
 	CheckRisk(_ context.Context, accountID string, amount float64) (bool, error)
 }
 
