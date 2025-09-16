@@ -42,8 +42,10 @@ jobs:
       run: make test-coverage
     
     - name: Upload coverage reports
+      if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
       uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.out
         flags: unittests
         name: codecov-umbrella
@@ -115,7 +117,7 @@ jobs:
         cache: true
     
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
+      uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7
       with:
         version: v2.4.0
         args: --timeout=5m --config=.golangci.yml
