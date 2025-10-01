@@ -126,7 +126,7 @@ func TestLiftSQSQueue_WithKMSEncryption(t *testing.T) {
 	})
 }
 
-func TestLiftSQSQueue_WithoutEventSource(t *testing.T) {
+func TestLiftSQSQueue_WithCustomBatchSize(t *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -137,22 +137,22 @@ func TestLiftSQSQueue_WithoutEventSource(t *testing.T) {
 		Code:    awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
 	})
 
-	// WHEN - Create queue without event source (send-only)
+	// WHEN - Create queue with custom batch size
 	NewLiftSQSQueue(stack, jsii.String("TestQueue"), &LiftSQSQueueProps{
-		Function:          testFn,
-		QueueName:         jsii.String("send-only-queue"),
-		EnableEventSource: jsii.Bool(false),
+		Function:  testFn,
+		QueueName: jsii.String("custom-batch-queue"),
+		BatchSize: jsii.Number(20),
 	})
 
 	// THEN
 	template := assertions.Template_FromStack(stack, nil)
 
-	// Verify no event source mapping created
-	template.ResourceCountIs(jsii.String("AWS::Lambda::EventSourceMapping"), jsii.Number(0))
+	// Verify event source mapping created with custom batch size
+	template.ResourceCountIs(jsii.String("AWS::Lambda::EventSourceMapping"), jsii.Number(1))
 
-	// Verify queue still created
+	// Verify queue created
 	template.HasResourceProperties(jsii.String("AWS::SQS::Queue"), map[string]interface{}{
-		"QueueName": "send-only-queue",
+		"QueueName": "custom-batch-queue",
 	})
 }
 
@@ -268,7 +268,7 @@ func TestLiftSQSQueue_MultipleQueuesOnSameFunction(t *testing.T) {
 		Code:    awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
 	})
 
-	// WHEN - Attach three different queues to the same function
+	// WHEN - Attach three different queues to the same function (K3 pattern)
 	queue1 := NewLiftSQSQueue(stack, jsii.String("ProcessorInstrument"), &LiftSQSQueueProps{
 		Function:          testFn,
 		QueueName:         jsii.String("processor-instrument"),
@@ -277,11 +277,11 @@ func TestLiftSQSQueue_MultipleQueuesOnSameFunction(t *testing.T) {
 	})
 
 	queue2 := NewLiftSQSQueue(stack, jsii.String("AuthVoid"), &LiftSQSQueueProps{
-		Function:           testFn,
-		QueueName:          jsii.String("auth-void"),
-		QueueUrlEnvVar:     jsii.String("K3_AUTH_VOID_QUEUE_URL"),
-		VisibilityTimeout:  awscdk.Duration_Seconds(jsii.Number(300)),
-		EnableEventSource:  jsii.Bool(false), // Send-only queue
+		Function:               testFn,
+		QueueName:              jsii.String("auth-void"),
+		QueueUrlEnvVar:         jsii.String("K3_AUTH_VOID_QUEUE_URL"),
+		VisibilityTimeout:      awscdk.Duration_Seconds(jsii.Number(300)),
+		MessageRetentionPeriod: awscdk.Duration_Hours(jsii.Number(24)),
 	})
 
 	queue3 := NewLiftSQSQueue(stack, jsii.String("RapidConnect"), &LiftSQSQueueProps{
@@ -297,8 +297,8 @@ func TestLiftSQSQueue_MultipleQueuesOnSameFunction(t *testing.T) {
 	// Verify all three queues created
 	template.ResourceCountIs(jsii.String("AWS::SQS::Queue"), jsii.Number(6)) // 3 main + 3 DLQ
 
-	// Verify two event source mappings (queue1 and queue3, not queue2)
-	template.ResourceCountIs(jsii.String("AWS::Lambda::EventSourceMapping"), jsii.Number(2))
+	// Verify all three event source mappings (all queues trigger the same Lambda)
+	template.ResourceCountIs(jsii.String("AWS::Lambda::EventSourceMapping"), jsii.Number(3))
 
 	// Verify all queues are accessible
 	if queue1.GetQueueUrl() == nil || queue2.GetQueueUrl() == nil || queue3.GetQueueUrl() == nil {
