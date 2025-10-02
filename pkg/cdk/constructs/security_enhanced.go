@@ -59,6 +59,16 @@ type WAFCustomRule struct {
 	Priority    float64
 }
 
+// VPCEndpointConfig defines which VPC endpoints to create
+type VPCEndpointConfig struct {
+	EnableSecretsManager      *bool
+	EnableCloudWatchLogs      *bool
+	EnableXRay                *bool
+	EnableKMS                 *bool
+	EnableCloudWatchMonitoring *bool
+	PrivateDNSEnabled         *bool // Default true, set false to avoid conflicts in shared VPCs
+}
+
 // EnhancedSecurityProps defines properties for enhanced security
 type EnhancedSecurityProps struct {
 	Vpc               awsec2.IVpc
@@ -73,6 +83,7 @@ type EnhancedSecurityProps struct {
 	IngressRules      []SecurityRule
 	EgressRules       []SecurityRule
 	Secrets           []SecretConfig
+	VPCEndpointConfig *VPCEndpointConfig
 }
 
 // EnhancedSecurity provides comprehensive security features
@@ -148,6 +159,16 @@ func (s *EnhancedSecurity) setDefaults(props *EnhancedSecurityProps) {
 			EnableSQLiProtection: jsii.Bool(true),
 			EnableXSSProtection:  jsii.Bool(true),
 			EnableKnownBadInputs: jsii.Bool(true),
+		}
+	}
+	if props.VPCEndpointConfig == nil {
+		props.VPCEndpointConfig = &VPCEndpointConfig{
+			EnableSecretsManager:      jsii.Bool(true),
+			EnableCloudWatchLogs:      jsii.Bool(true),
+			EnableXRay:                jsii.Bool(true),
+			EnableKMS:                 jsii.Bool(false),
+			EnableCloudWatchMonitoring: jsii.Bool(false),
+			PrivateDNSEnabled:         jsii.Bool(true),
 		}
 	}
 }
@@ -514,38 +535,75 @@ func (s *EnhancedSecurity) createSecrets(props *EnhancedSecurityProps) {
 }
 
 func (s *EnhancedSecurity) createVPCEndpoints(props *EnhancedSecurityProps) {
+	privateDNS := props.VPCEndpointConfig.PrivateDNSEnabled
+	if privateDNS == nil {
+		privateDNS = jsii.Bool(true)
+	}
+
 	// Secrets Manager VPC Endpoint
-	s.VPCEndpoints["SecretsManager"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("SecretsManagerEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:               props.Vpc,
-		Service:           awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER(),
-		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
-		PrivateDnsEnabled: jsii.Bool(true),
-		Subnets: &awsec2.SubnetSelection{
-			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-		},
-	})
+	if props.VPCEndpointConfig.EnableSecretsManager != nil && *props.VPCEndpointConfig.EnableSecretsManager {
+		s.VPCEndpoints["SecretsManager"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("SecretsManagerEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
 
 	// CloudWatch Logs VPC Endpoint
-	s.VPCEndpoints["CloudWatchLogs"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("CloudWatchLogsEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:               props.Vpc,
-		Service:           awsec2.InterfaceVpcEndpointAwsService_CLOUDWATCH_LOGS(),
-		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
-		PrivateDnsEnabled: jsii.Bool(true),
-		Subnets: &awsec2.SubnetSelection{
-			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-		},
-	})
+	if props.VPCEndpointConfig.EnableCloudWatchLogs != nil && *props.VPCEndpointConfig.EnableCloudWatchLogs {
+		s.VPCEndpoints["CloudWatchLogs"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("CloudWatchLogsEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_CLOUDWATCH_LOGS(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
 
 	// X-Ray VPC Endpoint
-	s.VPCEndpoints["XRay"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("XRayEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:               props.Vpc,
-		Service:           awsec2.InterfaceVpcEndpointAwsService_XRAY(),
-		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
-		PrivateDnsEnabled: jsii.Bool(true),
-		Subnets: &awsec2.SubnetSelection{
-			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-		},
-	})
+	if props.VPCEndpointConfig.EnableXRay != nil && *props.VPCEndpointConfig.EnableXRay {
+		s.VPCEndpoints["XRay"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("XRayEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_XRAY(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
+
+	// KMS VPC Endpoint
+	if props.VPCEndpointConfig.EnableKMS != nil && *props.VPCEndpointConfig.EnableKMS {
+		s.VPCEndpoints["KMS"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("KMSEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_KMS(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
+
+	// CloudWatch Monitoring VPC Endpoint
+	if props.VPCEndpointConfig.EnableCloudWatchMonitoring != nil && *props.VPCEndpointConfig.EnableCloudWatchMonitoring {
+		s.VPCEndpoints["CloudWatchMonitoring"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("CloudWatchMonitoringEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_CLOUDWATCH_MONITORING(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
 }
 
 func (s *EnhancedSecurity) enableVPCFlowLogs(props *EnhancedSecurityProps) {
