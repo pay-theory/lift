@@ -44,10 +44,12 @@ Example:
 ```go
 
 	api := constructs.NewLiftAPI(stack, jsii.String("MyAPI"), &constructs.LiftAPIProps{
-	    Name:        jsii.String("my-api"),
-	    EnableCORS:  jsii.Bool(true),
-	    DomainName:  jsii.String("api.example.com"),
-	    CertificateArn: jsii.String("arn:aws:acm:..."),
+	    APICommonProps: constructs.APICommonProps{
+	        Name:        jsii.String("my-api"),
+	        EnableCORS:  jsii.Bool(true),
+	        DomainName:  jsii.String("api.example.com"),
+	        CertificateArn: jsii.String("arn:aws:acm:..."),
+	    },
 	})
 
 // Add routes

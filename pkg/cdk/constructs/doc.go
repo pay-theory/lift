@@ -52,9 +52,11 @@ Example:
 
 		// Create a Lift-optimized API
 		api := constructs.NewLiftAPI(stack, jsii.String("MyAPI"), &constructs.LiftAPIProps{
-			Name:        jsii.String("MyServiceAPI"),
-			EnableCORS:  jsii.Bool(true),
-			EnableAccessLogging: jsii.Bool(true),
+			APICommonProps: constructs.APICommonProps{
+				Name:                jsii.String("MyServiceAPI"),
+				EnableCORS:          jsii.Bool(true),
+				EnableAccessLogging: jsii.Bool(true),
+			},
 		})
 
 		// Create a Lift-optimized DynamoDB table

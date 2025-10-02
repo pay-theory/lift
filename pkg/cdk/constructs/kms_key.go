@@ -12,40 +12,38 @@ import (
 )
 
 // LiftKMSKeyProps defines properties for creating a KMS key with Lift
+//
+//nolint:govet // Field order mirrors documentation sections for readability.
 type LiftKMSKeyProps struct {
 	// Key configuration
 	Description *string
-	KeySpec     awskms.KeySpec  // e.g., HMAC_256, SYMMETRIC_DEFAULT
-	KeyUsage    awskms.KeyUsage // e.g., GENERATE_VERIFY_MAC, ENCRYPT_DECRYPT
 
 	// Alias configuration
-	AliasName *string // e.g., "alias/k3/hashing-key"
+	AliasName *string
 
-	// Multi-region configuration
-	MultiRegion      *bool   // Enable multi-region key (default: false)
-	PrimaryKeyArn    *string // For replica keys - ARN of the primary key
-	IsReplicaKey     *bool   // True if this is a replica key (default: false)
+	// Replica configuration
+	PrimaryKeyArn    *string     // ARN of the primary key for replicas
+	AdministratorArn *string     // Optional admin principal ARN
+	CustomKeyPolicy  interface{} // Optional custom key policy
+	SSMParameterPath *string     // Parameter Store path to store key ARN
+	Tags             *map[string]*string
+	EnabledRegions   *[]*string
 
-	// Key policy configuration
-	EnableKeyRotation *bool // Enable automatic key rotation (default: true for SYMMETRIC keys)
-	AdministratorArn  *string
-	CustomKeyPolicy   interface{} // Custom key policy document
-
-	// SSM Parameter Store configuration
-	EnableSSMParameter *bool   // Store key ARN in SSM (default: false)
-	SSMParameterPath   *string // SSM parameter path (e.g., "/k3/partner/stage/hmac-key-arn")
+	// Boolean flags
+	MultiRegion        *bool
+	IsReplicaKey       *bool
+	EnableKeyRotation  *bool
+	EnableSSMParameter *bool
 
 	// Additional permissions
-	GrantEncryptDecrypt []awsiam.IGrantable // Principals to grant encrypt/decrypt permissions
-	GrantGenerateMac    []awsiam.IGrantable // Principals to grant GenerateMac/VerifyMac permissions
+	GrantEncryptDecrypt []awsiam.IGrantable
+	GrantGenerateMac    []awsiam.IGrantable
 
-	// Tags
-	Tags *map[string]*string
-
-	// Advanced options
-	PendingWindow   awscdk.Duration // Waiting period for key deletion (default: 30 days)
-	RemovalPolicy   awscdk.RemovalPolicy
-	EnabledRegions  *[]*string // Regions to enable for multi-region key
+	// Non-pointer configuration
+	KeySpec       awskms.KeySpec
+	KeyUsage      awskms.KeyUsage
+	PendingWindow awscdk.Duration
+	RemovalPolicy awscdk.RemovalPolicy
 }
 
 // LiftKMSKey represents a KMS key with multi-region support
@@ -183,7 +181,11 @@ func (b *liftKMSKeyBuilder) createPrimaryKey(liftKey *LiftKMSKey) {
 
 	// Set custom key policy if provided
 	if b.props.CustomKeyPolicy != nil {
-		keyProps.Policy = b.props.CustomKeyPolicy.(awsiam.PolicyDocument)
+		if policy, ok := b.props.CustomKeyPolicy.(awsiam.PolicyDocument); ok {
+			keyProps.Policy = policy
+		} else {
+			panic("CustomKeyPolicy must implement awsiam.PolicyDocument")
+		}
 	}
 
 	key := awskms.NewKey(liftKey, jsii.String("Key"), keyProps)

@@ -1,6 +1,8 @@
 package constructs
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -200,7 +202,7 @@ func TestComplianceStack_WithExistingResources(t *testing.T) {
 	assert.Equal(t, existingBucket, complianceStack.ComplianceBucket)
 }
 
-func TestComplianceStack_SOC2Framework(_ *testing.T) {
+func TestComplianceStack_SOC2Framework(t *testing.T) {
 	// GIVEN
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -228,7 +230,7 @@ func TestComplianceStack_SOC2Framework(_ *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::Config::ConfigRule"), jsii.Number(1))
 }
 
-func TestComplianceStack_HIPAAFramework(_ *testing.T) {
+func TestComplianceStack_HIPAAFramework(t *testing.T) {
 	// GIVEN, WHEN
 	_, template := createComplianceFrameworkTestStack("hipaa-app", []ComplianceFramework{HIPAA})
 
@@ -246,7 +248,7 @@ func TestComplianceStack_HIPAAFramework(_ *testing.T) {
 	})
 }
 
-func TestComplianceStack_PCIDSSFramework(_ *testing.T) {
+func TestComplianceStack_PCIDSSFramework(t *testing.T) {
 	// GIVEN, WHEN
 	_, template := createComplianceFrameworkTestStack("pci-app", []ComplianceFramework{PCI_DSS})
 
@@ -498,4 +500,25 @@ func BenchmarkComplianceStack_AddRule(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		complianceStack.AddComplianceRule("BenchmarkRule", "BENCHMARK_RULE_NAME")
 	}
+}
+
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "lift-lambda-dist")
+	if err != nil {
+		panic(err)
+	}
+
+	bootstrapPath := filepath.Join(dir, "bootstrap")
+	const bootstrapScript = "#!/bin/sh\nexit 0\n"
+	if err := os.WriteFile(bootstrapPath, []byte(bootstrapScript), 0o755); err != nil {
+		panic(err)
+	}
+
+	if err := os.Setenv(lambdaDistEnvVar, dir); err != nil {
+		panic(err)
+	}
+
+	code := m.Run()
+	_ = os.RemoveAll(dir)
+	os.Exit(code)
 }

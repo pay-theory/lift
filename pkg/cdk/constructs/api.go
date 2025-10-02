@@ -25,6 +25,8 @@ import (
 // features like API key requirements and request validation.
 type LiftAPIProps struct {
 	APICommonProps
+	// Enable detailed CloudWatch metrics for the HTTP API stage
+	EnableDetailedMetrics *bool
 	// API Key configuration
 	RequireApiKey *bool
 	// Request/Response validation models
@@ -251,10 +253,12 @@ func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup a
 	// Configure access logging
 	b.configureAccessLogging(stage, logGroup)
 
+	// Enable detailed metrics if configured
+	b.configureDetailedMetrics(stage)
+
 	return stage
 }
 
-<<<<<<< HEAD
 // needsCustomStage determines if a custom stage is needed.
 //
 // This method checks if any configuration requires a custom stage instead of
@@ -283,9 +287,6 @@ func (b *liftAPIBuilder) needsCustomStage(stageName string) bool {
 //
 // Returns:
 //   - A configured HttpStage instance
-=======
-// createCustomStage creates a custom stage with throttling
->>>>>>> origin/premain
 func (b *liftAPIBuilder) createCustomStage(httpApi awsapigatewayv2.HttpApi, stageName string) awsapigatewayv2.IHttpStage {
 	stageProps := &awsapigatewayv2.HttpStageProps{
 		HttpApi:    httpApi,
@@ -349,7 +350,6 @@ func (b *liftAPIBuilder) configureAccessLogging(stage awsapigatewayv2.IHttpStage
 	logGroup.Grant(awsiam.NewServicePrincipal(jsii.String("apigateway.amazonaws.com"), nil), jsii.String("logs:PutLogEvents"))
 }
 
-<<<<<<< HEAD
 // configureDetailedMetrics enables detailed metrics if requested.
 //
 // This method enables detailed CloudWatch metrics for the API stage if
@@ -376,9 +376,6 @@ func (b *liftAPIBuilder) configureDetailedMetrics(stage awsapigatewayv2.IHttpSta
 // Parameters:
 //   - httpApi: The HTTP API instance
 //   - stage: The API stage
-=======
-// configureDomain configures custom domain mapping if provided
->>>>>>> origin/premain
 func (b *liftAPIBuilder) configureDomain(httpApi awsapigatewayv2.HttpApi, stage awsapigatewayv2.IHttpStage) {
 	if b.props.DomainName == nil || b.props.CertificateArn == nil {
 		return
@@ -500,16 +497,12 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 	return authorizer.Authorizer
 }
 
-<<<<<<< HEAD
 // GetUrl returns the URL of the API.
 //
 // This method returns the base URL of the API Gateway endpoint.
 //
 // Returns:
 //   - The API URL as a string pointer
-=======
-// GetUrl returns the URL of the API stage
->>>>>>> origin/premain
 func (api *LiftAPI) GetUrl() *string {
 	// Always use the stage URL since Lift creates a custom stage
 	return api.Stage.Url()

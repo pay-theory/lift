@@ -21,8 +21,10 @@ func TestNewLiftAPI(t *testing.T) {
 		{
 			name: "creates basic API",
 			props: &LiftAPIProps{
-				Name:        jsii.String("test-api"),
-				Description: jsii.String("Test API"),
+				APICommonProps: APICommonProps{
+					Name:        jsii.String("test-api"),
+					Description: jsii.String("Test API"),
+				},
 			},
 			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"), &map[string]interface{}{
@@ -35,8 +37,10 @@ func TestNewLiftAPI(t *testing.T) {
 		{
 			name: "enables CORS",
 			props: &LiftAPIProps{
-				Name:       jsii.String("test-api"),
-				EnableCORS: jsii.Bool(true),
+				APICommonProps: APICommonProps{
+					Name:       jsii.String("test-api"),
+					EnableCORS: jsii.Bool(true),
+				},
 			},
 			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"), &map[string]interface{}{
@@ -64,9 +68,11 @@ func TestNewLiftAPI(t *testing.T) {
 		{
 			name: "creates custom domain",
 			props: &LiftAPIProps{
-				Name:           jsii.String("test-api"),
-				DomainName:     jsii.String("api.example.com"),
-				CertificateArn: jsii.String("arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"),
+				APICommonProps: APICommonProps{
+					Name:           jsii.String("test-api"),
+					DomainName:     jsii.String("api.example.com"),
+					CertificateArn: jsii.String("arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"),
+				},
 			},
 			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::DomainName"), &map[string]interface{}{
@@ -83,8 +89,10 @@ func TestNewLiftAPI(t *testing.T) {
 		{
 			name: "enables access logging",
 			props: &LiftAPIProps{
-				Name:                jsii.String("test-api"),
-				EnableAccessLogging: jsii.Bool(true),
+				APICommonProps: APICommonProps{
+					Name:                jsii.String("test-api"),
+					EnableAccessLogging: jsii.Bool(true),
+				},
 			},
 			assertions: func(_ *testing.T, template assertions.Template) {
 				// Check log group is created
@@ -104,9 +112,11 @@ func TestNewLiftAPI(t *testing.T) {
 		{
 			name: "configures throttling",
 			props: &LiftAPIProps{
-				Name:               jsii.String("test-api"),
-				ThrottleRateLimit:  jsii.Number(100),
-				ThrottleBurstLimit: jsii.Number(200),
+				APICommonProps: APICommonProps{
+					Name:               jsii.String("test-api"),
+					ThrottleRateLimit:  jsii.Number(100),
+					ThrottleBurstLimit: jsii.Number(200),
+				},
 			},
 			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Stage"), &map[string]interface{}{
@@ -120,8 +130,10 @@ func TestNewLiftAPI(t *testing.T) {
 		{
 			name: "creates custom stage",
 			props: &LiftAPIProps{
-				Name:      jsii.String("test-api"),
-				StageName: jsii.String("prod"),
+				APICommonProps: APICommonProps{
+					Name:      jsii.String("test-api"),
+					StageName: jsii.String("prod"),
+				},
 			},
 			assertions: func(_ *testing.T, template assertions.Template) {
 				template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Stage"), &map[string]interface{}{
@@ -133,7 +145,9 @@ func TestNewLiftAPI(t *testing.T) {
 		{
 			name: "enables detailed metrics",
 			props: &LiftAPIProps{
-				Name:                  jsii.String("test-api"),
+				APICommonProps: APICommonProps{
+					Name: jsii.String("test-api"),
+				},
 				EnableDetailedMetrics: jsii.Bool(true),
 			},
 			assertions: func(_ *testing.T, template assertions.Template) {
@@ -167,7 +181,9 @@ func TestLiftAPI_AddLambdaRoute(_ *testing.T) {
 
 	// Create API
 	api := NewLiftAPI(stack.Stack(), jsii.String("TestAPI"), &LiftAPIProps{
-		Name: jsii.String("test-api"),
+		APICommonProps: APICommonProps{
+			Name: jsii.String("test-api"),
+		},
 	})
 
 	// Create test Lambda function
@@ -203,7 +219,9 @@ func TestLiftAPI_AddLambdaRouteWithOptions(_ *testing.T) {
 
 	// Create API
 	api := NewLiftAPI(stack.Stack(), jsii.String("TestAPI"), &LiftAPIProps{
-		Name: jsii.String("test-api"),
+		APICommonProps: APICommonProps{
+			Name: jsii.String("test-api"),
+		},
 	})
 
 	// Create test Lambda function
@@ -238,7 +256,9 @@ func TestLiftAPI_AddRoutes(_ *testing.T) {
 
 	// Create API
 	api := NewLiftAPI(stack.Stack(), jsii.String("TestAPI"), &LiftAPIProps{
-		Name: jsii.String("test-api"),
+		APICommonProps: APICommonProps{
+			Name: jsii.String("test-api"),
+		},
 	})
 
 	// Create test Lambda functions
@@ -279,7 +299,9 @@ func TestLiftAPI_GetUrl(t *testing.T) {
 
 	// Create API
 	api := NewLiftAPI(stack.Stack(), jsii.String("TestAPI"), &LiftAPIProps{
-		Name: jsii.String("test-api"),
+		APICommonProps: APICommonProps{
+			Name: jsii.String("test-api"),
+		},
 	})
 
 	// Get URL
@@ -297,7 +319,9 @@ func TestLiftAPI_GetArn(t *testing.T) {
 
 	// Create API
 	api := NewLiftAPI(stack.Stack(), jsii.String("TestAPI"), &LiftAPIProps{
-		Name: jsii.String("test-api"),
+		APICommonProps: APICommonProps{
+			Name: jsii.String("test-api"),
+		},
 	})
 
 	// Get ARN
@@ -311,14 +335,16 @@ func TestLiftAPI_Integration(_ *testing.T) {
 
 	// Create API with all features
 	api := NewLiftAPI(stack.Stack(), jsii.String("TestAPI"), &LiftAPIProps{
-		Name:                  jsii.String("test-api"),
-		Description:           jsii.String("Test API with all features"),
-		EnableCORS:            jsii.Bool(true),
-		EnableAccessLogging:   jsii.Bool(true),
+		APICommonProps: APICommonProps{
+			Name:                jsii.String("test-api"),
+			Description:         jsii.String("Test API with all features"),
+			EnableCORS:          jsii.Bool(true),
+			EnableAccessLogging: jsii.Bool(true),
+			ThrottleRateLimit:   jsii.Number(1000),
+			ThrottleBurstLimit:  jsii.Number(2000),
+			StageName:           jsii.String("prod"),
+		},
 		EnableDetailedMetrics: jsii.Bool(true),
-		ThrottleRateLimit:     jsii.Number(1000),
-		ThrottleBurstLimit:    jsii.Number(2000),
-		StageName:             jsii.String("prod"),
 	})
 
 	// Create Lambda function

@@ -111,7 +111,7 @@ type dynamoStreamProcessorConfig struct {
 	// parallelizationFactor controls concurrency for batch processing.
 	parallelizationFactor float64
 
-	// bisectBatchOnError, reportBatchItemFailures and enableDLQ toggle optional behaviours.
+	// bisectBatchOnError, reportBatchItemFailures and enableDLQ toggle optional behaviors.
 	bisectBatchOnError      bool
 	reportBatchItemFailures bool
 	enableDLQ               bool

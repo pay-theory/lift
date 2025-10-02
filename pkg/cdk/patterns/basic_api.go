@@ -75,9 +75,11 @@ func NewBasicAPI(scope constructs.Construct, id *string, props *BasicAPIProps) *
 
 	// Create API Gateway
 	api := liftconstructs.NewLiftAPI(this, jsii.String("Api"), &liftconstructs.LiftAPIProps{
-		Name:                props.ApiName,
-		EnableCORS:          props.EnableCORS,
-		EnableAccessLogging: jsii.Bool(true),
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:                props.ApiName,
+			EnableCORS:          props.EnableCORS,
+			EnableAccessLogging: jsii.Bool(true),
+		},
 	})
 
 	// Add Lambda integration

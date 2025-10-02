@@ -67,7 +67,7 @@ const (
 	GDPR ComplianceFramework = "GDPR"
 )
 
-// ComplianceStackProps configures the behaviour of a `ComplianceStack`. All fields are
+// ComplianceStackProps configures the behavior of a `ComplianceStack`. All fields are
 // optional; sensible defaults are applied when values are omitted.
 //
 // Example:
@@ -136,7 +136,7 @@ type ComplianceStackProps struct {
 
 // ComplianceStack is the concrete CDK construct that aggregates all resources required for
 // a compliance‑focused deployment. It exposes references to the underlying AWS services so
-// callers can further customise or attach additional permissions.
+// callers can further customize or attach additional permissions.
 //
 // Example:
 //

@@ -19,9 +19,6 @@ type LiftEventSourceMappingProps struct {
 	// Table name (for secondary region where ARN is discovered at runtime)
 	TableName *string
 
-	// Starting position for stream reading
-	StartingPosition awslambda.StartingPosition
-
 	// Batch size for processing
 	BatchSize *float64
 
@@ -34,17 +31,20 @@ type LiftEventSourceMappingProps struct {
 	// Maximum batching window
 	MaxBatchingWindow awscdk.Duration
 
+	// Maximum record age
+	MaxRecordAge awscdk.Duration
+
 	// Bisect batch on error
 	BisectBatchOnError *bool
 
 	// Report batch item failures
 	ReportBatchItemFailures *bool
 
-	// Maximum record age
-	MaxRecordAge awscdk.Duration
-
 	// Use custom resource for dynamic ARN lookup (for secondary regions)
 	UseCustomResource *bool
+
+	// Starting position for stream reading
+	StartingPosition awslambda.StartingPosition
 }
 
 // LiftEventSourceMapping wraps event source mapping with automatic handling for cross-region scenarios

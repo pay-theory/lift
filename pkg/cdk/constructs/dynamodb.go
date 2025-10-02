@@ -15,43 +15,45 @@ import (
 // DynamoDB table. The properties include basic table configuration, advanced
 // features like point-in-time recovery, streams, auto-scaling, and TTL settings.
 type LiftTableProps struct {
-	TableName                 *string
-	PartitionKeyName          *string
-	SortKeyName               *string
-	EnablePointInTimeRecovery *bool
-	EnableStreams             *bool
-	TimeToLiveAttribute       *string
-	StreamViewType            awsdynamodb.StreamViewType
+	TableName           *string
+	PartitionKeyName    *string
+	SortKeyName         *string
+	TimeToLiveAttribute *string
 
 	// Billing configuration
-	ReadCapacity              *float64
-	WriteCapacity             *float64
+	ReadCapacity  *float64
+	WriteCapacity *float64
+
+	// Feature flags
+	EnablePointInTimeRecovery *bool
+	EnableStreams             *bool
+	EnableAutoScaling         *bool
+	DeletionProtection        *bool
 
 	// Auto-scaling configuration
-	EnableAutoScaling         *bool
-	MinReadCapacity           *float64
-	MaxReadCapacity           *float64
-	MinWriteCapacity          *float64
-	MaxWriteCapacity          *float64
-	TargetUtilization         *float64
+	MinReadCapacity   *float64
+	MaxReadCapacity   *float64
+	MinWriteCapacity  *float64
+	MaxWriteCapacity  *float64
+	TargetUtilization *float64
 
 	// Global Secondary Indexes
-	GlobalSecondaryIndexes    *[]*awsdynamodb.GlobalSecondaryIndexProps
+	GlobalSecondaryIndexes *[]*awsdynamodb.GlobalSecondaryIndexProps
 
 	// GSI Auto-scaling configuration
-	GSIMinReadCapacity        *float64
-	GSIMaxReadCapacity        *float64
-	GSIMinWriteCapacity       *float64
-	GSIMaxWriteCapacity       *float64
+	GSIMinReadCapacity  *float64
+	GSIMaxReadCapacity  *float64
+	GSIMinWriteCapacity *float64
+	GSIMaxWriteCapacity *float64
 
-	// Advanced features
-	DeletionProtection        *bool
-	RemovalPolicy             awscdk.RemovalPolicy
-	Encryption                awsdynamodb.TableEncryption
-	ReplicationRegions        *[]*string
+	// Replication and tagging
+	ReplicationRegions *[]*string
+	Tags               *map[string]*string
 
-	// Tags
-	Tags                      *map[string]*string
+	// Non-pointer configuration values
+	StreamViewType awsdynamodb.StreamViewType
+	RemovalPolicy  awscdk.RemovalPolicy
+	Encryption     awsdynamodb.TableEncryption
 }
 
 // LiftTable is a DynamoDB table construct optimized for Lift applications
@@ -65,8 +67,8 @@ type LiftTableProps struct {
 // The table is configured with sensible defaults for production workloads.
 type LiftTable struct {
 	constructs.Construct
-	Table  awsdynamodb.Table
-	GSIs   map[string]*awsdynamodb.GlobalSecondaryIndexProps
+	Table awsdynamodb.Table
+	GSIs  map[string]*awsdynamodb.GlobalSecondaryIndexProps
 }
 
 // NewLiftTable creates a new DynamoDB table with Lift-optimized defaults
@@ -203,11 +205,11 @@ func (b *liftTableBuilder) determineBillingMode() {
 // createTableProps creates the base table properties
 func (b *liftTableBuilder) createTableProps() *awsdynamodb.TableProps {
 	tableProps := &awsdynamodb.TableProps{
-		TableName:           b.props.TableName,
-		PartitionKey:        b.createPartitionKey(),
-		BillingMode:         b.billingMode,
-		RemovalPolicy:       b.props.RemovalPolicy,
-		DeletionProtection:  b.props.DeletionProtection,
+		TableName:          b.props.TableName,
+		PartitionKey:       b.createPartitionKey(),
+		BillingMode:        b.billingMode,
+		RemovalPolicy:      b.props.RemovalPolicy,
+		DeletionProtection: b.props.DeletionProtection,
 	}
 
 	b.configureSortKey(tableProps)
