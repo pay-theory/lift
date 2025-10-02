@@ -23,7 +23,7 @@ type LiftApiDomainProps struct {
 	HttpAPI awsapigatewayv2.IHttpApi
 
 	// Optional: Stage to map (defaults to HttpAPI.DefaultStage() if not provided)
-	Stage awsapigatewayv2.IHttpStage
+	Stage awsapigatewayv2.IStage
 
 	// Optional: Hosted zone for creating DNS records
 	// If provided, a CNAME record will be created pointing to the API Gateway domain
@@ -94,6 +94,7 @@ func NewLiftApiDomain(scope constructs.Construct, id *string, props *LiftApiDoma
 	// Determine which stage to use
 	stage := props.Stage
 	if stage == nil {
+		// Fallback to default stage if not explicitly provided
 		stage = props.HttpAPI.DefaultStage()
 	}
 

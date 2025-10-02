@@ -15,6 +15,8 @@ import (
 // LiftAPIProps defines properties for creating a Lift HTTP API Gateway (v2)
 type LiftAPIProps struct {
 	APICommonProps
+	// API Key configuration
+	RequireApiKey *bool
 	// Request/Response validation models
 	RequestValidators map[string]*RequestValidator
 	// Default authorizer for all routes (HTTP API specific)
@@ -151,6 +153,7 @@ func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup a
 	}
 
 	// Always create a custom stage since we disabled CreateDefaultStage in the API
+	// This ensures we have full control over stage configuration (logging, throttling, metrics)
 	stage := b.createCustomStage(httpApi, stageName)
 
 	// Configure access logging
