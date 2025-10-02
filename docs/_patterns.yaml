@@ -8,6 +8,12 @@ patterns:
     problem: "Lambda functions need consistent error handling and observability"
     solution: "Use lift.Context and lift.Start"
     correct_example: |
+      import (
+          "github.com/aws/aws-lambda-go/lambda"
+          "github.com/pay-theory/lift/pkg/lift"
+          "github.com/pay-theory/lift/pkg/middleware"
+      )
+      
       func main() {
           app := lift.New()
           app.Use(middleware.Logger())
@@ -49,6 +55,8 @@ patterns:
     problem: "Runtime type errors and manual validation"
     solution: "Use lift.SimpleHandler with typed request/response"
     correct_example: |
+      import "github.com/pay-theory/lift/pkg/lift"
+      
       type CreateOrderRequest struct {
           Items []Item `json:"items" validate:"required,min=1"`
           Total int64  `json:"total" validate:"required,min=100"`
@@ -95,6 +103,12 @@ patterns:
     problem: "Cross-cutting concerns mixed with business logic"
     solution: "Use middleware chains for separation of concerns"
     correct_example: |
+      import (
+          "github.com/pay-theory/lift/pkg/lift"
+          "github.com/pay-theory/lift/pkg/middleware"
+          "time"
+      )
+      
       // Global middleware
       app.Use(middleware.RequestID())
       app.Use(middleware.Logger())
@@ -102,12 +116,19 @@ patterns:
       
       // API group with auth
       api := app.Group("/api")
-      api.Use(middleware.JWTAuth(jwtConfig))
-      api.Use(middleware.RateLimitUser())
+      api.Use(middleware.JWT(jwtConfig))
+      api.Use(middleware.UserRateLimitWithLimited(100, 15*time.Minute))
       
       // Admin group with additional checks
       admin := api.Group("/admin")
-      admin.Use(middleware.RequireRole("admin"))
+      admin.Use(func(next lift.Handler) lift.Handler {
+          return lift.HandlerFunc(func(ctx *lift.Context) error {
+              if !ctx.HasRole("admin") {
+                  return lift.AuthorizationError("admin role required")
+              }
+              return next.Handle(ctx)
+          })
+      })
       
       // Routes inherit middleware
       api.GET("/orders", GetOrders)      // Has: RequestID, Logger, JWT, RateLimit
@@ -125,7 +146,7 @@ patterns:
               
               // Don't check roles in handlers
               if !hasRole(token, "user") {
-                  return lift.Forbidden()
+                  return lift.AuthorizationError("insufficient permissions")
               }
               
               // Actual business logic buried
@@ -137,6 +158,8 @@ patterns:
     problem: "Manual validation is error-prone and verbose"
     solution: "Use struct tags for automatic validation"
     correct_example: |
+      import "github.com/pay-theory/lift/pkg/lift"
+      
       type PaymentRequest struct {
           Amount   int64  `json:"amount" validate:"required,min=100,max=1000000"`
           Currency string `json:"currency" validate:"required,oneof=USD EUR GBP"`
@@ -178,6 +201,11 @@ patterns:
     problem: "Inconsistent error responses across endpoints"
     solution: "Use lift.Error types and error middleware"
     correct_example: |
+      import (
+          "database/sql"
+          "github.com/pay-theory/lift/pkg/lift"
+      )
+      
       // Structured errors with proper status codes
       func GetUser(ctx *lift.Context) error {
           userID := ctx.Param("id")
@@ -221,6 +249,8 @@ patterns:
     problem: "Manual tenant isolation is error-prone"
     solution: "Use Context tenant helpers"
     correct_example: |
+      import "github.com/pay-theory/lift/pkg/lift"
+      
       // Tenant ID automatically extracted from JWT/headers
       func GetTenantData(ctx *lift.Context) error {
           tenantID := ctx.TenantID()
@@ -239,7 +269,7 @@ patterns:
       func GetAllTenants(ctx *lift.Context) error {
           // Check if user is system admin
           if !ctx.IsSystemAdmin() {
-              return lift.Forbidden("system admin required")
+              return lift.AuthorizationError("system admin required")
           }
           
           tenants := db.GetAllTenants()
@@ -266,7 +296,11 @@ patterns:
     problem: "Different AWS events have different shapes"
     solution: "Use adapters for consistent Context interface"
     correct_example: |
-      import "github.com/pay-theory/lift/pkg/adapters/sqs"
+      import (
+          "github.com/pay-theory/lift/pkg/lift"
+          "github.com/pay-theory/lift/pkg/lift/adapters/sqs"
+          "github.com/pay-theory/lift/pkg/lift/adapters/s3"
+      )
       
       // SQS message processing
       app.Handle(sqs.Adapter(func(ctx *lift.Context, messages []sqs.Message) error {
@@ -316,6 +350,13 @@ patterns:
     problem: "API abuse and resource exhaustion"
     solution: "Use Limited library integration"
     correct_example: |
+      import (
+          "fmt"
+          "time"
+          "github.com/pay-theory/lift/pkg/lift"
+          "github.com/pay-theory/lift/pkg/middleware"
+      )
+      
       // IP-based rate limiting (simple)
       ipLimiter, _ := middleware.IPRateLimitWithLimited(1000, time.Hour)
       app.Use(ipLimiter)
@@ -351,7 +392,7 @@ patterns:
               requestCounts[ip]++
               
               if requestCounts[ip] > 100 {
-                  return lift.TooManyRequests()
+                  return lift.NewLiftError("RATE_LIMIT_EXCEEDED", "Too many requests", 429)
               }
               
               return ctx.Next()
@@ -363,6 +404,14 @@ patterns:
     problem: "Testing Lambda handlers requires setup"
     solution: "Use lift testing utilities"
     correct_example: |
+      import (
+          "encoding/json"
+          "testing"
+          "github.com/pay-theory/lift/pkg/lift"
+          "github.com/pay-theory/lift/pkg/testing"
+          "github.com/stretchr/testify/assert"
+      )
+      
       func TestCreateUser(t *testing.T) {
           // Create test app
           app := testing.NewTestApp()
@@ -430,26 +479,39 @@ patterns:
   configuration:
     name: "Application Configuration Pattern"
     problem: "Lambda functions need environment-specific config"
-    solution: "Use lift.New with options"
+    solution: "Use lift.New with Config struct"
     correct_example: |
+      import (
+          "os"
+          "time"
+          "github.com/aws/aws-lambda-go/lambda"
+          "github.com/pay-theory/lift/pkg/lift"
+          "github.com/pay-theory/lift/pkg/middleware"
+      )
+      
       func main() {
           app := lift.New(
-              // Timeout less than Lambda timeout
-              lift.WithTimeout(getLambdaTimeout() - 5*time.Second),
-              
-              // Request size limits
-              lift.WithMaxBodySize(5 * 1024 * 1024), // 5MB
+              // Configure via Config struct
+              lift.WithConfig(&lift.Config{
+                  Timeout:        25, // seconds (less than Lambda timeout)
+                  MaxRequestSize: 5 * 1024 * 1024, // 5MB
+                  LogLevel:       os.Getenv("LOG_LEVEL"),
+                  Debug:          os.Getenv("ENVIRONMENT") != "production",
+                  MetricsEnabled: true,
+                  TracingEnabled: os.Getenv("ENVIRONMENT") == "production",
+              }),
               
               // Custom logger
               lift.WithLogger(createLogger()),
-              
-              // Environment-based config
-              lift.WithEnvironment(os.Getenv("ENVIRONMENT")),
           )
           
           // Middleware based on environment
           if os.Getenv("ENVIRONMENT") == "production" {
-              app.Use(middleware.RateLimit())
+              app.Use(middleware.LimitedRateLimit(middleware.LimitedConfig{
+                  Region: os.Getenv("AWS_REGION"),
+                  Limit:  1000,
+                  Window: time.Hour,
+              }))
               app.Use(middleware.SecurityHeaders())
           } else {
               app.Use(middleware.DebugLogger())
@@ -462,10 +524,11 @@ patterns:
         why: "Not flexible across environments"
         incorrect_example: |
           app := lift.New()
-          // Don't hardcode timeouts
-          app.timeout = 30 * time.Second
+          // Don't hardcode configuration values
+          app.config.Timeout = 30
+          app.config.MaxRequestSize = 10 * 1024 * 1024
           
           // Don't hardcode environment values
-          app.Use(middleware.JWTAuth(middleware.JWTConfig{
+          app.Use(middleware.JWT(middleware.JWTConfig{
               Secret: "my-secret-key", // Use environment variables!
           }))

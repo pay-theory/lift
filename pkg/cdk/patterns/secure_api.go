@@ -306,7 +306,7 @@ func createSecurityAlarms(scope constructs.Construct, fn awslambda.Function, top
 
 // GetApiUrl returns the API URL
 func (api *SecureAPI) GetApiUrl() *string {
-	return api.Api.HttpAPI.Url()
+	return api.Api.GetUrl()
 }
 
 // GetFunction returns the secure Lambda function

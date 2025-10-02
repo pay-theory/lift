@@ -137,7 +137,7 @@ func NewBasicAPI(scope constructs.Construct, id *string, props *BasicAPIProps) *
 
 // GetApiUrl returns the API URL
 func (api *BasicAPI) GetApiUrl() *string {
-	return api.Api.HttpAPI.Url()
+	return api.Api.GetUrl()
 }
 
 // GetFunction returns the Lambda function

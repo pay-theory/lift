@@ -87,27 +87,31 @@ decisions:
           2: "Logger - Needs RequestID for correlation"  
           3: "Recover - Catch panics before they crash"
           4: "ErrorHandler - Format all errors consistently"
-          5: "CORS - If browser-facing API"
-          6: "Auth - Before any protected routes"
-          7: "RateLimit - After auth to prevent abuse"
+          5: "Timeout - Set request timeouts"
+          6: "Metrics - Collect performance data"
+          7: "CORS - If browser-facing API"
+          8: "Auth - Before any protected routes"
+          9: "RateLimit - After auth to prevent abuse"
         example: |
           app.Use(middleware.RequestID())
           app.Use(middleware.Logger())
           app.Use(middleware.Recover())
           app.Use(middleware.ErrorHandler())
+          app.Use(middleware.Timeout(30*time.Second))
+          app.Use(middleware.Metrics())
           
           // API routes
           api := app.Group("/api")
-          api.Use(middleware.CORS(corsConfig))
-          api.Use(middleware.JWTAuth(jwtConfig))
-          api.Use(middleware.RateLimitUser())
+          api.Use(middleware.CORS([]string{"https://example.com", "*"}))
+          api.Use(middleware.JWTAuth(middleware.JWTConfig{Secret: "your-secret"}))
+          api.Use(middleware.UserRateLimit(100, 15*time.Minute))
       
       - condition: "Public endpoints"
         choice: "Skip auth but keep rate limiting"
         reason: "Prevent abuse of public endpoints"
         example: |
           public := app.Group("/public")
-          public.Use(middleware.RateLimitIP()) // By IP instead of user
+          public.Use(middleware.IPRateLimit(1000, time.Hour)) // By IP instead of user
       
       - condition: "Admin endpoints"
         choice: "Additional authorization layer"
@@ -125,9 +129,9 @@ decisions:
         reason: "Provides consistent error format"
         examples:
           bad_request: "return lift.ValidationError(err.Error())"
-          not_found: "return lift.NotFound('user not found')"
+          not_found: "return lift.NewLiftError('NOT_FOUND', 'user not found', 404)"
           unauthorized: "return lift.Unauthorized('authentication required')"
-          forbidden: "return lift.Forbidden('insufficient permissions')"
+          forbidden: "return lift.AuthorizationError('insufficient permissions')"
           
       - condition: "Server error (database, external service)"
         choice: "Log details, return generic error"
@@ -208,8 +212,13 @@ decisions:
           }
           
           func GetUser(ctx *lift.Context) error {
+              db, err := dynamorm.DB(ctx)
+              if err != nil {
+                  return err
+              }
+              
               var user User
-              err := dynamorm.Get(&user, ctx.Param("id"), ctx.TenantID())
+              err = db.Get(ctx, ctx.Param("id"), &user)
               return ctx.JSON(user)
           }
           
@@ -291,8 +300,8 @@ decisions:
         example: |
           func TestHandler(t *testing.T) {
               app := testing.NewTestApp()
-              ctx := testing.NewTestContext()
-              err := app.HandleTestRequest(ctx)
+              response := app.POST("/api/users", requestBody)
+              assert.Equal(t, 200, response.StatusCode)
           }
           
       - condition: "Integration testing"
@@ -312,34 +321,88 @@ decisions:
         example: |
           // Use separate test stage
           // Invoke via API Gateway endpoint
+          
+      - condition: "Enterprise testing"
+        choice: "Use enterprise test suite"
+        reason: "Comprehensive testing across environments"
+        example: |
+          func TestEnterpriseScenario(t *testing.T) {
+              suite := testing.NewEnterpriseTestSuite()
+              env := suite.AddEnvironment("test", EnvironmentConfig{
+                  Region: "us-east-1",
+                  Stage: "test",
+              })
+              
+              app := suite.App().WithEnvironment(env)
+              response := app.POST("/api/users", requestBody)
+              // Enterprise assertions
+          }
   
   choosing_rate_limiting:
     question: "How should I implement rate limiting?"
     decision_tree:
       - condition: "Simple rate limiting needed"
-        choice: "Use pre-built Limited middleware"
+        choice: "Use pre-built rate limiting middleware"
         reason: "Works out of the box with DynamoDB"
         example: |
-          limiter, _ := middleware.IPRateLimitWithLimited(1000, time.Hour)
+          limiter := middleware.IPRateLimit(1000, time.Hour)
           app.Use(limiter)
           
       - condition: "Per-user rate limiting"
-        choice: "User-based Limited middleware"
+        choice: "User-based rate limiting middleware"
         reason: "Authenticated endpoints"
         example: |
-          userLimiter, _ := middleware.UserRateLimitWithLimited(100, 15*time.Minute)
+          userLimiter := middleware.UserRateLimit(100, 15*time.Minute)
           api.Use(userLimiter)
           
       - condition: "Complex rate limiting rules"
-        choice: "Custom Limited configuration"
+        choice: "Custom rate limiting configuration"
         reason: "Full control over rate limit keys"
         example: |
           limiter, _ := middleware.LimitedRateLimit(middleware.LimitedConfig{
-              KeyFunc: func(ctx *lift.Context) string {
-                  // Custom logic for rate limit key
-                  return fmt.Sprintf("%s:%s:%s", 
-                      ctx.TenantID(), 
-                      ctx.UserID(), 
-                      ctx.Path)
-              },
+              Region: "us-east-1",
+              Limit: 1000,
+              Window: time.Hour,
+              Strategy: "fixed", // or "sliding"
+              TableName: "rate-limits",
           })
+
+  choosing_cdk_integration:
+    question: "How should I integrate with AWS CDK?"
+    decision_tree:
+      - condition: "Building API Gateway Lambda"
+        choice: "Use Lift CDK constructs"
+        reason: "Pre-built patterns for common Lambda integrations"
+        example: |
+          import "github.com/pay-theory/lift/pkg/cdk/constructs"
+          
+          api := constructs.NewAPI(stack, "MyAPI", constructs.APIConfig{
+              Name: "my-api",
+              Stage: "prod",
+          })
+          
+          api.AddLambdaRoute("GET", "/users", userHandler)
+          
+      - condition: "Event-driven architecture"
+        choice: "Use event-specific constructs"
+        reason: "Optimized for specific event sources"
+        example: |
+          sqsQueue := constructs.NewSQSQueue(stack, "MyQueue", constructs.SQSConfig{
+              QueueName: "user-events",
+          })
+          
+          constructs.NewSQSLambda(stack, "QueueProcessor", constructs.SQSLambdaConfig{
+              Queue: sqsQueue,
+              Handler: processUserEvents,
+          })
+          
+      - condition: "Multi-tenant SaaS"
+        choice: "Use tenant-aware constructs"
+        reason: "Built-in tenant isolation and scaling"
+        example: |
+          tenantStack := constructs.NewTenantStack(stack, "TenantStack", constructs.TenantConfig{
+              TenantTable: tenantTable,
+              IsolationLevel: "database",
+          })
+          
+          tenantStack.AddService("user-service", userServiceConfig)
