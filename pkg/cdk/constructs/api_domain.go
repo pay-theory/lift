@@ -22,6 +22,9 @@ type LiftApiDomainProps struct {
 	// HTTP API to map to the domain (required)
 	HttpAPI awsapigatewayv2.IHttpApi
 
+	// Optional: Stage to map (defaults to HttpAPI.DefaultStage() if not provided)
+	Stage awsapigatewayv2.IHttpStage
+
 	// Optional: Hosted zone for creating DNS records
 	// If provided, a CNAME record will be created pointing to the API Gateway domain
 	HostedZone awsroute53.IHostedZone
@@ -88,11 +91,17 @@ func NewLiftApiDomain(scope constructs.Construct, id *string, props *LiftApiDoma
 	// Create the custom domain
 	liftDomain.DomainName = awsapigatewayv2.NewDomainName(this, jsii.String("CustomDomain"), domainProps)
 
+	// Determine which stage to use
+	stage := props.Stage
+	if stage == nil {
+		stage = props.HttpAPI.DefaultStage()
+	}
+
 	// Create API mapping
 	mappingProps := &awsapigatewayv2.ApiMappingProps{
 		Api:        props.HttpAPI,
 		DomainName: liftDomain.DomainName,
-		Stage:      props.HttpAPI.DefaultStage(),
+		Stage:      stage,
 	}
 
 	// Add mapping key if provided
