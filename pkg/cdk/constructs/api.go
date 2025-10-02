@@ -17,16 +17,12 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-<<<<<<< HEAD
 // LiftAPIProps defines properties for creating a Lift API Gateway.
 //
 // This struct contains all configurable properties for creating a Lift-optimized
 // API Gateway HTTP API. The properties include basic API configuration, CORS
 // settings, custom domain configuration, access logging, throttling, and security
 // features like API key requirements and request validation.
-=======
-// LiftAPIProps defines properties for creating a Lift HTTP API Gateway (v2)
->>>>>>> origin/premain
 type LiftAPIProps struct {
 	APICommonProps
 	// API Key configuration

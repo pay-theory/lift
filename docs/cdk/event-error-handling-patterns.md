@@ -2,6 +2,31 @@
 
 This guide provides comprehensive error handling strategies for event-driven architectures built with Lift CDK constructs.
 
+## Required Imports
+
+```go
+import (
+    "context"
+    "encoding/json"
+    "errors"
+    "fmt"
+    "log"
+    "net"
+    "strconv"
+    "sync"
+    "time"
+
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
+    "github.com/aws/aws-lambda-go/events"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+    "github.com/aws/smithy-go"
+    "github.com/pay-theory/lift/pkg/cdk/constructs"
+)
+```
+
 ## Error Handling Principles
 
 ### The Error Handling Hierarchy
@@ -39,10 +64,14 @@ This guide provides comprehensive error handling strategies for event-driven arc
 ```go
 // Configure DLQ for all event sources
 sqsProcessor := constructs.NewSQSProcessor(stack, jsii.String("Processor"), &constructs.SQSProcessorProps{
-    QueueName:        jsii.String("main-queue"),
-    EnableDLQ:        jsii.Bool(true),
-    MaxReceiveCount:  jsii.Number(3), // Retry 3 times before DLQ
-    DLQRetentionPeriod: awscdk.Duration_Days(jsii.Number(14)), // Keep for analysis
+    FunctionProps: awslambda.FunctionProps{
+        FunctionName: jsii.String("main-processor"),
+    },
+    EnableDeadLetterQueue: jsii.Bool(true),
+    MaxReceiveCount:       jsii.Number(3), // Retry 3 times before DLQ
+    DeadLetterQueueProps: &awssqs.QueueProps{
+        RetentionPeriod: awscdk.Duration_Days(jsii.Number(14)), // Keep for analysis
+    },
 })
 ```
 
@@ -51,15 +80,17 @@ sqsProcessor := constructs.NewSQSProcessor(stack, jsii.String("Processor"), &con
 ```go
 // Dedicated DLQ processor for analysis and recovery
 dlqProcessor := constructs.NewLiftFunction(stack, jsii.String("DLQProcessor"), &constructs.LiftFunctionProps{
-    CodeAssetPath: jsii.String("./dlq-processor"),
-    Environment: &map[string]*string{
-        "SLACK_WEBHOOK":  jsii.String("https://hooks.slack.com/..."),
-        "ERROR_TABLE":    jsii.String("error-analysis"),
+    FunctionProps: awslambda.FunctionProps{
+        FunctionName: jsii.String("dlq-processor"),
+        Environment: &map[string]*string{
+            "SLACK_WEBHOOK": jsii.String("https://hooks.slack.com/..."),
+            "ERROR_TABLE":   jsii.String("error-analysis"),
+        },
     },
 })
 
 // Process DLQ messages
-dlqProcessor.AddEventSource(awslambda.NewSqsEventSource(sqsProcessor.DLQ, &awslambda.SqsEventSourceProps{
+dlqProcessor.Function.AddEventSource(awslambda.NewSqsEventSource(sqsProcessor.DeadLetterQueue, &awslambda.SqsEventSourceProps{
     BatchSize: jsii.Number(1), // Process errors individually
 }))
 ```
@@ -142,11 +173,12 @@ func (b *ExponentialBackoff) Retry(fn func() error) error {
 }
 
 func isRetryable(err error) bool {
-    // Check for specific error types
-    var awsErr awserr.Error
-    if errors.As(err, &awsErr) {
-        switch awsErr.Code() {
-        case "ThrottlingException", "TooManyRequestsException":
+    // Check for specific error types using AWS SDK v2
+    var ae smithy.APIError
+    if errors.As(err, &ae) {
+        code := ae.ErrorCode()
+        switch code {
+        case "ThrottlingException", "TooManyRequestsException", "ProvisionedThroughputExceededException":
             return true
         case "ValidationException", "InvalidParameterException":
             return false
@@ -237,98 +269,56 @@ func (b *Bulkhead) Execute(ctx context.Context, fn func() error) error {
 }
 ```
 
-## Error Recovery Patterns
+## Using Lift's Built-in Error Handling Patterns
 
-### Compensating Transactions
+Lift provides several middleware patterns that are fully implemented and ready to use:
+
+### Circuit Breaker Middleware
 
 ```go
-type SagaStep struct {
-    Name       string
-    Execute    func(ctx context.Context, data interface{}) error
-    Compensate func(ctx context.Context, data interface{}) error
-}
+import "github.com/pay-theory/lift/pkg/middleware"
 
-type Saga struct {
-    steps []SagaStep
-}
+// Create a circuit breaker with custom configuration
+circuitBreakerConfig := middleware.NewBasicCircuitBreaker("my-service")
+circuitBreakerConfig.FailureThreshold = 5
+circuitBreakerConfig.Timeout = 60 * time.Second
 
-func (s *Saga) Execute(ctx context.Context, data interface{}) error {
-    completedSteps := make([]SagaStep, 0)
-    
-    for _, step := range s.steps {
-        if err := step.Execute(ctx, data); err != nil {
-            // Compensate in reverse order
-            for i := len(completedSteps) - 1; i >= 0; i-- {
-                compensateErr := completedSteps[i].Compensate(ctx, data)
-                if compensateErr != nil {
-                    log.Printf("Compensation failed for %s: %v", 
-                        completedSteps[i].Name, compensateErr)
-                }
-            }
-            return fmt.Errorf("saga failed at step %s: %w", step.Name, err)
-        }
-        completedSteps = append(completedSteps, step)
-    }
-    
-    return nil
-}
+// Apply to your handler
+app.Use(middleware.CircuitBreakerMiddleware(circuitBreakerConfig))
 ```
 
-### Poison Message Handling
+### Bulkhead Middleware
 
 ```go
-type PoisonMessageHandler struct {
-    maxAttempts int
-    quarantine  string // S3 bucket or separate queue
-}
+// Create a bulkhead to limit concurrent requests
+bulkheadConfig := middleware.NewBasicBulkhead("my-service", 10)
+bulkheadConfig.MaxConcurrentRequests = 10
+bulkheadConfig.MaxWaitTime = 5 * time.Second
 
-func (h *PoisonMessageHandler) Handle(message Message) error {
-    attempts := getProcessingAttempts(message)
-    
-    if attempts >= h.maxAttempts {
-        // Move to quarantine
-        return h.quarantineMessage(message)
-    }
-    
-    // Try processing with enhanced error capture
-    err := processWithDetailedError(message)
-    if err != nil {
-        // Increment attempt counter
-        updateProcessingAttempts(message, attempts+1)
-        
-        // Add error details to message
-        message.Metadata["lastError"] = err.Error()
-        message.Metadata["lastErrorTime"] = time.Now().Format(time.RFC3339)
-        
-        return err
-    }
-    
-    return nil
-}
+// Apply to your handler
+app.Use(middleware.BulkheadMiddleware(bulkheadConfig))
+```
 
-func (h *PoisonMessageHandler) quarantineMessage(message Message) error {
-    // Archive to S3 for investigation
-    key := fmt.Sprintf("poison-messages/%s/%s.json", 
-        time.Now().Format("2006/01/02"), message.ID)
-    
-    data, _ := json.MarshalIndent(message, "", "  ")
-    
-    _, err := s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
-        Bucket: aws.String(h.quarantine),
-        Key:    aws.String(key),
-        Body:   bytes.NewReader(data),
-        Metadata: map[string]string{
-            "error-count":    strconv.Itoa(message.Metadata["attempts"].(int)),
-            "last-error":     message.Metadata["lastError"].(string),
-            "original-queue": message.Metadata["sourceQueue"].(string),
-        },
-    })
-    
-    // Alert operations team
-    sendPoisonMessageAlert(message)
-    
-    return err
-}
+### Retry Middleware
+
+```go
+// Create retry configuration
+retryConfig := middleware.NewBasicRetry("my-service", 3)
+retryConfig.InitialDelay = 100 * time.Millisecond
+retryConfig.MaxDelay = 30 * time.Second
+retryConfig.Strategy = middleware.RetryStrategyExponential
+
+// Apply to your handler
+app.Use(middleware.RetryMiddleware(retryConfig))
+```
+
+### Combined Error Handling
+
+```go
+// Combine multiple error handling patterns
+app.Use(middleware.CircuitBreakerMiddleware(circuitBreakerConfig))
+app.Use(middleware.BulkheadMiddleware(bulkheadConfig))
+app.Use(middleware.RetryMiddleware(retryConfig))
 ```
 
 ## Event-Specific Error Handling
@@ -410,15 +400,18 @@ func processKinesisWithCheckpointing(ctx context.Context, event events.KinesisEv
 
 ```go
 // Configure EventBridge with error handling
-eventHandler := constructs.NewEventBridgeHandler(stack, jsii.String("Handler"), &constructs.EventBridgeHandlerProps{
-    Function:  processor,
-    EnableDLQ: jsii.Bool(true),
-    RetryPolicy: &awseventbridge.RetryPolicy{
-        MaximumRetryAttempts: jsii.Number(2),
-        MaximumEventAge:      awscdk.Duration_Hours(jsii.Number(1)),
+eventHandler, err := constructs.NewEventBridgeHandler(stack, jsii.String("Handler"), &constructs.EventBridgeHandlerProps{
+    FunctionProps: awslambda.FunctionProps{
+        FunctionName: jsii.String("event-handler"),
     },
-    DeadLetterQueue: dlq,
+    EnableDeadLetterQueue: jsii.Bool(true),
+    RetryAttempts:         jsii.Number(2),
+    MaxEventAge:           awscdk.Duration_Hours(jsii.Number(1)),
+    DeadLetterQueueProps:  &awssqs.QueueProps{},
 })
+if err != nil {
+    panic(err)
+}
 
 // Handler with structured error responses
 func processEventBridgeEvent(ctx context.Context, event events.CloudWatchEvent) error {
@@ -515,12 +508,12 @@ func (l *StructuredErrorLogger) LogError(err error, context map[string]interface
         errorDetails[k] = v
     }
     
-    // Check for AWS errors
-    var awsErr awserr.Error
-    if errors.As(err, &awsErr) {
-        errorDetails["aws_error_code"] = awsErr.Code()
-        errorDetails["aws_error_message"] = awsErr.Message()
-        errorDetails["aws_request_id"] = awsErr.RequestID()
+    // Check for AWS errors using SDK v2
+    var ae smithy.APIError
+    if errors.As(err, &ae) {
+        errorDetails["aws_error_code"] = ae.ErrorCode()
+        errorDetails["aws_error_message"] = ae.ErrorMessage()
+        errorDetails["aws_error_fault"] = ae.ErrorFault().String()
     }
     
     l.logger.Error("Processing error", errorDetails...)
@@ -528,34 +521,6 @@ func (l *StructuredErrorLogger) LogError(err error, context map[string]interface
 ```
 
 ## Testing Error Scenarios
-
-### Chaos Engineering
-
-```go
-type ChaosInjector struct {
-    errorRate float64
-    latency   time.Duration
-}
-
-func (c *ChaosInjector) Inject(fn func() error) error {
-    // Random latency injection
-    if c.latency > 0 && rand.Float64() < 0.1 {
-        time.Sleep(c.latency)
-    }
-    
-    // Random error injection
-    if rand.Float64() < c.errorRate {
-        errors := []error{
-            fmt.Errorf("injected timeout"),
-            fmt.Errorf("injected throttle"),
-            fmt.Errorf("injected service unavailable"),
-        }
-        return errors[rand.Intn(len(errors))]
-    }
-    
-    return fn()
-}
-```
 
 ### Error Scenario Testing
 
@@ -568,12 +533,12 @@ func TestErrorHandling(t *testing.T) {
     }{
         {
             name:     "Transient Error",
-            error:    &types.ThrottlingException{},
+            error:    &smithy.GenericAPIError{Code: "ThrottlingException"},
             expected: "retry",
         },
         {
             name:     "Permanent Error",
-            error:    &types.ValidationException{},
+            error:    &smithy.GenericAPIError{Code: "ValidationException"},
             expected: "dlq",
         },
         {
@@ -604,10 +569,10 @@ func TestErrorHandling(t *testing.T) {
 - Handle each category appropriately
 - Monitor error patterns
 
-### 3. Implement Idempotency
-- Make operations safe to retry
-- Use idempotency keys
-- Handle duplicate processing
+### 3. Implement Proper Error Classification
+- Distinguish between retryable and non-retryable errors
+- Use appropriate error codes and messages
+- Handle AWS SDK v2 error types correctly
 
 ### 4. Monitor and Alert
 - Track error rates and types
@@ -615,12 +580,12 @@ func TestErrorHandling(t *testing.T) {
 - Use structured logging
 
 ### 5. Test Error Paths
-- Unit test error handling
+- Unit test error handling logic
 - Integration test failure scenarios
-- Chaos test in production
+- Use proper AWS SDK v2 error types in tests
 
 ### 6. Document Error Handling
-- Document error types and handling
+- Document error types and handling strategies
 - Maintain runbooks for common errors
 - Share learnings with team
 
@@ -632,3 +597,5 @@ func TestErrorHandling(t *testing.T) {
 4. **Missing Context**: Include relevant context in error logs
 5. **Cascade Failures**: Use circuit breakers and bulkheads
 6. **Ignoring DLQ**: Always process and monitor DLQ messages
+7. **Using Outdated SDK**: Always use AWS SDK v2 with smithy-go error types
+8. **Incorrect CDK Properties**: Use the correct property names for Lift constructs

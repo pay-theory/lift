@@ -53,6 +53,10 @@ lift cdk-diff
 - **LiftFunction** - Optimized Lambda function with ARM64, tracing, and multi-tenant support
 - **LiftAPI** - API Gateway HTTP API with CORS, custom domains, and rate limiting
 - **LiftTable** - DynamoDB table with single-table design, GSI, and auto-scaling
+- **SecureFunction** - Enhanced Lambda function with security best practices
+- **RateLimitedFunction** - Lambda function with built-in rate limiting
+- **ComplianceStack** - Complete compliance framework implementation
+- **AuditingConstruct** - Comprehensive audit logging and monitoring
 
 ### High-Level Patterns
 
@@ -78,8 +82,7 @@ The Lift CLI includes integrated CDK commands:
 
 ```
 my-lift-app/
-├── cmd/
-│   └── main.go          # Lambda handler
+├── main.go              # Lambda handler (or cmd/main.go)
 ├── pkg/
 │   └── handlers/        # Business logic
 ├── cdk/
@@ -98,16 +101,22 @@ The CDK package includes comprehensive testing utilities:
 import "github.com/pay-theory/lift/pkg/cdk/test"
 
 func TestMyStack(t *testing.T) {
-    tester := test.NewLiftStackTester(t)
+    // Create test stack
+    testStack := test.NewTestStack()
     
     // Create your stack
-    NewMyStack(tester.Stack(), "TestStack", props)
+    NewMyStack(testStack.Stack(), "TestStack", props)
     
-    // Assert infrastructure
-    tester.AssertCompleteInfrastructure("my-app", true, true)
-    tester.AssertLiftFunction(map[string]interface{}{
-        "MemorySize": 1024,
+    // Use event helpers for testing
+    eventHelpers := test.NewEventHelpers()
+    sqsEvent := eventHelpers.GenerateSQSEvent([]test.SQSMessage{
+        {ID: "test-1", Body: "test message", Timestamp: "1234567890"},
     })
+    
+    // Validate events
+    validator := test.NewEventValidator()
+    err := validator.ValidateSQSMessage(sqsEvent.Records[0])
+    assert.NoError(t, err)
 }
 ```
 
@@ -194,8 +203,8 @@ All Lift CDK deployments include:
 
 1. Identify your existing resources
 2. Map them to Lift CDK constructs
-3. Use `lift cdk-import` to import existing resources (if needed)
-4. Gradually migrate to CDK management
+3. Gradually migrate to CDK management
+4. Use CDK's import functionality for existing resources
 
 ## Troubleshooting
 

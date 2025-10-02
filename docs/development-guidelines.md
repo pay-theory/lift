@@ -10,6 +10,8 @@ This document outlines the development standards and best practices for the Lift
 - **Exception**: CDK construct initialization may use panic as these run at infrastructure definition time, not runtime
   - Must include clear error messages: `panic(fmt.Sprintf("ConstructName validation failed: %v", err))`
   - Document why panic is acceptable in a comment
+  - **Only acceptable for**: Required parameter validation, configuration errors, and construct initialization failures
+  - **Never acceptable for**: Runtime errors, business logic failures, or recoverable conditions
 
 ### 2. No Debug Prints
 - **Never use** `fmt.Print`, `fmt.Printf`, `log.Print`, or similar in production code
@@ -48,7 +50,8 @@ func GetData(ctx *lift.Context) (*Data, error) {
 ### 5. Feature Flags for New Features
 ```go
 // Use feature flags to control feature rollout
-if features.IsEnabled(features.NewFeatureName) {
+ff := middleware.GetFeatureFlags(ctx)
+if ff != nil && ff.IsEnabled("new_feature_name") {
     return newImplementation(ctx)
 }
 return stableImplementation(ctx)
@@ -65,7 +68,7 @@ return stableImplementation(ctx)
 - Test helpers must be in `*_test.go` files only
 - Use interfaces for mockability
 - No test code in production paths
-- Use build tags for test-only code: `// +build test`
+- Use `lifttesting.NewTestApp()` for isolated test environments
 
 ### 2. Integration Tests
 - Use DynamoDB Local for database tests

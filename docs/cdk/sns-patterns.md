@@ -36,9 +36,11 @@ import (
 
 processor := constructs.NewSNSProcessor(stack, jsii.String("OrderProcessor"), &constructs.SNSProcessorProps{
     FunctionProps: &constructs.LiftFunctionProps{
-        Runtime: awslambda.Runtime_PROVIDED_AL2023(),
-        Handler: jsii.String("bootstrap"),
-        Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        FunctionProps: awslambda.FunctionProps{
+            Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+            Handler: jsii.String("bootstrap"),
+            Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        },
         Environment: &map[string]*string{
             "SERVICE_NAME": jsii.String("order-service"),
         },
@@ -80,13 +82,42 @@ func publishMessage(topicArn string, message interface{}) error {
 }
 ```
 
+## Environment Variables
+
+The SNSProcessor automatically injects the following environment variables into your Lambda function:
+
+- `SNS_TOPIC_ARN`: The ARN of the SNS topic
+- `SNS_TOPIC_NAME`: The name of the SNS topic  
+- `SNS_DLQ_URL`: The URL of the dead letter queue (if DLQ is enabled)
+
+These variables are automatically available in your Lambda function code:
+
+```go
+func handler(ctx context.Context, event SNSEvent) error {
+    topicArn := os.Getenv("SNS_TOPIC_ARN")
+    topicName := os.Getenv("SNS_TOPIC_NAME")
+    dlqUrl := os.Getenv("SNS_DLQ_URL")
+    
+    // Use these variables in your processing logic
+    log.Printf("Processing messages from topic: %s", topicName)
+    
+    return nil
+}
+```
+
 ## Advanced Configurations
 
 ### Custom Topic Configuration
 
 ```go
 processor := constructs.NewSNSProcessor(stack, jsii.String("NotificationTopic"), &constructs.SNSProcessorProps{
-    FunctionProps: functionProps,
+    FunctionProps: &constructs.LiftFunctionProps{
+        FunctionProps: awslambda.FunctionProps{
+            Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+            Handler: jsii.String("bootstrap"),
+            Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        },
+    },
     TopicProps: &awssns.TopicProps{
         TopicName:   jsii.String("customer-notifications"),
         DisplayName: jsii.String("Customer Notification Topic"),
@@ -110,7 +141,13 @@ existingTopic := awssns.Topic_FromTopicArn(
 )
 
 processor := constructs.NewSNSProcessor(stack, jsii.String("Processor"), &constructs.SNSProcessorProps{
-    FunctionProps: functionProps,
+    FunctionProps: &constructs.LiftFunctionProps{
+        FunctionProps: awslambda.FunctionProps{
+            Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+            Handler: jsii.String("bootstrap"),
+            Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        },
+    },
     ExistingTopic: existingTopic,
 })
 ```
@@ -121,7 +158,13 @@ processor := constructs.NewSNSProcessor(stack, jsii.String("Processor"), &constr
 
 ```go
 processor := constructs.NewSNSProcessor(stack, jsii.String("FilteredProcessor"), &constructs.SNSProcessorProps{
-    FunctionProps: functionProps,
+    FunctionProps: &constructs.LiftFunctionProps{
+        FunctionProps: awslambda.FunctionProps{
+            Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+            Handler: jsii.String("bootstrap"),
+            Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        },
+    },
     FilterPolicy: &map[string]awssns.SubscriptionFilter{
         "eventType": awssns.SubscriptionFilter_StringFilter(&awssns.StringConditions{
             Allowlist: &[]*string{
@@ -165,7 +208,13 @@ filterPolicy := &map[string]awssns.SubscriptionFilter{
 
 ```go
 processor := constructs.NewSNSProcessor(stack, jsii.String("OrderedProcessor"), &constructs.SNSProcessorProps{
-    FunctionProps: functionProps,
+    FunctionProps: &constructs.LiftFunctionProps{
+        FunctionProps: awslambda.FunctionProps{
+            Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+            Handler: jsii.String("bootstrap"),
+            Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        },
+    },
     EnableFifo: jsii.Bool(true),
     ContentBasedDeduplication: jsii.Bool(true),
     TopicProps: &awssns.TopicProps{
@@ -196,7 +245,13 @@ func publishFifoMessage(topicArn string, message interface{}, groupId string) er
 
 ```go
 processor := constructs.NewSNSProcessor(stack, jsii.String("ResilientProcessor"), &constructs.SNSProcessorProps{
-    FunctionProps: functionProps,
+    FunctionProps: &constructs.LiftFunctionProps{
+        FunctionProps: awslambda.FunctionProps{
+            Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+            Handler: jsii.String("bootstrap"),
+            Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        },
+    },
     EnableDLQ: jsii.Bool(true), // Enabled by default
     DLQProps: &awssqs.QueueProps{
         QueueName:               jsii.String("failed-messages-dlq"),
@@ -212,13 +267,13 @@ processor := constructs.NewSNSProcessor(stack, jsii.String("ResilientProcessor")
 ```go
 // Create a separate processor for DLQ messages
 dlqProcessor := constructs.NewSQSProcessor(stack, jsii.String("DLQProcessor"), &constructs.SQSProcessorProps{
-    FunctionProps: &constructs.LiftFunctionProps{
+    FunctionProps: awslambda.FunctionProps{
         Runtime: awslambda.Runtime_PROVIDED_AL2023(),
         Handler: jsii.String("bootstrap"),
         Code:    awslambda.Code_FromAsset(jsii.String("./dist/dlq-handler"), nil),
     },
     ExistingQueue: processor.DLQ, // Use the SNS processor's DLQ
-    EnableDLQ:     jsii.Bool(false), // Don't create another DLQ
+    EnableDeadLetterQueue: jsii.Bool(false), // Don't create another DLQ
 })
 ```
 
@@ -274,7 +329,13 @@ for _, region := range regions {
     })
     
     processor := constructs.NewSNSProcessor(regionalStack, jsii.String("RegionalProcessor"), &constructs.SNSProcessorProps{
-        FunctionProps: functionProps,
+        FunctionProps: &constructs.LiftFunctionProps{
+            FunctionProps: awslambda.FunctionProps{
+                Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+                Handler: jsii.String("bootstrap"),
+                Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+            },
+        },
         TopicProps: &awssns.TopicProps{
             TopicName: jsii.String(fmt.Sprintf("orders-%s", region)),
         },
@@ -413,26 +474,81 @@ func processMessage(msg OrderEvent) error {
 }
 ```
 
-### 3. Error Handling
+### Enhanced Error Handling Patterns
 
 ```go
+// SNS-specific error handling with retry logic
 func handler(ctx context.Context, event SNSEvent) error {
     var errors []error
+    var processedCount int
     
-    for _, record := range event.Records {
-        if err := processRecord(record); err != nil {
-            log.Printf("Failed to process record: %v", err)
+    for i, record := range event.Records {
+        // Extract message attributes for error context
+        eventType := "unknown"
+        if attrs, ok := record.Sns.MessageAttributes["eventType"]; ok {
+            eventType = *attrs.StringValue
+        }
+        
+        // Add correlation ID for tracing
+        correlationID := fmt.Sprintf("sns-%d-%d", time.Now().Unix(), i)
+        
+        log.Printf("Processing message %d: eventType=%s, correlationID=%s", 
+            i, eventType, correlationID)
+        
+        // Process with timeout
+        ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+        defer cancel()
+        
+        if err := processRecordWithRetry(ctx, record, correlationID); err != nil {
+            log.Printf("Failed to process record %d: %v", i, err)
             errors = append(errors, err)
-            // Continue processing other records
+            
+            // Send to DLQ if available
+            if dlqUrl := os.Getenv("SNS_DLQ_URL"); dlqUrl != "" {
+                sendToDLQ(record, err, dlqUrl)
+            }
+        } else {
+            processedCount++
         }
     }
     
     // Return error only if all records failed
     if len(errors) == len(event.Records) {
-        return fmt.Errorf("all records failed to process")
+        return fmt.Errorf("all %d records failed to process", len(event.Records))
     }
     
-    return nil // Partial success
+    log.Printf("Successfully processed %d/%d records", processedCount, len(event.Records))
+    return nil // Partial success is acceptable for SNS
+}
+
+func processRecordWithRetry(ctx context.Context, record SNSRecord, correlationID string) error {
+    maxRetries := 3
+    baseDelay := 100 * time.Millisecond
+    
+    for attempt := 0; attempt < maxRetries; attempt++ {
+        if attempt > 0 {
+            delay := time.Duration(attempt) * baseDelay
+            log.Printf("Retry attempt %d after %v", attempt, delay)
+            time.Sleep(delay)
+        }
+        
+        if err := processRecord(ctx, record, correlationID); err != nil {
+            if attempt == maxRetries-1 {
+                return fmt.Errorf("failed after %d attempts: %w", maxRetries, err)
+            }
+            continue
+        }
+        
+        return nil
+    }
+    
+    return fmt.Errorf("max retries exceeded")
+}
+
+func sendToDLQ(record SNSRecord, err error, dlqUrl string) {
+    // Implementation to send failed message to DLQ
+    log.Printf("Sending failed message to DLQ: %s", dlqUrl)
+    // ... DLQ sending logic
 }
 ```
 
@@ -441,13 +557,18 @@ func handler(ctx context.Context, event SNSEvent) error {
 ```go
 processor := constructs.NewSNSProcessor(stack, jsii.String("MonitoredProcessor"), &constructs.SNSProcessorProps{
     FunctionProps: &constructs.LiftFunctionProps{
-        Runtime: awslambda.Runtime_PROVIDED_AL2023(),
-        Handler: jsii.String("bootstrap"),
-        Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
-        TracingEnabled: jsii.Bool(true), // Enable X-Ray tracing
-        Environment: &map[string]*string{
-            "LOG_LEVEL": jsii.String("INFO"),
+        FunctionProps: awslambda.FunctionProps{
+            Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+            Handler: jsii.String("bootstrap"),
+            Code:    awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+            TracingConfig: &awslambda.TracingConfig{
+                Mode: awslambda.TracingMode_ACTIVE,
+            },
+            Environment: &map[string]*string{
+                "LOG_LEVEL": jsii.String("INFO"),
+            },
         },
+        EnableTracing: jsii.Bool(true), // Enable X-Ray tracing
     },
 })
 
@@ -459,6 +580,74 @@ awscloudwatch.NewAlarm(stack, jsii.String("ProcessorErrors"), &awscloudwatch.Ala
     Threshold:          jsii.Number(10),
     EvaluationPeriods:  jsii.Number(2),
 })
+
+// Add DLQ monitoring
+if processor.DLQ != nil {
+    awscloudwatch.NewAlarm(stack, jsii.String("DLQMessages"), &awscloudwatch.AlarmProps{
+        Metric: processor.DLQ.MetricApproximateNumberOfMessagesVisible(&awscloudwatch.MetricOptions{
+            Period: awscdk.Duration_Minutes(jsii.Number(5)),
+        }),
+        Threshold:          jsii.Number(1),
+        EvaluationPeriods:  jsii.Number(1),
+        AlarmDescription:   jsii.String("Messages in SNS processor dead letter queue"),
+    })
+}
+
+// Add custom metrics for business logic
+awscloudwatch.NewAlarm(stack, jsii.String("ProcessingLatency"), &awscloudwatch.AlarmProps{
+    Metric: processor.Function.Function.MetricDuration(&awscloudwatch.MetricOptions{
+        Period: awscdk.Duration_Minutes(jsii.Number(5)),
+    }),
+    Threshold:          jsii.Number(30000), // 30 seconds
+    EvaluationPeriods:  jsii.Number(2),
+    AlarmDescription:   jsii.String("SNS processor function duration too high"),
+})
+```
+
+### Advanced Monitoring Dashboard
+
+```go
+// Create a comprehensive monitoring dashboard
+dashboard := awscloudwatch.NewDashboard(stack, jsii.String("SNSProcessorDashboard"), &awscloudwatch.DashboardProps{
+    DashboardName: jsii.String("SNS-Processor-Monitoring"),
+})
+
+// Add widgets for different metrics
+dashboard.AddWidgets(
+    // Function metrics
+    awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
+        Title: jsii.String("Function Metrics"),
+        Left: &[]awscloudwatch.IMetric{
+            processor.Function.Function.MetricInvocations(nil),
+            processor.Function.Function.MetricErrors(nil),
+            processor.Function.Function.MetricDuration(nil),
+        },
+        Width: jsii.Number(12),
+        Height: jsii.Number(6),
+    }),
+    
+    // DLQ metrics
+    awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
+        Title: jsii.String("Dead Letter Queue"),
+        Left: &[]awscloudwatch.IMetric{
+            processor.DLQ.MetricApproximateNumberOfMessagesVisible(nil),
+            processor.DLQ.MetricApproximateNumberOfMessagesNotVisible(nil),
+        },
+        Width: jsii.Number(12),
+        Height: jsii.Number(6),
+    }),
+    
+    // SNS topic metrics
+    awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
+        Title: jsii.String("SNS Topic Metrics"),
+        Left: &[]awscloudwatch.IMetric{
+            processor.Topic.MetricNumberOfMessagesPublished(nil),
+            processor.Topic.MetricNumberOfMessagesDelivered(nil),
+        },
+        Width: jsii.Number(12),
+        Height: jsii.Number(6),
+    }),
+)
 ```
 
 ## Troubleshooting

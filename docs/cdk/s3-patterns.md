@@ -23,6 +23,8 @@ The `S3Processor` construct provides a complete solution for processing S3 event
 import (
     "github.com/pay-theory/lift/pkg/cdk/constructs"
     "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awss3"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awss3notifications"
     "github.com/aws/jsii-runtime-go"
 )
 
@@ -84,22 +86,42 @@ type S3ProcessorProps struct {
     // S3 event source configuration
     EventSourceProps *awslambdaeventsources.S3EventSourceProps
 
-    // Lifecycle and security features
-    EnableLifecycleRules *bool
-    LifecycleRules       *[]*awss3.LifecycleRule
-    EnableVersioning     *bool
-    EnableAccessLogging  *bool
-    AccessLogsBucket     awss3.IBucket
-    AccessLogsPrefix     *string
+    // Additional S3 processor settings
+    BatchSize         *float64        // Default: 10
+    MaxBatchingWindow awscdk.Duration // Default: 5 seconds
 
     // Multi-region support
     CrossRegionReplication *bool
     ReplicationBucket      awss3.IBucket
 
+    // Lifecycle rules
+    EnableLifecycleRules *bool
+    LifecycleRules       *[]*awss3.LifecycleRule
+
+    // External bucket support
+    ExternalBucket awss3.IBucket
+
+    // Event filtering
+    EventFilter *S3EventFilter
+
+    // Access logging
+    EnableAccessLogging *bool
+    AccessLogsBucket    awss3.IBucket
+    AccessLogsPrefix    *string
+
+    // Versioning
+    EnableVersioning *bool
+
     // Lift-specific settings
     EnableTracing     *bool
     EnableMultiTenant *bool
     EnableMonitoring  *bool
+}
+
+// S3EventFilter defines event filtering options
+type S3EventFilter struct {
+    Prefix *string
+    Suffix *string
 }
 ```
 
@@ -122,19 +144,41 @@ processor := constructs.NewS3Processor(stack, jsii.String("CustomBucketProcessor
 })
 ```
 
-### Using Existing Bucket
+### Using External Bucket
 
 ```go
-// Reference existing bucket
-existingBucket := awss3.Bucket_FromBucketName(stack, jsii.String("ExistingBucket"), jsii.String("my-existing-bucket"))
+// Reference external bucket
+externalBucket := awss3.Bucket_FromBucketName(stack, jsii.String("ExternalBucket"), jsii.String("my-external-bucket"))
 
-processor := constructs.NewS3Processor(stack, jsii.String("ExistingBucketProcessor"), &constructs.S3ProcessorProps{
+processor := constructs.NewS3Processor(stack, jsii.String("ExternalBucketProcessor"), &constructs.S3ProcessorProps{
     FunctionProps: awslambda.FunctionProps{
-        FunctionName: jsii.String("existing-bucket-processor"),
+        FunctionName: jsii.String("external-bucket-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist")),
         Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
     },
-    ExistingBucket: existingBucket,
+    ExternalBucket: externalBucket,
+    EventFilter: &constructs.S3EventFilter{
+        Prefix: jsii.String("uploads/"),
+        Suffix: jsii.String(".jpg"),
+    },
+})
+```
+
+### Event Filtering with S3EventFilter
+
+The `S3EventFilter` type provides a structured way to define event filtering:
+
+```go
+processor := constructs.NewS3Processor(stack, jsii.String("FilteredProcessor"), &constructs.S3ProcessorProps{
+    FunctionProps: awslambda.FunctionProps{
+        FunctionName: jsii.String("filtered-processor"),
+        Code:         awslambda.Code_FromAsset(jsii.String("./dist")),
+        Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
+    },
+    EventFilter: &constructs.S3EventFilter{
+        Prefix: jsii.String("data/"),
+        Suffix: jsii.String(".json"),
+    },
 })
 ```
 
@@ -285,13 +329,20 @@ processor := constructs.NewS3Processor(stack, jsii.String("BackupProcessor"), &c
         Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
     },
     EnableVersioning: jsii.Bool(true),
-    EnableBackup:     jsii.Bool(true),
 })
 ```
 
 ### Encryption
 
 ```go
+import (
+    "github.com/pay-theory/lift/pkg/cdk/constructs"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awss3"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awskms"
+    "github.com/aws/jsii-runtime-go"
+)
+
 // Create KMS key for encryption
 key := awskms.NewKey(stack, jsii.String("S3Key"), &awskms.KeyProps{
     Description: jsii.String("S3 bucket encryption key"),
@@ -427,11 +478,14 @@ metadataProcessor := awslambda.NewFunction(stack, jsii.String("MetadataProcessor
 primaryProcessor.GrantRead(thumbnailProcessor)
 primaryProcessor.GrantRead(metadataProcessor)
 
-// Add additional notifications
-primaryProcessor.AddObjectCreatedNotification(
-    awss3notifications.NewLambdaDestination(thumbnailProcessor),
-    awss3.NotificationKeyFilter{Suffix: jsii.String(".jpg")},
-)
+// Add additional notifications manually
+if bucket, ok := primaryProcessor.Bucket.(awss3.Bucket); ok {
+    bucket.AddEventNotification(
+        awss3.EventType_OBJECT_CREATED,
+        awss3notifications.NewLambdaDestination(thumbnailProcessor),
+        &awss3.NotificationKeyFilter{Suffix: jsii.String(".jpg")},
+    )
+}
 ```
 
 ## Performance Optimization
@@ -452,6 +506,20 @@ processor := constructs.NewS3Processor(stack, jsii.String("OptimizedProcessor"),
         },
     },
     EnableTracing: jsii.Bool(true), // For performance monitoring
+})
+```
+
+### Batch Processing Configuration
+
+```go
+processor := constructs.NewS3Processor(stack, jsii.String("BatchProcessor"), &constructs.S3ProcessorProps{
+    FunctionProps: awslambda.FunctionProps{
+        FunctionName: jsii.String("batch-processor"),
+        Code:         awslambda.Code_FromAsset(jsii.String("./dist")),
+        Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
+    },
+    BatchSize:         jsii.Number(5),                    // Process up to 5 events per invocation
+    MaxBatchingWindow: awscdk.Duration_Seconds(jsii.Number(10)), // Wait up to 10 seconds to batch events
 })
 ```
 
@@ -597,6 +665,8 @@ bucketARN := processor.GetBucketArn()
 domainName := processor.GetBucketDomainName()
 ```
 
+**Note**: Permission methods accept `awslambda.IFunction` interface, not specific function types.
+
 ### CORS Configuration
 
 ```go
@@ -612,6 +682,8 @@ corsRule := &awss3.CorsRule{
 
 processor.AddCorsRule(corsRule)
 ```
+
+**Note**: CORS rules can only be added to concrete `awss3.Bucket` instances, not `awss3.IBucket` interfaces. For interface buckets, configure CORS in the `BucketProps` during creation.
 
 ## Troubleshooting
 

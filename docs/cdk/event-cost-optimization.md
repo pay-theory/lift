@@ -6,6 +6,8 @@ This guide provides strategies for optimizing costs in event-driven architecture
 
 ### AWS Service Pricing Components
 
+> **Note**: Pricing information below should be verified against current AWS pricing pages as rates may have changed.
+
 | Service | Pricing Dimensions | Free Tier |
 |---------|-------------------|-----------|
 | Lambda | Requests + GB-seconds | 1M requests, 400K GB-s/month |
@@ -21,6 +23,14 @@ This guide provides strategies for optimizing costs in event-driven architecture
 ### Right-Sizing Memory
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+    "github.com/lift/cdk/constructs"
+)
+
 // Cost-efficient memory configuration
 // Use AWS Lambda Power Tuning to find optimal memory
 functionProps := &constructs.LiftFunctionProps{
@@ -33,11 +43,19 @@ functionProps := &constructs.LiftFunctionProps{
 ### Reduce Invocation Count
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+    "github.com/lift/cdk/constructs"
+)
+
 // Batch processing to reduce invocations
 sqsProcessor := constructs.NewSQSProcessor(stack, jsii.String("BatchProcessor"), &constructs.SQSProcessorProps{
-    EventSourceProps: &awslambda.SqsEventSourceProps{
-        BatchSize:                  jsii.Number(25),    // Process 25 messages per invocation
-        MaxBatchingWindowInSeconds: jsii.Number(20),   // Wait up to 20s to fill batch
+    EventSourceProps: &awslambdaeventsources.SqsEventSourceProps{
+        BatchSize:                  jsii.Number(10),    // Process 10 messages per invocation (default)
+        MaxBatchingWindowInSeconds: jsii.Number(5),    // Wait up to 5s to fill batch (default)
     },
 })
 ```
@@ -45,6 +63,14 @@ sqsProcessor := constructs.NewSQSProcessor(stack, jsii.String("BatchProcessor"),
 ### Optimize Function Duration
 
 ```go
+import (
+    "context"
+    "database/sql"
+    "net/http"
+    "os"
+    "time"
+)
+
 // Pre-initialize expensive operations
 var (
     httpClient *http.Client
@@ -68,6 +94,11 @@ func handler(ctx context.Context, event Event) error {
 ### Long Polling
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
+    "github.com/aws/jsii-runtime-go"
+)
+
 // Reduce API calls with long polling
 queueProps := &awssqs.QueueProps{
     QueueName: jsii.String("cost-optimized-queue"),
@@ -78,6 +109,15 @@ queueProps := &awssqs.QueueProps{
 ### Batch Operations
 
 ```go
+import (
+    "context"
+    "fmt"
+    
+    "github.com/aws/aws-sdk-go-v2/aws"
+    "github.com/aws/aws-sdk-go-v2/service/sqs"
+    "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+)
+
 // Send messages in batches
 func sendMessagesBatch(queueURL string, messages []Message) error {
     svc := sqs.NewFromConfig(cfg)
@@ -116,9 +156,16 @@ func sendMessagesBatch(queueURL string, messages []Message) error {
 ### Message Deduplication
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+    "github.com/lift/cdk/constructs"
+)
+
 // For FIFO queues, use content-based deduplication
 fifoQueue := constructs.NewSQSProcessor(stack, jsii.String("FIFOQueue"), &constructs.SQSProcessorProps{
-    EnableFIFO: jsii.Bool(true),
+    FifoQueue: jsii.Bool(true),
     QueueProps: &awssqs.QueueProps{
         ContentBasedDeduplication: jsii.Bool(true), // Automatic deduplication
         DeduplicationScope:       awssqs.DeduplicationScope_QUEUE,
@@ -131,9 +178,17 @@ fifoQueue := constructs.NewSQSProcessor(stack, jsii.String("FIFOQueue"), &constr
 ### Efficient Event Patterns
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awsevents"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+    "github.com/lift/cdk/constructs"
+)
+
 // Specific patterns reduce rule evaluations
-eventHandler := constructs.NewEventBridgeHandler(stack, jsii.String("EfficientHandler"), &constructs.EventBridgeHandlerProps{
-    EventPattern: &awseventbridge.EventPattern{
+eventHandler, err := constructs.NewEventBridgeHandler(stack, jsii.String("EfficientHandler"), &constructs.EventBridgeHandlerProps{
+    EventPattern: &awsevents.EventPattern{
         Source:     &[]*string{jsii.String("order.service")},     // Specific source
         DetailType: &[]*string{jsii.String("Order Placed")},     // Specific type
         Account:    &[]*string{jsii.String("123456789012")},     // Specific account
@@ -144,15 +199,26 @@ eventHandler := constructs.NewEventBridgeHandler(stack, jsii.String("EfficientHa
         },
     },
 })
+if err != nil {
+    // Handle error appropriately
+    panic(err)
+}
 ```
 
 ### Archive Strategy
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awsevents"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+)
+
 // Archive selectively to control costs
-archive := awseventbridge.NewArchive(stack, jsii.String("CriticalEventsArchive"), &awseventbridge.ArchiveProps{
+archive := awsevents.NewArchive(stack, jsii.String("CriticalEventsArchive"), &awsevents.ArchiveProps{
     ArchiveName: jsii.String("critical-events"),
-    EventPattern: &awseventbridge.EventPattern{
+    EventPattern: &awsevents.EventPattern{
         DetailType: &[]*string{
             jsii.String("Payment Failed"),
             jsii.String("Order Cancelled"),
@@ -167,6 +233,14 @@ archive := awseventbridge.NewArchive(stack, jsii.String("CriticalEventsArchive")
 ### Storage Classes
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awss3"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+    "github.com/lift/cdk/constructs"
+)
+
 s3Processor := constructs.NewS3Processor(stack, jsii.String("OptimizedStorage"), &constructs.S3ProcessorProps{
     BucketProps: &awss3.BucketProps{
         LifecycleRules: &[]*awss3.LifecycleRule{
@@ -224,13 +298,33 @@ func processS3Events(events []S3Event) error {
 ### On-Demand vs Provisioned
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2/awskinesis"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+    "github.com/lift/cdk/constructs"
+)
+
 // Use on-demand for variable workloads
 kinesisProcessor := constructs.NewKinesisProcessor(stack, jsii.String("OnDemandStream"), &constructs.KinesisProcessorProps{
+    FunctionProps: &constructs.LiftFunctionProps{
+        FunctionProps: awslambda.FunctionProps{
+            Code:    awslambda.Code_FromAsset(jsii.String("lambda")),
+            Handler: jsii.String("main"),
+        },
+    },
     StreamMode: awskinesis.StreamMode_ON_DEMAND, // Pay per GB
 })
 
 // Use provisioned for predictable workloads
 kinesisProcessor := constructs.NewKinesisProcessor(stack, jsii.String("ProvisionedStream"), &constructs.KinesisProcessorProps{
+    FunctionProps: &constructs.LiftFunctionProps{
+        FunctionProps: awslambda.FunctionProps{
+            Code:    awslambda.Code_FromAsset(jsii.String("lambda")),
+            Handler: jsii.String("main"),
+        },
+    },
     StreamMode: awskinesis.StreamMode_PROVISIONED,
     ShardCount: jsii.Number(1), // Start small, scale as needed
 })
@@ -239,6 +333,16 @@ kinesisProcessor := constructs.NewKinesisProcessor(stack, jsii.String("Provision
 ### Compression
 
 ```go
+import (
+    "bytes"
+    "compress/gzip"
+    "context"
+    "encoding/json"
+    
+    "github.com/aws/aws-sdk-go-v2/aws"
+    "github.com/aws/aws-sdk-go-v2/service/kinesis"
+)
+
 // Compress data to reduce PUT payload charges
 func putRecordCompressed(streamName string, data interface{}) error {
     jsonData, _ := json.Marshal(data)
@@ -288,6 +392,12 @@ func (a *RecordAggregator) AddRecord(data []byte) ([]byte, bool) {
 ### On-Demand vs Provisioned
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+)
+
 // Decision matrix for DynamoDB billing mode
 func chooseBillingMode(avgRPS, peakRPS float64) awsdynamodb.BillingMode {
     utilizationRatio := avgRPS / peakRPS
@@ -309,10 +419,16 @@ table := awsdynamodb.NewTable(stack, jsii.String("CostOptimizedTable"), &awsdyna
 ### Auto-Scaling Configuration
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
+    "github.com/aws/jsii-runtime-go"
+)
+
 // Configure auto-scaling for provisioned capacity
 readScaling := table.AutoScaleReadCapacity(&awsdynamodb.EnableScalingProps{
     MinCapacity: jsii.Number(5),
-    MaxCapacity: jsii.Number(100),
+    MaxCapacity: jsii.Number(40000),
 })
 
 readScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
@@ -327,9 +443,15 @@ readScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
 ### CloudWatch Cost Alerts
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
+    "github.com/aws/jsii-runtime-go"
+)
+
 // Create cost anomaly detector
-costAlarm := cloudwatch.NewAlarm(stack, jsii.String("CostAlarm"), &cloudwatch.AlarmProps{
-    Metric: cloudwatch.NewMetric(&cloudwatch.MetricProps{
+costAlarm := awscloudwatch.NewAlarm(stack, jsii.String("CostAlarm"), &awscloudwatch.AlarmProps{
+    Metric: awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
         Namespace:  jsii.String("AWS/Billing"),
         MetricName: jsii.String("EstimatedCharges"),
         DimensionsMap: &map[string]*string{
@@ -344,6 +466,11 @@ costAlarm := cloudwatch.NewAlarm(stack, jsii.String("CostAlarm"), &cloudwatch.Al
 ### Resource Tagging
 
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/jsii-runtime-go"
+)
+
 // Tag resources for cost allocation
 awscdk.Tags_Of(sqsProcessor).Add(jsii.String("Environment"), jsii.String("Production"))
 awscdk.Tags_Of(sqsProcessor).Add(jsii.String("Team"), jsii.String("Orders"))
@@ -355,6 +482,11 @@ awscdk.Tags_Of(sqsProcessor).Add(jsii.String("CostCenter"), jsii.String("CC-123"
 ### Circuit Breaker for Cost Control
 
 ```go
+import (
+    "sync"
+    "time"
+)
+
 type CostCircuitBreaker struct {
     maxCostPerHour float64
     currentCost    float64
@@ -416,6 +548,8 @@ func calculateLambdaCost(invocations, avgDurationMs, memoryMB int64) float64 {
 
 ### Event Source Cost Comparison
 
+> **Note**: The pricing rates below are examples and should be verified against current AWS pricing.
+
 ```go
 type EventSourceCost struct {
     Service         string
@@ -475,6 +609,12 @@ func compareEventSourceCosts(monthlyEvents int64) []EventSourceCost {
 
 ### 1. Over-Provisioning
 ```go
+import (
+    "github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
+    "github.com/aws/constructs-go/constructs/v10"
+    "github.com/aws/jsii-runtime-go"
+)
+
 // Bad: Fixed high capacity
 table := awsdynamodb.NewTable(stack, jsii.String("OverProvisionedTable"), &awsdynamodb.TableProps{
     BillingMode:   awsdynamodb.BillingMode_PROVISIONED,
@@ -490,6 +630,13 @@ table := awsdynamodb.NewTable(stack, jsii.String("AutoScaledTable"), &awsdynamod
 
 ### 2. Inefficient Polling
 ```go
+import (
+    "context"
+    "time"
+    
+    "github.com/aws/aws-sdk-go-v2/service/sqs"
+)
+
 // Bad: Frequent short polling
 for {
     messages, _ := sqsClient.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
@@ -508,6 +655,11 @@ messages, _ := sqsClient.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 
 ### 3. Lambda Memory Waste
 ```go
+import (
+    "github.com/aws/jsii-runtime-go"
+    "github.com/lift/cdk/constructs"
+)
+
 // Bad: Over-allocated memory
 functionProps := &constructs.LiftFunctionProps{
     MemorySize: jsii.Number(3008), // Paying for unused memory

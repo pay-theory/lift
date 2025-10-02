@@ -115,6 +115,7 @@ func (b *kinesisProcessorBuilder) build() *KinesisProcessor {
 	stream := b.createOrGetStream()
 	function := b.createFunction(stream)
 	dlq := b.createDLQ(function)
+	consumer := b.createConsumer(stream)
 	b.configureEventSource(stream, function, dlq)
 	b.grantPermissions(stream, function, dlq)
 
@@ -123,6 +124,7 @@ func (b *kinesisProcessorBuilder) build() *KinesisProcessor {
 		Stream:    stream,
 		Function:  *function,
 		DLQ:       dlq,
+		Consumer:  consumer,
 	}
 }
 
@@ -167,6 +169,22 @@ func (b *kinesisProcessorBuilder) createDLQ(function *LiftFunction) awssqs.IQueu
 
 	function.Function.AddEnvironment(jsii.String("KINESIS_DLQ_URL"), dlq.QueueUrl(), nil)
 	return dlq
+}
+
+// createConsumer creates the enhanced fan-out consumer if enabled
+func (b *kinesisProcessorBuilder) createConsumer(stream awskinesis.IStream) awskinesis.IStreamConsumer {
+	enableEnhancedFanOut := false
+	if b.props.EnableEnhancedFanOut != nil {
+		enableEnhancedFanOut = *b.props.EnableEnhancedFanOut
+	}
+
+	if !enableEnhancedFanOut {
+		return nil
+	}
+
+	return awskinesis.NewStreamConsumer(b.construct, jsii.String("Consumer"), &awskinesis.StreamConsumerProps{
+		Stream: stream,
+	})
 }
 
 // kinesisStreamBuilder builds Kinesis streams
@@ -319,8 +337,49 @@ func (esb *kinesisEventSourceBuilder) configureErrorHandling(props *awslambdaeve
 		props.MaxRecordAge = awscdk.Duration_Seconds(esb.props.MaxRecordAgeSeconds)
 	}
 
-	// Note: BisectBatchOnFunctionError may not be available in this CDK version
-	// if esb.props.BisectBatchOnError != nil {
-	//	props.BisectBatchOnFunctionError = esb.props.BisectBatchOnError
-	// }
+	if esb.props.BisectBatchOnError != nil {
+		props.BisectBatchOnError = esb.props.BisectBatchOnError
+	}
+
+	if esb.props.ReportBatchItemFailures != nil {
+		props.ReportBatchItemFailures = esb.props.ReportBatchItemFailures
+	}
+}
+
+// GrantWrite grants permission to write to the Kinesis stream
+func (k *KinesisProcessor) GrantWrite(grantee awslambda.IFunction) {
+	k.Stream.GrantWrite(grantee)
+}
+
+// GrantRead grants permission to read from the Kinesis stream
+func (k *KinesisProcessor) GrantRead(grantee awslambda.IFunction) {
+	k.Stream.GrantRead(grantee)
+}
+
+// GrantReadWrite grants permission to read and write to the Kinesis stream
+func (k *KinesisProcessor) GrantReadWrite(grantee awslambda.IFunction) {
+	k.Stream.GrantReadWrite(grantee)
+}
+
+// AddEnvironmentVariable adds an environment variable to the Lambda function
+func (k *KinesisProcessor) AddEnvironmentVariable(key string, value string) {
+	k.Function.Function.AddEnvironment(jsii.String(key), jsii.String(value), nil)
+}
+
+// GetStreamName returns the stream name
+func (k *KinesisProcessor) GetStreamName() *string {
+	return k.Stream.StreamName()
+}
+
+// GetStreamArn returns the stream ARN
+func (k *KinesisProcessor) GetStreamArn() *string {
+	return k.Stream.StreamArn()
+}
+
+// GetDeadLetterQueueUrl returns the DLQ URL if enabled
+func (k *KinesisProcessor) GetDeadLetterQueueUrl() *string {
+	if k.DLQ != nil {
+		return k.DLQ.QueueUrl()
+	}
+	return nil
 }

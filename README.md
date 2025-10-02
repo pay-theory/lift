@@ -45,7 +45,7 @@ func main() {
     // Configure the app
     config := &lift.Config{
         MaxRequestSize: 5 * 1024 * 1024, // 5MB
-        Timeout:        29,               // 29 seconds
+        Timeout:        30,               // 30 seconds (default)
         LogLevel:       "INFO",
     }
     app.WithConfig(config)
@@ -216,6 +216,7 @@ func GetUserOrders(ctx *lift.Context) error {
 // Configure app for multi-tenant support
 config := &lift.Config{
     RequireTenantID: true,
+    TenantIsolation: true,  // Enable tenant-based data isolation
 }
 app.WithConfig(config)
 ```
@@ -262,12 +263,28 @@ app := lift.New()
 config := &lift.Config{
     MaxRequestSize:  10 * 1024 * 1024, // 10MB
     MaxResponseSize: 6 * 1024 * 1024,  // 6MB (Lambda limit)
-    Timeout:         29,                // 29 seconds
+    Timeout:         30,                // 30 seconds (default)
     LogLevel:        "INFO",
     MetricsEnabled:  true,
+    TracingEnabled:  false,             // Optional: enable distributed tracing
+    Debug:           false,             // Optional: enable debug mode
+    CORSEnabled:     true,              // Optional: enable CORS
+    RequireTenantID: false,             // Optional: require tenant ID
 }
 app.WithConfig(config)
 ```
+
+**Configuration Options:**
+- `MaxRequestSize`: Maximum request body size (default: 10MB)
+- `MaxResponseSize`: Maximum response body size (default: 6MB, Lambda limit)
+- `Timeout`: Request timeout in seconds (default: 30)
+- `LogLevel`: Logging level - "DEBUG", "INFO", "WARN", "ERROR" (default: "INFO")
+- `MetricsEnabled`: Enable metrics collection (default: true)
+- `TracingEnabled`: Enable distributed tracing (default: false)
+- `Debug`: Enable debug mode with verbose logging (default: false)
+- `CORSEnabled`: Enable CORS headers (default: true)
+- `RequireTenantID`: Require tenant ID for all requests (default: false)
+- `AllowedOrigins`: CORS allowed origins (default: ["*"])
 
 ### `app.Use(middleware ...Middleware)`
 
@@ -283,6 +300,7 @@ app.Use(
     middleware.Recover(),      // Third: catches panics
 )
 // Order matters: RequestID must come before Logger
+// All middleware functions are available in github.com/pay-theory/lift/pkg/middleware
 ```
 
 ### `ctx.ParseRequest(dest interface{}) error`
@@ -340,19 +358,25 @@ Lift provides standardized DynamoDB table structures that work seamlessly with D
 **For detailed DynamORM integration, see: [DynamORM Integration Guide](docs/dynamorm-integration.md)**
 
 ```go
-// Define your model with BOTH DynamORM and DynamoDB tags
+import (
+    "fmt"
+    "github.com/pay-theory/lift/pkg/lift"
+    "github.com/pay-theory/lift/pkg/dynamorm"
+)
+
+// Define your model with DynamORM tags
 type User struct {
-    // Keys must have both tags
-    PK       string `dynamorm:"pk" `                    // user#{user_id}
-    SK       string `dynamorm:"sk" `                    // user#{user_id}
+    // Primary key structure
+    PK       string `dynamorm:"pk"`                    // user#{user_id}
+    SK       string `dynamorm:"sk"`                    // user#{user_id}
     
-    // GSI fields need both tags too
-    Email    string `dynamorm:"index:email-index,pk" `      // GSI for email lookup
-    TenantID string `dynamorm:"index:tenant-index,pk" ` // GSI for tenant queries
+    // GSI fields for efficient queries
+    Email    string `dynamorm:"index:email-index,pk"`      // GSI for email lookup
+    TenantID string `dynamorm:"index:tenant-index,pk"`      // GSI for tenant queries
     
-    // DynamORM handles marshaling internally
-    UserID   string    `json:"user_id" `
-    Name     string    `json:"name" `
+    // User data fields
+    UserID   string    `json:"user_id"`
+    Name     string    `json:"name"`
     TTL      int64     `json:"ttl,omitempty" dynamorm:"ttl"`
 }
 
@@ -360,18 +384,18 @@ func GetUser(ctx *lift.Context) error {
     userID := ctx.Param("id")
     tenantID := ctx.TenantID() // Multi-tenant isolation
     
-    // Query using composite key for tenant isolation
-    user, err := dynamorm.Get[User](ctx.Context, db).
-        WithTable(os.Getenv("DYNAMODB_TABLE")).
-        WithPK(fmt.Sprintf("tenant#%s", tenantID)).
-        WithSK(fmt.Sprintf("user#%s", userID)).
-        Execute()
-        
-    if err == dynamorm.ErrNotFound {
-        return lift.NotFound("user not found")
-    }
+    // Get DynamORM instance from context
+    db, err := dynamorm.TenantDB(ctx)
     if err != nil {
-        return lift.NewLiftError("DATABASE_ERROR", "Failed to get user", 500)
+        return lift.SystemError("Database not available").WithCause(err)
+    }
+    
+    // Query using DynamORM wrapper
+    var user User
+    err = db.Get(ctx.Context, fmt.Sprintf("user#%s", userID), &user)
+        
+    if err != nil {
+        return lift.SystemError("Failed to get user").WithCause(err)
     }
     
     return ctx.JSON(user)
@@ -380,16 +404,139 @@ func GetUser(ctx *lift.Context) error {
 
 ### With SQS Events
 ```go
-// Lift handles multiple event sources
+// Batch processing with error handling
 app.SQS("process-orders", func(ctx *lift.Context) error {
-    // SQS message is in ctx.Request.Body
-    var order Order
-    if err := ctx.ParseRequest(&order); err != nil {
-        return err // Message returns to queue
+    // Parse batch of SQS messages
+    var messages []SQSMessage
+    if err := ctx.ParseRequest(&messages); err != nil {
+        ctx.Logger.Error("Failed to parse SQS messages", "error", err)
+        return err // All messages return to queue
     }
     
-    ctx.Logger.Info("Processing order", "order_id", order.ID)
-    return processOrder(order)
+    var failedMessages []string
+    
+    for _, msg := range messages {
+        var order Order
+        if err := json.Unmarshal([]byte(msg.Body), &order); err != nil {
+            ctx.Logger.Error("Invalid order format", "messageId", msg.MessageId)
+            failedMessages = append(failedMessages, msg.MessageId)
+            continue
+        }
+        
+        if err := processOrder(order); err != nil {
+            ctx.Logger.Error("Order processing failed", 
+                "orderId", order.ID, 
+                "messageId", msg.MessageId,
+                "error", err)
+            failedMessages = append(failedMessages, msg.MessageId)
+        } else {
+            ctx.Logger.Info("Order processed successfully", "orderId", order.ID)
+        }
+    }
+    
+    // Return error if any messages failed (they'll be retried)
+    if len(failedMessages) > 0 {
+        return fmt.Errorf("failed to process %d messages", len(failedMessages))
+    }
+    
+    return nil // All messages processed successfully
+})
+
+// Dead letter queue handling
+app.SQS("process-failed-orders", func(ctx *lift.Context) error {
+    var messages []SQSMessage
+    if err := ctx.ParseRequest(&messages); err != nil {
+        return err
+    }
+    
+    for _, msg := range messages {
+        // Log failed message for manual review
+        ctx.Logger.Error("Message reached DLQ", 
+            "messageId", msg.MessageId,
+            "body", msg.Body,
+            "attributes", msg.MessageAttributes)
+        
+        // Store in database for analysis
+        if err := storeFailedMessage(msg); err != nil {
+            ctx.Logger.Error("Failed to store DLQ message", "error", err)
+        }
+    }
+    
+    return nil
+})
+```
+
+### With S3 Events
+```go
+// File processing with S3 triggers
+app.S3("process-uploads", func(ctx *lift.Context) error {
+    var records []S3Record
+    if err := ctx.ParseRequest(&records); err != nil {
+        ctx.Logger.Error("Failed to parse S3 event", "error", err)
+        return err
+    }
+    
+    for _, record := range records {
+        bucket := record.S3.Bucket.Name
+        key := record.S3.Object.Key
+        
+        ctx.Logger.Info("Processing file", 
+            "bucket", bucket,
+            "key", key,
+            "size", record.S3.Object.Size)
+        
+        // Download and process file
+        if err := processFile(bucket, key); err != nil {
+            ctx.Logger.Error("File processing failed", 
+                "bucket", bucket,
+                "key", key,
+                "error", err)
+            return err
+        }
+        
+        // Move to processed folder
+        if err := moveToProcessed(bucket, key); err != nil {
+            ctx.Logger.Error("Failed to move file", "error", err)
+            return err
+        }
+    }
+    
+    return nil
+})
+
+// Image processing pipeline
+app.S3("resize-images", func(ctx *lift.Context) error {
+    var records []S3Record
+    if err := ctx.ParseRequest(&records); err != nil {
+        return err
+    }
+    
+    for _, record := range records {
+        bucket := record.S3.Bucket.Name
+        key := record.S3.Object.Key
+        
+        // Only process images
+        if !isImageFile(key) {
+            ctx.Logger.Info("Skipping non-image file", "key", key)
+            continue
+        }
+        
+        // Generate multiple sizes
+        sizes := []string{"thumbnail", "medium", "large"}
+        for _, size := range sizes {
+            if err := resizeImage(bucket, key, size); err != nil {
+                ctx.Logger.Error("Image resize failed", 
+                    "key", key,
+                    "size", size,
+                    "error", err)
+                return err
+            }
+        }
+        
+        ctx.Logger.Info("Image processed successfully", "key", key)
+    }
+    
+    return nil
 })
 ```
 
@@ -402,6 +549,108 @@ app.EventBridge("daily-report", func(ctx *lift.Context) error {
     // Use same patterns as HTTP handlers
     return runScheduledJob(ctx)
 })
+
+// Cron-like scheduling
+app.EventBridge("hourly-cleanup", func(ctx *lift.Context) error {
+    ctx.Logger.Info("Starting hourly cleanup")
+    
+    // Clean up old temporary files
+    if err := cleanupTempFiles(); err != nil {
+        ctx.Logger.Error("Cleanup failed", "error", err)
+        return err
+    }
+    
+    // Archive old logs
+    if err := archiveOldLogs(); err != nil {
+        ctx.Logger.Error("Log archival failed", "error", err)
+        return err
+    }
+    
+    ctx.Logger.Info("Hourly cleanup completed")
+    return nil
+})
+```
+
+### With WebSocket Connections
+```go
+// WebSocket authentication middleware
+func WebSocketJWTMiddleware(jwtSecret string) lift.Middleware {
+    return func(next lift.Handler) lift.Handler {
+        return lift.HandlerFunc(func(ctx *lift.Context) error {
+            // Only validate on $connect events
+            wsCtx, err := ctx.AsWebSocket()
+            if err == nil && wsCtx.IsConnectEvent() {
+                token := ctx.Query("Authorization")
+                if token == "" {
+                    return ctx.Status(401).JSON(map[string]string{
+                        "error": "Missing authorization token",
+                    })
+                }
+                
+                // Validate JWT and store claims
+                claims, err := validateJWTToken(token, jwtSecret)
+                if err != nil {
+                    return ctx.Status(401).JSON(map[string]string{
+                        "error": "Invalid token",
+                    })
+                }
+                
+                ctx.SetUserID(claims.UserID)
+            }
+            return next.Handle(ctx)
+        })
+    }
+}
+
+// WebSocket connection handler
+func handleConnect(ctx *lift.Context) error {
+    wsCtx, err := ctx.AsWebSocket()
+    if err != nil {
+        return err
+    }
+    
+    // Store connection info
+    err = storeConnection(ctx.Context, wsCtx.ConnectionID(), ctx.UserID())
+    if err != nil {
+        ctx.Logger.Error("Failed to store connection", "error", err)
+    }
+    
+    return ctx.Status(200).JSON(map[string]string{
+        "message": "Connected successfully",
+    })
+}
+
+// WebSocket message handler
+func handleMessage(ctx *lift.Context) error {
+    wsCtx, err := ctx.AsWebSocket()
+    if err != nil {
+        return err
+    }
+    
+    // Parse incoming message
+    var message map[string]any
+    if err := ctx.ParseRequest(&message); err != nil {
+        return wsCtx.SendJSONMessage(map[string]string{
+            "error": "Invalid message format",
+        })
+    }
+    
+    // Echo back with connection info
+    response := map[string]any{
+        "type":         "echo",
+        "originalMsg":  message,
+        "connectionId": wsCtx.ConnectionID(),
+        "timestamp":    time.Now(),
+    }
+    
+    return wsCtx.SendJSONMessage(response)
+}
+
+// Register WebSocket handlers
+app.Use(WebSocketJWTMiddleware(os.Getenv("JWT_SECRET")))
+app.Handle("CONNECT", "/connect", handleConnect)
+app.Handle("MESSAGE", "/message", handleMessage)
+app.Handle("DISCONNECT", "/disconnect", handleDisconnect)
 ```
 
 ## Troubleshooting

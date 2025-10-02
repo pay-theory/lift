@@ -7,11 +7,18 @@ This document provides a comprehensive API reference for all Lift CDK constructs
 - [Core Constructs](#core-constructs)
   - [LiftFunction](#liftfunction) - `pkg/cdk/constructs/lambda.go`
   - [LiftAPI](#liftapi) - `pkg/cdk/constructs/api.go`
-  - [DynamORMTable](#dynamormtable) - `pkg/cdk/constructs/dynamorm_table.go`
+  - [LiftTable](#lifttable) - `pkg/cdk/constructs/dynamodb.go`
+- [Middleware Constructs](#middleware-constructs)
+  - [RateLimitedFunction](#ratelimitedfunction) - `pkg/cdk/constructs/ratelimited.go`
+  - [IdempotentFunction](#idempotentfunction) - `pkg/cdk/constructs/idempotent.go`
+  - [SecureFunction](#securefunction) - `pkg/cdk/constructs/secure.go`
+  - [MonitoredFunction](#monitoredfunction) - `pkg/cdk/constructs/monitored.go`
 - [Enhanced Constructs](#enhanced-constructs)
   - [EnhancedMonitoring](#enhancedmonitoring) - `pkg/cdk/constructs/monitoring_enhanced.go`
   - [EnhancedSecurity](#enhancedsecurity) - `pkg/cdk/constructs/security_enhanced.go`
 - [Pattern Constructs](#pattern-constructs)
+  - [BasicAPI](#basicapi) - `pkg/cdk/patterns/basic_api.go`
+  - [SecureAPI](#secureapi) - `pkg/cdk/patterns/secure_api.go`
   - [LiftApp](#liftapp) - `pkg/cdk/patterns/lift_app.go`
   - [MicroserviceComplete](#microservicecomplete) - `pkg/cdk/patterns/microservice_complete.go`
 - [Stack Templates](#stack-templates)
@@ -48,9 +55,12 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 | `MemorySize` | `*float64` | `512` | Memory in MB | `lambda.go:67-69` |
 | `Timeout` | `awscdk.Duration` | `30s` | Function timeout | `lambda.go:70-72` |
 | `EnableTracing` | `*bool` | `false` | X-Ray tracing | `lambda.go:73-75` |
-| `EnableDeadLetterQueue` | `*bool` | `true` | DLQ creation | `lambda.go:79-81` |
+| `EnableMetrics` | `*bool` | `false` | CloudWatch metrics | `lambda.go:76-78` |
+| `EnableMultiTenant` | `*bool` | `false` | Multi-tenant support | `lambda.go:79-81` |
+| `ReservedConcurrentExecutions` | `*float64` | `nil` | Concurrent execution limit | `lambda.go:82-84` |
 | `EnableDynamORM` | `*bool` | `false` | DynamORM integration | `lambda.go:132-149` |
-| `LogRetentionDays` | `*float64` | `30` | CloudWatch log retention | `lambda.go:76-78` |
+| `DynamORMTableName` | `*string` | `nil` | DynamORM table name | `lambda.go:132-149` |
+| `DynamORMDebug` | `*bool` | `false` | DynamORM debug mode | `lambda.go:132-149` |
 
 #### Methods
 
@@ -61,19 +71,6 @@ func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunction
 | `AddEnvironment(key, value)` | `void` | Adds environment variable | `lambda.go:188-190` |
 | `GrantInvoke(grantee)` | `awsiam.Grant` | Grants invoke permission | `lambda.go:193-195` |
 | `ConfigureDynamORM(table, debug)` | `void` | Configures DynamORM | `lambda.go:213-224` |
-
-#### Dead Letter Queue Configuration
-
-**Location**: `lambda.go:86-111`
-
-```go
-// DLQ is automatically created if EnableDeadLetterQueue is true
-dlq := awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), &awssqs.QueueProps{
-    QueueName:           jsii.String(dlqName),
-    RetentionPeriod:     awscdk.Duration_Days(jsii.Number(14)),
-    VisibilityTimeout:   awscdk.Duration_Seconds(jsii.Number(300)),
-})
-```
 
 #### DynamORM Environment Variables
 
@@ -97,9 +94,11 @@ fn := liftconstructs.NewLiftFunction(this, jsii.String("MyFunction"), &liftconst
         Handler: jsii.String("bootstrap"),
     },
     EnableTracing:  jsii.Bool(true),
+    EnableMetrics:  jsii.Bool(true),
     EnableDynamORM: jsii.Bool(true),
+    DynamORMTableName: jsii.String("my-table"),
     MemorySize:     jsii.Number(1024),
-    LogRetentionDays: jsii.Number(30),
+    ReservedConcurrentExecutions: jsii.Number(100),
 })
 
 // Configure DynamORM after creation
@@ -185,29 +184,43 @@ table := constructs.NewLiftTable(stack, id, props)
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `TableName` | `*string` | Auto-generated | Table name |
-| `PartitionKey` | `*awsdynamodb.Attribute` | Required | Partition key |
-| `SortKey` | `*awsdynamodb.Attribute` | `nil` | Sort key |
-| `BillingMode` | `awsdynamodb.BillingMode` | `PAY_PER_REQUEST` | Billing mode |
-| `PointInTimeRecovery` | `*bool` | `true` | Enable PITR |
-| `Stream` | `awsdynamodb.StreamViewType` | `nil` | DynamoDB Streams |
+| `PartitionKeyName` | `*string` | Required | Partition key field name |
+| `SortKeyName` | `*string` | `nil` | Sort key field name |
+| `EnablePointInTimeRecovery` | `*bool` | `true` | Enable PITR |
+| `EnableStreams` | `*bool` | `false` | Enable DynamoDB Streams |
+| `StreamViewType` | `awsdynamodb.StreamViewType` | `NEW_AND_OLD_IMAGES` | Stream view type |
+| `TimeToLiveAttribute` | `*string` | `nil` | TTL attribute |
+| `ReadCapacity` | `*float64` | `nil` | Read capacity (provisioned mode) |
+| `WriteCapacity` | `*float64` | `nil` | Write capacity (provisioned mode) |
+| `EnableAutoScaling` | `*bool` | `true` | Enable auto-scaling |
+| `MinReadCapacity` | `*float64` | `5` | Min read capacity |
+| `MaxReadCapacity` | `*float64` | `40000` | Max read capacity |
+| `MinWriteCapacity` | `*float64` | `5` | Min write capacity |
+| `MaxWriteCapacity` | `*float64` | `40000` | Max write capacity |
+| `TargetUtilization` | `*float64` | `70` | Target utilization % |
+| `GlobalSecondaryIndexes` | `*[]*awsdynamodb.GlobalSecondaryIndexProps` | `nil` | GSIs |
 | `Encryption` | `awsdynamodb.TableEncryption` | `AWS_MANAGED` | Encryption type |
 | `RemovalPolicy` | `awscdk.RemovalPolicy` | `RETAIN` | Deletion policy |
-| `GlobalSecondaryIndexes` | `[]*GlobalSecondaryIndex` | `nil` | GSIs |
-| `TimeToLiveAttribute` | `*string` | `nil` | TTL attribute |
+| `DeletionProtection` | `*bool` | `false` | Deletion protection |
+| `ReplicationRegions` | `*[]*string` | `nil` | Global Tables regions |
+| `Tags` | `*map[string]*string` | `nil` | Custom tags |
 
 #### Example
 
 ```go
 table := constructs.NewLiftTable(stack, jsii.String("DataTable"), &constructs.LiftTableProps{
-    PartitionKey: &awsdynamodb.Attribute{
-        Name: jsii.String("PK"),
-        Type: awsdynamodb.AttributeType_STRING,
-    },
-    SortKey: &awsdynamodb.Attribute{
-        Name: jsii.String("SK"),
-        Type: awsdynamodb.AttributeType_STRING,
-    },
-    GlobalSecondaryIndexes: &[]*constructs.GlobalSecondaryIndex{
+    PartitionKeyName: jsii.String("PK"),
+    SortKeyName: jsii.String("SK"),
+    EnablePointInTimeRecovery: jsii.Bool(true),
+    EnableStreams: jsii.Bool(true),
+    StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
+    TimeToLiveAttribute: jsii.String("ttl"),
+    EnableAutoScaling: jsii.Bool(true),
+    MinReadCapacity: jsii.Number(5),
+    MaxReadCapacity: jsii.Number(1000),
+    MinWriteCapacity: jsii.Number(5),
+    MaxWriteCapacity: jsii.Number(1000),
+    GlobalSecondaryIndexes: &[]*awsdynamodb.GlobalSecondaryIndexProps{
         {
             IndexName: jsii.String("GSI1"),
             PartitionKey: &awsdynamodb.Attribute{
@@ -220,7 +233,6 @@ table := constructs.NewLiftTable(stack, jsii.String("DataTable"), &constructs.Li
             },
         },
     },
-    TimeToLiveAttribute: jsii.String("ttl"),
 })
 ```
 
@@ -240,12 +252,11 @@ Extends [LiftFunctionProps](#liftfunction) with:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `LimitType` | `*string` | `"IP"` | Type: "IP", "User", or "Tenant" |
-| `RequestLimit` | `*float64` | `1000` | Requests per window |
+| `RateLimitType` | `RateLimitType` | `RateLimitTypeIP` | Type: `RateLimitTypeIP`, `RateLimitTypeUser`, or `RateLimitTypeTenant` |
+| `Limit` | `*float64` | `1000` | Requests per window |
 | `WindowSeconds` | `*float64` | `3600` | Time window in seconds |
 | `TableName` | `*string` | Auto-generated | DynamoDB table name |
-| `EnableBurstCapacity` | `*bool` | `true` | Allow burst capacity |
-| `BurstMultiplier` | `*float64` | `2` | Burst capacity multiplier |
+| `EnableMetrics` | `*bool` | `true` | Enable CloudWatch metrics |
 
 #### Methods
 
@@ -263,9 +274,10 @@ rateLimited := constructs.NewRateLimitedFunction(stack, jsii.String("API"), &con
         CodeAssetPath: jsii.String("./dist/bootstrap"),
         MemorySize: jsii.Number(1024),
     },
-    LimitType: jsii.String("User"),     // Rate limit by user ID
-    RequestLimit: jsii.Number(100),     // 100 requests
-    WindowSeconds: jsii.Number(900),    // per 15 minutes
+    RateLimitType: constructs.RateLimitTypeUser,  // Rate limit by user ID
+    Limit: jsii.Number(100),                      // 100 requests
+    WindowSeconds: jsii.Number(900),             // per 15 minutes
+    EnableMetrics: jsii.Bool(true),
 })
 ```
 
@@ -283,11 +295,12 @@ Extends [LiftFunctionProps](#liftfunction) with:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `KeySource` | `*string` | `"header"` | Source: "header", "body", or "path" |
-| `KeyPath` | `*string` | `"X-Idempotency-Key"` | Path to extract key |
+| `KeyExtractor` | `IdempotentKeyExtractor` | `IdempotentKeyHeader` | Source: `IdempotentKeyHeader`, `IdempotentKeyBody`, `IdempotentKeyPath`, or `IdempotentKeyCustom` |
+| `KeyField` | `*string` | `"X-Idempotency-Key"` | Path to extract key |
 | `TTLSeconds` | `*float64` | `86400` | Record TTL (24 hours) |
 | `TableName` | `*string` | Auto-generated | DynamoDB table name |
-| `ResponseSizeLimit` | `*float64` | `400000` | Max response size (bytes) |
+| `EnableResponseCaching` | `*bool` | `true` | Enable response caching |
+| `MaxResponseSizeKB` | `*float64` | `400` | Max response size (KB) |
 
 #### Methods
 
@@ -305,9 +318,11 @@ idempotent := constructs.NewIdempotentFunction(stack, jsii.String("Payment"), &c
         CodeAssetPath: jsii.String("./dist/bootstrap"),
         Timeout: jsii.Number(60),
     },
-    KeySource: jsii.String("body"),
-    KeyPath: jsii.String("paymentId"),
+    KeyExtractor: constructs.IdempotentKeyBody,
+    KeyField: jsii.String("paymentId"),
     TTLSeconds: jsii.Number(172800), // 48 hours
+    EnableResponseCaching: jsii.Bool(true),
+    MaxResponseSizeKB: jsii.Number(400),
 })
 ```
 
@@ -420,12 +435,155 @@ monitored := constructs.NewMonitoredFunction(stack, jsii.String("API"), &constru
 // Add custom metric
 monitored.AddMetric("PaymentProcessed", awscloudwatch.Unit_COUNT, jsii.Number(1))
 
-// Add custom query
-monitored.AddLogInsightsQuery("HighValuePayments", `
-    fields @timestamp, amount, userId
-    | filter amount > 1000
-    | sort @timestamp desc
-`)
+```
+
+## Enhanced Constructs
+
+### EnhancedMonitoring
+
+**File**: `pkg/cdk/constructs/monitoring_enhanced.go`  
+**Type**: Comprehensive Monitoring Construct  
+**Lines**: 1-655
+
+Comprehensive monitoring construct with real CloudWatch metrics, alarms, dashboards, and log insights.
+
+#### Constructor
+
+```go
+func NewEnhancedMonitoring(scope constructs.Construct, id *string, props *EnhancedMonitoringProps) *EnhancedMonitoring
+```
+
+#### Properties (EnhancedMonitoringProps)
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Resource` | `MonitorableResource` | Required | Resource to monitor |
+| `Namespace` | `*string` | Auto-generated | Custom namespace for metrics |
+| `AlertTopic` | `awssns.ITopic` | `nil` | SNS topic for alerts |
+| `DashboardName` | `*string` | Auto-generated | Dashboard name |
+| `MetricConfig` | `*MetricConfiguration` | `nil` | Advanced metric configuration |
+| `AlarmThresholds` | `*AlarmThresholds` | `nil` | Alarm threshold configuration |
+| `EnableRealTimeStreaming` | `*bool` | `false` | Enable real-time streaming |
+| `Environment` | `*string` | `nil` | Environment tag |
+
+#### Methods
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `AddCustomMetric(name, namespace, dimensions)` | `awscloudwatch.IMetric` | Add custom metric |
+| `AddAlarm(name, metric, threshold)` | `awscloudwatch.IAlarm` | Add custom alarm |
+| `AddLogInsightsQuery(name, query)` | `awslogs.MetricFilter` | Add Log Insights query |
+| `GetDashboard()` | `awscloudwatch.Dashboard` | Get CloudWatch dashboard |
+| `GetMetrics()` | `map[string]awscloudwatch.IMetric` | Get all metrics |
+| `GetAlarms()` | `map[string]awscloudwatch.IAlarm` | Get all alarms |
+
+#### Example
+
+```go
+monitoring := constructs.NewEnhancedMonitoring(this, jsii.String("Monitoring"), &constructs.EnhancedMonitoringProps{
+    Resource: myFunction,
+    Namespace: jsii.String("MyApp/Metrics"),
+    AlertTopic: alertTopic,
+    DashboardName: jsii.String("MyApp-Dashboard"),
+    MetricConfig: &constructs.MetricConfiguration{
+        DetailedMetrics: jsii.Bool(true),
+        EnableBusinessMetrics: jsii.Bool(true),
+        Percentiles: &[]*float64{jsii.Number(50), jsii.Number(95), jsii.Number(99)},
+    },
+    AlarmThresholds: &constructs.AlarmThresholds{
+        ErrorRate: jsii.Number(0.05),
+        LatencyP99: jsii.Number(2000),
+        ThrottleCount: jsii.Number(10),
+    },
+    EnableRealTimeStreaming: jsii.Bool(true),
+    Environment: jsii.String("production"),
+})
+
+// Add custom metric
+monitoring.AddCustomMetric(
+    jsii.String("CustomMetric"),
+    jsii.String("MyApp/Custom"),
+    &map[string]*string{
+        "Service": jsii.String("API"),
+    },
+)
+```
+
+### EnhancedSecurity
+
+**File**: `pkg/cdk/constructs/security_enhanced.go`  
+**Type**: Comprehensive Security Construct  
+**Lines**: 1-757
+
+Comprehensive security construct with WAF, VPC security groups, secrets management, and security monitoring.
+
+#### Constructor
+
+```go
+func NewEnhancedSecurity(scope constructs.Construct, id *string, props *EnhancedSecurityProps) *EnhancedSecurity
+```
+
+#### Properties (EnhancedSecurityProps)
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Vpc` | `awsec2.IVpc` | Required | VPC for security resources |
+| `EnableWAF` | `*bool` | `true` | Enable AWS WAF |
+| `WAFConfig` | `*WAFRuleConfig` | `nil` | WAF rule configuration |
+| `EnableVPCFlowLogs` | `*bool` | `true` | Enable VPC Flow Logs |
+| `EnableGuardDuty` | `*bool` | `false` | Enable GuardDuty |
+| `EnableSecurityHub` | `*bool` | `false` | Enable Security Hub |
+| `EnableConfigRules` | `*bool` | `false` | Enable Config rules |
+| `Environment` | `*string` | `nil` | Environment tag |
+| `ApplicationName` | `*string` | `nil` | Application name |
+| `IngressRules` | `[]SecurityRule` | `nil` | Ingress security rules |
+| `EgressRules` | `[]SecurityRule` | `nil` | Egress security rules |
+| `Secrets` | `[]SecretConfig` | `nil` | Secrets configuration |
+| `VPCEndpointConfig` | `*VPCEndpointConfig` | `nil` | VPC endpoint configuration |
+
+#### Methods
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `GetSecurityGroup()` | `awsec2.SecurityGroup` | Get security group |
+| `GetWAF()` | `awswafv2.CfnWebACL` | Get WAF Web ACL |
+| `GetSecrets()` | `map[string]awssecretsmanager.Secret` | Get secrets |
+| `GetVPCEndpoints()` | `map[string]awsec2.InterfaceVpcEndpoint` | Get VPC endpoints |
+| `AddSecurityRule(rule)` | `void` | Add security rule |
+| `CreateSecret(config)` | `awssecretsmanager.Secret` | Create secret |
+
+#### Example
+
+```go
+security := constructs.NewEnhancedSecurity(this, jsii.String("Security"), &constructs.EnhancedSecurityProps{
+    Vpc: myVpc,
+    EnableWAF: jsii.Bool(true),
+    WAFConfig: &constructs.WAFRuleConfig{
+        EnableRateLimit: jsii.Bool(true),
+        RateLimit: jsii.Number(2000),
+        EnableSQLiProtection: jsii.Bool(true),
+        EnableXSSProtection: jsii.Bool(true),
+        IPWhitelist: &[]*string{
+            jsii.String("203.0.113.0/24"),
+        },
+    },
+    EnableVPCFlowLogs: jsii.Bool(true),
+    Environment: jsii.String("production"),
+    ApplicationName: jsii.String("MyApp"),
+    Secrets: []constructs.SecretConfig{
+        {
+            Name: "database-password",
+            Description: "Database password",
+            Length: 32,
+            EnableRotation: true,
+        },
+    },
+    VPCEndpointConfig: &constructs.VPCEndpointConfig{
+        EnableSecretsManager: jsii.Bool(true),
+        EnableCloudWatchLogs: jsii.Bool(true),
+        EnableKMS: jsii.Bool(true),
+    },
+})
 ```
 
 ## Patterns
@@ -502,6 +660,103 @@ app := patterns.NewLiftApp(stack, id, props)
 | `EnableCache` | `*bool` | `false` | Add ElastiCache |
 | `EnableQueue` | `*bool` | `false` | Add SQS queue |
 | `EnableNotifications` | `*bool` | `false` | Add SNS topic |
+
+### MicroserviceComplete
+
+**File**: `pkg/cdk/patterns/microservice_complete.go`  
+**Type**: Complete ECS-based Microservice Pattern  
+**Lines**: 1-903
+
+Complete ECS-based microservice pattern with load balancer, auto-scaling, service discovery, and comprehensive monitoring.
+
+#### Constructor
+
+```go
+func NewMicroserviceComplete(scope constructs.Construct, id *string, props *MicroserviceCompleteProps) *MicroserviceComplete
+```
+
+#### Properties (MicroserviceCompleteProps)
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ServiceName` | `*string` | Required | Service name |
+| `ContainerConfig` | `*ContainerConfig` | Required | Container configuration |
+| `NetworkConfig` | `*NetworkConfig` | Required | Network configuration |
+| `LoadBalancerConfig` | `*LoadBalancerConfig` | `nil` | Load balancer configuration |
+| `AutoScalingConfig` | `*AutoScalingConfig` | `nil` | Auto-scaling configuration |
+| `ServiceDiscoveryConfig` | `*ServiceDiscoveryConfig` | `nil` | Service discovery configuration |
+| `HealthCheckConfig` | `*HealthCheckConfig` | `nil` | Health check configuration |
+| `Environment` | `*string` | `nil` | Environment tag |
+| `EnableLogging` | `*bool` | `true` | Enable CloudWatch logging |
+| `EnableMonitoring` | `*bool` | `true` | Enable monitoring |
+| `EnableSecurity` | `*bool` | `true` | Enable security features |
+
+#### Methods
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `GetCluster()` | `awsecs.Cluster` | Get ECS cluster |
+| `GetService()` | `awsecs.FargateService` | Get Fargate service |
+| `GetTaskDefinition()` | `awsecs.FargateTaskDefinition` | Get task definition |
+| `GetLoadBalancer()` | `awselasticloadbalancingv2.ApplicationLoadBalancer` | Get load balancer |
+| `GetTargetGroup()` | `awselasticloadbalancingv2.ApplicationTargetGroup` | Get target group |
+| `GetAutoScalingGroup()` | `awsapplicationautoscaling.ScalableTarget` | Get auto-scaling group |
+| `GetServiceDiscovery()` | `awsservicediscovery.Service` | Get service discovery |
+| `AddEnvironmentVariable(key, value)` | `void` | Add environment variable |
+| `AddSecret(name, secret)` | `void` | Add secret |
+| `AddVolume(name, volume)` | `void` | Add volume |
+
+#### Example
+
+```go
+microservice := patterns.NewMicroserviceComplete(this, jsii.String("Microservice"), &patterns.MicroserviceCompleteProps{
+    ServiceName: jsii.String("my-service"),
+    ContainerConfig: &patterns.ContainerConfig{
+        Platform: awsecs.CpuArchitecture_ARM64,
+        CodeAssetPath: jsii.String("./dist"),
+        MemoryLimitMiB: jsii.Number(512),
+        CpuLimitMiB: jsii.Number(256),
+        Environment: &map[string]*string{
+            "NODE_ENV": jsii.String("production"),
+        },
+    },
+    NetworkConfig: &patterns.NetworkConfig{
+        VPC: myVpc,
+        AssignPublicIP: jsii.Bool(false),
+        EnableVPCLogs: jsii.Bool(true),
+        EnableContainerInsights: jsii.Bool(true),
+    },
+    LoadBalancerConfig: &patterns.LoadBalancerConfig{
+        Enabled: jsii.Bool(true),
+        DomainName: jsii.String("api.example.com"),
+        Certificate: certificate,
+        HealthCheckPath: jsii.String("/health"),
+        HealthCheckInterval: awscdk.Duration_Seconds(jsii.Number(30)),
+        HealthCheckTimeout: awscdk.Duration_Seconds(jsii.Number(5)),
+        HealthyThresholdCount: jsii.Number(2),
+        UnhealthyThresholdCount: jsii.Number(3),
+    },
+    AutoScalingConfig: &patterns.AutoScalingConfig{
+        MinCapacity: jsii.Number(1),
+        MaxCapacity: jsii.Number(10),
+        TargetCPUUtilization: jsii.Number(70),
+        TargetMemoryUtilization: jsii.Number(80),
+        ScaleInCooldown: awscdk.Duration_Minutes(jsii.Number(5)),
+        ScaleOutCooldown: awscdk.Duration_Minutes(jsii.Number(3)),
+    },
+    ServiceDiscoveryConfig: &patterns.ServiceDiscoveryConfig{
+        Namespace: jsii.String("myapp.local"),
+        ServiceName: jsii.String("api"),
+        HealthCheckPath: jsii.String("/health"),
+        HealthCheckInterval: awscdk.Duration_Seconds(jsii.Number(30)),
+        TTL: awscdk.Duration_Seconds(jsii.Number(60)),
+    },
+    Environment: jsii.String("production"),
+    EnableLogging: jsii.Bool(true),
+    EnableMonitoring: jsii.Bool(true),
+    EnableSecurity: jsii.Bool(true),
+})
+```
 
 ## Stacks
 

@@ -24,6 +24,19 @@ The `KinesisProcessor` construct provides a complete Kinesis stream with Lambda 
 - Batch processing with configurable windows
 - Built-in retry and error handling mechanisms
 
+### Default Configuration
+
+The KinesisProcessor uses the following defaults:
+- **Stream Mode**: On-demand (auto-scaling)
+- **Retention Period**: 24 hours
+- **Batch Size**: 100 records
+- **Max Batching Window**: 5 seconds
+- **DLQ**: Enabled by default
+- **Enhanced Fan-Out**: Disabled by default
+- **Architecture**: ARM64 (via LiftFunction defaults)
+- **Memory**: 512MB (via LiftFunction defaults)
+- **Timeout**: 30 seconds (via LiftFunction defaults)
+
 ## Basic Usage
 
 ### Simple Stream Processor
@@ -55,18 +68,26 @@ processor.GrantWrite(producer.Function)
 
 // In your Go application code
 import (
-    "github.com/aws/aws-sdk-go/aws"
-    "github.com/aws/aws-sdk-go/aws/session"
-    "github.com/aws/aws-sdk-go/service/kinesis"
+    "context"
+    "encoding/json"
+    "github.com/aws/aws-sdk-go-v2/aws"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/kinesis"
+    "github.com/aws/aws-sdk-go-v2/service/kinesis/types"
+    "github.com/google/uuid"
 )
 
-func publishRecord(streamName string, data interface{}) error {
-    sess := session.Must(session.NewSession())
-    kinesisClient := kinesis.New(sess)
+func publishRecord(ctx context.Context, streamName string, data interface{}) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return err
+    }
+    
+    kinesisClient := kinesis.NewFromConfig(cfg)
     
     dataJSON, _ := json.Marshal(data)
     
-    _, err := kinesisClient.PutRecord(&kinesis.PutRecordInput{
+    _, err = kinesisClient.PutRecord(ctx, &kinesis.PutRecordInput{
         StreamName:   aws.String(streamName),
         Data:         dataJSON,
         PartitionKey: aws.String(uuid.New().String()),
@@ -75,20 +96,24 @@ func publishRecord(streamName string, data interface{}) error {
 }
 
 // Batch publishing
-func publishBatch(streamName string, records []interface{}) error {
-    sess := session.Must(session.NewSession())
-    kinesisClient := kinesis.New(sess)
+func publishBatch(ctx context.Context, streamName string, records []interface{}) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return err
+    }
     
-    var kinesisRecords []*kinesis.PutRecordsRequestEntry
+    kinesisClient := kinesis.NewFromConfig(cfg)
+    
+    var kinesisRecords []types.PutRecordsRequestEntry
     for _, record := range records {
         dataJSON, _ := json.Marshal(record)
-        kinesisRecords = append(kinesisRecords, &kinesis.PutRecordsRequestEntry{
+        kinesisRecords = append(kinesisRecords, types.PutRecordsRequestEntry{
             Data:         dataJSON,
             PartitionKey: aws.String(uuid.New().String()),
         })
     }
     
-    resp, err := kinesisClient.PutRecords(&kinesis.PutRecordsInput{
+    resp, err := kinesisClient.PutRecords(ctx, &kinesis.PutRecordsInput{
         StreamName: aws.String(streamName),
         Records:    kinesisRecords,
     })
@@ -149,6 +174,11 @@ processor := constructs.NewKinesisProcessor(stack, jsii.String("EnhancedProcesso
         MaxBatchingWindow: awscdk.Duration_Millis(jsii.Number(100)),
     },
 })
+
+// Access the enhanced fan-out consumer
+if processor.Consumer != nil {
+    log.Printf("Enhanced fan-out consumer created: %s", processor.Consumer.ConsumerArn())
+}
 ```
 
 ## Error Handling
@@ -425,9 +455,25 @@ func getPartitionKey(event Event) string {
 ### 2. Data Compression
 
 ```go
-import "compress/gzip"
+import (
+    "bytes"
+    "compress/gzip"
+    "context"
+    "encoding/json"
+    "github.com/aws/aws-sdk-go-v2/aws"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/kinesis"
+    "github.com/google/uuid"
+)
 
-func publishCompressed(streamName string, data interface{}) error {
+func publishCompressed(ctx context.Context, streamName string, data interface{}) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return err
+    }
+    
+    kinesisClient := kinesis.NewFromConfig(cfg)
+    
     dataJSON, _ := json.Marshal(data)
     
     var buf bytes.Buffer
@@ -435,7 +481,7 @@ func publishCompressed(streamName string, data interface{}) error {
     gz.Write(dataJSON)
     gz.Close()
     
-    _, err := kinesisClient.PutRecord(&kinesis.PutRecordInput{
+    _, err = kinesisClient.PutRecord(ctx, &kinesis.PutRecordInput{
         StreamName:   aws.String(streamName),
         Data:         buf.Bytes(),
         PartitionKey: aws.String(uuid.New().String()),
@@ -447,13 +493,23 @@ func publishCompressed(streamName string, data interface{}) error {
 func decompressRecord(data string) ([]byte, error) {
     compressed, _ := base64.StdEncoding.DecodeString(data)
     reader, _ := gzip.NewReader(bytes.NewReader(compressed))
-    return ioutil.ReadAll(reader)
+    return io.ReadAll(reader)
 }
 ```
 
 ### 3. Checkpointing
 
 ```go
+import (
+    "context"
+    "fmt"
+    "time"
+    "github.com/aws/aws-sdk-go-v2/aws"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+    "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+)
+
 // Store processing checkpoint
 type Checkpoint struct {
     ShardID        string
@@ -461,7 +517,14 @@ type Checkpoint struct {
     Timestamp      time.Time
 }
 
-func saveCheckpoint(shardID, sequenceNumber string) error {
+func saveCheckpoint(ctx context.Context, shardID, sequenceNumber string) error {
+    cfg, err := config.LoadDefaultConfig(ctx)
+    if err != nil {
+        return err
+    }
+    
+    dynamoClient := dynamodb.NewFromConfig(cfg)
+    
     checkpoint := Checkpoint{
         ShardID:        shardID,
         SequenceNumber: sequenceNumber,
@@ -469,14 +532,15 @@ func saveCheckpoint(shardID, sequenceNumber string) error {
     }
     
     // Save to DynamoDB
-    return dynamoClient.PutItem(&dynamodb.PutItemInput{
+    _, err = dynamoClient.PutItem(ctx, &dynamodb.PutItemInput{
         TableName: aws.String("kinesis-checkpoints"),
-        Item: map[string]*dynamodb.AttributeValue{
-            "ShardID": {S: aws.String(checkpoint.ShardID)},
-            "SequenceNumber": {S: aws.String(checkpoint.SequenceNumber)},
-            "Timestamp": {N: aws.String(fmt.Sprintf("%d", checkpoint.Timestamp.Unix()))},
+        Item: map[string]types.AttributeValue{
+            "ShardID":        &types.AttributeValueMemberS{Value: checkpoint.ShardID},
+            "SequenceNumber": &types.AttributeValueMemberS{Value: checkpoint.SequenceNumber},
+            "Timestamp":      &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", checkpoint.Timestamp.Unix())},
         },
     })
+    return err
 }
 ```
 
@@ -571,6 +635,53 @@ func handler(ctx context.Context, event KinesisEvent) error {
        memorySize = 256
    }
    ```
+
+## KinesisProcessor Methods
+
+The KinesisProcessor construct provides several methods for managing permissions and accessing stream information:
+
+### Permission Methods
+
+```go
+// Grant write permissions to another Lambda function
+processor.GrantWrite(producer.Function)
+
+// Grant read permissions to another Lambda function  
+processor.GrantRead(reader.Function)
+
+// Grant both read and write permissions
+processor.GrantReadWrite(processor.Function)
+```
+
+### Utility Methods
+
+```go
+// Add environment variables to the processing function
+processor.AddEnvironmentVariable("CUSTOM_CONFIG", "value")
+
+// Get stream information
+streamName := processor.GetStreamName()
+streamArn := processor.GetStreamArn()
+
+// Get DLQ URL (if enabled)
+dlqUrl := processor.GetDeadLetterQueueUrl()
+if dlqUrl != nil {
+    log.Printf("DLQ URL: %s", *dlqUrl)
+}
+```
+
+### Accessing Components
+
+```go
+// Access the underlying AWS resources
+stream := processor.Stream
+function := processor.Function
+dlq := processor.DLQ
+consumer := processor.Consumer // Enhanced fan-out consumer (if enabled)
+
+// Use stream metrics
+iteratorAgeMetric := stream.MetricGetRecordsIteratorAgeMilliseconds()
+```
 
 ## Next Steps
 
