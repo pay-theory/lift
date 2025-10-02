@@ -35,8 +35,6 @@ type LiftAPIProps struct {
 	ThrottleBurstLimit *float64
 	// Stage name (defaults to $default)
 	StageName *string
-	// Enable detailed CloudWatch metrics
-	EnableDetailedMetrics *bool
 	// API Key configuration
 	RequireApiKey *bool
 	// Request/Response validation models
@@ -134,6 +132,9 @@ func (b *liftAPIBuilder) createHttpAPI() awsapigatewayv2.HttpApi {
 	apiProps := &awsapigatewayv2.HttpApiProps{
 		ApiName:     b.props.Name,
 		Description: b.props.Description,
+		// Disable auto-deployment to prevent default stage from being created
+		// We'll create our own stage with proper configuration
+		CreateDefaultStage: jsii.Bool(false),
 	}
 
 	// Configure CORS if enabled
@@ -190,30 +191,14 @@ func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup a
 		stageName = *b.props.StageName
 	}
 
-	// Check if we need a custom stage
-	if !b.needsCustomStage(stageName) {
-		return httpApi.DefaultStage()
-	}
-
-	// Create custom stage
+	// Always create a custom stage since we disabled CreateDefaultStage in the API
+	// This ensures we have full control over stage configuration (logging, throttling, metrics)
 	stage := b.createCustomStage(httpApi, stageName)
 
 	// Configure access logging
 	b.configureAccessLogging(stage, logGroup)
 
-	// Configure detailed metrics
-	b.configureDetailedMetrics(stage)
-
 	return stage
-}
-
-// needsCustomStage determines if a custom stage is needed
-func (b *liftAPIBuilder) needsCustomStage(stageName string) bool {
-	return stageName != "$default" ||
-		b.props.ThrottleRateLimit != nil ||
-		b.props.ThrottleBurstLimit != nil ||
-		(b.props.EnableAccessLogging != nil && *b.props.EnableAccessLogging) ||
-		(b.props.EnableDetailedMetrics != nil && *b.props.EnableDetailedMetrics)
 }
 
 // createCustomStage creates a custom stage with throttling
@@ -265,19 +250,6 @@ func (b *liftAPIBuilder) configureAccessLogging(stage awsapigatewayv2.IHttpStage
 
 	// Grant write permissions to API Gateway service
 	logGroup.Grant(awsiam.NewServicePrincipal(jsii.String("apigateway.amazonaws.com"), nil), jsii.String("logs:PutLogEvents"))
-}
-
-// configureDetailedMetrics enables detailed metrics if requested
-func (b *liftAPIBuilder) configureDetailedMetrics(stage awsapigatewayv2.IHttpStage) {
-	if b.props.EnableDetailedMetrics == nil || !*b.props.EnableDetailedMetrics {
-		return
-	}
-
-	if defaultChild := stage.Node().DefaultChild(); defaultChild != nil {
-		if cfnStage, ok := defaultChild.(awsapigatewayv2.CfnStage); ok {
-			cfnStage.AddPropertyOverride(jsii.String("DetailedMetricsEnabled"), jsii.Bool(true))
-		}
-	}
 }
 
 // configureDomain configures custom domain mapping if provided
@@ -365,9 +337,10 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 	return authorizer.Authorizer
 }
 
-// GetUrl returns the URL of the API
+// GetUrl returns the URL of the API stage
 func (api *LiftAPI) GetUrl() *string {
-	return api.HttpAPI.Url()
+	// Always use the stage URL since Lift creates a custom stage
+	return api.Stage.Url()
 }
 
 // GetArn returns the ARN of the API
