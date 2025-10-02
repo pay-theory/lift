@@ -17,41 +17,23 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
+<<<<<<< HEAD
 // LiftAPIProps defines properties for creating a Lift API Gateway.
 //
 // This struct contains all configurable properties for creating a Lift-optimized
 // API Gateway HTTP API. The properties include basic API configuration, CORS
 // settings, custom domain configuration, access logging, throttling, and security
 // features like API key requirements and request validation.
+=======
+// LiftAPIProps defines properties for creating a Lift HTTP API Gateway (v2)
+>>>>>>> origin/premain
 type LiftAPIProps struct {
-	// Name of the API
-	Name *string
-	// Description of the API
-	Description *string
-	// Enable CORS
-	EnableCORS *bool
-	// CORS allowed origins (defaults to ["*"] if not specified)
-	AllowOrigins *[]*string
-	// Custom domain name
-	DomainName *string
-	// Certificate ARN for custom domain
-	CertificateArn *string
-	// Enable access logging
-	EnableAccessLogging *bool
-	// CloudWatch log group for access logs
-	AccessLogGroup awslogs.ILogGroup
-	// Throttle settings
-	ThrottleRateLimit  *float64
-	ThrottleBurstLimit *float64
-	// Stage name (defaults to $default)
-	StageName *string
-	// Enable detailed CloudWatch metrics
-	EnableDetailedMetrics *bool
+	APICommonProps
 	// API Key configuration
 	RequireApiKey *bool
 	// Request/Response validation models
 	RequestValidators map[string]*RequestValidator
-	// Default authorizer for all routes
+	// Default authorizer for all routes (HTTP API specific)
 	DefaultAuthorizer awsapigatewayv2.IHttpRouteAuthorizer
 }
 
@@ -185,15 +167,7 @@ func (b *liftAPIBuilder) createLogGroup() awslogs.ILogGroup {
 		return nil
 	}
 
-	if b.props.AccessLogGroup != nil {
-		return b.props.AccessLogGroup
-	}
-
-	return awslogs.NewLogGroup(b.construct, jsii.String("AccessLogs"), &awslogs.LogGroupProps{
-		LogGroupName:  jsii.String("/aws/apigateway/" + *b.props.Name),
-		Retention:     awslogs.RetentionDays_ONE_WEEK,
-		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-	})
+	return CreateAPILogGroup(b.construct, b.props.Name, b.props.AccessLogGroup)
 }
 
 // createHttpAPI creates the HTTP API with CORS configuration.
@@ -207,6 +181,9 @@ func (b *liftAPIBuilder) createHttpAPI() awsapigatewayv2.HttpApi {
 	apiProps := &awsapigatewayv2.HttpApiProps{
 		ApiName:     b.props.Name,
 		Description: b.props.Description,
+		// Disable auto-deployment to prevent default stage from being created
+		// We'll create our own stage with proper configuration
+		CreateDefaultStage: jsii.Bool(false),
 	}
 
 	// Configure CORS if enabled
@@ -248,20 +225,9 @@ func (b *liftAPIBuilder) createCORSConfig() *awsapigatewayv2.CorsPreflightOption
 			awsapigatewayv2.CorsHttpMethod_DELETE,
 			awsapigatewayv2.CorsHttpMethod_OPTIONS,
 		},
-		AllowHeaders: &[]*string{
-			jsii.String("Content-Type"),
-			jsii.String("Authorization"),
-			jsii.String("X-Tenant-ID"),
-			jsii.String("X-Request-ID"),
-			jsii.String("X-Api-Key"),
-		},
-		ExposeHeaders: &[]*string{
-			jsii.String("X-Request-ID"),
-			jsii.String("X-Rate-Limit-Limit"),
-			jsii.String("X-Rate-Limit-Remaining"),
-			jsii.String("X-Rate-Limit-Reset"),
-		},
-		MaxAge: awscdk.Duration_Hours(jsii.Number(24)),
+		AllowHeaders:  CORSHeaders(),
+		ExposeHeaders: CORSExposeHeaders(),
+		MaxAge:        awscdk.Duration_Hours(jsii.Number(24)),
 	}
 }
 
@@ -282,23 +248,17 @@ func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup a
 		stageName = *b.props.StageName
 	}
 
-	// Check if we need a custom stage
-	if !b.needsCustomStage(stageName) {
-		return httpApi.DefaultStage()
-	}
-
-	// Create custom stage
+	// Always create a custom stage since we disabled CreateDefaultStage in the API
+	// This ensures we have full control over stage configuration (logging, throttling, metrics)
 	stage := b.createCustomStage(httpApi, stageName)
 
 	// Configure access logging
 	b.configureAccessLogging(stage, logGroup)
 
-	// Configure detailed metrics
-	b.configureDetailedMetrics(stage)
-
 	return stage
 }
 
+<<<<<<< HEAD
 // needsCustomStage determines if a custom stage is needed.
 //
 // This method checks if any configuration requires a custom stage instead of
@@ -327,6 +287,9 @@ func (b *liftAPIBuilder) needsCustomStage(stageName string) bool {
 //
 // Returns:
 //   - A configured HttpStage instance
+=======
+// createCustomStage creates a custom stage with throttling
+>>>>>>> origin/premain
 func (b *liftAPIBuilder) createCustomStage(httpApi awsapigatewayv2.HttpApi, stageName string) awsapigatewayv2.IHttpStage {
 	stageProps := &awsapigatewayv2.HttpStageProps{
 		HttpApi:    httpApi,
@@ -390,6 +353,7 @@ func (b *liftAPIBuilder) configureAccessLogging(stage awsapigatewayv2.IHttpStage
 	logGroup.Grant(awsiam.NewServicePrincipal(jsii.String("apigateway.amazonaws.com"), nil), jsii.String("logs:PutLogEvents"))
 }
 
+<<<<<<< HEAD
 // configureDetailedMetrics enables detailed metrics if requested.
 //
 // This method enables detailed CloudWatch metrics for the API stage if
@@ -416,6 +380,9 @@ func (b *liftAPIBuilder) configureDetailedMetrics(stage awsapigatewayv2.IHttpSta
 // Parameters:
 //   - httpApi: The HTTP API instance
 //   - stage: The API stage
+=======
+// configureDomain configures custom domain mapping if provided
+>>>>>>> origin/premain
 func (b *liftAPIBuilder) configureDomain(httpApi awsapigatewayv2.HttpApi, stage awsapigatewayv2.IHttpStage) {
 	if b.props.DomainName == nil || b.props.CertificateArn == nil {
 		return
@@ -537,14 +504,19 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 	return authorizer.Authorizer
 }
 
+<<<<<<< HEAD
 // GetUrl returns the URL of the API.
 //
 // This method returns the base URL of the API Gateway endpoint.
 //
 // Returns:
 //   - The API URL as a string pointer
+=======
+// GetUrl returns the URL of the API stage
+>>>>>>> origin/premain
 func (api *LiftAPI) GetUrl() *string {
-	return api.HttpAPI.Url()
+	// Always use the stage URL since Lift creates a custom stage
+	return api.Stage.Url()
 }
 
 // GetArn returns the ARN of the API.
