@@ -30,6 +30,8 @@ type LiftAPIProps struct {
 	Description *string
 	// Enable CORS
 	EnableCORS *bool
+	// CORS allowed origins (defaults to ["*"] if not specified)
+	AllowOrigins *[]*string
 	// Custom domain name
 	DomainName *string
 	// Certificate ARN for custom domain
@@ -231,8 +233,14 @@ func (b *liftAPIBuilder) createHttpAPI() awsapigatewayv2.HttpApi {
 // Returns:
 //   - A CORS preflight configuration object
 func (b *liftAPIBuilder) createCORSConfig() *awsapigatewayv2.CorsPreflightOptions {
+	// Use custom origins if provided, otherwise default to wildcard
+	allowOrigins := &[]*string{jsii.String("*")}
+	if b.props.AllowOrigins != nil {
+		allowOrigins = b.props.AllowOrigins
+	}
+
 	return &awsapigatewayv2.CorsPreflightOptions{
-		AllowOrigins: &[]*string{jsii.String("*")},
+		AllowOrigins: allowOrigins,
 		AllowMethods: &[]awsapigatewayv2.CorsHttpMethod{
 			awsapigatewayv2.CorsHttpMethod_GET,
 			awsapigatewayv2.CorsHttpMethod_POST,

@@ -3,6 +3,7 @@ package constructs
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -20,10 +21,37 @@ type LiftTableProps struct {
 	EnablePointInTimeRecovery *bool
 	EnableStreams             *bool
 	TimeToLiveAttribute       *string
-	EnableAutoScaling         *bool
+	StreamViewType            awsdynamodb.StreamViewType
+
+	// Billing configuration
 	ReadCapacity              *float64
 	WriteCapacity             *float64
-	StreamViewType            awsdynamodb.StreamViewType
+
+	// Auto-scaling configuration
+	EnableAutoScaling         *bool
+	MinReadCapacity           *float64
+	MaxReadCapacity           *float64
+	MinWriteCapacity          *float64
+	MaxWriteCapacity          *float64
+	TargetUtilization         *float64
+
+	// Global Secondary Indexes
+	GlobalSecondaryIndexes    *[]*awsdynamodb.GlobalSecondaryIndexProps
+
+	// GSI Auto-scaling configuration
+	GSIMinReadCapacity        *float64
+	GSIMaxReadCapacity        *float64
+	GSIMinWriteCapacity       *float64
+	GSIMaxWriteCapacity       *float64
+
+	// Advanced features
+	DeletionProtection        *bool
+	RemovalPolicy             awscdk.RemovalPolicy
+	Encryption                awsdynamodb.TableEncryption
+	ReplicationRegions        *[]*string
+
+	// Tags
+	Tags                      *map[string]*string
 }
 
 // LiftTable is a DynamoDB table construct optimized for Lift applications
@@ -37,7 +65,8 @@ type LiftTableProps struct {
 // The table is configured with sensible defaults for production workloads.
 type LiftTable struct {
 	constructs.Construct
-	Table awsdynamodb.Table
+	Table  awsdynamodb.Table
+	GSIs   map[string]*awsdynamodb.GlobalSecondaryIndexProps
 }
 
 // NewLiftTable creates a new DynamoDB table with Lift-optimized defaults
@@ -83,13 +112,82 @@ func (b *liftTableBuilder) build() *LiftTable {
 	this := constructs.NewConstruct(b.scope, b.id)
 
 	b.determineBillingMode()
+	b.setDefaults()
 	tableProps := b.createTableProps()
 	table := b.createTable(this, tableProps)
-	b.configureAutoScaling(table)
 
-	return &LiftTable{
+	liftTable := &LiftTable{
 		Construct: this,
 		Table:     table,
+		GSIs:      make(map[string]*awsdynamodb.GlobalSecondaryIndexProps),
+	}
+
+	// Add GSIs after table creation
+	b.addGSIs(liftTable)
+
+	// Configure auto-scaling (includes GSI auto-scaling)
+	b.configureAutoScaling(table)
+	b.configureTags(table)
+
+	return liftTable
+}
+
+// addGSIs adds Global Secondary Indexes to the table
+func (b *liftTableBuilder) addGSIs(liftTable *LiftTable) {
+	if b.props.GlobalSecondaryIndexes != nil {
+		for _, gsi := range *b.props.GlobalSecondaryIndexes {
+			liftTable.Table.AddGlobalSecondaryIndex(gsi)
+			if gsi.IndexName != nil {
+				liftTable.GSIs[*gsi.IndexName] = gsi
+			}
+		}
+	}
+}
+
+// setDefaults sets default values for optional properties
+func (b *liftTableBuilder) setDefaults() {
+	if b.props.RemovalPolicy == "" {
+		b.props.RemovalPolicy = awscdk.RemovalPolicy_RETAIN
+	}
+	if b.props.EnableAutoScaling == nil {
+		b.props.EnableAutoScaling = jsii.Bool(true)
+	}
+	if b.props.EnablePointInTimeRecovery == nil {
+		b.props.EnablePointInTimeRecovery = jsii.Bool(true)
+	}
+	if b.props.DeletionProtection == nil {
+		b.props.DeletionProtection = jsii.Bool(false)
+	}
+	if b.props.TargetUtilization == nil {
+		b.props.TargetUtilization = jsii.Number(70)
+	}
+
+	// Auto-scaling defaults for table
+	if b.props.MinReadCapacity == nil {
+		b.props.MinReadCapacity = jsii.Number(5)
+	}
+	if b.props.MaxReadCapacity == nil {
+		b.props.MaxReadCapacity = jsii.Number(40000)
+	}
+	if b.props.MinWriteCapacity == nil {
+		b.props.MinWriteCapacity = jsii.Number(5)
+	}
+	if b.props.MaxWriteCapacity == nil {
+		b.props.MaxWriteCapacity = jsii.Number(40000)
+	}
+
+	// Auto-scaling defaults for GSIs
+	if b.props.GSIMinReadCapacity == nil {
+		b.props.GSIMinReadCapacity = jsii.Number(5)
+	}
+	if b.props.GSIMaxReadCapacity == nil {
+		b.props.GSIMaxReadCapacity = jsii.Number(10000)
+	}
+	if b.props.GSIMinWriteCapacity == nil {
+		b.props.GSIMinWriteCapacity = jsii.Number(5)
+	}
+	if b.props.GSIMaxWriteCapacity == nil {
+		b.props.GSIMaxWriteCapacity = jsii.Number(10000)
 	}
 }
 
@@ -105,16 +203,35 @@ func (b *liftTableBuilder) determineBillingMode() {
 // createTableProps creates the base table properties
 func (b *liftTableBuilder) createTableProps() *awsdynamodb.TableProps {
 	tableProps := &awsdynamodb.TableProps{
-		TableName:     b.props.TableName,
-		PartitionKey:  b.createPartitionKey(),
-		BillingMode:   b.billingMode,
-		RemovalPolicy: awscdk.RemovalPolicy_RETAIN,
+		TableName:           b.props.TableName,
+		PartitionKey:        b.createPartitionKey(),
+		BillingMode:         b.billingMode,
+		RemovalPolicy:       b.props.RemovalPolicy,
+		DeletionProtection:  b.props.DeletionProtection,
 	}
 
 	b.configureSortKey(tableProps)
 	b.configureCapacity(tableProps)
+	b.configureEncryption(tableProps)
+	b.configureReplication(tableProps)
 
 	return tableProps
+}
+
+// configureEncryption sets up table encryption
+func (b *liftTableBuilder) configureEncryption(tableProps *awsdynamodb.TableProps) {
+	if b.props.Encryption != "" {
+		tableProps.Encryption = b.props.Encryption
+	} else {
+		tableProps.Encryption = awsdynamodb.TableEncryption_AWS_MANAGED
+	}
+}
+
+// configureReplication sets up Global Tables replication
+func (b *liftTableBuilder) configureReplication(tableProps *awsdynamodb.TableProps) {
+	if b.props.ReplicationRegions != nil && len(*b.props.ReplicationRegions) > 0 {
+		tableProps.ReplicationRegions = b.props.ReplicationRegions
+	}
 }
 
 // createPartitionKey creates the partition key attribute
@@ -195,21 +312,64 @@ func (b *liftTableBuilder) configureAutoScaling(table awsdynamodb.Table) {
 		return
 	}
 
+	// Configure table-level auto-scaling
 	readScaling := table.AutoScaleReadCapacity(&awsdynamodb.EnableScalingProps{
-		MinCapacity: jsii.Number(5),
-		MaxCapacity: jsii.Number(1000),
+		MinCapacity: b.props.MinReadCapacity,
+		MaxCapacity: b.props.MaxReadCapacity,
 	})
 	readScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
-		TargetUtilizationPercent: jsii.Number(70),
+		TargetUtilizationPercent: b.props.TargetUtilization,
 	})
 
 	writeScaling := table.AutoScaleWriteCapacity(&awsdynamodb.EnableScalingProps{
-		MinCapacity: jsii.Number(5),
-		MaxCapacity: jsii.Number(1000),
+		MinCapacity: b.props.MinWriteCapacity,
+		MaxCapacity: b.props.MaxWriteCapacity,
 	})
 	writeScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
-		TargetUtilizationPercent: jsii.Number(70),
+		TargetUtilizationPercent: b.props.TargetUtilization,
 	})
+
+	// Configure GSI auto-scaling
+	if b.props.GlobalSecondaryIndexes != nil {
+		for _, gsi := range *b.props.GlobalSecondaryIndexes {
+			if gsi.IndexName != nil {
+				b.configureGSIAutoScaling(table, *gsi.IndexName)
+			}
+		}
+	}
+}
+
+// configureGSIAutoScaling configures auto-scaling for a specific GSI
+func (b *liftTableBuilder) configureGSIAutoScaling(table awsdynamodb.Table, indexName string) {
+	gsiReadScaling := table.AutoScaleGlobalSecondaryIndexReadCapacity(jsii.String(indexName), &awsdynamodb.EnableScalingProps{
+		MinCapacity: b.props.GSIMinReadCapacity,
+		MaxCapacity: b.props.GSIMaxReadCapacity,
+	})
+	gsiReadScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
+		TargetUtilizationPercent: b.props.TargetUtilization,
+	})
+
+	gsiWriteScaling := table.AutoScaleGlobalSecondaryIndexWriteCapacity(jsii.String(indexName), &awsdynamodb.EnableScalingProps{
+		MinCapacity: b.props.GSIMinWriteCapacity,
+		MaxCapacity: b.props.GSIMaxWriteCapacity,
+	})
+	gsiWriteScaling.ScaleOnUtilization(&awsdynamodb.UtilizationScalingProps{
+		TargetUtilizationPercent: b.props.TargetUtilization,
+	})
+}
+
+// configureTags applies tags to the table
+func (b *liftTableBuilder) configureTags(table awsdynamodb.Table) {
+	// Add standard Lift tags
+	awscdk.Tags_Of(table).Add(jsii.String("Framework"), jsii.String("Lift"), nil)
+	awscdk.Tags_Of(table).Add(jsii.String("Component"), jsii.String("Database"), nil)
+
+	// Add custom tags
+	if b.props.Tags != nil {
+		for key, value := range *b.props.Tags {
+			awscdk.Tags_Of(table).Add(jsii.String(key), value, nil)
+		}
+	}
 }
 
 // GrantReadWrite grants read/write permissions to a Lambda function
@@ -222,6 +382,35 @@ func (b *liftTableBuilder) configureAutoScaling(table awsdynamodb.Table) {
 //   - fn: The Lambda function to grant permissions to
 func (t *LiftTable) GrantReadWrite(fn awslambda.IFunction) {
 	t.Table.GrantReadWriteData(fn)
+}
+
+// GrantReadWriteData grants read/write permissions to any IAM grantee
+func (t *LiftTable) GrantReadWriteData(grantee awsiam.IGrantable) awsiam.Grant {
+	return t.Table.GrantReadWriteData(grantee)
+}
+
+// GrantReadData grants read-only permissions to any IAM grantee
+func (t *LiftTable) GrantReadData(grantee awsiam.IGrantable) awsiam.Grant {
+	return t.Table.GrantReadData(grantee)
+}
+
+// GrantWriteData grants write-only permissions to any IAM grantee
+func (t *LiftTable) GrantWriteData(grantee awsiam.IGrantable) awsiam.Grant {
+	return t.Table.GrantWriteData(grantee)
+}
+
+// GrantStreamRead grants permissions to read from the DynamoDB stream
+func (t *LiftTable) GrantStreamRead(grantee awsiam.IGrantable) awsiam.Grant {
+	return t.Table.GrantStreamRead(grantee)
+}
+
+// AddGlobalSecondaryIndex adds a GSI after table creation (note: requires table update)
+func (t *LiftTable) AddGlobalSecondaryIndex(props *awsdynamodb.GlobalSecondaryIndexProps) {
+	if props.IndexName != nil {
+		t.GSIs[*props.IndexName] = props
+	}
+	// Note: This stores the GSI but doesn't update the physical table
+	// For runtime GSI additions, use AWS SDK or CloudFormation updates
 }
 
 // GetTableName returns the table name
@@ -267,4 +456,12 @@ func (t *LiftTable) GetResourceName() *string {
 //   - The stream ARN, or nil if streams are not enabled
 func (t *LiftTable) GetStreamArn() *string {
 	return t.Table.TableStreamArn()
+}
+
+// GetEnvironmentVariables returns environment variables for DynamORM integration
+func (t *LiftTable) GetEnvironmentVariables() map[string]*string {
+	return map[string]*string{
+		"DYNAMODB_TABLE_NAME": t.Table.TableName(),
+		"DYNAMORM_REGION":     jsii.String("${AWS::Region}"),
+	}
 }
