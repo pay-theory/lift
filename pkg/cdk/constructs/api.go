@@ -12,34 +12,14 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-// LiftAPIProps defines properties for creating a Lift API Gateway
+// LiftAPIProps defines properties for creating a Lift HTTP API Gateway (v2)
 type LiftAPIProps struct {
-	// Name of the API
-	Name *string
-	// Description of the API
-	Description *string
-	// Enable CORS
-	EnableCORS *bool
-	// CORS allowed origins (defaults to ["*"] if not specified)
-	AllowOrigins *[]*string
-	// Custom domain name
-	DomainName *string
-	// Certificate ARN for custom domain
-	CertificateArn *string
-	// Enable access logging
-	EnableAccessLogging *bool
-	// CloudWatch log group for access logs
-	AccessLogGroup awslogs.ILogGroup
-	// Throttle settings
-	ThrottleRateLimit  *float64
-	ThrottleBurstLimit *float64
-	// Stage name (defaults to $default)
-	StageName *string
+	APICommonProps
 	// API Key configuration
 	RequireApiKey *bool
 	// Request/Response validation models
 	RequestValidators map[string]*RequestValidator
-	// Default authorizer for all routes
+	// Default authorizer for all routes (HTTP API specific)
 	DefaultAuthorizer awsapigatewayv2.IHttpRouteAuthorizer
 }
 
@@ -116,15 +96,7 @@ func (b *liftAPIBuilder) createLogGroup() awslogs.ILogGroup {
 		return nil
 	}
 
-	if b.props.AccessLogGroup != nil {
-		return b.props.AccessLogGroup
-	}
-
-	return awslogs.NewLogGroup(b.construct, jsii.String("AccessLogs"), &awslogs.LogGroupProps{
-		LogGroupName:  jsii.String("/aws/apigateway/" + *b.props.Name),
-		Retention:     awslogs.RetentionDays_ONE_WEEK,
-		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-	})
+	return CreateAPILogGroup(b.construct, b.props.Name, b.props.AccessLogGroup)
 }
 
 // createHttpAPI creates the HTTP API with CORS configuration
@@ -167,20 +139,9 @@ func (b *liftAPIBuilder) createCORSConfig() *awsapigatewayv2.CorsPreflightOption
 			awsapigatewayv2.CorsHttpMethod_DELETE,
 			awsapigatewayv2.CorsHttpMethod_OPTIONS,
 		},
-		AllowHeaders: &[]*string{
-			jsii.String("Content-Type"),
-			jsii.String("Authorization"),
-			jsii.String("X-Tenant-ID"),
-			jsii.String("X-Request-ID"),
-			jsii.String("X-Api-Key"),
-		},
-		ExposeHeaders: &[]*string{
-			jsii.String("X-Request-ID"),
-			jsii.String("X-Rate-Limit-Limit"),
-			jsii.String("X-Rate-Limit-Remaining"),
-			jsii.String("X-Rate-Limit-Reset"),
-		},
-		MaxAge: awscdk.Duration_Hours(jsii.Number(24)),
+		AllowHeaders:  CORSHeaders(),
+		ExposeHeaders: CORSExposeHeaders(),
+		MaxAge:        awscdk.Duration_Hours(jsii.Number(24)),
 	}
 }
 

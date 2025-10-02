@@ -194,6 +194,14 @@ import cfnresponse
 dynamodb = boto3.client('dynamodb')
 lambda_client = boto3.client('lambda')
 
+def to_bool(val):
+    """Convert CloudFormation string/bool to Python bool"""
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.lower() in ('true', '1', 'yes')
+    return bool(val)
+
 def handler(event, context):
     print(json.dumps(event))
     request_type = event['RequestType']
@@ -206,8 +214,8 @@ def handler(event, context):
             batch_size = int(event['ResourceProperties'].get('BatchSize', 10))
             retry_attempts = int(event['ResourceProperties'].get('RetryAttempts', 3))
             parallelization_factor = int(event['ResourceProperties'].get('ParallelizationFactor', 1))
-            bisect_batch_on_error = event['ResourceProperties'].get('BisectBatchOnError', False)
-            report_batch_item_failures = event['ResourceProperties'].get('ReportBatchItemFailures', False)
+            bisect_batch_on_error = to_bool(event['ResourceProperties'].get('BisectBatchOnError', False))
+            report_batch_item_failures = to_bool(event['ResourceProperties'].get('ReportBatchItemFailures', False))
 
             # Get stream ARN from table
             response = dynamodb.describe_table(TableName=table_name)
