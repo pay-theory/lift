@@ -3,6 +3,7 @@ package lift
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,6 +51,11 @@ func DefaultConfig() *Config {
 // It allows for functional configuration of the App struct.
 type AppOption func(*App)
 
+type middlewareEntry struct {
+	handler         Middleware
+	appliesToEvents bool
+}
+
 // App represents the main application container.
 // It is the central structure for configuring and running a Lift application.
 // The App struct holds the configuration, middleware, routes, and other application-wide settings.
@@ -77,6 +83,7 @@ type App struct { //nolint:govet // fieldalignment: keep readable order; negligi
 	// Interfaces (16 bytes) first
 	logger  Logger
 	metrics MetricsCollector
+	tracer  any
 	db      any
 
 	// Pointers (8 bytes)
@@ -85,12 +92,18 @@ type App struct { //nolint:govet // fieldalignment: keep readable order; negligi
 	config          *Config
 	adapterRegistry *adapters.AdapterRegistry
 	wsOptions       *WebSocketOptions
+	lifecycleCtx    context.Context
+	lifecycleCancel context.CancelFunc
 
 	// Maps/slices (24 bytes)
 	wsRoutes          map[string]WebSocketHandler
-	middleware        []Middleware
+	middleware        []middlewareEntry
 	preferredAdapters []adapters.TriggerType
 	features          map[string]bool
+	shutdownHooks     []func()
+
+	metricsFactory func(*Config) MetricsCollector
+	tracerFactory  func(*Config) any
 
 	// Sync primitives and small scalars last
 	mu                        sync.RWMutex
@@ -133,7 +146,7 @@ func New(options ...AppOption) *App {
 	app := &App{
 		router:          NewRouter(),
 		eventRouter:     NewEventRouter(),
-		middleware:      make([]Middleware, 0),
+		middleware:      make([]middlewareEntry, 0),
 		config:          DefaultConfig(),
 		adapterRegistry: adapters.NewAdapterRegistry(),
 		features:        make(map[string]bool),
@@ -145,24 +158,145 @@ func New(options ...AppOption) *App {
 		opt(app)
 	}
 
+	app.ensureLifecycleContextLocked()
+
 	return app
 }
 
+func (a *App) ensureLifecycleContextLocked() {
+	if a.lifecycleCtx == nil || a.lifecycleCancel == nil {
+		a.lifecycleCtx, a.lifecycleCancel = context.WithCancel(context.Background())
+	}
+}
+
+// LifecycleContext returns a process-scoped context that is canceled when the
+// application stops. Middleware can use it to manage background goroutines.
+func (a *App) LifecycleContext() context.Context {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.ensureLifecycleContextLocked()
+	return a.lifecycleCtx
+}
+
+// RegisterShutdownHook registers a cleanup hook that executes when the
+// application stops. Hooks run in LIFO order and panics are recovered to avoid
+// interrupting other cleanup tasks.
+func (a *App) RegisterShutdownHook(hook func()) {
+	if hook == nil {
+		return
+	}
+
+	a.mu.Lock()
+	a.shutdownHooks = append(a.shutdownHooks, hook)
+	a.mu.Unlock()
+}
+
+// Stop cancels the lifecycle context and executes registered shutdown hooks.
+// It is safe to call multiple times; subsequent calls become no-ops.
+func (a *App) Stop() {
+	a.mu.Lock()
+	if a.lifecycleCancel == nil && len(a.shutdownHooks) == 0 {
+		a.mu.Unlock()
+		return
+	}
+
+	cancel := a.lifecycleCancel
+	a.lifecycleCancel = nil
+	a.lifecycleCtx = nil
+	hooks := make([]func(), len(a.shutdownHooks))
+	copy(hooks, a.shutdownHooks)
+	a.shutdownHooks = nil
+	a.started = false
+	a.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+
+	for i := len(hooks) - 1; i >= 0; i-- {
+		hook := hooks[i]
+		if hook == nil {
+			continue
+		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					_ = r // ignore panic to allow other shutdown hooks to complete
+				}
+			}()
+			hook()
+		}()
+	}
+}
+
 // Use adds middleware to the application.
-// Middleware is executed in the order it is added (last added runs closest to the handler),
-// and applies to all routes (HTTP and non-HTTP) handled by this App.
-// it is added (last added runs closest to the handler), and applies to all
-// routes (HTTP and non‑HTTP) handled by this App.
+// Middleware is executed in the order it is added (last added runs closest to the handler).
+// By default middleware only runs for HTTP/WebSocket requests; global middleware such as
+// logging/metrics can opt-in to non-HTTP triggers via lift.MarkGlobalMiddleware.
 func (a *App) Use(mw func(Handler) Handler) *App {
-	// Accept generic middleware func type for better interop across packages
-	a.middleware = append(a.middleware, Middleware(mw))
-
-	// Note: Since Middleware is a function type, not an interface,
-	// we'll need to handle response interception detection differently
-	// For now, we'll assume middleware that needs interception will
-	// be wrapped with InterceptingMiddleware
-
+	a.addMiddleware(Middleware(mw), false)
 	return a
+}
+
+type eventScopedMiddleware interface {
+	AppliesToEvents() bool
+}
+
+func (a *App) addMiddleware(mw Middleware, appliesToEvents bool) {
+	if mw == nil {
+		return
+	}
+
+	if scoped, ok := any(mw).(eventScopedMiddleware); ok {
+		appliesToEvents = scoped.AppliesToEvents()
+	}
+
+	if !appliesToEvents {
+		appliesToEvents = middlewareAppliesToEvents(mw)
+	}
+
+	if interceptor, ok := any(mw).(ResponseInterceptor); ok && interceptor.NeedsResponseInterception() {
+		a.hasInterceptingMiddleware = true
+	}
+
+	a.middleware = append(a.middleware, middlewareEntry{
+		handler:         mw,
+		appliesToEvents: appliesToEvents,
+	})
+}
+
+func (a *App) httpMiddlewareChain() []Middleware {
+	chain := make([]Middleware, 0, len(a.middleware))
+	for _, entry := range a.middleware {
+		chain = append(chain, entry.handler)
+	}
+	return chain
+}
+
+func (a *App) eventMiddlewareChain() []Middleware {
+	chain := make([]Middleware, 0, len(a.middleware))
+	for _, entry := range a.middleware {
+		if !entry.appliesToEvents {
+			continue
+		}
+		chain = append(chain, entry.handler)
+	}
+	return chain
+}
+
+func (a *App) ensureTelemetry() {
+	if !a.config.MetricsEnabled {
+		a.metrics = nil
+	} else if a.metrics == nil && a.metricsFactory != nil {
+		a.metrics = a.metricsFactory(a.config)
+	}
+
+	if !a.config.TracingEnabled {
+		a.tracer = nil
+	} else if a.tracer == nil && a.tracerFactory != nil {
+		a.tracer = a.tracerFactory(a.config)
+	}
 }
 
 // GET registers a GET route.
@@ -314,6 +448,12 @@ func (a *App) WithMetrics(metrics MetricsCollector) *App {
 	return a
 }
 
+// WithMetricsFactory registers a factory used to lazily construct a metrics collector when metrics are enabled.
+func (a *App) WithMetricsFactory(factory func(*Config) MetricsCollector) *App {
+	a.metricsFactory = factory
+	return a
+}
+
 // WithDatabase sets the database connection.
 //
 // Parameters:
@@ -323,6 +463,18 @@ func (a *App) WithMetrics(metrics MetricsCollector) *App {
 //   - A pointer to the App
 func (a *App) WithDatabase(db any) *App {
 	a.db = db
+	return a
+}
+
+// WithTracer sets the tracer implementation used by the application when tracing is enabled.
+func (a *App) WithTracer(tracer any) *App {
+	a.tracer = tracer
+	return a
+}
+
+// WithTracerFactory registers a factory used to lazily construct a tracer when tracing is enabled.
+func (a *App) WithTracerFactory(factory func(*Config) any) *App {
+	a.tracerFactory = factory
 	return a
 }
 
@@ -458,8 +610,11 @@ func (a *App) Start() error {
 		return nil
 	}
 
+	a.ensureTelemetry()
+	a.ensureLifecycleContextLocked()
+
 	// Apply global middleware to router
-	a.router.SetMiddleware(a.middleware)
+	a.router.SetMiddleware(a.httpMiddlewareChain())
 
 	a.started = true
 	return nil
@@ -502,6 +657,7 @@ type requestHandlerBuilder struct {
 	liftCtx  *Context
 	request  *Request
 	routeErr error
+	cancel   context.CancelFunc
 }
 
 // newRequestHandlerBuilder creates a new request handler builder.
@@ -536,11 +692,23 @@ func (b *requestHandlerBuilder) build() (any, error) {
 	}
 
 	b.createContext()
+	if err := b.applyRequestGuardrails(); err != nil {
+		return b.app.handleError(b.liftCtx, err)
+	}
 	b.configureContext()
+	defer b.cancelTimeout()
 	b.routeRequest()
 
 	if b.routeErr != nil {
 		return b.app.handleError(b.liftCtx, b.routeErr)
+	}
+
+	if err := b.enforceTenantRequirement(); err != nil {
+		return b.app.handleError(b.liftCtx, err)
+	}
+
+	if err := b.validateResponseGuardrails(); err != nil {
+		return b.app.handleError(b.liftCtx, err)
 	}
 
 	if err := b.liftCtx.FlushResponse(); err != nil {
@@ -577,9 +745,25 @@ func (b *requestHandlerBuilder) createContext() {
 	b.liftCtx = NewContext(b.ctx, b.request)
 }
 
+func (b *requestHandlerBuilder) cancelTimeout() {
+	if b.cancel != nil {
+		b.cancel()
+	}
+}
+
 // configureContext sets up the context with app dependencies.
 // It configures the context with the logger, metrics, and database.
 func (b *requestHandlerBuilder) configureContext() {
+	if timeoutSeconds := b.app.config.Timeout; timeoutSeconds > 0 {
+		timeout := time.Duration(timeoutSeconds) * time.Second
+		ctxWithTimeout, cancel := context.WithTimeout(b.ctx, timeout)
+		b.liftCtx.Context = ctxWithTimeout
+		b.cancel = cancel
+	} else {
+		b.liftCtx.Context = b.ctx
+		b.cancel = nil
+	}
+
 	if b.app.hasInterceptingMiddleware {
 		b.liftCtx.EnableResponseBuffering()
 	}
@@ -590,21 +774,263 @@ func (b *requestHandlerBuilder) configureContext() {
 	if b.app.metrics != nil {
 		b.liftCtx.Metrics = b.app.metrics
 	}
+	if b.app.tracer != nil {
+		b.liftCtx.SetTracer(b.app.tracer)
+	}
 	if b.app.db != nil {
 		b.liftCtx.DB = b.app.db
 	}
 }
 
+func (b *requestHandlerBuilder) applyRequestGuardrails() error {
+	maxSize := b.app.config.MaxRequestSize
+	if maxSize <= 0 || b.request == nil {
+		return nil
+	}
+
+	if bodyLen := int64(len(b.request.Body)); bodyLen > 0 && bodyLen > maxSize {
+		details := map[string]any{
+			"size_bytes":   bodyLen,
+			"limit_bytes":  maxSize,
+			"trigger_type": string(b.request.TriggerType),
+		}
+		return b.guardrailViolation(ErrorCodePayloadTooLarge, 413, "Request body exceeds configured limit", details)
+	}
+
+	switch b.request.TriggerType {
+	case adapters.TriggerSQS:
+		for idx, record := range b.request.Records {
+			recordSize := estimateSQSRecordSize(record)
+			if recordSize > maxSize {
+				details := map[string]any{
+					"size_bytes":   recordSize,
+					"limit_bytes":  maxSize,
+					"record_index": idx,
+					"trigger_type": string(b.request.TriggerType),
+				}
+				return b.guardrailViolation(ErrorCodePayloadTooLarge, 413, "SQS record body exceeds configured limit", details)
+			}
+		}
+	case adapters.TriggerS3:
+		for idx, record := range b.request.Records {
+			recordSize := estimateS3RecordSize(record)
+			if recordSize > maxSize {
+				details := map[string]any{
+					"size_bytes":   recordSize,
+					"limit_bytes":  maxSize,
+					"record_index": idx,
+					"trigger_type": string(b.request.TriggerType),
+				}
+				return b.guardrailViolation(ErrorCodePayloadTooLarge, 413, "S3 object size exceeds configured limit", details)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (b *requestHandlerBuilder) enforceTenantRequirement() error {
+	if !b.app.config.RequireTenantID {
+		return nil
+	}
+
+	tenantID := b.liftCtx.GetTenantID()
+	if tenantID == "" && b.liftCtx.Request != nil {
+		if header := b.liftCtx.Request.GetHeader("X-Tenant-ID"); header != "" {
+			b.liftCtx.SetTenantID(header)
+			tenantID = header
+		}
+	}
+
+	if tenantID != "" {
+		return nil
+	}
+
+	details := map[string]any{
+		"trigger_type": string(b.request.TriggerType),
+	}
+	return b.guardrailViolation(ErrorCodeTenantRequired, 400, "Tenant ID is required", details)
+}
+
+func (b *requestHandlerBuilder) validateResponseGuardrails() error {
+	maxSize := b.app.config.MaxResponseSize
+	if maxSize <= 0 {
+		return nil
+	}
+
+	size, err := b.responsePayloadSize()
+	if err != nil {
+		return err
+	}
+
+	if size > maxSize {
+		details := map[string]any{
+			"size_bytes":   size,
+			"limit_bytes":  maxSize,
+			"trigger_type": string(b.request.TriggerType),
+		}
+		return b.guardrailViolation(ErrorCodePayloadTooLarge, 413, "Response body exceeds configured limit", details)
+	}
+
+	return nil
+}
+
+func (b *requestHandlerBuilder) responsePayloadSize() (int64, error) {
+	if b.liftCtx == nil || b.liftCtx.Response == nil {
+		return 0, nil
+	}
+
+	body := b.liftCtx.Response.Body
+	if body == nil {
+		return 0, nil
+	}
+
+	switch v := body.(type) {
+	case string:
+		return int64(len(v)), nil
+	case []byte:
+		return int64(len(v)), nil
+	default:
+		serialized, err := json.Marshal(v)
+		if err != nil {
+			return 0, NewLiftError(ErrorCodeMarshalError, "Failed to marshal response body", 500).WithCause(err)
+		}
+		return int64(len(serialized)), nil
+	}
+}
+
+func (b *requestHandlerBuilder) guardrailViolation(code string, status int, message string, details map[string]any) *LiftError {
+	b.prepareErrorResponse()
+	if details == nil {
+		details = make(map[string]any)
+	}
+	if _, exists := details["trigger_type"]; !exists && b.request != nil {
+		details["trigger_type"] = string(b.request.TriggerType)
+	}
+
+	if b.app.logger != nil {
+		fields := map[string]any{
+			"code": code,
+		}
+		for k, v := range details {
+			fields[k] = v
+		}
+		b.app.logger.Warn(message, fields)
+	}
+
+	if b.app.metrics != nil {
+		tags := map[string]string{
+			"code": code,
+		}
+		if trigger, ok := details["trigger_type"].(string); ok {
+			tags["trigger_type"] = trigger
+		}
+		b.app.metrics.Counter("lift_guardrail_violation_total", tags).Inc()
+	}
+
+	return NewLiftError(code, message, status).WithDetails(details)
+}
+
+func (b *requestHandlerBuilder) prepareErrorResponse() {
+	if b.liftCtx == nil {
+		return
+	}
+	b.liftCtx.Response = NewResponse()
+	if b.app.hasInterceptingMiddleware {
+		b.liftCtx.EnableResponseBuffering()
+	}
+}
+
+func estimateSQSRecordSize(record any) int64 {
+	recordMap, ok := record.(map[string]any)
+	if !ok {
+		return 0
+	}
+
+	if body, ok := recordMap["body"].(string); ok {
+		return int64(len(body))
+	}
+
+	return 0
+}
+
+func estimateS3RecordSize(record any) int64 {
+	recordMap, ok := record.(map[string]any)
+	if !ok {
+		return 0
+	}
+
+	s3Field, ok := recordMap["s3"].(map[string]any)
+	if !ok {
+		return 0
+	}
+
+	object, ok := s3Field["object"].(map[string]any)
+	if !ok {
+		return 0
+	}
+
+	sizeVal, exists := object["size"]
+	if !exists {
+		return 0
+	}
+
+	switch v := sizeVal.(type) {
+	case float64:
+		return int64(v)
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	case json.Number:
+		if parsed, err := v.Int64(); err == nil {
+			return parsed
+		}
+	}
+
+	return 0
+}
+
 // routeRequest routes the request based on trigger type.
 // It determines the type of request and routes it accordingly.
 func (b *requestHandlerBuilder) routeRequest() {
-	switch {
-	case b.request.TriggerType == adapters.TriggerWebSocket:
-		b.routeWebSocket()
-	case b.isEventTrigger():
-		b.routeEvent()
-	default:
-		b.routeHTTP()
+	err := b.executeWithTimeout(func() error {
+		switch {
+		case b.request.TriggerType == adapters.TriggerWebSocket:
+			return b.routeWebSocket()
+		case b.isEventTrigger():
+			return b.routeEvent()
+		default:
+			return b.routeHTTP()
+		}
+	})
+	if err != nil {
+		b.routeErr = err
+	}
+}
+
+func (b *requestHandlerBuilder) executeWithTimeout(fn func() error) error {
+	if b.app.config.Timeout <= 0 {
+		return fn()
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- fn()
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-b.liftCtx.Done():
+		err := b.liftCtx.Err()
+		if errors.Is(err, context.DeadlineExceeded) {
+			details := map[string]any{
+				"timeout_seconds": b.app.config.Timeout,
+			}
+			return b.guardrailViolation(ErrorCodeTimeout, 504, "Request timed out", details)
+		}
+		return err
 	}
 }
 
@@ -620,22 +1046,20 @@ func (b *requestHandlerBuilder) isEventTrigger() bool {
 
 // routeWebSocket handles WebSocket routing.
 // It routes WebSocket requests to the appropriate handler.
-func (b *requestHandlerBuilder) routeWebSocket() {
+
+func (b *requestHandlerBuilder) routeWebSocket() error {
 	routeKey := b.extractRouteKey()
 	handler := b.app.RouteWebSocket(routeKey)
 
 	if handler == nil {
-		b.routeErr = NewLiftError("WEBSOCKET_ROUTE_NOT_FOUND",
+		return NewLiftError("WEBSOCKET_ROUTE_NOT_FOUND",
 			fmt.Sprintf("No handler for WebSocket route: %s", routeKey), 404)
-		return
 	}
 
 	finalHandler := b.applyMiddleware(handler)
 	finalHandler = b.applyConnectionManagement(finalHandler)
 
-	if err := finalHandler.Handle(b.liftCtx); err != nil {
-		b.routeErr = err
-	}
+	return finalHandler.Handle(b.liftCtx)
 }
 
 // extractRouteKey gets the WebSocket route key from metadata.
@@ -658,8 +1082,9 @@ func (b *requestHandlerBuilder) extractRouteKey() string {
 //   - The wrapped handler
 func (b *requestHandlerBuilder) applyMiddleware(handler Handler) Handler {
 	finalHandler := handler
-	for i := len(b.app.middleware) - 1; i >= 0; i-- {
-		finalHandler = b.app.middleware[i](finalHandler)
+	chain := b.app.httpMiddlewareChain()
+	for i := len(chain) - 1; i >= 0; i-- {
+		finalHandler = chain[i](finalHandler)
 	}
 	return finalHandler
 }
@@ -680,18 +1105,14 @@ func (b *requestHandlerBuilder) applyConnectionManagement(handler Handler) Handl
 
 // routeEvent handles non-HTTP event routing.
 // It routes non-HTTP events to the appropriate handler.
-func (b *requestHandlerBuilder) routeEvent() {
-	if err := b.app.eventRouter.HandleEvent(b.liftCtx); err != nil {
-		b.routeErr = err
-	}
+func (b *requestHandlerBuilder) routeEvent() error {
+	return b.app.eventRouter.HandleEvent(b.liftCtx, b.app.eventMiddlewareChain())
 }
 
 // routeHTTP handles HTTP request routing.
 // It routes HTTP requests to the appropriate handler.
-func (b *requestHandlerBuilder) routeHTTP() {
-	if err := b.app.router.Handle(b.liftCtx); err != nil {
-		b.routeErr = err
-	}
+func (b *requestHandlerBuilder) routeHTTP() error {
+	return b.app.router.Handle(b.liftCtx)
 }
 
 // parseEvent converts a Lambda event to our Request structure.

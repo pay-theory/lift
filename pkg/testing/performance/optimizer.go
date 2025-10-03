@@ -1212,6 +1212,32 @@ func (po *PerformanceOptimizer) OptimizePerformance(ctx context.Context, target 
 		result.Analysis[fmt.Sprintf("analysis_%d", len(result.Analysis))] = analysis
 	}
 
+	// Execute registered optimizers when auto-optimization is enabled
+	if po.config.EnableAutoOptimize {
+		po.mu.RLock()
+		optimizers := append([]Optimizer(nil), po.optimizers...)
+		po.mu.RUnlock()
+
+		if len(optimizers) > 0 {
+			targetMetrics := po.selectOptimizationMetrics(allMetrics)
+			optimizationTarget := OptimizationTarget{
+				Type:      TargetTypeApplication,
+				Component: target,
+				Metrics:   targetMetrics,
+			}
+
+			for _, optimizer := range optimizers {
+				typeID := optimizer.GetOptimizationType()
+				optimization, err := optimizer.Optimize(ctx, optimizationTarget)
+				if err != nil {
+					result.Errors = append(result.Errors, fmt.Sprintf("optimizer %s failed: %v", typeID, err))
+					continue
+				}
+				result.Optimizations[string(typeID)] = optimization
+			}
+		}
+	}
+
 	result.EndTime = time.Now()
 	result.Duration = result.EndTime.Sub(result.StartTime)
 
@@ -1219,6 +1245,21 @@ func (po *PerformanceOptimizer) OptimizePerformance(ctx context.Context, target 
 	result.PerformanceScore = po.calculatePerformanceScore(result)
 
 	return result, nil
+}
+
+func (po *PerformanceOptimizer) selectOptimizationMetrics(metrics []PerformanceMetrics) PerformanceMetrics {
+	if len(metrics) == 0 {
+		return PerformanceMetrics{}
+	}
+
+	selected := metrics[0]
+	for _, metric := range metrics[1:] {
+		if metric.Timestamp.After(selected.Timestamp) {
+			selected = metric
+		}
+	}
+
+	return selected
 }
 
 // calculatePerformanceScore calculates overall performance score

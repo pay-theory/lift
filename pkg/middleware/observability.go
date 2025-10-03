@@ -25,11 +25,11 @@ func ObservabilityMiddleware(config ObservabilityConfig) lift.Middleware {
 	// Create coordinated handler
 	handler := newBasicObservabilityHandler(config)
 
-	return func(next lift.Handler) lift.Handler {
+	return lift.MarkGlobalMiddleware(lift.Middleware(eventAwareMiddleware(func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return handler.handle(ctx, next)
 		})
-	}
+	})))
 }
 
 // setObservabilityMiddlewareDefaults applies default configuration values

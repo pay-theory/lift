@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/stretchr/testify/assert"
@@ -127,6 +128,10 @@ func TestCloudWatchMetrics_MultiTenantDimensions(t *testing.T) {
 	// Create tenant-specific metrics
 	tenant1Metrics := metrics.WithTenant("tenant-1")
 	tenant2Metrics := metrics.WithTenant("tenant-2")
+	defer func() {
+		require.NoError(t, tenant1Metrics.Close())
+		require.NoError(t, tenant2Metrics.Close())
+	}()
 
 	// Record metrics for different tenants
 	tenant1Metrics.RecordCount("api.requests", 10)
@@ -434,4 +439,66 @@ func TestCloudWatchMetrics_Performance(t *testing.T) {
 	perMetric := duration / 1000
 	t.Logf("Time per metric: %v", perMetric)
 	assert.Less(t, perMetric, 1*time.Millisecond)
+}
+
+func TestCloudWatchMetrics_UserAndTenantDimensions(t *testing.T) {
+	client := NewMockCloudWatchMetricsClient()
+	metrics := NewCloudWatchMetrics(client, CloudWatchMetricsConfig{Namespace: "TestNamespace", FlushInterval: time.Hour})
+	defer func() {
+		require.NoError(t, metrics.Close())
+	}()
+
+	collector := metrics.WithTags(map[string]string{
+		"tenant_id": "tenant-42",
+		"user_id":   "user-99",
+	})
+	defer func() {
+		require.NoError(t, collector.Close())
+	}()
+
+	collector.Counter("api.requests").Add(1)
+	require.NoError(t, metrics.Flush())
+
+	calls := client.GetPutMetricDataCalls()
+	require.Len(t, calls, 1)
+	require.NotEmpty(t, calls[0].MetricData)
+
+	dims := calls[0].MetricData[0].Dimensions
+	assertDimension(t, dims, "TenantID", "tenant-42")
+	assertDimension(t, dims, "UserID", "user-99")
+}
+
+func TestCloudWatchMetrics_CloseDerivedBeforeRoot(t *testing.T) {
+	client := NewMockCloudWatchMetricsClient()
+	metrics := NewCloudWatchMetrics(client, CloudWatchMetricsConfig{Namespace: "TestNamespace", FlushInterval: time.Second})
+	childA := metrics.WithTags(map[string]string{"env": "test"})
+	childB := metrics.WithTags(map[string]string{"service": "api"})
+	require.NoError(t, childA.Close())
+	require.NoError(t, childB.Close())
+	require.NoError(t, metrics.Close())
+}
+
+func TestCloudWatchMetrics_CloseRootBeforeDerived(t *testing.T) {
+	client := NewMockCloudWatchMetricsClient()
+	metrics := NewCloudWatchMetrics(client, CloudWatchMetricsConfig{Namespace: "TestNamespace", FlushInterval: time.Second})
+	child := metrics.WithTags(map[string]string{"env": "test"})
+	require.NoError(t, metrics.Close())
+	require.NoError(t, child.Close())
+}
+
+func TestCloudWatchMetrics_CloseIdempotent(t *testing.T) {
+	client := NewMockCloudWatchMetricsClient()
+	metrics := NewCloudWatchMetrics(client, CloudWatchMetricsConfig{Namespace: "TestNamespace", FlushInterval: time.Second})
+	require.NoError(t, metrics.Close())
+	require.NoError(t, metrics.Close())
+}
+
+func assertDimension(t *testing.T, dims []types.Dimension, name, value string) {
+	t.Helper()
+	for _, dim := range dims {
+		if aws.ToString(dim.Name) == name && aws.ToString(dim.Value) == value {
+			return
+		}
+	}
+	t.Fatalf("dimension %s=%s not found", name, value)
 }

@@ -27,6 +27,7 @@
 //	    lift.WithConfig(&lift.Config{LogLevel: "DEBUG"}),
 //	    lift.WithLogger(myLogger),
 //	)
+//	defer app.Stop()
 //
 //	// Add middleware
 //	app.Use(middleware.RequestID())
@@ -64,8 +65,9 @@
 //	func New(options ...AppOption) *App
 //
 //	// Use adds middleware to the application.
-//	// Middleware is executed in the order it is added (last added runs closest to the handler),
-//	// and applies to all routes (HTTP and non-HTTP) handled by this App.
+//	// Middleware is executed in the order it is added (last added runs closest to the handler).
+//	// By default middleware applies to HTTP/WebSocket routes; call lift.MarkGlobalMiddleware to
+//	// opt into non-HTTP triggers such as SQS or S3.
 //	// Parameters:
 //	//   - mw: The middleware function
 //	// Returns:
@@ -168,6 +170,10 @@
 //	// Returns:
 //	//   - An error if the application is already started
 //	func (a *App) Start() error
+//
+//	// Stop gracefully shuts down background components and cancels the
+//	// application lifecycle context. It is safe to call multiple times.
+//	func (a *App) Stop()
 //
 //	// IsLambda returns true if the code is running in an AWS Lambda environment.
 //	// Returns:

@@ -849,6 +849,35 @@ app.Use(middleware.Metrics())
 // - errors_total (counter with method label)
 ```
 
+#### `middleware.EnhancedObservabilityMiddleware(config middleware.EnhancedObservabilityConfig)`
+
+**Purpose:** Unified logging, metrics, and tracing with tenant/user context  
+**When to use:** Production services that need correlated telemetry  
+**Highlights:**
+- Automatically adds `tenant_id` and `user_id` dimensions to metrics and X-Ray annotations
+- Override identity extraction with `TenantIDFunc`/`UserIDFunc`
+- Control overhead with probabilistic sampling (`SampleRate`, optional `Sampler`), or disable it entirely with `DisableSampling`
+
+```go
+app.Use(middleware.EnhancedObservabilityMiddleware(middleware.EnhancedObservabilityConfig{
+    EnableLogging: true,
+    EnableMetrics: true,
+    EnableTracing: true,
+    DefaultTags: map[string]string{"service": "payments"},
+    TenantIDFunc: func(ctx *lift.Context) string {
+        return ctx.Header("X-Tenant-ID")
+    },
+    UserIDFunc: func(ctx *lift.Context) string {
+        return ctx.UserID()
+    },
+    SampleRate: 0.25, // observe 25% of requests end-to-end (set to 1.0 for full capture, 0 to disable)
+    // DisableSampling: true, // uncomment to short-circuit logging/metrics/tracing
+}))
+
+// In tests you can supply a deterministic sampler:
+//   config.Sampler = func() float64 { return 0.0 } // always sampled
+```
+
 #### `middleware.ErrorHandler()`
 
 **Purpose:** Convert errors to appropriate HTTP responses  

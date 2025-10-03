@@ -6,6 +6,8 @@
 package constructs
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2integrations"
@@ -56,9 +58,10 @@ type RequestValidator struct {
 // API-specific features.
 type LiftAPI struct {
 	constructs.Construct
-	HttpAPI  awsapigatewayv2.HttpApi
-	Stage    awsapigatewayv2.IHttpStage
-	LogGroup awslogs.ILogGroup
+	HttpAPI   awsapigatewayv2.HttpApi
+	Stage     awsapigatewayv2.IHttpStage
+	LogGroup  awslogs.ILogGroup
+	stageName string
 }
 
 // GetResourceName returns the API name.
@@ -102,6 +105,7 @@ func NewLiftAPI(scope constructs.Construct, id *string, props *LiftAPIProps) *Li
 type liftAPIBuilder struct {
 	construct constructs.Construct
 	props     *LiftAPIProps
+	stageName string
 }
 
 // newLiftAPIBuilder creates a new Lift API builder.
@@ -149,6 +153,7 @@ func (b *liftAPIBuilder) build() *LiftAPI {
 		HttpAPI:   httpApi,
 		Stage:     stage,
 		LogGroup:  logGroup,
+		stageName: b.stageName,
 	}
 }
 
@@ -241,7 +246,7 @@ func (b *liftAPIBuilder) createCORSConfig() *awsapigatewayv2.CorsPreflightOption
 // Returns:
 //   - A configured HttpStage instance
 func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup awslogs.ILogGroup) awsapigatewayv2.IHttpStage {
-	stageName := "$default"
+	stageName := defaultRoute
 	if b.props.StageName != nil {
 		stageName = *b.props.StageName
 	}
@@ -249,6 +254,7 @@ func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup a
 	// Always create a custom stage since we disabled CreateDefaultStage in the API
 	// This ensures we have full control over stage configuration (logging, throttling, metrics)
 	stage := b.createCustomStage(httpApi, stageName)
+	b.stageName = stageName
 
 	// Configure access logging
 	b.configureAccessLogging(stage, logGroup)
@@ -270,7 +276,7 @@ func (b *liftAPIBuilder) createStage(httpApi awsapigatewayv2.HttpApi, logGroup a
 // Returns:
 //   - true if a custom stage is needed, false otherwise
 func (b *liftAPIBuilder) needsCustomStage(stageName string) bool {
-	return stageName != "$default" ||
+	return stageName != defaultRoute ||
 		b.props.ThrottleRateLimit != nil ||
 		b.props.ThrottleBurstLimit != nil ||
 		(b.props.EnableAccessLogging != nil && *b.props.EnableAccessLogging) ||
@@ -504,8 +510,22 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 // Returns:
 //   - The API URL as a string pointer
 func (api *LiftAPI) GetUrl() *string {
-	// Always use the stage URL since Lift creates a custom stage
-	return api.Stage.Url()
+	if api.Stage != nil {
+		if stageURL := api.Stage.Url(); stageURL != nil {
+			return stageURL
+		}
+	}
+
+	endpoint := api.HttpAPI.ApiEndpoint()
+	if endpoint == nil {
+		return nil
+	}
+
+	if api.stageName == "" || api.stageName == "$default" {
+		return endpoint
+	}
+
+	return jsii.String(fmt.Sprintf("%s/%s", *endpoint, api.stageName))
 }
 
 // GetArn returns the ARN of the API.

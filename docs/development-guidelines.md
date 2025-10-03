@@ -125,6 +125,7 @@ func BenchmarkCriticalPath(b *testing.B) {
 - Enable security features by default
 - Require explicit opt-out for security features
 - Document security implications of configuration options
+- Require non-empty data protection encryption keys; initialization fails fast when missing
 
 ## Development Workflow
 
@@ -139,6 +140,7 @@ func BenchmarkCriticalPath(b *testing.B) {
 - Use consistent naming conventions
 - Follow Go idioms and best practices
 - Run `go fmt` and `go vet` before committing
+- Tie middleware background workers to the app lifecycle (e.g., wrap load shedding config with `middleware.ConfigureLoadSheddingForApp(app, cfg)`)
 
 ### 3. Documentation
 - Document all exported types and functions

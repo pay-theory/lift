@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/rand"
@@ -38,29 +39,51 @@ const (
 
 // LoadSheddingConfig holds configuration for load shedding
 type LoadSheddingConfig struct {
-	Metrics            observability.MetricsCollector         `json:"-"`
-	Logger             observability.StructuredLogger         `json:"-"`
-	SheddingHandler    func(*lift.Context) error              `json:"-"`
-	CustomShedder      func(*lift.Context, *LoadMetrics) bool `json:"-"`
-	PriorityThresholds map[int]float64                        `json:"priority_thresholds"`
-	PriorityExtractor  func(*lift.Context) int                `json:"-"`
-	Strategy           LoadSheddingStrategy                   `json:"strategy"`
-	Name               string                                 `json:"name"`
-	SheddingMessage    string                                 `json:"shedding_message"`
-	AdaptationRate     float64                                `json:"adaptation_rate"`
-	ErrorRateThreshold float64                                `json:"error_rate_threshold"`
-	MinSheddingRate    float64                                `json:"min_shedding_rate"`
-	MaxSheddingRate    float64                                `json:"max_shedding_rate"`
-	TargetLatency      time.Duration                          `json:"target_latency"`
-	MetricsWindow      time.Duration                          `json:"metrics_window"`
-	SamplingRate       float64                                `json:"sampling_rate"`
-	SheddingRate       float64                                `json:"shedding_rate"`
-	SheddingStatusCode int                                    `json:"shedding_status_code"`
-	LatencyThreshold   time.Duration                          `json:"latency_threshold"`
-	MemoryThreshold    float64                                `json:"memory_threshold"`
-	CPUThreshold       float64                                `json:"cpu_threshold"`
-	EnableMetrics      bool                                   `json:"enable_metrics"`
-	Enabled            bool                                   `json:"enabled"`
+	Metrics                  observability.MetricsCollector         `json:"-"`
+	Logger                   observability.StructuredLogger         `json:"-"`
+	SheddingHandler          func(*lift.Context) error              `json:"-"`
+	CustomShedder            func(*lift.Context, *LoadMetrics) bool `json:"-"`
+	PriorityExtractor        func(*lift.Context) int                `json:"-"`
+	LifecycleContext         context.Context                        `json:"-"`
+	RegisterStop             func(func())                           `json:"-"`
+	PriorityThresholds       map[int]float64                        `json:"priority_thresholds"`
+	Strategy                 LoadSheddingStrategy                   `json:"strategy"`
+	Name                     string                                 `json:"name"`
+	SheddingMessage          string                                 `json:"shedding_message"`
+	TargetLatency            time.Duration                          `json:"target_latency"`
+	MetricsWindow            time.Duration                          `json:"metrics_window"`
+	MetricsCollectorInterval time.Duration                          `json:"-"`
+	LatencyThreshold         time.Duration                          `json:"latency_threshold"`
+	AdaptationRate           float64                                `json:"adaptation_rate"`
+	ErrorRateThreshold       float64                                `json:"error_rate_threshold"`
+	MinSheddingRate          float64                                `json:"min_shedding_rate"`
+	MaxSheddingRate          float64                                `json:"max_shedding_rate"`
+	SamplingRate             float64                                `json:"sampling_rate"`
+	SheddingRate             float64                                `json:"shedding_rate"`
+	MemoryThreshold          float64                                `json:"memory_threshold"`
+	CPUThreshold             float64                                `json:"cpu_threshold"`
+	SheddingStatusCode       int                                    `json:"shedding_status_code"`
+	EnableMetrics            bool                                   `json:"enable_metrics"`
+	Enabled                  bool                                   `json:"enabled"`
+}
+
+// ConfigureLoadSheddingForApp wires lifecycle management into the provided
+// LoadSheddingConfig using the application's lifecycle context and shutdown
+// hooks when they have not already been supplied.
+func ConfigureLoadSheddingForApp(app *lift.App, config LoadSheddingConfig) LoadSheddingConfig {
+	if app == nil {
+		return config
+	}
+
+	if config.LifecycleContext == nil {
+		config.LifecycleContext = app.LifecycleContext()
+	}
+
+	if config.RegisterStop == nil {
+		config.RegisterStop = app.RegisterShutdownHook
+	}
+
+	return config
 }
 
 // LoadMetrics provides real-time system and application metrics
@@ -100,8 +123,10 @@ func LoadSheddingMiddleware(config LoadSheddingConfig) lift.Middleware {
 
 	manager := newLoadSheddingManager(config)
 
-	// Start background metrics collection
-	go manager.metricsCollector()
+	manager.startMetricsCollector(config.LifecycleContext)
+	if config.RegisterStop != nil {
+		config.RegisterStop(manager.Stop)
+	}
 
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
@@ -204,17 +229,49 @@ func (b *loadSheddingDefaultsBuilder) applyFunctionDefaults() {
 
 // newLoadSheddingManager creates a new load shedding manager
 func newLoadSheddingManager(config LoadSheddingConfig) *loadSheddingManager {
+	cfg := config
 	return &loadSheddingManager{
-		config:         config,
+		config:         &cfg,
 		metrics:        &LoadMetrics{LastUpdated: time.Now(), WindowStart: time.Now()},
-		latencyHistory: make([]time.Duration, 0, 1000),
-		requestHistory: make([]loadRequestRecord, 0, 10000),
+		latencyHistory: &latencyHistory{values: make([]time.Duration, 0, 1000)},
 		stats: &LoadSheddingStats{
-			Name:     config.Name,
-			Strategy: config.Strategy,
-			Enabled:  config.Enabled,
+			Name:     cfg.Name,
+			Strategy: cfg.Strategy,
+			Enabled:  cfg.Enabled,
 		},
+		stopCh: make(chan struct{}),
 	}
+}
+
+func (lsm *loadSheddingManager) startMetricsCollector(ctx context.Context) {
+	if !lsm.config.EnableMetrics || lsm.config.Metrics == nil {
+		return
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	lsm.wg.Add(1)
+	go func() {
+		defer lsm.wg.Done()
+		lsm.metricsCollector(ctx)
+	}()
+}
+
+func (lsm *loadSheddingManager) metricsCollectorInterval() time.Duration {
+	if lsm.config.MetricsCollectorInterval > 0 {
+		return lsm.config.MetricsCollectorInterval
+	}
+	return time.Second
+}
+
+// Stop terminates background processing started by the load shedding manager.
+func (lsm *loadSheddingManager) Stop() {
+	lsm.stopOnce.Do(func() {
+		close(lsm.stopCh)
+	})
+	lsm.wg.Wait()
 }
 
 // handleRequest processes a single request with load shedding logic
@@ -338,18 +395,19 @@ func (h *loadSheddingHandler) recordRequestMetrics(duration time.Duration, err e
 
 // loadSheddingManager manages load shedding logic and metrics
 type loadSheddingManager struct {
+	config         *LoadSheddingConfig
+	latencyHistory *latencyHistory
 	metrics        *LoadMetrics
 	stats          *LoadSheddingStats
-	latencyHistory []time.Duration
-	requestHistory []loadRequestRecord
-	config         LoadSheddingConfig
-	errorCount     int64
+	stopCh         chan struct{}
+	wg             sync.WaitGroup
 	mutex          sync.RWMutex
+	stopOnce       sync.Once
+	errorCount     int64
 }
 
-// loadRequestRecord tracks individual request metrics for load shedding
-type loadRequestRecord struct {
-	// Reserved for future implementation of request tracking
+type latencyHistory struct {
+	values []time.Duration
 }
 
 // shouldShedRequest determines if a request should be shed
@@ -498,11 +556,11 @@ func (lsm *loadSheddingManager) recordLatency(duration time.Duration) {
 	defer lsm.mutex.Unlock()
 
 	// Add to history
-	lsm.latencyHistory = append(lsm.latencyHistory, duration)
+	lsm.latencyHistory.values = append(lsm.latencyHistory.values, duration)
 
 	// Keep only recent history
-	if len(lsm.latencyHistory) > 1000 {
-		lsm.latencyHistory = lsm.latencyHistory[len(lsm.latencyHistory)-1000:]
+	if len(lsm.latencyHistory.values) > 1000 {
+		lsm.latencyHistory.values = lsm.latencyHistory.values[len(lsm.latencyHistory.values)-1000:]
 	}
 
 	// Update metrics
@@ -516,21 +574,21 @@ func (lsm *loadSheddingManager) recordError() {
 
 // updateLatencyMetrics calculates latency percentiles
 func (lsm *loadSheddingManager) updateLatencyMetrics() {
-	if len(lsm.latencyHistory) == 0 {
+	if len(lsm.latencyHistory.values) == 0 {
 		return
 	}
 
 	// Calculate average
 	var total time.Duration
-	for _, duration := range lsm.latencyHistory {
+	for _, duration := range lsm.latencyHistory.values {
 		total += duration
 	}
-	lsm.metrics.AverageLatency = total / time.Duration(len(lsm.latencyHistory))
+	lsm.metrics.AverageLatency = total / time.Duration(len(lsm.latencyHistory.values))
 
 	// Calculate percentiles (simplified)
-	if len(lsm.latencyHistory) >= 20 {
-		sorted := make([]time.Duration, len(lsm.latencyHistory))
-		copy(sorted, lsm.latencyHistory)
+	if len(lsm.latencyHistory.values) >= 20 {
+		sorted := make([]time.Duration, len(lsm.latencyHistory.values))
+		copy(sorted, lsm.latencyHistory.values)
 
 		// Simple sort for percentiles
 		for i := 0; i < len(sorted); i++ {
@@ -550,12 +608,19 @@ func (lsm *loadSheddingManager) updateLatencyMetrics() {
 }
 
 // metricsCollector runs in background to collect system metrics
-func (lsm *loadSheddingManager) metricsCollector() {
-	ticker := time.NewTicker(time.Second)
+func (lsm *loadSheddingManager) metricsCollector(ctx context.Context) {
+	ticker := time.NewTicker(lsm.metricsCollectorInterval())
 	defer ticker.Stop()
 
-	for range ticker.C {
-		lsm.updateMetrics()
+	for {
+		select {
+		case <-ticker.C:
+			lsm.updateMetrics()
+		case <-ctx.Done():
+			return
+		case <-lsm.stopCh:
+			return
+		}
 	}
 }
 

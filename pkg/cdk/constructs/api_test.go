@@ -313,6 +313,21 @@ func TestLiftAPI_GetUrl(t *testing.T) {
 	assert.NotEmpty(t, urlStr)
 }
 
+func TestLiftAPI_GetUrl_CustomStage(t *testing.T) {
+	stack := test.NewTestStack()
+
+	api := NewLiftAPI(stack.Stack(), jsii.String("CustomStageAPI"), &LiftAPIProps{
+		APICommonProps: APICommonProps{
+			Name:      jsii.String("custom-stage-api"),
+			StageName: jsii.String("prod"),
+		},
+	})
+
+	url := api.GetUrl()
+	require.NotNil(t, url)
+	require.Contains(t, *url, "prod")
+}
+
 func TestLiftAPI_GetArn(t *testing.T) {
 	// Create test stack
 	stack := test.NewTestStack()

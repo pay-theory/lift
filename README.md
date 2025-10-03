@@ -41,7 +41,8 @@ type UserResponse struct {
 
 func main() {
     app := lift.New()
-    
+    defer app.Stop()
+
     // Configure the app
     config := &lift.Config{
         MaxRequestSize: 5 * 1024 * 1024, // 5MB
@@ -54,6 +55,10 @@ func main() {
     app.Use(middleware.RequestID())    // Distributed tracing
     app.Use(middleware.Logger())       // Structured logging
     app.Use(middleware.Recover())      // Panic recovery
+
+    // Attach load shedding with automatic lifecycle management
+    loadConfig := middleware.ConfigureLoadSheddingForApp(app, middleware.NewBasicLoadShedding("api"))
+    app.Use(middleware.LoadSheddingMiddleware(loadConfig))
     
     // Type-safe handler - recommended over raw handlers
     app.POST("/users", lift.SimpleHandler(func(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
@@ -403,6 +408,9 @@ func GetUser(ctx *lift.Context) error {
 ```
 
 ### With SQS Events
+> Lift automatically runs logging and metrics middleware for all event sources. Authentication and
+> other HTTP-specific middleware do **not** execute for SQS/S3/EventBridge handlers unless you
+> explicitly wrap them yourself.
 ```go
 // Batch processing with error handling
 app.SQS("process-orders", func(ctx *lift.Context) error {
@@ -816,6 +824,17 @@ func SecureHandler(ctx *lift.Context) error {
     // Claims are validated and available
 }
 ```
+
+### Data Protection Keys
+- The `security.DataProtectionConfig` now validates that `EncryptionKey` is non-empty.
+- Store the key securely (for example, in AWS Secrets Manager) and inject it at startup:
+  ```go
+  dataProtectionConfig := security.DataProtectionConfig{
+      EncryptionKey: os.Getenv("DATA_PROTECTION_KEY"), // must be non-empty
+      DefaultClassification: security.DataInternal,
+  }
+  ```
+- Leaving the key blank results in an initialization error to prevent accidentally shipping unencrypted payloads.
 
 ## Testing Support
 

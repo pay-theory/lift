@@ -23,6 +23,8 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"github.com/aws/aws-lambda-go/events"
 )
 
 // Validator interface for request validation
@@ -58,6 +60,7 @@ type Context struct {
 	Response       *Response
 	Logger         Logger
 	Metrics        MetricsCollector
+	Tracer         any
 	validator      Validator
 	params         map[string]string
 	values         map[string]any
@@ -75,6 +78,11 @@ type Context struct {
 	isAuthenticated  bool
 	bufferingEnabled bool
 }
+
+const (
+	cacheKeySQSRecords = "__lift_sqs_records"
+	cacheKeyS3Records  = "__lift_s3_records"
+)
 
 // NewContext creates a new enhanced context for handling a request.
 //
@@ -189,6 +197,84 @@ func (c *Context) Get(key string) any {
 		return nil
 	}
 	return c.values[key]
+}
+
+// SetTracer assigns the tracer implementation to the context.
+func (c *Context) SetTracer(tracer any) {
+	c.Tracer = tracer
+	c.Set("tracer", tracer)
+}
+
+// GetTracer returns the tracer associated with the context.
+func (c *Context) GetTracer() any {
+	if c.Tracer != nil {
+		return c.Tracer
+	}
+	return c.Get("tracer")
+}
+
+// SQSRecords returns the typed AWS SQS event records if present on the request.
+// The result is cached after the first call to avoid repeated decoding.
+func (c *Context) SQSRecords() ([]events.SQSMessage, error) {
+	if cached := c.Get(cacheKeySQSRecords); cached != nil {
+		if records, ok := cached.([]events.SQSMessage); ok {
+			return records, nil
+		}
+	}
+
+	var event events.SQSEvent
+	decoded, err := c.decodeEventRecords(&event)
+	if err != nil {
+		return nil, err
+	}
+	if !decoded || len(event.Records) == 0 {
+		return nil, nil
+	}
+
+	c.Set(cacheKeySQSRecords, event.Records)
+	return event.Records, nil
+}
+
+// S3Records returns the typed AWS S3 event records if present on the request.
+// The result is cached after the first call to avoid repeated decoding.
+func (c *Context) S3Records() ([]events.S3EventRecord, error) {
+	if cached := c.Get(cacheKeyS3Records); cached != nil {
+		if records, ok := cached.([]events.S3EventRecord); ok {
+			return records, nil
+		}
+	}
+
+	var event events.S3Event
+	decoded, err := c.decodeEventRecords(&event)
+	if err != nil {
+		return nil, err
+	}
+	if !decoded || len(event.Records) == 0 {
+		return nil, nil
+	}
+
+	c.Set(cacheKeyS3Records, event.Records)
+	return event.Records, nil
+}
+
+// decodeEventRecords populates the provided event struct with the request records.
+// Returns false when no records are available on the current request.
+func (c *Context) decodeEventRecords(target any) (bool, error) {
+	if c.Request == nil || len(c.Request.Records) == 0 {
+		return false, nil
+	}
+
+	payload := map[string]any{"Records": c.Request.Records}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return false, err
+	}
+
+	if err := json.Unmarshal(raw, target); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // UserID retrieves the current user ID from the context.
@@ -375,12 +461,32 @@ func (c *Context) Status(code int) *Context {
 //	    return err
 //	}
 func (c *Context) ParseRequest(v any) error {
-	if c.Request == nil || len(c.Request.Body) == 0 {
+	if c.Request == nil {
 		return NewLiftError("EMPTY_BODY", "Request body is empty", 400)
 	}
 
+	body := c.Request.Body
+	if len(body) == 0 {
+		switch {
+		case len(c.Request.Records) > 0:
+			encoded, err := json.Marshal(c.Request.Records)
+			if err != nil {
+				return NewLiftError("INVALID_JSON", "Failed to encode event records", 400).WithCause(err)
+			}
+			body = encoded
+		case c.Request.RawEvent != nil:
+			encoded, err := json.Marshal(c.Request.RawEvent)
+			if err != nil {
+				return NewLiftError("INVALID_JSON", "Failed to encode raw event", 400).WithCause(err)
+			}
+			body = encoded
+		default:
+			return NewLiftError("EMPTY_BODY", "Request body is empty", 400)
+		}
+	}
+
 	// Parse JSON
-	if err := json.Unmarshal(c.Request.Body, v); err != nil {
+	if err := json.Unmarshal(body, v); err != nil {
 		return NewLiftError("INVALID_JSON", "Invalid JSON in request body", 400).WithCause(err)
 	}
 

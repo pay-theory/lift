@@ -27,6 +27,7 @@ func TestCompleteMiddlewareStack(t *testing.T) {
 		EnableTracing: false, // Skip X-Ray for unit tests
 		Logger:        logger,
 		Metrics:       metrics,
+		SampleRate:    1.0,
 	}
 
 	circuitBreakerConfig := NewBasicCircuitBreaker("integration-test")
@@ -204,6 +205,7 @@ func BenchmarkCompleteMiddlewareStack(b *testing.B) {
 		EnableTracing: false, // Skip X-Ray for benchmarks
 		Logger:        logger,
 		Metrics:       metrics,
+		SampleRate:    1.0,
 	}
 
 	circuitBreakerConfig := NewBasicCircuitBreaker("benchmark-test")

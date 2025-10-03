@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const defaultAnalysisInterval = 5 * time.Minute
+
 // PerformanceAnalyticsEngine provides advanced performance analytics
 type PerformanceAnalyticsEngine struct {
 	dataStore       AnalyticsDataStore
@@ -20,6 +22,7 @@ type PerformanceAnalyticsEngine struct {
 	config          PerformanceAnalyticsConfig
 	mu              sync.RWMutex
 	running         bool
+	stopOnce        sync.Once
 }
 
 // PerformanceAnalyticsConfig configures the performance analytics engine
@@ -516,10 +519,27 @@ type CorrelationMatrix struct {
 
 // NewPerformanceAnalyticsEngine creates a new performance analytics engine
 func NewPerformanceAnalyticsEngine(config PerformanceAnalyticsConfig) *PerformanceAnalyticsEngine {
-	return &PerformanceAnalyticsEngine{
+	engine := &PerformanceAnalyticsEngine{
 		config: config,
-		stopCh: make(chan struct{}),
 	}
+	engine.resetStopChannelLocked()
+	return engine
+}
+
+func normalizePerformanceAnalyticsConfig(config PerformanceAnalyticsConfig) (PerformanceAnalyticsConfig, error) {
+	if config.DataRetentionDays < 0 {
+		return config, fmt.Errorf("data retention days must be non-negative")
+	}
+
+	if config.AnalysisInterval < 0 {
+		return config, fmt.Errorf("analysis interval must be greater than zero")
+	}
+
+	if config.AnalysisInterval == 0 {
+		config.AnalysisInterval = defaultAnalysisInterval
+	}
+
+	return config, nil
 }
 
 // Start starts the performance analytics engine
@@ -535,6 +555,12 @@ func (pae *PerformanceAnalyticsEngine) Start(ctx context.Context) error {
 		return fmt.Errorf("performance analytics engine not enabled")
 	}
 
+	normalizedConfig, err := normalizePerformanceAnalyticsConfig(pae.config)
+	if err != nil {
+		return err
+	}
+	pae.config = normalizedConfig
+	pae.resetStopChannelLocked()
 	pae.running = true
 
 	// Start background analysis
@@ -553,10 +579,17 @@ func (pae *PerformanceAnalyticsEngine) Stop() error {
 		return nil
 	}
 
-	close(pae.stopCh)
+	pae.stopOnce.Do(func() {
+		close(pae.stopCh)
+	})
 	pae.running = false
 
 	return nil
+}
+
+func (pae *PerformanceAnalyticsEngine) resetStopChannelLocked() {
+	pae.stopCh = make(chan struct{})
+	pae.stopOnce = sync.Once{}
 }
 
 // AnalyzePerformance performs comprehensive performance analysis

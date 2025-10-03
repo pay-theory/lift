@@ -471,14 +471,27 @@ func (er *EventRouter) matchScheduledEventPattern(ctx *Context, pattern string) 
 	return ruleName == pattern
 }
 
-// HandleEvent routes an event to the appropriate handler
-func (er *EventRouter) HandleEvent(ctx *Context) error {
+// HandleEvent routes an event to the appropriate handler and applies the provided middleware chain.
+func (er *EventRouter) HandleEvent(ctx *Context, middlewareChain []Middleware) error {
 	handler, err := er.FindEventHandler(ctx)
 	if err != nil {
 		return err
 	}
 
-	return handler.HandleEvent(ctx)
+	finalHandler := Handler(eventHandlerAdapter{handler: handler})
+	for i := len(middlewareChain) - 1; i >= 0; i-- {
+		finalHandler = middlewareChain[i](finalHandler)
+	}
+
+	return finalHandler.Handle(ctx)
+}
+
+type eventHandlerAdapter struct {
+	handler EventHandler
+}
+
+func (a eventHandlerAdapter) Handle(ctx *Context) error {
+	return a.handler.HandleEvent(ctx)
 }
 
 // GetRoutes returns all routes for debugging/inspection
