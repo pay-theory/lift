@@ -1,17 +1,35 @@
 package performance
 
 import (
+	"context"
 	"math"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
-func TestConnectionPool_MaxConnectionsEnforced(t *testing.T) {
-	pool := &ConnectionPool{
-		config: &ConnectionPoolConfig{MaxConnections: 2},
+func newTestPool(cfg *ConnectionPoolConfig, buffer int) *ConnectionPool {
+	if cfg == nil {
+		cfg = &ConnectionPoolConfig{}
 	}
+
+	state := &poolState{
+		mu: &sync.RWMutex{},
+		resources: &poolResources{
+			ctx:     context.Background(),
+			config:  cfg,
+			clients: make(chan *dynamodb.Client, buffer),
+		},
+		metrics: &PoolMetrics{},
+	}
+
+	return &ConnectionPool{state: state}
+}
+
+func TestConnectionPool_MaxConnectionsEnforced(t *testing.T) {
+	pool := newTestPool(&ConnectionPoolConfig{MaxConnections: 2}, 0)
 
 	if !pool.reserveConnectionSlot() {
 		t.Fatal("expected first slot reservation to succeed")
@@ -30,10 +48,7 @@ func TestConnectionPool_MaxConnectionsEnforced(t *testing.T) {
 }
 
 func TestConnectionPool_PoolStatsNoDivisionByZero(t *testing.T) {
-	pool := &ConnectionPool{
-		config:  &ConnectionPoolConfig{MaxConnections: 5},
-		metrics: &PoolMetrics{},
-	}
+	pool := newTestPool(&ConnectionPoolConfig{MaxConnections: 5}, 0)
 
 	stats := pool.PoolStats()
 	successRate, ok := stats["success_rate"].(float64)
@@ -56,11 +71,8 @@ func TestConnectionPool_PoolStatsNoDivisionByZero(t *testing.T) {
 }
 
 func TestConnectionPool_PoolStatsSaturated(t *testing.T) {
-	pool := &ConnectionPool{
-		config:           &ConnectionPoolConfig{MaxConnections: 2},
-		metrics:          &PoolMetrics{},
-		totalConnections: 2,
-	}
+	pool := newTestPool(&ConnectionPoolConfig{MaxConnections: 2}, 0)
+	pool.state.totalConnections = 2
 
 	stats := pool.PoolStats()
 	utilization, ok := stats["pool_utilization"].(float64)
@@ -74,15 +86,11 @@ func TestConnectionPool_PoolStatsSaturated(t *testing.T) {
 }
 
 func TestConnectionPool_CloseDoesNotDeadlock(t *testing.T) {
-	pool := &ConnectionPool{
-		config:  &ConnectionPoolConfig{MaxConnections: 2},
-		clients: make(chan *dynamodb.Client, 2),
-		metrics: &PoolMetrics{},
-		cancel:  func() {},
-	}
+	pool := newTestPool(&ConnectionPoolConfig{MaxConnections: 2}, 2)
+	pool.state.resources.cancel = func() {}
 
-	pool.clients <- &dynamodb.Client{}
-	pool.totalConnections = 1
+	pool.state.resources.clients <- &dynamodb.Client{}
+	pool.state.totalConnections = 1
 
 	done := make(chan struct{})
 	go func() {
