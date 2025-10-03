@@ -9,9 +9,10 @@
 Use Lift when you need:
 - ✅ Production-ready Lambda functions with minimal cold start overhead
 - ✅ Type-safe handlers with compile-time validation
-- ✅ Built-in error handling, logging, and distributed tracing
+- ✅ Guardrails for request size, response size, and execution timeout baked into the runtime
+- ✅ Built-in error handling, logging, metrics, and distributed tracing
 - ✅ Multi-tenant support with automatic tenant isolation
-- ✅ Zero-configuration middleware for auth, CORS, rate limiting
+- ✅ Zero-configuration middleware for auth, CORS, rate limiting, and adaptive load shedding
 - ❌ Don't use for: Non-Lambda deployments, custom runtimes, or non-Go languages
 
 ## Quick Start
@@ -59,6 +60,14 @@ func main() {
     // Attach load shedding with automatic lifecycle management
     loadConfig := middleware.ConfigureLoadSheddingForApp(app, middleware.NewBasicLoadShedding("api"))
     app.Use(middleware.LoadSheddingMiddleware(loadConfig))
+
+    // Unified observability with automatic tenant/user tagging
+    app.Use(middleware.EnhancedObservabilityMiddleware(middleware.EnhancedObservabilityConfig{
+        EnableLogging: true,
+        EnableMetrics: true,
+        EnableTracing: true,
+        SampleRate:    0.25, // observe 25% of traffic end-to-end
+    }))
     
     // Type-safe handler - recommended over raw handlers
     app.POST("/users", lift.SimpleHandler(func(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
@@ -250,7 +259,114 @@ admin.Use(middleware.RequireRole("admin")) // Additional admin check
 // Routes automatically inherit middleware
 api.GET("/orders", GetOrders)       // Has auth + rate limit
 admin.GET("/users", ListUsers)      // Has auth + rate limit + admin
+
+### Runtime Guardrails
+**When to use:** Always — these limits are enforced before your handler executes
+**Why:** Protects Lambda concurrency, keeps responses within platform constraints, and enforces tenant contracts
+
+```go
+app.WithConfig(&lift.Config{
+    MaxRequestSize:  6 * 1024 * 1024, // reject oversize payloads early
+    MaxResponseSize: 6 * 1024 * 1024, // prevent Lambda from returning huge bodies
+    Timeout:         25,              // per-request deadline (seconds)
+    RequireTenantID: true,            // drop calls without tenant context
+})
 ```
+
+Handlers receive structured guardrail errors automatically; the enhanced observability middleware emits counters for every rejection.
+
+### Observability & Sampling
+**When to use:** Production workloads that need correlated logs, metrics, and traces
+**Why:** Runs logging/metrics/tracing for every trigger with explicit control over sampling
+
+```go
+app.Use(middleware.EnhancedObservabilityMiddleware(middleware.EnhancedObservabilityConfig{
+    EnableLogging:   true,
+    EnableMetrics:   true,
+    EnableTracing:   true,
+    SampleRate:      0.1,                          // 10% instrumentation
+    DefaultTags:     map[string]string{"service": "checkout"},
+    TenantIDFunc:    func(ctx *lift.Context) string { return ctx.TenantID() },
+    UserIDFunc:      func(ctx *lift.Context) string { return ctx.UserID() },
+    DisableSampling: false,                        // set true to short-circuit instrumentation
+}))
+```
+
+Logging and metrics automatically include tenant/user dimensions; AWS X-Ray segments receive the same annotations.
+
+### Disaster Recovery Scheduling
+**When to use:** Multi-region deployments with automated failover rehearsals
+**Why:** Validates testing cadence while preventing monitoring from deadlocking during notifications
+
+```go
+drm := disaster.NewDisasterRecoveryManager(disaster.DRConfig{
+    PrimaryRegion: "us-east-1",
+    BackupRegions: []string{"us-west-2"},
+    TestingSchedule: disaster.TestingScheduleConfig{
+        Enabled:      true,
+        Frequency:    time.Hour,        // defaults to 24h when zero
+        NotifyBefore: 5 * time.Minute,  // must be < Frequency
+    },
+})
+
+if err := drm.StartMonitoring(ctx); err != nil {
+    log.Fatalf("DR configuration invalid: %v", err)
+}
+```
+
+The manager validates durations during `StartMonitoring`, and it now releases internal locks before waiting for notification intervals so health events keep flowing.
+
+### Managed Connection Pools
+**When to use:** High-throughput DynamoDB workloads that reuse SDK clients
+**Why:** Enforces `MaxConnections`, surfaces safe metrics, and closes without deadlocks
+
+```go
+pool, err := performance.NewConnectionPool(ctx, &performance.ConnectionPoolConfig{
+    Region:         "us-east-1",
+    MaxConnections: 64,
+    MinConnections: 8,
+})
+if err != nil {
+    log.Fatalf("pool init failed: %v", err)
+}
+defer pool.Close()
+
+client, err := pool.GetClient(ctx)
+// ... use client ...
+pool.ReturnClient(client)
+
+stats := pool.PoolStats() // safe even if no requests were served yet
+```
+
+The pool tracks active + idle clients internally; closing it stops health checks and drains the channel without re-locking.
+
+### Auto-Optimisation Results
+**When to use:** Performance optimisation workflows that should surface concrete actions
+**Why:** Runs registered optimizers when `EnableAutoOptimize` is true and records both successes and failures
+
+```go
+optimizer := performance.NewPerformanceOptimizer(performance.PerformanceConfig{
+    BenchmarkTimeout:   time.Minute,
+    EnableAutoOptimize: true,
+})
+
+optimizer.AddOptimizer(NewCPUOptimizer())
+optimizer.AddOptimizer(NewCostOptimizer())
+
+result, err := optimizer.OptimizePerformance(ctx, "billing-service")
+if err != nil {
+    log.Fatal(err)
+}
+
+for name, opt := range result.Optimizations {
+    fmt.Printf("%s optimizer suggestion: %+v\n", name, opt)
+}
+if len(result.Errors) > 0 {
+    log.Printf("optimizers reported warnings: %v", result.Errors)
+}
+```
+
+Failed optimizers no longer block the run—errors are surfaced alongside successful recommendations.
 
 ## API Reference
 

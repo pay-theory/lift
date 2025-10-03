@@ -126,6 +126,7 @@ func BenchmarkCriticalPath(b *testing.B) {
 - Require explicit opt-out for security features
 - Document security implications of configuration options
 - Require non-empty data protection encryption keys; initialization fails fast when missing
+- Configure runtime guardrails (`MaxRequestSize`, `MaxResponseSize`, `Timeout`, `RequireTenantID`) in `lift.Config`; Lift enforces them before handler execution and emits guardrail metrics automatically.
 
 ## Development Workflow
 
@@ -184,6 +185,7 @@ Before submitting code for review, ensure:
 - Monitor performance metrics
 - Set up alerts for anomalies
 - Use consistent metric naming
+- Prefer `middleware.EnhancedObservabilityMiddleware` for unified logging/metrics/tracing. Use `SampleRate` for probabilistic sampling and `DisableSampling` when instrumentation must be fully suppressed; tenant and user identifiers are added automatically.
 
 ### 3. Tracing
 - Implement distributed tracing for complex flows
@@ -204,6 +206,7 @@ Before submitting code for review, ensure:
 - Use connection pooling
 - Implement proper timeouts
 - Handle backpressure appropriately
+- Close `performance.ConnectionPool` instances during shutdown. The pool now enforces `MaxConnections`, reports safe utilisation stats, and closing it stops background health checks without deadlocking.
 
 ### 3. Concurrency
 - Use goroutines judiciously
@@ -224,6 +227,7 @@ Before submitting code for review, ensure:
 - Provide migration guides
 - Log deprecation warnings
 - Set reasonable defaults
+- `disaster.DRConfig` validates testing cadences at startup. Leave `Frequency` or health `Interval` at zero to accept defaults, and ensure `NotifyBefore` is less than `Frequency` or monitoring will fail fast.
 
 ## Tools and Automation
 
