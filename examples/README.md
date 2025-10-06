@@ -6,11 +6,9 @@ This directory contains working examples demonstrating various features and patt
 
 ### Core Examples
 - **[hello-world](./hello-world/)** - Minimal Lambda function with type safety
-- **[basic-crud-api](./basic-crud-api/)** - Complete CRUD API with middleware and testing
 - **[error-handling](./error-handling/)** - Structured error handling patterns
 
 ## 🔐 Authentication & Security
-- **[jwt-auth](./jwt-auth/)** - JWT authentication with middleware
 - **[jwt-auth-demo](./jwt-auth-demo/)** - JWT authentication demonstration
 - **[rate-limiting](./rate-limiting/)** - Rate limiting middleware implementation
 
@@ -37,12 +35,9 @@ This directory contains working examples demonstrating various features and patt
 ## 🧪 Testing & Development
 - **[mocking-demo](./mocking-demo/)** - Testing with mocks
 - **[cloudwatch-mocking-demo](./cloudwatch-mocking-demo/)** - CloudWatch metrics mocking
-- **[dynamorm-integration](./dynamorm-integration/)** - DynamORM database integration
 - **[streamer-quickstart](./streamer-quickstart/)** - Quick start with streaming
 
 ## 🔧 Special Purpose
-- **[sprint6-deployment](./sprint6-deployment/)** - Deployment patterns
-- **[test-event-routing-bug](./test-event-routing-bug/)** - Event routing test cases
 - **[test-scheduled-fix](./test-scheduled-fix/)** - Scheduled event fixes
 
 ## Running Examples

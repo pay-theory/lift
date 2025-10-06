@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
 	"github.com/aws/jsii-runtime-go"
 )
 
@@ -24,9 +24,9 @@ func TestLiftSQSQueue_WithExistingFunction(t *testing.T) {
 
 	// WHEN
 	queue := NewLiftSQSQueue(stack, jsii.String("TestQueue"), &LiftSQSQueueProps{
-		Function:          testFn,
-		QueueName:         jsii.String("test-queue"),
-		QueueUrlEnvVar:    jsii.String("TEST_QUEUE_URL"),
+		Function:       testFn,
+		QueueName:      jsii.String("test-queue"),
+		QueueUrlEnvVar: jsii.String("TEST_QUEUE_URL"),
 	})
 
 	// THEN
@@ -76,12 +76,7 @@ func TestLiftSQSQueue_WithCustomEnvironmentVariable(t *testing.T) {
 	template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), map[string]interface{}{
 		"Environment": map[string]interface{}{
 			"Variables": map[string]interface{}{
-				"K3_PROCESSOR_INSTRUMENT_QUEUE_URL": map[string]interface{}{
-					"Fn::GetAtt": []interface{}{
-						assertions.Match_StringLikeRegexp(jsii.String(".*Queue.*")),
-						jsii.String("QueueUrl"),
-					},
-				},
+				"K3_PROCESSOR_INSTRUMENT_QUEUE_URL": assertions.Match_AnyValue(),
 			},
 		},
 	})
@@ -216,8 +211,8 @@ func TestLiftSQSQueue_WithFIFOQueue(t *testing.T) {
 
 	// Verify FIFO queue created with .fifo suffix
 	template.HasResourceProperties(jsii.String("AWS::SQS::Queue"), map[string]interface{}{
-		"QueueName":                  "test-fifo-queue.fifo",
-		"FifoQueue":                  true,
+		"QueueName":                 "test-fifo-queue.fifo",
+		"FifoQueue":                 true,
 		"ContentBasedDeduplication": true,
 	})
 

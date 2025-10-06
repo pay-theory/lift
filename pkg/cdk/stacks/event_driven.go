@@ -109,9 +109,11 @@ func NewEventDrivenStack(scope constructs.Construct, id string, props *EventDriv
 
 	// Create API Gateway
 	api := liftconstructs.NewLiftAPI(stack, jsii.String("API"), &liftconstructs.LiftAPIProps{
-		Name:        jsii.String(props.AppName + "-api"),
-		Description: jsii.String("Event-driven API for " + props.AppName),
-		EnableCORS:  jsii.Bool(true),
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:        jsii.String(props.AppName + "-api"),
+			Description: jsii.String("Event-driven API for " + props.AppName),
+			EnableCORS:  jsii.Bool(true),
+		},
 	})
 
 	// Add routes

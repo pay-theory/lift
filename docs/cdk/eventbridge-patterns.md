@@ -20,7 +20,7 @@ The `EventBridgeHandler` construct provides a type-safe, production-ready way to
 import "github.com/pay-theory/lift/pkg/cdk/constructs"
 
 // Handle all events from a specific source
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("OrderHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("OrderHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("order-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -31,13 +31,16 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("OrderHandler"), 
         Source: &[]*string{jsii.String("myapp.orders")},
     },
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ### Scheduled Event Handler
 
 ```go
 // Process events on a schedule
-scheduler := constructs.NewEventBridgeHandler(stack, jsii.String("DailyReport"), &constructs.EventBridgeHandlerProps{
+scheduler, err := constructs.NewEventBridgeHandler(stack, jsii.String("DailyReport"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("daily-report-generator"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -46,6 +49,9 @@ scheduler := constructs.NewEventBridgeHandler(stack, jsii.String("DailyReport"),
     },
     ScheduleExpression: jsii.String("rate(1 day)"),
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ## Event Pattern Examples
@@ -119,7 +125,7 @@ ScheduleExpression: jsii.String("cron(*/15 9-17 ? * MON-FRI *)")
 ### Creating a Custom Event Bus
 
 ```go
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("CustomEventHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("CustomEventHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("custom-event-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -134,6 +140,9 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("CustomEventHandl
         Source: &[]*string{jsii.String("microservice.user")},
     },
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ### Using an Existing Event Bus
@@ -141,7 +150,7 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("CustomEventHandl
 ```go
 existingBus := awsevents.EventBus_FromEventBusName(stack, jsii.String("ExistingBus"), jsii.String("existing-event-bus"))
 
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("ExistingBusHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("ExistingBusHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("existing-bus-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -153,12 +162,15 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("ExistingBusHandl
         Source: &[]*string{jsii.String("external.system")},
     },
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ## Cross-Account Event Processing
 
 ```go
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("CrossAccountHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("CrossAccountHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("cross-account-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -170,6 +182,9 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("CrossAccountHand
         Source: &[]*string{jsii.String("shared.events")},
     },
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ## Error Handling and Dead Letter Queues
@@ -178,7 +193,7 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("CrossAccountHand
 
 ```go
 // DLQ is enabled by default with sensible defaults
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("event-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -189,6 +204,9 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), 
         Source: &[]*string{jsii.String("myapp.orders")},
     },
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 
 // Access DLQ for monitoring or processing
 dlqUrl := handler.DeadLetterQueue.QueueUrl()
@@ -197,7 +215,7 @@ dlqUrl := handler.DeadLetterQueue.QueueUrl()
 ### Custom DLQ Configuration
 
 ```go
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("event-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -215,12 +233,15 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), 
     MaxEventAge:   awscdk.Duration_Hours(jsii.Number(2)),
     RetryAttempts: jsii.Number(5),
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ### Disable DLQ
 
 ```go
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("event-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -232,21 +253,24 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("EventHandler"), 
     },
     EnableDeadLetterQueue: jsii.Bool(false),
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ## Environment Variables
 
 The construct automatically injects these environment variables into your Lambda function:
 
-- `EVENT_BUS_NAME`: Name of the event bus
-- `EVENT_BUS_ARN`: ARN of the event bus  
-- `EVENTBRIDGE_DLQ_URL`: URL of the dead letter queue (if enabled)
+- `EVENT_BUS_NAME`: Name of the event bus (always set)
+- `EVENT_BUS_ARN`: ARN of the event bus (always set)
+- `EVENTBRIDGE_DLQ_URL`: URL of the dead letter queue (only set when DLQ is enabled)
 
 ```go
 // In your Lambda function
 eventBusName := os.Getenv("EVENT_BUS_NAME")
 eventBusArn := os.Getenv("EVENT_BUS_ARN")
-dlqUrl := os.Getenv("EVENTBRIDGE_DLQ_URL")
+dlqUrl := os.Getenv("EVENTBRIDGE_DLQ_URL") // May be empty if DLQ is disabled
 ```
 
 ## Lift Integration Features
@@ -254,7 +278,7 @@ dlqUrl := os.Getenv("EVENTBRIDGE_DLQ_URL")
 ### Multi-Tenant Support
 
 ```go
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("MultiTenantHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("MultiTenantHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("tenant-event-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -270,12 +294,15 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("MultiTenantHandl
     EnableMultiTenant: jsii.Bool(true),
     EnableTracing:     jsii.Bool(true),
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ### Monitoring and Observability
 
 ```go
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("MonitoredHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("MonitoredHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("monitored-event-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -288,7 +315,19 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("MonitoredHandler
     EnableTracing:    jsii.Bool(true),
     EnableMonitoring: jsii.Bool(true),
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
+
+When `EnableMonitoring` is enabled, the construct automatically creates CloudWatch alarms for:
+
+- **Function Error Rate:** Alerts when Lambda function errors exceed 3 errors in 2 evaluation periods
+- **Function Duration:** Alerts when Lambda function duration exceeds 30 seconds in 3 evaluation periods  
+- **Rule Failures:** Alerts when EventBridge rule invocation failures exceed 5 failures in 2 evaluation periods
+- **DLQ Messages:** Alerts when messages in the dead letter queue exceed 10 messages (if DLQ is enabled)
+
+All alarms use 5-minute evaluation periods and are configured with appropriate thresholds for production workloads.
 
 ## Advanced Patterns
 
@@ -296,7 +335,7 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("MonitoredHandler
 
 ```go
 // Create multiple handlers for the same event
-orderHandler := constructs.NewEventBridgeHandler(stack, jsii.String("OrderProcessor"), &constructs.EventBridgeHandlerProps{
+orderHandler, err := constructs.NewEventBridgeHandler(stack, jsii.String("OrderProcessor"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("order-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -308,8 +347,11 @@ orderHandler := constructs.NewEventBridgeHandler(stack, jsii.String("OrderProces
         DetailType: &[]*string{jsii.String("Order Placed")},
     },
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 
-inventoryHandler := constructs.NewEventBridgeHandler(stack, jsii.String("InventoryUpdater"), &constructs.EventBridgeHandlerProps{
+inventoryHandler, err := constructs.NewEventBridgeHandler(stack, jsii.String("InventoryUpdater"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("inventory-updater"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -321,12 +363,15 @@ inventoryHandler := constructs.NewEventBridgeHandler(stack, jsii.String("Invento
         DetailType: &[]*string{jsii.String("Order Placed")},
     },
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ### Event Transformation
 
 ```go
-handler := constructs.NewEventBridgeHandler(stack, jsii.String("TransformHandler"), &constructs.EventBridgeHandlerProps{
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("TransformHandler"), &constructs.EventBridgeHandlerProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("transform-processor"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -343,6 +388,9 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("TransformHandler
         "eventType":  awsevents.EventField_FromPath(jsii.String("$.detail-type")),
     }),
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
 ```
 
 ## Helper Methods
@@ -351,7 +399,7 @@ handler := constructs.NewEventBridgeHandler(stack, jsii.String("TransformHandler
 
 ```go
 // Grant other functions permission to put events to the bus
-producer := constructs.NewLiftFunction(stack, jsii.String("EventProducer"), &constructs.LiftFunctionProps{
+producer, err := constructs.NewLiftFunction(stack, jsii.String("EventProducer"), &constructs.LiftFunctionProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("event-producer"),
         Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -359,6 +407,9 @@ producer := constructs.NewLiftFunction(stack, jsii.String("EventProducer"), &con
         Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
     },
 })
+if err != nil {
+    panic(fmt.Sprintf("Failed to create LiftFunction: %v", err))
+}
 
 handler.GrantPutEvents(producer.Function)
 ```
@@ -377,6 +428,81 @@ eventBusArn := handler.GetEventBusArn()
 ruleName := handler.GetRuleName()
 ruleArn := handler.GetRuleArn()
 ```
+
+## Additional Properties
+
+### Using Existing Rules
+
+```go
+// Create an existing rule
+existingRule := awsevents.NewRule(stack, jsii.String("ExistingRule"), &awsevents.RuleProps{
+    RuleName: jsii.String("existing-rule"),
+    EventPattern: &awsevents.EventPattern{
+        Source: &[]*string{jsii.String("existing.app")},
+    },
+})
+
+// Use the existing rule with EventBridgeHandler
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("ExistingRuleHandler"), &constructs.EventBridgeHandlerProps{
+    FunctionProps: awslambda.FunctionProps{
+        FunctionName: jsii.String("existing-rule-processor"),
+        Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        Handler:      jsii.String("bootstrap"),
+        Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
+    },
+    ExistingRule: existingRule,
+})
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
+```
+
+### Custom Rule Properties
+
+```go
+handler, err := constructs.NewEventBridgeHandler(stack, jsii.String("CustomRuleHandler"), &constructs.EventBridgeHandlerProps{
+    FunctionProps: awslambda.FunctionProps{
+        FunctionName: jsii.String("custom-rule-processor"),
+        Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+        Handler:      jsii.String("bootstrap"),
+        Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
+    },
+    RuleProps: &awsevents.RuleProps{
+        RuleName:    jsii.String("custom-rule-name"),
+        Description: jsii.String("Custom rule for processing events"),
+        Enabled:     jsii.Bool(true),
+    },
+    EventPattern: &awsevents.EventPattern{
+        Source: &[]*string{jsii.String("myapp.orders")},
+    },
+})
+if err != nil {
+    panic(fmt.Sprintf("Failed to create EventBridgeHandler: %v", err))
+}
+```
+
+## Deprecated Methods
+
+⚠️ **Warning:** The following methods are deprecated and should not be used in new code:
+
+```go
+// DEPRECATED: Event patterns cannot be modified after rule creation
+err := handler.AddEventPattern(&awsevents.EventPattern{
+    Source: &[]*string{jsii.String("new.source")},
+})
+// This will return an error
+
+// DEPRECATED: Rule state cannot be changed after CDK deployment
+err = handler.EnableRule()
+// This will return an error with instructions to use AWS CLI
+
+err = handler.DisableRule()
+// This will return an error with instructions to use AWS CLI
+```
+
+Instead of using deprecated methods:
+- **For pattern changes:** Create a new EventBridgeHandler with the desired pattern
+- **For rule state changes:** Use AWS CLI: `aws events enable-rule --name <rule-name>` or `aws events disable-rule --name <rule-name>`
 
 ## Best Practices
 

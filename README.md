@@ -9,9 +9,10 @@
 Use Lift when you need:
 - ✅ Production-ready Lambda functions with minimal cold start overhead
 - ✅ Type-safe handlers with compile-time validation
-- ✅ Built-in error handling, logging, and distributed tracing
+- ✅ Guardrails for request size, response size, and execution timeout baked into the runtime
+- ✅ Built-in error handling, logging, metrics, and distributed tracing
 - ✅ Multi-tenant support with automatic tenant isolation
-- ✅ Zero-configuration middleware for auth, CORS, rate limiting
+- ✅ Zero-configuration middleware for auth, CORS, rate limiting, and adaptive load shedding
 - ❌ Don't use for: Non-Lambda deployments, custom runtimes, or non-Go languages
 
 ## Quick Start
@@ -41,11 +42,12 @@ type UserResponse struct {
 
 func main() {
     app := lift.New()
-    
+    defer app.Stop()
+
     // Configure the app
     config := &lift.Config{
         MaxRequestSize: 5 * 1024 * 1024, // 5MB
-        Timeout:        29,               // 29 seconds
+        Timeout:        30,               // 30 seconds (default)
         LogLevel:       "INFO",
     }
     app.WithConfig(config)
@@ -54,6 +56,18 @@ func main() {
     app.Use(middleware.RequestID())    // Distributed tracing
     app.Use(middleware.Logger())       // Structured logging
     app.Use(middleware.Recover())      // Panic recovery
+
+    // Attach load shedding with automatic lifecycle management
+    loadConfig := middleware.ConfigureLoadSheddingForApp(app, middleware.NewBasicLoadShedding("api"))
+    app.Use(middleware.LoadSheddingMiddleware(loadConfig))
+
+    // Unified observability with automatic tenant/user tagging
+    app.Use(middleware.EnhancedObservabilityMiddleware(middleware.EnhancedObservabilityConfig{
+        EnableLogging: true,
+        EnableMetrics: true,
+        EnableTracing: true,
+        SampleRate:    0.25, // observe 25% of traffic end-to-end
+    }))
     
     // Type-safe handler - recommended over raw handlers
     app.POST("/users", lift.SimpleHandler(func(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
@@ -216,6 +230,7 @@ func GetUserOrders(ctx *lift.Context) error {
 // Configure app for multi-tenant support
 config := &lift.Config{
     RequireTenantID: true,
+    TenantIsolation: true,  // Enable tenant-based data isolation
 }
 app.WithConfig(config)
 ```
@@ -244,7 +259,114 @@ admin.Use(middleware.RequireRole("admin")) // Additional admin check
 // Routes automatically inherit middleware
 api.GET("/orders", GetOrders)       // Has auth + rate limit
 admin.GET("/users", ListUsers)      // Has auth + rate limit + admin
+
+### Runtime Guardrails
+**When to use:** Always — these limits are enforced before your handler executes
+**Why:** Protects Lambda concurrency, keeps responses within platform constraints, and enforces tenant contracts
+
+```go
+app.WithConfig(&lift.Config{
+    MaxRequestSize:  6 * 1024 * 1024, // reject oversize payloads early
+    MaxResponseSize: 6 * 1024 * 1024, // prevent Lambda from returning huge bodies
+    Timeout:         25,              // per-request deadline (seconds)
+    RequireTenantID: true,            // drop calls without tenant context
+})
 ```
+
+Handlers receive structured guardrail errors automatically; the enhanced observability middleware emits counters for every rejection.
+
+### Observability & Sampling
+**When to use:** Production workloads that need correlated logs, metrics, and traces
+**Why:** Runs logging/metrics/tracing for every trigger with explicit control over sampling
+
+```go
+app.Use(middleware.EnhancedObservabilityMiddleware(middleware.EnhancedObservabilityConfig{
+    EnableLogging:   true,
+    EnableMetrics:   true,
+    EnableTracing:   true,
+    SampleRate:      0.1,                          // 10% instrumentation
+    DefaultTags:     map[string]string{"service": "checkout"},
+    TenantIDFunc:    func(ctx *lift.Context) string { return ctx.TenantID() },
+    UserIDFunc:      func(ctx *lift.Context) string { return ctx.UserID() },
+    DisableSampling: false,                        // set true to short-circuit instrumentation
+}))
+```
+
+Logging and metrics automatically include tenant/user dimensions; AWS X-Ray segments receive the same annotations.
+
+### Disaster Recovery Scheduling
+**When to use:** Multi-region deployments with automated failover rehearsals
+**Why:** Validates testing cadence while preventing monitoring from deadlocking during notifications
+
+```go
+drm := disaster.NewDisasterRecoveryManager(disaster.DRConfig{
+    PrimaryRegion: "us-east-1",
+    BackupRegions: []string{"us-west-2"},
+    TestingSchedule: disaster.TestingScheduleConfig{
+        Enabled:      true,
+        Frequency:    time.Hour,        // defaults to 24h when zero
+        NotifyBefore: 5 * time.Minute,  // must be < Frequency
+    },
+})
+
+if err := drm.StartMonitoring(ctx); err != nil {
+    log.Fatalf("DR configuration invalid: %v", err)
+}
+```
+
+The manager validates durations during `StartMonitoring`, and it now releases internal locks before waiting for notification intervals so health events keep flowing.
+
+### Managed Connection Pools
+**When to use:** High-throughput DynamoDB workloads that reuse SDK clients
+**Why:** Enforces `MaxConnections`, surfaces safe metrics, and closes without deadlocks
+
+```go
+pool, err := performance.NewConnectionPool(ctx, &performance.ConnectionPoolConfig{
+    Region:         "us-east-1",
+    MaxConnections: 64,
+    MinConnections: 8,
+})
+if err != nil {
+    log.Fatalf("pool init failed: %v", err)
+}
+defer pool.Close()
+
+client, err := pool.GetClient(ctx)
+// ... use client ...
+pool.ReturnClient(client)
+
+stats := pool.PoolStats() // safe even if no requests were served yet
+```
+
+The pool tracks active + idle clients internally; closing it stops health checks and drains the channel without re-locking.
+
+### Auto-Optimisation Results
+**When to use:** Performance optimisation workflows that should surface concrete actions
+**Why:** Runs registered optimizers when `EnableAutoOptimize` is true and records both successes and failures
+
+```go
+optimizer := performance.NewPerformanceOptimizer(performance.PerformanceConfig{
+    BenchmarkTimeout:   time.Minute,
+    EnableAutoOptimize: true,
+})
+
+optimizer.AddOptimizer(NewCPUOptimizer())
+optimizer.AddOptimizer(NewCostOptimizer())
+
+result, err := optimizer.OptimizePerformance(ctx, "billing-service")
+if err != nil {
+    log.Fatal(err)
+}
+
+for name, opt := range result.Optimizations {
+    fmt.Printf("%s optimizer suggestion: %+v\n", name, opt)
+}
+if len(result.Errors) > 0 {
+    log.Printf("optimizers reported warnings: %v", result.Errors)
+}
+```
+
+Failed optimizers no longer block the run—errors are surfaced alongside successful recommendations.
 
 ## API Reference
 
@@ -262,12 +384,28 @@ app := lift.New()
 config := &lift.Config{
     MaxRequestSize:  10 * 1024 * 1024, // 10MB
     MaxResponseSize: 6 * 1024 * 1024,  // 6MB (Lambda limit)
-    Timeout:         29,                // 29 seconds
+    Timeout:         30,                // 30 seconds (default)
     LogLevel:        "INFO",
     MetricsEnabled:  true,
+    TracingEnabled:  false,             // Optional: enable distributed tracing
+    Debug:           false,             // Optional: enable debug mode
+    CORSEnabled:     true,              // Optional: enable CORS
+    RequireTenantID: false,             // Optional: require tenant ID
 }
 app.WithConfig(config)
 ```
+
+**Configuration Options:**
+- `MaxRequestSize`: Maximum request body size (default: 10MB)
+- `MaxResponseSize`: Maximum response body size (default: 6MB, Lambda limit)
+- `Timeout`: Request timeout in seconds (default: 30)
+- `LogLevel`: Logging level - "DEBUG", "INFO", "WARN", "ERROR" (default: "INFO")
+- `MetricsEnabled`: Enable metrics collection (default: true)
+- `TracingEnabled`: Enable distributed tracing (default: false)
+- `Debug`: Enable debug mode with verbose logging (default: false)
+- `CORSEnabled`: Enable CORS headers (default: true)
+- `RequireTenantID`: Require tenant ID for all requests (default: false)
+- `AllowedOrigins`: CORS allowed origins (default: ["*"])
 
 ### `app.Use(middleware ...Middleware)`
 
@@ -283,6 +421,7 @@ app.Use(
     middleware.Recover(),      // Third: catches panics
 )
 // Order matters: RequestID must come before Logger
+// All middleware functions are available in github.com/pay-theory/lift/pkg/middleware
 ```
 
 ### `ctx.ParseRequest(dest interface{}) error`
@@ -340,19 +479,25 @@ Lift provides standardized DynamoDB table structures that work seamlessly with D
 **For detailed DynamORM integration, see: [DynamORM Integration Guide](docs/dynamorm-integration.md)**
 
 ```go
-// Define your model with BOTH DynamORM and DynamoDB tags
+import (
+    "fmt"
+    "github.com/pay-theory/lift/pkg/lift"
+    "github.com/pay-theory/lift/pkg/dynamorm"
+)
+
+// Define your model with DynamORM tags
 type User struct {
-    // Keys must have both tags
-    PK       string `dynamorm:"pk" `                    // user#{user_id}
-    SK       string `dynamorm:"sk" `                    // user#{user_id}
+    // Primary key structure
+    PK       string `dynamorm:"pk"`                    // user#{user_id}
+    SK       string `dynamorm:"sk"`                    // user#{user_id}
     
-    // GSI fields need both tags too
-    Email    string `dynamorm:"index:email-index,pk" `      // GSI for email lookup
-    TenantID string `dynamorm:"index:tenant-index,pk" ` // GSI for tenant queries
+    // GSI fields for efficient queries
+    Email    string `dynamorm:"index:email-index,pk"`      // GSI for email lookup
+    TenantID string `dynamorm:"index:tenant-index,pk"`      // GSI for tenant queries
     
-    // DynamORM handles marshaling internally
-    UserID   string    `json:"user_id" `
-    Name     string    `json:"name" `
+    // User data fields
+    UserID   string    `json:"user_id"`
+    Name     string    `json:"name"`
     TTL      int64     `json:"ttl,omitempty" dynamorm:"ttl"`
 }
 
@@ -360,18 +505,18 @@ func GetUser(ctx *lift.Context) error {
     userID := ctx.Param("id")
     tenantID := ctx.TenantID() // Multi-tenant isolation
     
-    // Query using composite key for tenant isolation
-    user, err := dynamorm.Get[User](ctx.Context, db).
-        WithTable(os.Getenv("DYNAMODB_TABLE")).
-        WithPK(fmt.Sprintf("tenant#%s", tenantID)).
-        WithSK(fmt.Sprintf("user#%s", userID)).
-        Execute()
-        
-    if err == dynamorm.ErrNotFound {
-        return lift.NotFound("user not found")
-    }
+    // Get DynamORM instance from context
+    db, err := dynamorm.TenantDB(ctx)
     if err != nil {
-        return lift.NewLiftError("DATABASE_ERROR", "Failed to get user", 500)
+        return lift.SystemError("Database not available").WithCause(err)
+    }
+    
+    // Query using DynamORM wrapper
+    var user User
+    err = db.Get(ctx.Context, fmt.Sprintf("user#%s", userID), &user)
+        
+    if err != nil {
+        return lift.SystemError("Failed to get user").WithCause(err)
     }
     
     return ctx.JSON(user)
@@ -379,17 +524,143 @@ func GetUser(ctx *lift.Context) error {
 ```
 
 ### With SQS Events
+> Lift automatically runs logging and metrics middleware for all event sources. Authentication and
+> other HTTP-specific middleware do **not** execute for SQS/S3/EventBridge handlers unless you
+> explicitly wrap them yourself.
 ```go
-// Lift handles multiple event sources
+// Batch processing with error handling
 app.SQS("process-orders", func(ctx *lift.Context) error {
-    // SQS message is in ctx.Request.Body
-    var order Order
-    if err := ctx.ParseRequest(&order); err != nil {
-        return err // Message returns to queue
+    // Parse batch of SQS messages
+    var messages []SQSMessage
+    if err := ctx.ParseRequest(&messages); err != nil {
+        ctx.Logger.Error("Failed to parse SQS messages", "error", err)
+        return err // All messages return to queue
     }
     
-    ctx.Logger.Info("Processing order", "order_id", order.ID)
-    return processOrder(order)
+    var failedMessages []string
+    
+    for _, msg := range messages {
+        var order Order
+        if err := json.Unmarshal([]byte(msg.Body), &order); err != nil {
+            ctx.Logger.Error("Invalid order format", "messageId", msg.MessageId)
+            failedMessages = append(failedMessages, msg.MessageId)
+            continue
+        }
+        
+        if err := processOrder(order); err != nil {
+            ctx.Logger.Error("Order processing failed", 
+                "orderId", order.ID, 
+                "messageId", msg.MessageId,
+                "error", err)
+            failedMessages = append(failedMessages, msg.MessageId)
+        } else {
+            ctx.Logger.Info("Order processed successfully", "orderId", order.ID)
+        }
+    }
+    
+    // Return error if any messages failed (they'll be retried)
+    if len(failedMessages) > 0 {
+        return fmt.Errorf("failed to process %d messages", len(failedMessages))
+    }
+    
+    return nil // All messages processed successfully
+})
+
+// Dead letter queue handling
+app.SQS("process-failed-orders", func(ctx *lift.Context) error {
+    var messages []SQSMessage
+    if err := ctx.ParseRequest(&messages); err != nil {
+        return err
+    }
+    
+    for _, msg := range messages {
+        // Log failed message for manual review
+        ctx.Logger.Error("Message reached DLQ", 
+            "messageId", msg.MessageId,
+            "body", msg.Body,
+            "attributes", msg.MessageAttributes)
+        
+        // Store in database for analysis
+        if err := storeFailedMessage(msg); err != nil {
+            ctx.Logger.Error("Failed to store DLQ message", "error", err)
+        }
+    }
+    
+    return nil
+})
+```
+
+### With S3 Events
+```go
+// File processing with S3 triggers
+app.S3("process-uploads", func(ctx *lift.Context) error {
+    var records []S3Record
+    if err := ctx.ParseRequest(&records); err != nil {
+        ctx.Logger.Error("Failed to parse S3 event", "error", err)
+        return err
+    }
+    
+    for _, record := range records {
+        bucket := record.S3.Bucket.Name
+        key := record.S3.Object.Key
+        
+        ctx.Logger.Info("Processing file", 
+            "bucket", bucket,
+            "key", key,
+            "size", record.S3.Object.Size)
+        
+        // Download and process file
+        if err := processFile(bucket, key); err != nil {
+            ctx.Logger.Error("File processing failed", 
+                "bucket", bucket,
+                "key", key,
+                "error", err)
+            return err
+        }
+        
+        // Move to processed folder
+        if err := moveToProcessed(bucket, key); err != nil {
+            ctx.Logger.Error("Failed to move file", "error", err)
+            return err
+        }
+    }
+    
+    return nil
+})
+
+// Image processing pipeline
+app.S3("resize-images", func(ctx *lift.Context) error {
+    var records []S3Record
+    if err := ctx.ParseRequest(&records); err != nil {
+        return err
+    }
+    
+    for _, record := range records {
+        bucket := record.S3.Bucket.Name
+        key := record.S3.Object.Key
+        
+        // Only process images
+        if !isImageFile(key) {
+            ctx.Logger.Info("Skipping non-image file", "key", key)
+            continue
+        }
+        
+        // Generate multiple sizes
+        sizes := []string{"thumbnail", "medium", "large"}
+        for _, size := range sizes {
+            if err := resizeImage(bucket, key, size); err != nil {
+                ctx.Logger.Error("Image resize failed", 
+                    "key", key,
+                    "size", size,
+                    "error", err)
+                return err
+            }
+        }
+        
+        ctx.Logger.Info("Image processed successfully", "key", key)
+    }
+    
+    return nil
 })
 ```
 
@@ -402,6 +673,108 @@ app.EventBridge("daily-report", func(ctx *lift.Context) error {
     // Use same patterns as HTTP handlers
     return runScheduledJob(ctx)
 })
+
+// Cron-like scheduling
+app.EventBridge("hourly-cleanup", func(ctx *lift.Context) error {
+    ctx.Logger.Info("Starting hourly cleanup")
+    
+    // Clean up old temporary files
+    if err := cleanupTempFiles(); err != nil {
+        ctx.Logger.Error("Cleanup failed", "error", err)
+        return err
+    }
+    
+    // Archive old logs
+    if err := archiveOldLogs(); err != nil {
+        ctx.Logger.Error("Log archival failed", "error", err)
+        return err
+    }
+    
+    ctx.Logger.Info("Hourly cleanup completed")
+    return nil
+})
+```
+
+### With WebSocket Connections
+```go
+// WebSocket authentication middleware
+func WebSocketJWTMiddleware(jwtSecret string) lift.Middleware {
+    return func(next lift.Handler) lift.Handler {
+        return lift.HandlerFunc(func(ctx *lift.Context) error {
+            // Only validate on $connect events
+            wsCtx, err := ctx.AsWebSocket()
+            if err == nil && wsCtx.IsConnectEvent() {
+                token := ctx.Query("Authorization")
+                if token == "" {
+                    return ctx.Status(401).JSON(map[string]string{
+                        "error": "Missing authorization token",
+                    })
+                }
+                
+                // Validate JWT and store claims
+                claims, err := validateJWTToken(token, jwtSecret)
+                if err != nil {
+                    return ctx.Status(401).JSON(map[string]string{
+                        "error": "Invalid token",
+                    })
+                }
+                
+                ctx.SetUserID(claims.UserID)
+            }
+            return next.Handle(ctx)
+        })
+    }
+}
+
+// WebSocket connection handler
+func handleConnect(ctx *lift.Context) error {
+    wsCtx, err := ctx.AsWebSocket()
+    if err != nil {
+        return err
+    }
+    
+    // Store connection info
+    err = storeConnection(ctx.Context, wsCtx.ConnectionID(), ctx.UserID())
+    if err != nil {
+        ctx.Logger.Error("Failed to store connection", "error", err)
+    }
+    
+    return ctx.Status(200).JSON(map[string]string{
+        "message": "Connected successfully",
+    })
+}
+
+// WebSocket message handler
+func handleMessage(ctx *lift.Context) error {
+    wsCtx, err := ctx.AsWebSocket()
+    if err != nil {
+        return err
+    }
+    
+    // Parse incoming message
+    var message map[string]any
+    if err := ctx.ParseRequest(&message); err != nil {
+        return wsCtx.SendJSONMessage(map[string]string{
+            "error": "Invalid message format",
+        })
+    }
+    
+    // Echo back with connection info
+    response := map[string]any{
+        "type":         "echo",
+        "originalMsg":  message,
+        "connectionId": wsCtx.ConnectionID(),
+        "timestamp":    time.Now(),
+    }
+    
+    return wsCtx.SendJSONMessage(response)
+}
+
+// Register WebSocket handlers
+app.Use(WebSocketJWTMiddleware(os.Getenv("JWT_SECRET")))
+app.Handle("CONNECT", "/connect", handleConnect)
+app.Handle("MESSAGE", "/message", handleMessage)
+app.Handle("DISCONNECT", "/disconnect", handleDisconnect)
 ```
 
 ## Troubleshooting
@@ -567,6 +940,17 @@ func SecureHandler(ctx *lift.Context) error {
     // Claims are validated and available
 }
 ```
+
+### Data Protection Keys
+- The `security.DataProtectionConfig` now validates that `EncryptionKey` is non-empty.
+- Store the key securely (for example, in AWS Secrets Manager) and inject it at startup:
+  ```go
+  dataProtectionConfig := security.DataProtectionConfig{
+      EncryptionKey: os.Getenv("DATA_PROTECTION_KEY"), // must be non-empty
+      DefaultClassification: security.DataInternal,
+  }
+  ```
+- Leaving the key blank results in an initialization error to prevent accidentally shipping unencrypted payloads.
 
 ## Testing Support
 

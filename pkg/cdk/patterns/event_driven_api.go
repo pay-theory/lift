@@ -200,12 +200,14 @@ func (b *eventDrivenAPIBuilder) setupAPIFunction() {
 // setupAPI creates the HTTP API Gateway
 func (b *eventDrivenAPIBuilder) setupAPI() {
 	b.api.API = liftconstructs.NewLiftAPI(b.api, jsii.String("API"), &liftconstructs.LiftAPIProps{
-		Name:                jsii.String(b.config.apiName),
-		Description:         jsii.String("Event-driven API with async processing"),
-		EnableCORS:          b.props.EnableCORS,
-		EnableAccessLogging: b.props.EnableAccessLogging,
-		ThrottleRateLimit:   b.props.ThrottleRateLimit,
-		ThrottleBurstLimit:  b.props.ThrottleBurstLimit,
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:                jsii.String(b.config.apiName),
+			Description:         jsii.String("Event-driven API with async processing"),
+			EnableCORS:          b.props.EnableCORS,
+			EnableAccessLogging: b.props.EnableAccessLogging,
+			ThrottleRateLimit:   b.props.ThrottleRateLimit,
+			ThrottleBurstLimit:  b.props.ThrottleBurstLimit,
+		},
 	})
 
 	// Add routes to API

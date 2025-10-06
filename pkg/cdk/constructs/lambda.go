@@ -12,6 +12,10 @@ const (
 )
 
 // LiftFunctionProps extends standard Lambda function properties with Lift-specific configuration
+// This struct contains all configurable properties for creating a Lift-optimized
+// Lambda function. It extends the standard AWS CDK Lambda function properties
+// with additional Lift-specific features like tracing, metrics, multi-tenant support,
+// and DynamORM configuration.
 type LiftFunctionProps struct {
 	awslambda.FunctionProps
 	// EnableTracing enables X-Ray tracing for the function
@@ -31,17 +35,41 @@ type LiftFunctionProps struct {
 }
 
 // LiftFunction is a Lambda function construct optimized for Lift applications
+// This construct creates a Lambda function with Lift-optimized defaults including:
+// - X-Ray tracing (if enabled)
+// - CloudWatch metrics (if enabled)
+// - Multi-tenant support (if enabled)
+// - DynamORM environment variables (if enabled)
 type LiftFunction struct {
 	constructs.Construct
 	Function awslambda.Function
 }
 
 // GetResourceName returns the function name
+// This method returns the name of the Lambda function. This is useful for
+// monitoring and identification purposes.
 func (l *LiftFunction) GetResourceName() *string {
 	return l.Function.FunctionName()
 }
 
 // NewLiftFunction creates a new Lift Lambda function with optimized defaults
+// This function creates a new Lambda function with all Lift-optimized features including:
+// - Default runtime (PROVIDED_AL2023)
+// - ARM64 architecture
+// - Memory size (512MB)
+// - Timeout (30 seconds)
+// - Tracing (if enabled)
+// - Metrics (if enabled)
+// - Multi-tenant support (if enabled)
+// - DynamORM environment variables (if enabled)
+//
+// Parameters:
+//   - scope: The CDK construct scope
+//   - id: The construct ID
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new LiftFunction instance
 func NewLiftFunction(scope constructs.Construct, id *string, props *LiftFunctionProps) *LiftFunction {
 	builder := newLiftFunctionBuilder(scope, id, props)
 	return builder.build()

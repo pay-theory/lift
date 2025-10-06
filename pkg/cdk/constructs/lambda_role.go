@@ -12,6 +12,8 @@ import (
 )
 
 // LiftLambdaRoleProps defines properties for Lambda execution roles
+//
+//nolint:govet // Field order groups related permissions for ease of use.
 type LiftLambdaRoleProps struct {
 	// Basic configuration
 	RoleName    *string
@@ -24,10 +26,10 @@ type LiftLambdaRoleProps struct {
 	ManagedPolicyArns []string
 
 	// Enable common AWS managed policies
-	EnableBasicExecution      *bool // AWSLambdaBasicExecutionRole
-	EnableVPCExecution        *bool // AWSLambdaVPCAccessExecutionRole
-	EnableCloudWatchInsights  *bool // CloudWatchLambdaInsightsExecutionRolePolicy
-	EnableXRayDaemonWrite     *bool // AWSXRayDaemonWriteAccess
+	EnableBasicExecution     *bool // AWSLambdaBasicExecutionRole
+	EnableVPCExecution       *bool // AWSLambdaVPCAccessExecutionRole
+	EnableCloudWatchInsights *bool // CloudWatchLambdaInsightsExecutionRolePolicy
+	EnableXRayDaemonWrite    *bool // AWSXRayDaemonWriteAccess
 
 	// DynamoDB access
 	DynamoDBTables       []awsdynamodb.ITable
@@ -38,20 +40,20 @@ type LiftLambdaRoleProps struct {
 	// KMS access
 	KMSKeys              []awskms.IKey
 	KMSKeyArns           []string
-	EnableMultiRegionKMS *bool // Grant access to multi-region keys (mrk-*)
+	EnableMultiRegionKMS *bool    // Grant access to multi-region keys (mrk-*)
 	KMSActions           []string // Custom KMS actions (defaults to Encrypt, Decrypt, GenerateDataKey)
 
 	// Secrets Manager access
-	SecretsManagerArns     []string
-	EnableSecretsAccess    *bool // Grant access to all secrets (not recommended for production)
+	SecretsManagerArns  []string
+	EnableSecretsAccess *bool // Grant access to all secrets (not recommended for production)
 
 	// SSM Parameter Store access
-	SSMParameterPaths      []string
-	EnableSSMAccess        *bool // Grant access to all parameters
+	SSMParameterPaths []string
+	EnableSSMAccess   *bool // Grant access to all parameters
 
 	// Payment Cryptography (AWS Payment Cryptography Service)
-	EnablePaymentCrypto    *bool
-	PaymentCryptoActions   []string // Defaults to DecryptData, EncryptData, GetAlias
+	EnablePaymentCrypto  *bool
+	PaymentCryptoActions []string // Defaults to DecryptData, EncryptData, GetAlias
 
 	// SQS access
 	SQSQueueArns           []string
@@ -59,18 +61,18 @@ type LiftLambdaRoleProps struct {
 	EnableSQSReceiveDelete *bool
 
 	// S3 access
-	S3BucketArns           []string
-	EnableS3Read           *bool
-	EnableS3Write          *bool
+	S3BucketArns  []string
+	EnableS3Read  *bool
+	EnableS3Write *bool
 
 	// Custom inline policies
-	InlinePolicies         map[string]awsiam.PolicyDocument
+	InlinePolicies map[string]awsiam.PolicyDocument
 
 	// Additional policy statements
 	AdditionalPolicyStatements []awsiam.PolicyStatement
 
 	// Tags
-	Tags                   map[string]string
+	Tags map[string]string
 }
 
 // LiftLambdaRole is a Lambda execution role construct with common permissions
@@ -517,8 +519,8 @@ func (l *LiftLambdaRole) GetRoleName() *string {
 // GrantPassRole grants permission to pass this role to a service
 func (l *LiftLambdaRole) GrantPassRole(grantee awsiam.IGrantable) awsiam.Grant {
 	return awsiam.Grant_AddToPrincipal(&awsiam.GrantOnPrincipalOptions{
-		Grantee: grantee,
-		Actions: &[]*string{jsii.String("iam:PassRole")},
+		Grantee:      grantee,
+		Actions:      &[]*string{jsii.String("iam:PassRole")},
 		ResourceArns: &[]*string{l.Role.RoleArn()},
 	})
 }
@@ -551,4 +553,3 @@ func (l *LiftLambdaRole) GrantKMSAccess(keys ...awskms.IKey) {
 func (l *LiftLambdaRole) AsLambdaExecutionRole() awsiam.IRole {
 	return l.Role
 }
-

@@ -81,14 +81,23 @@ func LowLatencyConnectionPoolConfig() *ConnectionPoolConfig {
 
 // ConnectionPool manages a pool of DynamoDB connections
 type ConnectionPool struct {
+	state *poolState
+}
+
+type poolState struct {
+	mu               *sync.RWMutex
+	resources        *poolResources
+	metrics          *PoolMetrics
+	totalConnections int
+	closed           bool
+}
+
+type poolResources struct {
 	ctx       context.Context
 	config    *ConnectionPoolConfig
 	clients   chan *dynamodb.Client
-	metrics   *PoolMetrics
 	cancel    context.CancelFunc
-	awsConfig aws.Config
-	mu        sync.RWMutex
-	closed    bool
+	awsConfig *aws.Config
 }
 
 // PoolMetrics tracks connection pool performance
@@ -128,21 +137,28 @@ func NewConnectionPool(ctx context.Context, cfg *ConnectionPoolConfig) (*Connect
 
 	poolCtx, cancel := context.WithCancel(ctx)
 
+	awsCfg := awsConfig
 	pool := &ConnectionPool{
-		config:    cfg,
-		clients:   make(chan *dynamodb.Client, cfg.MaxConnections),
-		metrics:   &PoolMetrics{},
-		ctx:       poolCtx,
-		cancel:    cancel,
-		awsConfig: awsConfig,
+		state: &poolState{
+			mu: &sync.RWMutex{},
+			resources: &poolResources{
+				ctx:       poolCtx,
+				config:    cfg,
+				clients:   make(chan *dynamodb.Client, cfg.MaxConnections),
+				cancel:    cancel,
+				awsConfig: &awsCfg,
+			},
+			metrics: &PoolMetrics{},
+		},
 	}
 
 	// Create minimum number of connections
 	for i := 0; i < cfg.MinConnections; i++ {
-		client := pool.createClient()
-		pool.clients <- client
-		pool.metrics.ConnectionsCreated++
-		pool.metrics.IdleConnections++
+		client := pool.newClient()
+		pool.state.resources.clients <- client
+		pool.state.metrics.ConnectionsCreated++
+		pool.state.metrics.IdleConnections++
+		pool.state.totalConnections++
 	}
 
 	// Start health check routine
@@ -155,58 +171,58 @@ func NewConnectionPool(ctx context.Context, cfg *ConnectionPoolConfig) (*Connect
 
 // GetClient retrieves a client from the pool
 func (p *ConnectionPool) GetClient(ctx context.Context) (*dynamodb.Client, error) {
-	if p.closed {
+	if p.state.closed {
 		return nil, fmt.Errorf("connection pool is closed")
 	}
 
 	start := time.Now()
 	defer func() {
 		waitTime := time.Since(start)
-		p.metrics.mu.Lock()
-		p.metrics.TotalRequests++
-		p.metrics.AverageWaitTime = (p.metrics.AverageWaitTime + waitTime) / 2
-		p.metrics.mu.Unlock()
+		p.state.metrics.mu.Lock()
+		p.state.metrics.TotalRequests++
+		p.state.metrics.AverageWaitTime = (p.state.metrics.AverageWaitTime + waitTime) / 2
+		p.state.metrics.mu.Unlock()
 	}()
 
 	// Try to get an existing client
 	select {
-	case client := <-p.clients:
-		p.metrics.mu.Lock()
-		p.metrics.ActiveConnections++
-		p.metrics.IdleConnections--
-		p.metrics.mu.Unlock()
+	case client := <-p.state.resources.clients:
+		p.state.metrics.mu.Lock()
+		p.state.metrics.ActiveConnections++
+		p.state.metrics.IdleConnections--
+		p.state.metrics.mu.Unlock()
 		return client, nil
-	case <-time.After(p.config.ConnectionTimeout):
-		p.metrics.mu.Lock()
-		p.metrics.FailedRequests++
-		p.metrics.mu.Unlock()
-		return nil, fmt.Errorf("connection timeout after %v", p.config.ConnectionTimeout)
+	case <-time.After(p.state.resources.config.ConnectionTimeout):
+		p.state.metrics.mu.Lock()
+		p.state.metrics.FailedRequests++
+		p.state.metrics.mu.Unlock()
+		return nil, fmt.Errorf("connection timeout after %v", p.state.resources.config.ConnectionTimeout)
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
 		// Create new client if pool not at max capacity
-		if len(p.clients) < p.config.MaxConnections {
-			client := p.createClient()
-			p.metrics.mu.Lock()
-			p.metrics.ConnectionsCreated++
-			p.metrics.ActiveConnections++
-			p.metrics.mu.Unlock()
+		if p.reserveConnectionSlot() {
+			client := p.newClient()
+			p.state.metrics.mu.Lock()
+			p.state.metrics.ConnectionsCreated++
+			p.state.metrics.ActiveConnections++
+			p.state.metrics.mu.Unlock()
 			return client, nil
 		}
 
 		// Wait for available client
 		select {
-		case client := <-p.clients:
-			p.metrics.mu.Lock()
-			p.metrics.ActiveConnections++
-			p.metrics.IdleConnections--
-			p.metrics.mu.Unlock()
+		case client := <-p.state.resources.clients:
+			p.state.metrics.mu.Lock()
+			p.state.metrics.ActiveConnections++
+			p.state.metrics.IdleConnections--
+			p.state.metrics.mu.Unlock()
 			return client, nil
-		case <-time.After(p.config.ConnectionTimeout):
-			p.metrics.mu.Lock()
-			p.metrics.FailedRequests++
-			p.metrics.mu.Unlock()
-			return nil, fmt.Errorf("connection timeout after %v", p.config.ConnectionTimeout)
+		case <-time.After(p.state.resources.config.ConnectionTimeout):
+			p.state.metrics.mu.Lock()
+			p.state.metrics.FailedRequests++
+			p.state.metrics.mu.Unlock()
+			return nil, fmt.Errorf("connection timeout after %v", p.state.resources.config.ConnectionTimeout)
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
@@ -215,84 +231,98 @@ func (p *ConnectionPool) GetClient(ctx context.Context) (*dynamodb.Client, error
 
 // ReturnClient returns a client to the pool
 func (p *ConnectionPool) ReturnClient(client *dynamodb.Client) {
-	if p.closed || client == nil {
+	if p.state.closed || client == nil {
 		return
 	}
 
 	// Return client to pool if there's space
 	select {
-	case p.clients <- client:
-		p.metrics.mu.Lock()
-		p.metrics.ActiveConnections--
-		p.metrics.IdleConnections++
-		p.metrics.mu.Unlock()
+	case p.state.resources.clients <- client:
+		p.state.metrics.mu.Lock()
+		p.state.metrics.ActiveConnections--
+		p.state.metrics.IdleConnections++
+		p.state.metrics.mu.Unlock()
 	default:
 		// Pool is full, client will be garbage collected
-		p.metrics.mu.Lock()
-		p.metrics.ConnectionsDestroyed++
-		p.metrics.ActiveConnections--
-		p.metrics.mu.Unlock()
+		p.state.metrics.mu.Lock()
+		p.state.metrics.ConnectionsDestroyed++
+		p.state.metrics.ActiveConnections--
+		p.state.metrics.mu.Unlock()
+		p.releaseConnectionSlot()
 	}
 }
 
 // Close closes the connection pool and all clients
 func (p *ConnectionPool) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.closed {
+	p.state.mu.Lock()
+	if p.state.closed {
+		p.state.mu.Unlock()
 		return nil
 	}
 
-	p.closed = true
-	p.cancel()
+	p.state.closed = true
+	if p.state.resources.cancel != nil {
+		p.state.resources.cancel()
+	}
 
-	// Close all clients in the pool
-	close(p.clients)
-	for client := range p.clients {
+	close(p.state.resources.clients)
+	p.state.mu.Unlock()
+
+	for client := range p.state.resources.clients {
 		// DynamoDB clients don't need explicit closing
 		_ = client
-		p.metrics.ConnectionsDestroyed++
+		p.state.metrics.mu.Lock()
+		p.state.metrics.ConnectionsDestroyed++
+		p.state.metrics.mu.Unlock()
+		p.releaseConnectionSlot()
 	}
+
+	p.state.mu.Lock()
+	p.state.totalConnections = 0
+	p.state.mu.Unlock()
 
 	return nil
 }
 
 // GetMetrics returns current pool metrics
 func (p *ConnectionPool) GetMetrics() *PoolMetrics {
-	p.metrics.mu.RLock()
-	defer p.metrics.mu.RUnlock()
+	p.state.metrics.mu.RLock()
+	defer p.state.metrics.mu.RUnlock()
 
 	// Return a copy of metrics without the mutex
 	return &PoolMetrics{
-		ActiveConnections:    p.metrics.ActiveConnections,
-		IdleConnections:      p.metrics.IdleConnections,
-		TotalRequests:        p.metrics.TotalRequests,
-		FailedRequests:       p.metrics.FailedRequests,
-		AverageWaitTime:      p.metrics.AverageWaitTime,
-		ConnectionsCreated:   p.metrics.ConnectionsCreated,
-		ConnectionsDestroyed: p.metrics.ConnectionsDestroyed,
-		HealthChecksPassed:   p.metrics.HealthChecksPassed,
-		HealthChecksFailed:   p.metrics.HealthChecksFailed,
-		LastHealthCheck:      p.metrics.LastHealthCheck,
+		ActiveConnections:    p.state.metrics.ActiveConnections,
+		IdleConnections:      p.state.metrics.IdleConnections,
+		TotalRequests:        p.state.metrics.TotalRequests,
+		FailedRequests:       p.state.metrics.FailedRequests,
+		AverageWaitTime:      p.state.metrics.AverageWaitTime,
+		ConnectionsCreated:   p.state.metrics.ConnectionsCreated,
+		ConnectionsDestroyed: p.state.metrics.ConnectionsDestroyed,
+		HealthChecksPassed:   p.state.metrics.HealthChecksPassed,
+		HealthChecksFailed:   p.state.metrics.HealthChecksFailed,
+		LastHealthCheck:      p.state.metrics.LastHealthCheck,
 	}
 }
 
-// createClient creates a new DynamoDB client
-func (p *ConnectionPool) createClient() *dynamodb.Client {
-	return dynamodb.NewFromConfig(p.awsConfig)
+// newClient creates a new DynamoDB client
+func (p *ConnectionPool) newClient() *dynamodb.Client {
+	if p.state == nil || p.state.resources.awsConfig == nil {
+		return nil
+	}
+
+	return dynamodb.NewFromConfig(*p.state.resources.awsConfig)
 }
 
 // healthCheckRoutine performs periodic health checks on pool connections
 func (p *ConnectionPool) healthCheckRoutine() {
-	ticker := time.NewTicker(p.config.HealthCheckInterval)
+	ticker := time.NewTicker(p.state.resources.config.HealthCheckInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			p.performHealthCheck()
-		case <-p.ctx.Done():
+		case <-p.state.resources.ctx.Done():
 			return
 		}
 	}
@@ -300,7 +330,7 @@ func (p *ConnectionPool) healthCheckRoutine() {
 
 // performHealthCheck checks the health of connections in the pool
 func (p *ConnectionPool) performHealthCheck() {
-	ctx, cancel := context.WithTimeout(p.ctx, p.config.HealthCheckTimeout)
+	ctx, cancel := context.WithTimeout(p.state.resources.ctx, p.state.resources.config.HealthCheckTimeout)
 	defer cancel()
 
 	// Sample a few connections for health check
@@ -309,24 +339,24 @@ func (p *ConnectionPool) performHealthCheck() {
 	maxCheck := 5 // Check up to 5 connections
 
 healthLoop:
-	for i := 0; i < maxCheck && len(p.clients) > 0; i++ {
+	for i := 0; i < maxCheck && len(p.state.resources.clients) > 0; i++ {
 		select {
-		case client := <-p.clients:
+		case client := <-p.state.resources.clients:
 			totalChecked++
 
 			// Perform a simple operation to check health
 			_, err := client.DescribeEndpoints(ctx, &dynamodb.DescribeEndpointsInput{})
 			if err == nil {
 				healthyCount++
-				p.clients <- client // Return healthy client
+				p.state.resources.clients <- client // Return healthy client
 			} else {
 				// Create a new client to replace the unhealthy one
-				newClient := p.createClient()
-				p.clients <- newClient
-				p.metrics.mu.Lock()
-				p.metrics.ConnectionsDestroyed++
-				p.metrics.ConnectionsCreated++
-				p.metrics.mu.Unlock()
+				newClient := p.newClient()
+				p.state.resources.clients <- newClient
+				p.state.metrics.mu.Lock()
+				p.state.metrics.ConnectionsDestroyed++
+				p.state.metrics.ConnectionsCreated++
+				p.state.metrics.mu.Unlock()
 			}
 		default:
 			break healthLoop
@@ -334,11 +364,11 @@ healthLoop:
 	}
 
 	// Update health check metrics
-	p.metrics.mu.Lock()
-	p.metrics.HealthChecksPassed += int64(healthyCount)
-	p.metrics.HealthChecksFailed += int64(totalChecked - healthyCount)
-	p.metrics.LastHealthCheck = time.Now()
-	p.metrics.mu.Unlock()
+	p.state.metrics.mu.Lock()
+	p.state.metrics.HealthChecksPassed += int64(healthyCount)
+	p.state.metrics.HealthChecksFailed += int64(totalChecked - healthyCount)
+	p.state.metrics.LastHealthCheck = time.Now()
+	p.state.metrics.mu.Unlock()
 }
 
 // PoolStats returns formatted statistics about the pool
@@ -350,21 +380,73 @@ func (p *ConnectionPool) PoolStats() map[string]interface{} {
 		"idle_connections":      metrics.IdleConnections,
 		"total_requests":        metrics.TotalRequests,
 		"failed_requests":       metrics.FailedRequests,
-		"success_rate":          float64(metrics.TotalRequests-metrics.FailedRequests) / float64(metrics.TotalRequests) * 100,
+		"success_rate":          calculateSuccessRate(metrics.TotalRequests, metrics.FailedRequests),
 		"average_wait_time_ms":  metrics.AverageWaitTime.Milliseconds(),
 		"connections_created":   metrics.ConnectionsCreated,
 		"connections_destroyed": metrics.ConnectionsDestroyed,
 		"health_checks_passed":  metrics.HealthChecksPassed,
 		"health_checks_failed":  metrics.HealthChecksFailed,
 		"last_health_check":     metrics.LastHealthCheck,
-		"pool_utilization":      float64(metrics.ActiveConnections) / float64(p.config.MaxConnections) * 100,
+		"pool_utilization":      p.calculateUtilization(),
 	}
+}
+
+func calculateSuccessRate(totalRequests, failedRequests int64) float64 {
+	if totalRequests == 0 {
+		return 0
+	}
+
+	return float64(totalRequests-failedRequests) / float64(totalRequests) * 100
+}
+
+func (p *ConnectionPool) calculateUtilization() float64 {
+	maxConnections := p.state.resources.config.MaxConnections
+	if maxConnections <= 0 {
+		return 0
+	}
+
+	total := p.currentTotalConnections()
+	if total == 0 {
+		return 0
+	}
+
+	return float64(total) / float64(maxConnections) * 100
+}
+
+func (p *ConnectionPool) currentTotalConnections() int {
+	p.state.mu.RLock()
+	defer p.state.mu.RUnlock()
+	return p.state.totalConnections
+}
+
+func (p *ConnectionPool) reserveConnectionSlot() bool {
+	p.state.mu.Lock()
+	defer p.state.mu.Unlock()
+
+	if p.state.closed {
+		return false
+	}
+
+	if p.state.resources.config.MaxConnections > 0 && p.state.totalConnections >= p.state.resources.config.MaxConnections {
+		return false
+	}
+
+	p.state.totalConnections++
+	return true
+}
+
+func (p *ConnectionPool) releaseConnectionSlot() {
+	p.state.mu.Lock()
+	if p.state.totalConnections > 0 {
+		p.state.totalConnections--
+	}
+	p.state.mu.Unlock()
 }
 
 // OptimizeForWorkload adjusts pool configuration based on workload characteristics
 func (p *ConnectionPool) OptimizeForWorkload(workloadType string) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.state.mu.Lock()
+	defer p.state.mu.Unlock()
 
 	var newConfig *ConnectionPoolConfig
 
@@ -380,9 +462,9 @@ func (p *ConnectionPool) OptimizeForWorkload(workloadType string) error {
 	}
 
 	// Apply new configuration (simplified - in practice would need gradual transition)
-	newConfig.Region = p.config.Region
-	newConfig.Endpoint = p.config.Endpoint
-	p.config = newConfig
+	newConfig.Region = p.state.resources.config.Region
+	newConfig.Endpoint = p.state.resources.config.Endpoint
+	p.state.resources.config = newConfig
 
 	return nil
 }

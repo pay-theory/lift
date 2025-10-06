@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const defaultHealthCheckInterval = time.Minute
+
 // DNSConfig defines DNS configuration (imported from deployment package concept)
 type DNSConfig struct {
 	DomainName    string `json:"domain_name"`
@@ -54,6 +56,9 @@ type HealthMonitor struct {
 
 // NewHealthMonitor creates a new health monitor
 func NewHealthMonitor(config HealthCheckConfig) *HealthMonitor {
+	if config.Interval <= 0 {
+		config.Interval = defaultHealthCheckInterval
+	}
 	return &HealthMonitor{
 		config: config,
 	}
@@ -65,7 +70,12 @@ func (hm *HealthMonitor) Start(ctx context.Context, eventHandler func(context.Co
 		return
 	}
 
-	ticker := time.NewTicker(hm.config.Interval)
+	interval := hm.config.Interval
+	if interval <= 0 {
+		interval = defaultHealthCheckInterval
+	}
+
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {

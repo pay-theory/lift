@@ -61,15 +61,17 @@ type WAFCustomRule struct {
 
 // VPCEndpointConfig defines which VPC endpoints to create
 type VPCEndpointConfig struct {
-	EnableSecretsManager      *bool
-	EnableCloudWatchLogs      *bool
-	EnableXRay                *bool
-	EnableKMS                 *bool
+	EnableSecretsManager       *bool
+	EnableCloudWatchLogs       *bool
+	EnableXRay                 *bool
+	EnableKMS                  *bool
 	EnableCloudWatchMonitoring *bool
-	PrivateDNSEnabled         *bool // Default true, set false to avoid conflicts in shared VPCs
+	PrivateDNSEnabled          *bool // Default true, set false to avoid conflicts in shared VPCs
 }
 
 // EnhancedSecurityProps defines properties for enhanced security
+//
+//nolint:govet // Field order keeps related toggles grouped for readability.
 type EnhancedSecurityProps struct {
 	Vpc               awsec2.IVpc
 	EnableWAF         *bool
@@ -163,12 +165,12 @@ func (s *EnhancedSecurity) setDefaults(props *EnhancedSecurityProps) {
 	}
 	if props.VPCEndpointConfig == nil {
 		props.VPCEndpointConfig = &VPCEndpointConfig{
-			EnableSecretsManager:      jsii.Bool(true),
-			EnableCloudWatchLogs:      jsii.Bool(true),
-			EnableXRay:                jsii.Bool(true),
-			EnableKMS:                 jsii.Bool(false),
+			EnableSecretsManager:       jsii.Bool(true),
+			EnableCloudWatchLogs:       jsii.Bool(true),
+			EnableXRay:                 jsii.Bool(true),
+			EnableKMS:                  jsii.Bool(false),
 			EnableCloudWatchMonitoring: jsii.Bool(false),
-			PrivateDNSEnabled:         jsii.Bool(true),
+			PrivateDNSEnabled:          jsii.Bool(true),
 		}
 	}
 }

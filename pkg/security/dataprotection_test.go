@@ -17,6 +17,7 @@ func TestDataProtectionManager_ClassifyData(t *testing.T) {
 			"email":       DataInternal,
 			"public_info": DataPublic,
 		},
+		EncryptionKey: "test-key",
 	}
 
 	manager, err := NewDataProtectionManager(config)
@@ -144,6 +145,7 @@ func TestDataProtectionManager_ValidateDataAccess(t *testing.T) {
 			DataRestricted:   24 * time.Hour,
 			DataConfidential: 7 * 24 * time.Hour,
 		},
+		EncryptionKey: "test-key",
 	}
 
 	manager, err := NewDataProtectionManager(config)
@@ -613,5 +615,13 @@ func TestDataProtectionManager_ClassificationLevels(t *testing.T) {
 			result := manager.isHigherClassification(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
+	}
+}
+
+func TestNewDataProtectionManagerRequiresEncryptionKey(t *testing.T) {
+	config := DataProtectionConfig{}
+
+	if _, err := NewDataProtectionManager(config); err == nil {
+		t.Fatal("expected error when encryption key is empty")
 	}
 }

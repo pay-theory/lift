@@ -38,7 +38,7 @@ This guide helps you select the right AWS event source for your use case and pro
 // Use SQS when you need reliable task processing
 sqsProcessor := constructs.NewSQSProcessor(stack, jsii.String("JobQueue"), &constructs.SQSProcessorProps{
     QueueName:        jsii.String("job-queue"),
-    EnableFIFO:       jsii.Bool(true), // When order matters
+    FifoQueue:        jsii.Bool(true), // When order matters
     MaxReceiveCount:  jsii.Number(3),   // Retry 3 times before DLQ
     VisibilityTimeout: awscdk.Duration_Minutes(jsii.Number(5)),
 })
@@ -68,6 +68,7 @@ sqsProcessor := constructs.NewSQSProcessor(stack, jsii.String("JobQueue"), &cons
 **When to Use:**
 ```go
 // Use EventBridge for complex event routing
+// import "github.com/aws/aws-cdk-go/awscdk/v2/awsevents"
 eventHandler := constructs.NewEventBridgeHandler(stack, jsii.String("OrderEvents"), &constructs.EventBridgeHandlerProps{
     EventPattern: &awseventbridge.EventPattern{
         Source:     &[]*string{jsii.String("order.service")},

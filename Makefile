@@ -8,7 +8,7 @@ export GOMODCACHE
 
 # Discover only packages that contain tests under ./pkg and selected roots.
 # This avoids building unrelated packages (e.g., stacks) and excludes examples.
-TEST_PKGS := $(shell find pkg -type f -name "*_test.go" -printf '%h\n' | sort -u | sed 's|^|./|' | grep -v '^\./pkg/cdk/integration$$' | grep -v '^\./pkg/cdk/patterns$$')
+TEST_PKGS := $(shell find pkg -type f -name "*_test.go" -printf '%h\n' | sort -u | sed 's|^|./|' | grep -v '^\./pkg/cdk/integration$$')
 TEST_PKGS += $(shell find benchmarks -type f -name "*_test.go" >/dev/null 2>&1 && echo ./benchmarks)
 
 # Default target

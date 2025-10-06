@@ -3,10 +3,19 @@ package disaster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
 	"time"
+)
+
+const defaultDRTestFrequency = 24 * time.Hour
+
+var (
+	errInvalidTestingFrequency = errors.New("disaster: testing schedule frequency must be greater than zero")
+	errInvalidNotifyLeadTime   = errors.New("disaster: notify_before must be non-negative and less than testing frequency")
+	errInvalidHealthInterval   = errors.New("disaster: health check interval must be greater than zero when enabled")
 )
 
 // DisasterRecoveryManager manages disaster recovery operations
@@ -366,6 +375,8 @@ type TestingScheduleConfig struct {
 
 // NewDisasterRecoveryManager creates a new disaster recovery manager
 func NewDisasterRecoveryManager(config DRConfig) *DisasterRecoveryManager {
+	config = normalizeDRConfig(config)
+
 	drm := &DisasterRecoveryManager{
 		config:          config,
 		primaryRegion:   config.PrimaryRegion,
@@ -394,8 +405,24 @@ func NewDisasterRecoveryManager(config DRConfig) *DisasterRecoveryManager {
 	return drm
 }
 
+func normalizeDRConfig(config DRConfig) DRConfig {
+	if config.HealthCheck.Enabled && config.HealthCheck.Interval <= 0 {
+		config.HealthCheck.Interval = defaultHealthCheckInterval
+	}
+
+	if config.TestingSchedule.Enabled && config.TestingSchedule.Frequency <= 0 {
+		config.TestingSchedule.Frequency = defaultDRTestFrequency
+	}
+
+	return config
+}
+
 // StartMonitoring starts disaster recovery monitoring
 func (drm *DisasterRecoveryManager) StartMonitoring(ctx context.Context) error {
+	if err := drm.validateConfig(); err != nil {
+		return err
+	}
+
 	drm.mu.Lock()
 	defer drm.mu.Unlock()
 
@@ -408,6 +435,26 @@ func (drm *DisasterRecoveryManager) StartMonitoring(ctx context.Context) error {
 	// Start periodic DR testing if enabled
 	if drm.config.TestingSchedule.Enabled {
 		go drm.startPeriodicTesting(ctx)
+	}
+
+	return nil
+}
+
+func (drm *DisasterRecoveryManager) validateConfig() error {
+	drm.mu.RLock()
+	defer drm.mu.RUnlock()
+
+	if drm.config.HealthCheck.Enabled && drm.config.HealthCheck.Interval <= 0 {
+		return errInvalidHealthInterval
+	}
+
+	if drm.config.TestingSchedule.Enabled {
+		if drm.config.TestingSchedule.Frequency <= 0 {
+			return errInvalidTestingFrequency
+		}
+		if drm.config.TestingSchedule.NotifyBefore < 0 || drm.config.TestingSchedule.NotifyBefore >= drm.config.TestingSchedule.Frequency {
+			return errInvalidNotifyLeadTime
+		}
 	}
 
 	return nil
@@ -797,7 +844,12 @@ func (drm *DisasterRecoveryManager) selectBestBackupRegion() string {
 
 // startPeriodicTesting starts periodic DR testing
 func (drm *DisasterRecoveryManager) startPeriodicTesting(ctx context.Context) {
-	ticker := time.NewTicker(drm.config.TestingSchedule.Frequency)
+	freq := drm.getTestingFrequency()
+	if freq <= 0 {
+		return
+	}
+
+	ticker := time.NewTicker(freq)
 	defer ticker.Stop()
 
 	for {
@@ -810,30 +862,47 @@ func (drm *DisasterRecoveryManager) startPeriodicTesting(ctx context.Context) {
 	}
 }
 
+func (drm *DisasterRecoveryManager) getTestingFrequency() time.Duration {
+	drm.mu.RLock()
+	defer drm.mu.RUnlock()
+	return drm.config.TestingSchedule.Frequency
+}
+
 // performDRTest performs a disaster recovery test
 func (drm *DisasterRecoveryManager) performDRTest(ctx context.Context) {
-	drm.mu.Lock()
-	defer drm.mu.Unlock()
+	drm.mu.RLock()
+	notifyBefore := drm.config.TestingSchedule.NotifyBefore
+	activeRegion := drm.currentState.ActiveRegion
+	testRegion := drm.selectBestBackupRegion()
+	drm.mu.RUnlock()
 
-	// Notify before test
+	scheduledTime := time.Now().Add(notifyBefore)
+
 	if err := drm.notificationMgr.SendNotification(ctx, "dr_test_starting", map[string]any{
-		"scheduled_time": time.Now().Add(drm.config.TestingSchedule.NotifyBefore),
+		"scheduled_time": scheduledTime,
 	}); err != nil {
 		// Log notification error but continue with test
 		log.Printf("Failed to send DR test starting notification: %v", err)
 	}
 
-	// Wait for notification period
-	time.Sleep(drm.config.TestingSchedule.NotifyBefore)
+	if notifyBefore > 0 {
+		timer := time.NewTimer(notifyBefore)
+		defer timer.Stop()
+
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return
+		}
+	}
 
 	// Perform test failover
-	testRegion := drm.selectBestBackupRegion()
 	if testRegion != "" {
 		event := &FailoverEvent{
 			ID:         fmt.Sprintf("test-failover-%d", time.Now().Unix()),
 			Timestamp:  time.Now(),
 			Type:       FailoverTypeTesting,
-			FromRegion: drm.currentState.ActiveRegion,
+			FromRegion: activeRegion,
 			ToRegion:   testRegion,
 			Reason:     "Scheduled DR test",
 			Trigger:    TriggerScheduledTest,
@@ -854,7 +923,9 @@ func (drm *DisasterRecoveryManager) executeTestFailover(ctx context.Context, eve
 	event.Status = FailoverStatusCompleted
 	event.Duration = 5 * time.Minute // Example test duration
 
+	drm.mu.Lock()
 	drm.failoverHistory = append(drm.failoverHistory, *event)
+	drm.mu.Unlock()
 
 	if err := drm.notificationMgr.SendNotification(ctx, "dr_test_completed", map[string]any{
 		"event":   event,

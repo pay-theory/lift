@@ -16,6 +16,9 @@ type LiftApiDomainProps struct {
 	// Domain name for the API (e.g., "api.example.com")
 	DomainName *string
 
+	// Optional: API mapping key (base path)
+	ApiMappingKey *string
+
 	// ACM certificate for the domain (required)
 	Certificate awscertificatemanager.ICertificate
 
@@ -29,20 +32,17 @@ type LiftApiDomainProps struct {
 	// If provided, a CNAME record will be created pointing to the API Gateway domain
 	HostedZone awsroute53.IHostedZone
 
-	// Optional: Create CNAME record in Route53 (default: true if HostedZone is provided)
-	CreateCNAME *bool
+	// Optional: Enable mutual TLS authentication
+	MutualTlsAuthentication *awsapigatewayv2.MTLSConfig
 
 	// Optional: TTL for the CNAME record in seconds (default: 300)
 	RecordTTL *float64
 
+	// Optional: Create CNAME record in Route53 (default: true if HostedZone is provided)
+	CreateCNAME *bool
+
 	// Optional: Security policy (default: TLS_1_2)
 	SecurityPolicy awsapigatewayv2.SecurityPolicy
-
-	// Optional: Enable mutual TLS authentication
-	MutualTlsAuthentication *awsapigatewayv2.MTLSConfig
-
-	// Optional: API mapping key (base path)
-	ApiMappingKey *string
 }
 
 // LiftApiDomain provides simplified API Gateway custom domain with Route53 integration

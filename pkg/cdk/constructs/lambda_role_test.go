@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/jsii-runtime-go"
 )
 
@@ -80,10 +79,10 @@ func TestLiftLambdaRole_WithDynamoDB(t *testing.T) {
 
 	template := assertions.Template_FromStack(stack, nil)
 
-	// Assert DynamoDB policy is attached
+	// Assert DynamoDB policy is attached with expected actions
 	template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), map[string]interface{}{
 		"PolicyDocument": map[string]interface{}{
-			"Statement": assertions.Match_ArrayWith(&[]interface{}{
+			"Statement": []interface{}{
 				map[string]interface{}{
 					"Action": []interface{}{
 						"dynamodb:DescribeTable",
@@ -98,7 +97,7 @@ func TestLiftLambdaRole_WithDynamoDB(t *testing.T) {
 					},
 					"Effect": "Allow",
 				},
-			}),
+			},
 		},
 	})
 }
@@ -123,10 +122,10 @@ func TestLiftLambdaRole_WithKMS(t *testing.T) {
 
 	template := assertions.Template_FromStack(stack, nil)
 
-	// Assert KMS policy is attached
+	// Assert KMS policy is attached with expected actions
 	template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), map[string]interface{}{
 		"PolicyDocument": map[string]interface{}{
-			"Statement": assertions.Match_ArrayWith(&[]interface{}{
+			"Statement": []interface{}{
 				map[string]interface{}{
 					"Action": []interface{}{
 						"kms:Decrypt",
@@ -136,7 +135,7 @@ func TestLiftLambdaRole_WithKMS(t *testing.T) {
 					},
 					"Effect": "Allow",
 				},
-			}),
+			},
 		},
 	})
 }
@@ -159,24 +158,27 @@ func TestLiftLambdaRole_WithMultiRegionKMS(t *testing.T) {
 	// Assert multi-region KMS policy includes GenerateMac and VerifyMac
 	template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), map[string]interface{}{
 		"PolicyDocument": map[string]interface{}{
-			"Statement": assertions.Match_ArrayWith(&[]interface{}{
+			"Statement": []interface{}{
 				map[string]interface{}{
-					"Action": assertions.Match_ArrayWith(&[]interface{}{
+					"Action": []interface{}{
 						"kms:GenerateMac",
 						"kms:VerifyMac",
-					}),
+					},
 					"Effect": "Allow",
 					"Resource": map[string]interface{}{
 						"Fn::Join": []interface{}{
 							"",
-							assertions.Match_ArrayWith(&[]interface{}{
+							[]interface{}{
 								"arn:aws:kms:*:",
+								map[string]interface{}{
+									"Ref": "AWS::AccountId",
+								},
 								":key/mrk-*",
-							}),
+							},
 						},
 					},
 				},
-			}),
+			},
 		},
 	})
 }
@@ -201,7 +203,7 @@ func TestLiftLambdaRole_WithSecretsManager(t *testing.T) {
 	// Assert Secrets Manager policy is attached
 	template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), map[string]interface{}{
 		"PolicyDocument": map[string]interface{}{
-			"Statement": assertions.Match_ArrayWith(&[]interface{}{
+			"Statement": []interface{}{
 				map[string]interface{}{
 					"Action": []interface{}{
 						"secretsmanager:GetSecretValue",
@@ -209,7 +211,7 @@ func TestLiftLambdaRole_WithSecretsManager(t *testing.T) {
 					},
 					"Effect": "Allow",
 				},
-			}),
+			},
 		},
 	})
 }
@@ -235,7 +237,7 @@ func TestLiftLambdaRole_WithSSMParameterStore(t *testing.T) {
 	// Assert SSM policy is attached
 	template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), map[string]interface{}{
 		"PolicyDocument": map[string]interface{}{
-			"Statement": assertions.Match_ArrayWith(&[]interface{}{
+			"Statement": []interface{}{
 				map[string]interface{}{
 					"Action": []interface{}{
 						"ssm:GetParameter",
@@ -244,7 +246,7 @@ func TestLiftLambdaRole_WithSSMParameterStore(t *testing.T) {
 					},
 					"Effect": "Allow",
 				},
-			}),
+			},
 		},
 	})
 }
@@ -267,17 +269,17 @@ func TestLiftLambdaRole_WithPaymentCryptography(t *testing.T) {
 	// Assert Payment Cryptography policy is attached
 	template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), map[string]interface{}{
 		"PolicyDocument": map[string]interface{}{
-			"Statement": assertions.Match_ArrayWith(&[]interface{}{
+			"Statement": []interface{}{
 				map[string]interface{}{
 					"Action": []interface{}{
 						"payment-cryptography:DecryptData",
 						"payment-cryptography:EncryptData",
 						"payment-cryptography:GetAlias",
 					},
-					"Effect": "Allow",
+					"Effect":   "Allow",
 					"Resource": "*",
 				},
-			}),
+			},
 		},
 	})
 }
@@ -351,7 +353,7 @@ func TestLiftLambdaRole_WithInlinePolicy(t *testing.T) {
 	template := assertions.Template_FromStack(stack, nil)
 
 	// Assert inline policy is attached
-	template.ResourceCountIs(jsii.String("AWS::IAM::Policy"), jsii.Number(2)) // 1 inline + 1 default
+	template.ResourceCountIs(jsii.String("AWS::IAM::Policy"), jsii.Number(1)) // 1 inline policy
 }
 
 func TestLiftLambdaRole_WithAdditionalStatements(t *testing.T) {
@@ -384,8 +386,8 @@ func TestLiftLambdaRole_WithAdditionalStatements(t *testing.T) {
 		"PolicyDocument": map[string]interface{}{
 			"Statement": assertions.Match_ArrayWith(&[]interface{}{
 				map[string]interface{}{
-					"Action": "ec2:DescribeInstances",
-					"Effect": "Allow",
+					"Action":   "ec2:DescribeInstances",
+					"Effect":   "Allow",
 					"Resource": "*",
 				},
 			}),
@@ -421,4 +423,3 @@ func TestLiftLambdaRole_GrantMethods(t *testing.T) {
 	// Assert permissions were granted
 	template.ResourceCountIs(jsii.String("AWS::IAM::Policy"), jsii.Number(1))
 }
-

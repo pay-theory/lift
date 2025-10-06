@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -78,21 +79,110 @@ func (b *MetricsBuffer) Size() int {
 
 // CloudWatchMetrics implements metrics collection for CloudWatch
 type CloudWatchMetrics struct {
-	lastError       atomic.Value
-	client          CloudWatchMetricsClient
-	lastFlush       atomic.Value
-	buffer          *MetricsBuffer
-	flushNow        chan struct{}
-	doneCh          chan struct{}
-	stopCh          chan struct{}
-	namespace       string
-	dimensions      []types.Dimension
-	flushInterval   time.Duration
+	core       *metricsCore
+	dimensions []types.Dimension
+	ownsCore   bool
+
+	mu        sync.RWMutex
+	closeOnce sync.Once
+}
+
+type metricsCore struct {
+	resources *metricsResources
+	state     *metricsState
+
+	flushInterval time.Duration
+	flushTimeout  time.Duration
+
+	metricsRecorded int64
+	metricsDropped  int64
 	errorCount      int64
 	flushCount      int64
-	metricsDropped  int64
-	metricsRecorded int64
-	mu              sync.RWMutex
+
+	refCount int64
+}
+
+type metricsResources struct {
+	putMetricData func(context.Context, *cloudwatch.PutMetricDataInput) (*cloudwatch.PutMetricDataOutput, error)
+	buffer        *MetricsBuffer
+	namespace     *string
+	channels      *metricsChannels
+}
+
+type metricsState struct {
+	lastFlush atomic.Value
+	lastError atomic.Value
+	closeOnce sync.Once
+}
+
+type metricsChannels struct {
+	flushNow chan struct{}
+	stopCh   chan struct{}
+	doneCh   chan struct{}
+}
+
+func cloneDimensions(src []types.Dimension) []types.Dimension {
+	if len(src) == 0 {
+		return nil
+	}
+
+	dst := make([]types.Dimension, len(src))
+	copy(dst, src)
+	return dst
+}
+
+func normalizeDimensionKey(key string) string {
+	trimmed := strings.TrimSpace(key)
+	switch strings.ToLower(trimmed) {
+	case "tenant_id", "tenantid":
+		return "TenantID"
+	case "user_id", "userid":
+		return "UserID"
+	default:
+		return trimmed
+	}
+}
+
+func combineDimensions(base []types.Dimension, extra map[string]string) []types.Dimension {
+	if len(base) == 0 && len(extra) == 0 {
+		return nil
+	}
+
+	normalized := make(map[string]string, len(base)+len(extra))
+	order := make([]string, 0, len(base)+len(extra))
+
+	for _, dim := range base {
+		if dim.Name == nil || dim.Value == nil {
+			continue
+		}
+		name := aws.ToString(dim.Name)
+		if _, exists := normalized[name]; !exists {
+			order = append(order, name)
+		}
+		normalized[name] = aws.ToString(dim.Value)
+	}
+
+	for rawKey, value := range extra {
+		if value == "" {
+			continue
+		}
+		name := normalizeDimensionKey(rawKey)
+		if _, exists := normalized[name]; !exists {
+			order = append(order, name)
+		}
+		normalized[name] = value
+	}
+
+	dims := make([]types.Dimension, 0, len(order))
+	for _, name := range order {
+		val := normalized[name]
+		dims = append(dims, types.Dimension{
+			Name:  aws.String(name),
+			Value: aws.String(val),
+		})
+	}
+
+	return dims
 }
 
 // CloudWatchMetricsConfig holds configuration for CloudWatch metrics
@@ -106,112 +196,128 @@ type CloudWatchMetricsConfig struct {
 
 // NewCloudWatchMetrics creates a new CloudWatch metrics collector
 func NewCloudWatchMetrics(client CloudWatchMetricsClient, config CloudWatchMetricsConfig) *CloudWatchMetrics {
-	// Set defaults
 	if config.BufferSize == 0 {
 		config.BufferSize = 1000
 	}
 	if config.FlushSize == 0 {
-		config.FlushSize = 20 // CloudWatch allows up to 1000 metrics per request, but we'll batch smaller
+		config.FlushSize = 20
 	}
 	if config.FlushInterval == 0 {
 		config.FlushInterval = 60 * time.Second
 	}
 
-	// Convert dimensions map to slice
-	dimensions := make([]types.Dimension, 0, len(config.Dimensions))
-	for name, value := range config.Dimensions {
-		dimensions = append(dimensions, types.Dimension{
-			Name:  aws.String(name),
-			Value: aws.String(value),
-		})
+	var namespace *string
+	if config.Namespace != "" {
+		ns := config.Namespace
+		namespace = &ns
 	}
-
-	m := &CloudWatchMetrics{
-		client:        client,
-		namespace:     config.Namespace,
+	var putMetric func(context.Context, *cloudwatch.PutMetricDataInput) (*cloudwatch.PutMetricDataOutput, error)
+	if client != nil {
+		putMetric = func(ctx context.Context, input *cloudwatch.PutMetricDataInput) (*cloudwatch.PutMetricDataOutput, error) {
+			return client.PutMetricData(ctx, input)
+		}
+	}
+	resources := &metricsResources{
+		putMetricData: putMetric,
 		buffer:        NewMetricsBuffer(config.BufferSize, config.FlushSize),
+		namespace:     namespace,
+		channels: &metricsChannels{
+			flushNow: make(chan struct{}, 1),
+			stopCh:   make(chan struct{}),
+			doneCh:   make(chan struct{}),
+		},
+	}
+	core := &metricsCore{
+		resources:     resources,
+		state:         &metricsState{},
 		flushInterval: config.FlushInterval,
-		dimensions:    dimensions,
-		stopCh:        make(chan struct{}),
-		doneCh:        make(chan struct{}),
-		flushNow:      make(chan struct{}, 1),
+		flushTimeout:  30 * time.Second,
+		refCount:      1,
 	}
 
-	// Initialize last flush time
-	m.lastFlush.Store(time.Now())
+	core.state.lastFlush.Store(time.Now())
 
-	// Start background flusher
-	go m.backgroundFlusher()
+	metrics := &CloudWatchMetrics{
+		core:       core,
+		dimensions: combineDimensions(nil, config.Dimensions),
+		ownsCore:   true,
+	}
 
-	return m
+	go core.backgroundFlusher()
+
+	return metrics
 }
 
 // RecordMetric records a single metric value
 func (m *CloudWatchMetrics) RecordMetric(name string, value float64, unit types.StandardUnit) {
-	atomic.AddInt64(&m.metricsRecorded, 1)
+	m.recordMetricWithTags(name, value, unit, nil)
+}
+
+// RecordCount records a count metric
+func (m *CloudWatchMetrics) RecordCount(name string, count int64) {
+	m.recordMetricWithTags(name, float64(count), types.StandardUnitCount, nil)
+}
+
+// RecordDuration records a duration metric in milliseconds
+func (m *CloudWatchMetrics) RecordDuration(name string, duration time.Duration) {
+	m.recordMetricWithTags(name, float64(duration.Milliseconds()), types.StandardUnitMilliseconds, nil)
+}
+
+// RecordGauge records a gauge metric
+func (m *CloudWatchMetrics) RecordGauge(name string, value float64) {
+	m.recordMetricWithTags(name, value, types.StandardUnitNone, nil)
+}
+
+func (m *CloudWatchMetrics) recordMetricWithTags(name string, value float64, unit types.StandardUnit, tags map[string]string) {
+	if m == nil || m.core == nil {
+		return
+	}
 
 	datum := types.MetricDatum{
 		MetricName: aws.String(name),
 		Value:      aws.Float64(value),
 		Unit:       unit,
 		Timestamp:  aws.Time(time.Now()),
-		Dimensions: m.getDimensions(),
+		Dimensions: combineDimensions(m.getDimensions(), tags),
 	}
 
-	if shouldFlush := m.buffer.Add(datum); shouldFlush {
-		// Trigger flush without blocking
-		select {
-		case m.flushNow <- struct{}{}:
-		default:
-		}
+	m.core.recordDatum(datum)
+}
+
+func (c *metricsCore) recordDatum(datum types.MetricDatum) {
+	atomic.AddInt64(&c.metricsRecorded, 1)
+
+	if c.resources == nil || c.resources.buffer == nil {
+		return
+	}
+
+	if shouldFlush := c.resources.buffer.Add(datum); shouldFlush {
+		c.signalFlush()
 	}
 }
 
-// RecordCount records a count metric
-func (m *CloudWatchMetrics) RecordCount(name string, count int64) {
-	m.RecordMetric(name, float64(count), types.StandardUnitCount)
-}
-
-// RecordDuration records a duration metric in milliseconds
-func (m *CloudWatchMetrics) RecordDuration(name string, duration time.Duration) {
-	m.RecordMetric(name, float64(duration.Milliseconds()), types.StandardUnitMilliseconds)
-}
-
-// RecordGauge records a gauge metric
-func (m *CloudWatchMetrics) RecordGauge(name string, value float64) {
-	m.RecordMetric(name, value, types.StandardUnitNone)
+func (c *metricsCore) signalFlush() {
+	if c.resources == nil || c.resources.channels == nil {
+		return
+	}
+	select {
+	case c.resources.channels.flushNow <- struct{}{}:
+	default:
+	}
 }
 
 // WithDimensions returns a new metrics collector with additional dimensions
 func (m *CloudWatchMetrics) WithDimensions(dims map[string]string) *CloudWatchMetrics {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	// Copy existing dimensions
-	newDims := make([]types.Dimension, len(m.dimensions))
-	copy(newDims, m.dimensions)
-
-	// Add new dimensions
-	for name, value := range dims {
-		newDims = append(newDims, types.Dimension{
-			Name:  aws.String(name),
-			Value: aws.String(value),
-		})
+	if m == nil || m.core == nil {
+		return m
 	}
 
+	merged := combineDimensions(m.getDimensions(), dims)
+
 	return &CloudWatchMetrics{
-		client:          m.client,
-		namespace:       m.namespace,
-		buffer:          m.buffer, // Share the buffer
-		flushInterval:   m.flushInterval,
-		dimensions:      newDims,
-		stopCh:          m.stopCh,
-		doneCh:          m.doneCh,
-		flushNow:        m.flushNow,
-		metricsRecorded: m.metricsRecorded,
-		metricsDropped:  m.metricsDropped,
-		flushCount:      m.flushCount,
-		errorCount:      m.errorCount,
+		core:       m.core,
+		dimensions: merged,
+		ownsCore:   false,
 	}
 }
 
@@ -232,18 +338,17 @@ func (m *CloudWatchMetrics) WithTags(tags map[string]string) observability.Metri
 
 // RecordBatch records multiple metric entries at once
 func (m *CloudWatchMetrics) RecordBatch(entries []*observability.MetricEntry) error {
-	for _, entry := range entries {
-		// Convert unit string to StandardUnit
-		unit := m.parseUnit(entry.Unit)
+	if m == nil || m.core == nil {
+		return nil
+	}
 
-		// Build dimensions
-		dims := m.getDimensions()
-		for k, v := range entry.Tags {
-			dims = append(dims, types.Dimension{
-				Name:  aws.String(k),
-				Value: aws.String(v),
-			})
+	for _, entry := range entries {
+		if entry == nil {
+			continue
 		}
+
+		unit := m.parseUnit(entry.Unit)
+		dims := combineDimensions(m.getDimensions(), entry.Tags)
 
 		datum := types.MetricDatum{
 			MetricName: aws.String(entry.Name),
@@ -253,12 +358,7 @@ func (m *CloudWatchMetrics) RecordBatch(entries []*observability.MetricEntry) er
 			Dimensions: dims,
 		}
 
-		if shouldFlush := m.buffer.Add(datum); shouldFlush {
-			select {
-			case m.flushNow <- struct{}{}:
-			default:
-			}
-		}
+		m.core.recordDatum(datum)
 	}
 
 	return nil
@@ -266,70 +366,120 @@ func (m *CloudWatchMetrics) RecordBatch(entries []*observability.MetricEntry) er
 
 // Flush forces a flush of buffered metrics
 func (m *CloudWatchMetrics) Flush() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	if m == nil || m.core == nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), m.core.flushTimeout)
 	defer cancel()
 
-	return m.flush(ctx)
+	return m.core.flush(ctx)
 }
 
 // Close stops the metrics collector and flushes remaining metrics
 func (m *CloudWatchMetrics) Close() error {
-	// Signal shutdown
-	close(m.stopCh)
-
-	// Wait for background flusher to stop
-	select {
-	case <-m.doneCh:
-	case <-time.After(5 * time.Second):
-		// Timeout waiting for graceful shutdown
+	if m == nil || m.core == nil {
+		return nil
 	}
 
-	// Final flush
-	return m.Flush()
+	if !m.ownsCore {
+		return nil
+	}
+
+	var err error
+	m.closeOnce.Do(func() {
+		err = m.core.release()
+	})
+
+	return err
+}
+
+func (c *metricsCore) release() error {
+	if c == nil {
+		return nil
+	}
+
+	newCount := atomic.AddInt64(&c.refCount, -1)
+	if newCount > 0 {
+		return nil
+	}
+
+	if newCount < 0 {
+		atomic.StoreInt64(&c.refCount, 0)
+		return nil
+	}
+
+	var flushErr error
+	if c.state == nil {
+		return nil
+	}
+	c.state.closeOnce.Do(func() {
+		if c.resources != nil && c.resources.channels != nil {
+			close(c.resources.channels.stopCh)
+
+			select {
+			case <-c.resources.channels.doneCh:
+			case <-time.After(5 * time.Second):
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), c.flushTimeout)
+		flushErr = c.flush(ctx)
+		cancel()
+	})
+
+	return flushErr
 }
 
 // GetStats returns metrics collection statistics
 func (m *CloudWatchMetrics) GetStats() observability.MetricsStats {
-	lastFlushVal := m.lastFlush.Load()
+	if m == nil || m.core == nil {
+		return observability.MetricsStats{}
+	}
+
+	lastFlushVal := m.core.state.lastFlush.Load()
 	lastFlush, ok := lastFlushVal.(time.Time)
 	if !ok {
 		lastFlush = time.Time{} // zero time if assertion fails
 	}
-	lastErrorVal := m.lastError.Load()
+	lastErrorVal := m.core.state.lastError.Load()
 	lastError, ok := lastErrorVal.(string)
 	if !ok {
 		lastError = "" // empty string if assertion fails
 	}
 
 	return observability.MetricsStats{
-		MetricsRecorded: atomic.LoadInt64(&m.metricsRecorded),
-		MetricsDropped:  atomic.LoadInt64(&m.metricsDropped),
+		MetricsRecorded: atomic.LoadInt64(&m.core.metricsRecorded),
+		MetricsDropped:  atomic.LoadInt64(&m.core.metricsDropped),
 		LastFlush:       lastFlush,
-		ErrorCount:      atomic.LoadInt64(&m.errorCount),
+		ErrorCount:      atomic.LoadInt64(&m.core.errorCount),
 		LastError:       lastError,
 	}
 }
 
 // backgroundFlusher runs the periodic flush loop
-func (m *CloudWatchMetrics) backgroundFlusher() {
-	defer close(m.doneCh)
+func (c *metricsCore) backgroundFlusher() {
+	if c.resources == nil || c.resources.channels == nil {
+		return
+	}
+	defer close(c.resources.channels.doneCh)
 
-	ticker := time.NewTicker(m.flushInterval)
+	ticker := time.NewTicker(c.flushInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-m.stopCh:
+		case <-c.resources.channels.stopCh:
 			return
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			if err := m.flush(ctx); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), c.flushTimeout)
+			if err := c.flush(ctx); err != nil {
 				log.Printf("Warning: periodic metrics flush failed: %v", err)
 			}
 			cancel()
-		case <-m.flushNow:
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			if err := m.flush(ctx); err != nil {
+		case <-c.resources.channels.flushNow:
+			ctx, cancel := context.WithTimeout(context.Background(), c.flushTimeout)
+			if err := c.flush(ctx); err != nil {
 				log.Printf("Warning: manual metrics flush failed: %v", err)
 			}
 			cancel()
@@ -338,13 +488,17 @@ func (m *CloudWatchMetrics) backgroundFlusher() {
 }
 
 // flush sends buffered metrics to CloudWatch
-func (m *CloudWatchMetrics) flush(ctx context.Context) error {
-	data := m.buffer.Drain()
+func (c *metricsCore) flush(ctx context.Context) error {
+	if c.resources == nil || c.resources.buffer == nil {
+		return nil
+	}
+
+	data := c.resources.buffer.Drain()
 	if len(data) == 0 {
 		return nil
 	}
 
-	atomic.AddInt64(&m.flushCount, 1)
+	atomic.AddInt64(&c.flushCount, 1)
 
 	// CloudWatch allows up to 1000 metrics per request
 	// We'll send in batches of 20 for better error handling
@@ -358,20 +512,30 @@ func (m *CloudWatchMetrics) flush(ctx context.Context) error {
 
 		batch := data[i:end]
 		input := &cloudwatch.PutMetricDataInput{
-			Namespace:  aws.String(m.namespace),
 			MetricData: batch,
 		}
+		if c.resources.namespace != nil {
+			input.Namespace = aws.String(*c.resources.namespace)
+		}
 
-		_, err := m.client.PutMetricData(ctx, input)
+		if c.resources.putMetricData == nil {
+			continue
+		}
+
+		_, err := c.resources.putMetricData(ctx, input)
 		if err != nil {
-			atomic.AddInt64(&m.errorCount, 1)
-			atomic.AddInt64(&m.metricsDropped, int64(len(batch)))
-			m.lastError.Store(err.Error())
+			atomic.AddInt64(&c.errorCount, 1)
+			atomic.AddInt64(&c.metricsDropped, int64(len(batch)))
+			if c.state != nil {
+				c.state.lastError.Store(err.Error())
+			}
 			// Continue with next batch even if this one fails
 		}
 	}
 
-	m.lastFlush.Store(time.Now())
+	if c.state != nil {
+		c.state.lastFlush.Store(time.Now())
+	}
 	return nil
 }
 
@@ -380,9 +544,7 @@ func (m *CloudWatchMetrics) getDimensions() []types.Dimension {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	dims := make([]types.Dimension, len(m.dimensions))
-	copy(dims, m.dimensions)
-	return dims
+	return cloneDimensions(m.dimensions)
 }
 
 // parseUnit converts a string unit to StandardUnit
@@ -407,106 +569,132 @@ func (m *CloudWatchMetrics) parseUnit(unit string) types.StandardUnit {
 
 // RecordLatency records the latency of an operation
 func (m *CloudWatchMetrics) RecordLatency(operation string, duration time.Duration) {
-	m.RecordDuration(fmt.Sprintf("%s.latency", operation), duration)
+	m.recordMetricWithTags(fmt.Sprintf("%s.latency", operation), float64(duration.Milliseconds()), types.StandardUnitMilliseconds, nil)
 }
 
 // RecordError records that an error occurred
 func (m *CloudWatchMetrics) RecordError(operation string) {
-	m.RecordCount(fmt.Sprintf("%s.errors", operation), 1)
+	m.recordMetricWithTags(fmt.Sprintf("%s.errors", operation), 1, types.StandardUnitCount, nil)
 }
 
 // RecordSuccess records a successful operation
 func (m *CloudWatchMetrics) RecordSuccess(operation string) {
-	m.RecordCount(fmt.Sprintf("%s.success", operation), 1)
+	m.recordMetricWithTags(fmt.Sprintf("%s.success", operation), 1, types.StandardUnitCount, nil)
 }
 
 // Counter returns a counter metric implementation
 func (m *CloudWatchMetrics) Counter(name string, tags ...map[string]string) lift.Counter {
-	// Apply tags if provided
-	collector := m
-	if len(tags) > 0 && tags[0] != nil {
-		collector = m.WithDimensions(tags[0])
-	}
-
 	return &cloudWatchCounter{
-		metrics: collector,
-		name:    name,
+		metrics: m,
+		name:    &name,
+		tags:    copyTagMap(firstTagMap(tags...)),
 	}
 }
 
 // Histogram returns a histogram metric implementation
 func (m *CloudWatchMetrics) Histogram(name string, tags ...map[string]string) lift.Histogram {
-	// Apply tags if provided
-	collector := m
-	if len(tags) > 0 && tags[0] != nil {
-		collector = m.WithDimensions(tags[0])
-	}
-
 	return &cloudWatchHistogram{
-		metrics: collector,
-		name:    name,
+		metrics: m,
+		name:    &name,
+		tags:    copyTagMap(firstTagMap(tags...)),
 	}
 }
 
 // Gauge returns a gauge metric implementation
 func (m *CloudWatchMetrics) Gauge(name string, tags ...map[string]string) lift.Gauge {
-	// Apply tags if provided
-	collector := m
-	if len(tags) > 0 && tags[0] != nil {
-		collector = m.WithDimensions(tags[0])
+	return &cloudWatchGauge{
+		metrics: m,
+		name:    &name,
+		tags:    copyTagMap(firstTagMap(tags...)),
+	}
+}
+
+func firstTagMap(tagArgs ...map[string]string) map[string]string {
+	if len(tagArgs) == 0 {
+		return nil
 	}
 
-	return &cloudWatchGauge{
-		metrics: collector,
-		name:    name,
+	return tagArgs[0]
+}
+
+func copyTagMap(tags map[string]string) map[string]string {
+	if len(tags) == 0 {
+		return nil
 	}
+
+	clone := make(map[string]string, len(tags))
+	for k, v := range tags {
+		clone[k] = v
+	}
+	return clone
 }
 
 // cloudWatchCounter implements lift.Counter
 type cloudWatchCounter struct {
 	metrics *CloudWatchMetrics
-	name    string
+	name    *string
+	tags    map[string]string
 }
 
 func (c *cloudWatchCounter) Inc() {
-	c.metrics.RecordCount(c.name, 1)
+	if c.name == nil {
+		return
+	}
+	c.metrics.recordMetricWithTags(*c.name, 1, types.StandardUnitCount, c.tags)
 }
 
 func (c *cloudWatchCounter) Add(value float64) {
-	c.metrics.RecordMetric(c.name, value, types.StandardUnitCount)
+	if c.name == nil {
+		return
+	}
+	c.metrics.recordMetricWithTags(*c.name, value, types.StandardUnitCount, c.tags)
 }
 
 // cloudWatchHistogram implements lift.Histogram
 type cloudWatchHistogram struct {
 	metrics *CloudWatchMetrics
-	name    string
+	name    *string
+	tags    map[string]string
 }
 
 func (h *cloudWatchHistogram) Observe(value float64) {
-	h.metrics.RecordMetric(h.name, value, types.StandardUnitNone)
+	if h.name == nil {
+		return
+	}
+	h.metrics.recordMetricWithTags(*h.name, value, types.StandardUnitNone, h.tags)
 }
 
 // cloudWatchGauge implements lift.Gauge
 type cloudWatchGauge struct {
 	metrics *CloudWatchMetrics
-	name    string
+	name    *string
+	tags    map[string]string
 }
 
 func (g *cloudWatchGauge) Set(value float64) {
-	g.metrics.RecordGauge(g.name, value)
+	if g.name == nil {
+		return
+	}
+	g.metrics.recordMetricWithTags(*g.name, value, types.StandardUnitNone, g.tags)
 }
 
 func (g *cloudWatchGauge) Inc() {
-	// For CloudWatch, we'll just record the increment as a gauge value
-	// In a real implementation, you might want to track the current value
-	g.metrics.RecordMetric(g.name, 1, types.StandardUnitNone)
+	if g.name == nil {
+		return
+	}
+	g.metrics.recordMetricWithTags(*g.name, 1, types.StandardUnitNone, g.tags)
 }
 
 func (g *cloudWatchGauge) Dec() {
-	// For CloudWatch, we'll just record the decrement as a gauge value
-	g.metrics.RecordMetric(g.name, -1, types.StandardUnitNone)
+	if g.name == nil {
+		return
+	}
+	g.metrics.recordMetricWithTags(*g.name, -1, types.StandardUnitNone, g.tags)
 }
 
 func (g *cloudWatchGauge) Add(value float64) {
-	g.metrics.RecordMetric(g.name, value, types.StandardUnitNone)
+	if g.name == nil {
+		return
+	}
+	g.metrics.recordMetricWithTags(*g.name, value, types.StandardUnitNone, g.tags)
 }

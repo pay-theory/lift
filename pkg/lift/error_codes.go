@@ -13,6 +13,9 @@ const (
 	ErrorCodeNetworkError       = "NETWORK_ERROR"
 	ErrorCodeProcessingError    = "PROCESSING_ERROR"
 	ErrorCodeTokenizationError  = "TOKENIZATION_FAILURE" // #nosec G101 - constant error code, not a credential
+	ErrorCodePayloadTooLarge    = "PAYLOAD_TOO_LARGE"
+	ErrorCodeTenantRequired     = "TENANT_REQUIRED"
+	ErrorCodeTimeout            = "TIMEOUT"
 
 	// Internal framework error codes
 	ErrorCodeResponseWritten = "RESPONSE_WRITTEN"

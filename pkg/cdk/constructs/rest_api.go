@@ -12,6 +12,8 @@ import (
 )
 
 // LiftRestAPIProps defines properties for creating a Lift REST API Gateway (v1)
+//
+//nolint:govet // Embedding maintains logical grouping with minimal benefit from reordering.
 type LiftRestAPIProps struct {
 	APICommonProps
 	// Enable detailed CloudWatch metrics (REST API only)

@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -66,6 +67,10 @@ func (a *SQSAdapter) Adapt(rawEvent any) (*Request, error) {
 		return nil, fmt.Errorf("event must be a map[string]any, got %T", rawEvent)
 	}
 	records := extractSliceField(eventMap, "Records")
+	body, err := json.Marshal(records)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode SQS records: %w", err)
+	}
 
 	// Extract metadata from first record for event-level info
 	var eventID, timestamp string
@@ -82,6 +87,7 @@ func (a *SQSAdapter) Adapt(rawEvent any) (*Request, error) {
 		EventID:     eventID,
 		Timestamp:   timestamp,
 		Records:     records,
+		Body:        body,
 		Source:      "aws:sqs",
 	}, nil
 }

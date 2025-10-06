@@ -1,6 +1,7 @@
 package features
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -91,6 +92,10 @@ func (vm *ValidationMiddleware) Validate() lift.Middleware {
 				}
 			}
 
+			if vm.config.ValidateResponse && vm.config.ResponseSchema != nil {
+				ctx.EnableResponseBuffering()
+			}
+
 			// Execute handler
 			err := next.Handle(ctx)
 			if err != nil {
@@ -113,30 +118,131 @@ func (vm *ValidationMiddleware) validateRequest(ctx *lift.Context) error {
 	// Parse request body
 	var requestData any
 	if err := ctx.ParseRequest(&requestData); err != nil {
-		return vm.config.ErrorHandler(ctx, []ValidationError{
-			{
-				Field:   "body",
-				Message: "Invalid JSON format",
-				Code:    "INVALID_JSON",
-			},
-		})
+		errs := []ValidationError{{
+			Field:   "body",
+			Message: "Invalid JSON format",
+			Code:    "INVALID_JSON",
+		}}
+		vm.recordValidationFailure(ctx, "request", errs)
+		return vm.config.ErrorHandler(ctx, errs)
 	}
 
 	// Validate against schema
 	result := vm.validateData(requestData, vm.config.RequestSchema)
 	if !result.Valid {
+		vm.recordValidationFailure(ctx, "request", result.Errors)
 		return vm.config.ErrorHandler(ctx, result.Errors)
 	}
 
 	return nil
 }
 
-func (vm *ValidationMiddleware) validateResponse(_ *lift.Context) error {
-	// Response validation would require intercepting the response data
-	// This is not implemented in the current version as it would need
-	// response buffering to be enabled at the application level
-	// and access to the response schema configuration
+func (vm *ValidationMiddleware) validateResponse(ctx *lift.Context) error {
+	buffer := ctx.GetResponseBuffer()
+	var responseData any
+
+	if buffer != nil {
+		body, _, _, captured := buffer.Get()
+		if captured != nil {
+			responseData = captured
+		} else {
+			responseData = body
+		}
+	} else if ctx.Response != nil {
+		responseData = ctx.Response.Body
+	}
+
+	if responseData == nil {
+		if vm.config.StrictMode {
+			vm.prepareErrorResponse(ctx)
+			errs := []ValidationError{{
+				Field:   "body",
+				Message: "Response body is empty",
+				Code:    "EMPTY_RESPONSE",
+			}}
+			vm.recordValidationFailure(ctx, "response", errs)
+			return vm.config.ErrorHandler(ctx, errs)
+		}
+		return nil
+	}
+
+	normalized, err := vm.normalizeResponseBody(responseData)
+	if err != nil {
+		vm.prepareErrorResponse(ctx)
+		errs := []ValidationError{{
+			Field:   "body",
+			Message: "Invalid JSON in response body",
+			Code:    "INVALID_JSON",
+		}}
+		vm.recordValidationFailure(ctx, "response", errs)
+		return vm.config.ErrorHandler(ctx, errs)
+	}
+
+	result := vm.validateData(normalized, vm.config.ResponseSchema)
+	if !result.Valid {
+		vm.prepareErrorResponse(ctx)
+		vm.recordValidationFailure(ctx, "response", result.Errors)
+		return vm.config.ErrorHandler(ctx, result.Errors)
+	}
+
 	return nil
+}
+
+func (vm *ValidationMiddleware) prepareErrorResponse(ctx *lift.Context) {
+	ctx.Response = lift.NewResponse()
+}
+
+func (vm *ValidationMiddleware) normalizeResponseBody(body any) (any, error) {
+	switch v := body.(type) {
+	case map[string]any:
+		return v, nil
+	case []byte:
+		if len(v) == 0 {
+			return map[string]any{}, nil
+		}
+		var data any
+		if err := json.Unmarshal(v, &data); err != nil {
+			return nil, err
+		}
+		return data, nil
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return map[string]any{}, nil
+		}
+		var data any
+		if err := json.Unmarshal([]byte(v), &data); err != nil {
+			return nil, err
+		}
+		return data, nil
+	default:
+		serialized, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		var data any
+		if err := json.Unmarshal(serialized, &data); err != nil {
+			return nil, err
+		}
+		return data, nil
+	}
+}
+
+func (vm *ValidationMiddleware) recordValidationFailure(ctx *lift.Context, stage string, errs []ValidationError) {
+	if ctx.Logger != nil {
+		fields := map[string]any{
+			"stage": stage,
+		}
+		if len(errs) > 0 {
+			fields["error_code"] = errs[0].Code
+			fields["error_field"] = errs[0].Field
+		}
+		ctx.Logger.Warn("Validation failure", fields)
+	}
+
+	if ctx.Metrics != nil {
+		tags := map[string]string{"stage": stage}
+		ctx.Metrics.Counter("lift_validation_failures_total", tags).Inc()
+	}
 }
 
 func (vm *ValidationMiddleware) validateData(data any, schema *ValidationSchema) ValidationResult {

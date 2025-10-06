@@ -614,6 +614,10 @@ func (dpm *DataProtectionManager) applyDefaultMasking(value any, classification 
 
 // NewAESEncryptor creates a new AES encryptor
 func NewAESEncryptor(keyString string) (*AESEncryptor, error) {
+	if strings.TrimSpace(keyString) == "" {
+		return nil, fmt.Errorf("encryption key cannot be empty")
+	}
+
 	// Generate key from string
 	hash := sha256.Sum256([]byte(keyString))
 

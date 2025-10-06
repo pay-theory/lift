@@ -15,7 +15,9 @@ import (
 
 // MonitorableResource interface for resources that can be monitored
 type MonitorableResource interface {
-	// GetResourceName returns the name of the resource
+	// GetResourceName returns the name of the resource.
+	// Returns:
+	//   - A pointer to the name of the resource
 	GetResourceName() *string
 }
 

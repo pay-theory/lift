@@ -272,20 +272,26 @@ func (asm *AWSSecretsManager) buildSecretName(name string) string {
 // Get retrieves a value from the cache
 func (c *SecretCache) Get(key string) string {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	secret, exists := c.secrets[key]
 	if !exists {
+		c.mu.RUnlock()
 		return ""
 	}
 
-	// Check if expired
-	if time.Now().After(secret.ExpiresAt) {
-		delete(c.secrets, key)
+	now := time.Now()
+	if now.After(secret.ExpiresAt) {
+		c.mu.RUnlock()
+		c.mu.Lock()
+		if current, ok := c.secrets[key]; ok && now.After(current.ExpiresAt) {
+			delete(c.secrets, key)
+		}
+		c.mu.Unlock()
 		return ""
 	}
 
-	return secret.Value
+	value := secret.Value
+	c.mu.RUnlock()
+	return value
 }
 
 // Set stores a value in the cache with TTL

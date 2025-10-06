@@ -19,6 +19,9 @@ type MetricsPublisher struct {
 	client CloudWatchClient
 }
 
+// MetricsPublisher is responsible for publishing metrics to AWS CloudWatch.
+// It provides methods to put metric data, get metric statistics, and manage alarms.
+
 // CloudWatchClient interface (what your infrastructure code expects)
 type CloudWatchClient interface {
 	PutMetricData(ctx context.Context, input *cloudwatch.PutMetricDataInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error)
@@ -26,6 +29,10 @@ type CloudWatchClient interface {
 	PutMetricAlarm(ctx context.Context, input *cloudwatch.PutMetricAlarmInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricAlarmOutput, error)
 	DescribeAlarms(ctx context.Context, input *cloudwatch.DescribeAlarmsInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.DescribeAlarmsOutput, error)
 }
+
+// CloudWatchClient defines the interface for interacting with AWS CloudWatch.
+// It includes methods for putting metric data, getting metric statistics,
+// putting metric alarms, and describing alarms.
 
 func NewMetricsPublisher(client CloudWatchClient) *MetricsPublisher {
 	return &MetricsPublisher{client: client}
@@ -308,7 +315,12 @@ func demonstrateAdvancedUsage() {
 // mockTesting implements testify's TestingT interface for demonstration
 type mockTesting struct{}
 
+// mockTesting implements the testify TestingT interface for demonstration purposes.
+// It is used to mock testing functionality in the absence of a real testing framework.
+
 func (m *mockTesting) Errorf(format string, args ...any) {
+	// Errorf logs an error message with the given format and arguments.
+	// This is a mock implementation for demonstration purposes.
 	fmt.Printf("MOCK ERROR: "+format+"\n", args...)
 }
 

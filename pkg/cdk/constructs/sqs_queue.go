@@ -2,6 +2,7 @@ package constructs
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
@@ -31,8 +32,8 @@ type LiftSQSQueueProps struct {
 	DLQRetentionPeriod    awscdk.Duration // Default: 14 days
 
 	// Encryption configuration
-	EncryptionMasterKey awskms.IKey        // Required for K3 - partner-specific KMS key
-	DataKeyReuse        awscdk.Duration    // Default: 300 seconds
+	EncryptionMasterKey awskms.IKey     // Required for K3 - partner-specific KMS key
+	DataKeyReuse        awscdk.Duration // Default: 300 seconds
 
 	// Event source configuration
 	EnableEventSource       *bool           // Default: true
@@ -42,8 +43,8 @@ type LiftSQSQueueProps struct {
 	MaxConcurrency          *float64        // Default: 5
 
 	// Environment variable configuration
-	QueueUrlEnvVar    *string // Custom env var name for queue URL (e.g., "K3_PROCESSOR_INSTRUMENT_QUEUE_URL")
-	DLQUrlEnvVar      *string // Custom env var name for DLQ URL (optional)
+	QueueUrlEnvVar *string // Custom env var name for queue URL (e.g., "K3_PROCESSOR_INSTRUMENT_QUEUE_URL")
+	DLQUrlEnvVar   *string // Custom env var name for DLQ URL (optional)
 
 	// SSM Parameter Store configuration
 	EnableSSMParameter *bool   // Default: false
@@ -85,83 +86,78 @@ func NewLiftSQSQueue(scope constructs.Construct, id *string, props *LiftSQSQueue
 		panic("Function is required - use existing Lambda function")
 	}
 
-	// Set defaults
-	if props.EnableDeadLetterQueue == nil {
-		props.EnableDeadLetterQueue = jsii.Bool(true)
+	applySQSQueueDefaults(props)
+
+	this.DeadLetterQueue = this.createDeadLetterQueue(props)
+	queueProps := buildSQSQueueProps(props, this.DeadLetterQueue)
+	this.Queue = awssqs.NewQueue(this, jsii.String("Queue"), queueProps)
+
+	this.configureQueuePermissions(props)
+	this.addQueueEnvironment(props)
+	this.setupQueueEventSource(props)
+	this.createQueueSSMParameter(props)
+
+	return this
+}
+
+func applySQSQueueDefaults(props *LiftSQSQueueProps) {
+	ensureBoolPtr(&props.EnableDeadLetterQueue, true)
+	ensureFloatPtr(&props.MaxReceiveCount, 3)
+	ensureDuration(&props.VisibilityTimeout, awscdk.Duration_Minutes(jsii.Number(5)))
+	ensureDuration(&props.MessageRetentionPeriod, awscdk.Duration_Days(jsii.Number(14)))
+	ensureDuration(&props.ReceiveMessageWaitTime, awscdk.Duration_Seconds(jsii.Number(20)))
+	ensureDuration(&props.DLQRetentionPeriod, awscdk.Duration_Days(jsii.Number(14)))
+	ensureDuration(&props.DataKeyReuse, awscdk.Duration_Seconds(jsii.Number(300)))
+	ensureBoolPtr(&props.EnableEventSource, true)
+	ensureFloatPtr(&props.BatchSize, 10)
+	ensureDuration(&props.MaxBatchingWindow, awscdk.Duration_Seconds(jsii.Number(5)))
+	ensureBoolPtr(&props.ReportBatchItemFailures, true)
+	ensureFloatPtr(&props.MaxConcurrency, 5)
+	ensureBoolPtr(&props.GrantSendMessages, true)
+	ensureBoolPtr(&props.GrantConsumeMessages, true)
+	ensureBoolPtr(&props.EnableSSMParameter, false)
+}
+
+func ensureBoolPtr(target **bool, value bool) {
+	if *target == nil {
+		*target = jsii.Bool(value)
 	}
-	if props.MaxReceiveCount == nil {
-		props.MaxReceiveCount = jsii.Number(3)
+}
+
+func ensureFloatPtr(target **float64, value float64) {
+	if *target == nil {
+		*target = jsii.Number(value)
 	}
-	if props.VisibilityTimeout == nil {
-		props.VisibilityTimeout = awscdk.Duration_Minutes(jsii.Number(5))
+}
+
+func ensureDuration(target *awscdk.Duration, fallback awscdk.Duration) {
+	if *target == nil {
+		*target = fallback
 	}
-	if props.MessageRetentionPeriod == nil {
-		props.MessageRetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
-	}
-	if props.ReceiveMessageWaitTime == nil {
-		props.ReceiveMessageWaitTime = awscdk.Duration_Seconds(jsii.Number(20))
-	}
-	if props.DLQRetentionPeriod == nil {
-		props.DLQRetentionPeriod = awscdk.Duration_Days(jsii.Number(14))
-	}
-	if props.DataKeyReuse == nil {
-		props.DataKeyReuse = awscdk.Duration_Seconds(jsii.Number(300))
-	}
-	if props.EnableEventSource == nil {
-		props.EnableEventSource = jsii.Bool(true)
-	}
-	if props.BatchSize == nil {
-		props.BatchSize = jsii.Number(10)
-	}
-	if props.MaxBatchingWindow == nil {
-		props.MaxBatchingWindow = awscdk.Duration_Seconds(jsii.Number(5))
-	}
-	if props.ReportBatchItemFailures == nil {
-		props.ReportBatchItemFailures = jsii.Bool(true)
-	}
-	if props.MaxConcurrency == nil {
-		props.MaxConcurrency = jsii.Number(5)
-	}
-	if props.GrantSendMessages == nil {
-		props.GrantSendMessages = jsii.Bool(true)
-	}
-	if props.GrantConsumeMessages == nil {
-		props.GrantConsumeMessages = jsii.Bool(true)
-	}
-	if props.EnableSSMParameter == nil {
-		props.EnableSSMParameter = jsii.Bool(false)
+}
+
+func (q *LiftSQSQueue) createDeadLetterQueue(props *LiftSQSQueueProps) awssqs.Queue {
+	if props.EnableDeadLetterQueue == nil || !*props.EnableDeadLetterQueue {
+		return nil
 	}
 
-	// Create dead letter queue if enabled
-	if *props.EnableDeadLetterQueue {
-		dlqName := props.DeadLetterQueueName
-		if dlqName == nil && props.QueueName != nil {
-			dlqName = jsii.String(*props.QueueName + "-dlq")
-		}
-
-		dlqProps := &awssqs.QueueProps{
-			QueueName:       dlqName,
-			RetentionPeriod: props.DLQRetentionPeriod,
-		}
-
-		// Add encryption if KMS key provided
-		if props.EncryptionMasterKey != nil {
-			dlqProps.EncryptionMasterKey = props.EncryptionMasterKey
-			dlqProps.DataKeyReuse = props.DataKeyReuse
-		}
-
-		// Handle FIFO DLQ
-		if props.FifoQueue != nil && *props.FifoQueue {
-			dlqProps.Fifo = jsii.Bool(true)
-			if dlqName != nil && len(*dlqName) >= 5 && (*dlqName)[len(*dlqName)-5:] != ".fifo" {
-				dlqProps.QueueName = jsii.String(*dlqName + ".fifo")
-			}
-		}
-
-		this.DeadLetterQueue = awssqs.NewQueue(this, jsii.String("DeadLetterQueue"), dlqProps)
+	dlqName := props.DeadLetterQueueName
+	if dlqName == nil && props.QueueName != nil {
+		dlqName = jsii.String(*props.QueueName + "-dlq")
 	}
 
-	// Create main queue
+	dlqProps := &awssqs.QueueProps{
+		QueueName:       dlqName,
+		RetentionPeriod: props.DLQRetentionPeriod,
+	}
+
+	applyQueueEncryption(dlqProps, props)
+	configureFifoQueue(dlqProps, props, dlqProps.QueueName, false)
+
+	return awssqs.NewQueue(q, jsii.String("DeadLetterQueue"), dlqProps)
+}
+
+func buildSQSQueueProps(props *LiftSQSQueueProps, dlq awssqs.Queue) *awssqs.QueueProps {
 	queueProps := &awssqs.QueueProps{
 		QueueName:              props.QueueName,
 		VisibilityTimeout:      props.VisibilityTimeout,
@@ -169,86 +165,117 @@ func NewLiftSQSQueue(scope constructs.Construct, id *string, props *LiftSQSQueue
 		ReceiveMessageWaitTime: props.ReceiveMessageWaitTime,
 	}
 
-	// Add encryption if KMS key provided
-	if props.EncryptionMasterKey != nil {
-		queueProps.EncryptionMasterKey = props.EncryptionMasterKey
-		queueProps.DataKeyReuse = props.DataKeyReuse
-	}
+	applyQueueEncryption(queueProps, props)
 
-	// Configure dead letter queue
-	if *props.EnableDeadLetterQueue && this.DeadLetterQueue != nil {
+	if dlq != nil && props.EnableDeadLetterQueue != nil && *props.EnableDeadLetterQueue {
 		queueProps.DeadLetterQueue = &awssqs.DeadLetterQueue{
 			MaxReceiveCount: props.MaxReceiveCount,
-			Queue:           this.DeadLetterQueue,
+			Queue:           dlq,
 		}
 	}
 
-	// Handle FIFO configuration
-	if props.FifoQueue != nil && *props.FifoQueue {
-		queueProps.Fifo = jsii.Bool(true)
-		if props.EnableContentBasedDeduplication != nil {
-			queueProps.ContentBasedDeduplication = props.EnableContentBasedDeduplication
-		}
-		// Ensure FIFO queue name ends with .fifo
-		if props.QueueName != nil && len(*props.QueueName) >= 5 && (*props.QueueName)[len(*props.QueueName)-5:] != ".fifo" {
-			queueProps.QueueName = jsii.String(*props.QueueName + ".fifo")
-		}
+	configureFifoQueue(queueProps, props, queueProps.QueueName, true)
+
+	return queueProps
+}
+
+func applyQueueEncryption(queueProps *awssqs.QueueProps, props *LiftSQSQueueProps) {
+	if props.EncryptionMasterKey == nil {
+		return
 	}
 
-	this.Queue = awssqs.NewQueue(this, jsii.String("Queue"), queueProps)
+	queueProps.EncryptionMasterKey = props.EncryptionMasterKey
+	queueProps.DataKeyReuse = props.DataKeyReuse
+}
 
-	// Grant permissions
-	if *props.GrantSendMessages {
-		this.Queue.GrantSendMessages(props.Function)
-	}
-	if *props.GrantConsumeMessages {
-		this.Queue.GrantConsumeMessages(props.Function)
+func configureFifoQueue(queueProps *awssqs.QueueProps, props *LiftSQSQueueProps, originalName *string, applyDedup bool) {
+	if props.FifoQueue == nil || !*props.FifoQueue {
+		return
 	}
 
-	// Add environment variables to Lambda function
+	queueProps.Fifo = jsii.Bool(true)
+	if applyDedup && props.EnableContentBasedDeduplication != nil {
+		queueProps.ContentBasedDeduplication = props.EnableContentBasedDeduplication
+	}
+
+	queueProps.QueueName = ensureFifoName(originalName)
+}
+
+func ensureFifoName(name *string) *string {
+	if name == nil {
+		return nil
+	}
+
+	if strings.HasSuffix(*name, ".fifo") {
+		return name
+	}
+
+	return jsii.String(*name + ".fifo")
+}
+
+func (q *LiftSQSQueue) configureQueuePermissions(props *LiftSQSQueueProps) {
+	if props.GrantSendMessages != nil && *props.GrantSendMessages {
+		q.Queue.GrantSendMessages(props.Function)
+	}
+	if props.GrantConsumeMessages != nil && *props.GrantConsumeMessages {
+		q.Queue.GrantConsumeMessages(props.Function)
+	}
+}
+
+func (q *LiftSQSQueue) addQueueEnvironment(props *LiftSQSQueueProps) {
+	envVarName := jsii.String("SQS_QUEUE_URL")
 	if props.QueueUrlEnvVar != nil {
-		props.Function.AddEnvironment(jsii.String(*props.QueueUrlEnvVar), this.Queue.QueueUrl(), nil)
-	} else {
-		// Default environment variable name
-		props.Function.AddEnvironment(jsii.String("SQS_QUEUE_URL"), this.Queue.QueueUrl(), nil)
+		envVarName = jsii.String(*props.QueueUrlEnvVar)
 	}
 
-	if props.DLQUrlEnvVar != nil && this.DeadLetterQueue != nil {
-		props.Function.AddEnvironment(jsii.String(*props.DLQUrlEnvVar), this.DeadLetterQueue.QueueUrl(), nil)
+	props.Function.AddEnvironment(envVarName, q.Queue.QueueUrl(), nil)
+
+	if props.DLQUrlEnvVar != nil && q.DeadLetterQueue != nil {
+		props.Function.AddEnvironment(jsii.String(*props.DLQUrlEnvVar), q.DeadLetterQueue.QueueUrl(), nil)
+	}
+}
+
+func (q *LiftSQSQueue) setupQueueEventSource(props *LiftSQSQueueProps) {
+	if props.EnableEventSource == nil || !*props.EnableEventSource {
+		return
 	}
 
-	// Create event source if enabled
-	if *props.EnableEventSource {
-		eventSourceProps := &awslambdaeventsources.SqsEventSourceProps{
-			BatchSize:               props.BatchSize,
-			ReportBatchItemFailures: props.ReportBatchItemFailures,
-			MaxConcurrency:          props.MaxConcurrency,
-		}
-
-		// Only set batching window for non-FIFO queues
-		if props.FifoQueue == nil || !*props.FifoQueue {
-			eventSourceProps.MaxBatchingWindow = props.MaxBatchingWindow
-		}
-
-		this.EventSource = awslambdaeventsources.NewSqsEventSource(this.Queue, eventSourceProps)
-		this.EventSource.Bind(props.Function)
+	eventSourceProps := &awslambdaeventsources.SqsEventSourceProps{
+		BatchSize:               props.BatchSize,
+		ReportBatchItemFailures: props.ReportBatchItemFailures,
+		MaxConcurrency:          props.MaxConcurrency,
 	}
 
-	// Store queue URL in SSM Parameter Store if enabled
-	if *props.EnableSSMParameter && props.SSMParameterName != nil {
-		ssmDescription := props.SSMDescription
-		if ssmDescription == nil {
-			ssmDescription = jsii.String(fmt.Sprintf("Queue URL for %s", *props.QueueName))
-		}
-
-		this.SSMParameter = awsssm.NewStringParameter(this, jsii.String("SSMParameter"), &awsssm.StringParameterProps{
-			ParameterName: props.SSMParameterName,
-			StringValue:   this.Queue.QueueUrl(),
-			Description:   ssmDescription,
-		})
+	if props.FifoQueue == nil || !*props.FifoQueue {
+		eventSourceProps.MaxBatchingWindow = props.MaxBatchingWindow
 	}
 
-	return this
+	q.EventSource = awslambdaeventsources.NewSqsEventSource(q.Queue, eventSourceProps)
+	q.EventSource.Bind(props.Function)
+}
+
+func (q *LiftSQSQueue) createQueueSSMParameter(props *LiftSQSQueueProps) {
+	if props.EnableSSMParameter == nil || !*props.EnableSSMParameter || props.SSMParameterName == nil {
+		return
+	}
+
+	description := props.SSMDescription
+	if description == nil {
+		description = jsii.String(defaultQueueDescription(props.QueueName))
+	}
+
+	q.SSMParameter = awsssm.NewStringParameter(q, jsii.String("SSMParameter"), &awsssm.StringParameterProps{
+		ParameterName: props.SSMParameterName,
+		StringValue:   q.Queue.QueueUrl(),
+		Description:   description,
+	})
+}
+
+func defaultQueueDescription(name *string) string {
+	if name == nil {
+		return "Queue URL"
+	}
+	return fmt.Sprintf("Queue URL for %s", *name)
 }
 
 // GetQueueUrl returns the queue URL

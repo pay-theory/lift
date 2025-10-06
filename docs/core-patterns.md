@@ -170,12 +170,22 @@ if err := json.Unmarshal(c.Request.Body, v); err != nil {
 #### Step 1: Configure Authentication Middleware
 
 ```go
+import (
+    "os"
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/pay-theory/lift/pkg/lift"
+    "github.com/pay-theory/lift/pkg/middleware"
+    "github.com/pay-theory/lift/pkg/security"
+)
+
 func main() {
     app := lift.New()
     
     // JWT middleware automatically extracts tenant ID from token
-    app.Use(middleware.JWTAuth(middleware.JWTConfig{
-        Secret: os.Getenv("JWT_SECRET"),
+    app.Use(middleware.JWT(security.JWTConfig{
+        SigningMethod: "HS256",
+        SecretKey:     os.Getenv("JWT_SECRET"),
+        RequireTenantID: true,
     }))
     
     app.POST("/api/users", createUserHandler)
@@ -188,7 +198,7 @@ func main() {
 
 ```go
 func createUserHandler(ctx *lift.Context) error {
-    // Tenant ID is ALREADY set by middleware
+    // Tenant ID is ALREADY set by JWT middleware via SecurityContext
     tenantID := ctx.TenantID()
     if tenantID == "" {
         return lift.Unauthorized("Tenant context required")
@@ -225,7 +235,7 @@ func tenantMiddleware() lift.Middleware {
             }
             
             // Set tenant ID in context for handlers to use
-            ctx.Set("tenant_id", tenantID)
+            ctx.SetTenantID(tenantID)
             
             return next.Handle(ctx)
         })
@@ -241,7 +251,7 @@ app.Use(tenantMiddleware())
 ```go
 app.POST("/api/projects", lift.SimpleHandler(func(ctx *lift.Context, req CreateProjectRequest) (Project, error) {
     // Request is already parsed and validated
-    // Tenant ID is already in context from middleware
+    // Tenant ID is already in context from JWT middleware via SecurityContext
     tenantID := ctx.TenantID()
     if tenantID == "" {
         return Project{}, lift.Unauthorized("Tenant required")
@@ -260,7 +270,7 @@ app.POST("/api/projects", lift.SimpleHandler(func(ctx *lift.Context, req CreateP
 ### Multi-tenant Facts
 
 1. **Request parsing is unchanged** - `ParseRequest` works identically
-2. **Tenant ID comes from middleware** - Set BEFORE handlers run
+2. **Tenant ID comes from JWT middleware** - Set via SecurityContext BEFORE handlers run
 3. **No special configuration** - Standard Lift patterns apply
 4. **Type-safe handlers work normally** - Tenant context is transparent
 
@@ -277,9 +287,9 @@ type BadRequest struct {
 
 ❌ **WRONG**: Don't set tenant ID in handlers:
 ```go
-// Tenant ID should be set by middleware, not handlers
+// Tenant ID should be set by JWT middleware via SecurityContext, not handlers
 func badHandler(ctx *lift.Context) error {
-    ctx.Set("tenant_id", "some-id") // WRONG!
+    ctx.SetTenantID("some-id") // WRONG! Should come from JWT
     // ...
 }
 ```
@@ -292,6 +302,6 @@ These three patterns form the foundation of Lift applications:
 
 1. **Lambda Initialization**: Always use `lambda.Start(app.HandleRequest)`
 2. **JSON Parsing**: Use `ctx.ParseRequest(&req)` - works identically for all API Gateway versions
-3. **Multi-tenancy**: Set tenant context in middleware, access with `ctx.TenantID()`
+3. **Multi-tenancy**: Set tenant context via JWT middleware and SecurityContext, access with `ctx.TenantID()`
 
 **Remember**: Lift is designed to eliminate boilerplate. If you find yourself writing complex initialization or parsing code, you're likely doing it wrong. The framework handles the complexity internally.

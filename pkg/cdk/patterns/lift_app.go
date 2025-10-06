@@ -218,12 +218,14 @@ func (b *liftAppBuilder) setupRateLimiting() {
 // createAPI creates the API Gateway
 func (b *liftAppBuilder) createAPI() {
 	apiProps := &liftconstructs.LiftAPIProps{
-		Name:                jsii.String(*b.props.AppName + "-api"),
-		Description:         jsii.String("API Gateway for " + *b.props.AppName),
-		EnableCORS:          jsii.Bool(true),
-		EnableAccessLogging: b.props.EnableAccessLogging,
-		DomainName:          b.props.DomainName,
-		CertificateArn:      b.props.CertificateArn,
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:                jsii.String(*b.props.AppName + "-api"),
+			Description:         jsii.String("API Gateway for " + *b.props.AppName),
+			EnableCORS:          jsii.Bool(true),
+			EnableAccessLogging: b.props.EnableAccessLogging,
+			DomainName:          b.props.DomainName,
+			CertificateArn:      b.props.CertificateArn,
+		},
 	}
 
 	b.app.API = liftconstructs.NewLiftAPI(b.construct, jsii.String("API"), apiProps)

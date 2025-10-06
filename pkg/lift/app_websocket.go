@@ -175,8 +175,9 @@ func (p *webSocketEventProcessor) extractRouteKey(req *Request) string {
 func (p *webSocketEventProcessor) prepareHandler(handler Handler) Handler {
 	// Apply middleware
 	finalHandler := handler
-	for i := len(p.app.middleware) - 1; i >= 0; i-- {
-		finalHandler = p.app.middleware[i](finalHandler)
+	chain := p.app.httpMiddlewareChain()
+	for i := len(chain) - 1; i >= 0; i-- {
+		finalHandler = chain[i](finalHandler)
 	}
 
 	// Add connection management if enabled

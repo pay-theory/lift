@@ -81,7 +81,7 @@ func main() {
 
 	// Scheduled event handler
 	app.Handle("POST", "/scheduled", func(ctx *lift.Context) error {
-		if ctx.Request.TriggerType != lift.TriggerScheduled {
+		if ctx.Request.TriggerType != lift.TriggerEventBridge {
 			return ctx.Status(400).JSON(map[string]string{"error": "Expected Scheduled trigger"})
 		}
 
@@ -200,7 +200,7 @@ func main() {
 	// Test Scheduled event
 	fmt.Println("\n5. Testing Scheduled Event:")
 	scheduledEvent := map[string]any{
-		"source":      "aws.events",
+		"source":      "myapp.scheduler",
 		"detail-type": "Scheduled Event",
 		"time":        "2023-01-01T00:00:00Z",
 		"id":          "test-event-id",

@@ -26,10 +26,12 @@ functionProps := &constructs.LiftFunctionProps{
 ```
 
 **Memory Guidelines:**
-- 128-512 MB: Simple transformations, lightweight processing
+- 128-512 MB: Simple transformations, lightweight processing (Lift default: 512MB)
 - 512-1769 MB: JSON parsing, API calls, moderate computation
 - 1769-3008 MB: Heavy computation, large payloads, multiple API calls
 - 3008-10240 MB: Memory-intensive operations, ML inference
+
+*Note: Lift functions default to 512MB memory. The guidelines above are optimization recommendations based on workload requirements.*
 
 ### CPU Optimization
 
@@ -50,18 +52,27 @@ function.AddAlias(jsii.String("live"), &awslambda.AliasOptions{
 })
 ```
 
-2. **SnapStart** (Java)
-```go
-functionProps := &awslambda.FunctionProps{
-    SnapStart: awslambda.SnapStartConf_ON_PUBLISHED_VERSIONS(),
-}
+2. **SnapStart** (Java only)
+```java
+// Note: SnapStart is only available for Java Lambda functions
+// This optimization is not applicable to Go functions
+functionProps := FunctionProps.builder()
+    .snapStart(SnapStartConf.ON_PUBLISHED_VERSIONS)
+    .build();
 ```
 
 3. **Lambda Extensions**
 ```go
-// Cache connections and config
-layer := awslambda.NewLayerVersion(stack, jsii.String("CacheLayer"), &awslambda.LayerVersionProps{
+// Cache connections and config using Lift constructs
+cacheLayer := awslambda.NewLayerVersion(stack, jsii.String("CacheLayer"), &awslambda.LayerVersionProps{
     Code: awslambda.Code_FromAsset(jsii.String("./cache-extension")),
+})
+
+// Use with Lift function
+function := constructs.NewLiftFunction(stack, jsii.String("OptimizedFunction"), &constructs.LiftFunctionProps{
+    FunctionProps: awslambda.FunctionProps{
+        Layers: &[]awslambda.ILayerVersion{cacheLayer},
+    },
 })
 ```
 
@@ -343,6 +354,86 @@ func processWithSemaphore(events []Event, maxConcurrent int) {
 }
 ```
 
+## DynamORM Performance Optimization
+
+### Single Table Design
+
+DynamORM's single table design provides significant performance benefits for event processing:
+
+```go
+// Optimize DynamORM table for event processing
+table := constructs.NewLiftTable(stack, jsii.String("EventTable"), &constructs.LiftTableProps{
+    TableName: jsii.String("events"),
+    PartitionKey: &constructs.Attribute{
+        Name: jsii.String("PK"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
+    SortKey: &constructs.Attribute{
+        Name: jsii.String("SK"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
+    // Performance optimizations
+    BillingMode: awsdynamodb.BillingMode_PAY_PER_REQUEST,
+    PointInTimeRecovery: jsii.Bool(true),
+    StreamSpecification: &constructs.StreamSpecification{
+        StreamViewType: awsdynamodb.StreamViewType_KEYS_ONLY, // Minimize stream payload
+    },
+})
+```
+
+### Efficient Query Patterns
+
+```go
+// Use GSI for efficient event filtering
+table.AddGlobalSecondaryIndex(&constructs.GlobalSecondaryIndexProps{
+    IndexName: jsii.String("EventTypeIndex"),
+    PartitionKey: &constructs.Attribute{
+        Name: jsii.String("EventType"),
+        Type: awsdynamodb.AttributeType_STRING,
+    },
+    SortKey: &constructs.Attribute{
+        Name: jsii.String("Timestamp"),
+        Type: awsdynamodb.AttributeType_NUMBER,
+    },
+    ProjectionType: awsdynamodb.ProjectionType_INCLUDE,
+    NonKeyAttributes: &[]*string{
+        jsii.String("EventId"),
+        jsii.String("TenantId"),
+        jsii.String("Status"),
+    },
+})
+
+// Batch operations for high throughput
+func processEventBatch(events []Event) error {
+    // Use DynamORM batch operations
+    batchWriter := dynamorm.NewBatchWriter(table)
+    
+    for _, event := range events {
+        batchWriter.PutItem(event)
+    }
+    
+    return batchWriter.Execute()
+}
+```
+
+### Connection Pooling with DynamORM
+
+```go
+// Configure DynamORM for optimal performance
+func init() {
+    dynamorm.Configure(&dynamorm.Config{
+        MaxRetries:        3,
+        RetryDelay:        100 * time.Millisecond,
+        MaxRetryDelay:     5 * time.Second,
+        ConnectionTimeout: 30 * time.Second,
+        RequestTimeout:    30 * time.Second,
+        // Enable connection pooling
+        MaxConnections:    100,
+        IdleTimeout:       5 * time.Minute,
+    })
+}
+```
+
 ## Data Optimization
 
 ### Compression
@@ -382,6 +473,36 @@ func serializeEvent(event *Event) ([]byte, error) {
 func deserializeEvent(data []byte) (*Event, error) {
     event := &Event{}
     return event, proto.Unmarshal(data, event)
+}
+```
+
+### Lift-Specific Monitoring
+
+```go
+// Use Lift's built-in monitoring capabilities
+function := constructs.NewLiftFunction(stack, jsii.String("MonitoredFunction"), &constructs.LiftFunctionProps{
+    FunctionProps: awslambda.FunctionProps{
+        Code: awslambda.Code_FromAsset(jsii.String("./function")),
+    },
+    EnableTracing:     jsii.Bool(true),  // X-Ray tracing
+    EnableMetrics:     jsii.Bool(true),  // CloudWatch metrics
+    EnableMultiTenant: jsii.Bool(true),  // Multi-tenant support
+})
+
+// Add custom metrics using Lift's observability package
+import "github.com/pay-theory/lift/pkg/observability/cloudwatch"
+
+func recordPerformanceMetrics(ctx context.Context, operation string, duration time.Duration) {
+    metrics := cloudwatch.NewCloudWatchMetrics(client, cloudwatch.CloudWatchMetricsConfig{
+        Namespace: "LiftApp/Performance",
+        Dimensions: map[string]string{
+            "FunctionName": os.Getenv("AWS_LAMBDA_FUNCTION_NAME"),
+            "Operation":    operation,
+        },
+    })
+    
+    metrics.RecordLatency(operation, duration)
+    metrics.RecordCount("operations.completed", 1)
 }
 ```
 
@@ -519,6 +640,9 @@ kinesisProcessor := constructs.NewKinesisProcessor(stack, jsii.String("Aggregato
 - [ ] Implement connection pooling
 - [ ] Add caching where appropriate
 - [ ] Enable compression for large payloads
+- [ ] Optimize DynamORM table design and indexes
+- [ ] Configure DynamORM connection pooling
+- [ ] Enable Lift monitoring features
 
 ### Runtime
 - [ ] Monitor Lambda concurrent executions
@@ -527,6 +651,9 @@ kinesisProcessor := constructs.NewKinesisProcessor(stack, jsii.String("Aggregato
 - [ ] Check for throttling
 - [ ] Analyze X-Ray traces
 - [ ] Review CloudWatch Insights queries
+- [ ] Monitor DynamORM performance metrics
+- [ ] Track DynamORM throttling and errors
+- [ ] Monitor Lift-specific metrics
 
 ### Post-Deployment
 - [ ] Analyze cost vs performance
@@ -552,3 +679,5 @@ Key performance optimization strategies:
 3. **Cache Aggressively**: Reduce redundant operations
 4. **Scale Horizontally**: Use concurrency controls
 5. **Monitor Continuously**: Set up comprehensive observability
+6. **Optimize DynamORM**: Use single table design and efficient queries
+7. **Leverage Lift Features**: Use built-in monitoring and multi-tenant support
