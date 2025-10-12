@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Observability** (BREAKING): `WithDefaultErrorNotifications` now uses the centralized cross-account SNS topic pattern (`arn:aws:sns:us-east-1:805600764437:global-logs-publisher-topic-{stage}`) used by all Pay Theory services. This matches the Python services pattern and enables centralized error monitoring across all Pay Theory services and partners. Only requires `STAGE` environment variable.
+- **Observability**: Added `WithPartnerErrorNotifications` for services that need partner-specific SNS topics (`cns-{partner}-{stage}`). This includes AWS account ID auto-detection via STS GetCallerIdentity when `AWS_ACCOUNT_ID` environment variable is not set. Most services should use `WithDefaultErrorNotifications` instead.
 - Router: Unmatched HTTP routes now return structured 404 `LiftError` instead of a generic error.
 - Response: `Binary` responses are correctly base64-encoded and flagged with `isBase64Encoded=true`; JSON marshalling respects base64 mode.
 - Middleware (Lift IP Authorization): Stop writing responses via deprecated context helpers; now returns `LiftError`s (`ParameterError`, `SystemError`, `AuthorizationError`).
