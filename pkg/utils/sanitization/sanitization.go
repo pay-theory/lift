@@ -151,6 +151,12 @@ func (h *classificationHandler) handleRestricted() any {
 	// Clean the string to check if it's a number
 	cleaned := strings.ReplaceAll(strings.ReplaceAll(str, " ", ""), "-", "")
 	if len(cleaned) >= 4 && isNumeric(cleaned) {
+		// For card numbers (11+ digits), show first 6 (BIN/IIN) and last 4
+		// For shorter numbers, show only last 4
+		if len(cleaned) > 10 {
+			masked := cleaned[:6] + strings.Repeat("*", len(cleaned)-10) + cleaned[len(cleaned)-4:]
+			return masked
+		}
 		// Show last 4 digits, mask the rest
 		masked := strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
 		return masked
