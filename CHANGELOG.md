@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Kernel Client** (NEW): Added `pkg/services/kernel` package for authenticated cross-account calls to kernel services. Provides SigV4-signed API Gateway calls with STS AssumeRole authentication, matching Python's `secure_api_call.py` pattern. Includes convenience functions for K3, Paze Wallet, Apple Wallet, Google Wallet, Bin Lookup, and Bank Data services. Supports both shared role (`kernel-access`) and external partner role (`kernel-access-external`) authentication modes. See `pkg/services/kernel/doc.go` and `examples/kernel_client_example.go` for usage.
 - **Observability** (BREAKING): `WithDefaultErrorNotifications` now uses the centralized cross-account SNS topic pattern (`arn:aws:sns:us-east-1:805600764437:global-logs-publisher-topic-{stage}`) used by all Pay Theory services. This matches the Python services pattern and enables centralized error monitoring across all Pay Theory services and partners. Only requires `STAGE` environment variable.
 - **Observability**: Added `WithPartnerErrorNotifications` for services that need partner-specific SNS topics (`cns-{partner}-{stage}`). This includes AWS account ID auto-detection via STS GetCallerIdentity when `AWS_ACCOUNT_ID` environment variable is not set. Most services should use `WithDefaultErrorNotifications` instead.
 - Router: Unmatched HTTP routes now return structured 404 `LiftError` instead of a generic error.
