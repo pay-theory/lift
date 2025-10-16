@@ -533,18 +533,16 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 //   - partner: Partner name (e.g., "paytheory", "innovate", "austin")
 //   - stage: Stage name (e.g., "paytheory", "paytheorystudy", "paytheorylab")
 func (api *LiftAPI) EnableVPCAuthorizer(partner string, stage string) {
-	vpcAuth := NewVPCAuthorizer(api, jsii.String("VPCAuthorizer"), &VPCAuthorizerProps{
+	vpcAuth := NewVPCAuthorizer(api.Construct, jsii.String("VPCAuthorizer"), &VPCAuthorizerProps{
 		Partner:         jsii.String(partner),
 		Stage:           jsii.String(stage),
+		ApiId:           api.HttpAPI.ApiId(),
 		IdentitySource:  &[]*string{jsii.String("$request.header.Authorization")},
 		ResultsCacheTtl: jsii.Number(300), // Cache for 5 minutes
 	})
 
 	// Store the authorizer for use with routes
 	api.VPCAuthorizer = vpcAuth
-
-	// Attach the authorizer to the API
-	vpcAuth.CfnAuthorizer.SetApiId(api.HttpAPI.ApiId())
 }
 
 // AddVPCAuthorizedRoute adds a Lambda route protected by the VPC authorizer.
@@ -566,10 +564,10 @@ func (api *LiftAPI) AddVPCAuthorizedRoute(routeKey *string, fn awslambda.IFuncti
 	}
 
 	// Get the stack to access account and region
-	stack := awscdk.Stack_Of(api)
+	stack := awscdk.Stack_Of(api.Construct)
 
 	// Create Lambda integration using Cfn construct
-	integration := awsapigatewayv2.NewCfnIntegration(api, jsii.String(fmt.Sprintf("Integration-%s", *routeKey)), &awsapigatewayv2.CfnIntegrationProps{
+	integration := awsapigatewayv2.NewCfnIntegration(api.Construct, jsii.String(fmt.Sprintf("Integration-%s", *routeKey)), &awsapigatewayv2.CfnIntegrationProps{
 		ApiId:           api.HttpAPI.ApiId(),
 		IntegrationType: jsii.String("AWS_PROXY"),
 		IntegrationUri: jsii.String(fmt.Sprintf(
@@ -591,7 +589,7 @@ func (api *LiftAPI) AddVPCAuthorizedRoute(routeKey *string, fn awslambda.IFuncti
 	})
 
 	// Create route with VPC authorizer
-	awsapigatewayv2.NewCfnRoute(api, jsii.String(fmt.Sprintf("Route-%s", *routeKey)), &awsapigatewayv2.CfnRouteProps{
+	awsapigatewayv2.NewCfnRoute(api.Construct, jsii.String(fmt.Sprintf("Route-%s", *routeKey)), &awsapigatewayv2.CfnRouteProps{
 		ApiId:             api.HttpAPI.ApiId(),
 		RouteKey:          routeKey,
 		AuthorizationType: jsii.String("CUSTOM"),

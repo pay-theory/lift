@@ -21,6 +21,9 @@ type VPCAuthorizerProps struct {
 	// Stage name (e.g., "paytheory", "paytheorystudy", "paytheorylab")
 	Stage *string
 
+	// API ID to attach the authorizer to (required)
+	ApiId *string
+
 	// Identity source for the authorizer (default: "$request.header.Authorization")
 	IdentitySource *[]*string
 
@@ -36,16 +39,15 @@ type VPCAuthorizerProps struct {
 	Region *string
 }
 
-// VPCAuthorizer is a construct that creates a Lambda authorizer for VPC authentication.
+// VPCAuthorizer is a wrapper for a CloudFormation API Gateway authorizer.
 //
-// This construct references an existing vpc-authorizer Lambda function that is
+// This struct references an existing vpc-authorizer Lambda function that is
 // deployed in all partner accounts following the naming pattern:
 // vpc-authorizer-{partner}-{stage}
 //
 // The authorizer validates requests using the Authorization header and returns
 // simple responses for HTTP API Gateway v2.
 type VPCAuthorizer struct {
-	constructs.Construct
 	CfnAuthorizer awsapigatewayv2.CfnAuthorizer
 	props         *VPCAuthorizerProps
 }
@@ -70,8 +72,6 @@ type VPCAuthorizer struct {
 // Returns:
 //   - A new VPCAuthorizer instance
 func NewVPCAuthorizer(scope constructs.Construct, id *string, props *VPCAuthorizerProps) *VPCAuthorizer {
-	this := constructs.NewConstruct(scope, id)
-
 	// Set defaults
 	if props.IdentitySource == nil {
 		props.IdentitySource = &[]*string{jsii.String("$request.header.Authorization")}
@@ -104,8 +104,8 @@ func NewVPCAuthorizer(scope constructs.Construct, id *string, props *VPCAuthoriz
 	// Create HTTP Lambda authorizer using lower-level Cfn construct
 	// We use Cfn constructs to have full control over the authorizer configuration
 	// This is necessary because the high-level constructs don't support all options
-	// Note: ApiId is NOT set here - it must be set later when attaching to an API
-	cfnAuthorizer := awsapigatewayv2.NewCfnAuthorizer(this, jsii.String("VPCAuthorizerCfn"), &awsapigatewayv2.CfnAuthorizerProps{
+	cfnAuthorizer := awsapigatewayv2.NewCfnAuthorizer(scope, id, &awsapigatewayv2.CfnAuthorizerProps{
+		ApiId:          props.ApiId,
 		Name:           jsii.String(fmt.Sprintf("vpc-authorizer-%s-%s", *props.Partner, *props.Stage)),
 		AuthorizerType: jsii.String("REQUEST"),
 		AuthorizerUri: jsii.String(fmt.Sprintf(
@@ -127,7 +127,6 @@ func NewVPCAuthorizer(scope constructs.Construct, id *string, props *VPCAuthoriz
 	})
 
 	return &VPCAuthorizer{
-		Construct:     this,
 		CfnAuthorizer: cfnAuthorizer,
 		props:         props,
 	}
