@@ -11,6 +11,7 @@ type TriggerType string
 const (
 	TriggerAPIGateway   TriggerType = "api_gateway"
 	TriggerAPIGatewayV2 TriggerType = "api_gateway_v2"
+	TriggerAppSync      TriggerType = "appsync"
 	TriggerSQS          TriggerType = "sqs"
 	TriggerS3           TriggerType = "s3"
 	TriggerEventBridge  TriggerType = "eventbridge"
@@ -66,6 +67,7 @@ func NewAdapterRegistry() *AdapterRegistry {
 	// Register default adapters
 	registry.Register(NewAPIGatewayAdapter())
 	registry.Register(NewAPIGatewayV2Adapter())
+	registry.Register(NewAppSyncAdapter())
 	registry.Register(NewSQSAdapter())
 	registry.Register(NewS3Adapter())
 	registry.Register(NewEventBridgeAdapter())
