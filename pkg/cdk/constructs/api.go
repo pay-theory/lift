@@ -58,10 +58,11 @@ type RequestValidator struct {
 // API-specific features.
 type LiftAPI struct {
 	constructs.Construct
-	HttpAPI   awsapigatewayv2.HttpApi
-	Stage     awsapigatewayv2.IHttpStage
-	LogGroup  awslogs.ILogGroup
-	stageName string
+	HttpAPI        awsapigatewayv2.HttpApi
+	Stage          awsapigatewayv2.IHttpStage
+	LogGroup       awslogs.ILogGroup
+	VPCAuthorizer  *VPCAuthorizer // Optional VPC authorizer for Cfn routes
+	stageName      string
 }
 
 // GetResourceName returns the API name.
@@ -501,6 +502,102 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 	})
 
 	return authorizer.Authorizer
+}
+
+// EnableVPCAuthorizer enables VPC-based authorization for the API.
+//
+// This method configures the API to use an existing vpc-authorizer Lambda
+// function for request authorization. The vpc-authorizer Lambda should already
+// exist in the partner account with the naming pattern:
+// vpc-authorizer-{partner}-{stage}
+//
+// The authorizer validates requests using the Authorization header and caches
+// results for 5 minutes by default. Use AddVPCAuthorizedRoute() to add routes
+// that will be protected by this authorizer.
+//
+// Example usage:
+//
+//	liftAPI := liftcdk.NewLiftAPI(stack, jsii.String("MyAPI"), &liftcdk.LiftAPIProps{
+//	    APICommonProps: liftcdk.APICommonProps{
+//	        Name: jsii.String(fmt.Sprintf("my-service-%s-%s", partner, stage)),
+//	    },
+//	})
+//
+//	// Enable VPC authorization
+//	liftAPI.EnableVPCAuthorizer(partner, stage)
+//
+//	// Add routes with VPC authorization
+//	liftAPI.AddVPCAuthorizedRoute(jsii.String("POST /path"), liftFn.Function)
+//
+// Parameters:
+//   - partner: Partner name (e.g., "paytheory", "innovate", "austin")
+//   - stage: Stage name (e.g., "paytheory", "paytheorystudy", "paytheorylab")
+func (api *LiftAPI) EnableVPCAuthorizer(partner string, stage string) {
+	vpcAuth := NewVPCAuthorizer(api, jsii.String("VPCAuthorizer"), &VPCAuthorizerProps{
+		Partner:         jsii.String(partner),
+		Stage:           jsii.String(stage),
+		IdentitySource:  &[]*string{jsii.String("$request.header.Authorization")},
+		ResultsCacheTtl: jsii.Number(300), // Cache for 5 minutes
+	})
+
+	// Store the authorizer for use with routes
+	api.VPCAuthorizer = vpcAuth
+
+	// Attach the authorizer to the API
+	vpcAuth.CfnAuthorizer.SetApiId(api.HttpAPI.ApiId())
+}
+
+// AddVPCAuthorizedRoute adds a Lambda route protected by the VPC authorizer.
+//
+// This method creates a new route that requires VPC authorization. The VPC
+// authorizer must be enabled first by calling EnableVPCAuthorizer().
+//
+// The routeKey should be in the format "METHOD /path", for example:
+// - "GET /users"
+// - "POST /data"
+// - "PUT /items/{id}"
+//
+// Parameters:
+//   - routeKey: The route key in the format "METHOD /path"
+//   - fn: The Lambda function to integrate with
+func (api *LiftAPI) AddVPCAuthorizedRoute(routeKey *string, fn awslambda.IFunction) {
+	if api.VPCAuthorizer == nil {
+		panic("VPC authorizer not enabled. Call EnableVPCAuthorizer() first.")
+	}
+
+	// Get the stack to access account and region
+	stack := awscdk.Stack_Of(api)
+
+	// Create Lambda integration using Cfn construct
+	integration := awsapigatewayv2.NewCfnIntegration(api, jsii.String(fmt.Sprintf("Integration-%s", *routeKey)), &awsapigatewayv2.CfnIntegrationProps{
+		ApiId:           api.HttpAPI.ApiId(),
+		IntegrationType: jsii.String("AWS_PROXY"),
+		IntegrationUri: jsii.String(fmt.Sprintf(
+			"arn:aws:apigateway:%s:lambda:path/2015-03-31/functions/%s/invocations",
+			*stack.Region(),
+			*fn.FunctionArn())),
+		PayloadFormatVersion: jsii.String("2.0"),
+	})
+
+	// Grant API Gateway permission to invoke Lambda
+	fn.AddPermission(jsii.String(fmt.Sprintf("ApiGatewayInvoke-%s", *routeKey)), &awslambda.Permission{
+		Principal: awsiam.NewServicePrincipal(jsii.String("apigateway.amazonaws.com"), nil),
+		Action:    jsii.String("lambda:InvokeFunction"),
+		SourceArn: jsii.String(fmt.Sprintf(
+			"arn:aws:execute-api:%s:%s:%s/*",
+			*stack.Region(),
+			*stack.Account(),
+			*api.HttpAPI.ApiId())),
+	})
+
+	// Create route with VPC authorizer
+	awsapigatewayv2.NewCfnRoute(api, jsii.String(fmt.Sprintf("Route-%s", *routeKey)), &awsapigatewayv2.CfnRouteProps{
+		ApiId:             api.HttpAPI.ApiId(),
+		RouteKey:          routeKey,
+		AuthorizationType: jsii.String("CUSTOM"),
+		AuthorizerId:      api.VPCAuthorizer.CfnAuthorizer.Ref(),
+		Target:            jsii.String(fmt.Sprintf("integrations/%s", *integration.Ref())),
+	})
 }
 
 // GetUrl returns the URL of the API.
