@@ -664,12 +664,118 @@ app.S3("resize-images", func(ctx *lift.Context) error {
 })
 ```
 
+### With AWS AppSync GraphQL Resolvers
+```go
+// AppSync Lambda resolvers work seamlessly with Lift
+// The adapter automatically maps GraphQL operations to HTTP-like semantics
+func main() {
+    app := lift.New()
+
+    // Register handlers using GraphQL field names as paths
+    // Mutations → POST, Queries → GET
+    app.POST("/createPazeOnboarding", CreatePazeOnboarding)
+    app.GET("/pazeMerchantIdentity", GetPazeMerchantIdentity)
+
+    lambda.Start(app.HandleRequest)
+}
+
+// Mutation handler - receives GraphQL arguments in request body
+func CreatePazeOnboarding(ctx *lift.Context) error {
+    // Parse GraphQL arguments (e.g., { "input": { "merchantUid": "...", "scope": "..." } })
+    var input PazeOnboardingInput
+    if err := ctx.ParseRequest(&input); err != nil {
+        return lift.ParameterError("input", "Invalid input format")
+    }
+
+    // Access AppSync identity from metadata
+    if identity, ok := ctx.Request.Metadata["identity"].(map[string]any); ok {
+        userSub := ctx.Request.Metadata["userSub"].(string) // Cognito user ID
+        ctx.Logger.Info("Processing request", "userSub", userSub)
+    }
+
+    // Business logic
+    result := onboardMerchant(input)
+
+    return ctx.OK(result)
+}
+
+// Query handler - receives GraphQL arguments in request body
+func GetPazeMerchantIdentity(ctx *lift.Context) error {
+    // GraphQL arguments are passed as JSON body
+    var args struct {
+        MerchantUID string `json:"merchantUid"`
+    }
+    if err := ctx.ParseRequest(&args); err != nil {
+        return lift.ParameterError("merchantUid", "Missing merchant UID")
+    }
+
+    identity, err := fetchMerchantIdentity(args.MerchantUID)
+    if err != nil {
+        return lift.NotFound("Merchant identity not found")
+    }
+
+    return ctx.OK(identity)
+}
+
+// Dual API Gateway + AppSync support
+// The same handler can serve both REST and GraphQL requests
+func GetUser(ctx *lift.Context) error {
+    // Try path parameter first (API Gateway: /user/:id)
+    userID := ctx.Param("id")
+
+    // Fall back to request body (AppSync GraphQL arguments)
+    if userID == "" {
+        var args struct {
+            UserID string `json:"userId"`
+        }
+        if err := ctx.ParseRequest(&args); err == nil {
+            userID = args.UserID
+        }
+    }
+
+    if userID == "" {
+        return lift.ParameterError("userId", "Missing user ID")
+    }
+
+    user, err := getUser(userID)
+    if err != nil {
+        return lift.NotFound("User not found")
+    }
+
+    return ctx.OK(user)
+}
+
+// Register routes for both API Gateway and AppSync
+app.GET("/user/:id", GetUser)           // API Gateway: GET /user/123
+app.GET("/getUser", GetUser)            // AppSync: query getUser(userId: "123")
+```
+
+**AppSync Event Structure:**
+The adapter automatically handles AppSync Lambda resolver events:
+- Extracts `fieldName` and maps it to the request path
+- Maps GraphQL operation types: `Mutation` → POST, `Query` → GET, `Subscription` → GET
+- Converts `arguments` to JSON request body
+- Preserves `identity` (Cognito/IAM caller info) in metadata
+- Includes `source` object for nested resolvers
+
+**GraphQL Schema Example:**
+```graphql
+type Query {
+  getUser(userId: ID!): User
+  pazeMerchantIdentity(merchantUid: ID!): PazeMerchantIdentity
+}
+
+type Mutation {
+  createPazeOnboarding(input: PazeOnboardingInput!): PazeOnboardingResult!
+}
+```
+
 ### With EventBridge Scheduled Events
 ```go
 // Same Context interface for all event types
 app.EventBridge("daily-report", func(ctx *lift.Context) error {
     ctx.Logger.Info("Running scheduled job")
-    
+
     // Use same patterns as HTTP handlers
     return runScheduledJob(ctx)
 })
@@ -677,19 +783,19 @@ app.EventBridge("daily-report", func(ctx *lift.Context) error {
 // Cron-like scheduling
 app.EventBridge("hourly-cleanup", func(ctx *lift.Context) error {
     ctx.Logger.Info("Starting hourly cleanup")
-    
+
     // Clean up old temporary files
     if err := cleanupTempFiles(); err != nil {
         ctx.Logger.Error("Cleanup failed", "error", err)
         return err
     }
-    
+
     // Archive old logs
     if err := archiveOldLogs(); err != nil {
         ctx.Logger.Error("Log archival failed", "error", err)
         return err
     }
-    
+
     ctx.Logger.Info("Hourly cleanup completed")
     return nil
 })
