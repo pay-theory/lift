@@ -715,6 +715,12 @@ func (b *requestHandlerBuilder) build() (any, error) {
 		return nil, err
 	}
 
+	// For AppSync Lambda resolvers, return the unwrapped body directly
+	// AppSync expects the actual data, not the HTTP proxy response format
+	if b.request.TriggerType == adapters.TriggerAppSync {
+		return b.liftCtx.Response.Body, nil
+	}
+
 	return b.liftCtx.Response, nil
 }
 
@@ -1041,6 +1047,7 @@ func (b *requestHandlerBuilder) executeWithTimeout(fn func() error) error {
 func (b *requestHandlerBuilder) isEventTrigger() bool {
 	return b.request.TriggerType != adapters.TriggerAPIGateway &&
 		b.request.TriggerType != adapters.TriggerAPIGatewayV2 &&
+		b.request.TriggerType != adapters.TriggerAppSync && // AppSync is HTTP-like
 		b.request.TriggerType != adapters.TriggerUnknown
 }
 
