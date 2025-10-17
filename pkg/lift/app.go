@@ -1209,6 +1209,83 @@ func (a *App) detectAndAdaptEvent(event any) (*Request, error) {
 //   - The error response
 //   - An error if the error handling fails
 func (a *App) handleError(ctx *Context, err error) (any, error) {
+	// For AppSync Lambda resolvers, return error in PayTheory response mapping template format
+	// The response mapping template checks for pay_theory_error flag and calls $utils.error()
+	if ctx.Request != nil && ctx.Request.TriggerType == adapters.TriggerAppSync {
+		// Enhance LiftErrors with additional context before returning
+		if liftErr, ok := err.(*LiftError); ok {
+			// Initialize ErrorData and ErrorInfo if nil
+			if liftErr.ErrorData == nil {
+				liftErr.ErrorData = make(map[string]any)
+			}
+			if liftErr.ErrorInfo == nil {
+				liftErr.ErrorInfo = make(map[string]any)
+			}
+
+			// Add request metadata to ErrorInfo
+			if ctx.Request != nil {
+				liftErr.ErrorInfo["trigger_type"] = string(ctx.Request.TriggerType)
+				liftErr.ErrorInfo["path"] = ctx.Request.Path
+				liftErr.ErrorInfo["method"] = ctx.Request.Method
+			}
+
+			// Extract EventID from context if available (use as RequestID)
+			if ctx.Request != nil && ctx.Request.EventID != "" && liftErr.RequestID == "" {
+				liftErr.RequestID = ctx.Request.EventID
+			}
+
+			// Add timestamp if not set
+			if liftErr.Timestamp == "" {
+				liftErr.Timestamp = time.Now().UTC().Format(time.RFC3339)
+			}
+
+			// Add error metadata to ErrorData
+			liftErr.ErrorData["status_code"] = liftErr.StatusCode
+			liftErr.ErrorData["timestamp"] = liftErr.Timestamp
+			if liftErr.RequestID != "" {
+				liftErr.ErrorData["request_id"] = liftErr.RequestID
+			}
+			if liftErr.TraceID != "" {
+				liftErr.ErrorData["trace_id"] = liftErr.TraceID
+			}
+
+			// Add error code to errorInfo
+			liftErr.ErrorInfo["code"] = liftErr.Code
+			if len(liftErr.Details) > 0 {
+				liftErr.ErrorInfo["details"] = liftErr.Details
+			}
+
+			// Determine errorType based on status code
+			var errorType string
+			if liftErr.StatusCode >= 500 {
+				errorType = "SYSTEM_ERROR"
+			} else if liftErr.StatusCode >= 400 {
+				errorType = "CLIENT_ERROR"
+			} else {
+				errorType = "SYSTEM_ERROR"
+			}
+
+			// Return error in PayTheory response mapping template format
+			// The template checks for pay_theory_error flag and calls $utils.error()
+			return map[string]any{
+				"pay_theory_error": true,
+				"error_message":    liftErr.Message,
+				"error_type":       errorType,
+				"error_data":       liftErr.ErrorData,
+				"error_info":       liftErr.ErrorInfo,
+			}, nil
+		}
+
+		// For non-LiftErrors, create a generic error response
+		return map[string]any{
+			"pay_theory_error": true,
+			"error_message":    err.Error(),
+			"error_type":       "SYSTEM_ERROR",
+			"error_data":       map[string]any{},
+			"error_info":       map[string]any{},
+		}, nil
+	}
+
 	// Handle Lift errors properly by setting appropriate status codes
 	if liftErr, ok := err.(*LiftError); ok {
 		resp := map[string]any{
@@ -1237,6 +1314,7 @@ func (a *App) handleError(ctx *Context, err error) (any, error) {
 
 	return ctx.Response, nil
 }
+
 
 // HandleTestRequest processes a test request directly through the router.
 // This is used by the testing framework to bypass event parsing.
