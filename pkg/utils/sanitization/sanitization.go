@@ -13,7 +13,43 @@ const (
 	redactedValue = "[REDACTED]"
 )
 
-// AllowedFields are field names that should not be sanitized
+// SensitiveFields defines fields that require sanitization (blocklist approach)
+// All other fields will be logged as-is for debugging purposes
+var SensitiveFields = map[string]SanitizationType{
+	// CVV/Security codes - fully redact (PCI requirement - never log)
+	"cvv":           FullyRedact,
+	"security_code": FullyRedact,
+	"cvv2":          FullyRedact,
+	"cvc":           FullyRedact,
+	"cvc2":          FullyRedact,
+
+	// Card numbers - partial mask (show BIN + last 4)
+	"card_number": PartialMask,
+	"number":      PartialMask,
+
+	// Account numbers - partial mask (show last 4)
+	"account_number": PartialMask,
+
+	// Authentication credentials - fully redact
+	"password":    FullyRedact,
+	"secret":      FullyRedact,
+	"private_key": FullyRedact,
+
+	// PII - fully redact
+	"ssn":    FullyRedact,
+	"tax_id": FullyRedact,
+}
+
+// SanitizationType defines how to sanitize a field
+type SanitizationType int
+
+const (
+	FullyRedact SanitizationType = iota // Replace with "[REDACTED]"
+	PartialMask                         // Show partial data (e.g., last 4 digits)
+)
+
+// Deprecated: AllowedFields is deprecated, use SensitiveFields blocklist instead
+// Kept for backward compatibility
 var AllowedFields = map[string]bool{
 	"card_bin":   true,
 	"card_brand": true,
@@ -75,21 +111,20 @@ func newFieldSanitizationProcessor(sanitizer *Sanitizer, key string, value any) 
 
 // sanitize performs the sanitization process
 func (p *fieldSanitizationProcessor) sanitize() any {
-	// Check if field is explicitly allowed
-	if AllowedFields[p.keyLower] {
-		return p.value
+	// Check if field is in the sensitive fields blocklist
+	if sanitizationType, isSensitive := SensitiveFields[p.keyLower]; isSensitive {
+		// Apply appropriate sanitization based on type
+		switch sanitizationType {
+		case FullyRedact:
+			return redactedValue
+		case PartialMask:
+			handler := newClassificationHandler(p.keyLower, p.value)
+			return handler.handleRestricted()
+		}
 	}
 
-	// If no data protection manager, redact everything for safety
-	if p.sanitizer.dataProtectionManager == nil {
-		return redactedValue
-	}
-
-	// Get data classification
-	classification := p.getDataClassification()
-
-	// Apply sanitization based on classification
-	return p.applySanitization(classification)
+	// Not in blocklist - return value as-is for debugging
+	return p.value
 }
 
 // getDataClassification determines the data classification for the field

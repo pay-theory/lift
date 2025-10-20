@@ -57,6 +57,23 @@ func sanitizeJSONObject(obj map[string]any) map[string]any {
 	result := make(map[string]any)
 
 	for key, value := range obj {
+		// Special handling for "body" field which may contain JSON as a string
+		if key == "body" {
+			if bodyStr, ok := value.(string); ok {
+				// Try to parse the body as JSON
+				var bodyData any
+				if err := json.Unmarshal([]byte(bodyStr), &bodyData); err == nil {
+					// Successfully parsed - sanitize and re-serialize
+					sanitizedBody := sanitizeJSONValue(bodyData)
+					if bodyJSON, err := json.Marshal(sanitizedBody); err == nil {
+						result[key] = string(bodyJSON)
+						continue
+					}
+				}
+				// If parsing failed or re-serialization failed, fall through to normal sanitization
+			}
+		}
+
 		// Sanitize the value using existing field sanitization
 		sanitizedValue := SanitizeFieldValue(key, value)
 
