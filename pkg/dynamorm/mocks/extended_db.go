@@ -2,10 +2,12 @@ package mocks
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"github.com/pay-theory/dynamorm/pkg/core"
 	"github.com/pay-theory/dynamorm/pkg/mocks"
+	"github.com/pay-theory/dynamorm/pkg/types"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -77,6 +79,12 @@ func (m *MockExtendedDB) TransactionFunc(fn func(tx any) error) error {
 	return args.Error(0)
 }
 
+// RegisterTypeConverter records a request to register a custom type converter
+func (m *MockExtendedDB) RegisterTypeConverter(typ reflect.Type, converter types.CustomConverter) error {
+	args := m.Called(typ, converter)
+	return args.Error(0)
+}
+
 // NewMockExtendedDB creates a new MockExtendedDB with sensible defaults
 func NewMockExtendedDB() *MockExtendedDB {
 	m := &MockExtendedDB{}
@@ -99,6 +107,8 @@ func NewMockExtendedDB() *MockExtendedDB {
 		Return(m).Maybe()
 	m.On("WithLambdaTimeoutBuffer", mock.Anything).
 		Return(m).Maybe()
+	m.On("RegisterTypeConverter", mock.Anything, mock.Anything).
+		Return(nil).Maybe()
 
 	return m
 }
