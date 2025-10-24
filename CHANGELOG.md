@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- _No changes yet._
+
+## v1.0.70 - 2025-10-24
+
 - Router: Unmatched HTTP routes now return structured 404 `LiftError` instead of a generic error.
 - Response: `Binary` responses are correctly base64-encoded and flagged with `isBase64Encoded=true`; JSON marshalling respects base64 mode.
 - Middleware (Lift IP Authorization): Stop writing responses via deprecated context helpers; now returns `LiftError`s (`ParameterError`, `SystemError`, `AuthorizationError`).
