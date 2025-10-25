@@ -5,127 +5,41 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/streamer"
 )
 
 // =============================================================================
-// Streamer-Compatible API Gateway Client Mock
+// Streamer API Gateway Client Mock
 // =============================================================================
 
-// These interfaces match the streamer team's exact interface definitions
-// without importing streamer (which would create a circular dependency)
+// This mock implements the streamer.Client interface for testing purposes.
 
-// StreamerAPIGatewayClient defines the interface that matches streamer's APIGatewayClient
-type StreamerAPIGatewayClient interface {
-	PostToConnection(ctx context.Context, connectionID string, data []byte) error
-	DeleteConnection(ctx context.Context, connectionID string) error
-	GetConnection(ctx context.Context, connectionID string) (*StreamerConnectionInfo, error)
-}
-
-// StreamerConnectionInfo matches streamer's ConnectionInfo struct
-type StreamerConnectionInfo struct {
-	ConnectionID string
-	ConnectedAt  string
-	LastActiveAt string
-	SourceIP     string
-	UserAgent    string
-}
-
-// StreamerAPIError matches streamer's APIError interface
-type StreamerAPIError interface {
-	error
-	HTTPStatusCode() int
-	ErrorCode() string
-	IsRetryable() bool
-}
-
-// Streamer-compatible error types that match their exact implementation
-type (
-	StreamerGoneError struct {
-		ConnectionID string
-		Message      string
-	}
-
-	StreamerForbiddenError struct {
-		ConnectionID string
-		Message      string
-	}
-
-	StreamerPayloadTooLargeError struct {
-		ConnectionID string
-		Message      string
-		PayloadSize  int
-		MaxSize      int
-	}
-
-	StreamerThrottlingError struct {
-		ConnectionID string
-		Message      string
-		RetryAfter   int
-	}
-
-	StreamerInternalServerError struct {
-		Message string
-	}
-)
-
-// Error implementations for streamer-compatible errors
-func (e StreamerGoneError) Error() string       { return e.Message }
-func (e StreamerGoneError) HTTPStatusCode() int { return 410 }
-func (e StreamerGoneError) ErrorCode() string   { return "GoneException" }
-func (e StreamerGoneError) IsRetryable() bool   { return false }
-
-func (e StreamerForbiddenError) Error() string       { return e.Message }
-func (e StreamerForbiddenError) HTTPStatusCode() int { return 403 }
-func (e StreamerForbiddenError) ErrorCode() string   { return "ForbiddenException" }
-func (e StreamerForbiddenError) IsRetryable() bool   { return false }
-
-func (e StreamerPayloadTooLargeError) Error() string       { return e.Message }
-func (e StreamerPayloadTooLargeError) HTTPStatusCode() int { return 413 }
-func (e StreamerPayloadTooLargeError) ErrorCode() string   { return "PayloadTooLargeException" }
-func (e StreamerPayloadTooLargeError) IsRetryable() bool   { return false }
-
-func (e StreamerThrottlingError) Error() string       { return e.Message }
-func (e StreamerThrottlingError) HTTPStatusCode() int { return 429 }
-func (e StreamerThrottlingError) ErrorCode() string   { return "ThrottlingException" }
-func (e StreamerThrottlingError) IsRetryable() bool   { return true }
-
-func (e StreamerInternalServerError) Error() string       { return e.Message }
-func (e StreamerInternalServerError) HTTPStatusCode() int { return 500 }
-func (e StreamerInternalServerError) ErrorCode() string   { return "InternalServerError" }
-func (e StreamerInternalServerError) IsRetryable() bool   { return true }
-
-// StreamerAPIGatewayClientMock implements the StreamerAPIGatewayClient interface
-type StreamerAPIGatewayClientMock struct {
-	connections map[string]*StreamerMockConnection
-	messages    map[string][][]byte
-	errors      map[string]error
-	callCount   map[string]int
-	config      *StreamerMockConfig
-	mu          sync.RWMutex
-}
-
-// StreamerMockConnection represents a WebSocket connection in the streamer-compatible mock
+// StreamerMockConnection represents a WebSocket connection in the mock.
 type StreamerMockConnection struct {
 	CreatedTime  time.Time
 	Metadata     map[string]any
 	ConnectionID string
-	ConnectedAt  string
-	LastActiveAt string
+	ConnectedAt  time.Time
+	LastActiveAt time.Time
 	SourceIP     string
 	UserAgent    string
-	State        StreamerConnectionState
+	State        streamer.ConnectionState
 }
 
-// StreamerConnectionState represents the state of a connection
-type StreamerConnectionState string
+// ToConnectionInfo converts a mock connection to a streamer.ConnectionInfo.
+func (c *StreamerMockConnection) ToConnectionInfo() *streamer.ConnectionInfo {
+	return &streamer.ConnectionInfo{
+		ConnectionID: c.ConnectionID,
+		ConnectedAt:  c.ConnectedAt,
+		LastActiveAt: c.LastActiveAt,
+		SourceIP:     c.SourceIP,
+		UserAgent:    c.UserAgent,
+		Identity:     c.Metadata,
+	}
+}
 
-const (
-	StreamerConnectionStateActive       StreamerConnectionState = "ACTIVE"
-	StreamerConnectionStateDisconnected StreamerConnectionState = "DISCONNECTED"
-	StreamerConnectionStateStale        StreamerConnectionState = "STALE"
-)
-
-// StreamerMockConfig configures the behavior of the streamer-compatible mock
+// StreamerMockConfig configures the behavior of the streamer mock.
 type StreamerMockConfig struct {
 	DefaultSourceIP  string
 	DefaultUserAgent string
@@ -134,7 +48,7 @@ type StreamerMockConfig struct {
 	NetworkDelay     time.Duration
 }
 
-// DefaultStreamerMockConfig returns default configuration for streamer mocks
+// DefaultStreamerMockConfig returns default configuration for streamer mocks.
 func DefaultStreamerMockConfig() *StreamerMockConfig {
 	return &StreamerMockConfig{
 		ConnectionTTL:    7200,   // 2 hours
@@ -145,9 +59,19 @@ func DefaultStreamerMockConfig() *StreamerMockConfig {
 	}
 }
 
-// NewStreamerAPIGatewayClientMock creates a new streamer-compatible API Gateway client mock
-func NewStreamerAPIGatewayClientMock() *StreamerAPIGatewayClientMock {
-	return &StreamerAPIGatewayClientMock{
+// StreamerClientMock implements the streamer.Client interface for testing.
+type StreamerClientMock struct {
+	connections map[string]*StreamerMockConnection
+	messages    map[string][][]byte
+	errors      map[string]error
+	callCount   map[string]int
+	config      *StreamerMockConfig
+	mu          sync.RWMutex
+}
+
+// NewStreamerClientMock creates a new streamer client mock.
+func NewStreamerClientMock() *StreamerClientMock {
+	return &StreamerClientMock{
 		connections: make(map[string]*StreamerMockConnection),
 		messages:    make(map[string][][]byte),
 		errors:      make(map[string]error),
@@ -156,19 +80,19 @@ func NewStreamerAPIGatewayClientMock() *StreamerAPIGatewayClientMock {
 	}
 }
 
-// Ensure StreamerAPIGatewayClientMock implements StreamerAPIGatewayClient interface
-var _ StreamerAPIGatewayClient = (*StreamerAPIGatewayClientMock)(nil)
+// Ensure StreamerClientMock implements streamer.Client interface
+var _ streamer.Client = (*StreamerClientMock)(nil)
 
-// WithConfig sets the mock configuration
-func (m *StreamerAPIGatewayClientMock) WithConfig(config *StreamerMockConfig) *StreamerAPIGatewayClientMock {
+// WithConfig sets the mock configuration.
+func (m *StreamerClientMock) WithConfig(config *StreamerMockConfig) *StreamerClientMock {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.config = config
 	return m
 }
 
-// WithConnection adds a connection to the mock
-func (m *StreamerAPIGatewayClientMock) WithConnection(connectionID string, conn *StreamerMockConnection) *StreamerAPIGatewayClientMock {
+// WithConnection adds a connection to the mock.
+func (m *StreamerClientMock) WithConnection(connectionID string, conn *StreamerMockConnection) *StreamerClientMock {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -176,11 +100,11 @@ func (m *StreamerAPIGatewayClientMock) WithConnection(connectionID string, conn 
 		now := time.Now()
 		conn = &StreamerMockConnection{
 			ConnectionID: connectionID,
-			ConnectedAt:  now.Format(time.RFC3339),
-			LastActiveAt: now.Format(time.RFC3339),
+			ConnectedAt:  now,
+			LastActiveAt: now,
 			SourceIP:     m.config.DefaultSourceIP,
 			UserAgent:    m.config.DefaultUserAgent,
-			State:        StreamerConnectionStateActive,
+			State:        streamer.ConnectionStateActive,
 			CreatedTime:  now,
 			Metadata:     make(map[string]any),
 		}
@@ -190,17 +114,17 @@ func (m *StreamerAPIGatewayClientMock) WithConnection(connectionID string, conn 
 	return m
 }
 
-// WithError configures an error for a specific connection
-func (m *StreamerAPIGatewayClientMock) WithError(connectionID string, err error) *StreamerAPIGatewayClientMock {
+// WithError configures an error for a specific connection.
+func (m *StreamerClientMock) WithError(connectionID string, err error) *StreamerClientMock {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.errors[connectionID] = err
 	return m
 }
 
-// PostToConnection sends data to a WebSocket connection
-// Implements StreamerAPIGatewayClient interface
-func (m *StreamerAPIGatewayClientMock) PostToConnection(_ context.Context, connectionID string, data []byte) error {
+// PostToConnection sends data to a WebSocket connection.
+// Implements streamer.Client interface
+func (m *StreamerClientMock) PostToConnection(_ context.Context, connectionID string, data []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -220,15 +144,15 @@ func (m *StreamerAPIGatewayClientMock) PostToConnection(_ context.Context, conne
 	// Check if connection exists
 	conn, exists := m.connections[connectionID]
 	if !exists {
-		return StreamerGoneError{
+		return streamer.GoneError{
 			ConnectionID: connectionID,
 			Message:      fmt.Sprintf("Connection %s not found", connectionID),
 		}
 	}
 
 	// Check connection state
-	if conn.State != StreamerConnectionStateActive {
-		return StreamerGoneError{
+	if conn.State != streamer.ConnectionStateActive {
+		return streamer.GoneError{
 			ConnectionID: connectionID,
 			Message:      fmt.Sprintf("Connection %s is not active", connectionID),
 		}
@@ -236,8 +160,8 @@ func (m *StreamerAPIGatewayClientMock) PostToConnection(_ context.Context, conne
 
 	// Check if connection is stale (TTL expired)
 	if time.Since(conn.CreatedTime).Seconds() > float64(m.config.ConnectionTTL) {
-		conn.State = StreamerConnectionStateStale
-		return StreamerGoneError{
+		conn.State = streamer.ConnectionStateStale
+		return streamer.GoneError{
 			ConnectionID: connectionID,
 			Message:      fmt.Sprintf("Connection %s has expired", connectionID),
 		}
@@ -245,7 +169,7 @@ func (m *StreamerAPIGatewayClientMock) PostToConnection(_ context.Context, conne
 
 	// Check message size
 	if int64(len(data)) > m.config.MaxMessageSize {
-		return StreamerPayloadTooLargeError{
+		return streamer.PayloadTooLargeError{
 			ConnectionID: connectionID,
 			PayloadSize:  len(data),
 			MaxSize:      int(m.config.MaxMessageSize),
@@ -258,14 +182,14 @@ func (m *StreamerAPIGatewayClientMock) PostToConnection(_ context.Context, conne
 
 	// Update last active time
 	now := time.Now()
-	conn.LastActiveAt = now.Format(time.RFC3339)
+	conn.LastActiveAt = now
 
 	return nil
 }
 
-// DeleteConnection terminates a WebSocket connection
-// Implements StreamerAPIGatewayClient interface
-func (m *StreamerAPIGatewayClientMock) DeleteConnection(_ context.Context, connectionID string) error {
+// DeleteConnection terminates a WebSocket connection.
+// Implements streamer.Client interface
+func (m *StreamerClientMock) DeleteConnection(_ context.Context, connectionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -285,23 +209,23 @@ func (m *StreamerAPIGatewayClientMock) DeleteConnection(_ context.Context, conne
 	// Check if connection exists
 	conn, exists := m.connections[connectionID]
 	if !exists {
-		return StreamerGoneError{
+		return streamer.GoneError{
 			ConnectionID: connectionID,
 			Message:      fmt.Sprintf("Connection %s not found", connectionID),
 		}
 	}
 
 	// Mark connection as disconnected
-	conn.State = StreamerConnectionStateDisconnected
+	conn.State = streamer.ConnectionStateDisconnected
 	now := time.Now()
-	conn.LastActiveAt = now.Format(time.RFC3339)
+	conn.LastActiveAt = now
 
 	return nil
 }
 
-// GetConnection retrieves connection information
-// Implements StreamerAPIGatewayClient interface
-func (m *StreamerAPIGatewayClientMock) GetConnection(_ context.Context, connectionID string) (*StreamerConnectionInfo, error) {
+// GetConnection retrieves connection information.
+// Implements streamer.Client interface
+func (m *StreamerClientMock) GetConnection(_ context.Context, connectionID string) (*streamer.ConnectionInfo, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -321,28 +245,22 @@ func (m *StreamerAPIGatewayClientMock) GetConnection(_ context.Context, connecti
 	// Check if connection exists
 	conn, exists := m.connections[connectionID]
 	if !exists {
-		return nil, StreamerGoneError{
+		return nil, streamer.GoneError{
 			ConnectionID: connectionID,
 			Message:      fmt.Sprintf("Connection %s not found", connectionID),
 		}
 	}
 
-	// Return connection info using the exact streamer ConnectionInfo type
-	return &StreamerConnectionInfo{
-		ConnectionID: conn.ConnectionID,
-		ConnectedAt:  conn.ConnectedAt,
-		LastActiveAt: conn.LastActiveAt,
-		SourceIP:     conn.SourceIP,
-		UserAgent:    conn.UserAgent,
-	}, nil
+	// Return connection info using the streamer.ConnectionInfo type
+	return conn.ToConnectionInfo(), nil
 }
 
 // =============================================================================
 // Helper Methods for Testing
 // =============================================================================
 
-// GetMessages returns all messages sent to a connection
-func (m *StreamerAPIGatewayClientMock) GetMessages(connectionID string) [][]byte {
+// GetMessages returns all messages sent to a connection.
+func (m *StreamerClientMock) GetMessages(connectionID string) [][]byte {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -361,22 +279,22 @@ func (m *StreamerAPIGatewayClientMock) GetMessages(connectionID string) [][]byte
 	return result
 }
 
-// GetMessageCount returns the number of messages sent to a connection
-func (m *StreamerAPIGatewayClientMock) GetMessageCount(connectionID string) int {
+// GetMessageCount returns the number of messages sent to a connection.
+func (m *StreamerClientMock) GetMessageCount(connectionID string) int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.messages[connectionID])
 }
 
-// GetCallCount returns the number of times an operation was called
-func (m *StreamerAPIGatewayClientMock) GetCallCount(operation string) int {
+// GetCallCount returns the number of times an operation was called.
+func (m *StreamerClientMock) GetCallCount(operation string) int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.callCount[operation]
 }
 
-// GetConnectionState returns a copy of the connection state
-func (m *StreamerAPIGatewayClientMock) GetConnectionState(connectionID string) *StreamerMockConnection {
+// GetConnectionState returns a copy of the connection state.
+func (m *StreamerClientMock) GetConnectionState(connectionID string) *StreamerMockConnection {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -397,14 +315,14 @@ func (m *StreamerAPIGatewayClientMock) GetConnectionState(connectionID string) *
 	return &connCopy
 }
 
-// GetActiveConnections returns all active connections
-func (m *StreamerAPIGatewayClientMock) GetActiveConnections() map[string]*StreamerMockConnection {
+// GetActiveConnections returns all active connections.
+func (m *StreamerClientMock) GetActiveConnections() map[string]*StreamerMockConnection {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	active := make(map[string]*StreamerMockConnection)
 	for id, conn := range m.connections {
-		if conn.State == StreamerConnectionStateActive {
+		if conn.State == streamer.ConnectionStateActive {
 			// Return a copy
 			connCopy := *conn
 			if conn.Metadata != nil {
@@ -420,8 +338,8 @@ func (m *StreamerAPIGatewayClientMock) GetActiveConnections() map[string]*Stream
 	return active
 }
 
-// Reset clears all mock state
-func (m *StreamerAPIGatewayClientMock) Reset() {
+// Reset clears all mock state.
+func (m *StreamerClientMock) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -432,16 +350,16 @@ func (m *StreamerAPIGatewayClientMock) Reset() {
 	m.config = DefaultStreamerMockConfig()
 }
 
-// SimulateConnectionExpiry marks connections as stale based on TTL
-func (m *StreamerAPIGatewayClientMock) SimulateConnectionExpiry() {
+// SimulateConnectionExpiry marks connections as stale based on TTL.
+func (m *StreamerClientMock) SimulateConnectionExpiry() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	now := time.Now()
 	for _, conn := range m.connections {
-		if conn.State == StreamerConnectionStateActive &&
+		if conn.State == streamer.ConnectionStateActive &&
 			now.Sub(conn.CreatedTime).Seconds() > float64(m.config.ConnectionTTL) {
-			conn.State = StreamerConnectionStateStale
+			conn.State = streamer.ConnectionStateStale
 		}
 	}
 }
@@ -450,25 +368,25 @@ func (m *StreamerAPIGatewayClientMock) SimulateConnectionExpiry() {
 // Error Helper Functions
 // =============================================================================
 
-// WithGoneError configures a GoneError for a specific connection
-func (m *StreamerAPIGatewayClientMock) WithGoneError(connectionID, message string) *StreamerAPIGatewayClientMock {
-	return m.WithError(connectionID, StreamerGoneError{
+// WithGoneError configures a GoneError for a specific connection.
+func (m *StreamerClientMock) WithGoneError(connectionID, message string) *StreamerClientMock {
+	return m.WithError(connectionID, streamer.GoneError{
 		ConnectionID: connectionID,
 		Message:      message,
 	})
 }
 
-// WithForbiddenError configures a ForbiddenError for a specific connection
-func (m *StreamerAPIGatewayClientMock) WithForbiddenError(connectionID, message string) *StreamerAPIGatewayClientMock {
-	return m.WithError(connectionID, StreamerForbiddenError{
+// WithForbiddenError configures a ForbiddenError for a specific connection.
+func (m *StreamerClientMock) WithForbiddenError(connectionID, message string) *StreamerClientMock {
+	return m.WithError(connectionID, streamer.ForbiddenError{
 		ConnectionID: connectionID,
 		Message:      message,
 	})
 }
 
-// WithPayloadTooLargeError configures a PayloadTooLargeError for a specific connection
-func (m *StreamerAPIGatewayClientMock) WithPayloadTooLargeError(connectionID string, payloadSize, maxSize int, message string) *StreamerAPIGatewayClientMock {
-	return m.WithError(connectionID, StreamerPayloadTooLargeError{
+// WithPayloadTooLargeError configures a PayloadTooLargeError for a specific connection.
+func (m *StreamerClientMock) WithPayloadTooLargeError(connectionID string, payloadSize, maxSize int, message string) *StreamerClientMock {
+	return m.WithError(connectionID, streamer.PayloadTooLargeError{
 		ConnectionID: connectionID,
 		PayloadSize:  payloadSize,
 		MaxSize:      maxSize,
@@ -476,18 +394,18 @@ func (m *StreamerAPIGatewayClientMock) WithPayloadTooLargeError(connectionID str
 	})
 }
 
-// WithThrottlingError configures a ThrottlingError for a specific connection
-func (m *StreamerAPIGatewayClientMock) WithThrottlingError(connectionID string, retryAfter int, message string) *StreamerAPIGatewayClientMock {
-	return m.WithError(connectionID, StreamerThrottlingError{
+// WithThrottlingError configures a ThrottlingError for a specific connection.
+func (m *StreamerClientMock) WithThrottlingError(connectionID string, retryAfter int, message string) *StreamerClientMock {
+	return m.WithError(connectionID, streamer.ThrottlingError{
 		ConnectionID: connectionID,
 		RetryAfter:   retryAfter,
 		Message:      message,
 	})
 }
 
-// WithInternalServerError configures an InternalServerError for a specific connection
-func (m *StreamerAPIGatewayClientMock) WithInternalServerError(connectionID, message string) *StreamerAPIGatewayClientMock {
-	return m.WithError(connectionID, StreamerInternalServerError{
+// WithInternalServerError configures an InternalServerError for a specific connection.
+func (m *StreamerClientMock) WithInternalServerError(connectionID, message string) *StreamerClientMock {
+	return m.WithError(connectionID, streamer.InternalServerError{
 		Message: message,
 	})
 }
