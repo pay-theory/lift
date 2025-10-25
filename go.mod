@@ -6,7 +6,6 @@ require (
 	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.220.0
 	github.com/aws/aws-lambda-go v1.50.0
-	github.com/aws/aws-sdk-go v1.55.8
 	github.com/aws/aws-sdk-go-v2 v1.39.4
 	github.com/aws/aws-sdk-go-v2/config v1.31.15
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.18
@@ -25,7 +24,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ses v1.34.7
 	github.com/aws/aws-sdk-go-v2/service/sns v1.39.1
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.66.2
-	github.com/aws/aws-xray-sdk-go v1.8.5
+	github.com/aws/aws-xray-sdk-go/v2 v2.0.0
 	github.com/aws/constructs-go/constructs/v10 v10.4.2
 	github.com/aws/jsii-runtime-go v1.117.0
 	github.com/aws/smithy-go v1.23.1
@@ -64,7 +63,6 @@ require (
 	github.com/cdklabs/cloud-assembly-schema-go/awscdkcloudassemblyschema/v48 v48.16.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

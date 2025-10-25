@@ -3,6 +3,8 @@ package adapters
 import (
 	"encoding/base64"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -740,5 +742,45 @@ func TestWebSocketAdapter_RealWorldEvent(t *testing.T) {
 	// Verify management endpoint is constructed
 	if endpoint, ok := req.Metadata["managementEndpoint"].(string); !ok || endpoint == "" {
 		t.Errorf("Management endpoint not constructed")
+	}
+}
+
+func TestBuildManagementEndpoint(t *testing.T) {
+	tests := []struct {
+		name     string
+		domain   string
+		stage    string
+		expected string
+	}{
+		{
+			name:     "default execute-api domain keeps stage",
+			domain:   "n3orzoukv3.execute-api.us-east-1.amazonaws.com",
+			stage:    "production",
+			expected: "https://n3orzoukv3.execute-api.us-east-1.amazonaws.com/production",
+		},
+		{
+			name:     "custom domain drops stage",
+			domain:   "ws.example.com",
+			stage:    "production",
+			expected: "https://ws.example.com",
+		},
+		{
+			name:     "missing stage for default domain",
+			domain:   "n3orzoukv3.execute-api.us-east-1.amazonaws.com",
+			stage:    "",
+			expected: "https://n3orzoukv3.execute-api.us-east-1.amazonaws.com",
+		},
+		{
+			name:     "empty domain returns empty endpoint",
+			domain:   "",
+			stage:    "production",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, buildManagementEndpoint(tt.domain, tt.stage))
+		})
 	}
 }

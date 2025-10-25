@@ -79,7 +79,7 @@ func (a *WebSocketAdapter) Adapt(rawEvent any) (*Request, error) {
 	if !ok {
 		return nil, fmt.Errorf("event must be a map[string]any, got %T", rawEvent)
 	}
-	
+
 	requestContext, ok := eventMap["requestContext"].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("requestContext must be a map[string]any")
@@ -136,6 +136,9 @@ func (a *WebSocketAdapter) Adapt(rawEvent any) (*Request, error) {
 		timestamp = extractStringField(requestContext, "requestTimeEpoch")
 	}
 
+	// Build management endpoint aware of custom domains
+	managementEndpoint := buildManagementEndpoint(domainName, stage)
+
 	// Create the request with WebSocket specific metadata
 	req := &Request{
 		TriggerType: TriggerWebSocket,
@@ -157,7 +160,7 @@ func (a *WebSocketAdapter) Adapt(rawEvent any) (*Request, error) {
 			"stage":              stage,
 			"domainName":         domainName,
 			"apiId":              apiID,
-			"managementEndpoint": fmt.Sprintf("https://%s/%s", domainName, stage),
+			"managementEndpoint": managementEndpoint,
 			"requestContext":     requestContext,
 		},
 	}
@@ -178,4 +181,27 @@ func mapWebSocketRoute(routeKey string) (method, path string) {
 		// Custom routes are typically MESSAGE type
 		return "MESSAGE", "/" + routeKey
 	}
+}
+
+// buildManagementEndpoint constructs the management endpoint, omitting the stage
+// segment when the WebSocket API is served via a custom domain (API mapping).
+func buildManagementEndpoint(domainName, stage string) string {
+	if domainName == "" {
+		return ""
+	}
+
+	if isAPIGatewayManagedDomain(domainName) && stage != "" {
+		return fmt.Sprintf("https://%s/%s", domainName, stage)
+	}
+
+	return fmt.Sprintf("https://%s", domainName)
+}
+
+func isAPIGatewayManagedDomain(domainName string) bool {
+	if domainName == "" {
+		return false
+	}
+
+	domain := strings.ToLower(domainName)
+	return strings.Contains(domain, ".execute-api.") && strings.HasSuffix(domain, ".amazonaws.com")
 }
