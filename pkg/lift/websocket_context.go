@@ -18,6 +18,7 @@ import (
 const (
 	connectRoute    = "$connect"
 	disconnectRoute = "$disconnect"
+	defaultRegion   = "us-east-1"
 )
 
 // WebSocketContext provides WebSocket-specific functionality backed by the AWS SDK v2.
@@ -154,7 +155,7 @@ func (wc *WebSocketContext) GetManagementAPI() (*apigatewaymanagementapi.Client,
 	ctx := wc.baseContext()
 	region := wc.GetRegion()
 	if region == "" {
-		region = "us-east-1"
+		region = defaultRegion
 	}
 
 	cfg, err := config.LoadDefaultConfig(ctx,
@@ -380,13 +381,13 @@ func (c *Context) getRegionFromContext() string {
 		return region
 	}
 
-	return "us-east-1"
+	return defaultRegion
 }
 
 // getRegionFromContext for WebSocketContext (delegate to embedded Context).
 func (wc *WebSocketContext) getRegionFromContext() string {
 	if wc.Context == nil {
-		return "us-east-1"
+		return defaultRegion
 	}
 	return wc.Context.getRegionFromContext()
 }
