@@ -39,14 +39,14 @@ func TestNewInfrastructureGenerator(t *testing.T) {
 		},
 	}
 
-	generator := NewInfrastructureGenerator(ProviderPulumi, config)
+	generator := NewInfrastructureGenerator(ProviderCDK, config)
 
 	if generator == nil {
 		t.Fatal("Expected generator to be created")
 	}
 
-	if generator.provider != ProviderPulumi {
-		t.Errorf("Expected provider %s, got %s", ProviderPulumi, generator.provider)
+	if generator.provider != ProviderCDK {
+		t.Errorf("Expected provider %s, got %s", ProviderCDK, generator.provider)
 	}
 
 	if generator.config.ApplicationName != "test-app" {
@@ -87,7 +87,7 @@ func TestGenerateTemplate(t *testing.T) {
 		},
 	}
 
-	generator := NewInfrastructureGenerator(ProviderPulumi, config)
+	generator := NewInfrastructureGenerator(ProviderCDK, config)
 	template, err := generator.GenerateTemplate()
 
 	if err != nil {
@@ -103,8 +103,8 @@ func TestGenerateTemplate(t *testing.T) {
 		t.Errorf("Expected template name 'test-app-dev', got %s", template.Name)
 	}
 
-	if template.Provider != ProviderPulumi {
-		t.Errorf("Expected provider %s, got %s", ProviderPulumi, template.Provider)
+	if template.Provider != ProviderCDK {
+		t.Errorf("Expected provider %s, got %s", ProviderCDK, template.Provider)
 	}
 
 	// Verify Lambda resources
@@ -137,7 +137,7 @@ func TestGenerateTemplate(t *testing.T) {
 }
 
 func TestValidateTemplate(t *testing.T) {
-	generator := NewInfrastructureGenerator(ProviderPulumi, InfrastructureConfig{
+	generator := NewInfrastructureGenerator(ProviderCDK, InfrastructureConfig{
 		ApplicationName: "test-app",
 		Environment:     "dev",
 	})
@@ -203,11 +203,11 @@ func TestValidateTemplate(t *testing.T) {
 }
 
 func TestExportTemplate(t *testing.T) {
-	generator := NewInfrastructureGenerator(ProviderPulumi, InfrastructureConfig{})
+	generator := NewInfrastructureGenerator(ProviderCDK, InfrastructureConfig{})
 
 	template := &InfrastructureTemplate{
 		Name:      "test-template",
-		Provider:  ProviderPulumi,
+		Provider:  ProviderCDK,
 		Version:   "1.0.0",
 		CreatedAt: time.Now(),
 		Resources: map[string]Resource{
@@ -236,7 +236,7 @@ func TestExportTemplate(t *testing.T) {
 }
 
 func TestGenerateAttributeDefinitions(t *testing.T) {
-	generator := NewInfrastructureGenerator(ProviderPulumi, InfrastructureConfig{})
+	generator := NewInfrastructureGenerator(ProviderCDK, InfrastructureConfig{})
 
 	attributes := []AttributeConfig{
 		{Name: "id", Type: "S"},
@@ -259,7 +259,7 @@ func TestGenerateAttributeDefinitions(t *testing.T) {
 }
 
 func TestGenerateKeySchema(t *testing.T) {
-	generator := NewInfrastructureGenerator(ProviderPulumi, InfrastructureConfig{})
+	generator := NewInfrastructureGenerator(ProviderCDK, InfrastructureConfig{})
 
 	// Test with hash key only
 	schema := generator.generateKeySchema("id", "")
@@ -313,7 +313,7 @@ func TestLambdaResourceGeneration(t *testing.T) {
 		},
 	}
 
-	generator := NewInfrastructureGenerator(ProviderPulumi, config)
+	generator := NewInfrastructureGenerator(ProviderCDK, config)
 	template, err := generator.GenerateTemplate()
 
 	if err != nil {
@@ -435,7 +435,7 @@ func TestDynamoDBResourceGeneration(t *testing.T) {
 		},
 	}
 
-	generator := NewInfrastructureGenerator(ProviderPulumi, config)
+	generator := NewInfrastructureGenerator(ProviderCDK, config)
 	template, err := generator.GenerateTemplate()
 
 	if err != nil {
@@ -571,7 +571,7 @@ func BenchmarkGenerateTemplate(b *testing.B) {
 		},
 	}
 
-	generator := NewInfrastructureGenerator(ProviderPulumi, config)
+	generator := NewInfrastructureGenerator(ProviderCDK, config)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

@@ -11,7 +11,7 @@ import (
 // MultiRegionDeployer orchestrates deployments across multiple regions
 // Memory optimized: 1032 → 984 bytes (48 bytes saved)
 type MultiRegionDeployer struct {
-	deployers        map[string]*PulumiDeployer
+	deployers        map[string]InfrastructureDeployer
 	healthCheckers   map[string]*RegionHealthChecker
 	deploymentStatus map[string]RegionDeploymentStatus
 	dnsManager       *DNSManager
@@ -22,6 +22,8 @@ type MultiRegionDeployer struct {
 	regions          []string
 	config           InfrastructureConfig
 	mu               sync.RWMutex
+
+	deployerFactory func(projectName, stackName, region string, config InfrastructureConfig) InfrastructureDeployer
 }
 
 // RegionDeploymentStatus represents the deployment status of a region
@@ -342,14 +344,17 @@ func NewMultiRegionDeployer(config MultiRegionConfig, infraConfig Infrastructure
 		applicationName:  infraConfig.ApplicationName,
 		environment:      infraConfig.Environment,
 		config:           infraConfig,
-		deployers:        make(map[string]*PulumiDeployer),
+		deployers:        make(map[string]InfrastructureDeployer),
 		healthCheckers:   make(map[string]*RegionHealthChecker),
 		deploymentStatus: make(map[string]RegionDeploymentStatus),
+		deployerFactory: func(projectName, stackName, region string, cfg InfrastructureConfig) InfrastructureDeployer {
+			return NewCDKDeployer(projectName, stackName, region, cfg)
+		},
 	}
 
 	// Initialize deployers for each region
 	for _, region := range config.Regions {
-		deployer := NewPulumiDeployer(
+		deployer := mrd.deployerFactory(
 			infraConfig.ApplicationName,
 			fmt.Sprintf("%s-%s", infraConfig.ApplicationName, region),
 			region,
@@ -523,7 +528,7 @@ func (mrd *MultiRegionDeployer) deployBatch(ctx context.Context, regions []strin
 			}
 
 			// Initialize deployer
-			stackConfig := PulumiStackConfig{
+			stackConfig := &StackDeploymentConfig{
 				ProjectName: mrd.applicationName,
 				StackName:   fmt.Sprintf("%s-%s", mrd.applicationName, r),
 				Region:      r,
