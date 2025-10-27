@@ -57,19 +57,10 @@ processor := constructs.NewDynamoStreamProcessor(stack, jsii.String("OrderProces
 - Processing: Batch size 10, starting position LATEST
 - Error handling: Dead letter queue enabled, 10000 retry attempts
 
-### Using Existing Table
+### Using Custom Table Configuration
 
 ```go
-// Use existing table with streams
-existingTable := awsdynamodb.NewTable(stack, jsii.String("ExistingTable"), &awsdynamodb.TableProps{
-    TableName: jsii.String("orders"),
-    PartitionKey: &awsdynamodb.Attribute{
-        Name: jsii.String("orderId"),
-        Type: awsdynamodb.AttributeType_STRING,
-    },
-    Stream: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
-})
-
+// Configure streaming table with custom properties
 processor := constructs.NewDynamoStreamProcessor(stack, jsii.String("OrderProcessor"), &constructs.DynamoStreamProcessorProps{
     FunctionProps: awslambda.FunctionProps{
         FunctionName: jsii.String("order-stream-processor"),
@@ -77,7 +68,11 @@ processor := constructs.NewDynamoStreamProcessor(stack, jsii.String("OrderProces
         Handler:      jsii.String("bootstrap"),
         Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
     },
-    ExistingTable: existingTable,
+    StreamingTableProps: &constructs.StreamingTableProps{
+        TableName: jsii.String("orders"),
+        StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
+        EnableAutoScaling: jsii.Bool(true),
+    },
 })
 ```
 
@@ -122,24 +117,11 @@ processor := constructs.NewDynamoStreamProcessor(stack, jsii.String("Processor")
     },
     
     // Custom table configuration
-    TableProps: &awsdynamodb.TableProps{
+    StreamingTableProps: &constructs.StreamingTableProps{
         TableName: jsii.String("events"),
-        BillingMode: awsdynamodb.BillingMode_PROVISIONED,
-        ReadCapacity: jsii.Number(20),
-        WriteCapacity: jsii.Number(10),
-        PartitionKey: &awsdynamodb.Attribute{
-            Name: jsii.String("eventId"),
-            Type: awsdynamodb.AttributeType_STRING,
-        },
-        SortKey: &awsdynamodb.Attribute{
-            Name: jsii.String("timestamp"),
-            Type: awsdynamodb.AttributeType_NUMBER,
-        },
+        StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
+        EnableAutoScaling: jsii.Bool(true),
     },
-    
-    // Enable auto-scaling for provisioned mode
-    EnableAutoScaling: jsii.Bool(true),
-    EnableStreamEncryption: jsii.Bool(true),
 })
 ```
 
@@ -211,20 +193,10 @@ eventProcessor := constructs.NewDynamoStreamProcessor(stack, jsii.String("EventP
     },
     
     // Event sourcing table
-    TableProps: &awsdynamodb.TableProps{
+    StreamingTableProps: &constructs.StreamingTableProps{
         TableName: jsii.String("event-store"),
-        PartitionKey: &awsdynamodb.Attribute{
-            Name: jsii.String("aggregateId"),
-            Type: awsdynamodb.AttributeType_STRING,
-        },
-        SortKey: &awsdynamodb.Attribute{
-            Name: jsii.String("version"),
-            Type: awsdynamodb.AttributeType_NUMBER,
-        },
+        StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
     },
-    
-    // Full event data for replay
-    StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
     
     // Start from beginning for event replay
     StartingPosition: awslambda.StartingPosition_TRIM_HORIZON,
@@ -409,12 +381,8 @@ processor := constructs.NewDynamoStreamProcessor(stack, jsii.String("SecureProce
     },
     
     // Encrypted streams
-    EnableStreamEncryption: jsii.Bool(true),
-    
-    // Secure table configuration
-    TableProps: &awsdynamodb.TableProps{
-        Encryption: awsdynamodb.TableEncryption_AWS_MANAGED,
-        PointInTimeRecovery: jsii.Bool(true),
+    StreamingTableProps: &constructs.StreamingTableProps{
+        StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
     },
     
     // Secure DLQ
@@ -479,7 +447,7 @@ drProcessor := constructs.NewDynamoStreamProcessor(drStack, jsii.String("DRProce
 
 ```go
 // Create multiple processors for different use cases
-func createFanOutProcessors(stack awscdk.Stack, sourceTable awsdynamodb.ITable) {
+func createFanOutProcessors(stack awscdk.Stack) {
     
     // Analytics processor
     analyticsProcessor := constructs.NewDynamoStreamProcessor(stack, jsii.String("AnalyticsProcessor"), &constructs.DynamoStreamProcessorProps{
@@ -489,7 +457,10 @@ func createFanOutProcessors(stack awscdk.Stack, sourceTable awsdynamodb.ITable) 
             Handler:      jsii.String("bootstrap"),
             Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
         },
-        ExistingTable: sourceTable,
+        StreamingTableProps: &constructs.StreamingTableProps{
+            TableName: jsii.String("analytics-table"),
+            StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
+        },
         BatchSize: jsii.Number(100),
         ParallelizationFactor: jsii.Number(5),
     })
@@ -502,7 +473,10 @@ func createFanOutProcessors(stack awscdk.Stack, sourceTable awsdynamodb.ITable) 
             Handler:      jsii.String("bootstrap"),
             Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
         },
-        ExistingTable: sourceTable,
+        StreamingTableProps: &constructs.StreamingTableProps{
+            TableName: jsii.String("notification-table"),
+            StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
+        },
         BatchSize: jsii.Number(10),
         MaxBatchingWindow: awscdk.Duration_Seconds(jsii.Number(1)),
     })
@@ -515,7 +489,10 @@ func createFanOutProcessors(stack awscdk.Stack, sourceTable awsdynamodb.ITable) 
             Handler:      jsii.String("bootstrap"),
             Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
         },
-        ExistingTable: sourceTable,
+        StreamingTableProps: &constructs.StreamingTableProps{
+            TableName: jsii.String("audit-table"),
+            StreamViewType: awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
+        },
         StartingPosition: awslambda.StartingPosition_TRIM_HORIZON,
         BisectBatchOnError: jsii.Bool(true),
     })

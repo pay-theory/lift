@@ -90,14 +90,14 @@ func newSNSProcessorBuilder(scope constructs.Construct, id *string, props *SNSPr
 // build constructs the complete SNS processor
 func (b *snsProcessorBuilder) build() *SNSProcessor {
 	b.construct = constructs.NewConstruct(b.scope, b.id)
-	
+
 	b.setupTopic()
 	b.createFunction()
 	b.configureEnvironment()
 	b.setupDLQ()
 	b.configureSubscription()
 	b.grantPermissions()
-	
+
 	return &SNSProcessor{
 		Construct: b.construct,
 		Topic:     b.topic,
@@ -112,7 +112,7 @@ func (b *snsProcessorBuilder) setupTopic() {
 		b.topic = b.props.ExistingTopic
 		return
 	}
-	
+
 	b.topic = b.createNewTopic()
 }
 
@@ -121,7 +121,7 @@ func (b *snsProcessorBuilder) createNewTopic() awssns.ITopic {
 	topicProps := b.getTopicProps()
 	b.applyDisplayName(topicProps)
 	b.applyFifoConfig(topicProps)
-	
+
 	return awssns.NewTopic(b.construct, jsii.String("Topic"), topicProps)
 }
 
@@ -145,7 +145,7 @@ func (b *snsProcessorBuilder) applyFifoConfig(topicProps *awssns.TopicProps) {
 	if b.props.EnableFifo == nil || !*b.props.EnableFifo {
 		return
 	}
-	
+
 	topicProps.Fifo = jsii.Bool(true)
 	if b.props.ContentBasedDeduplication != nil {
 		topicProps.ContentBasedDeduplication = b.props.ContentBasedDeduplication
@@ -168,10 +168,10 @@ func (b *snsProcessorBuilder) setupDLQ() {
 	if !b.isDLQEnabled() {
 		return
 	}
-	
+
 	dlqProps := b.getDLQProps()
 	b.ensureFifoDLQ(dlqProps)
-	
+
 	b.dlq = awssqs.NewQueue(b.construct, jsii.String("DLQ"), dlqProps)
 	b.function.Function.AddEnvironment(jsii.String("SNS_DLQ_URL"), b.dlq.QueueUrl(), nil)
 }
@@ -206,7 +206,7 @@ func (b *snsProcessorBuilder) configureSubscription() {
 	b.subscription = b.getSubscriptionProps()
 	b.applyFilterPolicy()
 	b.applyDLQToSubscription()
-	
+
 	eventSource := awslambdaeventsources.NewSnsEventSource(b.topic, b.subscription)
 	b.function.Function.AddEventSource(eventSource)
 }

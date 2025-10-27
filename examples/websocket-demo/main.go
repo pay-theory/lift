@@ -22,9 +22,37 @@ type JWTClaims struct {
 
 // ConnectionStore interface for WebSocket connection management
 type ConnectionStore interface {
+	// StoreConnection stores a WebSocket connection.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - conn: The WebSocket connection to store
+	// Returns:
+	//   - An error if the storage fails
 	StoreConnection(ctx context.Context, conn *WebSocketConnection) error
+
+	// RemoveConnection removes a WebSocket connection by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - connectionID: The ID of the connection to remove
+	// Returns:
+	//   - An error if the removal fails
 	RemoveConnection(ctx context.Context, connectionID string) error
+
+	// GetActiveConnections retrieves all active WebSocket connections.
+	// Parameters:
+	//   - ctx: The context for the request
+	// Returns:
+	//   - A list of active WebSocket connections
+	//   - An error if the retrieval fails
 	GetActiveConnections(ctx context.Context) ([]*WebSocketConnection, error)
+
+	// GetConnectionByID retrieves a WebSocket connection by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - connectionID: The ID of the connection to retrieve
+	// Returns:
+	//   - The retrieved WebSocket connection
+	//   - An error if the retrieval fails
 	GetConnectionByID(ctx context.Context, connectionID string) (*WebSocketConnection, error)
 }
 

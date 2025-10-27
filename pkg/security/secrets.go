@@ -1,14 +1,14 @@
 package security
 
 import (
-    "context"
-    "encoding/json"
-    "errors"
-    "fmt"
-    "log"
-    "strings"
-    "sync"
-    "time"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -96,14 +96,14 @@ func NewSecretCache(ttl time.Duration) *SecretCache {
 // GetSecret retrieves a secret from AWS Secrets Manager (with caching)
 func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (string, error) {
 	// Check cache first (encrypted or plain text)
-    if asm.useEncryption && asm.encryptedCache != nil {
-        if value, err := asm.encryptedCache.Get(name); err != nil {
-            // Log cache retrieval error, but continue to fetch from AWS
-            log.Printf("secrets cache get failed: key=%s err=%v", name, err)
-        } else if value != "" {
-            return value, nil
-        }
-    } else if asm.cache != nil {
+	if asm.useEncryption && asm.encryptedCache != nil {
+		if value, err := asm.encryptedCache.Get(name); err != nil {
+			// Log cache retrieval error, but continue to fetch from AWS
+			log.Printf("secrets cache get failed: key=%s err=%v", name, err)
+		} else if value != "" {
+			return value, nil
+		}
+	} else if asm.cache != nil {
 		if value := asm.cache.Get(name); value != "" {
 			return value, nil
 		}
@@ -132,10 +132,10 @@ func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (strin
 	// Cache the secret (encrypted or plain text)
 	if asm.useEncryption && asm.encryptedCache != nil {
 		// Best effort cache update - log errors but don't fail
-        if err := asm.encryptedCache.Set(name, value); err != nil {
-            // Cache failure is not critical, just log it
-            log.Printf("secrets cache set failed: key=%s err=%v", name, err)
-        }
+		if err := asm.encryptedCache.Set(name, value); err != nil {
+			// Cache failure is not critical, just log it
+			log.Printf("secrets cache set failed: key=%s err=%v", name, err)
+		}
 	} else if asm.cache != nil {
 		asm.cache.Set(name, value)
 	}
@@ -272,20 +272,26 @@ func (asm *AWSSecretsManager) buildSecretName(name string) string {
 // Get retrieves a value from the cache
 func (c *SecretCache) Get(key string) string {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	secret, exists := c.secrets[key]
 	if !exists {
+		c.mu.RUnlock()
 		return ""
 	}
 
-	// Check if expired
-	if time.Now().After(secret.ExpiresAt) {
-		delete(c.secrets, key)
+	now := time.Now()
+	if now.After(secret.ExpiresAt) {
+		c.mu.RUnlock()
+		c.mu.Lock()
+		if current, ok := c.secrets[key]; ok && now.After(current.ExpiresAt) {
+			delete(c.secrets, key)
+		}
+		c.mu.Unlock()
 		return ""
 	}
 
-	return secret.Value
+	value := secret.Value
+	c.mu.RUnlock()
+	return value
 }
 
 // Set stores a value in the cache with TTL

@@ -10,6 +10,8 @@ This document outlines the development standards and best practices for the Lift
 - **Exception**: CDK construct initialization may use panic as these run at infrastructure definition time, not runtime
   - Must include clear error messages: `panic(fmt.Sprintf("ConstructName validation failed: %v", err))`
   - Document why panic is acceptable in a comment
+  - **Only acceptable for**: Required parameter validation, configuration errors, and construct initialization failures
+  - **Never acceptable for**: Runtime errors, business logic failures, or recoverable conditions
 
 ### 2. No Debug Prints
 - **Never use** `fmt.Print`, `fmt.Printf`, `log.Print`, or similar in production code
@@ -48,7 +50,8 @@ func GetData(ctx *lift.Context) (*Data, error) {
 ### 5. Feature Flags for New Features
 ```go
 // Use feature flags to control feature rollout
-if features.IsEnabled(features.NewFeatureName) {
+ff := middleware.GetFeatureFlags(ctx)
+if ff != nil && ff.IsEnabled("new_feature_name") {
     return newImplementation(ctx)
 }
 return stableImplementation(ctx)
@@ -65,7 +68,7 @@ return stableImplementation(ctx)
 - Test helpers must be in `*_test.go` files only
 - Use interfaces for mockability
 - No test code in production paths
-- Use build tags for test-only code: `// +build test`
+- Use `lifttesting.NewTestApp()` for isolated test environments
 
 ### 2. Integration Tests
 - Use DynamoDB Local for database tests
@@ -122,6 +125,8 @@ func BenchmarkCriticalPath(b *testing.B) {
 - Enable security features by default
 - Require explicit opt-out for security features
 - Document security implications of configuration options
+- Require non-empty data protection encryption keys; initialization fails fast when missing
+- Configure runtime guardrails (`MaxRequestSize`, `MaxResponseSize`, `Timeout`, `RequireTenantID`) in `lift.Config`; Lift enforces them before handler execution and emits guardrail metrics automatically.
 
 ## Development Workflow
 
@@ -136,6 +141,7 @@ func BenchmarkCriticalPath(b *testing.B) {
 - Use consistent naming conventions
 - Follow Go idioms and best practices
 - Run `go fmt` and `go vet` before committing
+- Tie middleware background workers to the app lifecycle (e.g., wrap load shedding config with `middleware.ConfigureLoadSheddingForApp(app, cfg)`)
 
 ### 3. Documentation
 - Document all exported types and functions
@@ -179,6 +185,7 @@ Before submitting code for review, ensure:
 - Monitor performance metrics
 - Set up alerts for anomalies
 - Use consistent metric naming
+- Prefer `middleware.EnhancedObservabilityMiddleware` for unified logging/metrics/tracing. Use `SampleRate` for probabilistic sampling and `DisableSampling` when instrumentation must be fully suppressed; tenant and user identifiers are added automatically.
 
 ### 3. Tracing
 - Implement distributed tracing for complex flows
@@ -199,6 +206,7 @@ Before submitting code for review, ensure:
 - Use connection pooling
 - Implement proper timeouts
 - Handle backpressure appropriately
+- Close `performance.ConnectionPool` instances during shutdown. The pool now enforces `MaxConnections`, reports safe utilisation stats, and closing it stops background health checks without deadlocking.
 
 ### 3. Concurrency
 - Use goroutines judiciously
@@ -219,6 +227,7 @@ Before submitting code for review, ensure:
 - Provide migration guides
 - Log deprecation warnings
 - Set reasonable defaults
+- `disaster.DRConfig` validates testing cadences at startup. Leave `Frequency` or health `Interval` at zero to accept defaults, and ensure `NotifyBefore` is less than `Frequency` or monitoring will fail fast.
 
 ## Tools and Automation
 

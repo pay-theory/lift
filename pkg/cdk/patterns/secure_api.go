@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awswafv2"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
@@ -129,13 +130,15 @@ func NewSecureAPI(scope constructs.Construct, id *string, props *SecureAPIProps)
 
 	// Create API Gateway
 	api := liftconstructs.NewLiftAPI(this, jsii.String("Api"), &liftconstructs.LiftAPIProps{
-		Name:                props.ApiName,
-		EnableCORS:          jsii.Bool(false), // Typically disabled for secure APIs
-		EnableAccessLogging: jsii.Bool(true),
-		DomainName:          props.DomainName,
-		CertificateArn:      props.CertificateArn,
-		ThrottleRateLimit:   jsii.Number(1000), // 1000 requests per second
-		ThrottleBurstLimit:  jsii.Number(5000), // 5000 burst
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:                props.ApiName,
+			EnableCORS:          jsii.Bool(false), // Typically disabled for secure APIs
+			EnableAccessLogging: jsii.Bool(true),
+			DomainName:          props.DomainName,
+			CertificateArn:      props.CertificateArn,
+			ThrottleRateLimit:   jsii.Number(1000), // 1000 requests per second
+			ThrottleBurstLimit:  jsii.Number(5000), // 5000 burst
+		},
 	})
 
 	// Add Lambda integration
@@ -303,7 +306,7 @@ func createSecurityAlarms(scope constructs.Construct, fn awslambda.Function, top
 
 // GetApiUrl returns the API URL
 func (api *SecureAPI) GetApiUrl() *string {
-	return api.Api.HttpAPI.Url()
+	return api.Api.GetUrl()
 }
 
 // GetFunction returns the secure Lambda function

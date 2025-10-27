@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
@@ -193,6 +194,7 @@ func (c *ServiceClient) Call(ctx context.Context, request *ServiceRequest) (*Ser
 }
 
 // executeRequest executes the actual HTTP request
+
 func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceInstance, request *ServiceRequest) (*ServiceResponse, error) {
 	start := time.Now()
 
@@ -204,29 +206,40 @@ func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceIns
 		request.Path,
 	)
 
-	// Prepare request body
-	var bodyReader io.Reader
+	// Prepare request body for retries; keep immutable copy for each attempt
+	var requestBody []byte
 	if request.Body != nil {
-		bodyBytes, err := json.Marshal(request.Body)
+		var err error
+		requestBody, err = json.Marshal(request.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal request body: %w", err)
 		}
-		bodyReader = bytes.NewReader(bodyBytes)
 	}
 
-	// Create HTTP request
-	httpReq, err := http.NewRequestWithContext(ctx, request.Method, url, bodyReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
-	}
+	buildRequest := func() (*http.Request, error) {
+		var bodyReader io.Reader
+		if len(requestBody) > 0 {
+			bodyReader = bytes.NewReader(requestBody)
+		}
 
-	// Set headers
-	c.setRequestHeaders(httpReq, request, instance)
+		httpReq, err := http.NewRequestWithContext(ctx, request.Method, url, bodyReader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+		}
+
+		c.setRequestHeaders(httpReq, request, instance)
+		return httpReq, nil
+	}
 
 	// Execute with retry policy
 	var response *ServiceResponse
-	err = c.executeWithRetry(ctx, func() error {
-		resp, execErr := c.httpClient.Do(httpReq)
+	err := c.executeWithRetry(ctx, func() error {
+		req, buildErr := buildRequest()
+		if buildErr != nil {
+			return buildErr
+		}
+
+		resp, execErr := c.httpClient.Do(req)
 		if execErr != nil {
 			return execErr
 		}
@@ -237,7 +250,7 @@ func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceIns
 		}()
 
 		// Read response body
-		bodyBytes, readErr := io.ReadAll(resp.Body)
+		respBody, readErr := io.ReadAll(resp.Body)
 		if readErr != nil {
 			return fmt.Errorf("failed to read response body: %w", readErr)
 		}
@@ -246,7 +259,7 @@ func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceIns
 		response = &ServiceResponse{
 			StatusCode: resp.StatusCode,
 			Headers:    make(map[string]string),
-			Body:       bodyBytes,
+			Body:       respBody,
 			Duration:   time.Since(start),
 			Instance:   instance,
 			Metadata:   make(map[string]any),
@@ -650,7 +663,7 @@ func (u *UserServiceClient) ListUsers(ctx context.Context, filters *UserFilters)
 
 // contains checks if a string contains a substring
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[:len(substr)] == substr
+	return strings.Contains(s, substr)
 }
 
 // ServiceClientMiddleware creates middleware for service client integration

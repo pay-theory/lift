@@ -34,7 +34,7 @@ Required for default SNS notifications:
 - `PARTNER`: Your partner identifier
 - `STAGE`: Deployment stage (dev, staging, prod)
 - `AWS_REGION`: AWS region
-- `AWS_ACCOUNT_ID`: AWS account ID
+- `AWS_ACCOUNT_ID`: (Optional) AWS account ID - auto-detected via STS if not set
 
 ## Testing
 

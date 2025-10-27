@@ -13,9 +13,15 @@ type DynamORMStreamProcessingStackProps struct {
 	awscdk.StackProps
 }
 
+// DynamORMStreamProcessingStackProps represents the properties for the DynamORMStreamProcessingStack.
+// It extends the awscdk.StackProps to include additional properties specific to the stack.
+
 type DynamORMStreamProcessingStack struct {
 	awscdk.Stack
 }
+
+// DynamORMStreamProcessingStack represents a stack for processing DynamoDB streams.
+// It extends the awscdk.Stack to include methods for setting up the stack.
 
 func NewDynamORMStreamProcessingStack(scope constructs.Construct, id string, props *DynamORMStreamProcessingStackProps) *DynamORMStreamProcessingStack {
 	var sprops awscdk.StackProps

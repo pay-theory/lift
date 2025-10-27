@@ -1,6 +1,9 @@
 package constructs
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
@@ -9,6 +12,8 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
+
+const lambdaDistEnvVar = "LIFT_LAMBDA_DIST_PATH"
 
 // LambdaFunctionConfig defines configuration for creating Lambda functions
 type LambdaFunctionConfig struct {
@@ -35,19 +40,36 @@ func CreateStandardLambdaFunction(scope constructs.Construct, id string, bucket 
 	} else {
 		bucket.GrantRead(role, nil)
 	}
-	
+
 	if encryptionKey != nil {
 		encryptionKey.GrantEncryptDecrypt(role)
 	}
+
+	codePath := resolveLambdaAssetPath()
 
 	return awslambda.NewFunction(scope, jsii.String(id), &awslambda.FunctionProps{
 		FunctionName: jsii.String(config.FunctionName),
 		Runtime:      awslambda.Runtime_PROVIDED_AL2(),
 		Handler:      jsii.String("bootstrap"),
-		Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
+		Code:         awslambda.Code_FromAsset(jsii.String(codePath), nil),
 		Role:         role,
 		Description:  jsii.String(config.Description),
 		Timeout:      config.Timeout,
 		Environment:  &config.Environment,
 	})
+}
+
+func resolveLambdaAssetPath() string {
+	if distPath, ok := os.LookupEnv(lambdaDistEnvVar); ok && distPath != "" {
+		if _, err := os.Stat(distPath); err == nil {
+			return distPath
+		}
+	}
+
+	const defaultPath = "./dist"
+	if _, err := os.Stat(defaultPath); err == nil {
+		return defaultPath
+	}
+
+	panic(fmt.Sprintf("lambda asset path not found; set %s or create %s", lambdaDistEnvVar, defaultPath))
 }

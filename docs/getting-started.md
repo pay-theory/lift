@@ -6,7 +6,7 @@
 ## Prerequisites
 
 Before you begin, ensure you have:
-- Go 1.21 or later installed
+- Go 1.21 or later installed (tested with Go 1.23.10)
 - AWS account with Lambda access
 - Basic understanding of serverless concepts
 
@@ -245,6 +245,7 @@ Protect your API with JWT authentication:
 
 ```go
 import (
+    "os"
     "github.com/pay-theory/lift/pkg/middleware"
 )
 
@@ -264,9 +265,6 @@ func main() {
     jwtMiddleware := middleware.JWTAuth(middleware.JWTConfig{
         Secret: os.Getenv("JWT_SECRET"),
     })
-    if err != nil {
-        panic(err)
-    }
     api.Use(jwtMiddleware)
     
     // These routes now require authentication
@@ -370,32 +368,29 @@ package main
 import (
     "testing"
     
-    lifttesting "github.com/pay-theory/lift/pkg/testing"
+    "github.com/pay-theory/lift/pkg/testing"
     "github.com/stretchr/testify/assert"
 )
 
 func TestCreateTodo(t *testing.T) {
-    // Create test context
-    ctx := lifttesting.NewTestContext(
-        lifttesting.WithMethod("POST"),
-        lifttesting.WithPath("/api/v1/todos"),
-        lifttesting.WithBody(`{"title": "Test Todo"}`),
-        lifttesting.WithHeaders(map[string]string{
-            "Authorization": "Bearer test-token",
-        }),
-    )
+    // Create test app
+    app := testing.NewTestApp()
     
-    // Call handler
-    err := CreateTodo(ctx)
+    // Add the route to test
+    app.App().POST("/api/v1/todos", CreateTodo)
+    
+    // Make request with authentication
+    resp := app.WithHeaders(map[string]string{
+        "Authorization": "Bearer test-token",
+    }).POST("/api/v1/todos", map[string]string{
+        "title": "Test Todo",
+    })
     
     // Assert results
-    assert.NoError(t, err)
-    assert.Equal(t, 201, ctx.Response.StatusCode)
+    resp.AssertStatus(201)
     
     // Check response body
-    var todo Todo
-    assert.NoError(t, json.Unmarshal(ctx.Response.Body, &todo))
-    assert.Equal(t, "Test Todo", todo.Title)
+    resp.AssertJSONPath("$.title", "Test Todo")
 }
 ```
 
@@ -403,7 +398,7 @@ func TestCreateTodo(t *testing.T) {
 
 ### Using SAM (AWS Serverless Application Model)
 
-Create `template.yaml`:
+Create `template.yaml` (see the included `template.yaml` file in the project root):
 
 ```yaml
 AWSTemplateFormatVersion: '2010-09-09'
@@ -471,7 +466,13 @@ Now that you have a working Lift application:
 
 ### Type-Safe Handlers
 
-Use `SimpleHandler` for automatic request parsing:
+Use `SimpleHandler` for automatic request parsing and validation. This is the **recommended approach** for handling structured requests:
+
+**Benefits of SimpleHandler:**
+- ✅ Automatic JSON parsing and validation
+- ✅ Type-safe request/response handling
+- ✅ Built-in error handling for malformed requests
+- ✅ Cleaner, more maintainable code
 
 ```go
 type CreateUserRequest struct {
@@ -485,12 +486,14 @@ type UserResponse struct {
     Email string `json:"email"`
 }
 
-// Register with SimpleHandler
+// Register with SimpleHandler - automatic parsing and validation
 app.POST("/users", lift.SimpleHandler(createUser))
 
-// Handler with automatic parsing
+// Handler with automatic parsing - no manual JSON handling needed
 func createUser(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) {
-    // req is already parsed and validated
+    // req is already parsed and validated automatically
+    // If validation fails, Lift returns 422 with details
+    
     user := UserResponse{
         ID:    generateID(),
         Name:  req.Name,
@@ -501,7 +504,16 @@ func createUser(ctx *lift.Context, req CreateUserRequest) (UserResponse, error) 
         return UserResponse{}, lift.NewLiftError("SAVE_ERROR", "Failed to save user", 500)
     }
     
-    return user, nil
+    return user, nil // Response is automatically serialized to JSON
+}
+
+// Alternative: Manual handler (NOT recommended)
+func createUserManual(ctx *lift.Context) error {
+    var req CreateUserRequest
+    if err := ctx.ParseRequest(&req); err != nil {
+        return err // Manual error handling
+    }
+    // Manual validation, manual response handling...
 }
 ```
 
@@ -585,6 +597,17 @@ func ProcessOrder(ctx *lift.Context) error {
 2. **Validation errors**: Check struct tags are correct
 3. **Authentication failures**: Verify JWT secret matches
 4. **Rate limit errors**: Check DynamoDB table exists
+5. **SimpleHandler not working**: Ensure you're using the correct function signature `func(ctx *lift.Context, req RequestType) (ResponseType, error)`
+
+### Error Codes
+
+Lift uses standardized error codes defined in `pkg/lift/error_codes.go`:
+
+- `VALIDATION_ERROR` (422) - Request validation failed
+- `UNAUTHORIZED` (401) - Authentication required
+- `AUTHORIZATION_ERROR` (403) - Insufficient permissions
+- `NOT_FOUND` (404) - Resource not found
+- `SYSTEM_ERROR` (500) - Internal server error
 
 ### Debug Mode
 

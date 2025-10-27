@@ -132,6 +132,11 @@ func (c *NewCommand) createProject(name, template string) error {
 		return fmt.Errorf("failed to create main.go: %w", err)
 	}
 
+	integrationTestContent := c.generateIntegrationTest()
+	if err := os.WriteFile(filepath.Join(name, "cmd", "main_test.go"), []byte(integrationTestContent), 0600); err != nil {
+		return fmt.Errorf("failed to create main_test.go: %w", err)
+	}
+
 	// Create go.mod
 	goModContent := c.generateGoMod(name)
 	if err := os.WriteFile(filepath.Join(name, "go.mod"), []byte(goModContent), 0600); err != nil {
@@ -207,7 +212,128 @@ func main() {
 	// Start Lambda handler
 	lambda.Start(deploy.Handler())
 }
+
 `, name, name)
+}
+
+func (c *NewCommand) generateIntegrationTest() string {
+	return `package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"testing"
+
+	"github.com/pay-theory/lift/pkg/deployment"
+	"github.com/pay-theory/lift/pkg/lift"
+)
+
+func TestLambdaHandlerHTTP(t *testing.T) {
+	app := lift.New()
+	if err := app.GET("/", func(ctx *lift.Context) error {
+		return ctx.JSON(map[string]string{"message": "ok"})
+	}); err != nil {
+		t.Fatalf("failed to register route: %v", err)
+	}
+
+	deploy, err := deployment.NewLambdaDeployment(app, deployment.DefaultDeploymentConfig())
+	if err != nil {
+		t.Fatalf("failed to create deployment: %v", err)
+	}
+
+	request := map[string]any{
+		"version": "2.0",
+		"routeKey": "GET /",
+		"rawPath": "/",
+		"requestContext": map[string]any{
+			"http": map[string]any{"method": "GET", "path": "/"},
+		},
+		"headers":         map[string]any{},
+		"isBase64Encoded": false,
+	}
+
+	payload, err := json.Marshal(request)
+	if err != nil {
+		t.Fatalf("failed to marshal event: %v", err)
+	}
+
+	resp, err := deploy.Handler().Invoke(context.Background(), payload)
+	if err != nil {
+		t.Fatalf("handler returned error: %v", err)
+	}
+
+	if len(resp) == 0 {
+		t.Fatal("expected non-empty response payload")
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(resp, &output); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if status, ok := output["statusCode"].(float64); !ok || int(status) != 200 {
+		t.Fatalf("unexpected status code: %v", output["statusCode"])
+	}
+}
+
+func TestLambdaHandlerSQS(t *testing.T) {
+	app := lift.New()
+	processed := false
+
+	if err := app.SQS("sample-queue", func(ctx *lift.Context) error {
+		records, err := ctx.SQSRecords()
+		if err != nil {
+			return err
+		}
+		if len(records) == 0 {
+			return fmt.Errorf("expected at least one record")
+		}
+		processed = true
+		return nil
+	}); err != nil {
+		t.Fatalf("failed to register SQS handler: %v", err)
+	}
+
+	deploy, err := deployment.NewLambdaDeployment(app, deployment.DefaultDeploymentConfig())
+	if err != nil {
+		t.Fatalf("failed to create deployment: %v", err)
+	}
+
+	sqsEvent := map[string]any{
+		"Records": []any{
+			map[string]any{
+				"messageId":     "1",
+				"receiptHandle": "abc",
+				"body":          "hello",
+				"eventSource":   "aws:sqs",
+				"eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:sample-queue",
+			},
+		},
+	}
+
+	payload, err := json.Marshal(sqsEvent)
+	if err != nil {
+		t.Fatalf("failed to marshal SQS event: %v", err)
+	}
+
+	if resp, err := deploy.Handler().Invoke(context.Background(), payload); err != nil {
+		t.Fatalf("handler returned error: %v", err)
+	} else if len(resp) > 0 {
+		var output map[string]any
+		if err := json.Unmarshal(resp, &output); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if status, ok := output["statusCode"].(float64); ok && int(status) != 200 {
+			t.Fatalf("unexpected status code: %v", output["statusCode"])
+		}
+	}
+
+	if !processed {
+		t.Fatal("expected SQS handler to process record")
+	}
+}
+`
 }
 
 func (c *NewCommand) generateGoMod(name string) string {

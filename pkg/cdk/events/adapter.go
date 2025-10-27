@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+
 	"github.com/pay-theory/lift/pkg/lift"
 )
 
@@ -18,6 +19,12 @@ type EventAdapter struct {
 
 // EventProcessor is the interface for processing Lift events
 type EventProcessor interface {
+	// ProcessEvent processes a Lift event.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - event: The Lift event to process
+	// Returns:
+	//   - An error if the processing fails
 	ProcessEvent(ctx context.Context, event LiftEvent) error
 }
 

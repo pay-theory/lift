@@ -710,7 +710,7 @@ func (v *experimentSafetyValidator) validate() []string {
 		if !rule.Enabled {
 			continue
 		}
-		
+
 		v.validateRule(rule)
 	}
 	return v.violations
@@ -734,7 +734,7 @@ func (v *experimentSafetyValidator) validateBlastRadius(rule PolicyRule) {
 	if !ok {
 		return
 	}
-	
+
 	if v.experiment.Target.Scope == ClusterScope && maxPercentage > 10.0 {
 		v.violations = append(v.violations, "Experiment exceeds maximum blast radius percentage")
 	}
@@ -746,7 +746,7 @@ func (v *experimentSafetyValidator) validateTimeWindow(rule PolicyRule) {
 	if !ok {
 		return
 	}
-	
+
 	if v.experiment.Duration > maxDuration {
 		v.violations = append(v.violations, "Experiment duration exceeds policy limits")
 	}

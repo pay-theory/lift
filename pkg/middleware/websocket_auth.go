@@ -12,26 +12,26 @@ import (
 // Memory optimized: 160 → 136 bytes (24 bytes saved)
 type WebSocketAuthConfig struct {
 	// 8-byte aligned fields (functions, slices)
-	TokenExtractor func(ctx *lift.Context) string            // 8 bytes (function pointer)
-	OnError        func(ctx *lift.Context, err error) error  // 8 bytes (function pointer)
-	SkipRoutes     []string                                  // 24 bytes (slice)
-	
+	TokenExtractor func(ctx *lift.Context) string           // 8 bytes (function pointer)
+	OnError        func(ctx *lift.Context, err error) error // 8 bytes (function pointer)
+	SkipRoutes     []string                                 // 24 bytes (slice)
+
 	// Struct field
-	JWTConfig      security.JWTConfig                        // struct
+	JWTConfig security.JWTConfig // struct
 }
 
 // WebSocketAuth creates authentication middleware for WebSocket connections
 func WebSocketAuth(config WebSocketAuthConfig) lift.Middleware {
 	handler, err := newWebSocketAuthHandler(config)
-    if err != nil {
-        // Return middleware that returns the initialization error
-        return func(_ lift.Handler) lift.Handler {
-            return lift.HandlerFunc(func(_ *lift.Context) error {
-                return err
-            })
-        }
-    }
-	
+	if err != nil {
+		// Return middleware that returns the initialization error
+		return func(_ lift.Handler) lift.Handler {
+			return lift.HandlerFunc(func(_ *lift.Context) error {
+				return err
+			})
+		}
+	}
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return handler.handle(ctx, next)
@@ -55,10 +55,10 @@ func WebSocketAuthFromHeader(headerName string) func(ctx *lift.Context) string {
 
 // webSocketAuthHandler handles WebSocket authentication workflow
 type webSocketAuthHandler struct {
-    validator      *JWTValidator
-    contextManager *securityContextManager
-    tokenExtractor tokenExtractor
-    config         WebSocketAuthConfig
+	validator      *JWTValidator
+	contextManager *securityContextManager
+	tokenExtractor tokenExtractor
+	config         WebSocketAuthConfig
 }
 
 // newWebSocketAuthHandler creates a new WebSocket auth handler
@@ -67,7 +67,7 @@ func newWebSocketAuthHandler(config WebSocketAuthConfig) (*webSocketAuthHandler,
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &webSocketAuthHandler{
 		config:         config,
 		tokenExtractor: newTokenExtractor(config),
@@ -83,17 +83,17 @@ func (h *webSocketAuthHandler) handle(ctx *lift.Context, next lift.Handler) erro
 	if err != nil {
 		return next.Handle(ctx) // Not a WebSocket context
 	}
-	
+
 	// Check route filtering
 	if h.shouldSkipRoute(wsCtx.RouteKey()) {
 		return next.Handle(ctx)
 	}
-	
+
 	// Handle based on event type
 	if wsCtx.IsConnectEvent() {
 		return h.handleConnectEvent(ctx, wsCtx, next)
 	}
-	
+
 	return h.handleNonConnectEvent(ctx, next)
 }
 
@@ -114,19 +114,19 @@ func (h *webSocketAuthHandler) handleConnectEvent(ctx *lift.Context, wsCtx *lift
 	if err != nil {
 		return h.handleError(ctx, err)
 	}
-	
+
 	// Validate JWT token
 	claims, err := h.validator.ValidateToken(token)
 	if err != nil {
 		return h.handleError(ctx, err)
 	}
-	
+
 	// Set up security context
 	h.contextManager.setupSecurityContext(ctx, claims)
-	
+
 	// Log successful authentication
 	h.logAuthentication(ctx, wsCtx, claims)
-	
+
 	return next.Handle(ctx)
 }
 
@@ -144,14 +144,14 @@ func (h *webSocketAuthHandler) handleError(ctx *lift.Context, err error) error {
 	if h.config.OnError != nil {
 		return h.config.OnError(ctx, err)
 	}
-	
+
 	// Default error handling
 	if liftErr, ok := err.(*lift.LiftError); ok {
 		return ctx.Status(liftErr.StatusCode).JSON(map[string]string{
 			"error": liftErr.Message,
 		})
 	}
-	
+
 	return ctx.Status(500).JSON(map[string]string{
 		"error": err.Error(),
 	})
@@ -181,20 +181,20 @@ func newTokenExtractor(config WebSocketAuthConfig) tokenExtractor {
 // extractToken extracts the authentication token from the request
 func (te *tokenExtractor) extractToken(ctx *lift.Context) (string, error) {
 	var token string
-	
+
 	if te.config.TokenExtractor != nil {
 		token = te.config.TokenExtractor(ctx)
 	} else {
 		token = te.extractTokenDefault(ctx)
 	}
-	
+
 	// Clean token format
 	token = te.cleanToken(token)
-	
+
 	if token == "" {
 		return "", lift.NewLiftError("MISSING_TOKEN", "Missing authentication token", 401)
 	}
-	
+
 	return token, nil
 }
 
@@ -210,7 +210,7 @@ func (te *tokenExtractor) extractTokenDefault(ctx *lift.Context) string {
 	if token := ctx.Query("token"); token != "" {
 		return token
 	}
-	
+
 	// Try headers as fallback
 	if token := ctx.Header("Authorization"); token != "" {
 		return token
@@ -218,7 +218,7 @@ func (te *tokenExtractor) extractTokenDefault(ctx *lift.Context) string {
 	if token := ctx.Header("authorization"); token != "" {
 		return token
 	}
-	
+
 	return ""
 }
 
@@ -241,7 +241,7 @@ func newSecurityContextManager() *securityContextManager {
 func (scm *securityContextManager) setupSecurityContext(ctx *lift.Context, claims *JWTClaims) {
 	// Create security context
 	secCtx := lift.WithSecurity(ctx)
-	
+
 	// Create principal from claims
 	principal := &security.Principal{
 		UserID:     claims.Subject,
@@ -255,10 +255,10 @@ func (scm *securityContextManager) setupSecurityContext(ctx *lift.Context, claim
 		UserAgent:  ctx.Header("User-Agent"),
 		RequestID:  ctx.RequestID,
 	}
-	
+
 	// Set principal in security context
 	secCtx.SetPrincipal(principal)
-	
+
 	// Set backward compatibility context
 	scm.setBackwardCompatibility(ctx, claims)
 }

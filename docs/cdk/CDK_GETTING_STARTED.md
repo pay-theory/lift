@@ -231,38 +231,48 @@ func NewProductionLiftStack(scope constructs.Construct, id string, props *MyLift
 
 #### Example 2: Multi-Tenant SaaS Application
 
-Based on `pkg/cdk/constructs/dynamorm_table.go` multi-tenant features:
+Based on `pkg/cdk/stacks/multi_tenant_saas.go`:
 
 ```go
+import (
+    "github.com/pay-theory/lift/pkg/cdk/stacks"
+)
+
 func NewMultiTenantSaaSStack(scope constructs.Construct, id string, props *MyLiftStackProps) awscdk.Stack {
+    // Use the pre-built multi-tenant SaaS stack
+    return stacks.NewMultiTenantSaaSStack(scope, "SaaSPlatform", &stacks.MultiTenantSaaSStackProps{
+        AppName:           "saas-platform",
+        CodePath:          "./dist/bootstrap",
+        EnableAuth:        true,
+        EnableFileStorage: true,
+        DomainName:        "api.saas-platform.com",
+        CertificateArn:    "arn:aws:acm:us-east-1:123456789012:certificate/...",
+    })
+}
+```
+
+#### Example 2b: Custom Multi-Tenant Implementation
+
+For custom multi-tenant implementations using Lift constructs:
+
+```go
+func NewCustomMultiTenantStack(scope constructs.Construct, id string, props *MyLiftStackProps) awscdk.Stack {
     stack := awscdk.NewStack(scope, &id, &props.StackProps)
 
-    // Create multi-tenant DynamoDB table - Based on dynamorm_table.go:105-167
-    table := liftconstructs.NewDynamORMTable(stack, jsii.String("SaaSData"), &liftconstructs.DynamORMTableProps{
-        PartitionKey: &awsdynamodb.Attribute{
-            Name: jsii.String("PK"),
-            Type: awsdynamodb.AttributeType_STRING,
-        },
-        SortKey: &awsdynamodb.Attribute{
-            Name: jsii.String("SK"),
-            Type: awsdynamodb.AttributeType_STRING,
-        },
-        EnableMultiTenant:   jsii.Bool(true),
-        TenantAttribute:     jsii.String("TenantID"),
-        EnableAutoScaling:   jsii.Bool(true),
-        TimeToLiveAttribute: jsii.String("ttl"),
+    // Create multi-tenant DynamoDB table using LiftTable
+    table := liftconstructs.NewLiftTable(stack, jsii.String("SaaSData"), &liftconstructs.LiftTableProps{
+        TableName:                 jsii.String("saas-data"),
+        PartitionKeyName:          jsii.String("PK"),
+        SortKeyName:               jsii.String("SK"),
+        EnableMultiTenant:         jsii.Bool(true),
+        TenantAttribute:           jsii.String("TenantID"),
+        EnableAutoScaling:         jsii.Bool(true),
+        EnablePointInTimeRecovery: jsii.Bool(true),
+        EnableStreams:             jsii.Bool(true),
+        TimeToLiveAttribute:       jsii.String("ttl"),
     })
 
-    // Configure tenant isolation - Based on dynamorm_table.go:211-256
-    table.ConfigureMultiTenant("TenantID")
-
-    // Add comprehensive monitoring - Based on dynamorm_table.go:1256-1284
-    monitoring := table.SetupComprehensiveMonitoring(
-        jsii.String("arn:aws:sns:us-east-1:123456789012:saas-alerts"),
-        "SaaS-DynamoDB-Dashboard",
-    )
-
-    // Create Lambda function with tenant permissions
+    // Create Lambda function with multi-tenant support
     fn := liftconstructs.NewLiftFunction(stack, jsii.String("SaaSFunction"), &liftconstructs.LiftFunctionProps{
         FunctionProps: awslambda.FunctionProps{
             Code:         awslambda.Code_FromAsset(jsii.String("./dist"), nil),
@@ -272,19 +282,16 @@ func NewMultiTenantSaaSStack(scope constructs.Construct, id string, props *MyLif
         },
         EnableTracing:     jsii.Bool(true),
         EnableMultiTenant: jsii.Bool(true),
-        EnableDynamORM:    jsii.Bool(true),
     })
 
-    // Grant tenant-isolated access - Based on dynamorm_table.go:404-444
-    table.GrantTenantIsolatedAccess(fn.Function, "TenantID")
+    // Grant table access to function
+    table.Table.GrantReadWriteData(fn.Function)
 
     // Create API with enhanced CORS for SaaS
     api := liftconstructs.NewLiftAPI(stack, jsii.String("SaaSAPI"), &liftconstructs.LiftAPIProps{
         Name:                jsii.String("saas-api"),
         EnableCORS:          jsii.Bool(true),
         EnableAccessLogging: jsii.Bool(true),
-        ThrottleRateLimit:   jsii.Number(10000),
-        ThrottleBurstLimit:  jsii.Number(20000),
         DomainName:          jsii.String("api.saas-platform.com"),
         CertificateArn:      jsii.String("arn:aws:acm:us-east-1:123456789012:certificate/..."),
     })
@@ -300,9 +307,9 @@ func NewMultiTenantSaaSStack(scope constructs.Construct, id string, props *MyLif
 }
 ```
 
-#### Example 3: Event-Driven Microservices
+#### Example 3: Event-Driven Microservices with DynamORM Event Store
 
-Based on `pkg/cdk/patterns/microservice_complete.go`:
+Based on `pkg/cdk/patterns/microservice_complete.go` and `pkg/cdk/constructs/dynamorm_event_store.go`:
 
 ```go
 func NewEventDrivenStack(scope constructs.Construct, id string, props *MyLiftStackProps) awscdk.Stack {
@@ -343,20 +350,39 @@ func NewEventDrivenStack(scope constructs.Construct, id string, props *MyLiftSta
         EnableEnhancedSecurity:   jsii.Bool(true),
     })
 
+    // Create DynamORM Event Store for event sourcing
+    eventStore := liftconstructs.NewDynamORMEventStore(stack, jsii.String("EventStore"), &liftconstructs.DynamORMEventStoreProps{
+        EventTableName:         jsii.String("order-events"),
+        SnapshotTableName:      jsii.String("order-snapshots"),
+        Pattern:                liftconstructs.EventStorePattern_SINGLE_TABLE,
+        SnapshotStrategy:       liftconstructs.SnapshotStrategy_FREQUENCY,
+        EnableMultiTenant:      jsii.Bool(true),
+        TenantAttribute:        jsii.String("TenantID"),
+        EnableEventVersioning:  jsii.Bool(true),
+        EnableEventEncryption:  jsii.Bool(true),
+        EnableAutoScaling:      jsii.Bool(true),
+        EnableMetrics:          jsii.Bool(true),
+        EnableDetailedMetrics:  jsii.Bool(true),
+    })
+
     // Create EventBridge for service communication
     eventBus := awsevents.NewEventBus(stack, jsii.String("OrderEventBus"), &awsevents.EventBusProps{
         EventBusName: jsii.String("order-events"),
     })
 
-    // Create event processor Lambda
+    // Create event processor Lambda with event store access
     processor := liftconstructs.NewLiftFunction(stack, jsii.String("EventProcessor"), &liftconstructs.LiftFunctionProps{
         FunctionProps: awslambda.FunctionProps{
             Code:       awslambda.Code_FromAsset(jsii.String("./dist/processor"), nil),
             Handler:    jsii.String("bootstrap"),
             MemorySize: jsii.Number(512),
+            Environment: eventStore.GetEnvironmentVariables(),
         },
         EnableTracing: jsii.Bool(true),
     })
+
+    // Grant event store access to processor
+    eventStore.GrantEventReaderAccess(processor.Function)
 
     // Add event rule
     awsevents.NewRule(stack, jsii.String("OrderCreatedRule"), &awsevents.RuleProps{
@@ -470,24 +496,18 @@ monitoringConfig := &liftconstructs.EnhancedMonitoringProps{
 **Configure DynamoDB with proper isolation**:
 
 ```go
-// DynamoDB configuration based on dynamorm_table.go
-tableConfig := &liftconstructs.DynamORMTableProps{
-    PartitionKey: &awsdynamodb.Attribute{
-        Name: jsii.String("PK"),
-        Type: awsdynamodb.AttributeType_STRING,
-    },
-    SortKey: &awsdynamodb.Attribute{
-        Name: jsii.String("SK"),
-        Type: awsdynamodb.AttributeType_STRING,
-    },
-    BillingMode:           awsdynamodb.BillingMode_PAY_PER_REQUEST,
-    PointInTimeRecovery:   jsii.Bool(true),
-    DeletionProtection:    jsii.Bool(isProd),
-    TimeToLiveAttribute:   jsii.String("ttl"),
+// DynamoDB configuration using LiftTable
+tableConfig := &liftconstructs.LiftTableProps{
+    TableName:                 jsii.String("app-data"),
+    PartitionKeyName:          jsii.String("PK"),
+    SortKeyName:               jsii.String("SK"),
+    EnablePointInTimeRecovery: jsii.Bool(true),
+    EnableStreams:             jsii.Bool(true),
+    TimeToLiveAttribute:       jsii.String("ttl"),
+    EnableAutoScaling:         jsii.Bool(isProd),
     // Multi-tenant configuration
-    EnableMultiTenant:     jsii.Bool(true),
-    TenantAttribute:       jsii.String("TenantID"),
-    EnableAutoScaling:     jsii.Bool(isProd),
+    EnableMultiTenant:         jsii.Bool(true),
+    TenantAttribute:           jsii.String("TenantID"),
 }
 ```
 
@@ -528,14 +548,15 @@ app := patterns.NewLiftApp(stack, jsii.String("FullStackApp"), &patterns.LiftApp
 
 ```go
 // Multi-tenant SaaS with enhanced security and monitoring
+import "github.com/pay-theory/lift/pkg/cdk/stacks"
+
 saasStack := stacks.NewMultiTenantSaaSStack(app, "SaaSPlatform", &stacks.MultiTenantSaaSStackProps{
     AppName:           "saas-platform",
     CodePath:          "./dist/bootstrap",
     EnableAuth:        true,
     EnableFileStorage: true,
-    CustomDomainName:  "api.platform.com",
+    DomainName:        "api.platform.com",
     CertificateArn:    "arn:aws:acm:...",
-    EnableAnalytics:   true,
 })
 ```
 
@@ -603,8 +624,11 @@ Environment: &map[string]*string{
 
 - **Examples Directory**: `/examples/` contains 27+ working examples
 - **CDK Patterns**: `/pkg/cdk/patterns/` for reusable architectures  
+- **CDK Stacks**: `/pkg/cdk/stacks/` for complete stack implementations
 - **Security Features**: `/pkg/cdk/constructs/security_enhanced.go`
 - **Monitoring Tools**: `/pkg/cdk/constructs/monitoring_enhanced.go`
-- **DynamORM Integration**: `/pkg/cdk/constructs/dynamorm_table.go`
+- **DynamORM Integration**: 
+  - `/pkg/cdk/constructs/dynamorm_event_store.go` for event sourcing
+  - `/pkg/cdk/constructs/dynamorm_crud_handlers.go` for CRUD operations
 
 This guide provides a solid foundation for deploying Lift applications with AWS CDK. All code examples reference the actual implementation in the codebase and represent production-ready patterns.

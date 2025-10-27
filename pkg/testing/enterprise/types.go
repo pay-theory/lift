@@ -1481,58 +1481,58 @@ func (f *ChaosEngineeringFramework) validateExperiment(experiment *ChaosExperime
 
 // generateRecommendations generates recommendations based on experiment results
 func (f *ChaosEngineeringFramework) generateRecommendations(experiment *ChaosExperiment, results *ExperimentResults) []string {
-    if experiment == nil || results == nil {
-        return []string{"Unable to generate recommendations due to invalid data"}
-    }
+	if experiment == nil || results == nil {
+		return []string{"Unable to generate recommendations due to invalid data"}
+	}
 
-    var recs []string
-    recs = append(recs, f.baseOutcomeRecs(results)...)
-    recs = append(recs, f.failureSeverityRecs(results)...)
-    recs = append(recs, f.typeSpecificRecs(experiment)...)
+	var recs []string
+	recs = append(recs, f.baseOutcomeRecs(results)...)
+	recs = append(recs, f.failureSeverityRecs(results)...)
+	recs = append(recs, f.typeSpecificRecs(experiment)...)
 
-    if len(recs) == 0 {
-        recs = append(recs, "System performed well - continue regular chaos testing")
-    }
-    return recs
+	if len(recs) == 0 {
+		recs = append(recs, "System performed well - continue regular chaos testing")
+	}
+	return recs
 }
 
 func (f *ChaosEngineeringFramework) baseOutcomeRecs(results *ExperimentResults) []string {
-    if len(results.Failures) == 0 && results.Recovery != nil && results.Recovery.Successful {
-        return []string{"System demonstrates good resilience to this type of failure"}
-    }
-    if results.Recovery != nil && !results.Recovery.Successful {
-        return []string{"Recovery mechanisms need improvement"}
-    }
-    return nil
+	if len(results.Failures) == 0 && results.Recovery != nil && results.Recovery.Successful {
+		return []string{"System demonstrates good resilience to this type of failure"}
+	}
+	if results.Recovery != nil && !results.Recovery.Successful {
+		return []string{"Recovery mechanisms need improvement"}
+	}
+	return nil
 }
 
 func (f *ChaosEngineeringFramework) failureSeverityRecs(results *ExperimentResults) []string {
-    if len(results.Failures) == 0 {
-        return nil
-    }
-    recs := []string{"Consider implementing additional error handling and recovery mechanisms"}
-    for _, failure := range results.Failures {
-        switch failure.Severity {
-        case CriticalSeverity:
-            recs = append(recs, "Critical failures detected - immediate action required")
-        case HighSeverity:
-            recs = append(recs, "High severity issues found - prioritize fixes")
-        }
-    }
-    return recs
+	if len(results.Failures) == 0 {
+		return nil
+	}
+	recs := []string{"Consider implementing additional error handling and recovery mechanisms"}
+	for _, failure := range results.Failures {
+		switch failure.Severity {
+		case CriticalSeverity:
+			recs = append(recs, "Critical failures detected - immediate action required")
+		case HighSeverity:
+			recs = append(recs, "High severity issues found - prioritize fixes")
+		}
+	}
+	return recs
 }
 
 func (f *ChaosEngineeringFramework) typeSpecificRecs(experiment *ChaosExperiment) []string {
-    switch experiment.Type {
-    case NetworkChaos:
-        return []string{"Consider implementing circuit breakers and retry logic"}
-    case ServiceChaos:
-        return []string{"Evaluate service dependencies and fallback mechanisms"}
-    case ResourceChaos:
-        return []string{"Review resource allocation and scaling policies"}
-    default:
-        return nil
-    }
+	switch experiment.Type {
+	case NetworkChaos:
+		return []string{"Consider implementing circuit breakers and retry logic"}
+	case ServiceChaos:
+		return []string{"Evaluate service dependencies and fallback mechanisms"}
+	case ResourceChaos:
+		return []string{"Review resource allocation and scaling policies"}
+	default:
+		return nil
+	}
 }
 
 // ServiceDefinition represents a service definition for contracts
@@ -1814,11 +1814,11 @@ func (f *ChaosEngineeringFramework) generateExperimentSummary(experiment *ChaosE
 
 // Prevent unused warnings for optional analysis helpers by referencing them.
 var (
-    _ = (*ChaosEngineeringFramework).generateRecommendations
-    _ = (*ChaosEngineeringFramework).baseOutcomeRecs
-    _ = (*ChaosEngineeringFramework).failureSeverityRecs
-    _ = (*ChaosEngineeringFramework).typeSpecificRecs
-    _ = (*ChaosEngineeringFramework).validateHypothesis
-    _ = (*ChaosEngineeringFramework).calculateImpact
-    _ = (*ChaosEngineeringFramework).generateExperimentSummary
+	_ = (*ChaosEngineeringFramework).generateRecommendations
+	_ = (*ChaosEngineeringFramework).baseOutcomeRecs
+	_ = (*ChaosEngineeringFramework).failureSeverityRecs
+	_ = (*ChaosEngineeringFramework).typeSpecificRecs
+	_ = (*ChaosEngineeringFramework).validateHypothesis
+	_ = (*ChaosEngineeringFramework).calculateImpact
+	_ = (*ChaosEngineeringFramework).generateExperimentSummary
 )

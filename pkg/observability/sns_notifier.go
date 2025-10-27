@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -67,14 +66,50 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error
 	}
 
 	// Get function name once to use for both Function and Subsystem
-	functionName := getEnvOrDefault("AWS_LAMBDA_FUNCTION_NAME", "unknown")
+	functionName := getEnvOrDefault("AWS_LAMBDA_FUNCTION_NAME", "UNKNOWN")
 
-	// Create JSON string representation of the log entry
-	logEntryJSON, err := json.Marshal(logEntry)
-	if err != nil {
-		// Fallback to just the message if marshaling fails
-		logEntryJSON = []byte(logEntry.Message)
+	// Get AWS account ID from Lambda context ARN 
+	awsRegion := "UNKNOWN"
+	awsAccount := "UNKNOWN"
+	lambdaFunction := "UNKNOWN"
+
+	// Try to get Lambda ARN from environment (Lambda sets this automatically)
+	if lambdaARN := os.Getenv("AWS_LAMBDA_FUNCTION_ARN"); lambdaARN != "" {
+		// Parse ARN: arn:aws:lambda:region:account:function:name
+		arnParts := strings.Split(lambdaARN, ":")
+		if len(arnParts) >= 7 {
+			awsRegion = arnParts[3]
+			awsAccount = arnParts[4]
+			lambdaFunction = arnParts[6]
+		}
 	}
+
+	// Override with explicit env vars if set
+	if region := os.Getenv("AWS_REGION"); region != "" {
+		awsRegion = region
+	}
+	if account := os.Getenv("AWS_ACCOUNT_ID"); account != "" {
+		awsAccount = account
+	}
+	if functionName != "UNKNOWN" {
+		lambdaFunction = functionName
+	}
+
+	// Create JSON string representation of the log fields 
+	var strBody string
+	if len(logEntry.Fields) > 0 {
+		fieldsJSON, err := json.Marshal(logEntry.Fields)
+		if err != nil {
+			strBody = "{}"
+		} else {
+			strBody = string(fieldsJSON)
+		}
+	} else {
+		strBody = "{}"
+	}
+
+	// Format message: "ERROR | message | json_body"
+	formattedMessage := fmt.Sprintf("ERROR | %s | %s", logEntry.Message, strBody)
 
 	// Build the notification message
 	notification := SNSNotificationMessage{
@@ -82,15 +117,15 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error
 			AlertType:       "LiftError",
 			AlertTargetType: "SLACK",
 		},
-		LogTime:    logEntry.Timestamp.UTC().Format(time.RFC3339),
-		Partner:    strings.ToLower(getEnvOrDefault("PARTNER", "unknown")),
-		Stage:      strings.ToLower(getEnvOrDefault("STAGE", "unknown")),
-		AWSRegion:  getEnvOrDefault("AWS_REGION", "unknown"),
-		AWSAccount: getEnvOrDefault("AWS_ACCOUNT_ID", "unknown"),
+		LogTime:    logEntry.Timestamp.UTC().Format("2006-01-02T15:04:05.000000Z"),
+		Partner:    getEnvOrDefault("PARTNER", "UNKNOWN"),
+		Stage:      getEnvOrDefault("STAGE", "UNKNOWN"),
+		AWSRegion:  awsRegion,
+		AWSAccount: awsAccount,
 		Severity:   "ERROR",
-		Function:   functionName,
-		Subsystem:  functionName, // Set to same value as Function
-		Message:    string(logEntryJSON),
+		Function:   lambdaFunction,
+		Subsystem:  lambdaFunction, // Set to same value as Function
+		Message:    formattedMessage,
 	}
 
 	// Add environment and service from fields if available
@@ -131,10 +166,10 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error
 		return fmt.Errorf("failed to marshal SNS notification: %w", err)
 	}
 
-	// Publish to SNS
+	// Publish raw JSON message
 	_, err = n.snsClient.Publish(ctx, &sns.PublishInput{
-		TargetArn: aws.String(n.targetARN),
-		Message:   aws.String(string(messageJSON)),
+		TargetArn:        aws.String(n.targetARN),
+		Message:          aws.String(string(messageJSON)),
 	})
 
 	if err != nil {

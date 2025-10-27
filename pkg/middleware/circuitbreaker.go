@@ -59,9 +59,9 @@ type CircuitBreakerStats struct {
 func CircuitBreakerMiddleware(config CircuitBreakerConfig) lift.Middleware {
 	// Apply default configuration
 	config = applyCircuitBreakerDefaults(config)
-	
+
 	manager := newCircuitBreakerManager(config)
-	
+
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return manager.handleRequest(ctx, next)
@@ -119,19 +119,19 @@ func newCircuitBreakerManager(config CircuitBreakerConfig) *circuitBreakerManage
 func (m *circuitBreakerManager) handleRequest(ctx *lift.Context, next lift.Handler) error {
 	// Get or create circuit breaker for this context
 	breaker := m.getBreakerForContext(ctx)
-	
+
 	// Create request handler
 	handler := newCircuitBreakerRequestHandler(m.config, breaker, ctx)
-	
+
 	// Process the request
 	return handler.handle(next)
 }
 
 // circuitBreakerRequestHandler handles a single request through the circuit breaker
 type circuitBreakerRequestHandler struct {
-    breaker *circuitBreaker
-    ctx     *lift.Context
-    config  CircuitBreakerConfig
+	breaker *circuitBreaker
+	ctx     *lift.Context
+	config  CircuitBreakerConfig
 }
 
 // newCircuitBreakerRequestHandler creates a new request handler
@@ -149,7 +149,7 @@ func (h *circuitBreakerRequestHandler) handle(next lift.Handler) error {
 	if !h.breaker.allowRequest() {
 		return h.handleOpenCircuit()
 	}
-	
+
 	// Execute and monitor the request
 	return h.executeAndMonitor(next)
 }
@@ -158,10 +158,10 @@ func (h *circuitBreakerRequestHandler) handle(next lift.Handler) error {
 func (h *circuitBreakerRequestHandler) handleOpenCircuit() error {
 	// Log the event
 	h.logOpenCircuit()
-	
+
 	// Record fallback metrics
 	h.recordFallbackMetrics()
-	
+
 	// Execute fallback handler
 	return h.config.FallbackHandler(h.ctx)
 }
@@ -183,7 +183,7 @@ func (h *circuitBreakerRequestHandler) recordFallbackMetrics() {
 	if !h.config.EnableMetrics || h.config.Metrics == nil {
 		return
 	}
-	
+
 	tags := h.buildMetricTags("fallback")
 	metrics := h.config.Metrics.WithTags(tags)
 	counter := metrics.Counter("circuit_breaker.fallback.total")
@@ -196,13 +196,13 @@ func (h *circuitBreakerRequestHandler) executeAndMonitor(next lift.Handler) erro
 	start := time.Now()
 	err := next.Handle(h.ctx)
 	duration := time.Since(start)
-	
+
 	// Record the result
 	h.recordResult(err, duration)
-	
+
 	// Record metrics
 	h.recordRequestMetrics(err, duration)
-	
+
 	return err
 }
 
@@ -245,7 +245,7 @@ func (h *circuitBreakerRequestHandler) recordRequestMetrics(err error, duration 
 	if !h.config.EnableMetrics || h.config.Metrics == nil {
 		return
 	}
-	
+
 	recorder := newCircuitBreakerMetricsRecorder(h.config, h.breaker, h.ctx)
 	recorder.recordRequest(err, duration)
 }
@@ -265,9 +265,9 @@ func (h *circuitBreakerRequestHandler) buildMetricTags(action string) map[string
 
 // circuitBreakerMetricsRecorder handles metrics recording
 type circuitBreakerMetricsRecorder struct {
-    breaker *circuitBreaker
-    ctx     *lift.Context
-    config  CircuitBreakerConfig
+	breaker *circuitBreaker
+	ctx     *lift.Context
+	config  CircuitBreakerConfig
 }
 
 // newCircuitBreakerMetricsRecorder creates a new metrics recorder
@@ -283,13 +283,13 @@ func newCircuitBreakerMetricsRecorder(config CircuitBreakerConfig, breaker *circ
 func (r *circuitBreakerMetricsRecorder) recordRequest(err error, duration time.Duration) {
 	tags := r.buildTags(err)
 	metrics := r.config.Metrics.WithTags(tags)
-	
+
 	// Record request count
 	r.recordRequestCount(metrics)
-	
+
 	// Record duration
 	r.recordDuration(metrics, duration)
-	
+
 	// Record state
 	r.recordState(metrics)
 }

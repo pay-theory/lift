@@ -35,9 +35,11 @@ func NewBasicLiftStack(scope constructs.Construct, id string, props *BasicLiftSt
 
 	// Create a Lift API Gateway
 	api := liftconstructs.NewLiftAPI(stack, jsii.String("MyLiftAPI"), &liftconstructs.LiftAPIProps{
-		Name:        jsii.String("my-lift-api"),
-		Description: jsii.String("Example Lift API deployed with CDK"),
-		EnableCORS:  jsii.Bool(true),
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:        jsii.String("my-lift-api"),
+			Description: jsii.String("Example Lift API deployed with CDK"),
+			EnableCORS:  jsii.Bool(true),
+		},
 	})
 
 	// Add routes

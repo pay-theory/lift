@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
@@ -108,9 +109,11 @@ func NewEventDrivenStack(scope constructs.Construct, id string, props *EventDriv
 
 	// Create API Gateway
 	api := liftconstructs.NewLiftAPI(stack, jsii.String("API"), &liftconstructs.LiftAPIProps{
-		Name:        jsii.String(props.AppName + "-api"),
-		Description: jsii.String("Event-driven API for " + props.AppName),
-		EnableCORS:  jsii.Bool(true),
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:        jsii.String(props.AppName + "-api"),
+			Description: jsii.String("Event-driven API for " + props.AppName),
+			EnableCORS:  jsii.Bool(true),
+		},
 	})
 
 	// Add routes

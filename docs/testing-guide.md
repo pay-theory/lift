@@ -32,7 +32,7 @@ This guide demonstrates the **STANDARD patterns** for writing testable Lift appl
 // CORRECT: Structured test organization
 func TestUserService(t *testing.T) {
     // Setup: Create test app and dependencies
-    app := lifttesting.NewTestApp()
+    app := testing.NewTestApp()
     mockDB := setupMockDatabase()
     
     // Configure test app with mocks
@@ -78,8 +78,8 @@ func TestUserService(t *testing.T) {
 
 ```go
 // CORRECT: Proper test app setup with dependencies
-func setupTestApp(mockDB MockDatabase) *lifttesting.TestApp {
-    app := lifttesting.NewTestApp()
+func setupTestApp(mockDB *testing.MockDynamORM) *testing.TestApp {
+    app := testing.NewTestApp()
     
     // REQUIRED: Configure middleware in correct order
     app.App().Use(AuthMiddleware())           // Authentication first
@@ -92,7 +92,7 @@ func setupTestApp(mockDB MockDatabase) *lifttesting.TestApp {
     return app
 }
 
-func setupMockDynamORM(mockDB MockDatabase) lift.Middleware {
+func setupMockDynamORM(mockDB *testing.MockDynamORM) lift.Middleware {
     config := dynamorm.DefaultConfig()
     config.TenantIsolation = true
     config.AutoTransaction = false  // REQUIRED: Disable for testing
@@ -102,7 +102,7 @@ func setupMockDynamORM(mockDB MockDatabase) lift.Middleware {
 }
 
 // INCORRECT: Shared test app state
-// var globalApp = lifttesting.NewTestApp()  // Causes test pollution
+// var globalApp = testing.NewTestApp()  // Causes test pollution
 ```
 
 ### 3. Mock Database Setup (CRITICAL Pattern)
@@ -112,21 +112,22 @@ func setupMockDynamORM(mockDB MockDatabase) lift.Middleware {
 
 ```go
 // CORRECT: Comprehensive database mocking
-func setupMockDatabase() (*MockExtendedDB, *MockQuery) {
-    mockDB := NewMockExtendedDB()
-    mockQuery := new(MockQuery)
+func setupMockDatabase() *testing.MockDynamORM {
+    mockDB := testing.NewMockDynamORM()
     
-    return mockDB, mockQuery
+    // Configure mock behavior
+    mockDB.WithData("users", "user123", map[string]any{
+        "id":    "user123",
+        "email": "test@example.com",
+        "name":  "Test User",
+    })
+    
+    return mockDB
 }
 
 func TestCreateUser_Success(t *testing.T) {
-    mockDB, mockQuery := setupMockDatabase()
+    mockDB := setupMockDatabase()
     app := setupTestApp(mockDB)
-    
-    // REQUIRED: Setup specific expectations for this test
-    mockDB.On("WithContext", mock.Anything).Return(mockDB)
-    mockDB.On("Model", mock.AnythingOfType("*User")).Return(mockQuery)
-    mockQuery.On("Create").Return(nil)  // Expect successful creation
     
     // Test data
     userReq := CreateUserRequest{
@@ -140,10 +141,9 @@ func TestCreateUser_Success(t *testing.T) {
         WithHeader("X-User-ID", "user123").
         POST("/users", userReq)
     
-    // REQUIRED: Verify both response and mock expectations
+    // REQUIRED: Verify response
     assert.Equal(t, 201, response.StatusCode)
-    mockDB.AssertExpectations(t)
-    mockQuery.AssertExpectations(t)
+    assert.Contains(t, response.Body, "test@example.com")
 }
 
 // INCORRECT: Real database in tests
@@ -161,38 +161,40 @@ func TestCreateUser_Success(t *testing.T) {
 // CORRECT: Comprehensive AWS service mocking
 func TestCloudWatchIntegration(t *testing.T) {
     // Setup AWS service mocks
-    metricsMock := testing.NewMockCloudWatchMetricsClient()
-    alarmsMock := testing.NewMockCloudWatchAlarmsClient()
-    apiGatewayMock := testing.NewMockAPIGatewayManagementClient()
-    
-    // Configure mock behavior
-    config := testing.DefaultMockCloudWatchConfig()
-    config.NetworkDelay = 5 * time.Millisecond  // Simulate realistic latency
-    metricsMock.WithConfig(config)
+    metricsMock := testing.NewMockCloudWatchClient()
     
     t.Run("PublishMetrics - Success", func(t *testing.T) {
-        metrics := []*testing.MockMetricDatum{
-            {
-                MetricName: "RequestCount",
-                Value:      100.0,
-                Unit:       testing.MetricUnitCount,
-                Dimensions: map[string]string{
-                    "Service": "UserAPI",
-                    "Environment": "test",
+        // Configure mock expectations
+        metricsMock.On("PutMetricData", mock.Anything, mock.Anything, mock.Anything).
+            Return(&cloudwatch.PutMetricDataOutput{}, nil)
+        
+        // Execute
+        input := &cloudwatch.PutMetricDataInput{
+            Namespace: aws.String("MyApp/API"),
+            MetricData: []types.MetricDatum{
+                {
+                    MetricName: aws.String("RequestCount"),
+                    Value:      aws.Float64(100.0),
+                    Unit:       types.StandardUnitCount,
+                    Dimensions: []types.Dimension{
+                        {
+                            Name:  aws.String("Service"),
+                            Value: aws.String("UserAPI"),
+                        },
+                        {
+                            Name:  aws.String("Environment"),
+                            Value: aws.String("test"),
+                        },
+                    },
                 },
             },
         }
         
-        // Execute
-        err := metricsMock.PutMetricData(context.Background(), "MyApp/API", metrics)
+        _, err := metricsMock.PutMetricData(context.Background(), input)
         
         // Verify
         assert.NoError(t, err)
-        assert.Equal(t, 1, metricsMock.GetCallCount("PutMetricData"))
-        
-        // Verify metrics were stored
-        allMetrics := metricsMock.GetAllMetrics()
-        assert.Contains(t, allMetrics, "MyApp/API")
+        metricsMock.AssertExpectations(t)
     })
 }
 
@@ -212,13 +214,9 @@ func TestCloudWatchIntegration(t *testing.T) {
 // CORRECT: Comprehensive error scenario testing
 func TestErrorScenarios(t *testing.T) {
     t.Run("Database Connection Error", func(t *testing.T) {
-        mockDB, mockQuery := setupMockDatabase()
+        mockDB := testing.NewMockDynamORM()
+        mockDB.WithFailure("Create", errors.New("connection timeout"))
         app := setupTestApp(mockDB)
-        
-        // REQUIRED: Setup failure expectation
-        mockDB.On("WithContext", mock.Anything).Return(mockDB)
-        mockDB.On("Model", mock.AnythingOfType("*User")).Return(mockQuery)
-        mockQuery.On("Create").Return(errors.New("connection timeout"))
         
         userReq := CreateUserRequest{
             Email: "test@example.com",
@@ -233,9 +231,6 @@ func TestErrorScenarios(t *testing.T) {
         // REQUIRED: Verify error response
         assert.Equal(t, 500, response.StatusCode)
         assert.Contains(t, response.Body, "Database error")
-        
-        mockDB.AssertExpectations(t)
-        mockQuery.AssertExpectations(t)
     })
     
     t.Run("Invalid Input Data", func(t *testing.T) {
@@ -439,7 +434,7 @@ func TestPerformanceRequirements(t *testing.T) {
 ```go
 // STANDARD: HTTP endpoint testing pattern
 func TestHTTPEndpoint(t *testing.T) {
-    app := lifttesting.NewTestApp()
+    app := testing.NewTestApp()
     
     // Setup test endpoint
     app.App().GET("/api/data", func(ctx *lift.Context) error {
@@ -467,7 +462,7 @@ func TestHTTPEndpoint(t *testing.T) {
 ```go
 // STANDARD: Event processing testing pattern
 func TestEventHandler(t *testing.T) {
-    app := lifttesting.NewTestApp()
+    app := testing.NewTestApp()
     
     // Setup event handler
     app.App().Handle("POST", "/events", func(ctx *lift.Context) error {
@@ -507,7 +502,7 @@ func TestCustomMiddleware(t *testing.T) {
         })
     }
     
-    app := lifttesting.NewTestApp()
+    app := testing.NewTestApp()
     app.App().Use(testMiddleware)
     app.App().GET("/test", func(ctx *lift.Context) error {
         executed := ctx.Get("middleware_executed").(bool)
@@ -526,7 +521,7 @@ func TestCustomMiddleware(t *testing.T) {
 
 ### ✅ Best Practices Demonstrated
 
-1. **ALWAYS use lifttesting.NewTestApp()** - Provides isolated test environment
+1. **ALWAYS use testing.NewTestApp()** - Provides isolated test environment
 2. **ALWAYS mock external dependencies** - Databases, AWS services, third-party APIs
 3. **ALWAYS test error scenarios** - Network failures, validation errors, auth failures
 4. **ALWAYS verify mock expectations** - Ensure mocks were called as expected
@@ -577,13 +572,13 @@ func NewTestUserRequest() CreateUserRequest {
 
 ```go
 // RECOMMENDED: Reusable test helpers
-func assertSuccessResponse(t *testing.T, response *lifttesting.TestResponse) {
+func assertSuccessResponse(t *testing.T, response *testing.TestResponse) {
     t.Helper()
     assert.True(t, response.IsSuccess())
     assert.Greater(t, len(response.Body), 0)
 }
 
-func assertErrorResponse(t *testing.T, response *lifttesting.TestResponse, expectedStatus int, expectedMessage string) {
+func assertErrorResponse(t *testing.T, response *testing.TestResponse, expectedStatus int, expectedMessage string) {
     t.Helper()
     assert.Equal(t, expectedStatus, response.StatusCode)
     assert.Contains(t, response.Body, expectedMessage)
@@ -618,7 +613,7 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
     "github.com/stretchr/testify/mock"
-    lifttesting "github.com/pay-theory/lift/pkg/testing"
+    "github.com/pay-theory/lift/pkg/testing"
 )
 ```
 
@@ -650,7 +645,7 @@ After mastering these testing patterns:
 
 1. **Mocking Demo** → See `examples/mocking-demo/`
 2. **Mockery Idempotency** → See `examples/mockery-idempotency/`
-3. **Basic CRUD API Tests** → See `examples/basic-crud-api/main_test.go`
-4. **Production API** → See `examples/production-api/`
+3. **Production API** → See `examples/production-api/`
+4. **Testing Examples** → See `pkg/testing/` directory for comprehensive test examples
 
 This guide provides the complete foundation for testing Lift applications - master these patterns to build reliable, maintainable, and thoroughly tested applications.

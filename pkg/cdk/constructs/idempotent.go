@@ -29,11 +29,11 @@ type IdempotentFunctionProps struct {
 	// Embedded struct first (largest)
 	LiftFunctionProps
 	// Pointers (8 bytes each)
-	KeyField *string
-	TTLSeconds *float64
-	TableName *string
+	KeyField              *string
+	TTLSeconds            *float64
+	TableName             *string
 	EnableResponseCaching *bool
-	MaxResponseSizeKB *float64
+	MaxResponseSizeKB     *float64
 	// Smaller types last
 	KeyExtractor IdempotentKeyExtractor
 }

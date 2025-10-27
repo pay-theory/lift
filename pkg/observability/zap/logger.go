@@ -140,7 +140,7 @@ func (z *ZapLogger) Warn(message string, fields ...map[string]any) {
 func (z *ZapLogger) Error(message string, fields ...map[string]any) {
 	z.log(zapcore.ErrorLevel, message, fields...)
 
-	// Send SNS notification asynchronously if configured
+	// Send SNS notification if configured
 	if z.snsNotifier != nil {
 		// Create a LogEntry for the SNS notifier
 		entry := &observability.LogEntry{
@@ -150,17 +150,19 @@ func (z *ZapLogger) Error(message string, fields ...map[string]any) {
 			Fields:    z.mergeFields(fields...),
 		}
 
-		// Async SNS notification to avoid blocking the logger
-		go func(e *observability.LogEntry) {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
+		// Send SNS notification synchronously (Lambda freezes async goroutines)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-			if err := z.snsNotifier.NotifyError(ctx, e); err != nil {
-				// Log SNS error but don't block
-				atomic.AddInt64(&z.stats.errorCount, 1)
-				z.stats.lastError = fmt.Sprintf("SNS notification failed: %v", err)
-			}
-		}(entry)
+		if err := z.snsNotifier.NotifyError(ctx, entry); err != nil {
+			// Log SNS error
+			atomic.AddInt64(&z.stats.errorCount, 1)
+			z.stats.lastError = fmt.Sprintf("SNS notification failed: %v", err)
+			// Also log to CloudWatch so we can see the error
+			z.logger.Error("SNS notification failed",
+				zap.Error(err),
+				zap.String("topic_arn", z.snsNotifier.GetTopicARN()))
+		}
 	}
 }
 
@@ -383,12 +385,12 @@ func (n *NoOpStructuredLogger) WithRequestID(_ string) observability.StructuredL
 	return n
 }
 func (n *NoOpStructuredLogger) WithTenantID(_ string) observability.StructuredLogger { return n }
-func (n *NoOpStructuredLogger) WithUserID(_ string) observability.StructuredLogger     { return n }
-func (n *NoOpStructuredLogger) WithTraceID(_ string) observability.StructuredLogger   { return n }
-func (n *NoOpStructuredLogger) WithSpanID(_ string) observability.StructuredLogger     { return n }
-func (n *NoOpStructuredLogger) Flush(_ context.Context) error                             { return nil }
-func (n *NoOpStructuredLogger) Close() error                                                { return nil }
-func (n *NoOpStructuredLogger) IsHealthy() bool                                             { return true }
+func (n *NoOpStructuredLogger) WithUserID(_ string) observability.StructuredLogger   { return n }
+func (n *NoOpStructuredLogger) WithTraceID(_ string) observability.StructuredLogger  { return n }
+func (n *NoOpStructuredLogger) WithSpanID(_ string) observability.StructuredLogger   { return n }
+func (n *NoOpStructuredLogger) Flush(_ context.Context) error                        { return nil }
+func (n *NoOpStructuredLogger) Close() error                                         { return nil }
+func (n *NoOpStructuredLogger) IsHealthy() bool                                      { return true }
 func (n *NoOpStructuredLogger) GetStats() observability.LoggerStats {
 	return observability.LoggerStats{}
 }

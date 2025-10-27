@@ -1,15 +1,15 @@
 package lift
 
 import (
-    "encoding/base64"
-    "encoding/json"
+	"encoding/base64"
+	"encoding/json"
 )
 
 // Common HTTP content types and headers
 const (
-	ContentTypeJSON = "application/json"
-	ContentTypeHTML = "text/html"
-	ContentTypeText = "text/plain"
+	ContentTypeJSON   = "application/json"
+	ContentTypeHTML   = "text/html"
+	ContentTypeText   = "text/plain"
 	HeaderContentType = "Content-Type"
 )
 
@@ -53,9 +53,9 @@ func (r *Response) Header(key, value string) *Response {
 
 // JSON sets the response body as JSON and marks the response as written
 func (r *Response) JSON(data any) error {
-    if r.written {
-        return NewLiftError(ErrorCodeResponseWritten, "Response has already been written", 500)
-    }
+	if r.written {
+		return NewLiftError(ErrorCodeResponseWritten, "Response has already been written", 500)
+	}
 
 	r.Body = data
 	r.Header(HeaderContentType, ContentTypeJSON)
@@ -65,9 +65,9 @@ func (r *Response) JSON(data any) error {
 
 // Text sets the response body as plain text
 func (r *Response) Text(text string) error {
-    if r.written {
-        return NewLiftError(ErrorCodeResponseWritten, "Response has already been written", 500)
-    }
+	if r.written {
+		return NewLiftError(ErrorCodeResponseWritten, "Response has already been written", 500)
+	}
 
 	r.Body = text
 	r.Header("Content-Type", "text/plain")
@@ -77,9 +77,9 @@ func (r *Response) Text(text string) error {
 
 // HTML sets the response body as HTML
 func (r *Response) HTML(html string) error {
-    if r.written {
-        return NewLiftError(ErrorCodeResponseWritten, "Response has already been written", 500)
-    }
+	if r.written {
+		return NewLiftError(ErrorCodeResponseWritten, "Response has already been written", 500)
+	}
 
 	r.Body = html
 	r.Header(HeaderContentType, ContentTypeHTML)
@@ -89,16 +89,16 @@ func (r *Response) HTML(html string) error {
 
 // Binary sets the response body as binary data
 func (r *Response) Binary(data []byte) error {
-    if r.written {
-        return NewLiftError(ErrorCodeResponseWritten, "Response has already been written", 500)
-    }
+	if r.written {
+		return NewLiftError(ErrorCodeResponseWritten, "Response has already been written", 500)
+	}
 
-    // API Gateway expects base64-encoded string when IsBase64Encoded is true
-    r.Body = base64.StdEncoding.EncodeToString(data)
-    r.Header("Content-Type", "application/octet-stream")
-    r.IsBase64Encoded = true
-    r.written = true
-    return nil
+	// API Gateway expects base64-encoded string when IsBase64Encoded is true
+	r.Body = base64.StdEncoding.EncodeToString(data)
+	r.Header("Content-Type", "application/octet-stream")
+	r.IsBase64Encoded = true
+	r.written = true
+	return nil
 }
 
 // IsWritten returns whether the response has been written
@@ -108,27 +108,27 @@ func (r *Response) IsWritten() bool {
 
 // MarshalJSON implements custom JSON marshaling for Lambda response format
 func (r *Response) MarshalJSON() ([]byte, error) {
-    // Convert body to string if it's not already
-    var bodyStr string
-    if r.Body != nil {
-        switch v := r.Body.(type) {
-        case string:
-            bodyStr = v
-        case []byte:
-            if r.IsBase64Encoded {
-                bodyStr = base64.StdEncoding.EncodeToString(v)
-            } else {
-                bodyStr = string(v)
-            }
-        default:
-            // Marshal non-string data as JSON
-            jsonData, err := json.Marshal(v)
-            if err != nil {
-                return nil, NewLiftError(ErrorCodeMarshalError, "Failed to marshal response body", 500).WithCause(err)
-            }
-            bodyStr = string(jsonData)
-        }
-    }
+	// Convert body to string if it's not already
+	var bodyStr string
+	if r.Body != nil {
+		switch v := r.Body.(type) {
+		case string:
+			bodyStr = v
+		case []byte:
+			if r.IsBase64Encoded {
+				bodyStr = base64.StdEncoding.EncodeToString(v)
+			} else {
+				bodyStr = string(v)
+			}
+		default:
+			// Marshal non-string data as JSON
+			jsonData, err := json.Marshal(v)
+			if err != nil {
+				return nil, NewLiftError(ErrorCodeMarshalError, "Failed to marshal response body", 500).WithCause(err)
+			}
+			bodyStr = string(jsonData)
+		}
+	}
 
 	// Create the Lambda response structure
 	lambdaResponse := struct {

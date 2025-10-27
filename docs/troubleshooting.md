@@ -12,8 +12,62 @@
 - [Performance Problems](#performance-problems)
 - [Deployment Issues](#deployment-issues)
 - [Testing Problems](#testing-problems)
+- [Modern Lift Patterns](#modern-lift-patterns)
+- [Quick Debugging Checklist](#quick-debugging-checklist)
 
 ## Handler Errors
+
+### Error: "SimpleHandler not working" or type mismatch
+
+**Symptoms:**
+- Type-safe handler fails to compile
+- Request parsing errors with typed handlers
+- Generic handler works but typed doesn't
+
+**Root Cause:** Incorrect function signature for SimpleHandler
+
+**Solution:**
+```go
+// PROBLEM: Wrong function signature
+app.POST("/users", lift.SimpleHandler(func(ctx *lift.Context) error {
+    // Missing request parameter!
+    return ctx.JSON("created")
+}))
+
+// SOLUTION: Correct SimpleHandler signature
+type CreateUserRequest struct {
+    Name  string `json:"name" validate:"required"`
+    Email string `json:"email" validate:"required,email"`
+}
+
+type User struct {
+    ID    string `json:"id"`
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+app.POST("/users", lift.SimpleHandler(func(ctx *lift.Context, req CreateUserRequest) (User, error) {
+    // Automatic parsing and validation
+    user := User{
+        ID:    generateID(),
+        Name:  req.Name,
+        Email: req.Email,
+    }
+    return user, nil
+}))
+
+// Alternative: Use traditional handler for complex logic
+app.POST("/users", func(ctx *lift.Context) error {
+    var req CreateUserRequest
+    if err := ctx.ParseRequest(&req); err != nil {
+        return err
+    }
+    
+    // Complex business logic here
+    user := processUserCreation(req)
+    return ctx.JSON(user)
+})
+```
 
 ### Error: "handler not found" or 404 Response
 
@@ -69,10 +123,10 @@ func Handler(ctx *lift.Context) error {
     return ctx.JSON(user)
 }
 
-// SOLUTION 1: Check for nil
+// SOLUTION 1: Check for nil using values map
 func Handler(ctx *lift.Context) error {
-    val := ctx.Get("user")
-    if val == nil {
+    val, exists := ctx.values["user"]
+    if !exists || val == nil {
         return lift.Unauthorized("user not found in context")
     }
     user := val.(*User)
@@ -81,7 +135,12 @@ func Handler(ctx *lift.Context) error {
 
 // SOLUTION 2: Use type assertion with ok
 func Handler(ctx *lift.Context) error {
-    user, ok := ctx.Get("user").(*User)
+    val, exists := ctx.values["user"]
+    if !exists {
+        return lift.Unauthorized("user not found in context")
+    }
+    
+    user, ok := val.(*User)
     if !ok {
         return lift.Unauthorized("invalid user context")
     }
@@ -252,10 +311,11 @@ v2.GET("/users", GetUsersV2) // Different prefix, no conflict
 // PROBLEM: Default limit too small
 app := lift.New() // Default 10MB limit
 
-// SOLUTION 1: Increase limit at app creation
-app := lift.New(
-    lift.WithMaxBodySize(50 * 1024 * 1024), // 50MB
-)
+// SOLUTION 1: Increase limit using Config
+config := &lift.Config{
+    MaxRequestSize: 50 * 1024 * 1024, // 50MB
+}
+app := lift.New(lift.WithConfig(config))
 
 // SOLUTION 2: Stream large files instead
 func UploadHandler(ctx *lift.Context) error {
@@ -762,44 +822,52 @@ func TestHandler(t *testing.T) {
     err := Handler(ctx)    // Nil pointer panic
 }
 
-// SOLUTION: Use test utilities
+// SOLUTION: Use TestApp pattern
 import "github.com/pay-theory/lift/pkg/testing"
 
 func TestHandler(t *testing.T) {
-    // Create properly initialized test context
-    ctx := testing.NewTestContext(
-        testing.WithMethod("POST"),
-        testing.WithPath("/users"),
-        testing.WithBody(`{"name": "test"}`),
-        testing.WithHeaders(map[string]string{
-            "Authorization": "Bearer token",
-        }),
-    )
+    // Create test app
+    app := testing.NewTestApp()
     
-    err := Handler(ctx)
-    assert.NoError(t, err)
-    assert.Equal(t, 200, ctx.Response.StatusCode)
+    // Configure app with routes
+    app.App().POST("/users", CreateUser)
+    
+    // Make test request with proper headers
+    app.WithHeaders(map[string]string{
+        "Authorization": "Bearer token",
+    })
+    
+    resp := app.POST("/users", map[string]string{"name": "test"})
+    
+    // Assert response
+    assert.NoError(t, resp.Error)
+    assert.Equal(t, 200, resp.GetStatusCode())
 }
 
-// Test with app routing
+// Test with app routing and assertions
 func TestRouting(t *testing.T) {
     app := testing.NewTestApp()
-    app.POST("/users", CreateUser)
-    app.GET("/users/:id", GetUser)
     
-    // Test POST
-    ctx := testing.NewTestContext(
-        testing.WithMethod("POST"),
-        testing.WithPath("/users"),
-        testing.WithBody(`{"name": "Alice"}`),
-    )
+    // Configure routes
+    app.App().POST("/users", CreateUser)
+    app.App().GET("/users/:id", GetUser)
     
-    err := app.HandleTestRequest(ctx)
-    assert.NoError(t, err)
+    // Test POST request
+    resp := app.POST("/users", map[string]string{"name": "Alice"})
     
-    var resp UserResponse
-    ctx.ParseResponse(&resp)
-    assert.Equal(t, "Alice", resp.Name)
+    assert.NoError(t, resp.Error)
+    assert.Equal(t, 201, resp.GetStatusCode())
+    
+    // Extract user ID from response
+    userID := resp.GetJSONPath("$.id").(string)
+    assert.NotEmpty(t, userID)
+    
+    // Test GET request
+    getResp := app.GET("/users/" + userID)
+    assert.Equal(t, 200, getResp.GetStatusCode())
+    
+    name := getResp.GetJSONPath("$.name").(string)
+    assert.Equal(t, "Alice", name)
 }
 ```
 
@@ -916,5 +984,91 @@ When something isn't working:
    - Lambda execution role has CloudWatch Logs access
    - VPC configuration if using RDS/ElastiCache
    - IAM permissions for DynamoDB, S3, etc.
+
+## Modern Lift Patterns
+
+### Error: "HandleTestRequest not working in tests"
+
+**Symptoms:**
+- Test requests fail with routing errors
+- Handler not found in test environment
+- Different behavior between test and production
+
+**Root Cause:** Not using proper test request handling
+
+**Solution:**
+```go
+// PROBLEM: Direct handler call bypasses routing
+func TestHandler(t *testing.T) {
+    ctx := lift.NewContext(context.Background(), &lift.Request{...})
+    err := MyHandler(ctx) // Bypasses middleware and routing!
+}
+
+// SOLUTION: Use HandleTestRequest for proper testing
+func TestHandler(t *testing.T) {
+    app := lift.New()
+    app.Use(middleware.Logger())
+    app.POST("/users", CreateUser)
+    
+    // Create test context
+    ctx := lift.NewContext(context.Background(), &lift.Request{
+        Method: "POST",
+        Path:   "/users",
+        Body:   []byte(`{"name": "test"}`),
+        Headers: map[string]string{
+            "Content-Type": "application/json",
+        },
+    })
+    
+    // Use HandleTestRequest to go through full pipeline
+    err := app.HandleTestRequest(ctx)
+    assert.NoError(t, err)
+    assert.Equal(t, 201, ctx.Response.StatusCode)
+}
+```
+
+### Error: "Error response format inconsistent"
+
+**Symptoms:**
+- Different error formats across endpoints
+- Client can't parse error responses
+- Missing error details in responses
+
+**Root Cause:** Not using structured error responses
+
+**Solution:**
+```go
+// PROBLEM: Inconsistent error responses
+func Handler(ctx *lift.Context) error {
+    if someCondition {
+        return ctx.Status(400).JSON("Bad request") // String response
+    }
+    if anotherCondition {
+        return ctx.Status(404).JSON(map[string]string{"error": "Not found"}) // Different format
+    }
+}
+
+// SOLUTION: Use LiftError for consistent responses
+func Handler(ctx *lift.Context) error {
+    if someCondition {
+        return lift.ValidationError("Invalid input data").
+            WithDetail("field", "name").
+            WithDetail("reason", "required")
+    }
+    if anotherCondition {
+        return lift.NotFound("Resource not found").
+            WithDetail("resource_id", ctx.Param("id"))
+    }
+    
+    // System errors with stack traces
+    if err := riskyOperation(); err != nil {
+        return lift.SystemError("Operation failed").
+            WithCause(err).
+            WithStackTrace()
+    }
+    
+    return nil
+}
+```
 
 Remember: Most issues are configuration mismatches between local and Lambda environments!

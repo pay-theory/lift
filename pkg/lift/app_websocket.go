@@ -6,12 +6,12 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
+
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 )
 
 // WebSocketHandler is a function that handles WebSocket events
 type WebSocketHandler func(ctx *Context) error
-
 
 // WebSocketOptions configures WebSocket support for an App. When automatic
 // connection management is enabled, Lift will store and remove connection
@@ -22,7 +22,7 @@ type WebSocketOptions struct {
 	// Interfaces first (8 bytes each)
 	ConnectionStore ConnectionStore  // 8 bytes
 	DefaultHandler  WebSocketHandler // 8 bytes
-	
+
 	// Boolean last (1 byte)
 	EnableAutoConnectionManagement bool // 1 byte
 }
@@ -105,15 +105,15 @@ func (p *webSocketEventProcessor) process(ctx context.Context, event events.APIG
 	if err != nil {
 		return p.errorResponse(500, fmt.Sprintf("Failed to parse event: %v", err)), nil
 	}
-	
+
 	// Create and configure Lift context
 	liftCtx := p.createLiftContext(ctx, req)
-	
+
 	// Route and handle the request
 	if req.TriggerType == adapters.TriggerWebSocket {
 		return p.handleWebSocketRequest(liftCtx, req)
 	}
-	
+
 	return p.handleNonWebSocketRequest(liftCtx)
 }
 
@@ -126,7 +126,7 @@ func (p *webSocketEventProcessor) parseWebSocketEvent(event events.APIGatewayWeb
 // createLiftContext creates and configures the Lift context
 func (p *webSocketEventProcessor) createLiftContext(ctx context.Context, req *Request) *Context {
 	liftCtx := NewContext(ctx, req)
-	
+
 	// Set dependencies
 	if p.app.logger != nil {
 		liftCtx.Logger = p.app.logger
@@ -137,7 +137,7 @@ func (p *webSocketEventProcessor) createLiftContext(ctx context.Context, req *Re
 	if p.app.db != nil {
 		liftCtx.DB = p.app.db
 	}
-	
+
 	return liftCtx
 }
 
@@ -145,21 +145,21 @@ func (p *webSocketEventProcessor) createLiftContext(ctx context.Context, req *Re
 func (p *webSocketEventProcessor) handleWebSocketRequest(liftCtx *Context, req *Request) (events.APIGatewayProxyResponse, error) {
 	// Extract route key
 	routeKey := p.extractRouteKey(req)
-	
+
 	// Find handler
 	handler := p.app.RouteWebSocket(routeKey)
 	if handler == nil {
 		return p.errorResponse(404, fmt.Sprintf("No handler for route: %s", routeKey)), nil
 	}
-	
+
 	// Prepare and execute handler
 	finalHandler := p.prepareHandler(handler)
-	
+
 	// Execute handler
 	if err := finalHandler.Handle(liftCtx); err != nil {
 		return p.handleExecutionError(err), nil
 	}
-	
+
 	return p.successResponse(), nil
 }
 
@@ -175,15 +175,16 @@ func (p *webSocketEventProcessor) extractRouteKey(req *Request) string {
 func (p *webSocketEventProcessor) prepareHandler(handler Handler) Handler {
 	// Apply middleware
 	finalHandler := handler
-	for i := len(p.app.middleware) - 1; i >= 0; i-- {
-		finalHandler = p.app.middleware[i](finalHandler)
+	chain := p.app.httpMiddlewareChain()
+	for i := len(chain) - 1; i >= 0; i-- {
+		finalHandler = chain[i](finalHandler)
 	}
-	
+
 	// Add connection management if enabled
 	if p.shouldEnableConnectionManagement() {
 		finalHandler = wrapWithConnectionManagement(finalHandler, p.app.wsOptions.ConnectionStore)
 	}
-	
+
 	return finalHandler
 }
 
@@ -206,7 +207,7 @@ func (p *webSocketEventProcessor) handleNonWebSocketRequest(liftCtx *Context) (e
 	if err := p.app.router.Handle(liftCtx); err != nil {
 		return p.handleRoutingError(liftCtx, err)
 	}
-	
+
 	// Convert response
 	return p.convertResponse(liftCtx), nil
 }
@@ -217,11 +218,11 @@ func (p *webSocketEventProcessor) handleRoutingError(liftCtx *Context, err error
 	if handleErr != nil {
 		return p.errorResponse(500, "Internal server error"), nil
 	}
-	
+
 	if apiResp, ok := resp.(events.APIGatewayProxyResponse); ok {
 		return apiResp, nil
 	}
-	
+
 	return p.errorResponse(500, "Internal server error"), nil
 }
 
@@ -230,7 +231,7 @@ func (p *webSocketEventProcessor) convertResponse(liftCtx *Context) events.APIGa
 	if liftCtx.Response == nil || liftCtx.Response.StatusCode == 0 {
 		return p.successResponse()
 	}
-	
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: liftCtx.Response.StatusCode,
 		Body:       p.convertResponseBody(liftCtx.Response.Body),
@@ -373,10 +374,10 @@ type ConnectionStore interface {
 // Memory optimized: 72 → 64 bytes (8 bytes saved)
 type Connection struct {
 	// Map first (8 bytes)
-	Metadata  map[string]any // 8 bytes
+	Metadata map[string]any // 8 bytes
 	// Strings (16 bytes each)
-	ID        string         // 16 bytes
-	UserID    string         // 16 bytes
-	TenantID  string         // 16 bytes
-	CreatedAt string         // 16 bytes
+	ID        string // 16 bytes
+	UserID    string // 16 bytes
+	TenantID  string // 16 bytes
+	CreatedAt string // 16 bytes
 }

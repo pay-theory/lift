@@ -13,6 +13,10 @@ import (
 )
 
 // AlarmConfig defines configuration for CloudWatch alarms
+//
+// This struct contains all configurable properties for CloudWatch alarms
+// including error rate, latency, throttling, and concurrent execution alarms.
+// It also includes configuration for SNS topic notifications.
 type AlarmConfig struct {
 	// Enable error rate alarm
 	EnableErrorAlarm *bool
@@ -35,6 +39,11 @@ type AlarmConfig struct {
 }
 
 // MonitoredFunctionProps extends LiftFunctionProps with monitoring configuration
+//
+// This struct contains all configurable properties for creating a monitored
+// Lambda function. It extends LiftFunctionProps with additional monitoring
+// configuration like CloudWatch dashboard, alarms, Lambda Insights,
+// and Log Insights queries.
 type MonitoredFunctionProps struct {
 	LiftFunctionProps
 	// Enable CloudWatch dashboard
@@ -54,6 +63,10 @@ type MonitoredFunctionProps struct {
 }
 
 // MonitoredFunction is a Lambda function with comprehensive monitoring
+//
+// This construct creates a Lambda function with comprehensive monitoring features
+// including CloudWatch dashboard, alarms, Lambda Insights, and Log Insights queries.
+// It provides methods to add custom metrics and log queries.
 type MonitoredFunction struct {
 	constructs.Construct
 	Function  *LiftFunction
@@ -62,6 +75,21 @@ type MonitoredFunction struct {
 }
 
 // NewMonitoredFunction creates a Lambda function with comprehensive monitoring
+//
+// This function creates a Lambda function with all monitoring features configured:
+//
+// - Creates a CloudWatch dashboard with default widgets
+// - Configures CloudWatch alarms for errors, latency, throttling, and concurrency
+// - Enables Lambda Insights if requested
+// - Sets up environment variables for monitoring
+//
+// Parameters:
+//   - scope: The CDK construct scope
+//   - id: The construct ID
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new MonitoredFunction instance
 func NewMonitoredFunction(scope constructs.Construct, id *string, props *MonitoredFunctionProps) *MonitoredFunction {
 	builder := newMonitoredFunctionBuilder(scope, id, props)
 	return builder.build()
@@ -90,22 +118,22 @@ func newMonitoredFunctionBuilder(scope constructs.Construct, id *string, props *
 // build constructs the complete monitored function
 func (b *monitoredFunctionBuilder) build() *MonitoredFunction {
 	b.construct = constructs.NewConstruct(b.scope, b.id)
-	
+
 	b.setDefaults()
 	b.configureLambdaInsights()
 	b.configureEnvironment()
 	b.createFunction()
-	
+
 	dashboard := b.createDashboard()
 	b.createAlarms()
-	
+
 	monitored := &MonitoredFunction{
 		Construct: b.construct,
 		Function:  b.function,
 		Dashboard: dashboard,
 		Alarms:    b.alarms,
 	}
-	
+
 	b.setupLogInsights(monitored)
 	return monitored
 }
@@ -124,7 +152,7 @@ func (b *monitoredFunctionBuilder) setDefaults() {
 	if b.props.MetricsNamespace == nil {
 		b.props.MetricsNamespace = jsii.String("Lift/Functions")
 	}
-	
+
 	b.setAlarmDefaults()
 }
 
@@ -187,7 +215,7 @@ func (b *monitoredFunctionBuilder) createDashboard() awscloudwatch.Dashboard {
 	if dashboardName == nil {
 		dashboardName = jsii.String(fmt.Sprintf("%s-dashboard", *b.id))
 	}
-	
+
 	dashboard := awscloudwatch.NewDashboard(b.construct, jsii.String("Dashboard"), &awscloudwatch.DashboardProps{
 		DashboardName: dashboardName,
 	})
@@ -199,7 +227,7 @@ func (b *monitoredFunctionBuilder) createDashboard() awscloudwatch.Dashboard {
 		createLatencyWidget(b.function.Function),
 		createConcurrentExecutionsWidget(b.function.Function),
 	)
-	
+
 	return dashboard
 }
 
@@ -216,11 +244,11 @@ func (b *monitoredFunctionBuilder) createErrorAlarm() {
 	if !*b.props.AlarmConfig.EnableErrorAlarm {
 		return
 	}
-	
+
 	metric := b.function.Function.MetricErrors(&awscloudwatch.MetricOptions{
 		Period: awscdk.Duration_Minutes(jsii.Number(5)),
 	})
-	
+
 	alarm := b.createAlarm(metric, "ErrorAlarm", "errors", "Lambda function error rate too high",
 		b.props.AlarmConfig.ErrorRateThreshold, 2)
 	b.alarms["errors"] = alarm
@@ -231,12 +259,12 @@ func (b *monitoredFunctionBuilder) createLatencyAlarm() {
 	if !*b.props.AlarmConfig.EnableLatencyAlarm {
 		return
 	}
-	
+
 	metric := b.function.Function.MetricDuration(&awscloudwatch.MetricOptions{
 		Period:    awscdk.Duration_Minutes(jsii.Number(5)),
 		Statistic: jsii.String("Average"),
 	})
-	
+
 	alarm := b.createAlarm(metric, "LatencyAlarm", "latency", "Lambda function latency too high",
 		b.props.AlarmConfig.LatencyThreshold, 2)
 	b.alarms["latency"] = alarm
@@ -247,11 +275,11 @@ func (b *monitoredFunctionBuilder) createThrottleAlarm() {
 	if !*b.props.AlarmConfig.EnableThrottleAlarm {
 		return
 	}
-	
+
 	metric := b.function.Function.MetricThrottles(&awscloudwatch.MetricOptions{
 		Period: awscdk.Duration_Minutes(jsii.Number(5)),
 	})
-	
+
 	alarm := b.createAlarm(metric, "ThrottleAlarm", "throttles", "Lambda function throttling detected",
 		b.props.AlarmConfig.ThrottleThreshold, 1)
 	b.alarms["throttles"] = alarm
@@ -262,7 +290,7 @@ func (b *monitoredFunctionBuilder) createConcurrentAlarm() {
 	if b.props.AlarmConfig.EnableConcurrentAlarm == nil || !*b.props.AlarmConfig.EnableConcurrentAlarm {
 		return
 	}
-	
+
 	concurrentMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
 		Namespace:  jsii.String("AWS/Lambda"),
 		MetricName: jsii.String("ConcurrentExecutions"),
@@ -279,11 +307,11 @@ func (b *monitoredFunctionBuilder) createConcurrentAlarm() {
 		EvaluationPeriods: jsii.Number(2),
 		TreatMissingData:  awscloudwatch.TreatMissingData_NOT_BREACHING,
 	})
-	
+
 	if b.props.AlarmConfig.AlarmTopic != nil {
 		alarm.AddAlarmAction(awscloudwatchactions.NewSnsAction(b.props.AlarmConfig.AlarmTopic))
 	}
-	
+
 	b.alarms["concurrent"] = alarm
 }
 
@@ -312,21 +340,49 @@ func (b *monitoredFunctionBuilder) setupLogInsights(monitored *MonitoredFunction
 }
 
 // GetFunction returns the underlying Lambda function
+
+// This method returns the underlying Lambda function that was created with
+// the monitoring enhancements. This is useful when you need to access the
+// standard Lambda function properties and methods.
 func (f *MonitoredFunction) GetFunction() awslambda.Function {
 	return f.Function.Function
 }
 
 // GetDashboard returns the CloudWatch dashboard
+
+// This method returns the CloudWatch dashboard that was created for monitoring
+// the Lambda function. This is useful when you need to add additional widgets
+// or customize the dashboard.
 func (f *MonitoredFunction) GetDashboard() awscloudwatch.Dashboard {
 	return f.Dashboard
 }
 
 // GetAlarm returns a specific alarm by name
+//
+// This method returns a specific CloudWatch alarm by name. The available alarms
+// include "errors", "latency", "throttles", and "concurrent".
+//
+// Parameters:
+//   - name: The name of the alarm to retrieve
+//
+// Returns:
+//   - The CloudWatch alarm
 func (f *MonitoredFunction) GetAlarm(name string) awscloudwatch.Alarm {
 	return f.Alarms[name]
 }
 
 // AddCustomMetric adds a custom metric to the dashboard
+//
+// This method adds a custom CloudWatch metric to the dashboard. It creates a
+// graph widget with the specified metric.
+//
+// Parameters:
+//   - metricName: The name of the metric
+//   - namespace: The CloudWatch namespace
+//   - dimensions: The metric dimensions
+//
+// Returns:
+//   - The created CloudWatch metric
 func (f *MonitoredFunction) AddCustomMetric(metricName *string, namespace *string, dimensions *map[string]*string) awscloudwatch.Metric {
 	metric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
 		MetricName:    metricName,
@@ -347,6 +403,13 @@ func (f *MonitoredFunction) AddCustomMetric(metricName *string, namespace *strin
 }
 
 // AddLogInsightsQuery adds a CloudWatch Logs Insights query to the dashboard
+//
+// This method adds a CloudWatch Logs Insights query widget to the dashboard.
+// It allows you to create custom log queries for analyzing Lambda function logs.
+//
+// Parameters:
+//   - queryName: The name of the query
+//   - queryString: The Logs Insights query string
 func (f *MonitoredFunction) AddLogInsightsQuery(queryName *string, queryString *string) {
 	if f.Dashboard == nil {
 		return
@@ -368,6 +431,18 @@ func (f *MonitoredFunction) AddLogInsightsQuery(queryName *string, queryString *
 }
 
 // AddCommonLogInsightsQueries adds common CloudWatch Logs Insights queries
+
+// This method adds a set of common CloudWatch Logs Insights queries to the dashboard.
+// The queries include:
+//
+// - Recent errors
+// - Performance metrics
+// - Cold start analysis
+// - Memory usage
+// - Request patterns
+// - Slow requests
+// - Error rate by status code
+// - Tenant activity (for multi-tenant apps)
 func (f *MonitoredFunction) AddCommonLogInsightsQueries() {
 	if f.Dashboard == nil {
 		return
@@ -382,7 +457,7 @@ func (f *MonitoredFunction) AddCommonLogInsightsQueries() {
 
 	// Performance analysis query
 	performanceQuery := `filter @type = "REPORT"
-| stats avg(@duration), max(@duration), min(@duration), 
+| stats avg(@duration), max(@duration), min(@duration),
         pct(@duration, 50) as p50,
         pct(@duration, 95) as p95,
         pct(@duration, 99) as p99

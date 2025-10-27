@@ -14,6 +14,7 @@ type RateLimitTableProps struct {
 }
 
 // NewRateLimitTable creates a DynamoDB table for rate limiting
+//
 // The table uses standard pk/sk attributes - GSIs should be defined in DynamORM models
 func NewRateLimitTable(scope constructs.Construct, id *string, props *RateLimitTableProps) *LiftTable {
 	// Set defaults

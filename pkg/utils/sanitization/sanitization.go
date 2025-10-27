@@ -9,16 +9,55 @@ import (
 	"github.com/pay-theory/lift/pkg/security"
 )
 
-const (
-	redactedValue = "[REDACTED]"
-)
+const redactedValue = "[REDACTED]"
 
-// AllowedFields are field names that should not be sanitized
+// AllowedFields are field names that should bypass sanitization.
 var AllowedFields = map[string]bool{
 	"card_bin":   true,
 	"card_brand": true,
 	"card_type":  true,
 }
+
+// SensitiveFields defines fields that require explicit sanitization behavior.
+var SensitiveFields = map[string]SanitizationType{
+	// CVV/Security codes - fully redact (PCI requirement - never log)
+	"cvv":           FullyRedact,
+	"security_code": FullyRedact,
+	"cvv2":          FullyRedact,
+	"cvc":           FullyRedact,
+	"cvc2":          FullyRedact,
+
+	// Card numbers - partial mask (show BIN + last 4)
+	"card_number": PartialMask,
+	"number":      PartialMask,
+
+	// Account numbers - partial mask (show last 4)
+	"account_number": PartialMask,
+	"ssn":            PartialMask,
+	"tin":            PartialMask,
+	"tax_id":         PartialMask,
+	"ein":            PartialMask,
+
+	// Authentication credentials - fully redact
+	"password":    FullyRedact,
+	"secret":      FullyRedact,
+	"private_key": FullyRedact,
+	"secret_key":  FullyRedact,
+
+	// Tokens / authorization
+	"api_token":        FullyRedact,
+	"authorization":    FullyRedact,
+	"authorization_id": FullyRedact,
+	"authorization_header": FullyRedact,
+}
+
+// SanitizationType defines how to sanitize a field
+type SanitizationType int
+
+const (
+	FullyRedact SanitizationType = iota // Replace with "[REDACTED]"
+	PartialMask                         // Show partial data (e.g., last 4 digits)
+)
 
 // Sanitizer provides methods for sanitizing various types of data
 type Sanitizer struct {
@@ -57,10 +96,10 @@ func (s *Sanitizer) SanitizeFieldValue(key string, value any) any {
 
 // fieldSanitizationProcessor handles field value sanitization
 type fieldSanitizationProcessor struct {
-    sanitizer *Sanitizer
-    key       string
-    value     any
-    keyLower  string
+	sanitizer *Sanitizer
+	key       string
+	value     any
+	keyLower  string
 }
 
 // newFieldSanitizationProcessor creates a new field sanitization processor
@@ -75,20 +114,29 @@ func newFieldSanitizationProcessor(sanitizer *Sanitizer, key string, value any) 
 
 // sanitize performs the sanitization process
 func (p *fieldSanitizationProcessor) sanitize() any {
-	// Check if field is explicitly allowed
+	// Explicit allow-list bypass
 	if AllowedFields[p.keyLower] {
 		return p.value
 	}
-	
-	// If no data protection manager, redact everything for safety
+
+	// If no data protection manager is available, redact for safety.
 	if p.sanitizer.dataProtectionManager == nil {
 		return redactedValue
 	}
-	
-	// Get data classification
+
+	// Field-specific overrides.
+	if sanitizationType, ok := SensitiveFields[p.keyLower]; ok {
+		handler := newClassificationHandler(p.keyLower, p.value)
+		switch sanitizationType {
+		case FullyRedact:
+			return redactedValue
+		case PartialMask:
+			return handler.handleRestricted()
+		}
+	}
+
+	// Fallback to classification-based sanitization.
 	classification := p.getDataClassification()
-	
-	// Apply sanitization based on classification
 	return p.applySanitization(classification)
 }
 
@@ -99,12 +147,12 @@ func (p *fieldSanitizationProcessor) getDataClassification() security.DataClassi
 		map[string]any{p.key: p.value},
 		map[string]any{"source": "sanitizer"},
 	)
-	
+
 	// Get the classification for this specific field
 	if fieldClass, exists := dataCtx.Fields[p.key]; exists {
 		return fieldClass
 	}
-	
+
 	// Use overall classification if field-specific not found
 	return dataCtx.Classification
 }
@@ -112,7 +160,7 @@ func (p *fieldSanitizationProcessor) getDataClassification() security.DataClassi
 // applySanitization applies the appropriate sanitization based on classification
 func (p *fieldSanitizationProcessor) applySanitization(classification security.DataClassification) any {
 	handler := newClassificationHandler(p.keyLower, p.value)
-	
+
 	switch classification {
 	case security.DataRestricted:
 		return handler.handleRestricted()
@@ -129,8 +177,8 @@ func (p *fieldSanitizationProcessor) applySanitization(classification security.D
 
 // classificationHandler handles sanitization for different data classifications
 type classificationHandler struct {
-    value    any
-    keyLower string
+	value    any
+	keyLower string
 }
 
 // newClassificationHandler creates a new classification handler
@@ -147,15 +195,18 @@ func (h *classificationHandler) handleRestricted() any {
 	if !ok {
 		return redactedValue
 	}
-	
+
 	// Clean the string to check if it's a number
 	cleaned := strings.ReplaceAll(strings.ReplaceAll(str, " ", ""), "-", "")
 	if len(cleaned) >= 4 && isNumeric(cleaned) {
-		// Show last 4 digits, mask the rest
+		if len(cleaned) == 4 {
+			return strings.Repeat("*", 4)
+		}
+		// Mask all but the last 4 digits
 		masked := strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
 		return masked
 	}
-	
+
 	return redactedValue
 }
 
@@ -170,22 +221,22 @@ func (h *classificationHandler) handleInternal() any {
 	if !ok {
 		return h.value
 	}
-	
+
 	// Handle user-generated content
 	if isUserContentField(h.keyLower) {
 		return h.sanitizeUserContent(str)
 	}
-	
+
 	// Handle error messages
 	if h.isErrorField() {
 		return h.sanitizeErrorMessage(str)
 	}
-	
+
 	// Handle large strings
 	if len(str) > 200 {
 		return fmt.Sprintf("[LARGE_STRING_%d_CHARS]", len(str))
 	}
-	
+
 	return h.value
 }
 

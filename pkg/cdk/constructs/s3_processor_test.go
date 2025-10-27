@@ -211,7 +211,6 @@ func TestS3Processor_DisabledDeadLetterQueue(t *testing.T) {
 	assertResourceCount(t, template, "AWS::SQS::Queue", 0)
 }
 
-
 func TestS3Processor_LifecycleRules(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
@@ -402,28 +401,28 @@ func TestS3Processor_PermissionGrants(t *testing.T) {
 }
 
 func TestS3Processor_MonitoringEnabled(t *testing.T) {
-    app := awscdk.NewApp(nil)
-    stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
 
-    processor := NewS3Processor(stack, jsii.String("MonitoredS3Processor"), &S3ProcessorProps{
-        FunctionProps: awslambda.FunctionProps{
-            FunctionName: jsii.String("monitored-s3-processor"),
-            Code:         awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
-            Handler:      jsii.String("index.handler"),
-            Runtime:      awslambda.Runtime_NODEJS_18_X(),
-        },
-        EnableMonitoring: jsii.Bool(true),
-    })
+	processor := NewS3Processor(stack, jsii.String("MonitoredS3Processor"), &S3ProcessorProps{
+		FunctionProps: awslambda.FunctionProps{
+			FunctionName: jsii.String("monitored-s3-processor"),
+			Code:         awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
+			Handler:      jsii.String("index.handler"),
+			Runtime:      awslambda.Runtime_NODEJS_18_X(),
+		},
+		EnableMonitoring: jsii.Bool(true),
+	})
 
-    if processor == nil {
-        t.Fatal("Processor should be created")
-    }
+	if processor == nil {
+		t.Fatal("Processor should be created")
+	}
 
-    template := synthesizeTemplate(t, stack)
+	template := synthesizeTemplate(t, stack)
 
-    // Should create CloudWatch alarms and a dashboard
-    assertResourceExists(t, template, "AWS::CloudWatch::Alarm")
-    assertResourceExists(t, template, "AWS::CloudWatch::Dashboard")
+	// Should create CloudWatch alarms and a dashboard
+	assertResourceExists(t, template, "AWS::CloudWatch::Alarm")
+	assertResourceExists(t, template, "AWS::CloudWatch::Dashboard")
 }
 
 func TestS3Processor_ErrorHandling(t *testing.T) {

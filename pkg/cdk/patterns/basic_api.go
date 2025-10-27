@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
@@ -74,9 +75,11 @@ func NewBasicAPI(scope constructs.Construct, id *string, props *BasicAPIProps) *
 
 	// Create API Gateway
 	api := liftconstructs.NewLiftAPI(this, jsii.String("Api"), &liftconstructs.LiftAPIProps{
-		Name:                props.ApiName,
-		EnableCORS:          props.EnableCORS,
-		EnableAccessLogging: jsii.Bool(true),
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:                props.ApiName,
+			EnableCORS:          props.EnableCORS,
+			EnableAccessLogging: jsii.Bool(true),
+		},
 	})
 
 	// Add Lambda integration
@@ -134,7 +137,7 @@ func NewBasicAPI(scope constructs.Construct, id *string, props *BasicAPIProps) *
 
 // GetApiUrl returns the API URL
 func (api *BasicAPI) GetApiUrl() *string {
-	return api.Api.HttpAPI.Url()
+	return api.Api.GetUrl()
 }
 
 // GetFunction returns the Lambda function

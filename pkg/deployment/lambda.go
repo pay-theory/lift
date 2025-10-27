@@ -1,14 +1,16 @@
 package deployment
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"math"
+	"os"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -134,43 +136,47 @@ func (d *LambdaDeployment) Handler() lambda.Handler {
 }
 
 // handleLambdaEvent processes Lambda events through the Lift framework
-func (d *LambdaDeployment) handleLambdaEvent(ctx context.Context, _ json.RawMessage) (any, error) {
+func (d *LambdaDeployment) handleLambdaEvent(ctx context.Context, payload json.RawMessage) (any, error) {
 	startTime := time.Now()
-
-	// Check if this is a cold start
 	isColdStart := d.isColdStart()
 
-	// Pre-warm resources if cold start and optimization enabled
 	if isColdStart && d.config.ColdStartOptim {
 		if err := d.resourceMgr.PreWarmAll(ctx); err != nil {
-			// Log warning but don't fail the request
 			d.logWarning("Pre-warming failed", err)
 		}
 	}
 
-	// Mark as warm after first request
 	if isColdStart {
 		d.markWarm()
 	}
 
-	// Add Lambda context information
-	ctx = d.enrichContext(ctx, isColdStart)
+	enrichedCtx := d.enrichContext(ctx, isColdStart)
+	var handlerErr error
 
-	// Process event through Lift framework
-	// For now, we'll create a simple response - this needs to be integrated with the actual app routing
-	response := map[string]any{
-		"statusCode": 200,
-		"body":       `{"message": "Lambda deployment successful"}`,
-		"headers": map[string]string{
-			"Content-Type": "application/json",
-		},
+	defer func() {
+		atomic.AddInt64(&d.requestCount, 1)
+		d.recordMetrics(enrichedCtx, time.Since(startTime), handlerErr, isColdStart)
+	}()
+
+	event, err := d.decodeLambdaEvent(payload)
+	if err != nil {
+		handlerErr = err
+		return nil, err
 	}
 
-	// Record metrics
-	duration := time.Since(startTime)
-	d.recordMetrics(ctx, duration, nil, isColdStart)
+	response, err := d.app.HandleRequest(enrichedCtx, event)
+	if err != nil {
+		handlerErr = err
+		return nil, err
+	}
 
-	return response, nil
+	lambdaResponse, err := d.translateResponse(response)
+	if err != nil {
+		handlerErr = err
+		return nil, err
+	}
+
+	return lambdaResponse, nil
 }
 
 // isColdStart checks if this is a cold start
@@ -229,6 +235,53 @@ func (d *LambdaDeployment) recordMetrics(_ context.Context, duration time.Durati
 	// Record environment metrics
 	d.metrics.Gauge("lambda_memory_used_mb").Set(d.getMemoryUsage())
 	d.metrics.Gauge("lambda_uptime_seconds").Set(time.Since(d.startTime).Seconds())
+}
+
+func (d *LambdaDeployment) decodeLambdaEvent(payload json.RawMessage) (any, error) {
+	if len(payload) == 0 {
+		return map[string]any{}, nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.UseNumber()
+
+	var event any
+	if err := decoder.Decode(&event); err != nil {
+		return nil, fmt.Errorf("failed to decode Lambda event: %w", err)
+	}
+
+	return event, nil
+}
+
+func (d *LambdaDeployment) translateResponse(resp any) (any, error) {
+	switch v := resp.(type) {
+	case *lift.Response:
+		return d.encodeLiftResponse(v)
+	case map[string]any:
+		return v, nil
+	case nil:
+		return nil, nil
+	default:
+		return v, nil
+	}
+}
+
+func (d *LambdaDeployment) encodeLiftResponse(resp *lift.Response) (map[string]any, error) {
+	if resp == nil {
+		return nil, nil
+	}
+
+	payload, err := json.Marshal(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Lift response: %w", err)
+	}
+
+	var lambdaPayload map[string]any
+	if err := json.Unmarshal(payload, &lambdaPayload); err != nil {
+		return nil, fmt.Errorf("failed to translate Lift response: %w", err)
+	}
+
+	return lambdaPayload, nil
 }
 
 // HealthCheck performs comprehensive health check
@@ -355,8 +408,8 @@ func (c *ResourceHealthChecker) Name() string {
 }
 
 func (c *ResourceHealthChecker) Check(ctx context.Context) health.HealthStatus {
-    checker := newResourceCheckBuilder(ctx, c)
-    return checker.build()
+	checker := newResourceCheckBuilder(ctx, c)
+	return checker.build()
 }
 
 // resourceCheckBuilder builds resource health checks
@@ -370,12 +423,12 @@ type resourceCheckBuilder struct {
 
 // newResourceCheckBuilder creates a new resource check builder
 func newResourceCheckBuilder(ctx context.Context, checker *ResourceHealthChecker) *resourceCheckBuilder {
-    return &resourceCheckBuilder{
-        checker: checker,
-        ctx:     ctx,
-        start:   time.Now(),
-        issues:  []string{},
-    }
+	return &resourceCheckBuilder{
+		checker: checker,
+		ctx:     ctx,
+		start:   time.Now(),
+		issues:  []string{},
+	}
 }
 
 // build performs all health checks
@@ -387,7 +440,7 @@ func (b *resourceCheckBuilder) build() health.HealthStatus {
 	b.checkFileDescriptors()
 	b.checkDiskSpace()
 	b.checkNetworkConnectivity()
-	
+
 	return b.buildStatus()
 }
 
@@ -418,10 +471,10 @@ func (b *resourceCheckBuilder) checkGoroutines() {
 // checkMemory checks memory usage
 func (b *resourceCheckBuilder) checkMemory() {
 	runtime.ReadMemStats(&b.memStats)
-	
+
 	allocMB := float64(b.memStats.Alloc) / 1024 / 1024
 	sysMB := float64(b.memStats.Sys) / 1024 / 1024
-	
+
 	if b.memStats.Alloc > b.memStats.Sys/2 {
 		b.issues = append(b.issues, fmt.Sprintf("High memory usage: %.1fMB allocated of %.1fMB system", allocMB, sysMB))
 	}
@@ -441,7 +494,7 @@ func (b *resourceCheckBuilder) checkFileDescriptors() {
 	if !b.checker.checkFileDescriptors() {
 		return
 	}
-	
+
 	openFiles := b.checker.estimateOpenFiles()
 	if openFiles > b.checker.maxOpenFiles {
 		b.issues = append(b.issues, fmt.Sprintf("High file descriptor usage: estimated %d open files", openFiles))
@@ -453,13 +506,13 @@ func (b *resourceCheckBuilder) checkDiskSpace() {
 	if !b.checker.checkDiskSpace {
 		return
 	}
-	
+
 	availableMB, err := b.checker.getDiskSpaceMB()
 	if err != nil {
 		b.issues = append(b.issues, fmt.Sprintf("Failed to check disk space: %v", err))
 		return
 	}
-	
+
 	if availableMB < b.checker.minDiskSpaceMB {
 		b.issues = append(b.issues, fmt.Sprintf("Low disk space: %dMB available (min: %dMB)", availableMB, b.checker.minDiskSpaceMB))
 	}
@@ -470,7 +523,7 @@ func (b *resourceCheckBuilder) checkNetworkConnectivity() {
 	if !b.checker.checkNetworkConnectivity {
 		return
 	}
-	
+
 	if err := b.checker.checkNetwork(b.ctx); err != nil {
 		b.issues = append(b.issues, fmt.Sprintf("Network connectivity issue: %v", err))
 	}
@@ -480,12 +533,12 @@ func (b *resourceCheckBuilder) checkNetworkConnectivity() {
 func (b *resourceCheckBuilder) buildStatus() health.HealthStatus {
 	status := health.StatusHealthy
 	message := "All resources are healthy"
-	
+
 	if len(b.issues) > 0 {
 		status = health.StatusUnhealthy
 		message = fmt.Sprintf("Resource issues detected: %v", b.issues)
 	}
-	
+
 	return health.HealthStatus{
 		Status:    status,
 		Timestamp: time.Now(),
@@ -590,7 +643,7 @@ func (b *memoryCheckBuilder) build() health.HealthStatus {
 	b.checkGCPerformance()
 	b.checkMemoryLeaks()
 	b.checkMemoryEfficiency()
-	
+
 	return b.buildStatus()
 }
 
@@ -618,7 +671,7 @@ func (b *memoryCheckBuilder) readMemoryStats() {
 // checkTotalMemory checks total memory usage
 func (b *memoryCheckBuilder) checkTotalMemory() {
 	if b.allocMB > float64(b.checker.maxMemoryMB) {
-		b.issues = append(b.issues, fmt.Sprintf("Memory usage too high: %.1fMB (max: %dMB)", 
+		b.issues = append(b.issues, fmt.Sprintf("Memory usage too high: %.1fMB (max: %dMB)",
 			b.allocMB, b.checker.maxMemoryMB))
 	}
 }
@@ -626,7 +679,7 @@ func (b *memoryCheckBuilder) checkTotalMemory() {
 // checkHeapUsage checks heap memory usage
 func (b *memoryCheckBuilder) checkHeapUsage() {
 	if b.heapInUseMB > float64(b.checker.maxHeapMB) {
-		b.issues = append(b.issues, fmt.Sprintf("Heap usage too high: %.1fMB (max: %dMB)", 
+		b.issues = append(b.issues, fmt.Sprintf("Heap usage too high: %.1fMB (max: %dMB)",
 			b.heapInUseMB, b.checker.maxHeapMB))
 	}
 }
@@ -636,7 +689,7 @@ func (b *memoryCheckBuilder) checkGCPerformance() {
 	if !b.checker.enableGCStats {
 		return
 	}
-	
+
 	b.checkGCPauseTimes()
 	b.checkGCFrequency()
 }
@@ -645,39 +698,39 @@ func (b *memoryCheckBuilder) checkGCPerformance() {
 func (b *memoryCheckBuilder) checkGCPauseTimes() {
 	gcPauses := b.memStats.PauseNs[:]
 	var maxRecentPause uint64
-	
+
 	for i := 0; i < 10 && i < len(gcPauses); i++ {
 		if gcPauses[i] > maxRecentPause {
 			maxRecentPause = gcPauses[i]
 		}
 	}
-	
+
 	maxRecentPauseMs := float64(maxRecentPause) / 1000000
 	if maxRecentPauseMs > b.checker.maxGCPauseMs {
-		b.issues = append(b.issues, fmt.Sprintf("High GC pause time: %.2fms (max: %.2fms)", 
+		b.issues = append(b.issues, fmt.Sprintf("High GC pause time: %.2fms (max: %.2fms)",
 			maxRecentPauseMs, b.checker.maxGCPauseMs))
 	}
 }
 
 // checkGCFrequency checks garbage collection frequency
 func (b *memoryCheckBuilder) checkGCFrequency() {
-    if b.memStats.NumGC == 0 {
-        return
-    }
-    
-    // Convert LastGC safely to int64 to avoid overflow (gosec G115)
-    lastGC := b.memStats.LastGC
-    if lastGC > uint64(math.MaxInt64) {
-        lastGC = uint64(math.MaxInt64)
-    }
-    // Compute delta minutes using float math to avoid narrowing casts
-    lastGCSec := float64(lastGC) / 1e9
-    nowSec := float64(time.Now().UnixNano()) / 1e9
-    minutes := (nowSec - lastGCSec) / 60.0
-    if minutes <= 0 {
-        return
-    }
-    gcRate := float64(b.memStats.NumGC) / minutes
+	if b.memStats.NumGC == 0 {
+		return
+	}
+
+	// Convert LastGC safely to int64 to avoid overflow (gosec G115)
+	lastGC := b.memStats.LastGC
+	if lastGC > uint64(math.MaxInt64) {
+		lastGC = uint64(math.MaxInt64)
+	}
+	// Compute delta minutes using float math to avoid narrowing casts
+	lastGCSec := float64(lastGC) / 1e9
+	nowSec := float64(time.Now().UnixNano()) / 1e9
+	minutes := (nowSec - lastGCSec) / 60.0
+	if minutes <= 0 {
+		return
+	}
+	gcRate := float64(b.memStats.NumGC) / minutes
 	if gcRate > 60 { // More than 60 GC cycles per minute
 		b.issues = append(b.issues, fmt.Sprintf("High GC frequency: %.1f cycles/minute", gcRate))
 	}
@@ -696,7 +749,7 @@ func (b *memoryCheckBuilder) checkMemoryEfficiency() {
 	if b.memStats.Sys == 0 {
 		return
 	}
-	
+
 	wasteRatio := float64(b.memStats.Sys-b.memStats.Alloc) / float64(b.memStats.Sys)
 	if wasteRatio > 0.5 { // More than 50% wasted
 		b.issues = append(b.issues, fmt.Sprintf("High memory waste ratio: %.1f%% unused", wasteRatio*100))
@@ -706,14 +759,14 @@ func (b *memoryCheckBuilder) checkMemoryEfficiency() {
 // buildStatus creates the final health status
 func (b *memoryCheckBuilder) buildStatus() health.HealthStatus {
 	status := health.StatusHealthy
-	message := fmt.Sprintf("Memory healthy: %.1fMB allocated, %.1fMB heap in use", 
+	message := fmt.Sprintf("Memory healthy: %.1fMB allocated, %.1fMB heap in use",
 		b.allocMB, b.heapInUseMB)
-	
+
 	if len(b.issues) > 0 {
 		status = health.StatusUnhealthy
 		message = fmt.Sprintf("Memory issues detected: %v", b.issues)
 	}
-	
+
 	return health.HealthStatus{
 		Status:    status,
 		Timestamp: time.Now(),
@@ -753,13 +806,12 @@ func (d *LambdaDeployment) logWarning(message string, err error) {
 }
 
 func (d *LambdaDeployment) calculateErrorRate() float64 {
-	// Calculate actual error rate based on metrics
-	if d.requestCount == 0 {
+	count := atomic.LoadInt64(&d.requestCount)
+	if count == 0 {
 		return 0.0
 	}
 
-	// This would be implemented with actual error tracking
-	// For now, return a calculated rate
+	// Placeholder implementation until error tracking integrates with observability; returns zero for now
 	return 0.0
 }
 

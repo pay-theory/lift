@@ -14,6 +14,10 @@ import (
 )
 
 // SecureFunctionProps extends LiftFunctionProps with security configuration
+//
+// This struct contains all configurable properties for creating a secure Lambda function
+// with enhanced security features. It extends LiftFunctionProps with additional security
+// configuration like VPC settings, KMS encryption, secrets management, and IAM policies.
 type SecureFunctionProps struct {
 	LiftFunctionProps
 	// VPC to deploy the function in (optional - will create if not provided)
@@ -35,6 +39,17 @@ type SecureFunctionProps struct {
 }
 
 // SecureFunction is a Lambda function with enhanced security features
+//
+// This construct creates a Lambda function with enhanced security features including:
+//
+// - VPC deployment (with optional private subnets)
+// - KMS encryption for environment variables
+// - Secrets Manager integration
+// - Custom security groups
+// - Private endpoint support
+// - Additional IAM policies
+//
+// The construct provides methods to add VPC endpoints and configure security settings.
 type SecureFunction struct {
 	constructs.Construct
 	Function      *LiftFunction
@@ -45,6 +60,23 @@ type SecureFunction struct {
 }
 
 // NewSecureFunction creates a Lambda function with enhanced security
+//
+// This function creates a Lambda function with all security features configured:
+//
+// - Creates or uses existing VPC
+// - Configures appropriate subnets (private or public)
+// - Creates and configures security groups
+// - Sets up KMS encryption if enabled
+// - Applies additional IAM policies
+// - Configures environment variables
+//
+// Parameters:
+//   - scope: The CDK construct scope
+//   - id: The construct ID
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new SecureFunction instance
 func NewSecureFunction(scope constructs.Construct, id *string, props *SecureFunctionProps) *SecureFunction {
 	builder := newSecureFunctionBuilder(scope, id, props)
 	return builder.build()
@@ -225,6 +257,7 @@ func (b *secureFunctionBuilder) configureFunctionProps() {
 	// Apply VPC-related settings to the underlying FunctionProps (promoted field)
 	b.props.FunctionProps.Vpc = b.vpc
 	b.props.FunctionProps.VpcSubnets = b.vpcSubnets
+	// FunctionProps is embedded, so fields are promoted; use direct selectors.
 	b.props.SecurityGroups = &[]awsec2.ISecurityGroup{b.securityGroup}
 	b.props.Tracing = awslambda.Tracing_ACTIVE
 
@@ -293,21 +326,42 @@ func (b *secureFunctionBuilder) applyAdditionalPolicies() {
 }
 
 // GetFunction returns the underlying Lambda function
+//
+// This method returns the underlying Lambda function that was created with
+// the security enhancements. This is useful when you need to access the
+// standard Lambda function properties and methods.
 func (f *SecureFunction) GetFunction() awslambda.Function {
 	return f.Function.Function
 }
 
 // GetSecurityGroup returns the security group
+//
+// This method returns the security group that was created for the Lambda function.
+// This is useful when you need to configure additional security group rules or
+// reference the security group in other resources.
 func (f *SecureFunction) GetSecurityGroup() awsec2.ISecurityGroup {
 	return f.SecurityGroup
 }
 
 // GetKmsKey returns the KMS key used for encryption
+//
+// This method returns the KMS key that is used for encrypting environment variables.
+// This is useful when you need to grant additional permissions or reference the
+// key in other resources.
 func (f *SecureFunction) GetKmsKey() awskms.IKey {
 	return f.KmsKey
 }
 
 // AddVPCEndpoint adds a VPC endpoint for an AWS service
+//
+// This method creates a VPC endpoint for the specified AWS service and configures
+// the necessary security group rules to allow the Lambda function to access it.
+//
+// Parameters:
+//   - service: The AWS service to create an endpoint for
+//
+// Returns:
+//   - The created VPC endpoint
 func (f *SecureFunction) AddVPCEndpoint(service awsec2.InterfaceVpcEndpointAwsService) awsec2.InterfaceVpcEndpoint {
 	// Get a simple service identifier for the endpoint ID
 	var endpointId string
@@ -358,6 +412,13 @@ func (f *SecureFunction) AddVPCEndpoint(service awsec2.InterfaceVpcEndpointAwsSe
 }
 
 // EnableSecretsManagerAccess adds VPC endpoint and permissions for Secrets Manager
+//
+// This method configures the Lambda function to access Secrets Manager by:
+// - Creating a VPC endpoint for Secrets Manager
+// - Adding the necessary IAM permissions to read secrets
+//
+// This is useful when your Lambda function needs to access secrets stored in
+// AWS Secrets Manager.
 func (f *SecureFunction) EnableSecretsManagerAccess() {
 	// Add VPC endpoint
 	f.AddVPCEndpoint(awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER())
@@ -373,6 +434,11 @@ func (f *SecureFunction) EnableSecretsManagerAccess() {
 }
 
 // RestrictInboundAccess removes all inbound rules from the security group
+//
+// This method removes all inbound rules from the security group, effectively
+// preventing any inbound traffic to the Lambda function. This is useful for
+// creating highly secure Lambda functions that don't need to receive incoming
+// network connections.
 func (f *SecureFunction) RestrictInboundAccess() {
 	// Note: This is a simplified implementation
 	// In practice, you'd need to iterate and remove existing rules

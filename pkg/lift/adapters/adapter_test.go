@@ -332,6 +332,7 @@ func TestAdapterRegistry_ListSupportedTriggers(t *testing.T) {
 	expectedTriggers := []TriggerType{
 		TriggerAPIGateway,
 		TriggerAPIGatewayV2,
+		TriggerAppSync,
 		TriggerSQS,
 		TriggerS3,
 		TriggerEventBridge,

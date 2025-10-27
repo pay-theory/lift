@@ -15,7 +15,9 @@ import (
 
 // MonitorableResource interface for resources that can be monitored
 type MonitorableResource interface {
-	// GetResourceName returns the name of the resource
+	// GetResourceName returns the name of the resource.
+	// Returns:
+	//   - A pointer to the name of the resource
 	GetResourceName() *string
 }
 
@@ -246,18 +248,18 @@ func (m *EnhancedMonitoring) createColdStartMetrics(fn *LiftFunction, props *Enh
 	})
 
 	// Cold start duration filter
-    // Use a literal filter pattern to capture duration from Lambda REPORT line
-    durationFilter := awslogs.NewMetricFilter(m.Construct, jsii.String("ColdStartDurationFilter"), &awslogs.MetricFilterProps{
-        LogGroup:        m.LogGroup,
-        MetricNamespace: props.Namespace,
-        MetricName:      jsii.String("ColdStartDuration"),
-        FilterPattern:   awslogs.FilterPattern_Literal(jsii.String("REPORT RequestId: ? Duration: $duration")),
-        MetricValue:     jsii.String("$duration"),
-        Dimensions: &map[string]*string{
-            "FunctionName": fn.Function.FunctionName(),
-            "Environment":  props.Environment,
-        },
-    })
+	// Use a literal filter pattern to capture duration from Lambda REPORT line
+	durationFilter := awslogs.NewMetricFilter(m.Construct, jsii.String("ColdStartDurationFilter"), &awslogs.MetricFilterProps{
+		LogGroup:        m.LogGroup,
+		MetricNamespace: props.Namespace,
+		MetricName:      jsii.String("ColdStartDuration"),
+		FilterPattern:   awslogs.FilterPattern_Literal(jsii.String("REPORT RequestId: ? Duration: $duration")),
+		MetricValue:     jsii.String("$duration"),
+		Dimensions: &map[string]*string{
+			"FunctionName": fn.Function.FunctionName(),
+			"Environment":  props.Environment,
+		},
+	})
 
 	m.MetricFilters["ColdStart"] = coldStartFilter
 	m.MetricFilters["ColdStartDuration"] = durationFilter
@@ -461,7 +463,7 @@ func (m *EnhancedMonitoring) createAlarms(props *EnhancedMonitoringProps) {
 	}
 
 	// Concurrent executions alarm
-    if concurrentMetric, ok := m.Metrics["ConcurrentExecutions"]; ok && props.AlarmThresholds != nil && props.AlarmThresholds.ConcurrentExecutions != nil {
+	if concurrentMetric, ok := m.Metrics["ConcurrentExecutions"]; ok && props.AlarmThresholds != nil && props.AlarmThresholds.ConcurrentExecutions != nil {
 		m.Alarms["HighConcurrency"] = awscloudwatch.NewAlarm(m.Construct, jsii.String("HighConcurrency"), &awscloudwatch.AlarmProps{
 			Metric:            concurrentMetric,
 			AlarmName:         jsii.String("High Concurrent Executions"),

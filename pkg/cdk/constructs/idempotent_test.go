@@ -1,7 +1,7 @@
 package constructs
 
 import (
-    "testing"
+	"testing"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
@@ -14,53 +14,53 @@ import (
 
 // test helpers to reduce duplication across assertions
 func assertIdempotencyTableStructure(t *testing.T, template assertions.Template) {
-    t.Helper()
-    template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &map[string]interface{}{
-        "TableName":   assertions.Match_StringLikeRegexp(jsii.String(".*-idempotency")),
-        "BillingMode": "PAY_PER_REQUEST",
-        "AttributeDefinitions": assertions.Match_ArrayWith(&[]interface{}{
-            &map[string]interface{}{
-                "AttributeName": "PK",
-                "AttributeType": "S",
-            },
-            &map[string]interface{}{
-                "AttributeName": "SK",
-                "AttributeType": "S",
-            },
-        }),
-        "KeySchema": &[]interface{}{
-            &map[string]interface{}{
-                "AttributeName": "PK",
-                "KeyType":       "HASH",
-            },
-            &map[string]interface{}{
-                "AttributeName": "SK",
-                "KeyType":       "RANGE",
-            },
-        },
-        "TimeToLiveSpecification": &map[string]interface{}{
-            "AttributeName": "expires_at",
-            "Enabled":       true,
-        },
-    })
+	t.Helper()
+	template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), &map[string]interface{}{
+		"TableName":   assertions.Match_StringLikeRegexp(jsii.String(".*-idempotency")),
+		"BillingMode": "PAY_PER_REQUEST",
+		"AttributeDefinitions": assertions.Match_ArrayWith(&[]interface{}{
+			&map[string]interface{}{
+				"AttributeName": "PK",
+				"AttributeType": "S",
+			},
+			&map[string]interface{}{
+				"AttributeName": "SK",
+				"AttributeType": "S",
+			},
+		}),
+		"KeySchema": &[]interface{}{
+			&map[string]interface{}{
+				"AttributeName": "PK",
+				"KeyType":       "HASH",
+			},
+			&map[string]interface{}{
+				"AttributeName": "SK",
+				"KeyType":       "RANGE",
+			},
+		},
+		"TimeToLiveSpecification": &map[string]interface{}{
+			"AttributeName": "expires_at",
+			"Enabled":       true,
+		},
+	})
 }
 
 func assertLambdaHasIdempotencyPolicy(t *testing.T, template assertions.Template) {
-    t.Helper()
-    template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), &map[string]interface{}{
-        "PolicyDocument": &map[string]interface{}{
-            "Statement": assertions.Match_ArrayWith(&[]interface{}{
-                &map[string]interface{}{
-                    "Action": assertions.Match_ArrayWith(&[]interface{}{
-                        "dynamodb:GetItem",
-                        "dynamodb:PutItem",
-                    }),
-                    "Effect":   "Allow",
-                    "Resource": assertions.Match_AnyValue(),
-                },
-            }),
-        },
-    })
+	t.Helper()
+	template.HasResourceProperties(jsii.String("AWS::IAM::Policy"), &map[string]interface{}{
+		"PolicyDocument": &map[string]interface{}{
+			"Statement": assertions.Match_ArrayWith(&[]interface{}{
+				&map[string]interface{}{
+					"Action": assertions.Match_ArrayWith(&[]interface{}{
+						"dynamodb:GetItem",
+						"dynamodb:PutItem",
+					}),
+					"Effect":   "Allow",
+					"Resource": assertions.Match_AnyValue(),
+				},
+			}),
+		},
+	})
 }
 
 // createKeyExtractorTestCases generates test cases for different key extractors
@@ -69,8 +69,8 @@ func createKeyExtractorTestCases() []struct {
 	assertions func(t *testing.T, template assertions.Template, fn *IdempotentFunction)
 	name       string
 } {
-    // Intentionally avoid sharing Code assets across stacks/tests.
-    // Each test case will construct its own FunctionProps with a fresh Code instance.
+	// Intentionally avoid sharing Code assets across stacks/tests.
+	// Each test case will construct its own FunctionProps with a fresh Code instance.
 
 	extractorConfigs := []struct {
 		name         string
@@ -106,23 +106,23 @@ func createKeyExtractorTestCases() []struct {
 
 	for _, config := range extractorConfigs {
 		config := config // capture range variable
-        testCases = append(testCases, struct {
-            props      *IdempotentFunctionProps
-            assertions func(t *testing.T, template assertions.Template, fn *IdempotentFunction)
-            name       string
-        }{
-            name: config.name,
-            props: &IdempotentFunctionProps{
-                LiftFunctionProps: LiftFunctionProps{
-                    FunctionProps: awslambda.FunctionProps{
-                        Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
-                        Runtime: awslambda.Runtime_PROVIDED_AL2023(),
-                        Handler: jsii.String("bootstrap"),
-                    },
-                },
-                KeyExtractor:      config.extractor,
-                KeyField:          jsii.String(config.keyField),
-            },
+		testCases = append(testCases, struct {
+			props      *IdempotentFunctionProps
+			assertions func(t *testing.T, template assertions.Template, fn *IdempotentFunction)
+			name       string
+		}{
+			name: config.name,
+			props: &IdempotentFunctionProps{
+				LiftFunctionProps: LiftFunctionProps{
+					FunctionProps: awslambda.FunctionProps{
+						Code:    awslambda.Code_FromAsset(jsii.String("."), nil),
+						Runtime: awslambda.Runtime_PROVIDED_AL2023(),
+						Handler: jsii.String("bootstrap"),
+					},
+				},
+				KeyExtractor: config.extractor,
+				KeyField:     jsii.String(config.keyField),
+			},
 			assertions: func(_ *testing.T, template assertions.Template, _ *IdempotentFunction) {
 				template.HasResourceProperties(jsii.String("AWS::Lambda::Function"), &map[string]interface{}{
 					"Environment": &map[string]interface{}{
@@ -156,16 +156,16 @@ func TestNewIdempotentFunction(t *testing.T) {
 					},
 				},
 			},
-            assertions: func(_ *testing.T, template assertions.Template, fn *IdempotentFunction) {
-                // Check function and table created
-                assert.NotNil(t, fn.Function)
-                assert.NotNil(t, fn.IdempotencyTable)
+			assertions: func(_ *testing.T, template assertions.Template, fn *IdempotentFunction) {
+				// Check function and table created
+				assert.NotNil(t, fn.Function)
+				assert.NotNil(t, fn.IdempotencyTable)
 
-                // Shared assertions
-                assertIdempotencyTableStructure(t, template)
-                assertLambdaHasIdempotencyPolicy(t, template)
-            },
-        },
+				// Shared assertions
+				assertIdempotencyTableStructure(t, template)
+				assertLambdaHasIdempotencyPolicy(t, template)
+			},
+		},
 		{
 			name: "creates function with custom idempotency configuration",
 			props: &IdempotentFunctionProps{
@@ -306,9 +306,8 @@ func TestIdempotentFunction_Integration(t *testing.T) {
 		"BillingMode": "PAY_PER_REQUEST",
 	})
 
-
-    // Assert IAM permissions
-    assertLambdaHasIdempotencyPolicy(t, template)
+	// Assert IAM permissions
+	assertLambdaHasIdempotencyPolicy(t, template)
 
 	// Verify the function is properly configured
 	assert.NotNil(t, fn.Function)

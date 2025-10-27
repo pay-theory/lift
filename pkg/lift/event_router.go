@@ -125,7 +125,7 @@ func (er *EventRouter) matchSQSPattern(ctx *Context, pattern string) bool {
 func (er *EventRouter) matchS3Pattern(ctx *Context, pattern string) bool {
 	extractor := newS3EventExtractor(ctx)
 	bucketName, objectKey := extractor.extractS3Info()
-	
+
 	if bucketName == "" {
 		return false
 	}
@@ -149,12 +149,12 @@ func (e *s3EventExtractor) extractS3Info() (bucketName, objectKey string) {
 	if e.isEventBridgeS3Event() {
 		return e.extractFromEventBridge()
 	}
-	
+
 	// Try direct S3 events from records
 	if e.hasS3Records() {
 		return e.extractFromRecords()
 	}
-	
+
 	return "", ""
 }
 
@@ -176,14 +176,14 @@ func (e *s3EventExtractor) extractFromEventBridge() (bucketName, objectKey strin
 			bucketName = name
 		}
 	}
-	
+
 	// Extract object key
 	if object, ok := e.ctx.Request.Detail["object"].(map[string]any); ok {
 		if key, keyOk := object["key"].(string); keyOk {
 			objectKey = key
 		}
 	}
-	
+
 	return bucketName, objectKey
 }
 
@@ -193,26 +193,26 @@ func (e *s3EventExtractor) extractFromRecords() (bucketName, objectKey string) {
 	if !ok {
 		return "", ""
 	}
-	
+
 	s3Data, ok := record["s3"].(map[string]any)
 	if !ok {
 		return "", ""
 	}
-	
+
 	// Extract bucket name
 	if bucket, ok := s3Data["bucket"].(map[string]any); ok {
 		if name, nameOk := bucket["name"].(string); nameOk {
 			bucketName = name
 		}
 	}
-	
+
 	// Extract object key
 	if object, ok := s3Data["object"].(map[string]any); ok {
 		if key, keyOk := object["key"].(string); keyOk {
 			objectKey = key
 		}
 	}
-	
+
 	return bucketName, objectKey
 }
 
@@ -285,12 +285,12 @@ func (m *wildcardMatcher) match() bool {
 	if m.matchExact() || m.matchSingleWildcard() {
 		return true
 	}
-	
+
 	// Try specific wildcard patterns
 	if m.matchPrefix() || m.matchSuffix() || m.matchMiddle() {
 		return true
 	}
-	
+
 	// Handle complex patterns
 	return m.matchMultipleWildcards()
 }
@@ -310,12 +310,12 @@ func (m *wildcardMatcher) matchPrefix() bool {
 	if !strings.HasSuffix(m.pattern, "*") {
 		return false
 	}
-	
+
 	withoutSuffix := m.pattern[:len(m.pattern)-1]
 	if strings.Contains(withoutSuffix, "*") {
 		return false
 	}
-	
+
 	return strings.HasPrefix(m.str, withoutSuffix)
 }
 
@@ -324,12 +324,12 @@ func (m *wildcardMatcher) matchSuffix() bool {
 	if !strings.HasPrefix(m.pattern, "*") {
 		return false
 	}
-	
+
 	withoutPrefix := m.pattern[1:]
 	if strings.Contains(withoutPrefix, "*") {
 		return false
 	}
-	
+
 	return strings.HasSuffix(m.str, withoutPrefix)
 }
 
@@ -338,12 +338,12 @@ func (m *wildcardMatcher) matchMiddle() bool {
 	if strings.Count(m.pattern, "*") != 1 {
 		return false
 	}
-	
+
 	m.parts = strings.Split(m.pattern, "*")
 	if len(m.parts) != 2 {
 		return false
 	}
-	
+
 	return strings.HasPrefix(m.str, m.parts[0]) && strings.HasSuffix(m.str, m.parts[1])
 }
 
@@ -352,7 +352,7 @@ func (m *wildcardMatcher) matchMultipleWildcards() bool {
 	if !strings.Contains(m.pattern, "*") {
 		return false
 	}
-	
+
 	m.parts = strings.Split(m.pattern, "*")
 	return m.matchParts()
 }
@@ -360,25 +360,25 @@ func (m *wildcardMatcher) matchMultipleWildcards() bool {
 // matchParts matches string parts sequentially
 func (m *wildcardMatcher) matchParts() bool {
 	lastIndex := 0
-	
+
 	for i, part := range m.parts {
 		if part == "" {
 			continue
 		}
-		
+
 		index := strings.Index(m.str[lastIndex:], part)
 		if index == -1 {
 			return false
 		}
-		
+
 		// First part must match at the beginning
 		if i == 0 && index != 0 {
 			return false
 		}
-		
+
 		lastIndex = lastIndex + index + len(part)
 	}
-	
+
 	// Check if last part should match at the end
 	return m.checkLastPart()
 }
@@ -388,12 +388,12 @@ func (m *wildcardMatcher) checkLastPart() bool {
 	if len(m.parts) == 0 {
 		return true
 	}
-	
+
 	lastPart := m.parts[len(m.parts)-1]
 	if lastPart == "" {
 		return true
 	}
-	
+
 	return strings.HasSuffix(m.str, lastPart)
 }
 
@@ -471,14 +471,27 @@ func (er *EventRouter) matchScheduledEventPattern(ctx *Context, pattern string) 
 	return ruleName == pattern
 }
 
-// HandleEvent routes an event to the appropriate handler
-func (er *EventRouter) HandleEvent(ctx *Context) error {
+// HandleEvent routes an event to the appropriate handler and applies the provided middleware chain.
+func (er *EventRouter) HandleEvent(ctx *Context, middlewareChain []Middleware) error {
 	handler, err := er.FindEventHandler(ctx)
 	if err != nil {
 		return err
 	}
 
-	return handler.HandleEvent(ctx)
+	finalHandler := Handler(eventHandlerAdapter{handler: handler})
+	for i := len(middlewareChain) - 1; i >= 0; i-- {
+		finalHandler = middlewareChain[i](finalHandler)
+	}
+
+	return finalHandler.Handle(ctx)
+}
+
+type eventHandlerAdapter struct {
+	handler EventHandler
+}
+
+func (a eventHandlerAdapter) Handle(ctx *Context) error {
+	return a.handler.HandleEvent(ctx)
 }
 
 // GetRoutes returns all routes for debugging/inspection

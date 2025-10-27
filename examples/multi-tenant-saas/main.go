@@ -126,7 +126,21 @@ type Pagination struct {
 
 // Mock database interface for demonstration
 type MockDB interface {
+	// Put stores an item in the database.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - item: The item to store
+	// Returns:
+	//   - An error if the storage fails
 	Put(ctx context.Context, item any) error
+
+	// Get retrieves an item from the database by its ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the item
+	//   - item: The item to retrieve
+	// Returns:
+	//   - An error if the retrieval fails
 	Get(ctx context.Context, id string, item any) error
 }
 
@@ -777,4 +791,3 @@ func main() {
 	// Start the Lambda handler
 	lambda.Start(app.HandleRequest)
 }
-

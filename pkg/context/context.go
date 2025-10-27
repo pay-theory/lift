@@ -74,17 +74,17 @@ func (l *noOpLogger) Error(_ string, _ ...map[string]any) {}
 func (l *noOpLogger) Fatal(_ string, _ ...map[string]any) {}
 
 // lift.Logger interface methods
-func (l *noOpLogger) WithField(_ string, _ any) lift.Logger  { return l }
+func (l *noOpLogger) WithField(_ string, _ any) lift.Logger   { return l }
 func (l *noOpLogger) WithFields(_ map[string]any) lift.Logger { return l }
 
 // StructuredLogger interface methods
 func (l *noOpLogger) WithRequestID(_ string) observability.StructuredLogger { return l }
-func (l *noOpLogger) WithTenantID(_ string) observability.StructuredLogger   { return l }
-func (l *noOpLogger) WithUserID(_ string) observability.StructuredLogger       { return l }
-func (l *noOpLogger) WithTraceID(_ string) observability.StructuredLogger     { return l }
-func (l *noOpLogger) WithSpanID(_ string) observability.StructuredLogger       { return l }
+func (l *noOpLogger) WithTenantID(_ string) observability.StructuredLogger  { return l }
+func (l *noOpLogger) WithUserID(_ string) observability.StructuredLogger    { return l }
+func (l *noOpLogger) WithTraceID(_ string) observability.StructuredLogger   { return l }
+func (l *noOpLogger) WithSpanID(_ string) observability.StructuredLogger    { return l }
 
-func (l *noOpLogger) Flush(_ context.Context) error     { return nil }
+func (l *noOpLogger) Flush(_ context.Context) error       { return nil }
 func (l *noOpLogger) Close() error                        { return nil }
 func (l *noOpLogger) IsHealthy() bool                     { return true }
 func (l *noOpLogger) GetStats() observability.LoggerStats { return observability.LoggerStats{} }

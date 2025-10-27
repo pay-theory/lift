@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
@@ -85,7 +86,7 @@ func newLiftAppBuilder(scope constructs.Construct, id *string, props *LiftAppPro
 func (b *liftAppBuilder) build() *LiftApp {
 	b.construct = constructs.NewConstruct(b.scope, b.id)
 	b.app = &LiftApp{Construct: b.construct}
-	
+
 	b.prepareEnvironment()
 	b.createFunction()
 	b.setupDatabase()
@@ -93,7 +94,7 @@ func (b *liftAppBuilder) build() *LiftApp {
 	b.createAPI()
 	b.setupRoutes()
 	b.createOutputs()
-	
+
 	return b.app
 }
 
@@ -217,12 +218,14 @@ func (b *liftAppBuilder) setupRateLimiting() {
 // createAPI creates the API Gateway
 func (b *liftAppBuilder) createAPI() {
 	apiProps := &liftconstructs.LiftAPIProps{
-		Name:                jsii.String(*b.props.AppName + "-api"),
-		Description:         jsii.String("API Gateway for " + *b.props.AppName),
-		EnableCORS:          jsii.Bool(true),
-		EnableAccessLogging: b.props.EnableAccessLogging,
-		DomainName:          b.props.DomainName,
-		CertificateArn:      b.props.CertificateArn,
+		APICommonProps: liftconstructs.APICommonProps{
+			Name:                jsii.String(*b.props.AppName + "-api"),
+			Description:         jsii.String("API Gateway for " + *b.props.AppName),
+			EnableCORS:          jsii.Bool(true),
+			EnableAccessLogging: b.props.EnableAccessLogging,
+			DomainName:          b.props.DomainName,
+			CertificateArn:      b.props.CertificateArn,
+		},
 	}
 
 	b.app.API = liftconstructs.NewLiftAPI(b.construct, jsii.String("API"), apiProps)
@@ -248,7 +251,7 @@ func (b *liftAppBuilder) setupRoutes() {
 // createOutputs creates CloudFormation outputs
 func (b *liftAppBuilder) createOutputs() {
 	stack := awscdk.Stack_Of(b.construct)
-	
+
 	awscdk.NewCfnOutput(stack, jsii.String("ApiUrl"), &awscdk.CfnOutputProps{
 		Value:       b.app.API.GetUrl(),
 		Description: jsii.String("API Gateway endpoint URL"),

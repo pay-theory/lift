@@ -1,6 +1,5 @@
 package lift
 
-
 // Handler represents a request handler
 type Handler interface {
 	Handle(ctx *Context) error
@@ -29,7 +28,6 @@ type TypedHandlerFunc[Req, Resp any] func(ctx *Context, req Req) (Resp, error)
 func (f TypedHandlerFunc[Req, Resp]) Handle(ctx *Context, req Req) (Resp, error) {
 	return f(ctx, req)
 }
-
 
 // SimpleHandler creates a Handler from a typed handler function
 // This is the main convenience function for creating type-safe handlers

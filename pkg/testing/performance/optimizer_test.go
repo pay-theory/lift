@@ -2,6 +2,7 @@ package performance
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -151,6 +152,43 @@ func (t *TestPerformanceMonitor) SetThresholds(_ PerformanceThresholds) error {
 	return nil
 }
 
+func TestPerformanceOptimizer_AutoOptimize(t *testing.T) {
+	config := PerformanceConfig{
+		BenchmarkTimeout:   time.Second,
+		EnableAutoOptimize: true,
+	}
+
+	optimizer := NewPerformanceOptimizer(config)
+	optimizer.AddMonitor(NewTestPerformanceMonitor())
+
+	successful := &TestOptimizer{optimizationType: OptimizationTypeCPU}
+	failing := &TestOptimizer{optimizationType: OptimizationTypeMemory, shouldError: true}
+
+	optimizer.AddOptimizer(successful)
+	optimizer.AddOptimizer(failing)
+
+	result, err := optimizer.OptimizePerformance(context.Background(), "service-A")
+	if err != nil {
+		t.Fatalf("OptimizePerformance failed: %v", err)
+	}
+
+	if !successful.called {
+		t.Fatal("expected successful optimizer to be invoked")
+	}
+
+	if _, ok := result.Optimizations[string(OptimizationTypeCPU)]; !ok {
+		t.Fatal("expected optimization results for CPU optimizer")
+	}
+
+	if _, ok := result.Optimizations[string(OptimizationTypeMemory)]; ok {
+		t.Fatal("did not expect results for failing optimizer")
+	}
+
+	if len(result.Errors) == 0 {
+		t.Fatal("expected optimizer error to be recorded")
+	}
+}
+
 // Test Benchmark Implementation
 type TestBenchmark struct {
 	baseline BenchmarkResult
@@ -238,6 +276,37 @@ func (t *TestBenchmark) GetBaseline() BenchmarkResult {
 func (t *TestBenchmark) SetBaseline(baseline BenchmarkResult) error {
 	t.baseline = baseline
 	return nil
+}
+
+type TestOptimizer struct {
+	optimizationType OptimizationType
+	shouldError      bool
+	called           bool
+}
+
+func (t *TestOptimizer) Optimize(_ context.Context, target OptimizationTarget) (OptimizationResult, error) {
+	t.called = true
+	if t.shouldError {
+		return OptimizationResult{}, fmt.Errorf("optimizer %s failed", t.optimizationType)
+	}
+
+	return OptimizationResult{
+		Timestamp: time.Now(),
+		Target:    target,
+		Success:   true,
+	}, nil
+}
+
+func (t *TestOptimizer) GetOptimizationType() OptimizationType {
+	return t.optimizationType
+}
+
+func (t *TestOptimizer) EstimateImpact(_ OptimizationTarget) ImpactEstimate {
+	return ImpactEstimate{}
+}
+
+func (t *TestOptimizer) ValidateOptimization(_ OptimizationResult) ValidationResult {
+	return ValidationResult{Valid: true}
 }
 
 func (t *TestBenchmark) Compare(current, baseline BenchmarkResult) ComparisonResult {

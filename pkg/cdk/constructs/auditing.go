@@ -1,3 +1,8 @@
+// Package constructs provides AWS CDK constructs for Lift applications.
+//
+// This package contains high-level CDK constructs that implement Lift's best practices
+// for AWS infrastructure. The constructs include optimized configurations for API
+// Gateway, Lambda functions, DynamoDB tables, and other AWS services.
 package constructs
 
 import (
@@ -35,53 +40,122 @@ const (
 
 // AuditingProps defines properties for the Auditing construct
 type AuditingProps struct {
-	EncryptionKey              awskms.IKey
-	AuditBucket                awss3.IBucket
-	EnableComplianceReporting  *bool
-	EnableImmutableLogs        *bool
-	EnableDatabaseLogs         *bool
-	EnableRealTimeProcessing   *bool
-	EnableTamperProtection     *bool
-	EnableLogAggregation       *bool
-	LogRetentionDays           *float64
-	EnableSIEMIntegration      *bool
-	SIEMEndpoint               *string
-	EnableLogAnalysis          *bool
-	ComplianceFrameworks       *[]string
-	EnableApplicationLogs      *bool
-	AppName                    *string
-	EnableCloudTrail           *bool
-	EnableEncryption           *bool
-	EnableCrossAccountAccess   *bool
-	CrossAccountRoleArns       *[]*string
-	EnableIntegrityChecking    *bool
-	EnableDashboard            *bool
-	EnableAlerting             *bool
-	AlertTopicArn              *string
-	Environment                *string
+	// EncryptionKey is the KMS key used for encrypting audit logs
+	EncryptionKey awskms.IKey
+	// AuditBucket is the S3 bucket used for storing audit logs
+	AuditBucket awss3.IBucket
+	// EnableComplianceReporting enables compliance reporting features
+	EnableComplianceReporting *bool
+	// EnableImmutableLogs makes audit logs immutable to prevent tampering
+	EnableImmutableLogs *bool
+	// EnableDatabaseLogs enables database query logging
+	EnableDatabaseLogs *bool
+	// EnableRealTimeProcessing enables real-time log processing
+	EnableRealTimeProcessing *bool
+	// EnableTamperProtection enables tamper protection for audit logs
+	EnableTamperProtection *bool
+	// EnableLogAggregation enables log aggregation from multiple sources
+	EnableLogAggregation *bool
+	// LogRetentionDays specifies how many days to retain logs
+	LogRetentionDays *float64
+	// EnableSIEMIntegration enables integration with SIEM systems
+	EnableSIEMIntegration *bool
+	// SIEMEndpoint is the endpoint for SIEM integration
+	SIEMEndpoint *string
+	// EnableLogAnalysis enables automated log analysis
+	EnableLogAnalysis *bool
+	// ComplianceFrameworks specifies which compliance frameworks to support
+	ComplianceFrameworks *[]string
+	// EnableApplicationLogs enables application-level logging
+	EnableApplicationLogs *bool
+	// AppName is the name of the application being audited
+	AppName *string
+	// EnableCloudTrail enables AWS CloudTrail for API call logging
+	EnableCloudTrail *bool
+	// EnableEncryption enables encryption for logs at rest and in transit
+	EnableEncryption *bool
+	// EnableCrossAccountAccess enables cross-account access for audit logs
+	EnableCrossAccountAccess *bool
+	// CrossAccountRoleArns specifies the ARNs of roles for cross-account access
+	CrossAccountRoleArns *[]*string
+	// EnableIntegrityChecking enables integrity checking for audit logs
+	EnableIntegrityChecking *bool
+	// EnableDashboard enables a CloudWatch dashboard for audit logs
+	EnableDashboard *bool
+	// EnableAlerting enables CloudWatch alerts for audit logs
+	EnableAlerting *bool
+	// AlertTopicArn is the ARN of the SNS topic for alerts
+	AlertTopicArn *string
+	// Environment specifies the deployment environment (dev, test, prod)
+	Environment *string
+	// EnableRegulatoryCompliance enables features for regulatory compliance
 	EnableRegulatoryCompliance *bool
-	AuditLevel                 AuditLevel
+	// AuditLevel specifies the level of audit logging (BASIC, DETAILED, COMPREHENSIVE)
+	AuditLevel AuditLevel
 }
 
 // AuditingConstruct creates comprehensive audit logging infrastructure
+//
+// This construct sets up a complete audit logging infrastructure including:
+// - CloudWatch log groups for different types of logs
+// - KMS encryption for logs
+// - CloudTrail for API call logging
+// - S3 bucket for log storage
+// - Lambda functions for log processing
+// - CloudWatch dashboard for monitoring
+// - Kinesis Firehose for log delivery
+// - Kinesis stream for log collection
+// - Lambda functions for compliance and integrity checking
+// - CloudWatch alarms for alerting
 type AuditingConstruct struct {
+	// AuditLogGroup is the CloudWatch log group for audit logs
 	AuditLogGroup awslogs.LogGroup
+	// Embedded Construct for CDK compatibility
 	constructs.Construct
-	EncryptionKey          awskms.Key
-	CloudTrail             awscloudtrail.Trail
-	ApplicationLogGroup    awslogs.LogGroup
-	DatabaseLogGroup       awslogs.LogGroup
-	AuditBucket            awss3.Bucket
-	LogProcessingFunction  awslambda.Function
-	AuditDashboard         awscloudwatch.Dashboard
+	// EncryptionKey is the KMS key used for encrypting logs
+	EncryptionKey awskms.Key
+	// CloudTrail is the CloudTrail instance for API call logging
+	CloudTrail awscloudtrail.Trail
+	// ApplicationLogGroup is the CloudWatch log group for application logs
+	ApplicationLogGroup awslogs.LogGroup
+	// DatabaseLogGroup is the CloudWatch log group for database logs
+	DatabaseLogGroup awslogs.LogGroup
+	// AuditBucket is the S3 bucket for storing audit logs
+	AuditBucket awss3.Bucket
+	// LogProcessingFunction is the Lambda function for processing logs
+	LogProcessingFunction awslambda.Function
+	// AuditDashboard is the CloudWatch dashboard for monitoring audit logs
+	AuditDashboard awscloudwatch.Dashboard
+	// FirehoseDeliveryStream is the Kinesis Firehose for log delivery
 	FirehoseDeliveryStream awskinesisfirehose.CfnDeliveryStream
-	LogStream              awskinesis.Stream
-	ComplianceFunction     awslambda.Function
-	IntegrityFunction      awslambda.Function
-	AuditAlarms            []awscloudwatch.Alarm
+	// LogStream is the Kinesis stream for log collection
+	LogStream awskinesis.Stream
+	// ComplianceFunction is the Lambda function for compliance checking
+	ComplianceFunction awslambda.Function
+	// IntegrityFunction is the Lambda function for integrity checking
+	IntegrityFunction awslambda.Function
+	// AuditAlarms is a list of CloudWatch alarms for audit log alerting
+	AuditAlarms []awscloudwatch.Alarm
 }
 
 // NewAuditingConstruct creates a new auditing construct
+//
+// This function creates a new auditing construct with the following features:
+// - Configurable audit logging level (BASIC, DETAILED, COMPREHENSIVE)
+// - Optional encryption for logs at rest and in transit
+// - Optional CloudTrail for API call logging
+// - Optional SIEM integration
+// - Optional log analysis
+// - Optional compliance reporting
+// - Optional dashboard and alerting
+//
+// Parameters:
+//   - scope: The CDK construct scope
+//   - id: The construct ID
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new AuditingConstruct instance
 func NewAuditingConstruct(scope constructs.Construct, id string, props *AuditingProps) *AuditingConstruct {
 	this := constructs.NewConstruct(scope, &id)
 
@@ -179,10 +253,10 @@ func (b *auditingConfigBuilder) applyProps(props *AuditingProps) *auditingConfig
 	if props.AuditLevel != "" {
 		b.config.auditLevel = props.AuditLevel
 	}
-	
+
 	b.applyBooleanProps(props)
 	b.applyAdvancedProps(props)
-	
+
 	return b
 }
 
@@ -257,25 +331,25 @@ func (b *auditingConfigBuilder) build() *auditingConstructConfig {
 func (b *auditingConstructBuilder) build() *AuditingConstruct {
 	// Create encryption key
 	encryptionKey := b.setupEncryptionKey()
-	
+
 	// Create audit bucket
 	auditBucket := b.setupAuditBucket(encryptionKey)
-	
+
 	// Create log groups
 	applicationLogGroup, databaseLogGroup, auditLogGroup := b.setupLogGroups(encryptionKey)
-	
+
 	// Create CloudTrail
 	cloudTrail := b.setupCloudTrail(auditBucket, auditLogGroup)
-	
+
 	// Create streaming components
 	logStream, firehoseStream := b.setupStreamingComponents(auditBucket, encryptionKey)
-	
+
 	// Create processing functions
 	logProcessingFunction, integrityFunction, complianceFunction := b.setupProcessingFunctions(auditBucket, encryptionKey, logStream)
-	
+
 	// Create monitoring components
 	dashboard, alarms := b.setupMonitoring(applicationLogGroup, databaseLogGroup, auditLogGroup)
-	
+
 	// Store audit configuration
 	storeAuditConfiguration(b.construct, b.props)
 
@@ -302,7 +376,7 @@ func (b *auditingConstructBuilder) setupEncryptionKey() awskms.Key {
 	if !b.config.enableEncryption {
 		return nil
 	}
-	
+
 	if b.props.EncryptionKey != nil {
 		encryptionKey, ok := b.props.EncryptionKey.(awskms.Key)
 		if !ok {
@@ -310,7 +384,7 @@ func (b *auditingConstructBuilder) setupEncryptionKey() awskms.Key {
 		}
 		return encryptionKey
 	}
-	
+
 	encryptionKey := awskms.NewKey(b.construct, jsii.String("AuditEncryptionKey"), &awskms.KeyProps{
 		Description:       jsii.String(fmt.Sprintf("Audit encryption key for %s", *b.props.AppName)),
 		EnableKeyRotation: jsii.Bool(true),
@@ -347,7 +421,7 @@ func (b *auditingConstructBuilder) setupEncryptionKey() awskms.Key {
 		}),
 	})
 	encryptionKey.AddAlias(jsii.String(fmt.Sprintf("alias/%s-audit", *b.props.AppName)))
-	
+
 	return encryptionKey
 }
 
@@ -360,7 +434,7 @@ func (b *auditingConstructBuilder) setupAuditBucket(encryptionKey awskms.Key) aw
 		}
 		return auditBucket
 	}
-	
+
 	auditBucket := awss3.NewBucket(b.construct, jsii.String("AuditBucket"), &awss3.BucketProps{
 		BucketName: jsii.String(fmt.Sprintf("%s-audit-%s", *b.props.AppName, *awscdk.Stack_Of(b.construct).Region())),
 		Encryption: func() awss3.BucketEncryption {
@@ -408,7 +482,7 @@ func (b *auditingConstructBuilder) setupAuditBucket(encryptionKey awskms.Key) aw
 
 	// Configure cross-account access if enabled
 	b.configureCrossAccountAccess(auditBucket)
-	
+
 	return auditBucket
 }
 
@@ -417,7 +491,7 @@ func (b *auditingConstructBuilder) configureCrossAccountAccess(auditBucket awss3
 	if !b.config.enableCrossAccountAccess || b.props.CrossAccountRoleArns == nil {
 		return
 	}
-	
+
 	auditBucket.AddToResourcePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 		Sid:    jsii.String("AllowCrossAccountAccess"),
 		Effect: awsiam.Effect_ALLOW,
@@ -440,7 +514,7 @@ func (b *auditingConstructBuilder) setupLogGroups(encryptionKey awskms.Key) (aws
 	applicationLogGroup := createLogGroup(b.construct, "ApplicationLogGroup", fmt.Sprintf("/aws/audit/%s/application", *b.props.AppName), encryptionKey, b.config.logRetentionDays)
 	databaseLogGroup := createLogGroup(b.construct, "DatabaseLogGroup", fmt.Sprintf("/aws/audit/%s/database", *b.props.AppName), encryptionKey, b.config.logRetentionDays)
 	auditLogGroup := createLogGroup(b.construct, "AuditLogGroup", fmt.Sprintf("/aws/audit/%s/system", *b.props.AppName), encryptionKey, b.config.logRetentionDays)
-	
+
 	return applicationLogGroup, databaseLogGroup, auditLogGroup
 }
 
@@ -449,7 +523,7 @@ func (b *auditingConstructBuilder) setupCloudTrail(auditBucket awss3.Bucket, aud
 	if !b.config.enableCloudTrail {
 		return nil
 	}
-	
+
 	cloudTrail := awscloudtrail.NewTrail(b.construct, jsii.String("AuditCloudTrail"), &awscloudtrail.TrailProps{
 		TrailName:                  jsii.String(fmt.Sprintf("%s-audit-trail", *b.props.AppName)),
 		Bucket:                     auditBucket,
@@ -471,7 +545,7 @@ func (b *auditingConstructBuilder) setupCloudTrail(auditBucket awss3.Bucket, aud
 		ReadWriteType:           awscloudtrail.ReadWriteType_ALL,
 		IncludeManagementEvents: jsii.Bool(true),
 	})
-	
+
 	return cloudTrail
 }
 
@@ -479,7 +553,7 @@ func (b *auditingConstructBuilder) setupCloudTrail(auditBucket awss3.Bucket, aud
 func (b *auditingConstructBuilder) setupStreamingComponents(auditBucket awss3.Bucket, encryptionKey awskms.Key) (awskinesis.Stream, awskinesisfirehose.CfnDeliveryStream) {
 	var logStream awskinesis.Stream
 	var firehoseStream awskinesisfirehose.CfnDeliveryStream
-	
+
 	// Create Kinesis stream for real-time processing
 	if b.config.enableRealTimeProcessing {
 		logStream = awskinesis.NewStream(b.construct, jsii.String("AuditLogStream"), &awskinesis.StreamProps{
@@ -490,12 +564,12 @@ func (b *auditingConstructBuilder) setupStreamingComponents(auditBucket awss3.Bu
 			RetentionPeriod: awscdk.Duration_Hours(jsii.Number(24)),
 		})
 	}
-	
+
 	// Create Firehose delivery stream for log aggregation
 	if b.config.enableLogAggregation {
 		firehoseStream = createFirehoseDeliveryStream(b.construct, b.props, auditBucket, encryptionKey, logStream)
 	}
-	
+
 	return logStream, firehoseStream
 }
 
@@ -504,22 +578,22 @@ func (b *auditingConstructBuilder) setupProcessingFunctions(auditBucket awss3.Bu
 	var logProcessingFunction awslambda.Function
 	var integrityFunction awslambda.Function
 	var complianceFunction awslambda.Function
-	
+
 	// Create log processing function
 	if b.config.enableRealTimeProcessing {
 		logProcessingFunction = createLogProcessingFunction(b.construct, b.props, auditBucket, encryptionKey, logStream)
 	}
-	
+
 	// Create integrity checking function
 	if b.config.enableIntegrityChecking {
 		integrityFunction = createIntegrityCheckingFunction(b.construct, b.props, auditBucket, encryptionKey)
 	}
-	
+
 	// Create compliance function
 	if b.config.enableComplianceReporting {
 		complianceFunction = createAuditComplianceFunction(b.construct, b.props, auditBucket, encryptionKey)
 	}
-	
+
 	return logProcessingFunction, integrityFunction, complianceFunction
 }
 
@@ -527,17 +601,17 @@ func (b *auditingConstructBuilder) setupProcessingFunctions(auditBucket awss3.Bu
 func (b *auditingConstructBuilder) setupMonitoring(applicationLogGroup, databaseLogGroup, auditLogGroup awslogs.LogGroup) (awscloudwatch.Dashboard, []awscloudwatch.Alarm) {
 	var dashboard awscloudwatch.Dashboard
 	var alarms []awscloudwatch.Alarm
-	
+
 	// Create dashboard
 	if b.config.enableDashboard {
 		dashboard = createAuditDashboard(b.construct, b.props, applicationLogGroup, databaseLogGroup, auditLogGroup)
 	}
-	
+
 	// Create alarms
 	if b.config.enableAlerting {
 		alarms = createAuditAlarms(b.construct, b.props, applicationLogGroup, databaseLogGroup, auditLogGroup)
 	}
-	
+
 	return dashboard, alarms
 }
 
@@ -553,8 +627,8 @@ func createLogGroup(scope constructs.Construct, id string, logGroupName string, 
 
 // retentionMapping defines the mapping between days and retention constants
 type retentionMapping struct {
-    retention awslogs.RetentionDays
-    maxDays   float64
+	retention awslogs.RetentionDays
+	maxDays   float64
 }
 
 // mapRetentionDays maps numeric days to CloudWatch retention constants
@@ -564,25 +638,25 @@ func mapRetentionDays(days *float64) awslogs.RetentionDays {
 	}
 
 	// Define retention mappings in ascending order
-    mappings := []retentionMapping{
-        {retention: awslogs.RetentionDays_ONE_DAY, maxDays: 1},
-        {retention: awslogs.RetentionDays_THREE_DAYS, maxDays: 3},
-        {retention: awslogs.RetentionDays_FIVE_DAYS, maxDays: 5},
-        {retention: awslogs.RetentionDays_ONE_WEEK, maxDays: 7},
-        {retention: awslogs.RetentionDays_TWO_WEEKS, maxDays: 14},
-        {retention: awslogs.RetentionDays_ONE_MONTH, maxDays: 30},
-        {retention: awslogs.RetentionDays_TWO_MONTHS, maxDays: 60},
-        {retention: awslogs.RetentionDays_THREE_MONTHS, maxDays: 90},
-        {retention: awslogs.RetentionDays_FOUR_MONTHS, maxDays: 120},
-        {retention: awslogs.RetentionDays_FIVE_MONTHS, maxDays: 150},
-        {retention: awslogs.RetentionDays_SIX_MONTHS, maxDays: 180},
-        {retention: awslogs.RetentionDays_ONE_YEAR, maxDays: 365},
-        {retention: awslogs.RetentionDays_THIRTEEN_MONTHS, maxDays: 400},
-        {retention: awslogs.RetentionDays_EIGHTEEN_MONTHS, maxDays: 545},
-        {retention: awslogs.RetentionDays_TWO_YEARS, maxDays: 730},
-        {retention: awslogs.RetentionDays_FIVE_YEARS, maxDays: 1827},
-        {retention: awslogs.RetentionDays_TEN_YEARS, maxDays: 3653},
-    }
+	mappings := []retentionMapping{
+		{retention: awslogs.RetentionDays_ONE_DAY, maxDays: 1},
+		{retention: awslogs.RetentionDays_THREE_DAYS, maxDays: 3},
+		{retention: awslogs.RetentionDays_FIVE_DAYS, maxDays: 5},
+		{retention: awslogs.RetentionDays_ONE_WEEK, maxDays: 7},
+		{retention: awslogs.RetentionDays_TWO_WEEKS, maxDays: 14},
+		{retention: awslogs.RetentionDays_ONE_MONTH, maxDays: 30},
+		{retention: awslogs.RetentionDays_TWO_MONTHS, maxDays: 60},
+		{retention: awslogs.RetentionDays_THREE_MONTHS, maxDays: 90},
+		{retention: awslogs.RetentionDays_FOUR_MONTHS, maxDays: 120},
+		{retention: awslogs.RetentionDays_FIVE_MONTHS, maxDays: 150},
+		{retention: awslogs.RetentionDays_SIX_MONTHS, maxDays: 180},
+		{retention: awslogs.RetentionDays_ONE_YEAR, maxDays: 365},
+		{retention: awslogs.RetentionDays_THIRTEEN_MONTHS, maxDays: 400},
+		{retention: awslogs.RetentionDays_EIGHTEEN_MONTHS, maxDays: 545},
+		{retention: awslogs.RetentionDays_TWO_YEARS, maxDays: 730},
+		{retention: awslogs.RetentionDays_FIVE_YEARS, maxDays: 1827},
+		{retention: awslogs.RetentionDays_TEN_YEARS, maxDays: 3653},
+	}
 
 	// Find the appropriate retention period
 	for _, mapping := range mappings {
@@ -674,7 +748,7 @@ func createAuditLambdaFunction(scope constructs.Construct, id string, props *Aud
 		"APP_NAME":     props.AppName,
 		"ENVIRONMENT":  props.Environment,
 	}
-	
+
 	// Create the Lambda function
 	function := awslambda.NewFunction(scope, jsii.String(id), &awslambda.FunctionProps{
 		FunctionName: jsii.String(config.FunctionName),

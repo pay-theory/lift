@@ -717,57 +717,51 @@ import "github.com/pay-theory/lift/pkg/testing"
 func TestCreateUser(t *testing.T) {
     // Much cleaner test setup
     app := testing.NewTestApp()
-    app.POST("/users", lift.SimpleHandler(createUser))
+    app.App().POST("/users", lift.SimpleHandler(createUser))
     
-    ctx := testing.NewTestContext(
-        testing.WithMethod("POST"),
-        testing.WithPath("/users"),
-        testing.WithBody(`{"name":"test","age":25}`),
-    )
+    // Make request and get response
+    resp := app.POST("/users", map[string]any{
+        "name": "test",
+        "age":  25,
+    })
     
-    err := app.HandleTestRequest(ctx)
-    assert.NoError(t, err)
-    assert.Equal(t, 201, ctx.Response.StatusCode)
+    assert.NoError(t, resp.Error)
+    assert.Equal(t, 201, resp.StatusCode)
     
     // Automatic response parsing
     var user User
-    ctx.ParseResponse(&user)
+    err := json.Unmarshal(resp.Body, &user)
+    assert.NoError(t, err)
     assert.Equal(t, "test", user.Name)
 }
 
 // Table-driven tests
 func TestUserValidation(t *testing.T) {
     app := testing.NewTestApp()
-    app.POST("/users", lift.SimpleHandler(createUser))
+    app.App().POST("/users", lift.SimpleHandler(createUser))
     
     tests := []struct {
         name    string
-        body    string
+        body    map[string]any
         wantErr bool
         status  int
     }{
-        {"valid", `{"name":"Alice","age":30}`, false, 201},
-        {"missing name", `{"age":30}`, true, 400},
-        {"invalid age", `{"name":"Bob","age":-5}`, true, 400},
-        {"too old", `{"name":"Carl","age":200}`, true, 400},
+        {"valid", map[string]any{"name": "Alice", "age": 30}, false, 201},
+        {"missing name", map[string]any{"age": 30}, true, 400},
+        {"invalid age", map[string]any{"name": "Bob", "age": -5}, true, 400},
+        {"too old", map[string]any{"name": "Carl", "age": 200}, true, 400},
     }
     
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            ctx := testing.NewTestContext(
-                testing.WithMethod("POST"),
-                testing.WithPath("/users"),
-                testing.WithBody(tt.body),
-            )
-            
-            err := app.HandleTestRequest(ctx)
+            resp := app.POST("/users", tt.body)
             
             if tt.wantErr {
-                assert.Error(t, err)
+                assert.Error(t, resp.Error)
             } else {
-                assert.NoError(t, err)
+                assert.NoError(t, resp.Error)
             }
-            assert.Equal(t, tt.status, ctx.Response.StatusCode)
+            assert.Equal(t, tt.status, resp.StatusCode)
         })
     }
 }
@@ -807,6 +801,7 @@ functions:
   app:
     handler: bootstrap
     runtime: provided.al2
+    architecture: arm64
     events:
       # HTTP events
       - httpApi:
@@ -837,8 +832,8 @@ echo "Building Lift application..."
 # Clean build
 rm -rf bootstrap function.zip
 
-# Build for Lambda
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
+# Build for Lambda (ARM64 recommended for better performance/cost)
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
   go build -ldflags="-s -w" -o bootstrap main.go
 
 # Create deployment package

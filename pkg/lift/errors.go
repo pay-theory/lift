@@ -127,47 +127,47 @@ func (e *LiftError) WithLogging() *LiftError {
 
 // ParameterError creates a parameter validation error with field details
 func ParameterError(field, message string) *LiftError {
-    return NewLiftError(ErrorCodeParameterError, message, 400).WithDetails(map[string]any{
-        "field":   field,
-        "message": message,
-    })
+	return NewLiftError(ErrorCodeParameterError, message, 400).WithDetails(map[string]any{
+		"field":   field,
+		"message": message,
+	})
 }
 
 func Unauthorized(message string) *LiftError {
-    return NewLiftError(ErrorCodeUnauthorized, message, 401)
+	return NewLiftError(ErrorCodeUnauthorized, message, 401)
 }
 
 // AuthorizationError creates a 403 Forbidden error
 func AuthorizationError(message string) *LiftError {
-    return NewLiftError(ErrorCodeAuthorizationError, message, 403)
+	return NewLiftError(ErrorCodeAuthorizationError, message, 403)
 }
 
 func NotFound(message string) *LiftError {
-    return NewLiftError(ErrorCodeNotFound, message, 404)
+	return NewLiftError(ErrorCodeNotFound, message, 404)
 }
 
 // ValidationError creates a 422 Unprocessable Entity error for validation failures
 func ValidationError(message string) *LiftError {
-    return NewLiftError(ErrorCodeValidationError, message, 422)
+	return NewLiftError(ErrorCodeValidationError, message, 422)
 }
 
 func SystemError(message string) *LiftError {
-    return NewLiftError(ErrorCodeSystemError, message, 500).WithStackTrace().WithTraceID("")
+	return NewLiftError(ErrorCodeSystemError, message, 500).WithStackTrace().WithTraceID("")
 }
 
 // NetworkError creates a network-related error
 func NetworkError(message string) *LiftError {
-    return NewLiftError(ErrorCodeNetworkError, message, 500)
+	return NewLiftError(ErrorCodeNetworkError, message, 500)
 }
 
 // ProcessingError creates a processing error
 func ProcessingError(message string) *LiftError {
-    return NewLiftError(ErrorCodeProcessingError, message, 500)
+	return NewLiftError(ErrorCodeProcessingError, message, 500)
 }
 
 // TokenizationFailure creates a tokenization error
 func TokenizationFailure(message string) *LiftError {
-    return NewLiftError(ErrorCodeTokenizationError, message, 500)
+	return NewLiftError(ErrorCodeTokenizationError, message, 500)
 }
 
 // ErrorResponse formats an error for JSON response

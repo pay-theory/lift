@@ -2,9 +2,12 @@ package middleware
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/observability"
+	"github.com/pay-theory/lift/pkg/observability/zap"
 )
 
 // Middleware represents a middleware function
@@ -20,34 +23,60 @@ func Chain(middlewares ...Middleware) Middleware {
 	}
 }
 
+var (
+	defaultLogger     observability.StructuredLogger
+	defaultLoggerOnce sync.Once
+)
+
+// getDefaultLogger returns a singleton console logger for use when no logger is configured
+func getDefaultLogger() observability.StructuredLogger {
+	defaultLoggerOnce.Do(func() {
+		config := observability.LoggerConfig{
+			Level:  "info",
+			Format: "json",
+		}
+		logger, err := zap.NewZapLogger(config)
+		if err != nil {
+			// This should never happen with a basic config, but if it does, panic
+			// because we need logging to work
+			panic(fmt.Sprintf("Failed to initialize default logger: %v", err))
+		}
+		defaultLogger = logger
+	})
+	return defaultLogger
+}
+
 // Logger provides structured request/response logging
+// If no logger is configured on the context, it will initialize a default console logger
 func Logger() Middleware {
 	return func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			start := time.Now()
 
-			// Add request ID to logger if available
-			if ctx.Logger != nil {
-				ctx.Logger = ctx.Logger.WithField("request_id", ctx.RequestID)
+			// Initialize logger if not already set
+			// This ensures logging is always available
+			if ctx.Logger == nil {
+				ctx.Logger = getDefaultLogger()
 			}
+
+			// Add request ID to logger
+			ctx.Logger = ctx.Logger.WithField("request_id", ctx.RequestID)
 
 			err := next.Handle(ctx)
 
 			// Log request completion
-			if ctx.Logger != nil {
-				fields := map[string]any{
-					"method":   ctx.Request.Method,
-					"path":     ctx.Request.Path,
-					"status":   ctx.Response.StatusCode,
-					"duration": time.Since(start).Milliseconds(),
-				}
+			fields := map[string]any{
+				"method":   ctx.Request.Method,
+				"path":     ctx.Request.Path,
+				"status":   ctx.Response.StatusCode,
+				"duration": time.Since(start).Milliseconds(),
+			}
 
-				if err != nil {
-					fields["error"] = "[REDACTED_ERROR_DETAIL]" // Sanitized for security
-					ctx.Logger.Error("Request failed", fields)
-				} else {
-					ctx.Logger.Info("Request completed", fields)
-				}
+			if err != nil {
+				fields["error"] = "[REDACTED_ERROR_DETAIL]" // Sanitized for security
+				ctx.Logger.Error("Request failed", fields)
+			} else {
+				ctx.Logger.Info("Request completed", fields)
 			}
 
 			return err

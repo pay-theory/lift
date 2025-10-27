@@ -1,3 +1,8 @@
+// Package constructs provides AWS CDK constructs for Lift applications.
+//
+// This package contains high-level CDK constructs that implement Lift's best practices
+// for AWS infrastructure. The constructs include optimized configurations for API
+// Gateway, Lambda functions, DynamoDB tables, and other AWS services.
 package constructs
 
 import (
@@ -9,7 +14,12 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-// APIKeyAuthorizerProps defines properties for the API key authorizer
+// APIKeyAuthorizerProps defines properties for the API key authorizer.
+//
+// This struct contains all configurable properties for creating an API key
+// authorizer for HTTP APIs. The properties include API key source and parameter
+// configuration, validator function, DynamoDB table for API key storage, and
+// caching settings.
 type APIKeyAuthorizerProps struct {
 	// API key parameter source (header or query)
 	APIKeySource *string `json:"apiKeySource"`
@@ -23,14 +33,33 @@ type APIKeyAuthorizerProps struct {
 	ResultsCacheTtl *float64 `json:"resultsCacheTtl"`
 }
 
-// APIKeyAuthorizer provides API key authentication for HTTP APIs
+// APIKeyAuthorizer provides API key authentication for HTTP APIs.
+//
+// This construct creates an API key authorizer for HTTP APIs that validates API
+// keys against a DynamoDB table. It includes a Lambda function for validation and
+// caching of API key validation results.
 type APIKeyAuthorizer struct {
 	constructs.Construct
 	Authorizer        awsapigatewayv2.IHttpRouteAuthorizer
 	ValidatorFunction awslambda.IFunction
 }
 
-// NewAPIKeyAuthorizer creates a new API key authorizer
+// NewAPIKeyAuthorizer creates a new API key authorizer.
+//
+// This function creates a new API key authorizer with the following features:
+// - Configurable API key source (header or query parameter)
+// - Customizable API key parameter name
+// - Optional custom validator function
+// - DynamoDB table for API key storage
+// - Caching of validation results
+//
+// Parameters:
+//   - scope: The CDK construct scope
+//   - id: The construct ID
+//   - props: Configuration properties
+//
+// Returns:
+//   - A new APIKeyAuthorizer instance
 func NewAPIKeyAuthorizer(scope constructs.Construct, id *string, props *APIKeyAuthorizerProps) *APIKeyAuthorizer {
 	this := constructs.NewConstruct(scope, id)
 
@@ -74,7 +103,16 @@ func NewAPIKeyAuthorizer(scope constructs.Construct, id *string, props *APIKeyAu
 	return auth
 }
 
-// createValidatorFunction creates the Lambda function that validates API keys
+// createValidatorFunction creates the Lambda function that validates API keys.
+//
+// This method creates a Lambda function that validates API keys against a
+// DynamoDB table. The function includes caching and usage tracking.
+//
+// Parameters:
+//   - props: Configuration properties
+//
+// Returns:
+//   - A Lambda function that validates API keys
 func (auth *APIKeyAuthorizer) createValidatorFunction(props *APIKeyAuthorizerProps) awslambda.IFunction {
 	tableName := "api-keys"
 	if props.APIKeyTableName != nil {
@@ -100,7 +138,16 @@ func (auth *APIKeyAuthorizer) createValidatorFunction(props *APIKeyAuthorizerPro
 	return fn.Function
 }
 
-// getIdentitySource builds the identity source string
+// getIdentitySource builds the identity source string.
+//
+// This method constructs the identity source string based on the API key source
+// (header or query parameter) and parameter name.
+//
+// Parameters:
+//   - props: Configuration properties
+//
+// Returns:
+//   - The identity source string for the authorizer
 func (auth *APIKeyAuthorizer) getIdentitySource(props *APIKeyAuthorizerProps) string {
 	if *props.APIKeySource == "header" {
 		return "$request.header." + *props.APIKeyParameter
@@ -108,7 +155,23 @@ func (auth *APIKeyAuthorizer) getIdentitySource(props *APIKeyAuthorizerProps) st
 	return "$request.querystring." + *props.APIKeyParameter
 }
 
-// generateAPIKeyValidatorCode generates the Lambda code for API key validation
+// generateAPIKeyValidatorCode generates the Lambda code for API key validation.
+//
+// This function generates the JavaScript code for a Lambda function that validates
+// API keys against a DynamoDB table. The function includes:
+// - API key extraction from request
+// - DynamoDB validation
+// - Caching of validation results
+// - Usage tracking
+// - Policy generation
+//
+// Parameters:
+//   - apiKeySource: The source of the API key (header or query)
+//   - apiKeyParameter: The parameter name
+//   - tableName: The DynamoDB table name
+//
+// Returns:
+//   - The JavaScript code for the validator function
 func generateAPIKeyValidatorCode(_, _, _ string) string {
 	return `const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
@@ -119,38 +182,38 @@ const CACHE_TTL = 300000; // 5 minutes
 
 exports.handler = async (event) => {
     console.log('Auth event:', JSON.stringify(event, null, 2));
-    
+
     try {
         // Extract API key from request
         const apiKey = extractAPIKey(event);
-        
+
         if (!apiKey) {
             console.log('No API key provided');
             return generatePolicy('user', 'Deny', event.methodArn);
         }
-        
+
         // Check cache first
         const cachedResult = apiKeyCache.get(apiKey);
         if (cachedResult && cachedResult.expires > Date.now()) {
             console.log('Using cached result for API key');
             return generatePolicy(cachedResult.principalId, 'Allow', event.methodArn, cachedResult.context);
         }
-        
+
         // Validate API key against DynamoDB
         const result = await validateAPIKey(apiKey);
-        
+
         if (!result.valid) {
             console.log('Invalid API key');
             return generatePolicy('user', 'Deny', event.methodArn);
         }
-        
+
         // Cache the result
         apiKeyCache.set(apiKey, {
             principalId: result.principalId,
             context: result.context,
             expires: Date.now() + CACHE_TTL
         });
-        
+
         // Clean up old cache entries
         if (apiKeyCache.size > 1000) {
             const now = Date.now();
@@ -160,7 +223,7 @@ exports.handler = async (event) => {
                 }
             }
         }
-        
+
         return generatePolicy(result.principalId, 'Allow', event.methodArn, result.context);
     } catch (error) {
         console.error('Auth error:', error);
@@ -172,13 +235,13 @@ exports.handler = async (event) => {
 function extractAPIKey(event) {
     const source = process.env.API_KEY_SOURCE;
     const parameter = process.env.API_KEY_PARAMETER;
-    
+
     if (source === 'header') {
         return event.headers && event.headers[parameter];
     } else if (source === 'query') {
         return event.queryStringParameters && event.queryStringParameters[parameter];
     }
-    
+
     return null;
 }
 
@@ -188,20 +251,20 @@ async function validateAPIKey(apiKey) {
             TableName: process.env.API_KEY_TABLE,
             Key: { apiKey: apiKey }
         };
-        
+
         const result = await dynamodb.get(params).promise();
-        
+
         if (!result.Item) {
             return { valid: false };
         }
-        
+
         // Check if key is active and not expired
         const now = new Date().toISOString();
-        if (result.Item.status !== 'active' || 
+        if (result.Item.status !== 'active' ||
             (result.Item.expiresAt && result.Item.expiresAt < now)) {
             return { valid: false };
         }
-        
+
         // Update last used timestamp
         await dynamodb.update({
             TableName: process.env.API_KEY_TABLE,
@@ -215,7 +278,7 @@ async function validateAPIKey(apiKey) {
             // Don't fail auth if we can't update usage stats
             console.error('Failed to update usage stats:', err);
         });
-        
+
         return {
             valid: true,
             principalId: result.Item.userId || result.Item.apiKey,
@@ -246,12 +309,12 @@ function generatePolicy(principalId, effect, resource, context = {}) {
             ]
         }
     };
-    
+
     // Add context if provided (for passing data to Lambda)
     if (Object.keys(context).length > 0) {
         authResponse.context = context;
     }
-    
+
     return authResponse;
 }`
 }

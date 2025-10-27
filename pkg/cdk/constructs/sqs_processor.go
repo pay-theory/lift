@@ -162,16 +162,16 @@ func buildSQSProcessorConfig(props *SQSProcessorProps) *sqsProcessorConfig {
 func (b *sqsProcessorBuilder) build() *SQSProcessor {
 	// Create or use existing queue
 	b.setupQueue()
-	
+
 	// Create Lambda function
 	b.setupFunction()
-	
+
 	// Configure event source
 	b.setupEventSource()
-	
+
 	// Setup permissions
 	b.setupPermissions()
-	
+
 	// Add monitoring if enabled
 	b.setupMonitoring()
 
@@ -236,7 +236,7 @@ func newSQSQueueBuilder(processor *SQSProcessor, props *SQSProcessorProps, confi
 func (qb *sqsQueueBuilder) build() (awssqs.Queue, awssqs.Queue) {
 	var dlq awssqs.Queue
 	var dlqConfig *awssqs.DeadLetterQueue
-	
+
 	// Create dead letter queue if enabled
 	if qb.config.enableDLQ {
 		dlq = qb.createDeadLetterQueue()
@@ -245,10 +245,10 @@ func (qb *sqsQueueBuilder) build() (awssqs.Queue, awssqs.Queue) {
 			Queue:           dlq,
 		}
 	}
-	
+
 	// Create main queue
 	mainQueue := qb.createMainQueue(dlqConfig)
-	
+
 	return mainQueue, dlq
 }
 
@@ -271,7 +271,7 @@ func (qb *sqsQueueBuilder) createDeadLetterQueue() awssqs.Queue {
 		qb.applyFIFOConfig(dlqProps)
 		return awssqs.NewQueue(qb.processor, jsii.String("DeadLetterQueue"), dlqProps)
 	}
-	
+
 	// For regular queues, use the shared DLQ builder
 	dlqBuilder := newDeadLetterQueueBuilder(
 		qb.processor,
@@ -296,25 +296,25 @@ func (qb *sqsQueueBuilder) createMainQueue(dlqConfig *awssqs.DeadLetterQueue) aw
 		DeadLetterQueue:        dlqConfig,
 		ReceiveMessageWaitTime: awscdk.Duration_Seconds(jsii.Number(qb.config.longPollingWaitTime)),
 	}
-	
+
 	// Apply user-provided queue props
 	qb.applyUserQueueProps(queueProps)
-	
+
 	// Apply FIFO configuration
 	qb.applyFIFOConfig(queueProps)
-	
+
 	// Set default queue name if needed
 	qb.setDefaultQueueName(queueProps)
-	
+
 	return awssqs.NewQueue(qb.processor, jsii.String("Queue"), queueProps)
 }
 
 // applyUserQueueProps applies user-provided queue properties
 func (qb *sqsQueueBuilder) applyUserQueueProps(queueProps *awssqs.QueueProps) {
-    if qb.props.QueueProps == nil {
-        return
-    }
-    applyNonNilStructFields(queueProps, qb.props.QueueProps)
+	if qb.props.QueueProps == nil {
+		return
+	}
+	applyNonNilStructFields(queueProps, qb.props.QueueProps)
 }
 
 // applyFIFOConfig applies FIFO queue configuration
@@ -322,12 +322,12 @@ func (qb *sqsQueueBuilder) applyFIFOConfig(queueProps *awssqs.QueueProps) {
 	if !qb.config.fifoQueue {
 		return
 	}
-	
+
 	queueProps.Fifo = jsii.Bool(true)
 	if qb.props.EnableContentBasedDeduplication != nil {
 		queueProps.ContentBasedDeduplication = qb.props.EnableContentBasedDeduplication
 	}
-	
+
 	// Ensure FIFO queue name ends with .fifo
 	if queueProps.QueueName != nil {
 		queueName := *queueProps.QueueName
@@ -342,7 +342,7 @@ func (qb *sqsQueueBuilder) setDefaultQueueName(queueProps *awssqs.QueueProps) {
 	if queueProps.QueueName != nil || qb.props.FunctionProps.FunctionName == nil {
 		return
 	}
-	
+
 	suffix := ""
 	if qb.config.fifoQueue {
 		suffix = fifoSuffix
@@ -368,15 +368,15 @@ func newSQSFunctionBuilder(processor *SQSProcessor, props *SQSProcessorProps) *s
 func (fb *sqsFunctionBuilder) build() *LiftFunction {
 	// Prepare environment variables
 	functionEnv := fb.prepareFunctionEnvironment()
-	
+
 	// Create LiftFunction properties
 	liftProps := &LiftFunctionProps{
 		FunctionProps: fb.props.FunctionProps,
 	}
-	
+
 	// Set environment variables
 	liftProps.Environment = &functionEnv
-	
+
 	// Set Lift-specific properties
 	if fb.props.EnableTracing != nil {
 		liftProps.EnableTracing = fb.props.EnableTracing
@@ -384,27 +384,27 @@ func (fb *sqsFunctionBuilder) build() *LiftFunction {
 	if fb.props.EnableMultiTenant != nil {
 		liftProps.EnableMultiTenant = fb.props.EnableMultiTenant
 	}
-	
+
 	return NewLiftFunction(fb.processor, jsii.String("Function"), liftProps)
 }
 
 // prepareFunctionEnvironment prepares environment variables for the function
 func (fb *sqsFunctionBuilder) prepareFunctionEnvironment() map[string]*string {
 	functionEnv := make(map[string]*string)
-	
+
 	// Copy existing environment variables
 	if fb.props.FunctionProps.Environment != nil {
 		for k, v := range *fb.props.FunctionProps.Environment {
 			functionEnv[k] = v
 		}
 	}
-	
+
 	// Add SQS-specific environment variables
 	functionEnv["SQS_QUEUE_URL"] = fb.processor.Queue.QueueUrl()
 	if fb.processor.DeadLetterQueue != nil {
 		functionEnv["SQS_DLQ_URL"] = fb.processor.DeadLetterQueue.QueueUrl()
 	}
-	
+
 	return functionEnv
 }
 
@@ -431,19 +431,19 @@ func (esb *sqsEventSourceBuilder) build() awslambdaeventsources.SqsEventSource {
 		BatchSize:               jsii.Number(esb.config.batchSize),
 		ReportBatchItemFailures: jsii.Bool(true),
 	}
-	
+
 	// Set batching window for non-FIFO queues
 	if !esb.config.fifoQueue {
 		eventSourceProps.MaxBatchingWindow = esb.config.maxBatchingWindow
 	}
-	
+
 	// Apply user-provided event source properties
 	esb.applyUserEventSourceProps(eventSourceProps)
-	
+
 	// Create event source and add to function
 	eventSource := awslambdaeventsources.NewSqsEventSource(esb.processor.Queue, eventSourceProps)
 	esb.processor.Function.Function.AddEventSource(eventSource)
-	
+
 	return eventSource
 }
 
@@ -452,16 +452,16 @@ func (esb *sqsEventSourceBuilder) applyUserEventSourceProps(eventSourceProps *aw
 	if esb.props.EventSourceProps == nil {
 		return
 	}
-	
+
 	if esb.props.EventSourceProps.BatchSize != nil {
 		eventSourceProps.BatchSize = esb.props.EventSourceProps.BatchSize
 	}
-	
+
 	// Only set batching window for non-FIFO queues
 	if esb.props.EventSourceProps.MaxBatchingWindow != nil && !esb.config.fifoQueue {
 		eventSourceProps.MaxBatchingWindow = esb.props.EventSourceProps.MaxBatchingWindow
 	}
-	
+
 	if esb.props.EventSourceProps.ReportBatchItemFailures != nil {
 		eventSourceProps.ReportBatchItemFailures = esb.props.EventSourceProps.ReportBatchItemFailures
 	}

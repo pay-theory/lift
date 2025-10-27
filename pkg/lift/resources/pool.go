@@ -369,9 +369,9 @@ func (p *DefaultConnectionPool) cleanup() {
 
 // poolResourceCleaner handles cleanup of pool resources
 type poolResourceCleaner struct {
-    now    time.Time
-    logger lift.Logger
-    config PoolConfig
+	now    time.Time
+	logger lift.Logger
+	config PoolConfig
 }
 
 // newPoolResourceCleaner creates a new pool resource cleaner
@@ -386,7 +386,7 @@ func newPoolResourceCleaner(config PoolConfig, logger lift.Logger) *poolResource
 // cleanResources filters and cleans resources, returning valid ones
 func (c *poolResourceCleaner) cleanResources(resources []Resource) []Resource {
 	validIdle := make([]Resource, 0, len(resources))
-	
+
 	for _, resource := range resources {
 		if c.shouldKeepResource(resource) {
 			validIdle = append(validIdle, resource)
@@ -394,7 +394,7 @@ func (c *poolResourceCleaner) cleanResources(resources []Resource) []Resource {
 			c.cleanupResource(resource, "cleanup")
 		}
 	}
-	
+
 	return validIdle
 }
 
@@ -404,12 +404,12 @@ func (c *poolResourceCleaner) shouldKeepResource(resource Resource) bool {
 	if c.hasExceededMaxLifetime(resource) {
 		return false
 	}
-	
+
 	// Check idle timeout
 	if c.hasExceededIdleTimeout(resource) {
 		return false
 	}
-	
+
 	// Perform health check
 	return c.isResourceHealthy(resource)
 }
@@ -428,12 +428,12 @@ func (c *poolResourceCleaner) hasExceededIdleTimeout(resource Resource) bool {
 func (c *poolResourceCleaner) isResourceHealthy(resource Resource) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := resource.HealthCheck(ctx); err != nil {
 		c.cleanupResource(resource, "health check")
 		return false
 	}
-	
+
 	return true
 }
 

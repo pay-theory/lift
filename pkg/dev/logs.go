@@ -70,6 +70,11 @@ func (ls *LogService) GetRecentLogs(limit int) []LogEntry {
 	if limit <= 0 || limit > len(ls.logs) {
 		limit = len(ls.logs)
 	}
+	// Hard-cap to prevent excessive allocations even if analysis
+	// cannot infer len(ls.logs) is bounded by ls.maxLogs.
+	if limit > ls.maxLogs {
+		limit = ls.maxLogs
+	}
 
 	// Return the most recent logs
 	start := len(ls.logs) - limit
@@ -77,8 +82,14 @@ func (ls *LogService) GetRecentLogs(limit int) []LogEntry {
 		start = 0
 	}
 
-	result := make([]LogEntry, limit)
-	copy(result, ls.logs[start:])
+	// Copy into a bounded slice to avoid allocating based on a potentially
+	// large, user-influenced value.
+	subset := ls.logs[start:]
+	if len(subset) > limit {
+		subset = subset[:limit]
+	}
+	result := make([]LogEntry, len(subset))
+	copy(result, subset)
 	return result
 }
 

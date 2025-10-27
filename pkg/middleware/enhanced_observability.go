@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	crand "crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"sync/atomic"
@@ -23,32 +25,44 @@ type EnhancedObservabilityConfig struct {
 	Metrics           observability.MetricsCollector
 	Logger            observability.StructuredLogger
 	Tracer            *xray.XRayTracer
-	DefaultTags       map[string]string `json:"default_tags"`
 	OperationNameFunc func(*lift.Context) string
 	TenantIDFunc      func(*lift.Context) string
 	UserIDFunc        func(*lift.Context) string
-	MaxBodyLogSize    int     `json:"max_body_log_size"`
+	DefaultTags       map[string]string `json:"default_tags"`
+	Sampler           func() float64
 	SampleRate        float64 `json:"sample_rate"`
+	MaxBodyLogSize    int     `json:"max_body_log_size"`
 	EnableLogging     bool    `json:"enable_logging"`
 	LogResponseBody   bool    `json:"log_response_body"`
 	LogRequestBody    bool    `json:"log_request_body"`
 	EnableTracing     bool    `json:"enable_tracing"`
 	EnableMetrics     bool    `json:"enable_metrics"`
+	DisableSampling   bool    `json:"disable_sampling"`
 }
 
 // EnhancedObservabilityMiddleware provides comprehensive observability with logging, metrics, and tracing
 func EnhancedObservabilityMiddleware(config EnhancedObservabilityConfig) lift.Middleware {
 	// Set defaults
 	config = setObservabilityDefaults(config)
-	
+
 	// Create the coordinated observability handler
 	handler := newObservabilityHandler(config)
-	
-	return func(next lift.Handler) lift.Handler {
+
+	return lift.MarkGlobalMiddleware(lift.Middleware(eventAwareMiddleware(func(next lift.Handler) lift.Handler {
 		return lift.HandlerFunc(func(ctx *lift.Context) error {
 			return handler.handle(ctx, next)
 		})
+	})))
+}
+
+func secureRandomFloat() float64 {
+	var buf [8]byte
+	if _, err := crand.Read(buf[:]); err != nil {
+		return 0.5
 	}
+	// Convert to [0,1) using the upper 53 bits to preserve mantissa precision
+	val := binary.BigEndian.Uint64(buf[:]) >> 11
+	return float64(val) / float64(1<<53)
 }
 
 // setObservabilityDefaults applies default values to the configuration
@@ -71,11 +85,23 @@ func setObservabilityDefaults(config EnhancedObservabilityConfig) EnhancedObserv
 	if config.MaxBodyLogSize == 0 {
 		config.MaxBodyLogSize = 1024 // 1KB default
 	}
-	if config.SampleRate == 0 {
-		config.SampleRate = 1.0 // 100% by default
+	if config.SampleRate < 0 {
+		config.SampleRate = 0
+	}
+	if config.SampleRate > 1 {
+		config.SampleRate = 1
+	}
+	if config.SampleRate == 0 && !config.DisableSampling {
+		config.SampleRate = 1.0
+	}
+	if config.DisableSampling {
+		config.SampleRate = 0
 	}
 	if config.DefaultTags == nil {
 		config.DefaultTags = make(map[string]string)
+	}
+	if config.Sampler == nil {
+		config.Sampler = secureRandomFloat
 	}
 	return config
 }
@@ -159,10 +185,10 @@ func HealthCheckObservability(config EnhancedObservabilityConfig) func() error {
 
 // observabilityHandler coordinates logging, metrics, and tracing components
 type observabilityHandler struct {
-    logger  *loggingHandler
-    metrics *metricsHandler
-    tracer  *tracingHandler
-    config  EnhancedObservabilityConfig
+	logger  *loggingHandler
+	metrics *metricsHandler
+	tracer  *tracingHandler
+	config  EnhancedObservabilityConfig
 }
 
 // newObservabilityHandler creates a new handler with the given configuration
@@ -178,29 +204,51 @@ func newObservabilityHandler(config EnhancedObservabilityConfig) *observabilityH
 // handle processes the request with coordinated observability
 func (h *observabilityHandler) handle(ctx *lift.Context, next lift.Handler) error {
 	start := time.Now()
-	
+
 	// Extract common context
 	operation := h.extractOperation(ctx)
-	tenantID := h.extractTenantID(ctx)
-	userID := h.extractUserID(ctx)
-	
+	initialTenantID := h.extractTenantID(ctx)
+	initialUserID := h.extractUserID(ctx)
+	sampled := h.shouldSample()
+	ctx.Set("observability_sampled", sampled)
+
+	loggerEnabled := h.config.EnableLogging && sampled
+	metricsEnabled := h.config.EnableMetrics && sampled
+	tracerEnabled := h.config.EnableTracing && sampled
+
 	// Start observability components
-	h.logger.before(ctx, operation, tenantID, userID)
-	h.metrics.before(ctx, operation, tenantID, userID)
-	h.tracer.before(ctx, operation, tenantID, userID)
-	
+	if loggerEnabled {
+		h.logger.before(ctx, operation, initialTenantID, initialUserID)
+	}
+	if metricsEnabled {
+		h.metrics.before(ctx, operation, initialTenantID, initialUserID)
+	}
+	if tracerEnabled {
+		h.tracer.before(ctx, operation, initialTenantID, initialUserID)
+	}
+
 	// Execute handler
 	err := next.Handle(ctx)
-	
+
 	// Calculate duration and status
 	duration := time.Since(start)
 	statusCode := h.determineStatusCode(ctx, err)
-	
+
+	// Re-evaluate identity in case middleware or handlers updated context
+	finalTenantID := h.extractTenantID(ctx)
+	finalUserID := h.extractUserID(ctx)
+
 	// Finish observability components
-	h.logger.after(ctx, operation, duration, statusCode, err)
-	h.metrics.after(ctx, operation, tenantID, duration, statusCode, err)
-	h.tracer.after(ctx, operation, duration, statusCode, err)
-	
+	if loggerEnabled {
+		h.logger.after(ctx, operation, duration, statusCode, err)
+	}
+	if metricsEnabled {
+		h.metrics.after(ctx, operation, finalTenantID, finalUserID, duration, statusCode, err)
+	}
+	if tracerEnabled {
+		h.tracer.after(ctx, operation, duration, statusCode, err)
+	}
+
 	return err
 }
 
@@ -211,7 +259,6 @@ func (h *observabilityHandler) extractOperation(ctx *lift.Context) string {
 	}
 	return fmt.Sprintf("%s_%s", ctx.Request.Method, ctx.Request.Path)
 }
-
 
 // extractTenantID gets the tenant ID for the request
 func (h *observabilityHandler) extractTenantID(ctx *lift.Context) string {
@@ -229,6 +276,24 @@ func (h *observabilityHandler) extractUserID(ctx *lift.Context) string {
 	return ctx.UserID()
 }
 
+func (h *observabilityHandler) shouldSample() bool {
+	rate := h.config.SampleRate
+
+	if rate <= 0 {
+		return false
+	}
+
+	if rate >= 1 {
+		return true
+	}
+
+	if h.config.Sampler == nil {
+		return secureRandomFloat() <= rate
+	}
+
+	return h.config.Sampler() <= rate
+}
+
 // determineStatusCode calculates the HTTP status code from context and error
 func (h *observabilityHandler) determineStatusCode(ctx *lift.Context, err error) int {
 	if ctx.Response.StatusCode != 0 {
@@ -242,8 +307,8 @@ func (h *observabilityHandler) determineStatusCode(ctx *lift.Context, err error)
 
 // loggingHandler handles the logging aspect of observability
 type loggingHandler struct {
-    logger observability.StructuredLogger
-    config EnhancedObservabilityConfig
+	logger observability.StructuredLogger
+	config EnhancedObservabilityConfig
 }
 
 // newLoggingHandler creates a new logging handler
@@ -259,12 +324,12 @@ func (l *loggingHandler) before(ctx *lift.Context, operation, tenantID, userID s
 	if !l.config.EnableLogging || l.logger == nil {
 		return
 	}
-	
+
 	contextLogger := l.logger.
 		WithRequestID(ctx.RequestID).
 		WithTenantID(tenantID).
 		WithUserID(userID)
-	
+
 	// Add trace context if available
 	if traceID := xray.GetTraceID(ctx.Context); traceID != "" {
 		contextLogger = contextLogger.WithTraceID(traceID)
@@ -272,9 +337,9 @@ func (l *loggingHandler) before(ctx *lift.Context, operation, tenantID, userID s
 	if spanID := xray.GetSegmentID(ctx.Context); spanID != "" {
 		contextLogger = contextLogger.WithSpanID(spanID)
 	}
-	
+
 	ctx.Logger = contextLogger
-	
+
 	// Log request start
 	logFields := map[string]any{
 		"operation":    operation,
@@ -286,12 +351,12 @@ func (l *loggingHandler) before(ctx *lift.Context, operation, tenantID, userID s
 		"tenant_id":    tenantID,
 		"user_id":      userID,
 	}
-	
+
 	if l.config.LogRequestBody && len(ctx.Request.Body) > 0 {
 		logFields["request_body_size"] = len(ctx.Request.Body)
 		logFields["request_body"] = "[USER_CONTENT_REDACTED]"
 	}
-	
+
 	contextLogger.Info("Request started", logFields)
 }
 
@@ -300,13 +365,13 @@ func (l *loggingHandler) after(ctx *lift.Context, operation string, duration tim
 	if !l.config.EnableLogging || ctx.Logger == nil {
 		return
 	}
-	
+
 	logFields := map[string]any{
 		"operation": operation,
 		"duration":  duration.String(),
 		"status":    statusCode,
 	}
-	
+
 	if l.config.LogResponseBody && ctx.Response.Body != nil {
 		var bodySize int
 		switch v := ctx.Response.Body.(type) {
@@ -322,7 +387,7 @@ func (l *loggingHandler) after(ctx *lift.Context, operation string, duration tim
 		logFields["response_body_size"] = bodySize
 		logFields["response_body"] = "[RESPONSE_CONTENT_REDACTED]"
 	}
-	
+
 	if err != nil {
 		logFields["error"] = "[SANITIZED_ERROR]"
 		ctx.Logger.Error("Request failed", logFields)
@@ -333,9 +398,9 @@ func (l *loggingHandler) after(ctx *lift.Context, operation string, duration tim
 
 // metricsHandler handles the metrics aspect of observability
 type metricsHandler struct {
-    collector observability.MetricsCollector
-    baseTags  map[string]string
-    config    EnhancedObservabilityConfig
+	collector observability.MetricsCollector
+	baseTags  map[string]string
+	config    EnhancedObservabilityConfig
 }
 
 // newMetricsHandler creates a new metrics handler
@@ -344,7 +409,7 @@ func newMetricsHandler(config EnhancedObservabilityConfig) *metricsHandler {
 	for k, v := range config.DefaultTags {
 		baseTags[k] = v
 	}
-	
+
 	return &metricsHandler{
 		config:    config,
 		collector: config.Metrics,
@@ -353,45 +418,45 @@ func newMetricsHandler(config EnhancedObservabilityConfig) *metricsHandler {
 }
 
 // before handles metrics setup before request processing
-func (m *metricsHandler) before(ctx *lift.Context, operation, tenantID, _ string) {
+func (m *metricsHandler) before(ctx *lift.Context, operation, tenantID, userID string) {
 	if !m.config.EnableMetrics || m.collector == nil {
 		return
 	}
-	
+
 	// Record request count
-	tags := m.buildTags(ctx.Request.Method, ctx.Request.Path, tenantID, operation)
+	tags := m.buildTags(ctx.Request.Method, ctx.Request.Path, tenantID, userID, operation)
 	counter := m.collector.WithTags(tags).Counter("requests.total")
 	counter.Inc()
-	
+
 	// Record concurrent requests
 	gauge := m.collector.WithTags(tags).Gauge("requests.active")
 	gauge.Inc()
-	
+
 	// Store gauge in context for cleanup
 	ctx.Set("metrics_active_gauge", gauge)
 }
 
 // after handles metrics after request processing
-func (m *metricsHandler) after(ctx *lift.Context, operation, tenantID string, duration time.Duration, statusCode int, err error) {
+func (m *metricsHandler) after(ctx *lift.Context, operation, tenantID, userID string, duration time.Duration, statusCode int, err error) {
 	if !m.config.EnableMetrics || m.collector == nil {
 		return
 	}
-	
+
 	// Cleanup active requests gauge
 	if gauge := ctx.Get("metrics_active_gauge"); gauge != nil {
 		if g, ok := gauge.(interface{ Dec() }); ok {
 			g.Dec()
 		}
 	}
-	
+
 	// Record response metrics
-	statusTags := m.buildStatusTags(ctx.Request.Method, ctx.Request.Path, tenantID, operation, statusCode)
+	statusTags := m.buildStatusTags(ctx.Request.Method, ctx.Request.Path, tenantID, userID, operation, statusCode)
 	statusMetrics := m.collector.WithTags(statusTags)
-	
+
 	// Record latency
 	histogram := statusMetrics.Histogram("requests.duration")
 	histogram.Observe(float64(duration.Milliseconds()))
-	
+
 	// Record response size
 	if ctx.Response.Body != nil {
 		var size int
@@ -410,64 +475,79 @@ func (m *metricsHandler) after(ctx *lift.Context, operation, tenantID string, du
 			gauge.Set(float64(size))
 		}
 	}
-	
+
 	// Record errors and operation-specific metrics
 	if err != nil {
-		m.recordError(operation, tenantID, err)
+		m.recordError(operation, tenantID, userID, err)
 	}
-	m.recordOperationMetrics(operation, tenantID, duration, err)
+	m.recordOperationMetrics(operation, tenantID, userID, duration, err)
 }
 
 // buildTags creates base tags for metrics
-func (m *metricsHandler) buildTags(method, path, tenantID, operation string) map[string]string {
+func (m *metricsHandler) buildTags(method, path, tenantID, userID, operation string) map[string]string {
 	tags := make(map[string]string)
 	for k, v := range m.baseTags {
 		tags[k] = v
 	}
 	tags["method"] = method
 	tags["path"] = path
-	tags["tenant_id"] = tenantID
+	if tenantID != "" {
+		tags["tenant_id"] = tenantID
+	}
+	if userID != "" {
+		tags["user_id"] = userID
+	}
 	tags["operation"] = operation
 	return tags
 }
 
 // buildStatusTags creates tags including status information
-func (m *metricsHandler) buildStatusTags(method, path, tenantID, operation string, statusCode int) map[string]string {
-	tags := m.buildTags(method, path, tenantID, operation)
+func (m *metricsHandler) buildStatusTags(method, path, tenantID, userID, operation string, statusCode int) map[string]string {
+	tags := m.buildTags(method, path, tenantID, userID, operation)
 	tags["status"] = fmt.Sprintf("%d", statusCode)
 	tags["status_class"] = fmt.Sprintf("%dxx", statusCode/100)
 	return tags
 }
 
 // recordError records error-specific metrics
-func (m *metricsHandler) recordError(operation, tenantID string, err error) {
+func (m *metricsHandler) recordError(operation, tenantID, userID string, err error) {
 	errorTags := make(map[string]string)
 	for k, v := range m.baseTags {
 		errorTags[k] = v
 	}
 	errorTags["error_type"] = fmt.Sprintf("%T", err)
 	errorTags["operation"] = operation
-	errorTags["tenant_id"] = tenantID
-	
+	if tenantID != "" {
+		errorTags["tenant_id"] = tenantID
+	}
+	if userID != "" {
+		errorTags["user_id"] = userID
+	}
+
 	errorMetrics := m.collector.WithTags(errorTags)
 	errorCounter := errorMetrics.Counter("requests.errors")
 	errorCounter.Inc()
 }
 
 // recordOperationMetrics records operation-specific metrics
-func (m *metricsHandler) recordOperationMetrics(operation, tenantID string, duration time.Duration, err error) {
+func (m *metricsHandler) recordOperationMetrics(operation, tenantID, userID string, duration time.Duration, err error) {
 	operationTags := map[string]string{
 		"operation": operation,
-		"tenant_id": tenantID,
+	}
+	if tenantID != "" {
+		operationTags["tenant_id"] = tenantID
+	}
+	if userID != "" {
+		operationTags["user_id"] = userID
 	}
 	operationMetrics := m.collector.WithTags(operationTags)
-	
+
 	opCounter := operationMetrics.Counter(fmt.Sprintf("operation.%s.total", operation))
 	opCounter.Inc()
-	
+
 	opHistogram := operationMetrics.Histogram(fmt.Sprintf("operation.%s.duration", operation))
 	opHistogram.Observe(float64(duration.Milliseconds()))
-	
+
 	if err != nil {
 		opErrorCounter := operationMetrics.Counter(fmt.Sprintf("operation.%s.errors", operation))
 		opErrorCounter.Inc()
@@ -491,12 +571,12 @@ func (t *tracingHandler) before(ctx *lift.Context, operation, tenantID, userID s
 	if !t.config.EnableTracing {
 		return
 	}
-	
+
 	// Add custom annotations to current trace
 	xray.AddAnnotation(ctx.Context, "operation", operation)
 	xray.AddAnnotation(ctx.Context, "tenant_id", tenantID)
 	xray.AddAnnotation(ctx.Context, "user_id", userID)
-	
+
 	// Add metadata
 	xray.AddMetadata(ctx.Context, "request", "operation", operation)
 	xray.AddMetadata(ctx.Context, "request", "tenant_id", tenantID)
@@ -508,19 +588,19 @@ func (t *tracingHandler) after(ctx *lift.Context, _ string, duration time.Durati
 	if !t.config.EnableTracing {
 		return
 	}
-	
+
 	// Record that we generated a trace
 	recordTraceGenerated()
-	
+
 	// Add timing information
 	xray.AddMetadata(ctx.Context, "timing", "duration_ms", duration.Milliseconds())
 	xray.AddMetadata(ctx.Context, "timing", "start_time", time.Now().Add(-duration).Format(time.RFC3339Nano))
 	xray.AddMetadata(ctx.Context, "timing", "end_time", time.Now().Format(time.RFC3339Nano))
-	
+
 	// Add response information
 	xray.AddAnnotation(ctx.Context, "http.status_code", statusCode)
 	xray.AddMetadata(ctx.Context, "response", "status_code", statusCode)
-	
+
 	// Add error information
 	if err != nil {
 		recordTraceError()

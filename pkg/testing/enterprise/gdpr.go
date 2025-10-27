@@ -498,7 +498,7 @@ func (f *GDPRPrivacyFramework) ValidateGDPRCompliance(ctx context.Context, app a
 
 // testArticle tests a specific GDPR article
 func (f *GDPRPrivacyFramework) testArticle(ctx context.Context, app any, article GDPRArticle) (*ArticleResult, error) {
-    startTime := time.Now()
+	startTime := time.Now()
 
 	result := &ArticleResult{
 		ArticleNumber: article.Number,
@@ -509,37 +509,37 @@ func (f *GDPRPrivacyFramework) testArticle(ctx context.Context, app any, article
 		Metadata:      make(map[string]any),
 	}
 
-    // Run tests for this article with context support
-    for _, test := range article.Tests {
-        select {
-        case <-ctx.Done():
-            result.EndTime = time.Now()
-            result.Duration = result.EndTime.Sub(result.StartTime)
-            result.Status = NonCompliantStatus
-            result.Metadata["cancel_reason"] = ctx.Err().Error()
-            return result, ctx.Err()
-        default:
-        }
+	// Run tests for this article with context support
+	for _, test := range article.Tests {
+		select {
+		case <-ctx.Done():
+			result.EndTime = time.Now()
+			result.Duration = result.EndTime.Sub(result.StartTime)
+			result.Status = NonCompliantStatus
+			result.Metadata["cancel_reason"] = ctx.Err().Error()
+			return result, ctx.Err()
+		default:
+		}
 
-        testResult := &ComplianceTestResult{
-            TestID:    test.ID,
-            Type:      TestType(test.Type),
-            StartTime: time.Now(),
-            EndTime:   time.Now(),
-            Duration:  time.Millisecond,
-            Status:    ComplianceTestPassed,
-            Result:    "Test passed",
-            Expected:  test.Expected,
-        }
-        // If the app provides a validator, run it (best-effort)
-        if v, ok := app.(interface{ ValidateArticle(string) error }); ok {
-            if err := v.ValidateArticle(article.Number); err != nil {
-                testResult.Status = ComplianceTestFailed
-                testResult.Result = err.Error()
-            }
-        }
-        result.TestResults[test.ID] = testResult
-    }
+		testResult := &ComplianceTestResult{
+			TestID:    test.ID,
+			Type:      TestType(test.Type),
+			StartTime: time.Now(),
+			EndTime:   time.Now(),
+			Duration:  time.Millisecond,
+			Status:    ComplianceTestPassed,
+			Result:    "Test passed",
+			Expected:  test.Expected,
+		}
+		// If the app provides a validator, run it (best-effort)
+		if v, ok := app.(interface{ ValidateArticle(string) error }); ok {
+			if err := v.ValidateArticle(article.Number); err != nil {
+				testResult.Status = ComplianceTestFailed
+				testResult.Result = err.Error()
+			}
+		}
+		result.TestResults[test.ID] = testResult
+	}
 
 	result.EndTime = time.Now()
 	result.Duration = result.EndTime.Sub(result.StartTime)
@@ -557,7 +557,6 @@ func (f *GDPRPrivacyFramework) calculateOverallStatus(articles map[string]*Artic
 	}
 	return CompliantStatus
 }
-
 
 // createArticleResult is a helper function to reduce duplication in GDPR validation functions
 func (f *GDPRPrivacyFramework) createArticleResult(articleNumber string, category GDPRCategory) *ArticleResult {
@@ -587,120 +586,131 @@ func (f *GDPRPrivacyFramework) addTestResult(result *ArticleResult, key, testID 
 
 // validateRightToErasure validates Article 17 - Right to erasure
 func (f *GDPRPrivacyFramework) validateRightToErasure(_ context.Context, _ any) (*ArticleResult, error) {
-    return f.validateArticleWithTests(
-        "17",
-        DataSubjectRightsCategory,
-        []struct{ key, id string; t TestType }{
-            {"erasure_request_mechanism", "17.1", InquiryTest},
-            {"erasure_grounds_checked", "17.2", InquiryTest},
-            {"erasure_executed", "17.3", ReperformanceTest},
-            {"third_parties_notified", "17.4", InquiryTest},
-            {"response_within_30_days", "17.5", InquiryTest},
-            {"erasure_documented", "17.6", InquiryTest},
-            {"backup_erasure_included", "17.7", InquiryTest},
-            {"technical_erasure_complete", "17.8", InspectionTest},
-        },
-    ), nil
+	return f.validateArticleWithTests(
+		"17",
+		DataSubjectRightsCategory,
+		[]struct {
+			key, id string
+			t       TestType
+		}{
+			{"erasure_request_mechanism", "17.1", InquiryTest},
+			{"erasure_grounds_checked", "17.2", InquiryTest},
+			{"erasure_executed", "17.3", ReperformanceTest},
+			{"third_parties_notified", "17.4", InquiryTest},
+			{"response_within_30_days", "17.5", InquiryTest},
+			{"erasure_documented", "17.6", InquiryTest},
+			{"backup_erasure_included", "17.7", InquiryTest},
+			{"technical_erasure_complete", "17.8", InspectionTest},
+		},
+	), nil
 }
 
 // validateDataPortability validates Article 20 - Right to data portability
 func (f *GDPRPrivacyFramework) validateDataPortability(_ context.Context, _ any) (*ArticleResult, error) {
-    return f.validateArticleWithTests(
-        "20",
-        DataSubjectRightsCategory,
-        []struct{ key, id string; t TestType }{
-            {"portability_mechanism", "20.1", InquiryTest},
-            {"structured_format", "20.2", InspectionTest},
-            {"commonly_used_format", "20.3", InspectionTest},
-            {"machine_readable", "20.4", InspectionTest},
-            {"direct_transmission", "20.5", InquiryTest},
-            {"technical_feasibility", "20.6", InquiryTest},
-            {"response_within_30_days", "20.7", InquiryTest},
-            {"free_of_charge", "20.8", InquiryTest},
-        },
-    ), nil
+	return f.validateArticleWithTests(
+		"20",
+		DataSubjectRightsCategory,
+		[]struct {
+			key, id string
+			t       TestType
+		}{
+			{"portability_mechanism", "20.1", InquiryTest},
+			{"structured_format", "20.2", InspectionTest},
+			{"commonly_used_format", "20.3", InspectionTest},
+			{"machine_readable", "20.4", InspectionTest},
+			{"direct_transmission", "20.5", InquiryTest},
+			{"technical_feasibility", "20.6", InquiryTest},
+			{"response_within_30_days", "20.7", InquiryTest},
+			{"free_of_charge", "20.8", InquiryTest},
+		},
+	), nil
 }
-
 
 // validateBreachNotification validates Articles 33-34 - Breach notification
 func (f *GDPRPrivacyFramework) validateBreachNotification(_ context.Context, _ any) (*ArticleResult, error) {
-    result := f.createArticleResult("33-34", BreachNotificationCategory)
-    f.addTestResult(result, "breach_detection_capability", "33.1", InspectionTest)
-    f.addTestResult(result, "72_hour_notification", "33.2", InquiryTest)
-    f.addTestResult(result, "supervisory_authority_notified", "33.3", InquiryTest)
-    f.addTestResult(result, "breach_documented", "33.4", InquiryTest)
-    f.addTestResult(result, "risk_assessment_conducted", "34.1", InquiryTest)
-    f.addTestResult(result, "notification_complete", "34.2", InquiryTest)
-    f.addTestResult(result, "follow_up_provided", "34.3", InquiryTest)
+	result := f.createArticleResult("33-34", BreachNotificationCategory)
+	f.addTestResult(result, "breach_detection_capability", "33.1", InspectionTest)
+	f.addTestResult(result, "72_hour_notification", "33.2", InquiryTest)
+	f.addTestResult(result, "supervisory_authority_notified", "33.3", InquiryTest)
+	f.addTestResult(result, "breach_documented", "33.4", InquiryTest)
+	f.addTestResult(result, "risk_assessment_conducted", "34.1", InquiryTest)
+	f.addTestResult(result, "notification_complete", "34.2", InquiryTest)
+	f.addTestResult(result, "follow_up_provided", "34.3", InquiryTest)
 
 	return result, nil
 }
 
 // validateConsentLawfulness validates Article 6 - Lawfulness of processing
 func (f *GDPRPrivacyFramework) validateConsentLawfulness(_ context.Context, _ any) (*ArticleResult, error) {
-    return f.validateArticleWithTests(
-        "6",
-        DataProtectionCategory,
-        []struct{ key, id string; t TestType }{
-            {"consent_freely_given", "6.1", InquiryTest},
-            {"consent_specific", "6.2", InquiryTest},
-            {"consent_informed", "6.3", InquiryTest},
-            {"consent_unambiguous", "6.4", InquiryTest},
-            {"consent_withdrawable", "6.5", InquiryTest},
-            {"consent_granular", "6.6", InquiryTest},
-            {"consent_documented", "6.7", InquiryTest},
-            {"legal_basis_documented", "6.8", InquiryTest},
-        },
-    ), nil
+	return f.validateArticleWithTests(
+		"6",
+		DataProtectionCategory,
+		[]struct {
+			key, id string
+			t       TestType
+		}{
+			{"consent_freely_given", "6.1", InquiryTest},
+			{"consent_specific", "6.2", InquiryTest},
+			{"consent_informed", "6.3", InquiryTest},
+			{"consent_unambiguous", "6.4", InquiryTest},
+			{"consent_withdrawable", "6.5", InquiryTest},
+			{"consent_granular", "6.6", InquiryTest},
+			{"consent_documented", "6.7", InquiryTest},
+			{"legal_basis_documented", "6.8", InquiryTest},
+		},
+	), nil
 }
 
 // validateArticleWithTests is a helper to construct ArticleResult from definitions
-func (f *GDPRPrivacyFramework) validateArticleWithTests(article string, category GDPRCategory, defs []struct{ key, id string; t TestType }) *ArticleResult {
-    result := f.createArticleResult(article, category)
-    for _, d := range defs {
-        f.addTestResult(result, d.key, d.id, d.t)
-    }
-    return result
+func (f *GDPRPrivacyFramework) validateArticleWithTests(article string, category GDPRCategory, defs []struct {
+	key, id string
+	t       TestType
+}) *ArticleResult {
+	result := f.createArticleResult(article, category)
+	for _, d := range defs {
+		f.addTestResult(result, d.key, d.id, d.t)
+	}
+	return result
 }
 
 // validateTransferPrinciples validates Chapter V - Transfer principles
 func (f *GDPRPrivacyFramework) validateTransferPrinciples(_ context.Context, _ any) (*ArticleResult, error) {
-    result := f.createArticleResult("44-50", DataTransferCategory)
-    f.addTestResult(result, "transfer_lawfulness", "44.1", InquiryTest)
-    f.addTestResult(result, "adequate_protection", "45.1", InquiryTest)
-    f.addTestResult(result, "transfer_documented", "46.1", InquiryTest)
-    f.addTestResult(result, "data_subject_informed", "46.2", InquiryTest)
-    f.addTestResult(result, "safeguards_implemented", "46.3", InquiryTest)
-    f.addTestResult(result, "transfer_necessity", "49.1", InquiryTest)
-    f.addTestResult(result, "proportionality_assessed", "49.2", InquiryTest)
+	result := f.createArticleResult("44-50", DataTransferCategory)
+	f.addTestResult(result, "transfer_lawfulness", "44.1", InquiryTest)
+	f.addTestResult(result, "adequate_protection", "45.1", InquiryTest)
+	f.addTestResult(result, "transfer_documented", "46.1", InquiryTest)
+	f.addTestResult(result, "data_subject_informed", "46.2", InquiryTest)
+	f.addTestResult(result, "safeguards_implemented", "46.3", InquiryTest)
+	f.addTestResult(result, "transfer_necessity", "49.1", InquiryTest)
+	f.addTestResult(result, "proportionality_assessed", "49.2", InquiryTest)
 
 	return result, nil
 }
 
 // validatePrivacyImpactAssessment validates Article 35 - Data protection impact assessment
 func (f *GDPRPrivacyFramework) validatePrivacyImpactAssessment(_ context.Context, _ any) (*ArticleResult, error) {
-    result := f.createArticleResult("35", DataProtectionCategory)
-    f.addTestResult(result, "pia_conducted", "35.1", InquiryTest)
-    f.addTestResult(result, "high_risk_processing", "35.2", InquiryTest)
-    f.addTestResult(result, "systematic_assessment", "35.3", InquiryTest)
-    f.addTestResult(result, "necessity_proportionality", "35.4", InquiryTest)
-    f.addTestResult(result, "risks_identified", "35.5", InquiryTest)
-    f.addTestResult(result, "mitigation_measures", "35.6", InquiryTest)
-    f.addTestResult(result, "consultation_conducted", "35.7", InquiryTest)
-    f.addTestResult(result, "pia_documented", "35.8", InquiryTest)
-    f.addTestResult(result, "pia_updated", "35.9", InquiryTest)
+	result := f.createArticleResult("35", DataProtectionCategory)
+	f.addTestResult(result, "pia_conducted", "35.1", InquiryTest)
+	f.addTestResult(result, "high_risk_processing", "35.2", InquiryTest)
+	f.addTestResult(result, "systematic_assessment", "35.3", InquiryTest)
+	f.addTestResult(result, "necessity_proportionality", "35.4", InquiryTest)
+	f.addTestResult(result, "risks_identified", "35.5", InquiryTest)
+	f.addTestResult(result, "mitigation_measures", "35.6", InquiryTest)
+	f.addTestResult(result, "consultation_conducted", "35.7", InquiryTest)
+	f.addTestResult(result, "pia_documented", "35.8", InquiryTest)
+	f.addTestResult(result, "pia_updated", "35.9", InquiryTest)
 
 	return result, nil
 }
 
 // Prevent unused warnings for helper methods by referencing them.
 var (
-    _ = (*GDPRPrivacyFramework).createArticleResult
-    _ = (*GDPRPrivacyFramework).addTestResult
-    _ = (*GDPRPrivacyFramework).validateRightToErasure
-    _ = (*GDPRPrivacyFramework).validateDataPortability
-    _ = (*GDPRPrivacyFramework).validateBreachNotification
-    _ = (*GDPRPrivacyFramework).validateConsentLawfulness
-    _ = (*GDPRPrivacyFramework).validateTransferPrinciples
-    _ = (*GDPRPrivacyFramework).validatePrivacyImpactAssessment
+	_ = (*GDPRPrivacyFramework).createArticleResult
+	_ = (*GDPRPrivacyFramework).addTestResult
+	_ = (*GDPRPrivacyFramework).validateRightToErasure
+	_ = (*GDPRPrivacyFramework).validateDataPortability
+	_ = (*GDPRPrivacyFramework).validateBreachNotification
+	_ = (*GDPRPrivacyFramework).validateConsentLawfulness
+	_ = (*GDPRPrivacyFramework).validateTransferPrinciples
+	_ = (*GDPRPrivacyFramework).validatePrivacyImpactAssessment
 )

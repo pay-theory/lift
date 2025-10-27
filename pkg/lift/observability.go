@@ -49,8 +49,8 @@ func (l *NoOpLogger) Debug(_ string, _ ...map[string]any) {}
 func (l *NoOpLogger) Info(_ string, _ ...map[string]any)  {}
 func (l *NoOpLogger) Warn(_ string, _ ...map[string]any)  {}
 func (l *NoOpLogger) Error(_ string, _ ...map[string]any) {}
-func (l *NoOpLogger) WithField(_ string, _ any) Logger         { return l }
-func (l *NoOpLogger) WithFields(_ map[string]any) Logger        { return l }
+func (l *NoOpLogger) WithField(_ string, _ any) Logger    { return l }
+func (l *NoOpLogger) WithFields(_ map[string]any) Logger  { return l }
 
 // NoOpMetrics is a metrics collector that does nothing (for testing)
 type NoOpMetrics struct{}
@@ -60,11 +60,11 @@ func (m *NoOpMetrics) Histogram(_ string, _ ...map[string]string) Histogram {
 	return &NoOpHistogram{}
 }
 func (m *NoOpMetrics) Gauge(_ string, _ ...map[string]string) Gauge { return &NoOpGauge{} }
-func (m *NoOpMetrics) Flush() error                                       { return nil }
+func (m *NoOpMetrics) Flush() error                                 { return nil }
 
 type NoOpCounter struct{}
 
-func (c *NoOpCounter) Inc()              {}
+func (c *NoOpCounter) Inc()          {}
 func (c *NoOpCounter) Add(_ float64) {}
 
 type NoOpHistogram struct{}
@@ -74,6 +74,6 @@ func (h *NoOpHistogram) Observe(_ float64) {}
 type NoOpGauge struct{}
 
 func (g *NoOpGauge) Set(_ float64) {}
-func (g *NoOpGauge) Inc()              {}
-func (g *NoOpGauge) Dec()              {}
+func (g *NoOpGauge) Inc()          {}
+func (g *NoOpGauge) Dec()          {}
 func (g *NoOpGauge) Add(_ float64) {}

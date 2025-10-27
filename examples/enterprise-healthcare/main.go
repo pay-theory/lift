@@ -1,19 +1,19 @@
 package main
 
 import (
-    "context"
-    "crypto/aes"
-    "crypto/cipher"
-    "crypto/rand"
-    "crypto/sha256"
-    "encoding/base64"
-    "fmt"
-    "io"
-    "log"
-    "strings"
-    "time"
+	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"io"
+	"log"
+	"strings"
+	"time"
 
-    "github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/lift"
 )
 
 // Add missing middleware functions
@@ -48,47 +48,47 @@ type CORSConfig struct {
 
 // CORS middleware function
 func CORS(config CORSConfig) lift.Middleware {
-    // Precompute strings and origin policy to reduce runtime branching
-    methodsCSV := strings.Join(config.AllowMethods, ", ")
-    headersCSV := strings.Join(config.AllowHeaders, ", ")
-    allowAll := false
-    allowedOrigins := make(map[string]struct{}, len(config.AllowOrigins))
-    for _, o := range config.AllowOrigins {
-        if o == "*" {
-            allowAll = true
-        } else if o != "" {
-            allowedOrigins[o] = struct{}{}
-        }
-    }
+	// Precompute strings and origin policy to reduce runtime branching
+	methodsCSV := strings.Join(config.AllowMethods, ", ")
+	headersCSV := strings.Join(config.AllowHeaders, ", ")
+	allowAll := false
+	allowedOrigins := make(map[string]struct{}, len(config.AllowOrigins))
+	for _, o := range config.AllowOrigins {
+		if o == "*" {
+			allowAll = true
+		} else if o != "" {
+			allowedOrigins[o] = struct{}{}
+		}
+	}
 
-    isAllowed := func(origin string) bool {
-        if allowAll {
-            return true
-        }
-        _, ok := allowedOrigins[origin]
-        return ok
-    }
+	isAllowed := func(origin string) bool {
+		if allowAll {
+			return true
+		}
+		_, ok := allowedOrigins[origin]
+		return ok
+	}
 
-    return func(next lift.Handler) lift.Handler {
-        return lift.HandlerFunc(func(ctx *lift.Context) error {
-            origin := ctx.Header("Origin")
-            if origin != "" && isAllowed(origin) {
-                ctx.Response.Header("Access-Control-Allow-Origin", origin)
-                if methodsCSV != "" {
-                    ctx.Response.Header("Access-Control-Allow-Methods", methodsCSV)
-                }
-                if headersCSV != "" {
-                    ctx.Response.Header("Access-Control-Allow-Headers", headersCSV)
-                }
-            }
+	return func(next lift.Handler) lift.Handler {
+		return lift.HandlerFunc(func(ctx *lift.Context) error {
+			origin := ctx.Header("Origin")
+			if origin != "" && isAllowed(origin) {
+				ctx.Response.Header("Access-Control-Allow-Origin", origin)
+				if methodsCSV != "" {
+					ctx.Response.Header("Access-Control-Allow-Methods", methodsCSV)
+				}
+				if headersCSV != "" {
+					ctx.Response.Header("Access-Control-Allow-Headers", headersCSV)
+				}
+			}
 
-            if ctx.Request.Method == "OPTIONS" {
-                ctx.Response.StatusCode = 204
-                return nil
-            }
-            return next.Handle(ctx)
-        })
-    }
+			if ctx.Request.Method == "OPTIONS" {
+				ctx.Response.StatusCode = 204
+				return nil
+			}
+			return next.Handle(ctx)
+		})
+	}
 }
 
 // Logger middleware function
@@ -309,40 +309,224 @@ type UpdateConsentRequest struct {
 
 // Service interfaces
 type PatientService interface {
+	// CreatePatient creates a new patient with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - req: The request to create a patient
+	// Returns:
+	//   - The created patient
+	//   - An error if the creation fails
 	CreatePatient(ctx context.Context, req CreatePatientRequest) (*Patient, error)
+
+	// GetPatient retrieves a patient by their ID and provider ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the patient
+	//   - providerID: The ID of the provider
+	// Returns:
+	//   - The retrieved patient
+	//   - An error if the retrieval fails
 	GetPatient(ctx context.Context, id string, providerID string) (*Patient, error)
+
+	// UpdatePatient updates a patient's information.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the patient
+	//   - patient: The updated patient information
+	// Returns:
+	//   - An error if the update fails
 	UpdatePatient(ctx context.Context, id string, patient *Patient) error
+
+	// SearchPatients searches for patients based on a query and provider ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - query: The search query
+	//   - providerID: The ID of the provider
+	// Returns:
+	//   - A list of patients matching the query
+	//   - An error if the search fails
 	SearchPatients(ctx context.Context, query string, providerID string) ([]Patient, error)
+
+	// UpdateConsent updates a patient's consent information.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - patientID: The ID of the patient
+	//   - req: The request to update consent
+	// Returns:
+	//   - An error if the update fails
 	UpdateConsent(ctx context.Context, patientID string, req UpdateConsentRequest) error
 }
 
 type MedicalRecordService interface {
+	// CreateRecord creates a new medical record with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - req: The request to create a medical record
+	//   - providerID: The ID of the provider
+	// Returns:
+	//   - The created medical record
+	//   - An error if the creation fails
 	CreateRecord(ctx context.Context, req CreateMedicalRecordRequest, providerID string) (*MedicalRecord, error)
+
+	// GetRecord retrieves a medical record by its ID and provider ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the medical record
+	//   - providerID: The ID of the provider
+	//   - purpose: The purpose of the request
+	// Returns:
+	//   - The retrieved medical record
+	//   - An error if the retrieval fails
 	GetRecord(ctx context.Context, id string, providerID string, purpose string) (*MedicalRecord, error)
+
+	// GetPatientRecords retrieves all medical records for a patient by their ID and provider ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - patientID: The ID of the patient
+	//   - providerID: The ID of the provider
+	// Returns:
+	//   - A list of medical records for the patient
+	//   - An error if the retrieval fails
 	GetPatientRecords(ctx context.Context, patientID string, providerID string) ([]MedicalRecord, error)
+
+	// UpdateRecord updates a medical record's content.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the medical record
+	//   - content: The updated content
+	//   - providerID: The ID of the provider
+	// Returns:
+	//   - An error if the update fails
 	UpdateRecord(ctx context.Context, id string, content string, providerID string) error
+
+	// DeleteRecord deletes a medical record by its ID and provider ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the medical record
+	//   - providerID: The ID of the provider
+	// Returns:
+	//   - An error if the deletion fails
 	DeleteRecord(ctx context.Context, id string, providerID string) error
 }
 
 type ProviderService interface {
+	// CreateProvider creates a new provider with the given request.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - req: The request to create a provider
+	// Returns:
+	//   - The created provider
+	//   - An error if the creation fails
 	CreateProvider(ctx context.Context, req CreateProviderRequest) (*Provider, error)
+
+	// GetProvider retrieves a provider by their ID.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - id: The ID of the provider
+	// Returns:
+	//   - The retrieved provider
+	//   - An error if the retrieval fails
 	GetProvider(ctx context.Context, id string) (*Provider, error)
+
+	// ValidateAccess validates a provider's access to a patient's record.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - providerID: The ID of the provider
+	//   - patientID: The ID of the patient
+	//   - recordType: The type of record
+	// Returns:
+	//   - A boolean indicating if the access is valid
+	//   - An error if the validation fails
 	ValidateAccess(ctx context.Context, providerID string, patientID string, recordType string) (bool, error)
+
+	// UpdateAccessLevel updates a provider's access level.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - providerID: The ID of the provider
+	//   - accessLevel: The new access level
+	// Returns:
+	//   - An error if the update fails
 	UpdateAccessLevel(ctx context.Context, providerID string, accessLevel AccessLevel) error
 }
 
 type ComplianceService interface {
+	// LogAccess logs an access entry.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - entry: The access entry to log
+	// Returns:
+	//   - An error if the logging fails
 	LogAccess(ctx context.Context, entry AccessEntry) error
+
+	// GetAuditTrail retrieves an audit trail for a patient within a date range.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - patientID: The ID of the patient
+	//   - startDate: The start date of the audit trail
+	//   - endDate: The end date of the audit trail
+	// Returns:
+	//   - A list of access entries
+	//   - An error if the retrieval fails
 	GetAuditTrail(ctx context.Context, patientID string, startDate, endDate time.Time) ([]AccessEntry, error)
+
+	// GenerateComplianceReport generates a compliance report of the specified type.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - reportType: The type of report to generate
+	//   - params: Additional parameters for the report
+	// Returns:
+	//   - The generated report
+	//   - An error if the report generation fails
 	GenerateComplianceReport(ctx context.Context, reportType string, params map[string]any) (any, error)
+
+	// ValidateHIPAACompliance validates HIPAA compliance for an operation.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - operation: The operation to validate
+	//   - data: The data involved in the operation
+	// Returns:
+	//   - An error if the validation fails
 	ValidateHIPAACompliance(ctx context.Context, operation string, data any) error
+
+	// DetectBreach detects a data breach based on access patterns.
+	// Parameters:
+	//   - ctx: The context for the request
+	//   - accessPattern: The access pattern to analyze
+	// Returns:
+	//   - A boolean indicating if a breach is detected
+	//   - A description of the breach
+	//   - An error if the detection fails
 	DetectBreach(ctx context.Context, accessPattern []AccessEntry) (bool, string, error)
 }
 
 type EncryptionService interface {
+	// Encrypt encrypts the given data.
+	// Parameters:
+	//   - data: The data to encrypt
+	// Returns:
+	//   - The encrypted data as a string
+	//   - An error if the encryption fails
 	Encrypt(data []byte) (string, error)
+
+	// Decrypt decrypts the given encrypted data.
+	// Parameters:
+	//   - encryptedData: The encrypted data to decrypt
+	// Returns:
+	//   - The decrypted data as a byte slice
+	//   - An error if the decryption fails
 	Decrypt(encryptedData string) ([]byte, error)
+
+	// Hash hashes the given data.
+	// Parameters:
+	//   - data: The data to hash
+	// Returns:
+	//   - The hashed data as a string
 	Hash(data string) string
+
+	// GenerateKey generates a new encryption key.
+	// Returns:
+	//   - The generated key as a byte slice
+	//   - An error if the key generation fails
 	GenerateKey() ([]byte, error)
 }
 

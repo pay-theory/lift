@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -24,7 +24,7 @@ var (
 )
 
 // Helper function for update operations to reduce code duplication
-func handleUpdateOperation[T any](ctx *lift.Context, 
+func handleUpdateOperation[T any](ctx *lift.Context,
 	idParamName string,
 	responseName string,
 	performUpdate func(tenantID, resourceID string, req T) error,
@@ -37,7 +37,7 @@ func handleUpdateOperation[T any](ctx *lift.Context,
 		return ctx.BadRequest("Tenant ID is required", nil)
 	}
 	if resourceID == "" {
-		return ctx.BadRequest(strings.ToUpper(string(idParamName[0])) + idParamName[1:] + " ID is required", nil)
+		return ctx.BadRequest(strings.ToUpper(string(idParamName[0]))+idParamName[1:]+" ID is required", nil)
 	}
 
 	var req T
@@ -57,7 +57,7 @@ func handleUpdateOperation[T any](ctx *lift.Context,
 		"updated":    true,
 		"timestamp":  time.Now(),
 	}
-	
+
 	if additionalResponse != nil {
 		for k, v := range additionalResponse(req) {
 			response[k] = v
@@ -361,19 +361,19 @@ func authenticateCustomer(ctx *lift.Context) error {
 		return ctx.Unauthorized("Invalid credentials", err)
 	}
 
-    // Issue a signed JWT token (HS256) for demo purposes
-    token, err := generateDemoJWT(map[string]any{
-        "sub": customer.ID,
-        "ten": tenantID,
-        "iat": time.Now().Unix(),
-        "exp": time.Now().Add(15 * time.Minute).Unix(),
-        "aud": "ecommerce-demo",
-        "iss": "lift-demo",
-        "email": customer.Email,
-    })
-    if err != nil {
-        return ctx.SystemError("Failed to generate token", err)
-    }
+	// Issue a signed JWT token (HS256) for demo purposes
+	token, err := generateDemoJWT(map[string]any{
+		"sub":   customer.ID,
+		"ten":   tenantID,
+		"iat":   time.Now().Unix(),
+		"exp":   time.Now().Add(15 * time.Minute).Unix(),
+		"aud":   "ecommerce-demo",
+		"iss":   "lift-demo",
+		"email": customer.Email,
+	})
+	if err != nil {
+		return ctx.SystemError("Failed to generate token", err)
+	}
 
 	log.Printf("ECOMMERCE AUDIT: Customer authenticated - Tenant: %s, Customer: %s, Email: %s",
 		tenantID, customer.ID, customer.Email)
@@ -388,30 +388,36 @@ func authenticateCustomer(ctx *lift.Context) error {
 // generateDemoJWT creates a minimal HS256 JWT without external deps.
 // In production use a battle-tested JWT library and managed secrets.
 func generateDemoJWT(claims map[string]any) (string, error) {
-    header := map[string]string{"alg": "HS256", "typ": "JWT"}
+	header := map[string]string{"alg": "HS256", "typ": "JWT"}
 
-    headerJSON, err := json.Marshal(header)
-    if err != nil { return "", err }
-    payloadJSON, err := json.Marshal(claims)
-    if err != nil { return "", err }
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		return "", err
+	}
+	payloadJSON, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
 
-    b64 := func(b []byte) string {
-        return base64.RawURLEncoding.EncodeToString(b)
-    }
+	b64 := func(b []byte) string {
+		return base64.RawURLEncoding.EncodeToString(b)
+	}
 
-    signingInput := b64(headerJSON) + "." + b64(payloadJSON)
-    secret := []byte(getJWTSecret())
-    mac := hmac.New(sha256.New, secret)
-    _, _ = mac.Write([]byte(signingInput))
-    sig := mac.Sum(nil)
+	signingInput := b64(headerJSON) + "." + b64(payloadJSON)
+	secret := []byte(getJWTSecret())
+	mac := hmac.New(sha256.New, secret)
+	_, _ = mac.Write([]byte(signingInput))
+	sig := mac.Sum(nil)
 
-    return signingInput + "." + b64(sig), nil
+	return signingInput + "." + b64(sig), nil
 }
 
 func getJWTSecret() string {
-    if v := os.Getenv("JWT_SECRET"); v != "" { return v }
-    // Development-only default; override via env in real deployments
-    return "dev-demo-secret-change-me"
+	if v := os.Getenv("JWT_SECRET"); v != "" {
+		return v
+	}
+	// Development-only default; override via env in real deployments
+	return "dev-demo-secret-change-me"
 }
 
 // Order handlers

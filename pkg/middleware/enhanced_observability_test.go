@@ -8,6 +8,7 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 	"github.com/pay-theory/lift/pkg/observability"
+	"github.com/stretchr/testify/require"
 )
 
 // Mock implementations for testing
@@ -57,18 +58,18 @@ func (m *mockLogger) Debug(msg string, fields ...map[string]any) {
 	m.logs = append(m.logs, entry)
 }
 
-func (m *mockLogger) WithField(_ string, _ any) lift.Logger  { return m }
+func (m *mockLogger) WithField(_ string, _ any) lift.Logger   { return m }
 func (m *mockLogger) WithFields(_ map[string]any) lift.Logger { return m }
 
 func (m *mockLogger) WithRequestID(_ string) observability.StructuredLogger { return m }
-func (m *mockLogger) WithTenantID(_ string) observability.StructuredLogger   { return m }
-func (m *mockLogger) WithUserID(_ string) observability.StructuredLogger       { return m }
-func (m *mockLogger) WithTraceID(_ string) observability.StructuredLogger     { return m }
-func (m *mockLogger) WithSpanID(_ string) observability.StructuredLogger       { return m }
+func (m *mockLogger) WithTenantID(_ string) observability.StructuredLogger  { return m }
+func (m *mockLogger) WithUserID(_ string) observability.StructuredLogger    { return m }
+func (m *mockLogger) WithTraceID(_ string) observability.StructuredLogger   { return m }
+func (m *mockLogger) WithSpanID(_ string) observability.StructuredLogger    { return m }
 
 func (m *mockLogger) Flush(_ context.Context) error { return nil }
-func (m *mockLogger) Close() error                    { return nil }
-func (m *mockLogger) IsHealthy() bool                 { return m.healthy }
+func (m *mockLogger) Close() error                  { return nil }
+func (m *mockLogger) IsHealthy() bool               { return m.healthy }
 func (m *mockLogger) GetStats() observability.LoggerStats {
 	return observability.LoggerStats{
 		EntriesLogged:  int64(len(m.logs)),
@@ -78,8 +79,19 @@ func (m *mockLogger) GetStats() observability.LoggerStats {
 }
 
 type mockMetrics struct {
-	metrics map[string]any
-	tags    map[string]string
+	metrics      map[string]any
+	tags         map[string]string
+	root         *mockMetrics
+	recordedTags []map[string]string
+}
+
+func newMockMetricsCollector() *mockMetrics {
+	m := &mockMetrics{
+		metrics: make(map[string]any),
+		tags:    make(map[string]string),
+	}
+	m.root = m
+	return m
 }
 
 func (m *mockMetrics) Counter(name string, _ ...map[string]string) lift.Counter {
@@ -104,7 +116,21 @@ func (m *mockMetrics) WithTags(tags map[string]string) observability.MetricsColl
 	for k, v := range tags {
 		newTags[k] = v
 	}
-	return &mockMetrics{metrics: m.metrics, tags: newTags}
+
+	root := m.root
+	if root == nil {
+		root = m
+		m.root = root
+	}
+	if root != nil && len(newTags) > 0 {
+		recorded := make(map[string]string, len(newTags))
+		for k, v := range newTags {
+			recorded[k] = v
+		}
+		root.recordedTags = append(root.recordedTags, recorded)
+	}
+
+	return &mockMetrics{metrics: m.metrics, tags: newTags, root: root}
 }
 
 func (m *mockMetrics) WithTag(key, value string) observability.MetricsCollector {
@@ -112,7 +138,7 @@ func (m *mockMetrics) WithTag(key, value string) observability.MetricsCollector 
 }
 
 func (m *mockMetrics) RecordBatch(_ []*observability.MetricEntry) error { return nil }
-func (m *mockMetrics) Close() error                                           { return nil }
+func (m *mockMetrics) Close() error                                     { return nil }
 func (m *mockMetrics) GetStats() observability.MetricsStats {
 	return observability.MetricsStats{
 		MetricsRecorded: int64(len(m.metrics)),
@@ -247,10 +273,7 @@ func (g *mockGauge) Add(value float64) {
 
 func TestEnhancedObservabilityMiddleware(t *testing.T) {
 	logger := &mockLogger{}
-	metrics := &mockMetrics{
-		metrics: make(map[string]any),
-		tags:    make(map[string]string),
-	}
+	metrics := newMockMetricsCollector()
 
 	config := EnhancedObservabilityConfig{
 		EnableLogging: true,
@@ -258,6 +281,7 @@ func TestEnhancedObservabilityMiddleware(t *testing.T) {
 		EnableTracing: false, // Skip X-Ray for unit tests
 		Logger:        logger,
 		Metrics:       metrics,
+		SampleRate:    1.0,
 	}
 
 	middleware := EnhancedObservabilityMiddleware(config)
@@ -275,12 +299,9 @@ func TestEnhancedObservabilityMiddleware(t *testing.T) {
 	}
 
 	ctx := &lift.Context{
-		Context: context.Background(),
-		Request: &lift.Request{Request: adapterRequest},
-		Response: &lift.Response{
-			StatusCode: 200,
-			Headers:    make(map[string]string),
-		},
+		Context:  context.Background(),
+		Request:  lift.NewRequest(adapterRequest),
+		Response: &lift.Response{StatusCode: 200, Headers: make(map[string]string)},
 	}
 
 	err := handler.Handle(ctx)
@@ -301,10 +322,7 @@ func TestEnhancedObservabilityMiddleware(t *testing.T) {
 
 func TestObservabilityWithTenantContext(t *testing.T) {
 	logger := &mockLogger{}
-	metrics := &mockMetrics{
-		metrics: make(map[string]any),
-		tags:    make(map[string]string),
-	}
+	metrics := newMockMetricsCollector()
 
 	config := EnhancedObservabilityConfig{
 		EnableLogging: true,
@@ -312,6 +330,7 @@ func TestObservabilityWithTenantContext(t *testing.T) {
 		EnableTracing: false,
 		Logger:        logger,
 		Metrics:       metrics,
+		SampleRate:    1.0,
 	}
 
 	middleware := EnhancedObservabilityMiddleware(config)
@@ -329,14 +348,11 @@ func TestObservabilityWithTenantContext(t *testing.T) {
 	}
 
 	ctx := &lift.Context{
-		Context: context.Background(),
-		Request: &lift.Request{Request: adapterRequest},
-		Response: &lift.Response{
-			StatusCode: 200,
-			Headers:    make(map[string]string),
-		},
+		Context:  context.Background(),
+		Request:  lift.NewRequest(adapterRequest),
+		Response: &lift.Response{StatusCode: 200, Headers: make(map[string]string)},
 	}
-	ctx.Set("tenant_id", "test-tenant")
+	ctx.SetTenantID("test-tenant")
 
 	err := handler.Handle(ctx)
 	if err != nil {
@@ -354,6 +370,233 @@ func TestObservabilityWithTenantContext(t *testing.T) {
 	if !found {
 		t.Error("Expected tenant context in logs")
 	}
+}
+
+func TestEnhancedObservabilityInjectsTenantAndUserTags(t *testing.T) {
+	metrics := newMockMetricsCollector()
+	config := EnhancedObservabilityConfig{
+		EnableMetrics: true,
+		Metrics:       metrics,
+		SampleRate:    1.0,
+	}
+
+	middleware := EnhancedObservabilityMiddleware(config)
+
+	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+		ctx.SetTenantID("tenant-abc")
+		ctx.SetUserID("user-xyz")
+		return nil
+	}))
+
+	adapterRequest := &adapters.Request{
+		Method:      "POST",
+		Path:        "/resource",
+		Headers:     make(map[string]string),
+		QueryParams: make(map[string]string),
+	}
+
+	ctx := &lift.Context{
+		Context:  context.Background(),
+		Request:  lift.NewRequest(adapterRequest),
+		Response: &lift.Response{StatusCode: 200, Headers: make(map[string]string)},
+	}
+
+	require.NoError(t, handler.Handle(ctx))
+
+	if len(metrics.recordedTags) == 0 {
+		t.Fatalf("expected metrics tags to be recorded")
+	}
+
+	found := false
+	for _, tags := range metrics.recordedTags {
+		if tags["tenant_id"] == "tenant-abc" && tags["user_id"] == "user-xyz" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatalf("expected tenant and user tags to be present, got %#v", metrics.recordedTags)
+	}
+}
+
+func TestEnhancedObservabilityCustomIdentityFuncs(t *testing.T) {
+	metrics := newMockMetricsCollector()
+	config := EnhancedObservabilityConfig{
+		EnableMetrics: true,
+		Metrics:       metrics,
+		TenantIDFunc: func(*lift.Context) string {
+			return "custom-tenant"
+		},
+		UserIDFunc: func(*lift.Context) string {
+			return "custom-user"
+		},
+		SampleRate: 1.0,
+	}
+
+	middleware := EnhancedObservabilityMiddleware(config)
+	adapterRequest := &adapters.Request{
+		Method:      "GET",
+		Path:        "/",
+		Headers:     make(map[string]string),
+		QueryParams: make(map[string]string),
+	}
+	ctx := &lift.Context{
+		Context:  context.Background(),
+		Request:  lift.NewRequest(adapterRequest),
+		Response: &lift.Response{Headers: make(map[string]string)},
+	}
+
+	require.NoError(t, middleware(lift.HandlerFunc(func(_ *lift.Context) error { return nil })).Handle(ctx))
+
+	found := false
+	for _, tags := range metrics.recordedTags {
+		if tags["tenant_id"] == "custom-tenant" && tags["user_id"] == "custom-user" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatalf("expected custom tenant/user tags, got %#v", metrics.recordedTags)
+	}
+}
+
+func TestEnhancedObservabilitySampleRate(t *testing.T) {
+	t.Run("defaults to sampling when unset", func(t *testing.T) {
+		logger := &mockLogger{}
+		metrics := newMockMetricsCollector()
+		config := EnhancedObservabilityConfig{
+			EnableLogging: true,
+			EnableMetrics: true,
+			Logger:        logger,
+			Metrics:       metrics,
+			Sampler:       func() float64 { return 0.6 },
+		}
+
+		middleware := EnhancedObservabilityMiddleware(config)
+		handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error { return nil }))
+
+		adapterRequest := &adapters.Request{Method: "GET", Path: "/default"}
+		ctx := &lift.Context{
+			Context:  context.Background(),
+			Request:  lift.NewRequest(adapterRequest),
+			Response: &lift.Response{Headers: make(map[string]string)},
+		}
+
+		require.NoError(t, handler.Handle(ctx))
+
+		if len(logger.logs) == 0 {
+			t.Fatalf("expected logs when sampling defaults to enabled")
+		}
+		if metrics.GetMetricsCount() == 0 {
+			t.Fatalf("expected metrics when sampling defaults to enabled")
+		}
+	})
+
+	t.Run("disable sampling flag", func(t *testing.T) {
+		logger := &mockLogger{}
+		metrics := newMockMetricsCollector()
+		config := EnhancedObservabilityConfig{
+			EnableLogging:   true,
+			EnableMetrics:   true,
+			Logger:          logger,
+			Metrics:         metrics,
+			DisableSampling: true,
+		}
+
+		middleware := EnhancedObservabilityMiddleware(config)
+		handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error { return nil }))
+
+		adapterRequest := &adapters.Request{Method: "GET", Path: "/disabled"}
+		ctx := &lift.Context{
+			Context:  context.Background(),
+			Request:  lift.NewRequest(adapterRequest),
+			Response: &lift.Response{Headers: make(map[string]string)},
+		}
+
+		require.NoError(t, handler.Handle(ctx))
+
+		if len(logger.logs) != 0 {
+			t.Fatalf("expected no logs when sampling disabled, got %d", len(logger.logs))
+		}
+		if metrics.GetMetricsCount() != 0 {
+			t.Fatalf("expected no metrics when sampling disabled, got %d", metrics.GetMetricsCount())
+		}
+		if sampled, ok := ctx.Get("observability_sampled").(bool); ok && sampled {
+			t.Fatalf("expected sampled flag to be false when sampling disabled")
+		}
+	})
+
+	t.Run("unsampled request skips instrumentation", func(t *testing.T) {
+		logger := &mockLogger{}
+		metrics := newMockMetricsCollector()
+		config := EnhancedObservabilityConfig{
+			EnableLogging: true,
+			EnableMetrics: true,
+			Logger:        logger,
+			Metrics:       metrics,
+			SampleRate:    0.5,
+			Sampler:       func() float64 { return 0.9 },
+		}
+
+		middleware := EnhancedObservabilityMiddleware(config)
+		handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error { return nil }))
+
+		adapterRequest := &adapters.Request{Method: "GET", Path: "/sample"}
+		ctx := &lift.Context{
+			Context:  context.Background(),
+			Request:  lift.NewRequest(adapterRequest),
+			Response: &lift.Response{Headers: make(map[string]string)},
+		}
+
+		require.NoError(t, handler.Handle(ctx))
+
+		if len(logger.logs) != 0 {
+			t.Fatalf("expected no logs when unsampled, got %d", len(logger.logs))
+		}
+		if metrics.GetMetricsCount() != 0 {
+			t.Fatalf("expected no metrics when unsampled, got %d", metrics.GetMetricsCount())
+		}
+		if sampled, ok := ctx.Get("observability_sampled").(bool); !ok || sampled {
+			t.Fatalf("expected sampled flag to be false, got %v", ctx.Get("observability_sampled"))
+		}
+	})
+
+	t.Run("sampled request runs instrumentation", func(t *testing.T) {
+		logger := &mockLogger{}
+		metrics := newMockMetricsCollector()
+		config := EnhancedObservabilityConfig{
+			EnableLogging: true,
+			EnableMetrics: true,
+			Logger:        logger,
+			Metrics:       metrics,
+			SampleRate:    0.5,
+			Sampler:       func() float64 { return 0.1 },
+		}
+
+		middleware := EnhancedObservabilityMiddleware(config)
+		handler := middleware(lift.HandlerFunc(func(_ *lift.Context) error { return nil }))
+
+		adapterRequest := &adapters.Request{Method: "GET", Path: "/sample"}
+		ctx := &lift.Context{
+			Context:  context.Background(),
+			Request:  lift.NewRequest(adapterRequest),
+			Response: &lift.Response{Headers: make(map[string]string)},
+		}
+
+		require.NoError(t, handler.Handle(ctx))
+
+		if len(logger.logs) == 0 {
+			t.Fatalf("expected logs when sampled")
+		}
+		if metrics.GetMetricsCount() == 0 {
+			t.Fatalf("expected metrics when sampled")
+		}
+		if sampled, ok := ctx.Get("observability_sampled").(bool); !ok || !sampled {
+			t.Fatalf("expected sampled flag to be true, got %v", ctx.Get("observability_sampled"))
+		}
+	})
 }
 
 func BenchmarkEnhancedObservabilityMiddleware(b *testing.B) {
@@ -378,12 +621,9 @@ func BenchmarkEnhancedObservabilityMiddleware(b *testing.B) {
 	}
 
 	ctx := &lift.Context{
-		Context: context.Background(),
-		Request: &lift.Request{Request: adapterRequest},
-		Response: &lift.Response{
-			StatusCode: 200,
-			Headers:    make(map[string]string),
-		},
+		Context:  context.Background(),
+		Request:  lift.NewRequest(adapterRequest),
+		Response: &lift.Response{StatusCode: 200, Headers: make(map[string]string)},
 	}
 
 	b.ResetTimer()
@@ -402,12 +642,8 @@ func TestEnhancedObservabilityDefaults(t *testing.T) {
 
 	// Test that defaults are set correctly
 	ctx := &lift.Context{
-		Context: context.Background(),
-		Request: &lift.Request{
-			Method:  "GET",
-			Path:    "/test",
-			Headers: make(map[string]string),
-		},
+		Context:  context.Background(),
+		Request:  lift.NewRequest(&adapters.Request{Method: "GET", Path: "/test", Headers: make(map[string]string)}),
 		Response: &lift.Response{},
 	}
 
@@ -423,7 +659,7 @@ func TestEnhancedObservabilityDefaults(t *testing.T) {
 
 func TestGetObservabilityStats(t *testing.T) {
 	logger := &mockLogger{healthy: true}
-	metrics := &mockMetrics{metrics: make(map[string]any), tags: make(map[string]string)}
+	metrics := newMockMetricsCollector()
 
 	config := EnhancedObservabilityConfig{
 		Logger:  logger,
@@ -470,7 +706,7 @@ func TestHealthCheckObservability(t *testing.T) {
 		{
 			name: "healthy metrics",
 			config: EnhancedObservabilityConfig{
-				Metrics:       &mockMetrics{metrics: make(map[string]any), tags: make(map[string]string)},
+				Metrics:       newMockMetricsCollector(),
 				EnableMetrics: true,
 			},
 			expectError: false,
@@ -522,12 +758,8 @@ func BenchmarkEnhancedObservabilityLoggingOnly(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		ctx := &lift.Context{
-			Context: context.Background(),
-			Request: &lift.Request{
-				Method:  "GET",
-				Path:    "/test",
-				Headers: make(map[string]string),
-			},
+			Context:  context.Background(),
+			Request:  lift.NewRequest(&adapters.Request{Method: "GET", Path: "/test", Headers: make(map[string]string)}),
 			Response: &lift.Response{},
 		}
 
@@ -538,7 +770,7 @@ func BenchmarkEnhancedObservabilityLoggingOnly(b *testing.B) {
 }
 
 func BenchmarkEnhancedObservabilityMetricsOnly(b *testing.B) {
-	metrics := &mockMetrics{metrics: make(map[string]any), tags: make(map[string]string)}
+	metrics := newMockMetricsCollector()
 
 	config := EnhancedObservabilityConfig{
 		Metrics:       metrics,
@@ -558,12 +790,8 @@ func BenchmarkEnhancedObservabilityMetricsOnly(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		ctx := &lift.Context{
-			Context: context.Background(),
-			Request: &lift.Request{
-				Method:  "GET",
-				Path:    "/test",
-				Headers: make(map[string]string),
-			},
+			Context:  context.Background(),
+			Request:  lift.NewRequest(&adapters.Request{Method: "GET", Path: "/test", Headers: make(map[string]string)}),
 			Response: &lift.Response{},
 		}
 

@@ -69,10 +69,15 @@ Lift uses middleware patterns to compose functionality...
 // Example: Basic Lambda handler with Lift
 package main
 
-import "github.com/pay-theory/lift"
+import (
+    "github.com/aws/aws-lambda-go/lambda"
+    "github.com/pay-theory/lift/pkg/lift"
+)
 
 func main() {
-    lift.Start(HandlePayment)
+    app := lift.New()
+    app.POST("/payments", HandlePayment)
+    lambda.Start(app.HandleRequest)
 }
 
 func HandlePayment(ctx *lift.Context) error {

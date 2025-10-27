@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	statusCompleted = "completed"
+	statusCompleted  = "completed"
 	statusProcessing = "processing"
 )
 

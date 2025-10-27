@@ -13,7 +13,7 @@ import (
 // testTableKeySchema is a helper to test table key schema creation
 func testTableKeySchema(t *testing.T, testName string, props *LiftTableProps, expectedPK, expectedSK string) {
 	t.Helper()
-	
+
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
 	table := NewLiftTable(stack, jsii.String(testName), props)
@@ -37,7 +37,7 @@ func testTableKeySchema(t *testing.T, testName string, props *LiftTableProps, ex
 			"AttributeType": "S",
 		},
 	}
-	
+
 	if expectedSK != "" {
 		keySchema = append(keySchema, map[string]interface{}{
 			"AttributeName": expectedSK,
@@ -51,7 +51,7 @@ func testTableKeySchema(t *testing.T, testName string, props *LiftTableProps, ex
 
 	// Check that table has expected attribute names
 	template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), map[string]interface{}{
-		"KeySchema": keySchema,
+		"KeySchema":            keySchema,
 		"AttributeDefinitions": assertions.Match_ArrayWith(&attributeDefs),
 	})
 }
@@ -88,15 +88,15 @@ func TestLiftTable_CreatesTableWithFieldNames(t *testing.T) {
 // testWrapperTableUsesPKSK verifies wrapper tables use standard PK/SK fields
 func testWrapperTableUsesPKSK(t *testing.T, stackName string, createTable func(constructs.Construct, *string) constructs.Construct) {
 	t.Helper()
-	
+
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String(stackName), nil)
-	
+
 	table := createTable(stack, jsii.String("TestTable"))
 	assert.NotNil(t, table)
-	
+
 	template := assertions.Template_FromStack(stack, nil)
-	
+
 	// Verify it uses PK/SK as field names
 	template.HasResourceProperties(jsii.String("AWS::DynamoDB::Table"), map[string]interface{}{
 		"KeySchema": []interface{}{
@@ -105,7 +105,7 @@ func testWrapperTableUsesPKSK(t *testing.T, stackName string, createTable func(c
 				"KeyType":       "HASH",
 			},
 			map[string]interface{}{
-				"AttributeName": "SK", 
+				"AttributeName": "SK",
 				"KeyType":       "RANGE",
 			},
 		},

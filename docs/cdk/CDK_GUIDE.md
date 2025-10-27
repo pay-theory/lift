@@ -10,16 +10,15 @@ The Lift CDK implementation includes fully functional constructs, patterns, and 
 
 #### 1. Lambda Functions (`pkg/cdk/constructs/lambda.go`)
 
-**LiftFunction Construct** - Lines 44-169
-- **Location**: `pkg/cdk/constructs/lambda.go:44-169`
+**LiftFunction Construct** - Lines 73-185
+- **Location**: `pkg/cdk/constructs/lambda.go:73-185`
 - **Purpose**: Optimized Lambda function construct for Lift applications
 - **Key Features**:
-  - ARM64 architecture by default (`lambda.go:65`)
-  - 512MB memory default (`lambda.go:68`)
-  - 30-second timeout default (`lambda.go:71`)
-  - X-Ray tracing support (`lambda.go:73-75`)
-  - Dead Letter Queue configuration (`lambda.go:86-111`)
-  - DynamORM environment variables (`lambda.go:131-149`)
+  - ARM64 architecture by default (`lambda.go:118-120`)
+  - 512MB memory default (`lambda.go:121-123`)
+  - 30-second timeout default (`lambda.go:124-126`)
+  - X-Ray tracing support (`lambda.go:130-134`)
+  - DynamORM environment variables (`lambda.go:160-185`)
 
 **Example Usage**:
 ```go
@@ -39,18 +38,18 @@ fn := liftconstructs.NewLiftFunction(this, jsii.String("Function"), &liftconstru
 
 #### 2. API Gateway (`pkg/cdk/constructs/api.go`)
 
-**LiftAPI Construct** - Lines 56-209
-- **Location**: `pkg/cdk/constructs/api.go:56-209`
+**LiftAPI Construct** - Lines 55-533
+- **Location**: `pkg/cdk/constructs/api.go:55-533`
 - **Purpose**: HTTP API Gateway optimized for Lift applications
 - **Key Features**:
-  - CORS configuration with Lift-specific headers (`api.go:94-119`)
-  - Access logging support (`api.go:74-85`)
-  - Custom domain support (`api.go:188-202`)
-  - Throttling configuration (`api.go:153-162`)
+  - CORS configuration with Lift-specific headers (`api.go:208-228`)
+  - Access logging support (`api.go:161-166`)
+  - Custom domain support (`api.go:374-392`)
+  - Throttling configuration (`api.go:293-317`)
 
-**CORS Configuration** (Lines 94-119):
+**CORS Configuration** (Lines 208-228):
 ```go
-// From pkg/cdk/constructs/api.go:94-119
+// From pkg/cdk/constructs/api.go:208-228
 CorsPreflight: &awsapigatewayv2.CorsPreflightOptions{
     AllowOrigins: &[]*string{jsii.String("*")},
     AllowMethods: &[]awsapigatewayv2.CorsHttpMethod{
@@ -70,44 +69,35 @@ CorsPreflight: &awsapigatewayv2.CorsPreflightOptions{
 }
 ```
 
-#### 3. DynamoDB Tables (`pkg/cdk/constructs/dynamorm_table.go`)
+#### 3. DynamoDB Tables (`pkg/cdk/constructs/dynamodb.go`)
 
-**DynamORMTable Construct** - Lines 78-167
-- **Location**: `pkg/cdk/constructs/dynamorm_table.go:78-167`
-- **Purpose**: DynamoDB table optimized for DynamORM with multi-tenant support
+**LiftTable Construct** - Lines 88-468
+- **Location**: `pkg/cdk/constructs/dynamodb.go:88-468`
+- **Purpose**: DynamoDB table optimized for Lift applications
 - **Key Features**:
-  - Multi-tenant isolation (`dynamorm_table.go:211-256`)
-  - Comprehensive GSI support (`dynamorm_table.go:258-376`)
-  - CloudWatch metrics and alarms (`dynamorm_table.go:872-1284`)
-  - X-Ray tracing integration (`dynamorm_table.go:1286-1369`)
+  - Point-in-time recovery support (`dynamodb.go:120-125`)
+  - DynamoDB streams configuration (`dynamodb.go:127-132`)
+  - Auto-scaling capabilities (`dynamodb.go:134-150`)
+  - TTL configuration (`dynamodb.go:152-157`)
+  - Global Secondary Indexes (`dynamodb.go:159-200`)
 
-**Multi-Tenant Configuration** (Lines 211-256):
+**LiftTable Configuration** (Lines 88-468):
 ```go
-// From pkg/cdk/constructs/dynamorm_table.go:211-256
-func (t *DynamORMTable) ConfigureMultiTenant(tenantAttribute string) {
-    // Add primary tenant GSI for cross-tenant queries
-    t.AddDynamORMIndex("tenant", 
-        &awsdynamodb.Attribute{
-            Name: jsii.String(tenantAttribute),
-            Type: awsdynamodb.AttributeType_STRING,
-        },
-        &awsdynamodb.Attribute{
-            Name: jsii.String("created_at"),
-            Type: awsdynamodb.AttributeType_STRING,
-        },
-    )
-    
-    // Add tenant-entity GSI for efficient entity queries within tenant
-    t.AddDynamORMIndex("tenant-entity", 
-        &awsdynamodb.Attribute{
-            Name: jsii.String(tenantAttribute),
-            Type: awsdynamodb.AttributeType_STRING,
-        },
-        &awsdynamodb.Attribute{
-            Name: jsii.String("entity_type"),
-            Type: awsdynamodb.AttributeType_STRING,
-        },
-    )
+// From pkg/cdk/constructs/dynamodb.go:88-468
+func NewLiftTable(scope constructs.Construct, id *string, props *LiftTableProps) *LiftTable {
+    builder := newLiftTableBuilder(scope, id, props)
+    return builder.build()
+}
+
+// Example usage with auto-scaling and streams
+props := &LiftTableProps{
+    TableName:                 jsii.String("my-table"),
+    PartitionKeyName:          jsii.String("PK"),
+    SortKeyName:               jsii.String("SK"),
+    EnablePointInTimeRecovery: jsii.Bool(true),
+    EnableStreams:             jsii.Bool(true),
+    EnableAutoScaling:         jsii.Bool(true),
+    TimeToLiveAttribute:       jsii.String("ttl"),
 }
 ```
 
@@ -311,40 +301,33 @@ security := liftconstructs.NewEnhancedSecurity(stack, jsii.String("Security"), &
 
 ### Advanced Patterns
 
-#### Multi-Tenant DynamoDB Configuration
+#### DynamoDB Table Configuration
 
-Based on `pkg/cdk/constructs/dynamorm_table.go:105-167`:
+Based on `pkg/cdk/constructs/dynamodb.go:88-468`:
 
 ```go
-// Create multi-tenant DynamORM table
-table := liftconstructs.NewDynamORMTable(stack, jsii.String("Database"), &liftconstructs.DynamORMTableProps{
-    PartitionKey: &awsdynamodb.Attribute{
-        Name: jsii.String("PK"),
-        Type: awsdynamodb.AttributeType_STRING,
-    },
-    SortKey: &awsdynamodb.Attribute{
-        Name: jsii.String("SK"),
-        Type: awsdynamodb.AttributeType_STRING,
-    },
-    EnableMultiTenant:   jsii.Bool(true),
-    TenantAttribute:     jsii.String("TenantID"),
-    EnableAutoScaling:   jsii.Bool(true),
-    TimeToLiveAttribute: jsii.String("ttl"),
+// Create Lift-optimized DynamoDB table
+table := liftconstructs.NewLiftTable(stack, jsii.String("Database"), &liftconstructs.LiftTableProps{
+    TableName:                 jsii.String("my-app-table"),
+    PartitionKeyName:          jsii.String("PK"),
+    SortKeyName:               jsii.String("SK"),
+    EnablePointInTimeRecovery: jsii.Bool(true),
+    EnableStreams:             jsii.Bool(true),
+    EnableAutoScaling:         jsii.Bool(true),
+    TimeToLiveAttribute:       jsii.String("ttl"),
+    MinReadCapacity:           jsii.Number(5),
+    MaxReadCapacity:           jsii.Number(100),
+    MinWriteCapacity:          jsii.Number(5),
+    MaxWriteCapacity:          jsii.Number(100),
 })
 
-// Configure tenant isolation - Based on dynamorm_table.go:211-256
-table.ConfigureMultiTenant("TenantID")
-
-// Add comprehensive monitoring - Based on dynamorm_table.go:1256-1284
-monitoring := table.SetupComprehensiveMonitoring(
-    jsii.String("arn:aws:sns:us-east-1:123456789012:alerts"),
-    "MyApp-DynamoDB-Dashboard",
-)
+// Grant permissions to Lambda function
+table.Table.GrantReadWriteData(function.Function)
 ```
 
 #### API Gateway with Custom Authorizers
 
-Based on `pkg/cdk/constructs/api.go:212-274`:
+Based on `pkg/cdk/constructs/api.go:435-458`:
 
 ```go
 // Create API with custom configuration
@@ -437,11 +420,11 @@ eventStack := stacks.NewEventDrivenStack(app, "Events", &stacks.EventDrivenStack
 
 | Construct | File Location | Purpose | Key Features |
 |-----------|---------------|---------|--------------|
-| `LiftFunction` | `pkg/cdk/constructs/lambda.go:44-169` | Optimized Lambda functions | ARM64, DLQ, X-Ray, DynamORM |
-| `LiftAPI` | `pkg/cdk/constructs/api.go:56-209` | HTTP API Gateway | CORS, throttling, custom domains |
-| `DynamORMTable` | `pkg/cdk/constructs/dynamorm_table.go:78-167` | DynamoDB with DynamORM | Multi-tenant, GSIs, monitoring |
-| `EnhancedMonitoring` | `pkg/cdk/constructs/monitoring_enhanced.go:71-108` | CloudWatch monitoring | Metrics, alarms, dashboards |
-| `EnhancedSecurity` | `pkg/cdk/constructs/security_enhanced.go:90-136` | Security features | WAF, VPC endpoints, flow logs |
+| `LiftFunction` | `pkg/cdk/constructs/lambda.go:73-185` | Optimized Lambda functions | ARM64, X-Ray, DynamORM env vars |
+| `LiftAPI` | `pkg/cdk/constructs/api.go:55-533` | HTTP API Gateway | CORS, throttling, custom domains |
+| `LiftTable` | `pkg/cdk/constructs/dynamodb.go:88-468` | DynamoDB table | PITR, streams, auto-scaling, TTL |
+| `EnhancedMonitoring` | `pkg/cdk/constructs/monitoring_enhanced.go:82-111` | CloudWatch monitoring | Metrics, alarms, dashboards |
+| `EnhancedSecurity` | `pkg/cdk/constructs/security_enhanced.go:100-137` | Security features | WAF, VPC endpoints, flow logs |
 
 ### Pattern Constructs
 
@@ -467,23 +450,27 @@ Based on `pkg/cdk/constructs/lambda.go:118-151`:
 
 | Variable | Purpose | Set By |
 |----------|---------|--------|
-| `LIFT_VERSION` | Framework version | `lambda.go:123` |
-| `LIFT_MULTI_TENANT` | Multi-tenant mode | `lambda.go:124-126` |
-| `LIFT_METRICS_ENABLED` | Metrics collection | `lambda.go:127-129` |
-| `DYNAMORM_REGION` | AWS region for DynamORM | `lambda.go:133` |
-| `DYNAMODB_TABLE_NAME` | DynamoDB table name | `lambda.go:135-137` |
-| `DYNAMORM_DEBUG` | Debug mode | `lambda.go:139-144` |
+| `LIFT_VERSION` | Framework version | `lambda.go:150` |
+| `LIFT_MULTI_TENANT` | Multi-tenant mode | `lambda.go:152-154` |
+| `LIFT_METRICS_ENABLED` | Metrics collection | `lambda.go:155-157` |
+| `DYNAMORM_REGION` | AWS region for DynamORM | `lambda.go:167` |
+| `DYNAMODB_TABLE_NAME` | DynamoDB table name | `lambda.go:169-171` |
+| `DYNAMORM_DEBUG` | Debug mode | `lambda.go:174-178` |
+| `DYNAMORM_RETRY_MAX_ATTEMPTS` | Retry configuration | `lambda.go:181` |
+| `DYNAMORM_RETRY_BASE_DELAY` | Retry delay | `lambda.go:182` |
 
 ### DynamORM Configuration
 
-Based on `pkg/cdk/constructs/dynamorm_table.go:395-401`:
+Based on `pkg/cdk/constructs/lambda.go:160-185`:
 
 ```go
-// Environment variables for DynamORM
-env := t.GetEnvironmentVariables()
-// Returns:
-// - DYNAMODB_TABLE_NAME: table name
+// Environment variables for DynamORM are automatically configured
+// when EnableDynamORM is set to true in LiftFunctionProps:
 // - DYNAMORM_REGION: AWS region
+// - DYNAMODB_TABLE_NAME: table name (if DynamORMTableName is provided)
+// - DYNAMORM_DEBUG: debug mode setting
+// - DYNAMORM_RETRY_MAX_ATTEMPTS: retry configuration
+// - DYNAMORM_RETRY_BASE_DELAY: retry delay
 ```
 
 ## Deployment Commands
@@ -550,15 +537,16 @@ The CDK constructs provide comprehensive monitoring based on `pkg/cdk/constructs
 
 ### X-Ray Tracing
 
-Based on `pkg/cdk/constructs/dynamorm_table.go:1286-1369`:
+Based on `pkg/cdk/constructs/lambda.go:129-134`:
 
 ```go
-// Enable X-Ray tracing for DynamORM
-table.EnableXRayTracing()
-table.ConfigureXRayServiceMap("MyService")
+// Enable X-Ray tracing for Lambda function
+fnProps := &liftconstructs.LiftFunctionProps{
+    EnableTracing: jsii.Bool(true),
+    // ... other properties
+}
 
-// Add X-Ray permissions to Lambda
-table.AddXRayPermissions(function.Function)
+function := liftconstructs.NewLiftFunction(stack, jsii.String("Function"), fnProps)
 ```
 
 ## Security Best Practices
@@ -582,16 +570,19 @@ Based on `pkg/cdk/constructs/security_enhanced.go:545-578`:
 - X-Ray endpoint
 - Private network access to AWS services
 
-### Tenant Isolation
+### Table Permissions
 
-Based on `pkg/cdk/constructs/dynamorm_table.go:404-497`:
+Based on `pkg/cdk/constructs/dynamodb.go:400-468`:
 
 ```go
-// Grant tenant-isolated access
-table.GrantTenantIsolatedAccess(lambdaRole, "TenantID")
+// Grant standard DynamoDB permissions
+table.Table.GrantReadWriteData(lambdaFunction)
 
-// Create tenant boundary policy
-policy := table.CreateTenantBoundaryPolicy("TenantID")
+// Grant read-only access
+table.Table.GrantReadData(lambdaFunction)
+
+// Grant full access
+table.Table.GrantFullAccess(lambdaFunction)
 ```
 
 ## Troubleshooting Common Issues
@@ -624,8 +615,8 @@ Timeout: awscdk.Duration_Minutes(jsii.Number(15)),
 
 Ensure proper IAM permissions:
 ```go
-// Based on dynamorm_table.go:778-798
-table.AddDynamORMPermissions(function.Function)
+// Based on dynamodb.go:400-468
+table.Table.GrantReadWriteData(function.Function)
 ```
 
 ## Additional Resources

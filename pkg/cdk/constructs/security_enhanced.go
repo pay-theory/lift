@@ -59,7 +59,19 @@ type WAFCustomRule struct {
 	Priority    float64
 }
 
+// VPCEndpointConfig defines which VPC endpoints to create
+type VPCEndpointConfig struct {
+	EnableSecretsManager       *bool
+	EnableCloudWatchLogs       *bool
+	EnableXRay                 *bool
+	EnableKMS                  *bool
+	EnableCloudWatchMonitoring *bool
+	PrivateDNSEnabled          *bool // Default true, set false to avoid conflicts in shared VPCs
+}
+
 // EnhancedSecurityProps defines properties for enhanced security
+//
+//nolint:govet // Field order keeps related toggles grouped for readability.
 type EnhancedSecurityProps struct {
 	Vpc               awsec2.IVpc
 	EnableWAF         *bool
@@ -73,6 +85,7 @@ type EnhancedSecurityProps struct {
 	IngressRules      []SecurityRule
 	EgressRules       []SecurityRule
 	Secrets           []SecretConfig
+	VPCEndpointConfig *VPCEndpointConfig
 }
 
 // EnhancedSecurity provides comprehensive security features
@@ -148,6 +161,16 @@ func (s *EnhancedSecurity) setDefaults(props *EnhancedSecurityProps) {
 			EnableSQLiProtection: jsii.Bool(true),
 			EnableXSSProtection:  jsii.Bool(true),
 			EnableKnownBadInputs: jsii.Bool(true),
+		}
+	}
+	if props.VPCEndpointConfig == nil {
+		props.VPCEndpointConfig = &VPCEndpointConfig{
+			EnableSecretsManager:       jsii.Bool(true),
+			EnableCloudWatchLogs:       jsii.Bool(true),
+			EnableXRay:                 jsii.Bool(true),
+			EnableKMS:                  jsii.Bool(false),
+			EnableCloudWatchMonitoring: jsii.Bool(false),
+			PrivateDNSEnabled:          jsii.Bool(true),
 		}
 	}
 }
@@ -252,7 +275,7 @@ func (b *wafBuilder) build() awswafv2.CfnWebACL {
 	b.addManagedRules()
 	b.addIPRules()
 	b.addGeoBlockingRule()
-	
+
 	return b.createWebACL()
 }
 
@@ -261,7 +284,7 @@ func (b *wafBuilder) addRateLimitRule() {
 	if b.props.WAFConfig.EnableRateLimit == nil || !*b.props.WAFConfig.EnableRateLimit {
 		return
 	}
-	
+
 	rateLimit := b.props.WAFConfig.RateLimit
 	if rateLimit == nil {
 		rateLimit = jsii.Number(2000)
@@ -292,15 +315,15 @@ func (b *wafBuilder) addRateLimitRule() {
 // addManagedRules adds AWS managed rule sets
 func (b *wafBuilder) addManagedRules() {
 	managedRules := []struct {
-		enabled  *bool
-		name     string
-		ruleSet  string
+		enabled *bool
+		name    string
+		ruleSet string
 	}{
 		{b.props.WAFConfig.EnableSQLiProtection, "SQLiProtection", "AWSManagedRulesSQLiRuleSet"},
 		{b.props.WAFConfig.EnableXSSProtection, "XSSProtection", "AWSManagedRulesCommonRuleSet"},
 		{b.props.WAFConfig.EnableKnownBadInputs, "KnownBadInputs", "AWSManagedRulesKnownBadInputsRuleSet"},
 	}
-	
+
 	for _, rule := range managedRules {
 		if rule.enabled != nil && *rule.enabled {
 			b.rules = append(b.rules, createManagedWAFRule(rule.name, rule.ruleSet, int(b.priority)))
@@ -316,7 +339,7 @@ func (b *wafBuilder) addIPRules() {
 		b.rules = append(b.rules, b.createIPRule("IPWhitelist", "Whitelist", true))
 		b.priority++
 	}
-	
+
 	// IP blacklist
 	if b.props.WAFConfig.IPBlacklist != nil && len(*b.props.WAFConfig.IPBlacklist) > 0 {
 		b.rules = append(b.rules, b.createIPRule("IPBlacklist", "Blacklist", false))
@@ -330,7 +353,7 @@ func (b *wafBuilder) createIPRule(name, ipSetName string, allow bool) awswafv2.C
 	if !allow {
 		ipList = b.props.WAFConfig.IPBlacklist
 	}
-	
+
 	rule := awswafv2.CfnWebACL_RuleProperty{
 		Name:     jsii.String(name),
 		Priority: jsii.Number(b.priority),
@@ -341,7 +364,7 @@ func (b *wafBuilder) createIPRule(name, ipSetName string, allow bool) awswafv2.C
 		},
 		VisibilityConfig: b.createVisibilityConfig(name),
 	}
-	
+
 	if allow {
 		rule.Action = &awswafv2.CfnWebACL_RuleActionProperty{
 			Allow: &map[string]interface{}{},
@@ -351,7 +374,7 @@ func (b *wafBuilder) createIPRule(name, ipSetName string, allow bool) awswafv2.C
 			Block: &awswafv2.CfnWebACL_BlockActionProperty{},
 		}
 	}
-	
+
 	return rule
 }
 
@@ -360,7 +383,7 @@ func (b *wafBuilder) addGeoBlockingRule() {
 	if b.props.WAFConfig.GeoBlocking == nil || len(*b.props.WAFConfig.GeoBlocking) == 0 {
 		return
 	}
-	
+
 	countryCodes := make([]*string, len(*b.props.WAFConfig.GeoBlocking))
 	for i, country := range *b.props.WAFConfig.GeoBlocking {
 		countryCodes[i] = jsii.String(country)
@@ -464,7 +487,6 @@ func createManagedWAFRule(ruleName string, managedRuleGroupName string, priority
 	}
 }
 
-
 func (s *EnhancedSecurity) createSecrets(props *EnhancedSecurityProps) {
 	for _, secretConfig := range props.Secrets {
 		secretProps := &awssecretsmanager.SecretProps{
@@ -515,38 +537,75 @@ func (s *EnhancedSecurity) createSecrets(props *EnhancedSecurityProps) {
 }
 
 func (s *EnhancedSecurity) createVPCEndpoints(props *EnhancedSecurityProps) {
+	privateDNS := props.VPCEndpointConfig.PrivateDNSEnabled
+	if privateDNS == nil {
+		privateDNS = jsii.Bool(true)
+	}
+
 	// Secrets Manager VPC Endpoint
-	s.VPCEndpoints["SecretsManager"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("SecretsManagerEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:               props.Vpc,
-		Service:           awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER(),
-		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
-		PrivateDnsEnabled: jsii.Bool(true),
-		Subnets: &awsec2.SubnetSelection{
-			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-		},
-	})
+	if props.VPCEndpointConfig.EnableSecretsManager != nil && *props.VPCEndpointConfig.EnableSecretsManager {
+		s.VPCEndpoints["SecretsManager"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("SecretsManagerEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_SECRETS_MANAGER(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
 
 	// CloudWatch Logs VPC Endpoint
-	s.VPCEndpoints["CloudWatchLogs"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("CloudWatchLogsEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:               props.Vpc,
-		Service:           awsec2.InterfaceVpcEndpointAwsService_CLOUDWATCH_LOGS(),
-		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
-		PrivateDnsEnabled: jsii.Bool(true),
-		Subnets: &awsec2.SubnetSelection{
-			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-		},
-	})
+	if props.VPCEndpointConfig.EnableCloudWatchLogs != nil && *props.VPCEndpointConfig.EnableCloudWatchLogs {
+		s.VPCEndpoints["CloudWatchLogs"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("CloudWatchLogsEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_CLOUDWATCH_LOGS(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
 
 	// X-Ray VPC Endpoint
-	s.VPCEndpoints["XRay"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("XRayEndpoint"), &awsec2.InterfaceVpcEndpointProps{
-		Vpc:               props.Vpc,
-		Service:           awsec2.InterfaceVpcEndpointAwsService_XRAY(),
-		SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
-		PrivateDnsEnabled: jsii.Bool(true),
-		Subnets: &awsec2.SubnetSelection{
-			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
-		},
-	})
+	if props.VPCEndpointConfig.EnableXRay != nil && *props.VPCEndpointConfig.EnableXRay {
+		s.VPCEndpoints["XRay"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("XRayEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_XRAY(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
+
+	// KMS VPC Endpoint
+	if props.VPCEndpointConfig.EnableKMS != nil && *props.VPCEndpointConfig.EnableKMS {
+		s.VPCEndpoints["KMS"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("KMSEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_KMS(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
+
+	// CloudWatch Monitoring VPC Endpoint
+	if props.VPCEndpointConfig.EnableCloudWatchMonitoring != nil && *props.VPCEndpointConfig.EnableCloudWatchMonitoring {
+		s.VPCEndpoints["CloudWatchMonitoring"] = awsec2.NewInterfaceVpcEndpoint(s.Construct, jsii.String("CloudWatchMonitoringEndpoint"), &awsec2.InterfaceVpcEndpointProps{
+			Vpc:               props.Vpc,
+			Service:           awsec2.InterfaceVpcEndpointAwsService_CLOUDWATCH_MONITORING(),
+			SecurityGroups:    &[]awsec2.ISecurityGroup{s.SecurityGroup},
+			PrivateDnsEnabled: privateDNS,
+			Subnets: &awsec2.SubnetSelection{
+				SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
+			},
+		})
+	}
 }
 
 func (s *EnhancedSecurity) enableVPCFlowLogs(props *EnhancedSecurityProps) {
