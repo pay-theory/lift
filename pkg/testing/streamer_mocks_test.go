@@ -4,16 +4,18 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/streamer"
 )
 
 const (
 	goneExceptionCode = "GoneException"
 )
 
-// TestStreamerAPIGatewayClientMock demonstrates the interface compatibility
-func TestStreamerAPIGatewayClientMock(t *testing.T) {
+// TestStreamerClientMock demonstrates the interface compatibility
+func TestStreamerClientMock(t *testing.T) {
 	ctx := context.Background()
-	mock := NewStreamerAPIGatewayClientMock()
+	mock := NewStreamerClientMock()
 
 	// Test PostToConnection with non-existent connection
 	err := mock.PostToConnection(ctx, "non-existent", []byte("test message"))
@@ -22,7 +24,7 @@ func TestStreamerAPIGatewayClientMock(t *testing.T) {
 	}
 
 	// Verify it returns the correct error type
-	if goneErr, ok := err.(StreamerGoneError); ok {
+	if goneErr, ok := err.(streamer.GoneError); ok {
 		if goneErr.ConnectionID != "non-existent" {
 			t.Errorf("Expected connection ID 'non-existent', got %s", goneErr.ConnectionID)
 		}
@@ -67,7 +69,7 @@ func TestStreamerAPIGatewayClientMock(t *testing.T) {
 		t.Errorf("Expected connection ID user-123, got %s", connInfo.ConnectionID)
 	}
 
-	// Verify the returned type is exactly StreamerConnectionInfo
+	// Verify the returned type is exactly streamer.ConnectionInfo
 	if connInfo == nil {
 		t.Error("Expected non-nil connection info")
 	} else {
@@ -75,11 +77,11 @@ func TestStreamerAPIGatewayClientMock(t *testing.T) {
 		if connInfo.ConnectionID == "" {
 			t.Error("ConnectionID should not be empty")
 		}
-		if connInfo.ConnectedAt == "" {
-			t.Error("ConnectedAt should not be empty")
+		if connInfo.ConnectedAt.IsZero() {
+			t.Error("ConnectedAt should not be zero")
 		}
-		if connInfo.LastActiveAt == "" {
-			t.Error("LastActiveAt should not be empty")
+		if connInfo.LastActiveAt.IsZero() {
+			t.Error("LastActiveAt should not be zero")
 		}
 		if connInfo.SourceIP == "" {
 			t.Error("SourceIP should not be empty")
@@ -97,8 +99,8 @@ func TestStreamerAPIGatewayClientMock(t *testing.T) {
 
 	// Verify connection state changed
 	conn := mock.GetConnectionState("user-123")
-	if conn.State != StreamerConnectionStateDisconnected {
-		t.Errorf("Expected connection state %s, got %s", StreamerConnectionStateDisconnected, conn.State)
+	if conn.State != streamer.ConnectionStateDisconnected {
+		t.Errorf("Expected connection state %s, got %s", streamer.ConnectionStateDisconnected, conn.State)
 	}
 
 	// Test call counting
@@ -116,12 +118,12 @@ func TestStreamerAPIGatewayClientMock(t *testing.T) {
 // TestStreamerErrorTypes tests all the streamer-compatible error types
 func TestStreamerErrorTypes(t *testing.T) {
 	ctx := context.Background()
-	mock := NewStreamerAPIGatewayClientMock()
+	mock := NewStreamerClientMock()
 
 	// Test GoneError
 	mock.WithGoneError("conn-gone", "Connection is gone")
 	err := mock.PostToConnection(ctx, "conn-gone", []byte("test"))
-	if goneErr, ok := err.(StreamerGoneError); ok {
+	if goneErr, ok := err.(streamer.GoneError); ok {
 		if goneErr.HTTPStatusCode() != 410 {
 			t.Errorf("Expected 410, got %d", goneErr.HTTPStatusCode())
 		}
@@ -138,7 +140,7 @@ func TestStreamerErrorTypes(t *testing.T) {
 	// Test ForbiddenError
 	mock.WithForbiddenError("conn-forbidden", "Access denied")
 	err = mock.PostToConnection(ctx, "conn-forbidden", []byte("test"))
-	if forbiddenErr, ok := err.(StreamerForbiddenError); ok {
+	if forbiddenErr, ok := err.(streamer.ForbiddenError); ok {
 		if forbiddenErr.HTTPStatusCode() != 403 {
 			t.Errorf("Expected 403, got %d", forbiddenErr.HTTPStatusCode())
 		}
@@ -149,13 +151,13 @@ func TestStreamerErrorTypes(t *testing.T) {
 			t.Error("ForbiddenError should not be retryable")
 		}
 	} else {
-		t.Errorf("Expected StreamerForbiddenError, got %T", err)
+		t.Errorf("Expected streamer.ForbiddenError, got %T", err)
 	}
 
 	// Test PayloadTooLargeError
 	mock.WithPayloadTooLargeError("conn-large", 1000, 500, "Payload too large")
 	err = mock.PostToConnection(ctx, "conn-large", []byte("test"))
-	if payloadErr, ok := err.(StreamerPayloadTooLargeError); ok {
+	if payloadErr, ok := err.(streamer.PayloadTooLargeError); ok {
 		if payloadErr.HTTPStatusCode() != 413 {
 			t.Errorf("Expected 413, got %d", payloadErr.HTTPStatusCode())
 		}
@@ -178,7 +180,7 @@ func TestStreamerErrorTypes(t *testing.T) {
 	// Test ThrottlingError
 	mock.WithThrottlingError("conn-throttle", 30, "Rate limit exceeded")
 	err = mock.PostToConnection(ctx, "conn-throttle", []byte("test"))
-	if throttleErr, ok := err.(StreamerThrottlingError); ok {
+	if throttleErr, ok := err.(streamer.ThrottlingError); ok {
 		if throttleErr.HTTPStatusCode() != 429 {
 			t.Errorf("Expected 429, got %d", throttleErr.HTTPStatusCode())
 		}
@@ -192,13 +194,13 @@ func TestStreamerErrorTypes(t *testing.T) {
 			t.Errorf("Expected retry after 30, got %d", throttleErr.RetryAfter)
 		}
 	} else {
-		t.Errorf("Expected StreamerThrottlingError, got %T", err)
+		t.Errorf("Expected streamer.ThrottlingError, got %T", err)
 	}
 
 	// Test InternalServerError
 	mock.WithInternalServerError("conn-server", "Internal server error")
 	err = mock.PostToConnection(ctx, "conn-server", []byte("test"))
-	if serverErr, ok := err.(StreamerInternalServerError); ok {
+	if serverErr, ok := err.(streamer.InternalServerError); ok {
 		if serverErr.HTTPStatusCode() != 500 {
 			t.Errorf("Expected 500, got %d", serverErr.HTTPStatusCode())
 		}
@@ -209,14 +211,14 @@ func TestStreamerErrorTypes(t *testing.T) {
 			t.Error("InternalServerError should be retryable")
 		}
 	} else {
-		t.Errorf("Expected StreamerInternalServerError, got %T", err)
+		t.Errorf("Expected streamer.InternalServerError, got %T", err)
 	}
 }
 
 // TestStreamerMockConfiguration tests the configuration options
 func TestStreamerMockConfiguration(t *testing.T) {
 	ctx := context.Background()
-	mock := NewStreamerAPIGatewayClientMock()
+	mock := NewStreamerClientMock()
 
 	// Test message size limit
 	config := DefaultStreamerMockConfig()
@@ -231,7 +233,7 @@ func TestStreamerMockConfiguration(t *testing.T) {
 	}
 
 	// Should be PayloadTooLargeError
-	if payloadErr, ok := err.(StreamerPayloadTooLargeError); ok {
+	if payloadErr, ok := err.(streamer.PayloadTooLargeError); ok {
 		if payloadErr.PayloadSize != 20 {
 			t.Errorf("Expected payload size 20, got %d", payloadErr.PayloadSize)
 		}
@@ -246,7 +248,7 @@ func TestStreamerMockConfiguration(t *testing.T) {
 // TestStreamerMockTTL tests connection TTL functionality
 func TestStreamerMockTTL(t *testing.T) {
 	ctx := context.Background()
-	mock := NewStreamerAPIGatewayClientMock()
+	mock := NewStreamerClientMock()
 
 	// Set very short TTL for testing
 	config := DefaultStreamerMockConfig()
@@ -257,11 +259,11 @@ func TestStreamerMockTTL(t *testing.T) {
 	pastTime := time.Now().Add(-2 * time.Second)
 	conn := &StreamerMockConnection{
 		ConnectionID: "conn-expired",
-		ConnectedAt:  pastTime.Format(time.RFC3339),
-		LastActiveAt: pastTime.Format(time.RFC3339),
+		ConnectedAt:  pastTime,
+		LastActiveAt: pastTime,
 		SourceIP:     "127.0.0.1",
 		UserAgent:    "TestClient/1.0",
-		State:        StreamerConnectionStateActive,
+		State:        streamer.ConnectionStateActive,
 		CreatedTime:  pastTime,
 		Metadata:     make(map[string]any),
 	}
@@ -274,7 +276,7 @@ func TestStreamerMockTTL(t *testing.T) {
 	}
 
 	// Should be GoneError
-	if goneErr, ok := err.(StreamerGoneError); ok {
+	if goneErr, ok := err.(streamer.GoneError); ok {
 		if goneErr.ConnectionID != "conn-expired" {
 			t.Errorf("Expected connection ID 'conn-expired', got %s", goneErr.ConnectionID)
 		}
@@ -284,15 +286,15 @@ func TestStreamerMockTTL(t *testing.T) {
 
 	// Verify connection state changed to stale
 	updatedConn := mock.GetConnectionState("conn-expired")
-	if updatedConn.State != StreamerConnectionStateStale {
-		t.Errorf("Expected connection state %s, got %s", StreamerConnectionStateStale, updatedConn.State)
+	if updatedConn.State != streamer.ConnectionStateStale {
+		t.Errorf("Expected connection state %s, got %s", streamer.ConnectionStateStale, updatedConn.State)
 	}
 }
 
 // TestStreamerMockReset tests the reset functionality
 func TestStreamerMockReset(t *testing.T) {
 	ctx := context.Background()
-	mock := NewStreamerAPIGatewayClientMock()
+	mock := NewStreamerClientMock()
 
 	// Add connection and send message
 	mock.WithConnection("conn-123", nil)
@@ -317,11 +319,11 @@ func TestStreamerMockReset(t *testing.T) {
 }
 
 // TestStreamerInterfaceCompatibility demonstrates that the mock can be used
-// anywhere the streamer's APIGatewayClient interface is expected
+// anywhere the streamer.Client interface is expected
 func TestStreamerInterfaceCompatibility(t *testing.T) {
 	// This function demonstrates that our mock implements the exact interface
-	// that the streamer team expects
-	var client StreamerAPIGatewayClient = NewStreamerAPIGatewayClientMock()
+	// that the streamer package expects
+	var client streamer.Client = NewStreamerClientMock()
 
 	ctx := context.Background()
 
@@ -341,8 +343,8 @@ func TestStreamerInterfaceCompatibility(t *testing.T) {
 		t.Error("Expected error for non-existent connection")
 	}
 
-	// All errors should implement StreamerAPIError interface
-	if apiErr, ok := err.(StreamerAPIError); ok {
+	// All errors should implement streamer.APIError interface
+	if apiErr, ok := err.(streamer.APIError); ok {
 		if apiErr.HTTPStatusCode() == 0 {
 			t.Error("Expected non-zero HTTP status code")
 		}
@@ -351,6 +353,6 @@ func TestStreamerInterfaceCompatibility(t *testing.T) {
 		}
 		// IsRetryable() can be true or false, both are valid
 	} else {
-		t.Errorf("Expected error to implement StreamerAPIError interface, got %T", err)
+		t.Errorf("Expected error to implement streamer.APIError interface, got %T", err)
 	}
 }

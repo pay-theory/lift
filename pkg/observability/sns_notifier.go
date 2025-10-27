@@ -41,8 +41,8 @@ type SNSNotificationMessage struct {
 
 // AlertConfig contains alert configuration
 type AlertConfig struct {
-	AlertType       string   `json:"alert_type"`
-	AlertTargetType []string `json:"alert_target_type"`
+	AlertType       string `json:"alert_type"`
+	AlertTargetType string `json:"alert_target_type"`
 }
 
 // NewSNSNotifier creates a new SNS notifier from configuration
@@ -114,8 +114,8 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error
 	// Build the notification message
 	notification := SNSNotificationMessage{
 		AlertConfig: AlertConfig{
-			AlertType:       "ERROR",
-			AlertTargetType: []string{"SLACK"},
+			AlertType:       "LiftError",
+			AlertTargetType: "SLACK",
 		},
 		LogTime:    logEntry.Timestamp.UTC().Format("2006-01-02T15:04:05.000000Z"),
 		Partner:    getEnvOrDefault("PARTNER", "UNKNOWN"),
@@ -166,21 +166,10 @@ func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error
 		return fmt.Errorf("failed to marshal SNS notification: %w", err)
 	}
 
-	// Wrap message to match SNS publishing format
-	wrappedMessage := map[string]string{
-		"default": "Default Message",
-		"lambda":  string(messageJSON),
-	}
-	wrappedJSON, err := json.Marshal(wrappedMessage)
-	if err != nil {
-		return fmt.Errorf("failed to marshal wrapped SNS message: %w", err)
-	}
-
-	// Publish to SNS with MessageStructure='json'
+	// Publish raw JSON message
 	_, err = n.snsClient.Publish(ctx, &sns.PublishInput{
 		TargetArn:        aws.String(n.targetARN),
-		Message:          aws.String(string(wrappedJSON)),
-		MessageStructure: aws.String("json"),
+		Message:          aws.String(string(messageJSON)),
 	})
 
 	if err != nil {

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- _No changes yet._
+
+## v1.0.70 - 2025-10-24
+
+### Added
+- **Event Bus**: Introduced DynamoDB-backed event bus service with CDK constructs, helper utilities, and documentation. Includes DynamoDB integration helpers and comprehensive service tests.
+- **Streamer Client**: Added streamer client library with connection lifecycle management, structured errors, mocks, and demo application.
+- **Documentation**: Added event bus and streamer guides along with new LLM FAQ entries and planning notes.
+
+### Changed
+- **WebSocket Context**: Migrated management client to AWS SDK v2 with connection metadata helpers, thread-safe reuse, and improved region resolution.
+- **Testing & Tooling**: Expanded mocks, added load-shedding and observability test coverage, and refreshed Go module dependencies.
+
 ## v1.0.66 - 2025-01-15
 
 ### Added

@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/aws-sdk-go-v2/service/sts/types"
+	"github.com/pay-theory/lift/pkg/observability"
 	"github.com/pay-theory/lift/pkg/observability/zap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -175,10 +176,10 @@ func TestGetKernelEnvironment(t *testing.T) {
 			expectedKernel: "qakernel",
 		},
 		{
-			name:           "qakernel for austin partner",
+			name:           "kernel for austin partner",
 			partner:        "austin",
 			envOverride:    "",
-			expectedKernel: "qakernel",
+			expectedKernel: "kernel",
 		},
 		{
 			name:           "kernel for paytheory partner",
@@ -247,8 +248,8 @@ func TestGetKernelBaseURL(t *testing.T) {
 		expectedURL   string
 	}{
 		{
-			name:          "k3 service without region",
-			partner:       "qakernel",
+			name:          "innovate partner uses qakernel",
+			partner:       "innovate",
 			stage:         "dev",
 			servicePrefix: "k3",
 			includeRegion: false,
@@ -324,12 +325,20 @@ func TestCall(t *testing.T) {
 
 	// Override the base URL method for testing
 	originalHTTPClient := client.httpClient
+	originalResolver := client.baseURLResolver
 	defer func() { client.httpClient = originalHTTPClient }()
+	defer func() { client.baseURLResolver = originalResolver }()
+
+	client.httpClient = server.Client()
+	client.baseURLResolver = func(servicePrefix string, includeRegion bool) string {
+		if includeRegion {
+			return server.URL + "/"
+		}
+		return server.URL
+	}
 
 	ctx := context.Background()
 
-	// Make call (Note: This will fail in actual execution due to SigV4 signing,
-	// but demonstrates the structure)
 	opts := &CallOptions{
 		ServicePrefix: "test-service",
 		Endpoint:      "test-endpoint",
@@ -340,17 +349,30 @@ func TestCall(t *testing.T) {
 		IncludeRegion: false,
 	}
 
-	// This test verifies the call structure but will fail on signature
-	// In production, this would work with proper AWS credentials
-	_, err := client.Call(ctx, opts)
+	resp, err := client.Call(ctx, opts)
 
-	// We expect an error due to signature mismatch in test environment
-	// The important part is that the request structure is correct
-	assert.Error(t, err) // Expected in test environment
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestConvenienceFunctions(t *testing.T) {
 	client, _ := setupTestClient(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	client.httpClient = server.Client()
+	client.baseURLResolver = func(servicePrefix string, includeRegion bool) string {
+		if includeRegion {
+			return server.URL + "/"
+		}
+		return server.URL
+	}
 
 	ctx := context.Background()
 
@@ -388,10 +410,10 @@ func TestConvenienceFunctions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// These will fail in test environment due to actual AWS calls
-			// but verify the function signatures and structure
-			_, err := tt.callFunc()
-			assert.Error(t, err) // Expected in test environment without real AWS
+			resp, err := tt.callFunc()
+			assert.NoError(t, err)
+			assert.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
 		})
 	}
 }

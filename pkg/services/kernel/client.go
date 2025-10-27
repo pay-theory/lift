@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,6 +18,11 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
 )
+
+// stsAssumeRoleClient defines the subset of STS functionality we rely on.
+type stsAssumeRoleClient interface {
+	AssumeRole(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
+}
 
 const (
 	// Kernel account IDs
@@ -41,7 +47,8 @@ type Client struct {
 	httpClient     *http.Client
 	connectTimeout time.Duration
 	readTimeout    time.Duration
-	stsClient      *sts.Client
+	stsClient      stsAssumeRoleClient
+	baseURLResolver func(servicePrefix string, includeRegion bool) string
 }
 
 // CallOptions configures a kernel service call
@@ -154,7 +161,7 @@ func (c *Client) Call(ctx context.Context, opts *CallOptions) (*Response, error)
 	}
 
 	// Build URL
-	baseURL := c.getKernelBaseURL(opts.ServicePrefix, opts.IncludeRegion)
+	baseURL := c.resolveBaseURL(opts.ServicePrefix, opts.IncludeRegion)
 	var fullURL string
 	if opts.IncludeRegion {
 		fullURL = fmt.Sprintf("%s%s", baseURL, opts.Endpoint)
@@ -345,17 +352,14 @@ func (c *Client) getCrossAccountCredentials(ctx context.Context) (aws.Credential
 func (c *Client) getKernelEnvironment() string {
 	kernelEnvOverride := os.Getenv("KERNEL_ENV_OVERRIDE")
 
-	// If we are not overriding the default kernel selection behavior, use QAKernel for innovate or austin partners
-	if kernelEnvOverride == "" && (c.partner == "innovate" || c.partner == "austin") {
-		return "qakernel"
-	}
-
-	// If we are overriding the default kernel selection behavior, use the override value
 	if kernelEnvOverride != "" {
 		return kernelEnvOverride
 	}
 
-	// Else use the kernel env
+	if strings.EqualFold(c.partner, "innovate") {
+		return "qakernel"
+	}
+
 	return "kernel"
 }
 
@@ -382,6 +386,13 @@ func (c *Client) getKernelBaseURL(servicePrefix string, includeRegion bool) stri
 		return fmt.Sprintf("https://%s.%s.%s.com/%s/", c.region, urlPrefix, urlStage, servicePrefix)
 	}
 	return fmt.Sprintf("https://%s.%s.%s.com", servicePrefix, urlPrefix, urlStage)
+}
+
+func (c *Client) resolveBaseURL(servicePrefix string, includeRegion bool) string {
+	if c.baseURLResolver != nil {
+		return c.baseURLResolver(servicePrefix, includeRegion)
+	}
+	return c.getKernelBaseURL(servicePrefix, includeRegion)
 }
 
 // Unmarshal unmarshals the response body into the provided struct

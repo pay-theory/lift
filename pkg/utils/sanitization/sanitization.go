@@ -9,12 +9,16 @@ import (
 	"github.com/pay-theory/lift/pkg/security"
 )
 
-const (
-	redactedValue = "[REDACTED]"
-)
+const redactedValue = "[REDACTED]"
 
-// SensitiveFields defines fields that require sanitization (blocklist approach)
-// All other fields will be logged as-is for debugging purposes
+// AllowedFields are field names that should bypass sanitization.
+var AllowedFields = map[string]bool{
+	"card_bin":   true,
+	"card_brand": true,
+	"card_type":  true,
+}
+
+// SensitiveFields defines fields that require explicit sanitization behavior.
 var SensitiveFields = map[string]SanitizationType{
 	// CVV/Security codes - fully redact (PCI requirement - never log)
 	"cvv":           FullyRedact,
@@ -29,15 +33,22 @@ var SensitiveFields = map[string]SanitizationType{
 
 	// Account numbers - partial mask (show last 4)
 	"account_number": PartialMask,
+	"ssn":            PartialMask,
+	"tin":            PartialMask,
+	"tax_id":         PartialMask,
+	"ein":            PartialMask,
 
 	// Authentication credentials - fully redact
 	"password":    FullyRedact,
 	"secret":      FullyRedact,
 	"private_key": FullyRedact,
+	"secret_key":  FullyRedact,
 
-	// PII - fully redact
-	"ssn":    FullyRedact,
-	"tax_id": FullyRedact,
+	// Tokens / authorization
+	"api_token":        FullyRedact,
+	"authorization":    FullyRedact,
+	"authorization_id": FullyRedact,
+	"authorization_header": FullyRedact,
 }
 
 // SanitizationType defines how to sanitize a field
@@ -47,14 +58,6 @@ const (
 	FullyRedact SanitizationType = iota // Replace with "[REDACTED]"
 	PartialMask                         // Show partial data (e.g., last 4 digits)
 )
-
-// Deprecated: AllowedFields is deprecated, use SensitiveFields blocklist instead
-// Kept for backward compatibility
-var AllowedFields = map[string]bool{
-	"card_bin":   true,
-	"card_brand": true,
-	"card_type":  true,
-}
 
 // Sanitizer provides methods for sanitizing various types of data
 type Sanitizer struct {
@@ -111,20 +114,30 @@ func newFieldSanitizationProcessor(sanitizer *Sanitizer, key string, value any) 
 
 // sanitize performs the sanitization process
 func (p *fieldSanitizationProcessor) sanitize() any {
-	// Check if field is in the sensitive fields blocklist
-	if sanitizationType, isSensitive := SensitiveFields[p.keyLower]; isSensitive {
-		// Apply appropriate sanitization based on type
+	// Explicit allow-list bypass
+	if AllowedFields[p.keyLower] {
+		return p.value
+	}
+
+	// If no data protection manager is available, redact for safety.
+	if p.sanitizer.dataProtectionManager == nil {
+		return redactedValue
+	}
+
+	// Field-specific overrides.
+	if sanitizationType, ok := SensitiveFields[p.keyLower]; ok {
+		handler := newClassificationHandler(p.keyLower, p.value)
 		switch sanitizationType {
 		case FullyRedact:
 			return redactedValue
 		case PartialMask:
-			handler := newClassificationHandler(p.keyLower, p.value)
 			return handler.handleRestricted()
 		}
 	}
 
-	// Not in blocklist - return value as-is for debugging
-	return p.value
+	// Fallback to classification-based sanitization.
+	classification := p.getDataClassification()
+	return p.applySanitization(classification)
 }
 
 // getDataClassification determines the data classification for the field
@@ -186,13 +199,10 @@ func (h *classificationHandler) handleRestricted() any {
 	// Clean the string to check if it's a number
 	cleaned := strings.ReplaceAll(strings.ReplaceAll(str, " ", ""), "-", "")
 	if len(cleaned) >= 4 && isNumeric(cleaned) {
-		// For card numbers (11+ digits), show first 6 (BIN/IIN) and last 4
-		// For shorter numbers, show only last 4
-		if len(cleaned) > 10 {
-			masked := cleaned[:6] + strings.Repeat("*", len(cleaned)-10) + cleaned[len(cleaned)-4:]
-			return masked
+		if len(cleaned) == 4 {
+			return strings.Repeat("*", 4)
 		}
-		// Show last 4 digits, mask the rest
+		// Mask all but the last 4 digits
 		masked := strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
 		return masked
 	}
