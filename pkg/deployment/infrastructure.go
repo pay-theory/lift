@@ -15,7 +15,6 @@ import (
 type InfrastructureProvider string
 
 const (
-	ProviderPulumi         InfrastructureProvider = "pulumi"
 	ProviderTerraform      InfrastructureProvider = "terraform"
 	ProviderCloudFormation InfrastructureProvider = "cloudformation"
 	ProviderCDK            InfrastructureProvider = "cdk"

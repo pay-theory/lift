@@ -106,3 +106,60 @@ func TestConnectionPool_CloseDoesNotDeadlock(t *testing.T) {
 		t.Fatal("Close deadlocked")
 	}
 }
+
+func TestCalculateSuccessRate(t *testing.T) {
+	tests := []struct {
+		name           string
+		total          int64
+		failed         int64
+		expectedResult float64
+	}{
+		{
+			name:           "no requests",
+			expectedResult: 0,
+		},
+		{
+			name:           "all successful",
+			total:          10,
+			failed:         0,
+			expectedResult: 100,
+		},
+		{
+			name:           "partial failures",
+			total:          8,
+			failed:         2,
+			expectedResult: 75,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := calculateSuccessRate(tt.total, tt.failed)
+			if math.Abs(result-tt.expectedResult) > 1e-9 {
+				t.Fatalf("expected %v got %v", tt.expectedResult, result)
+			}
+		})
+	}
+}
+
+func TestConnectionPoolCalculateUtilization(t *testing.T) {
+	cfg := &ConnectionPoolConfig{MaxConnections: 10}
+	pool := newTestPool(cfg, 0)
+
+	utilization := pool.calculateUtilization()
+	if utilization != 0 {
+		t.Fatalf("expected zero utilization for empty pool, got %v", utilization)
+	}
+
+	pool.state.totalConnections = 5
+	utilization = pool.calculateUtilization()
+	if math.Abs(utilization-50) > 1e-9 {
+		t.Fatalf("expected 50%% utilization, got %v", utilization)
+	}
+
+	pool.state.resources.config.MaxConnections = 0
+	utilization = pool.calculateUtilization()
+	if utilization != 0 {
+		t.Fatalf("expected zero utilization when max connections unset, got %v", utilization)
+	}
+}
