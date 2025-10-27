@@ -4,7 +4,7 @@
 
 - _No changes yet._
 
-## v1.0.70 - 2025-10-24
+## v1.0.71 - 2025-10-27
 
 ### Added
 - **Event Bus**: Introduced DynamoDB-backed event bus service with CDK constructs, helper utilities, and documentation. Includes DynamoDB integration helpers and comprehensive service tests.
@@ -15,7 +15,7 @@
 - **WebSocket Context**: Migrated management client to AWS SDK v2 with connection metadata helpers, thread-safe reuse, and improved region resolution.
 - **Testing & Tooling**: Expanded mocks, added load-shedding and observability test coverage, and refreshed Go module dependencies.
 
-## v1.0.66 - 2025-01-15
+## v1.0.70 - 2025-01-15
 
 ### Added
 - **Kernel Client**: Added `pkg/services/kernel` package for authenticated cross-account calls to kernel services. Provides SigV4-signed API Gateway calls with STS AssumeRole authentication, matching Python's `secure_api_call.py` pattern. Includes convenience functions for K3, Paze Wallet, Apple Wallet, Google Wallet, Bin Lookup, and Bank Data services. Supports both shared role (`kernel-access`) and external partner role (`kernel-access-external`) authentication modes. Uses singleton logger pattern via LoggerFunc. See `pkg/services/kernel/doc.go` and `examples/kernel_client_example.go` for usage.
