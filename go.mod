@@ -34,7 +34,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pay-theory/dynamorm v1.0.31
+	github.com/pay-theory/dynamorm v1.0.37-0.20251110054050-bd20fc148bc0
 	github.com/pay-theory/limited v1.0.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.0
@@ -96,6 +96,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
 	google.golang.org/grpc v1.76.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
