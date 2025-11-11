@@ -79,6 +79,21 @@ func (m *MockExtendedDB) TransactionFunc(fn func(tx any) error) error {
 	return args.Error(0)
 }
 
+// Transact returns a transaction builder for composing transactional operations
+func (m *MockExtendedDB) Transact() core.TransactionBuilder {
+	args := m.Called()
+	if builder, ok := args.Get(0).(core.TransactionBuilder); ok {
+		return builder
+	}
+	return nil
+}
+
+// TransactWrite executes the provided function within a transaction builder context
+func (m *MockExtendedDB) TransactWrite(ctx context.Context, fn func(core.TransactionBuilder) error) error {
+	args := m.Called(ctx, fn)
+	return args.Error(0)
+}
+
 // RegisterTypeConverter records a request to register a custom type converter
 func (m *MockExtendedDB) RegisterTypeConverter(typ reflect.Type, converter types.CustomConverter) error {
 	args := m.Called(typ, converter)
@@ -107,6 +122,10 @@ func NewMockExtendedDB() *MockExtendedDB {
 		Return(m).Maybe()
 	m.On("WithLambdaTimeoutBuffer", mock.Anything).
 		Return(m).Maybe()
+	m.On("Transact").
+		Return(nil).Maybe()
+	m.On("TransactWrite", mock.Anything, mock.Anything).
+		Return(nil).Maybe()
 	m.On("RegisterTypeConverter", mock.Anything, mock.Anything).
 		Return(nil).Maybe()
 

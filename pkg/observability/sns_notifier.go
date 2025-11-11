@@ -11,6 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
+const (
+	errorLevel   = "ERROR"
+	unknownValue = "UNKNOWN"
+	timeFormat   = "2006-01-02T15:04:05.000000Z"
+)
+
 // SNSConfig contains configuration for SNS notifications
 type SNSConfig struct {
 	Client   SNSClient
@@ -39,6 +45,12 @@ type SNSNotificationMessage struct {
 	Message     string      `json:"message"`
 }
 
+type lambdaExecutionContext struct {
+	region   string
+	account  string
+	function string
+}
+
 // AlertConfig contains alert configuration
 type AlertConfig struct {
 	AlertType       string `json:"alert_type"`
@@ -60,123 +72,128 @@ func (n *SNSNotifier) GetTopicARN() string {
 
 // NotifyError sends an error notification to SNS when an error is logged
 func (n *SNSNotifier) NotifyError(ctx context.Context, logEntry *LogEntry) error {
-	// Only notify for ERROR level logs
-	if logEntry.Level != "ERROR" {
+	if logEntry.Level != errorLevel {
 		return nil
 	}
 
-	// Get function name once to use for both Function and Subsystem
-	functionName := getEnvOrDefault("AWS_LAMBDA_FUNCTION_NAME", "UNKNOWN")
+	functionName := getEnvOrDefault("AWS_LAMBDA_FUNCTION_NAME", unknownValue)
+	execCtx := extractLambdaExecutionContext(functionName)
+	formattedMessage := formatLogMessage(logEntry)
 
-	// Get AWS account ID from Lambda context ARN 
-	awsRegion := "UNKNOWN"
-	awsAccount := "UNKNOWN"
-	lambdaFunction := "UNKNOWN"
+	notification := n.buildNotification(logEntry, execCtx, formattedMessage)
+	applyNotificationOverrides(&notification, logEntry.Fields)
 
-	// Try to get Lambda ARN from environment (Lambda sets this automatically)
-	if lambdaARN := os.Getenv("AWS_LAMBDA_FUNCTION_ARN"); lambdaARN != "" {
-		// Parse ARN: arn:aws:lambda:region:account:function:name
-		arnParts := strings.Split(lambdaARN, ":")
-		if len(arnParts) >= 7 {
-			awsRegion = arnParts[3]
-			awsAccount = arnParts[4]
-			lambdaFunction = arnParts[6]
-		}
-	}
-
-	// Override with explicit env vars if set
-	if region := os.Getenv("AWS_REGION"); region != "" {
-		awsRegion = region
-	}
-	if account := os.Getenv("AWS_ACCOUNT_ID"); account != "" {
-		awsAccount = account
-	}
-	if functionName != "UNKNOWN" {
-		lambdaFunction = functionName
-	}
-
-	// Create JSON string representation of the log fields 
-	var strBody string
-	if len(logEntry.Fields) > 0 {
-		fieldsJSON, err := json.Marshal(logEntry.Fields)
-		if err != nil {
-			strBody = "{}"
-		} else {
-			strBody = string(fieldsJSON)
-		}
-	} else {
-		strBody = "{}"
-	}
-
-	// Format message: "ERROR | message | json_body"
-	formattedMessage := fmt.Sprintf("ERROR | %s | %s", logEntry.Message, strBody)
-
-	// Build the notification message
-	notification := SNSNotificationMessage{
-		AlertConfig: AlertConfig{
-			AlertType:       "LiftError",
-			AlertTargetType: "SLACK",
-		},
-		LogTime:    logEntry.Timestamp.UTC().Format("2006-01-02T15:04:05.000000Z"),
-		Partner:    getEnvOrDefault("PARTNER", "UNKNOWN"),
-		Stage:      getEnvOrDefault("STAGE", "UNKNOWN"),
-		AWSRegion:  awsRegion,
-		AWSAccount: awsAccount,
-		Severity:   "ERROR",
-		Function:   lambdaFunction,
-		Subsystem:  lambdaFunction, // Set to same value as Function
-		Message:    formattedMessage,
-	}
-
-	// Add environment and service from fields if available
-	if env, ok := logEntry.Fields["environment"].(string); ok {
-		notification.Environment = env
-	}
-	if svc, ok := logEntry.Fields["service"].(string); ok {
-		notification.Service = svc
-	}
-
-	// Override function name if provided in fields
-	if funcName, ok := logEntry.Fields["function_name"].(string); ok {
-		notification.Function = funcName
-		notification.Subsystem = funcName // Keep subsystem same as function
-	} else if funcName, ok := logEntry.Fields["function"].(string); ok {
-		notification.Function = funcName
-		notification.Subsystem = funcName // Keep subsystem same as function
-	}
-
-	// Override AWS region if provided in fields
-	if region, ok := logEntry.Fields["aws_region"].(string); ok {
-		notification.AWSRegion = region
-	} else if region, ok := logEntry.Fields["region"].(string); ok {
-		notification.AWSRegion = region
-	}
-
-	// Override AWS account if provided in fields
-	// Check for account_id from Lift context first (this comes from Context.AccountID())
-	if account, ok := logEntry.Fields["account_id"].(string); ok {
-		notification.AWSAccount = account
-	} else if account, ok := logEntry.Fields["aws_account"].(string); ok {
-		notification.AWSAccount = account
-	}
-
-	// Marshal the notification to JSON
 	messageJSON, err := json.Marshal(notification)
 	if err != nil {
 		return fmt.Errorf("failed to marshal SNS notification: %w", err)
 	}
 
-	// Publish raw JSON message
-	_, err = n.snsClient.Publish(ctx, &sns.PublishInput{
-		TargetArn:        aws.String(n.targetARN),
-		Message:          aws.String(string(messageJSON)),
-	})
-
-	if err != nil {
+	if _, err = n.snsClient.Publish(ctx, &sns.PublishInput{
+		TargetArn: aws.String(n.targetARN),
+		Message:   aws.String(string(messageJSON)),
+	}); err != nil {
 		return fmt.Errorf("failed to publish to CNS via SNS: %w", err)
 	}
 
 	return nil
+}
+
+func (n *SNSNotifier) buildNotification(logEntry *LogEntry, execCtx lambdaExecutionContext, message string) SNSNotificationMessage {
+	return SNSNotificationMessage{
+		AlertConfig: AlertConfig{
+			AlertType:       "LiftError",
+			AlertTargetType: "SLACK",
+		},
+		LogTime:    logEntry.Timestamp.UTC().Format(timeFormat),
+		Partner:    getEnvOrDefault("PARTNER", unknownValue),
+		Stage:      getEnvOrDefault("STAGE", unknownValue),
+		AWSRegion:  execCtx.region,
+		AWSAccount: execCtx.account,
+		Severity:   errorLevel,
+		Function:   execCtx.function,
+		Subsystem:  execCtx.function,
+		Message:    message,
+	}
+}
+
+func extractLambdaExecutionContext(functionName string) lambdaExecutionContext {
+	ctxInfo := lambdaExecutionContext{
+		region:   unknownValue,
+		account:  unknownValue,
+		function: unknownValue,
+	}
+
+	if lambdaARN := os.Getenv("AWS_LAMBDA_FUNCTION_ARN"); lambdaARN != "" {
+		if region, account, fn := parseLambdaARN(lambdaARN); region != "" {
+			ctxInfo.region = region
+			ctxInfo.account = account
+			ctxInfo.function = fn
+		}
+	}
+
+	if region := os.Getenv("AWS_REGION"); region != "" {
+		ctxInfo.region = region
+	}
+	if account := os.Getenv("AWS_ACCOUNT_ID"); account != "" {
+		ctxInfo.account = account
+	}
+	if functionName != unknownValue {
+		ctxInfo.function = functionName
+	}
+
+	return ctxInfo
+}
+
+func parseLambdaARN(arn string) (string, string, string) {
+	parts := strings.Split(arn, ":")
+	if len(parts) < 7 {
+		return "", "", ""
+	}
+	return parts[3], parts[4], parts[6]
+}
+
+func formatLogMessage(logEntry *LogEntry) string {
+	return fmt.Sprintf("%s | %s | %s", errorLevel, logEntry.Message, formatLogFieldsJSON(logEntry.Fields))
+}
+
+func formatLogFieldsJSON(fields map[string]any) string {
+	if len(fields) == 0 {
+		return "{}"
+	}
+	data, err := json.Marshal(fields)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
+func applyNotificationOverrides(notification *SNSNotificationMessage, fields map[string]any) {
+	if len(fields) == 0 {
+		return
+	}
+	if env, ok := fields["environment"].(string); ok {
+		notification.Environment = env
+	}
+	if svc, ok := fields["service"].(string); ok {
+		notification.Service = svc
+	}
+	if funcName, ok := fields["function_name"].(string); ok {
+		notification.Function = funcName
+		notification.Subsystem = funcName
+	} else if funcName, ok := fields["function"].(string); ok {
+		notification.Function = funcName
+		notification.Subsystem = funcName
+	}
+	if region, ok := fields["aws_region"].(string); ok {
+		notification.AWSRegion = region
+	} else if region, ok := fields["region"].(string); ok {
+		notification.AWSRegion = region
+	}
+	if account, ok := fields["account_id"].(string); ok {
+		notification.AWSAccount = account
+	} else if account, ok := fields["aws_account"].(string); ok {
+		notification.AWSAccount = account
+	}
 }
 
 // getEnvOrDefault returns the environment variable value or a default if not set

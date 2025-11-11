@@ -45,10 +45,12 @@
 // # URL Patterns
 //
 // K3 (without region):
-//   https://k3.{kernel_env}.{stage}.com/{endpoint}
+//
+//	https://k3.{kernel_env}.{stage}.com/{endpoint}
 //
 // Other services (with region):
-//   https://{region}.{kernel_env}.{stage}.com/{service-prefix}/{endpoint}
+//
+//	https://{region}.{kernel_env}.{stage}.com/{service-prefix}/{endpoint}
 //
 // # Usage Examples
 //

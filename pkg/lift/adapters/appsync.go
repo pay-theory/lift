@@ -162,7 +162,7 @@ func (a *AppSyncAdapter) Adapt(rawEvent any) (*Request, error) {
 		"parentTypeName":  parentTypeName,
 		"operationType":   parentTypeName, // Mutation, Query, or Subscription
 		"isAppSync":       true,
-		"hasSourceObject": source != nil && len(source) > 0,
+		"hasSourceObject": len(source) > 0,
 	}
 
 	if len(variables) > 0 {

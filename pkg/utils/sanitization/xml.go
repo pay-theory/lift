@@ -7,9 +7,9 @@ import (
 
 // XMLSanitizationPattern defines a regex-based sanitization rule for XML elements
 type XMLSanitizationPattern struct {
-	Name        string                     // Descriptive name for the pattern (e.g., "AcctNum", "CVV")
-	Pattern     *regexp.Regexp             // Regex to match XML elements (both regular and HTML-escaped)
+	Pattern     *regexp.Regexp            // Regex to match XML elements (both regular and HTML-escaped)
 	MaskingFunc func(match string) string // Function to mask the matched value
+	Name        string                    // Descriptive name for the pattern (e.g., "AcctNum", "CVV")
 }
 
 // SanitizeXML sanitizes XML content using configurable patterns

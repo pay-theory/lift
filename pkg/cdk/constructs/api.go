@@ -58,11 +58,11 @@ type RequestValidator struct {
 // API-specific features.
 type LiftAPI struct {
 	constructs.Construct
-	HttpAPI        awsapigatewayv2.HttpApi
-	Stage          awsapigatewayv2.IHttpStage
-	LogGroup       awslogs.ILogGroup
-	VPCAuthorizer  *VPCAuthorizer // Optional VPC authorizer for Cfn routes
-	stageName      string
+	HttpAPI       awsapigatewayv2.HttpApi
+	Stage         awsapigatewayv2.IHttpStage
+	LogGroup      awslogs.ILogGroup
+	VPCAuthorizer *VPCAuthorizer // Optional VPC authorizer for Cfn routes
+	stageName     string
 }
 
 // GetResourceName returns the API name.

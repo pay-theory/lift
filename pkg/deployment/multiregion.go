@@ -10,20 +10,21 @@ import (
 
 // MultiRegionDeployer orchestrates deployments across multiple regions
 // Memory optimized: 1032 → 984 bytes (48 bytes saved)
+//
+//nolint:govet // suppress fieldalignment noise; grouping mirrors operational dependencies.
 type MultiRegionDeployer struct {
+	deployerFactory  func(projectName, stackName, region string, config InfrastructureConfig) InfrastructureDeployer
+	config           InfrastructureConfig
+	dnsManager       *DNSManager
+	loadBalancer     *GlobalLoadBalancer
 	deployers        map[string]InfrastructureDeployer
 	healthCheckers   map[string]*RegionHealthChecker
 	deploymentStatus map[string]RegionDeploymentStatus
-	dnsManager       *DNSManager
-	loadBalancer     *GlobalLoadBalancer
+	regions          []string
+	mu               sync.RWMutex
 	primaryRegion    string
 	applicationName  string
 	environment      string
-	regions          []string
-	config           InfrastructureConfig
-	mu               sync.RWMutex
-
-	deployerFactory func(projectName, stackName, region string, config InfrastructureConfig) InfrastructureDeployer
 }
 
 // RegionDeploymentStatus represents the deployment status of a region

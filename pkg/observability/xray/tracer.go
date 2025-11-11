@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-xray-sdk-go/v2/xray"
+
 	"github.com/pay-theory/lift/pkg/lift"
 )
 

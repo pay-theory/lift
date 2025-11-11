@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// InfrastructureDeployer defines the behaviour shared by deployment backends.
+// InfrastructureDeployer defines the behavior shared by deployment backends.
 type InfrastructureDeployer interface {
 	Initialize(ctx context.Context, cfg *StackDeploymentConfig) error
 	Deploy(ctx context.Context) (*DeploymentResult, error)
@@ -26,7 +26,7 @@ type StackDeploymentConfig struct {
 	SecretsProvider string            `json:"secrets_provider,omitempty"`
 }
 
-// DeploymentResult summarises the outcome of a deployment run.
+// DeploymentResult summarizes the outcome of a deployment run.
 type DeploymentResult struct {
 	Outputs   map[string]any    `json:"outputs"`
 	StackName string            `json:"stack_name"`
@@ -48,20 +48,20 @@ type ResourceSummary struct {
 type CDKSynthesizerFunc func(ctx context.Context, cfg *StackDeploymentConfig, infra InfrastructureConfig) (map[string]any, []ResourceSummary, error)
 
 // CDKDeployer orchestrates deployments through Lift CDK constructs.
+//
+//nolint:govet // suppress fieldalignment noise; layout groups related configuration.
 type CDKDeployer struct {
+	infraConfig InfrastructureConfig
+	config      *StackDeploymentConfig
+	synthesizer CDKSynthesizerFunc
+	mu          sync.Mutex
 	projectName string
 	stackName   string
 	region      string
-	infraConfig InfrastructureConfig
-
-	synthesizer CDKSynthesizerFunc
-
-	mu          sync.Mutex
 	initialized bool
-	config      *StackDeploymentConfig
 }
 
-// CDKDeployerOption customises a CDKDeployer instance.
+// CDKDeployerOption customizes a CDKDeployer instance.
 type CDKDeployerOption func(*CDKDeployer)
 
 // WithCDKSynthesizer overrides the default synthesizer used by the deployer.

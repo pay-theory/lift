@@ -1200,121 +1200,118 @@ func (a *App) detectAndAdaptEvent(event any) (*Request, error) {
 }
 
 // handleError processes errors and returns appropriate responses.
-//
-// Parameters:
-//   - ctx: The context for the request
-//   - err: The error to handle
-//
-// Returns:
-//   - The error response
-//   - An error if the error handling fails
 func (a *App) handleError(ctx *Context, err error) (any, error) {
-	// For AppSync Lambda resolvers, return error in PayTheory response mapping template format
-	// The response mapping template checks for pay_theory_error flag and calls $utils.error()
-	if ctx.Request != nil && ctx.Request.TriggerType == adapters.TriggerAppSync {
-		// Enhance LiftErrors with additional context before returning
-		if liftErr, ok := err.(*LiftError); ok {
-			// Initialize ErrorData and ErrorInfo if nil
-			if liftErr.ErrorData == nil {
-				liftErr.ErrorData = make(map[string]any)
-			}
-			if liftErr.ErrorInfo == nil {
-				liftErr.ErrorInfo = make(map[string]any)
-			}
-
-			// Add request metadata to ErrorInfo
-			if ctx.Request != nil {
-				liftErr.ErrorInfo["trigger_type"] = string(ctx.Request.TriggerType)
-				liftErr.ErrorInfo["path"] = ctx.Request.Path
-				liftErr.ErrorInfo["method"] = ctx.Request.Method
-			}
-
-			// Extract EventID from context if available (use as RequestID)
-			if ctx.Request != nil && ctx.Request.EventID != "" && liftErr.RequestID == "" {
-				liftErr.RequestID = ctx.Request.EventID
-			}
-
-			// Add timestamp if not set
-			if liftErr.Timestamp == "" {
-				liftErr.Timestamp = time.Now().UTC().Format(time.RFC3339)
-			}
-
-			// Add error metadata to ErrorData
-			liftErr.ErrorData["status_code"] = liftErr.StatusCode
-			liftErr.ErrorData["timestamp"] = liftErr.Timestamp
-			if liftErr.RequestID != "" {
-				liftErr.ErrorData["request_id"] = liftErr.RequestID
-			}
-			if liftErr.TraceID != "" {
-				liftErr.ErrorData["trace_id"] = liftErr.TraceID
-			}
-
-			// Add error code to errorInfo
-			liftErr.ErrorInfo["code"] = liftErr.Code
-			if len(liftErr.Details) > 0 {
-				liftErr.ErrorInfo["details"] = liftErr.Details
-			}
-
-			// Determine errorType based on status code
-			var errorType string
-			if liftErr.StatusCode >= 500 {
-				errorType = "SYSTEM_ERROR"
-			} else if liftErr.StatusCode >= 400 {
-				errorType = "CLIENT_ERROR"
-			} else {
-				errorType = "SYSTEM_ERROR"
-			}
-
-			// Return error in PayTheory response mapping template format
-			// The template checks for pay_theory_error flag and calls $utils.error()
-			return map[string]any{
-				"pay_theory_error": true,
-				"error_message":    liftErr.Message,
-				"error_type":       errorType,
-				"error_data":       liftErr.ErrorData,
-				"error_info":       liftErr.ErrorInfo,
-			}, nil
-		}
-
-		// For non-LiftErrors, create a generic error response
-		return map[string]any{
-			"pay_theory_error": true,
-			"error_message":    err.Error(),
-			"error_type":       "SYSTEM_ERROR",
-			"error_data":       map[string]any{},
-			"error_info":       map[string]any{},
-		}, nil
+	if a.isAppSyncRequest(ctx) {
+		return a.handleAppSyncError(ctx, err)
 	}
+	return a.handleStandardError(ctx, err)
+}
 
-	// Handle Lift errors properly by setting appropriate status codes
+func (a *App) isAppSyncRequest(ctx *Context) bool {
+	return ctx.Request != nil && ctx.Request.TriggerType == adapters.TriggerAppSync
+}
+
+func (a *App) handleAppSyncError(ctx *Context, err error) (any, error) {
 	if liftErr, ok := err.(*LiftError); ok {
-		resp := map[string]any{
-			"code":    liftErr.Code,
-			"message": liftErr.Message,
-		}
+		a.enrichAppSyncLiftError(ctx, liftErr)
+		return a.buildAppSyncErrorResponse(liftErr), nil
+	}
+	return map[string]any{
+		"pay_theory_error": true,
+		"error_message":    err.Error(),
+		"error_type":       "SYSTEM_ERROR",
+		"error_data":       map[string]any{},
+		"error_info":       map[string]any{},
+	}, nil
+}
 
-		// Include details if present
-		if len(liftErr.Details) > 0 {
-			resp["details"] = liftErr.Details
-		}
-
-		if err := ctx.Status(liftErr.StatusCode).JSON(resp); err != nil {
-			// Log error but continue - we're already in error handling
-			return nil, fmt.Errorf("failed to send error response: %w", err)
-		}
-		return ctx.Response, nil
+func (a *App) enrichAppSyncLiftError(ctx *Context, liftErr *LiftError) {
+	if liftErr.ErrorData == nil {
+		liftErr.ErrorData = make(map[string]any)
+	}
+	if liftErr.ErrorInfo == nil {
+		liftErr.ErrorInfo = make(map[string]any)
 	}
 
-	// For non-Lift errors, set 500 status
+	if ctx.Request != nil {
+		liftErr.ErrorInfo["trigger_type"] = string(ctx.Request.TriggerType)
+		liftErr.ErrorInfo["path"] = ctx.Request.Path
+		liftErr.ErrorInfo["method"] = ctx.Request.Method
+		if ctx.Request.EventID != "" && liftErr.RequestID == "" {
+			liftErr.RequestID = ctx.Request.EventID
+		}
+	}
+
+	if liftErr.Timestamp == "" {
+		liftErr.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	}
+
+	liftErr.ErrorData["status_code"] = liftErr.StatusCode
+	liftErr.ErrorData["timestamp"] = liftErr.Timestamp
+	if liftErr.RequestID != "" {
+		liftErr.ErrorData["request_id"] = liftErr.RequestID
+	}
+	if liftErr.TraceID != "" {
+		liftErr.ErrorData["trace_id"] = liftErr.TraceID
+	}
+
+	liftErr.ErrorInfo["code"] = liftErr.Code
+	if len(liftErr.Details) > 0 {
+		liftErr.ErrorInfo["details"] = liftErr.Details
+	}
+}
+
+func (a *App) buildAppSyncErrorResponse(liftErr *LiftError) map[string]any {
+	return map[string]any{
+		"pay_theory_error": true,
+		"error_message":    liftErr.Message,
+		"error_type":       determineAppSyncErrorType(liftErr.StatusCode),
+		"error_data":       liftErr.ErrorData,
+		"error_info":       liftErr.ErrorInfo,
+	}
+}
+
+func determineAppSyncErrorType(statusCode int) string {
+	switch {
+	case statusCode >= 500:
+		return "SYSTEM_ERROR"
+	case statusCode >= 400:
+		return "CLIENT_ERROR"
+	default:
+		return "SYSTEM_ERROR"
+	}
+}
+
+func (a *App) handleStandardError(ctx *Context, err error) (any, error) {
+	if liftErr, ok := err.(*LiftError); ok {
+		return a.respondWithLiftError(ctx, liftErr)
+	}
+	return a.respondWithInternalError(ctx)
+}
+
+func (a *App) respondWithLiftError(ctx *Context, liftErr *LiftError) (any, error) {
+	resp := map[string]any{
+		"code":    liftErr.Code,
+		"message": liftErr.Message,
+	}
+	if len(liftErr.Details) > 0 {
+		resp["details"] = liftErr.Details
+	}
+
+	if err := ctx.Status(liftErr.StatusCode).JSON(resp); err != nil {
+		return nil, fmt.Errorf("failed to send error response: %w", err)
+	}
+	return ctx.Response, nil
+}
+
+func (a *App) respondWithInternalError(ctx *Context) (any, error) {
 	if err := ctx.Status(500).JSON(map[string]string{
 		"error": "Internal server error",
 	}); err != nil {
 		return nil, fmt.Errorf("failed to send internal server error response: %w", err)
 	}
-
 	return ctx.Response, nil
 }
-
 
 // HandleTestRequest processes a test request directly through the router.
 // This is used by the testing framework to bypass event parsing.
