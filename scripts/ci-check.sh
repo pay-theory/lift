@@ -12,7 +12,16 @@ trap cleanup EXIT
 mkdir -p coverage
 PROFILE="coverage/coverage.out"
 
-if ! go test ./... -coverpkg=./pkg/... -coverprofile="$TMP_PROFILE"; then
+# Some GitHub runners (Go 1.23.x matrix) lack the covdata tool when the auto
+# toolchain shim downloads Go 1.25, so fall back to vanilla coverage in that case.
+COVER_ARGS=("-coverprofile=$TMP_PROFILE")
+if go tool -n covdata >/dev/null 2>&1; then
+  COVER_ARGS+=("-coverpkg=./pkg/...")
+else
+  echo "covdata tool missing; skipping -coverpkg for compatibility with $(go env GOVERSION)" >&2
+fi
+
+if ! go test "${COVER_ARGS[@]}" ./...; then
   echo "go test failed" >&2
   exit 1
 fi
