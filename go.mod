@@ -34,7 +34,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pay-theory/dynamorm v1.0.37-0.20251110054050-bd20fc148bc0
+	github.com/pay-theory/dynamorm v1.0.37
 	github.com/pay-theory/limited v1.0.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.0

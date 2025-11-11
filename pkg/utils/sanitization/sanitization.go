@@ -45,9 +45,9 @@ var SensitiveFields = map[string]SanitizationType{
 	"secret_key":  FullyRedact,
 
 	// Tokens / authorization
-	"api_token":        FullyRedact,
-	"authorization":    FullyRedact,
-	"authorization_id": FullyRedact,
+	"api_token":            FullyRedact,
+	"authorization":        FullyRedact,
+	"authorization_id":     FullyRedact,
 	"authorization_header": FullyRedact,
 }
 

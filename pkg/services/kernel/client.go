@@ -15,6 +15,7 @@ import (
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
 )
@@ -32,6 +33,8 @@ const (
 	// Default timeouts
 	DefaultConnectTimeout = 30 * time.Second
 	DefaultReadTimeout    = 30 * time.Second
+
+	emptyPayloadHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 )
 
 // LoggerFunc is a function that returns the singleton logger from the calling service
@@ -39,36 +42,38 @@ type LoggerFunc func() observability.StructuredLogger
 
 // Client provides authenticated cross-account calls to kernel services
 type Client struct {
-	partner        string
-	stage          string
-	region         string
-	externalID     string
-	loggerFunc     LoggerFunc
-	httpClient     *http.Client
-	connectTimeout time.Duration
-	readTimeout    time.Duration
-	stsClient      stsAssumeRoleClient
+	loggerFunc      LoggerFunc
+	httpClient      *http.Client
+	stsClient       stsAssumeRoleClient
 	baseURLResolver func(servicePrefix string, includeRegion bool) string
+	partner         string
+	stage           string
+	region          string
+	externalID      string
+	connectTimeout  time.Duration
+	readTimeout     time.Duration
 }
 
 // CallOptions configures a kernel service call
 type CallOptions struct {
-	ServicePrefix  string         // Service name (e.g., "k3", "paze-wallet-key-service")
-	Endpoint       string         // API endpoint path
-	Method         string         // HTTP method (GET, POST, etc.)
-	Body           any            // Request payload (will be JSON marshaled)
-	IncludeRegion  bool           // Whether to include region in URL
-	Subsystem      string         // Logging subsystem name (optional)
-	ConnectTimeout time.Duration  // Connection timeout (optional)
-	ReadTimeout    time.Duration  // Read timeout (optional)
+	Body           any               // Request payload (will be JSON marshaled)
 	Headers        map[string]string // Additional headers (optional)
+	ServicePrefix  string            // Service name (e.g., "k3", "paze-wallet-key-service")
+	Endpoint       string            // API endpoint path
+	Method         string            // HTTP method (GET, POST, etc.)
+	Subsystem      string            // Logging subsystem name (optional)
+	ConnectTimeout time.Duration     // Connection timeout (optional)
+	ReadTimeout    time.Duration     // Read timeout (optional)
+	IncludeRegion  bool              // Whether to include region in URL
 }
 
 // Response represents a kernel service response
+//
+//nolint:govet // govet/fieldalignment would add noise for this small, short-lived struct.
 type Response struct {
-	StatusCode int
-	Headers    map[string]string
 	Body       []byte
+	Headers    map[string]string
+	StatusCode int
 	Duration   time.Duration
 }
 
@@ -146,9 +151,49 @@ func NewClientWithConfig(
 func (c *Client) Call(ctx context.Context, opts *CallOptions) (*Response, error) {
 	start := time.Now()
 
-	// Set defaults
+	c.applyCallDefaults(opts)
+
+	fullURL := c.buildFullURL(opts)
+	bodyBytes, err := marshalRequestBody(opts.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	credentials, err := c.getCrossAccountCredentials(ctx)
+	if err != nil {
+		c.logError("Failed to get cross-account credentials", opts, err, nil)
+		return nil, fmt.Errorf("failed to get credentials: %w", err)
+	}
+
+	req, err := c.createHTTPRequest(ctx, opts, fullURL, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = c.signHTTPRequest(ctx, req, credentials, len(bodyBytes) > 0, opts); err != nil {
+		return nil, err
+	}
+
+	c.logRequest(opts, fullURL)
+
+	response, err := c.executeHTTPRequest(req, opts, start)
+	if err != nil {
+		return nil, err
+	}
+
+	c.logResponse(opts, response)
+
+	if response.StatusCode >= http.StatusBadRequest {
+		c.logKernelError(opts, response)
+		return response, fmt.Errorf("kernel service error: status %d", response.StatusCode)
+	}
+
+	return response, nil
+}
+
+func (c *Client) applyCallDefaults(opts *CallOptions) {
 	if opts.Method == "" {
-		opts.Method = "POST"
+		opts.Method = http.MethodPost
 	}
 	if opts.ConnectTimeout == 0 {
 		opts.ConnectTimeout = c.connectTimeout
@@ -159,39 +204,24 @@ func (c *Client) Call(ctx context.Context, opts *CallOptions) (*Response, error)
 	if opts.Subsystem == "" {
 		opts.Subsystem = opts.ServicePrefix
 	}
+}
 
-	// Build URL
+func (c *Client) buildFullURL(opts *CallOptions) string {
 	baseURL := c.resolveBaseURL(opts.ServicePrefix, opts.IncludeRegion)
-	var fullURL string
 	if opts.IncludeRegion {
-		fullURL = fmt.Sprintf("%s%s", baseURL, opts.Endpoint)
-	} else {
-		fullURL = fmt.Sprintf("%s/%s", baseURL, opts.Endpoint)
+		return fmt.Sprintf("%s%s", baseURL, opts.Endpoint)
 	}
+	return fmt.Sprintf("%s/%s", baseURL, opts.Endpoint)
+}
 
-	// Marshal request body
-	var bodyBytes []byte
-	if opts.Body != nil {
-		var err error
-		bodyBytes, err = json.Marshal(opts.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %w", err)
-		}
+func marshalRequestBody(body any) ([]byte, error) {
+	if body == nil {
+		return nil, nil
 	}
+	return json.Marshal(body)
+}
 
-	// Get cross-account credentials
-	credentials, err := c.getCrossAccountCredentials(ctx)
-	if err != nil {
-		if c.loggerFunc != nil {
-			c.loggerFunc().Error("Failed to get cross-account credentials", map[string]any{
-				"error":     err.Error(),
-				"subsystem": opts.Subsystem,
-			})
-		}
-		return nil, fmt.Errorf("failed to get credentials: %w", err)
-	}
-
-	// Create HTTP request
+func (c *Client) createHTTPRequest(ctx context.Context, opts *CallOptions, fullURL string, bodyBytes []byte) (*http.Request, error) {
 	var bodyReader io.Reader
 	if len(bodyBytes) > 0 {
 		bodyReader = bytes.NewReader(bodyBytes)
@@ -202,108 +232,127 @@ func (c *Client) Call(ctx context.Context, opts *CallOptions) (*Response, error)
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 
-	// Set headers
 	if len(bodyBytes) > 0 {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")
 
-	// Add custom headers
 	for key, value := range opts.Headers {
 		req.Header.Set(key, value)
 	}
 
-	// Sign request with SigV4
+	return req, nil
+}
+
+func (c *Client) signHTTPRequest(ctx context.Context, req *http.Request, credentials aws.Credentials, hasBody bool, opts *CallOptions) error {
 	signer := v4.NewSigner()
-
-	// Create payload hash
-	payloadHash := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" // Empty hash
-	if len(bodyBytes) > 0 {
-		payloadHash = "" // Let the signer calculate it
+	payloadHash := emptyPayloadHash
+	if hasBody {
+		payloadHash = ""
 	}
 
-	err = signer.SignHTTP(ctx, credentials, req, payloadHash, "execute-api", c.region, time.Now())
-	if err != nil {
-		if c.loggerFunc != nil {
-			c.loggerFunc().Error("Failed to sign request", map[string]any{
-				"error":     err.Error(),
-				"subsystem": opts.Subsystem,
-			})
-		}
-		return nil, fmt.Errorf("failed to sign request: %w", err)
+	if err := signer.SignHTTP(ctx, credentials, req, payloadHash, "execute-api", c.region, time.Now()); err != nil {
+		c.logError("Failed to sign request", opts, err, nil)
+		return fmt.Errorf("failed to sign request: %w", err)
 	}
+	return nil
+}
 
-	// Log request
-	if c.loggerFunc != nil {
-		c.loggerFunc().Debug("Making kernel service call", map[string]any{
-			"service":   opts.ServicePrefix,
-			"endpoint":  opts.Endpoint,
-			"method":    opts.Method,
-			"url":       fullURL,
-			"subsystem": opts.Subsystem,
-		})
-	}
-
-	// Execute request
+func (c *Client) executeHTTPRequest(req *http.Request, opts *CallOptions, start time.Time) (*Response, error) {
 	httpResp, err := c.httpClient.Do(req)
 	if err != nil {
-		if c.loggerFunc != nil {
-			c.loggerFunc().Error("Kernel service call failed", map[string]any{
-				"error":     err.Error(),
-				"service":   opts.ServicePrefix,
-				"subsystem": opts.Subsystem,
-			})
-		}
+		c.logError("Kernel service call failed", opts, err, map[string]any{"endpoint": opts.Endpoint})
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
-	defer httpResp.Body.Close()
+	defer func() {
+		if closeErr := httpResp.Body.Close(); closeErr != nil {
+			c.logWarn("Failed to close kernel response body", opts, closeErr)
+		}
+	}()
 
-	// Read response body
 	respBody, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	duration := time.Since(start)
-
-	// Build response
 	response := &Response{
 		StatusCode: httpResp.StatusCode,
+		Duration:   time.Since(start),
 		Headers:    make(map[string]string),
 		Body:       respBody,
-		Duration:   duration,
 	}
 
-	// Copy response headers
 	for key, values := range httpResp.Header {
 		if len(values) > 0 {
 			response.Headers[key] = values[0]
 		}
 	}
 
-	// Log response
-	if c.loggerFunc != nil {
-		c.loggerFunc().Debug("Kernel service call completed", map[string]any{
+	return response, nil
+}
+
+func (c *Client) logRequest(opts *CallOptions, url string) {
+	if logger := c.logger(); logger != nil {
+		logger.Debug("Making kernel service call", map[string]any{
+			"service":   opts.ServicePrefix,
+			"endpoint":  opts.Endpoint,
+			"method":    opts.Method,
+			"url":       url,
+			"subsystem": opts.Subsystem,
+		})
+	}
+}
+
+func (c *Client) logResponse(opts *CallOptions, response *Response) {
+	if logger := c.logger(); logger != nil {
+		logger.Debug("Kernel service call completed", map[string]any{
 			"service":     opts.ServicePrefix,
-			"status_code": httpResp.StatusCode,
-			"duration_ms": duration.Milliseconds(),
+			"status_code": response.StatusCode,
+			"duration_ms": response.Duration.Milliseconds(),
 			"subsystem":   opts.Subsystem,
 		})
 	}
+}
 
-	// Check for errors
-	if httpResp.StatusCode >= 400 {
-		if c.loggerFunc != nil {
-			c.loggerFunc().Error("Kernel service returned error", map[string]any{
-				"status_code": httpResp.StatusCode,
-				"response":    string(respBody),
-				"subsystem":   opts.Subsystem,
-			})
-		}
-		return response, fmt.Errorf("kernel service error: status %d", httpResp.StatusCode)
+func (c *Client) logKernelError(opts *CallOptions, response *Response) {
+	if logger := c.logger(); logger != nil {
+		logger.Error("Kernel service returned error", map[string]any{
+			"status_code": response.StatusCode,
+			"response":    string(response.Body),
+			"subsystem":   opts.Subsystem,
+		})
 	}
+}
 
-	return response, nil
+func (c *Client) logError(message string, opts *CallOptions, err error, extra map[string]any) {
+	if logger := c.logger(); logger != nil {
+		fields := map[string]any{
+			"error":     err.Error(),
+			"service":   opts.ServicePrefix,
+			"subsystem": opts.Subsystem,
+		}
+		for k, v := range extra {
+			fields[k] = v
+		}
+		logger.Error(message, fields)
+	}
+}
+
+func (c *Client) logWarn(message string, opts *CallOptions, err error) {
+	if logger := c.logger(); logger != nil {
+		logger.Warn(message, map[string]any{
+			"error":     err.Error(),
+			"service":   opts.ServicePrefix,
+			"subsystem": opts.Subsystem,
+		})
+	}
+}
+
+func (c *Client) logger() observability.StructuredLogger {
+	if c.loggerFunc == nil {
+		return nil
+	}
+	return c.loggerFunc()
 }
 
 // getCrossAccountCredentials assumes the kernel-access role
@@ -405,7 +454,7 @@ func (r *Response) Unmarshal(v any) error {
 // K3Call makes an authenticated call to K3 API Gateway
 func (c *Client) K3Call(ctx context.Context, endpoint string, body any, method string) (*Response, error) {
 	if method == "" {
-		method = "POST"
+		method = http.MethodPost
 	}
 
 	return c.Call(ctx, &CallOptions{
@@ -421,7 +470,7 @@ func (c *Client) K3Call(ctx context.Context, endpoint string, body any, method s
 // BinLookupCall makes an authenticated call to Bin Lookup Service
 func (c *Client) BinLookupCall(ctx context.Context, endpoint string, method string, body any) (*Response, error) {
 	if method == "" {
-		method = "GET"
+		method = http.MethodGet
 	}
 
 	return c.Call(ctx, &CallOptions{
@@ -437,7 +486,7 @@ func (c *Client) BinLookupCall(ctx context.Context, endpoint string, method stri
 // AppleWalletCall makes an authenticated call to Apple Wallet Key Service
 func (c *Client) AppleWalletCall(ctx context.Context, endpoint string, body any, method string) (*Response, error) {
 	if method == "" {
-		method = "POST"
+		method = http.MethodPost
 	}
 
 	return c.Call(ctx, &CallOptions{
@@ -453,7 +502,7 @@ func (c *Client) AppleWalletCall(ctx context.Context, endpoint string, body any,
 // GoogleWalletCall makes an authenticated call to Google Wallet Key Service
 func (c *Client) GoogleWalletCall(ctx context.Context, endpoint string, body any, method string) (*Response, error) {
 	if method == "" {
-		method = "POST"
+		method = http.MethodPost
 	}
 
 	return c.Call(ctx, &CallOptions{
@@ -469,7 +518,7 @@ func (c *Client) GoogleWalletCall(ctx context.Context, endpoint string, body any
 // PazeWalletCall makes an authenticated call to Paze Wallet Key Service
 func (c *Client) PazeWalletCall(ctx context.Context, endpoint string, body any, method string) (*Response, error) {
 	if method == "" {
-		method = "POST"
+		method = http.MethodPost
 	}
 
 	return c.Call(ctx, &CallOptions{
@@ -485,7 +534,7 @@ func (c *Client) PazeWalletCall(ctx context.Context, endpoint string, body any, 
 // BankDataCall makes an authenticated call to Bank Data Service
 func (c *Client) BankDataCall(ctx context.Context, endpoint string, method string, body any) (*Response, error) {
 	if method == "" {
-		method = "GET"
+		method = http.MethodGet
 	}
 
 	return c.Call(ctx, &CallOptions{
