@@ -38,18 +38,8 @@ jobs:
     - name: Download dependencies
       run: go mod download
     
-    - name: Run coverage suite
+    - name: Run tests
       run: ./scripts/ci-check.sh
-
-    - name: Upload coverage reports
-      if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage/coverage.out
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: true
     
     - name: Run benchmarks
       run: go test -bench=. -benchmem ./pkg/... || true
