@@ -152,7 +152,7 @@ func (q *LiftSQSQueue) createDeadLetterQueue(props *LiftSQSQueueProps) awssqs.Qu
 	}
 
 	applyQueueEncryption(dlqProps, props)
-	configureFifoQueue(dlqProps, props, dlqProps.QueueName, false)
+	configureFifoQueue(dlqProps, props, dlqProps.QueueName, true)
 
 	return awssqs.NewQueue(q, jsii.String("DeadLetterQueue"), dlqProps)
 }
