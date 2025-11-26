@@ -176,10 +176,10 @@ func TestGetKernelEnvironment(t *testing.T) {
 			expectedKernel: "qakernel",
 		},
 		{
-			name:           "kernel for austin partner",
+			name:           "qakernel for austin partner",
 			partner:        "austin",
 			envOverride:    "",
-			expectedKernel: "kernel",
+			expectedKernel: "qakernel",
 		},
 		{
 			name:           "kernel for paytheory partner",

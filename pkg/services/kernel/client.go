@@ -405,7 +405,8 @@ func (c *Client) getKernelEnvironment() string {
 		return kernelEnvOverride
 	}
 
-	if strings.EqualFold(c.partner, "innovate") {
+	// Use qakernel for innovate and austin partners
+	if strings.EqualFold(c.partner, "innovate") || strings.EqualFold(c.partner, "austin") {
 		return "qakernel"
 	}
 
