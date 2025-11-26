@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -46,11 +45,6 @@ func (m *mockSTSClient) AssumeRole(ctx context.Context, params *sts.AssumeRoleIn
 func setupTestClient(t *testing.T) (*Client, *mockSTSClient) {
 	t.Helper()
 
-	// Set required environment variables
-	os.Setenv("PARTNER", "qakernel")
-	os.Setenv("STAGE", "dev")
-	os.Setenv("TARGET_REGION", "us-east-1")
-
 	// Create logger
 	logger, err := zap.NewZapLogger(observability.LoggerConfig{
 		Level:  "error", // Set to error to reduce test output
@@ -63,10 +57,9 @@ func setupTestClient(t *testing.T) (*Client, *mockSTSClient) {
 		return logger
 	}
 
-	// Create client
+	// Create client with test configuration
 	client := &Client{
-		partner:        "qakernel",
-		stage:          "dev",
+		accountID:      "123456789012",
 		region:         "us-east-1",
 		externalID:     "",
 		loggerFunc:     getLogger,
@@ -85,39 +78,30 @@ func setupTestClient(t *testing.T) (*Client, *mockSTSClient) {
 func TestNewClient(t *testing.T) {
 	tests := []struct {
 		name        string
-		envVars     map[string]string
+		config      ClientConfig
 		expectError bool
+		errorMsg    string
 	}{
 		{
 			name: "valid configuration",
-			envVars: map[string]string{
-				"PARTNER":       "qakernel",
-				"STAGE":         "dev",
-				"TARGET_REGION": "us-east-1",
+			config: ClientConfig{
+				AccountID: "123456789012",
+				Region:    "us-east-1",
 			},
 			expectError: false,
 		},
 		{
-			name: "missing partner",
-			envVars: map[string]string{
-				"STAGE":         "dev",
-				"TARGET_REGION": "us-east-1",
+			name: "missing account ID",
+			config: ClientConfig{
+				Region: "us-east-1",
 			},
 			expectError: true,
-		},
-		{
-			name: "missing stage",
-			envVars: map[string]string{
-				"PARTNER":       "qakernel",
-				"TARGET_REGION": "us-east-1",
-			},
-			expectError: true,
+			errorMsg:    "AccountID is required",
 		},
 		{
 			name: "missing region uses default",
-			envVars: map[string]string{
-				"PARTNER": "qakernel",
-				"STAGE":   "dev",
+			config: ClientConfig{
+				AccountID: "123456789012",
 			},
 			expectError: false,
 		},
@@ -125,14 +109,6 @@ func TestNewClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Clear environment
-			os.Clearenv()
-
-			// Set test environment variables
-			for k, v := range tt.envVars {
-				os.Setenv(k, v)
-			}
-
 			// Create logger
 			logger, err := zap.NewZapLogger(observability.LoggerConfig{
 				Level:  "error",
@@ -147,144 +123,64 @@ func TestNewClient(t *testing.T) {
 
 			// Create client
 			ctx := context.Background()
-			client, err := NewClient(ctx, getLogger)
+			client, err := NewClient(ctx, getLogger, tt.config)
 
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, client)
+				if tt.errorMsg != "" {
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				}
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, client)
-				assert.Equal(t, tt.envVars["PARTNER"], client.partner)
-				assert.Equal(t, tt.envVars["STAGE"], client.stage)
+				assert.Equal(t, tt.config.AccountID, client.accountID)
+				if tt.config.Region != "" {
+					assert.Equal(t, tt.config.Region, client.region)
+				} else {
+					assert.Equal(t, "us-east-1", client.region)
+				}
 			}
 		})
 	}
 }
 
-func TestGetKernelEnvironment(t *testing.T) {
+func TestBuildFullURL(t *testing.T) {
+	client, _ := setupTestClient(t)
+
 	tests := []struct {
-		name            string
-		partner         string
-		envOverride     string
-		expectedKernel  string
+		name        string
+		baseURL     string
+		endpoint    string
+		expectedURL string
 	}{
 		{
-			name:           "qakernel for innovate partner",
-			partner:        "innovate",
-			envOverride:    "",
-			expectedKernel: "qakernel",
+			name:        "base URL without trailing slash",
+			baseURL:     "https://api.test.com",
+			endpoint:    "v1/resource",
+			expectedURL: "https://api.test.com/v1/resource",
 		},
 		{
-			name:           "qakernel for austin partner",
-			partner:        "austin",
-			envOverride:    "",
-			expectedKernel: "qakernel",
+			name:        "base URL with trailing slash",
+			baseURL:     "https://api.test.com/",
+			endpoint:    "v1/resource",
+			expectedURL: "https://api.test.com/v1/resource",
 		},
 		{
-			name:           "kernel for paytheory partner",
-			partner:        "paytheory",
-			envOverride:    "",
-			expectedKernel: "kernel",
-		},
-		{
-			name:           "override takes precedence",
-			partner:        "paytheory",
-			envOverride:    "qakernel",
-			expectedKernel: "qakernel",
+			name:        "endpoint with query string",
+			baseURL:     "https://api.test.com",
+			endpoint:    "?param=value",
+			expectedURL: "https://api.test.com/?param=value",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Clearenv()
-			if tt.envOverride != "" {
-				os.Setenv("KERNEL_ENV_OVERRIDE", tt.envOverride)
+			opts := &CallOptions{
+				BaseURL:  tt.baseURL,
+				Endpoint: tt.endpoint,
 			}
-
-			client := &Client{partner: tt.partner}
-			result := client.getKernelEnvironment()
-			assert.Equal(t, tt.expectedKernel, result)
-		})
-	}
-}
-
-func TestGetKernelAccountID(t *testing.T) {
-	tests := []struct {
-		name              string
-		partner           string
-		expectedAccountID string
-	}{
-		{
-			name:              "qakernel account for innovate",
-			partner:           "innovate",
-			expectedAccountID: QAKernelAccountID,
-		},
-		{
-			name:              "kernel account for paytheory",
-			partner:           "paytheory",
-			expectedAccountID: KernelAccountID,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			os.Clearenv()
-			client := &Client{partner: tt.partner}
-			result := client.getKernelAccountID()
-			assert.Equal(t, tt.expectedAccountID, result)
-		})
-	}
-}
-
-func TestGetKernelBaseURL(t *testing.T) {
-	tests := []struct {
-		name          string
-		partner       string
-		stage         string
-		servicePrefix string
-		includeRegion bool
-		region        string
-		expectedURL   string
-	}{
-		{
-			name:          "innovate partner uses qakernel",
-			partner:       "innovate",
-			stage:         "dev",
-			servicePrefix: "k3",
-			includeRegion: false,
-			region:        "us-east-1",
-			expectedURL:   "https://k3.qakernel.dev.com",
-		},
-		{
-			name:          "paze service with region",
-			partner:       "paytheory",
-			stage:         "prod",
-			servicePrefix: "paze-wallet-key-service",
-			includeRegion: true,
-			region:        "us-east-1",
-			expectedURL:   "https://us-east-1.kernel.prod.com/paze-wallet-key-service/",
-		},
-		{
-			name:          "start partner study environment",
-			partner:       "start",
-			stage:         "paytheory",
-			servicePrefix: "k3",
-			includeRegion: false,
-			region:        "us-east-1",
-			expectedURL:   "https://k3.kernel.paytheorystudy.com",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			os.Clearenv()
-			client := &Client{
-				partner: tt.partner,
-				stage:   tt.stage,
-				region:  tt.region,
-			}
-			result := client.getKernelBaseURL(tt.servicePrefix, tt.includeRegion)
+			result := client.buildFullURL(opts)
 			assert.Equal(t, tt.expectedURL, result)
 		})
 	}
@@ -323,30 +219,18 @@ func TestCall(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Override the base URL method for testing
-	originalHTTPClient := client.httpClient
-	originalResolver := client.baseURLResolver
-	defer func() { client.httpClient = originalHTTPClient }()
-	defer func() { client.baseURLResolver = originalResolver }()
-
+	// Override HTTP client for testing
 	client.httpClient = server.Client()
-	client.baseURLResolver = func(servicePrefix string, includeRegion bool) string {
-		if includeRegion {
-			return server.URL + "/"
-		}
-		return server.URL
-	}
 
 	ctx := context.Background()
 
 	opts := &CallOptions{
-		ServicePrefix: "test-service",
-		Endpoint:      "test-endpoint",
-		Method:        "POST",
+		BaseURL:  server.URL,
+		Endpoint: "test-endpoint",
+		Method:   "POST",
 		Body: map[string]any{
 			"test_key": "test_value",
 		},
-		IncludeRegion: false,
 	}
 
 	resp, err := client.Call(ctx, opts)
@@ -356,66 +240,34 @@ func TestCall(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
-func TestConvenienceFunctions(t *testing.T) {
+func TestCallWithErrorStatus(t *testing.T) {
 	client, _ := setupTestClient(t)
 
+	// Create test server that returns an error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ok":true}`))
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"bad request"}`))
 	}))
 	defer server.Close()
 
 	client.httpClient = server.Client()
-	client.baseURLResolver = func(servicePrefix string, includeRegion bool) string {
-		if includeRegion {
-			return server.URL + "/"
-		}
-		return server.URL
-	}
 
 	ctx := context.Background()
 
-	tests := []struct {
-		name           string
-		callFunc       func() (*Response, error)
-		expectedPrefix string
-		expectedMethod string
-	}{
-		{
-			name: "K3Call",
-			callFunc: func() (*Response, error) {
-				return client.K3Call(ctx, "v1/tokenize", map[string]any{"card": "..."}, "POST")
-			},
-			expectedPrefix: "k3",
-			expectedMethod: "POST",
-		},
-		{
-			name: "PazeWalletCall",
-			callFunc: func() (*Response, error) {
-				return client.PazeWalletCall(ctx, "decode-token", map[string]any{"token": "..."}, "POST")
-			},
-			expectedPrefix: "paze-wallet-key-service",
-			expectedMethod: "POST",
-		},
-		{
-			name: "BinLookupCall",
-			callFunc: func() (*Response, error) {
-				return client.BinLookupCall(ctx, "?card_bin=123456", "GET", nil)
-			},
-			expectedPrefix: "bin-lookup-service",
-			expectedMethod: "GET",
-		},
+	opts := &CallOptions{
+		BaseURL:  server.URL,
+		Endpoint: "test-endpoint",
+		Method:   "POST",
+		Body:     map[string]any{},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp, err := tt.callFunc()
-			assert.NoError(t, err)
-			assert.NotNil(t, resp)
-			assert.Equal(t, http.StatusOK, resp.StatusCode)
-		})
-	}
+	resp, err := client.Call(ctx, opts)
+
+	assert.Error(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Contains(t, err.Error(), "kernel service error")
 }
 
 func TestResponseUnmarshal(t *testing.T) {
@@ -440,8 +292,7 @@ func TestResponseUnmarshal(t *testing.T) {
 func TestKernelClientMiddleware(t *testing.T) {
 	client, _ := setupTestClient(t)
 
-	// This test would require a full Lift context setup
-	// Here we just verify the middleware function returns
+	// This test just verifies the middleware function returns
 	middleware := KernelClientMiddleware(client)
 	assert.NotNil(t, middleware)
 }
@@ -489,4 +340,102 @@ func TestGetCrossAccountCredentials(t *testing.T) {
 		assert.Equal(t, "test-external-id", *capturedInput.ExternalId)
 		assert.True(t, strings.Contains(*capturedInput.RoleArn, "kernel-access-external"))
 	})
+
+	// Test role ARN construction
+	t.Run("role ARN uses configured account ID", func(t *testing.T) {
+		var capturedInput *sts.AssumeRoleInput
+		mockSTS.assumeRoleFunc = func(ctx context.Context, params *sts.AssumeRoleInput, optFns ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+			capturedInput = params
+			expiration := time.Now().Add(1 * time.Hour)
+			return &sts.AssumeRoleOutput{
+				Credentials: &types.Credentials{
+					AccessKeyId:     aws.String("AKIAIOSFODNN7EXAMPLE"),
+					SecretAccessKey: aws.String("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
+					SessionToken:    aws.String("SESSION_TOKEN"),
+					Expiration:      &expiration,
+				},
+			}, nil
+		}
+
+		ctx := context.Background()
+		_, err := client.getCrossAccountCredentials(ctx)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, capturedInput)
+		assert.Contains(t, *capturedInput.RoleArn, client.accountID)
+		assert.Contains(t, *capturedInput.RoleArn, "kernel-access")
+	})
+}
+
+func TestApplyCallDefaults(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	tests := []struct {
+		name           string
+		opts           *CallOptions
+		expectedMethod string
+	}{
+		{
+			name:           "empty method defaults to POST",
+			opts:           &CallOptions{},
+			expectedMethod: http.MethodPost,
+		},
+		{
+			name:           "explicit method preserved",
+			opts:           &CallOptions{Method: http.MethodGet},
+			expectedMethod: http.MethodGet,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client.applyCallDefaults(tt.opts)
+			assert.Equal(t, tt.expectedMethod, tt.opts.Method)
+			assert.Equal(t, client.connectTimeout, tt.opts.ConnectTimeout)
+			assert.Equal(t, client.readTimeout, tt.opts.ReadTimeout)
+		})
+	}
+}
+
+func TestMarshalRequestBody(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        any
+		expectNil   bool
+		expectError bool
+	}{
+		{
+			name:      "nil body",
+			body:      nil,
+			expectNil: true,
+		},
+		{
+			name:      "map body",
+			body:      map[string]any{"key": "value"},
+			expectNil: false,
+		},
+		{
+			name:      "struct body",
+			body:      struct{ Name string }{Name: "test"},
+			expectNil: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := marshalRequestBody(tt.body)
+
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			if tt.expectNil {
+				assert.Nil(t, result)
+			} else {
+				assert.NotNil(t, result)
+			}
+		})
+	}
 }
