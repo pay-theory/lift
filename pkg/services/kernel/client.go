@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -26,10 +24,6 @@ type stsAssumeRoleClient interface {
 }
 
 const (
-	// Kernel account IDs
-	QAKernelAccountID = "058264189048"
-	KernelAccountID   = "075149869707"
-
 	// Default timeouts
 	DefaultConnectTimeout = 30 * time.Second
 	DefaultReadTimeout    = 30 * time.Second
@@ -42,29 +36,25 @@ type LoggerFunc func() observability.StructuredLogger
 
 // Client provides authenticated cross-account calls to kernel services
 type Client struct {
-	loggerFunc      LoggerFunc
-	httpClient      *http.Client
-	stsClient       stsAssumeRoleClient
-	baseURLResolver func(servicePrefix string, includeRegion bool) string
-	partner         string
-	stage           string
-	region          string
-	externalID      string
-	connectTimeout  time.Duration
-	readTimeout     time.Duration
+	loggerFunc     LoggerFunc
+	httpClient     *http.Client
+	stsClient      stsAssumeRoleClient
+	accountID      string // Kernel AWS account ID for STS assume role
+	region         string
+	externalID     string
+	connectTimeout time.Duration
+	readTimeout    time.Duration
 }
 
 // CallOptions configures a kernel service call
 type CallOptions struct {
 	Body           any               // Request payload (will be JSON marshaled)
 	Headers        map[string]string // Additional headers (optional)
-	ServicePrefix  string            // Service name (e.g., "k3", "paze-wallet-key-service")
+	BaseURL        string            // Full base URL (required)
 	Endpoint       string            // API endpoint path
 	Method         string            // HTTP method (GET, POST, etc.)
-	Subsystem      string            // Logging subsystem name (optional)
 	ConnectTimeout time.Duration     // Connection timeout (optional)
 	ReadTimeout    time.Duration     // Read timeout (optional)
-	IncludeRegion  bool              // Whether to include region in URL
 }
 
 // Response represents a kernel service response
@@ -77,73 +67,56 @@ type Response struct {
 	Duration   time.Duration
 }
 
-// NewClient creates a new kernel service client
-// loggerFunc should return the calling service's singleton logger (e.g., logger.GetLiftLogger)
-func NewClient(ctx context.Context, loggerFunc LoggerFunc) (*Client, error) {
-	// Get environment variables
-	partner := os.Getenv("PARTNER")
-	stage := os.Getenv("STAGE")
-	region := os.Getenv("TARGET_REGION")
-	externalID := os.Getenv("K3_EXTERNAL_ID")
+// ClientConfig holds configuration for creating a kernel client
+type ClientConfig struct {
+	// AccountID is the AWS account ID for kernel services (required for STS assume role)
+	AccountID string
 
-	if partner == "" {
-		return nil, fmt.Errorf("PARTNER environment variable is required")
+	// Region is the AWS region (optional, defaults to "us-east-1")
+	Region string
+
+	// ExternalID is for external partner authentication (optional)
+	ExternalID string
+
+	// ConnectTimeout is the connection timeout (optional, defaults to 30s)
+	ConnectTimeout time.Duration
+
+	// ReadTimeout is the read timeout (optional, defaults to 30s)
+	ReadTimeout time.Duration
+}
+
+// NewClient creates a new kernel service client with the given configuration
+// loggerFunc should return the calling service's singleton logger (e.g., logger.GetLiftLogger)
+func NewClient(ctx context.Context, loggerFunc LoggerFunc, cfg ClientConfig) (*Client, error) {
+	if cfg.AccountID == "" {
+		return nil, fmt.Errorf("AccountID is required")
 	}
-	if stage == "" {
-		return nil, fmt.Errorf("STAGE environment variable is required")
+
+	if cfg.Region == "" {
+		cfg.Region = "us-east-1"
 	}
-	if region == "" {
-		region = "us-east-1" // Default region
+	if cfg.ConnectTimeout == 0 {
+		cfg.ConnectTimeout = DefaultConnectTimeout
+	}
+	if cfg.ReadTimeout == 0 {
+		cfg.ReadTimeout = DefaultReadTimeout
 	}
 
 	// Load AWS config
-	cfg, err := config.LoadDefaultConfig(ctx)
+	awsCfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
 	return &Client{
-		partner:        partner,
-		stage:          stage,
-		region:         region,
-		externalID:     externalID,
+		region:         cfg.Region,
+		externalID:     cfg.ExternalID,
+		accountID:      cfg.AccountID,
 		loggerFunc:     loggerFunc,
 		httpClient:     &http.Client{},
-		connectTimeout: DefaultConnectTimeout,
-		readTimeout:    DefaultReadTimeout,
-		stsClient:      sts.NewFromConfig(cfg),
-	}, nil
-}
-
-// NewClientWithConfig creates a client with custom configuration
-func NewClientWithConfig(
-	ctx context.Context,
-	loggerFunc LoggerFunc,
-	partner, stage, region string,
-	connectTimeout, readTimeout time.Duration,
-) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load AWS config: %w", err)
-	}
-
-	if connectTimeout == 0 {
-		connectTimeout = DefaultConnectTimeout
-	}
-	if readTimeout == 0 {
-		readTimeout = DefaultReadTimeout
-	}
-
-	return &Client{
-		partner:        partner,
-		stage:          stage,
-		region:         region,
-		externalID:     os.Getenv("K3_EXTERNAL_ID"),
-		loggerFunc:     loggerFunc,
-		httpClient:     &http.Client{},
-		connectTimeout: connectTimeout,
-		readTimeout:    readTimeout,
-		stsClient:      sts.NewFromConfig(cfg),
+		connectTimeout: cfg.ConnectTimeout,
+		readTimeout:    cfg.ReadTimeout,
+		stsClient:      sts.NewFromConfig(awsCfg),
 	}, nil
 }
 
@@ -201,17 +174,16 @@ func (c *Client) applyCallDefaults(opts *CallOptions) {
 	if opts.ReadTimeout == 0 {
 		opts.ReadTimeout = c.readTimeout
 	}
-	if opts.Subsystem == "" {
-		opts.Subsystem = opts.ServicePrefix
-	}
 }
 
 func (c *Client) buildFullURL(opts *CallOptions) string {
-	baseURL := c.resolveBaseURL(opts.ServicePrefix, opts.IncludeRegion)
-	if opts.IncludeRegion {
-		return fmt.Sprintf("%s%s", baseURL, opts.Endpoint)
+	baseURL := opts.BaseURL
+
+	// Append endpoint - handle trailing slash in baseURL
+	if len(baseURL) > 0 && baseURL[len(baseURL)-1] == '/' {
+		return baseURL + opts.Endpoint
 	}
-	return fmt.Sprintf("%s/%s", baseURL, opts.Endpoint)
+	return baseURL + "/" + opts.Endpoint
 }
 
 func marshalRequestBody(body any) ([]byte, error) {
@@ -294,11 +266,9 @@ func (c *Client) executeHTTPRequest(req *http.Request, opts *CallOptions, start 
 func (c *Client) logRequest(opts *CallOptions, url string) {
 	if logger := c.logger(); logger != nil {
 		logger.Debug("Making kernel service call", map[string]any{
-			"service":   opts.ServicePrefix,
-			"endpoint":  opts.Endpoint,
-			"method":    opts.Method,
-			"url":       url,
-			"subsystem": opts.Subsystem,
+			"endpoint": opts.Endpoint,
+			"method":   opts.Method,
+			"url":      url,
 		})
 	}
 }
@@ -306,10 +276,9 @@ func (c *Client) logRequest(opts *CallOptions, url string) {
 func (c *Client) logResponse(opts *CallOptions, response *Response) {
 	if logger := c.logger(); logger != nil {
 		logger.Debug("Kernel service call completed", map[string]any{
-			"service":     opts.ServicePrefix,
+			"endpoint":    opts.Endpoint,
 			"status_code": response.StatusCode,
 			"duration_ms": response.Duration.Milliseconds(),
-			"subsystem":   opts.Subsystem,
 		})
 	}
 }
@@ -317,9 +286,9 @@ func (c *Client) logResponse(opts *CallOptions, response *Response) {
 func (c *Client) logKernelError(opts *CallOptions, response *Response) {
 	if logger := c.logger(); logger != nil {
 		logger.Error("Kernel service returned error", map[string]any{
+			"endpoint":    opts.Endpoint,
 			"status_code": response.StatusCode,
 			"response":    string(response.Body),
-			"subsystem":   opts.Subsystem,
 		})
 	}
 }
@@ -327,9 +296,8 @@ func (c *Client) logKernelError(opts *CallOptions, response *Response) {
 func (c *Client) logError(message string, opts *CallOptions, err error, extra map[string]any) {
 	if logger := c.logger(); logger != nil {
 		fields := map[string]any{
-			"error":     err.Error(),
-			"service":   opts.ServicePrefix,
-			"subsystem": opts.Subsystem,
+			"error":    err.Error(),
+			"endpoint": opts.Endpoint,
 		}
 		for k, v := range extra {
 			fields[k] = v
@@ -341,9 +309,8 @@ func (c *Client) logError(message string, opts *CallOptions, err error, extra ma
 func (c *Client) logWarn(message string, opts *CallOptions, err error) {
 	if logger := c.logger(); logger != nil {
 		logger.Warn(message, map[string]any{
-			"error":     err.Error(),
-			"service":   opts.ServicePrefix,
-			"subsystem": opts.Subsystem,
+			"error":    err.Error(),
+			"endpoint": opts.Endpoint,
 		})
 	}
 }
@@ -397,154 +364,14 @@ func (c *Client) getCrossAccountCredentials(ctx context.Context) (aws.Credential
 	}, nil
 }
 
-// getKernelEnvironment determines which kernel environment to use
-func (c *Client) getKernelEnvironment() string {
-	kernelEnvOverride := os.Getenv("KERNEL_ENV_OVERRIDE")
-
-	if kernelEnvOverride != "" {
-		return kernelEnvOverride
-	}
-
-	if strings.EqualFold(c.partner, "innovate") {
-		return "qakernel"
-	}
-
-	return "kernel"
-}
-
-// getKernelAccountID returns the appropriate kernel account ID
+// getKernelAccountID returns the kernel account ID (from configuration)
 func (c *Client) getKernelAccountID() string {
-	kernelEnv := c.getKernelEnvironment()
-	if kernelEnv == "qakernel" {
-		return QAKernelAccountID
-	}
-	return KernelAccountID
-}
-
-// getKernelBaseURL constructs the kernel service base URL
-func (c *Client) getKernelBaseURL(servicePrefix string, includeRegion bool) string {
-	urlStage := c.stage
-	urlPrefix := c.getKernelEnvironment()
-
-	// If the partner is start live, use the study env
-	if c.partner == "start" && c.stage == "paytheory" {
-		urlStage = "paytheorystudy"
-	}
-
-	if includeRegion {
-		return fmt.Sprintf("https://%s.%s.%s.com/%s/", c.region, urlPrefix, urlStage, servicePrefix)
-	}
-	return fmt.Sprintf("https://%s.%s.%s.com", servicePrefix, urlPrefix, urlStage)
-}
-
-func (c *Client) resolveBaseURL(servicePrefix string, includeRegion bool) string {
-	if c.baseURLResolver != nil {
-		return c.baseURLResolver(servicePrefix, includeRegion)
-	}
-	return c.getKernelBaseURL(servicePrefix, includeRegion)
+	return c.accountID
 }
 
 // Unmarshal unmarshals the response body into the provided struct
 func (r *Response) Unmarshal(v any) error {
 	return json.Unmarshal(r.Body, v)
-}
-
-// Convenience functions for specific services
-
-// K3Call makes an authenticated call to K3 API Gateway
-func (c *Client) K3Call(ctx context.Context, endpoint string, body any, method string) (*Response, error) {
-	if method == "" {
-		method = http.MethodPost
-	}
-
-	return c.Call(ctx, &CallOptions{
-		ServicePrefix: "k3",
-		Endpoint:      endpoint,
-		Method:        method,
-		Body:          body,
-		IncludeRegion: false,
-		Subsystem:     "K3",
-	})
-}
-
-// BinLookupCall makes an authenticated call to Bin Lookup Service
-func (c *Client) BinLookupCall(ctx context.Context, endpoint string, method string, body any) (*Response, error) {
-	if method == "" {
-		method = http.MethodGet
-	}
-
-	return c.Call(ctx, &CallOptions{
-		ServicePrefix: "bin-lookup-service",
-		Endpoint:      endpoint,
-		Method:        method,
-		Body:          body,
-		IncludeRegion: true,
-		Subsystem:     "BIN LOOKUP SERVICE",
-	})
-}
-
-// AppleWalletCall makes an authenticated call to Apple Wallet Key Service
-func (c *Client) AppleWalletCall(ctx context.Context, endpoint string, body any, method string) (*Response, error) {
-	if method == "" {
-		method = http.MethodPost
-	}
-
-	return c.Call(ctx, &CallOptions{
-		ServicePrefix: "apple-wallet-key-service",
-		Endpoint:      endpoint,
-		Method:        method,
-		Body:          body,
-		IncludeRegion: true,
-		Subsystem:     "APPLE WALLET KEY SERVICE",
-	})
-}
-
-// GoogleWalletCall makes an authenticated call to Google Wallet Key Service
-func (c *Client) GoogleWalletCall(ctx context.Context, endpoint string, body any, method string) (*Response, error) {
-	if method == "" {
-		method = http.MethodPost
-	}
-
-	return c.Call(ctx, &CallOptions{
-		ServicePrefix: "google-wallet-key-service",
-		Endpoint:      endpoint,
-		Method:        method,
-		Body:          body,
-		IncludeRegion: true,
-		Subsystem:     "GOOGLE WALLET KEY SERVICE",
-	})
-}
-
-// PazeWalletCall makes an authenticated call to Paze Wallet Key Service
-func (c *Client) PazeWalletCall(ctx context.Context, endpoint string, body any, method string) (*Response, error) {
-	if method == "" {
-		method = http.MethodPost
-	}
-
-	return c.Call(ctx, &CallOptions{
-		ServicePrefix: "paze-wallet-key-service",
-		Endpoint:      endpoint,
-		Method:        method,
-		Body:          body,
-		IncludeRegion: true,
-		Subsystem:     "PAZE WALLET KEY SERVICE",
-	})
-}
-
-// BankDataCall makes an authenticated call to Bank Data Service
-func (c *Client) BankDataCall(ctx context.Context, endpoint string, method string, body any) (*Response, error) {
-	if method == "" {
-		method = http.MethodGet
-	}
-
-	return c.Call(ctx, &CallOptions{
-		ServicePrefix: "bank-data-service",
-		Endpoint:      endpoint,
-		Method:        method,
-		Body:          body,
-		IncludeRegion: true,
-		Subsystem:     "BANK DATA SERVICE",
-	})
 }
 
 // KernelClientMiddleware creates middleware for kernel client integration
