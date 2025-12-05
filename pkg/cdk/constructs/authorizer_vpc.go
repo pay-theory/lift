@@ -13,13 +13,19 @@ import (
 // VPCAuthorizerProps defines properties for creating a VPC authorizer.
 //
 // This struct contains configuration for the VPC authorizer that references
-// an existing vpc-authorizer Lambda function in the partner account.
+// an existing Lambda authorizer function.
 type VPCAuthorizerProps struct {
-	// Partner name (e.g., "paytheory", "innovate", "austin")
-	Partner *string
+	// AuthorizerFunctionArn is the full ARN of the authorizer Lambda function (required)
+	// Example: "arn:aws:lambda:us-east-1:123456789:function:my-authorizer"
+	AuthorizerFunctionArn *string
 
-	// Stage name (e.g., "paytheory", "paytheorystudy", "paytheorylab")
-	Stage *string
+	// AuthorizerName is the name for the authorizer in API Gateway (required)
+	// Example: "my-vpc-authorizer"
+	AuthorizerName *string
+
+	// AuthorizerCredentialsArn is the IAM role ARN that API Gateway uses to invoke the Lambda (required)
+	// Example: "arn:aws:iam::123456789:role/my-authorizer-role"
+	AuthorizerCredentialsArn *string
 
 	// API ID to attach the authorizer to (required)
 	ApiId *string
@@ -29,22 +35,11 @@ type VPCAuthorizerProps struct {
 
 	// TTL for authorization cache in seconds (default: 300)
 	ResultsCacheTtl *float64
-
-	// AWS account ID where the vpc-authorizer Lambda is deployed
-	// If not provided, will use the current stack's account
-	AccountID *string
-
-	// AWS region where the vpc-authorizer Lambda is deployed
-	// If not provided, will use the current stack's region
-	Region *string
 }
 
 // VPCAuthorizer is a wrapper for a CloudFormation API Gateway authorizer.
 //
-// This struct references an existing vpc-authorizer Lambda function that is
-// deployed in all partner accounts following the naming pattern:
-// vpc-authorizer-{partner}-{stage}
-//
+// This struct references an existing Lambda authorizer function.
 // The authorizer validates requests using the Authorization header and returns
 // simple responses for HTTP API Gateway v2.
 type VPCAuthorizer struct {
@@ -55,8 +50,8 @@ type VPCAuthorizer struct {
 // NewVPCAuthorizer creates a new VPC authorizer construct.
 //
 // This function creates a Lambda authorizer that references an existing
-// vpc-authorizer Lambda function in the partner account. The Lambda function
-// should already exist with the naming pattern: vpc-authorizer-{partner}-{stage}
+// Lambda authorizer function. The caller must provide the full ARN of the
+// authorizer function, the authorizer name, and the IAM role ARN.
 //
 // The authorizer is configured with:
 // - REQUEST authorizer type (validates entire request)
@@ -67,7 +62,7 @@ type VPCAuthorizer struct {
 // Parameters:
 //   - scope: The CDK construct scope
 //   - id: The construct ID
-//   - props: Configuration properties including partner and stage
+//   - props: Configuration properties including AuthorizerFunctionArn, AuthorizerName, and AuthorizerCredentialsArn
 //
 // Returns:
 //   - A new VPCAuthorizer instance
@@ -80,46 +75,22 @@ func NewVPCAuthorizer(scope constructs.Construct, id *string, props *VPCAuthoriz
 		props.ResultsCacheTtl = jsii.Number(300)
 	}
 
-	// Get stack to access account and region
+	// Get stack to access region for the authorizer URI
 	stack := awscdk.Stack_Of(scope)
-	accountID := props.AccountID
-	if accountID == nil {
-		accountID = stack.Account()
-	}
-	region := props.Region
-	if region == nil {
-		region = stack.Region()
-	}
-
-	// Construct ARN for existing vpc-authorizer Lambda
-	// Pattern: arn:aws:lambda:{region}:{account}:function:vpc-authorizer-{partner}-{stage}:published
-	authorizerFunctionArn := jsii.String(fmt.Sprintf(
-		"arn:aws:lambda:%s:%s:function:vpc-authorizer-%s-%s:published",
-		*region,
-		*accountID,
-		*props.Partner,
-		*props.Stage,
-	))
 
 	// Create HTTP Lambda authorizer using lower-level Cfn construct
 	// We use Cfn constructs to have full control over the authorizer configuration
 	// This is necessary because the high-level constructs don't support all options
 	cfnAuthorizer := awsapigatewayv2.NewCfnAuthorizer(scope, id, &awsapigatewayv2.CfnAuthorizerProps{
 		ApiId:          props.ApiId,
-		Name:           jsii.String(fmt.Sprintf("vpc-authorizer-%s-%s", *props.Partner, *props.Stage)),
+		Name:           props.AuthorizerName,
 		AuthorizerType: jsii.String("REQUEST"),
 		AuthorizerUri: jsii.String(fmt.Sprintf(
 			"arn:aws:apigateway:%s:lambda:path/2015-03-31/functions/%s/invocations",
-			*region,
-			*authorizerFunctionArn,
+			*stack.Region(),
+			*props.AuthorizerFunctionArn,
 		)),
-		// Use the existing vpc-authorizer IAM role to invoke the authorizer
-		AuthorizerCredentialsArn: jsii.String(fmt.Sprintf(
-			"arn:aws:iam::%s:role/vpc-authorizer-%s-%s-role",
-			*accountID,
-			*props.Partner,
-			*props.Stage,
-		)),
+		AuthorizerCredentialsArn:       props.AuthorizerCredentialsArn,
 		EnableSimpleResponses:          jsii.Bool(true),
 		AuthorizerPayloadFormatVersion: jsii.String("2.0"),
 		IdentitySource:                 props.IdentitySource,

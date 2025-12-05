@@ -506,10 +506,9 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 
 // EnableVPCAuthorizer enables VPC-based authorization for the API.
 //
-// This method configures the API to use an existing vpc-authorizer Lambda
-// function for request authorization. The vpc-authorizer Lambda should already
-// exist in the partner account with the naming pattern:
-// vpc-authorizer-{partner}-{stage}
+// This method configures the API to use an existing Lambda authorizer function
+// for request authorization. The caller must provide the full ARN of the
+// authorizer function, a name for the authorizer, and the IAM role ARN.
 //
 // The authorizer validates requests using the Authorization header and caches
 // results for 5 minutes by default. Use AddVPCAuthorizedRoute() to add routes
@@ -524,21 +523,27 @@ func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 //	})
 //
 //	// Enable VPC authorization
-//	liftAPI.EnableVPCAuthorizer(partner, stage)
+//	liftAPI.EnableVPCAuthorizer(
+//	    fmt.Sprintf("arn:aws:lambda:%s:%s:function:vpc-authorizer-%s-%s", region, account, partner, stage),
+//	    fmt.Sprintf("vpc-authorizer-%s-%s", partner, stage),
+//	    fmt.Sprintf("arn:aws:iam::%s:role/vpc-authorizer-%s-%s-role", account, partner, stage),
+//	)
 //
 //	// Add routes with VPC authorization
 //	liftAPI.AddVPCAuthorizedRoute(jsii.String("POST /path"), liftFn.Function)
 //
 // Parameters:
-//   - partner: Partner name (e.g., "paytheory", "innovate", "austin")
-//   - stage: Stage name (e.g., "paytheory", "paytheorystudy", "paytheorylab")
-func (api *LiftAPI) EnableVPCAuthorizer(partner string, stage string) {
+//   - authorizerFunctionArn: Full ARN of the authorizer Lambda function
+//   - authorizerName: Name for the authorizer in API Gateway
+//   - authorizerCredentialsArn: IAM role ARN that API Gateway uses to invoke the Lambda
+func (api *LiftAPI) EnableVPCAuthorizer(authorizerFunctionArn, authorizerName, authorizerCredentialsArn string) {
 	vpcAuth := NewVPCAuthorizer(api.Construct, jsii.String("VPCAuthorizer"), &VPCAuthorizerProps{
-		Partner:         jsii.String(partner),
-		Stage:           jsii.String(stage),
-		ApiId:           api.HttpAPI.ApiId(),
-		IdentitySource:  &[]*string{jsii.String("$request.header.Authorization")},
-		ResultsCacheTtl: jsii.Number(300), // Cache for 5 minutes
+		AuthorizerFunctionArn:    jsii.String(authorizerFunctionArn),
+		AuthorizerName:           jsii.String(authorizerName),
+		AuthorizerCredentialsArn: jsii.String(authorizerCredentialsArn),
+		ApiId:                    api.HttpAPI.ApiId(),
+		IdentitySource:           &[]*string{jsii.String("$request.header.Authorization")},
+		ResultsCacheTtl:          jsii.Number(300), // Cache for 5 minutes
 	})
 
 	// Store the authorizer for use with routes
