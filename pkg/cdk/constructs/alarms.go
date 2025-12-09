@@ -172,15 +172,15 @@ func NewLiftSQSAlarms(scope constructs.Construct, id *string, props *SQSAlarmsPr
 }
 
 type sqsAlarmInput struct {
-	alarmName   string
-	description string
-	metricName  string
+	snsAction   awscloudwatch.IAlarmAction
 	queueName   *string
 	threshold   *float64
 	periods     *float64
 	period      *float64
 	statistic   *string
-	snsAction   awscloudwatch.IAlarmAction
+	alarmName   string
+	description string
+	metricName  string
 }
 
 func createSQSAlarm(scope constructs.Construct, input *sqsAlarmInput) awscloudwatch.Alarm {

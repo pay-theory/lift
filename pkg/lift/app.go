@@ -748,6 +748,10 @@ func (b *requestHandlerBuilder) parseEvent() error {
 // createContext creates the enhanced Lift context.
 // It initializes the context with the request and other dependencies.
 func (b *requestHandlerBuilder) createContext() {
+	// Set the Lambda context on the request for proper context propagation
+	if b.request != nil {
+		b.request.SetContext(b.ctx)
+	}
 	b.liftCtx = NewContext(b.ctx, b.request)
 }
 

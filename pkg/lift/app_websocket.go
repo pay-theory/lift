@@ -125,6 +125,10 @@ func (p *webSocketEventProcessor) parseWebSocketEvent(event events.APIGatewayWeb
 
 // createLiftContext creates and configures the Lift context
 func (p *webSocketEventProcessor) createLiftContext(ctx context.Context, req *Request) *Context {
+	// Set the Lambda context on the request for proper context propagation
+	if req != nil {
+		req.SetContext(ctx)
+	}
 	liftCtx := NewContext(ctx, req)
 
 	// Set dependencies

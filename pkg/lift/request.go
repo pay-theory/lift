@@ -2,6 +2,7 @@ package lift
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 )
@@ -12,6 +13,9 @@ type TriggerType = adapters.TriggerType
 // Request wraps the adapter Request with additional methods and exposes fields directly
 type Request struct {
 	*adapters.Request
+
+	// ctx holds the Lambda context for proper cancellation and timeout propagation
+	ctx context.Context
 
 	// Expose adapter fields directly for backward compatibility
 	Method      string            `json:"method,omitempty"`
@@ -26,6 +30,7 @@ func NewRequest(adapterReq *adapters.Request) *Request {
 	if adapterReq == nil {
 		return &Request{
 			Request:     &adapters.Request{},
+			ctx:         context.Background(),
 			Headers:     make(map[string]string),
 			QueryParams: make(map[string]string),
 		}
@@ -33,12 +38,34 @@ func NewRequest(adapterReq *adapters.Request) *Request {
 
 	return &Request{
 		Request:     adapterReq,
+		ctx:         context.Background(),
 		Method:      adapterReq.Method,
 		Path:        adapterReq.Path,
 		Headers:     adapterReq.Headers,
 		QueryParams: adapterReq.QueryParams,
 		Body:        adapterReq.Body,
 	}
+}
+
+// NewRequestWithContext creates a new Request from an adapter Request with the provided context.
+// This is the preferred constructor when you have access to the Lambda context.
+func NewRequestWithContext(ctx context.Context, adapterReq *adapters.Request) *Request {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	req := NewRequest(adapterReq)
+	req.ctx = ctx
+	return req
+}
+
+// SetContext sets the context for the request.
+// This should be called by the app to propagate the Lambda context.
+func (r *Request) SetContext(ctx context.Context) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r.ctx = ctx
 }
 
 // Re-export constants from adapters
@@ -125,10 +152,15 @@ func equalFold(s1, s2 string) bool {
 	return true
 }
 
-// Context returns the request context (for compatibility)
+// Context returns the request context.
+// This returns the actual Lambda context passed from the handler, enabling proper
+// cancellation, timeouts, and access to AWS Lambda metadata (request ID, function info, etc.).
+// Middleware and handlers should use this context for operations that need to respect
+// Lambda execution deadlines.
 func (r *Request) Context() context.Context {
-	// Return a background context for now
-	// In a real implementation, this would be the actual request context
+	if r.ctx != nil {
+		return r.ctx
+	}
 	return context.Background()
 }
 
@@ -140,19 +172,66 @@ func (r *Request) Header() map[string]string {
 	return r.Headers
 }
 
-// RemoteAddr returns the remote address (for compatibility)
+// RemoteAddr returns the remote client IP address.
+// It extracts the IP using the following precedence:
+// 1. API Gateway V2 requestContext.http.sourceIp
+// 2. API Gateway V1 requestContext.identity.sourceIp
+// 3. X-Forwarded-For header (first IP in comma-separated list)
+// 4. X-Real-IP header
+// 5. CF-Connecting-IP header (Cloudflare)
+//
+// Returns an empty string if no valid IP can be determined.
+// Note: For accurate IP extraction with validation, use the security.ExtractClientIP function.
 func (r *Request) RemoteAddr() string {
-	// In Lambda, this would typically come from the event context
-	// For now, return a placeholder
-	if r.Headers != nil {
-		if xForwardedFor := r.Headers["X-Forwarded-For"]; xForwardedFor != "" {
-			return xForwardedFor
+	// First, try to get IP from requestContext (most reliable source from API Gateway)
+	reqCtx := r.RequestContext()
+	if len(reqCtx) > 0 {
+		// API Gateway V2 format: requestContext.http.sourceIp
+		if http, ok := reqCtx["http"].(map[string]any); ok {
+			if sourceIP, ok := http["sourceIp"].(string); ok && sourceIP != "" {
+				return sourceIP
+			}
 		}
-		if xRealIP := r.Headers["X-Real-IP"]; xRealIP != "" {
-			return xRealIP
+
+		// API Gateway V1 format: requestContext.identity.sourceIp
+		if identity, ok := reqCtx["identity"].(map[string]any); ok {
+			if sourceIP, ok := identity["sourceIp"].(string); ok && sourceIP != "" {
+				return sourceIP
+			}
+		}
+
+		// Direct sourceIp on requestContext (some WebSocket configurations)
+		if sourceIP, ok := reqCtx["sourceIp"].(string); ok && sourceIP != "" {
+			return sourceIP
 		}
 	}
-	return "127.0.0.1"
+
+	// Fall back to headers
+	if r.Headers != nil {
+		// X-Forwarded-For: may contain multiple IPs (client, proxies...)
+		// The first IP is typically the original client
+		if xForwardedFor := r.GetHeader("X-Forwarded-For"); xForwardedFor != "" {
+			// Parse first IP from comma-separated list
+			if idx := strings.Index(xForwardedFor, ","); idx > 0 {
+				return strings.TrimSpace(xForwardedFor[:idx])
+			}
+			return strings.TrimSpace(xForwardedFor)
+		}
+
+		// X-Real-IP: single IP set by reverse proxies
+		if xRealIP := r.GetHeader("X-Real-IP"); xRealIP != "" {
+			return xRealIP
+		}
+
+		// CF-Connecting-IP: Cloudflare's client IP header
+		if cfIP := r.GetHeader("CF-Connecting-IP"); cfIP != "" {
+			return cfIP
+		}
+	}
+
+	// Return empty string instead of localhost placeholder
+	// This makes it clear when IP extraction fails rather than masking the issue
+	return ""
 }
 
 // UserAgent returns the user agent string (for compatibility)
