@@ -12,8 +12,31 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
+// BaseAlarmsConfig contains common alarm configuration fields
+type BaseAlarmsConfig struct {
+	// EvaluationPeriods is the number of periods to evaluate
+	EvaluationPeriods *float64
+
+	// Period is the evaluation period in seconds
+	// Default: 300 (5 minutes)
+	Period *float64
+}
+
+// applyBaseAlarmsDefaults applies default values to the base config fields
+func applyBaseAlarmsDefaults(evaluationPeriods, period *float64, defaultEvalPeriods float64) (*float64, *float64) {
+	if evaluationPeriods == nil {
+		evaluationPeriods = jsii.Number(defaultEvalPeriods)
+	}
+	if period == nil {
+		period = jsii.Number(300) // 5 minutes default
+	}
+	return evaluationPeriods, period
+}
+
 // SQSAlarmsConfig defines configuration for SQS alarms
 type SQSAlarmsConfig struct {
+	BaseAlarmsConfig
+
 	// VisibleMessagesThreshold is the threshold for visible messages alarm
 	// Default: 2
 	VisibleMessagesThreshold *float64
@@ -29,14 +52,6 @@ type SQSAlarmsConfig struct {
 	// DLQOldestMessageAgeThreshold is the threshold in seconds for DLQ oldest message alarm
 	// Default: 1 (alert immediately when any message hits DLQ)
 	DLQOldestMessageAgeThreshold *float64
-
-	// EvaluationPeriods is the number of periods to evaluate
-	// Default: 1
-	EvaluationPeriods *float64
-
-	// Period is the evaluation period in seconds
-	// Default: 300 (5 minutes)
-	Period *float64
 }
 
 // SQSAlarmsProps defines properties for creating SQS alarms
@@ -231,18 +246,15 @@ func applySQSAlarmsDefaults(config *SQSAlarmsConfig) *SQSAlarmsConfig {
 	if config.DLQOldestMessageAgeThreshold == nil {
 		config.DLQOldestMessageAgeThreshold = jsii.Number(1) // Alert immediately
 	}
-	if config.EvaluationPeriods == nil {
-		config.EvaluationPeriods = jsii.Number(1)
-	}
-	if config.Period == nil {
-		config.Period = jsii.Number(300) // 5 minutes
-	}
+	config.EvaluationPeriods, config.Period = applyBaseAlarmsDefaults(config.EvaluationPeriods, config.Period, 1)
 
 	return config
 }
 
 // APIGatewayAlarmsConfig defines configuration for API Gateway alarms
 type APIGatewayAlarmsConfig struct {
+	BaseAlarmsConfig
+
 	// ClientErrorThreshold is the threshold for 4xx errors
 	// Default: 10
 	ClientErrorThreshold *float64
@@ -250,14 +262,6 @@ type APIGatewayAlarmsConfig struct {
 	// ServerErrorThreshold is the threshold for 5xx errors
 	// Default: 5
 	ServerErrorThreshold *float64
-
-	// EvaluationPeriods is the number of periods to evaluate
-	// Default: 3
-	EvaluationPeriods *float64
-
-	// Period is the evaluation period in seconds
-	// Default: 300 (5 minutes)
-	Period *float64
 }
 
 // APIGatewayAlarmsProps defines properties for creating API Gateway alarms
@@ -375,18 +379,15 @@ func applyAPIGatewayAlarmsDefaults(config *APIGatewayAlarmsConfig) *APIGatewayAl
 	if config.ServerErrorThreshold == nil {
 		config.ServerErrorThreshold = jsii.Number(5)
 	}
-	if config.EvaluationPeriods == nil {
-		config.EvaluationPeriods = jsii.Number(3)
-	}
-	if config.Period == nil {
-		config.Period = jsii.Number(300) // 5 minutes
-	}
+	config.EvaluationPeriods, config.Period = applyBaseAlarmsDefaults(config.EvaluationPeriods, config.Period, 3)
 
 	return config
 }
 
 // DynamoDBAlarmsConfig defines configuration for DynamoDB alarms
 type DynamoDBAlarmsConfig struct {
+	BaseAlarmsConfig
+
 	// LatencyThreshold is the threshold in milliseconds for latency alarm
 	// Default: 250
 	LatencyThreshold *float64
@@ -398,14 +399,6 @@ type DynamoDBAlarmsConfig struct {
 	// WriteCapacityThreshold is the threshold for consumed write capacity units
 	// Default: 900
 	WriteCapacityThreshold *float64
-
-	// EvaluationPeriods is the number of periods to evaluate
-	// Default: 3
-	EvaluationPeriods *float64
-
-	// Period is the evaluation period in seconds
-	// Default: 300 (5 minutes)
-	Period *float64
 }
 
 // DynamoDBAlarmsProps defines properties for creating DynamoDB alarms
@@ -541,12 +534,161 @@ func applyDynamoDBAlarmsDefaults(config *DynamoDBAlarmsConfig) *DynamoDBAlarmsCo
 	if config.WriteCapacityThreshold == nil {
 		config.WriteCapacityThreshold = jsii.Number(900)
 	}
-	if config.EvaluationPeriods == nil {
-		config.EvaluationPeriods = jsii.Number(3)
+	config.EvaluationPeriods, config.Period = applyBaseAlarmsDefaults(config.EvaluationPeriods, config.Period, 3)
+
+	return config
+}
+
+// LambdaAlarmsConfig defines configuration for Lambda alarms
+type LambdaAlarmsConfig struct {
+	BaseAlarmsConfig
+
+	// ErrorThreshold is the threshold for Lambda errors
+	// Default: 1
+	ErrorThreshold *float64
+
+	// ThrottleThreshold is the threshold for Lambda throttles
+	// Default: 1
+	ThrottleThreshold *float64
+
+	// DurationThreshold is the threshold in milliseconds for duration alarm
+	// Default: 30000 (30 seconds)
+	DurationThreshold *float64
+}
+
+// LambdaAlarmsProps defines properties for creating Lambda alarms
+type LambdaAlarmsProps struct {
+	// FunctionName is the Lambda function name (required)
+	FunctionName *string
+
+	// AlarmTopic is the SNS topic for alarm notifications (required)
+	AlarmTopic awssns.ITopic
+
+	// AlarmNamePrefix is the prefix for alarm names (required)
+	// Example: "merchant-application-partner-stage-my-function"
+	AlarmNamePrefix *string
+
+	// Config contains threshold configuration (optional - uses defaults if nil)
+	Config *LambdaAlarmsConfig
+}
+
+// LiftLambdaAlarms contains CloudWatch alarms for Lambda functions
+type LiftLambdaAlarms struct {
+	Construct constructs.Construct
+
+	ErrorsAlarm    awscloudwatch.Alarm
+	ThrottlesAlarm awscloudwatch.Alarm
+	DurationAlarm  awscloudwatch.Alarm
+}
+
+// NewLiftLambdaAlarms creates CloudWatch alarms for Lambda functions
+func NewLiftLambdaAlarms(scope constructs.Construct, id *string, props *LambdaAlarmsProps) *LiftLambdaAlarms {
+	if props.FunctionName == nil {
+		panic("FunctionName is required")
 	}
-	if config.Period == nil {
-		config.Period = jsii.Number(300) // 5 minutes
+	if props.AlarmTopic == nil {
+		panic("AlarmTopic is required")
 	}
+	if props.AlarmNamePrefix == nil {
+		panic("AlarmNamePrefix is required")
+	}
+
+	construct := constructs.NewConstruct(scope, id)
+	this := &LiftLambdaAlarms{Construct: construct}
+
+	// Apply defaults
+	config := applyLambdaAlarmsDefaults(props.Config)
+
+	// Create SNS action for alarms
+	snsAction := awscloudwatchactions.NewSnsAction(props.AlarmTopic)
+
+	// Create errors alarm
+	errorsMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
+		Namespace:  jsii.String("AWS/Lambda"),
+		MetricName: jsii.String("Errors"),
+		DimensionsMap: &map[string]*string{
+			"FunctionName": props.FunctionName,
+		},
+		Statistic: jsii.String("Sum"),
+		Period:    awscdk.Duration_Seconds(config.Period),
+	})
+
+	errorsAlarmName := fmt.Sprintf("lambda-errors-%s", *props.AlarmNamePrefix)
+	this.ErrorsAlarm = awscloudwatch.NewAlarm(this.Construct, jsii.String("ErrorsAlarm"), &awscloudwatch.AlarmProps{
+		AlarmName:          jsii.String(errorsAlarmName),
+		AlarmDescription:   jsii.String("Alarm if Lambda function errors hit threshold"),
+		Metric:             errorsMetric,
+		Threshold:          config.ErrorThreshold,
+		EvaluationPeriods:  config.EvaluationPeriods,
+		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+	})
+	this.ErrorsAlarm.AddAlarmAction(snsAction)
+
+	// Create throttles alarm
+	throttlesMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
+		Namespace:  jsii.String("AWS/Lambda"),
+		MetricName: jsii.String("Throttles"),
+		DimensionsMap: &map[string]*string{
+			"FunctionName": props.FunctionName,
+		},
+		Statistic: jsii.String("Sum"),
+		Period:    awscdk.Duration_Seconds(config.Period),
+	})
+
+	throttlesAlarmName := fmt.Sprintf("lambda-throttles-%s", *props.AlarmNamePrefix)
+	this.ThrottlesAlarm = awscloudwatch.NewAlarm(this.Construct, jsii.String("ThrottlesAlarm"), &awscloudwatch.AlarmProps{
+		AlarmName:          jsii.String(throttlesAlarmName),
+		AlarmDescription:   jsii.String("Alarm if Lambda function throttles hit threshold"),
+		Metric:             throttlesMetric,
+		Threshold:          config.ThrottleThreshold,
+		EvaluationPeriods:  config.EvaluationPeriods,
+		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+	})
+	this.ThrottlesAlarm.AddAlarmAction(snsAction)
+
+	// Create duration alarm
+	durationMetric := awscloudwatch.NewMetric(&awscloudwatch.MetricProps{
+		Namespace:  jsii.String("AWS/Lambda"),
+		MetricName: jsii.String("Duration"),
+		DimensionsMap: &map[string]*string{
+			"FunctionName": props.FunctionName,
+		},
+		Statistic: jsii.String("Average"),
+		Period:    awscdk.Duration_Seconds(config.Period),
+	})
+
+	durationAlarmName := fmt.Sprintf("lambda-duration-%s", *props.AlarmNamePrefix)
+	this.DurationAlarm = awscloudwatch.NewAlarm(this.Construct, jsii.String("DurationAlarm"), &awscloudwatch.AlarmProps{
+		AlarmName:          jsii.String(durationAlarmName),
+		AlarmDescription:   jsii.String("Alarm if Lambda function duration hits threshold"),
+		Metric:             durationMetric,
+		Threshold:          config.DurationThreshold,
+		EvaluationPeriods:  config.EvaluationPeriods,
+		ComparisonOperator: awscloudwatch.ComparisonOperator_GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+		TreatMissingData:   awscloudwatch.TreatMissingData_NOT_BREACHING,
+	})
+	this.DurationAlarm.AddAlarmAction(snsAction)
+
+	return this
+}
+
+func applyLambdaAlarmsDefaults(config *LambdaAlarmsConfig) *LambdaAlarmsConfig {
+	if config == nil {
+		config = &LambdaAlarmsConfig{}
+	}
+
+	if config.ErrorThreshold == nil {
+		config.ErrorThreshold = jsii.Number(1)
+	}
+	if config.ThrottleThreshold == nil {
+		config.ThrottleThreshold = jsii.Number(1)
+	}
+	if config.DurationThreshold == nil {
+		config.DurationThreshold = jsii.Number(30000) // 30 seconds
+	}
+	config.EvaluationPeriods, config.Period = applyBaseAlarmsDefaults(config.EvaluationPeriods, config.Period, 3)
 
 	return config
 }
