@@ -27,6 +27,10 @@ var SensitiveFields = map[string]SanitizationType{
 	"cvc":           FullyRedact,
 	"cvc2":          FullyRedact,
 
+	// Cardholder name - fully redact (PII - never log)
+	"cardholder":      FullyRedact,
+	"cardholder_name": FullyRedact,
+
 	// Card numbers - partial mask (show BIN + last 4)
 	"card_number": PartialMask,
 	"number":      PartialMask,
@@ -46,6 +50,7 @@ var SensitiveFields = map[string]SanitizationType{
 
 	// Tokens / authorization
 	"api_token":            FullyRedact,
+	"api_key_id":           PartialMask,
 	"authorization":        FullyRedact,
 	"authorization_id":     FullyRedact,
 	"authorization_header": FullyRedact,
@@ -205,6 +210,11 @@ func (h *classificationHandler) handleRestricted() any {
 		// Mask all but the last 4 digits
 		masked := strings.Repeat("*", len(cleaned)-4) + cleaned[len(cleaned)-4:]
 		return masked
+	}
+
+	// Handle alphanumeric strings (e.g., API key IDs)
+	if len(str) >= 4 {
+		return "..." + str[len(str)-4:]
 	}
 
 	return redactedValue
