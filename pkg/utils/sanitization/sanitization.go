@@ -27,6 +27,10 @@ var SensitiveFields = map[string]SanitizationType{
 	"cvc":           FullyRedact,
 	"cvc2":          FullyRedact,
 
+	// Cardholder name - fully redact (PII - never log)
+	"cardholder":      FullyRedact,
+	"cardholder_name": FullyRedact,
+
 	// Card numbers - partial mask (show BIN + last 4)
 	"card_number": PartialMask,
 	"number":      PartialMask,
