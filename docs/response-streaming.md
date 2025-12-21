@@ -82,6 +82,7 @@ func main() {
 - Sets `Content-Type: text/event-stream`
 - Formats each `SSEEvent` into SSE wire format (`event:`, `id:`, `retry:`, `data:`)
 - Returns an AWS Lambda streaming response type so the runtime can stream bytes to the client
+- For API Gateway REST API (v1), supports `multiValueHeaders` response metadata via `ctx.AddMultiValueHeader(...)`
 
 ### Client: Minimal browser example
 
@@ -187,7 +188,18 @@ api := constructs.NewLiftAPI(stack, jsii.String("HttpAPI"), &constructs.LiftAPIP
 API Gateway response streaming has important platform behaviors:
 - **Integration timeout**: up to **15 minutes** (900 seconds) for streaming-enabled methods.
 - **Idle timeout**: connections can be closed if no data is sent for too long (**5 minutes** for regional/private, **30 seconds** for edge).
-- **Not supported** (streaming mode): VTL mapping templates, integration response caching, and some content encoding behaviors.
+- **Throughput**: responses larger than **10MB** can be throttled to **~2MB/s**.
+- **Not supported** (streaming mode): VTL mapping templates, integration response caching, and content encoding.
+
+### Heartbeats (Keep-Alive)
+
+To avoid idle timeouts, emit periodic SSE events even when you have no “real” updates:
+
+```go
+eventChan <- lift.SSEEvent{Event: "keepalive", Data: "ping"} // client can ignore
+```
+
+Choose a heartbeat interval **lower than your idle timeout** (for edge endpoints, assume ≤30s).
 
 ## Next: Detailed APIs and Edge Cases
 

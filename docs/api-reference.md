@@ -653,6 +653,8 @@ log.Println("Processing") // ❌ No context
 
 **Return type:** API Gateway REST API (v1) triggers return `events.APIGatewayProxyStreamingResponse`; other triggers return `events.LambdaFunctionURLStreamingResponse`.
 
+**Multi-value headers (APIGW v1 streaming only):** call `ctx.AddMultiValueHeader("Header-Name", "value")` before returning `lift.SSEResponse(...)` to populate `multiValueHeaders` in the streaming response metadata.
+
 ```go
 // CORRECT: Configure an SSE streaming response and return from the handler.
 func Events(ctx *lift.Context) error {
