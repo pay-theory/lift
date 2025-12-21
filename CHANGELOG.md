@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.0.81 - 2025-12-21
 
 ### Added
 - **CDK (LiftRestAPI)**: Per-method response streaming overrides via `IntegrationOptions.EnableStreaming` and `IntegrationOptions.StreamingTimeoutSeconds`, enabling mixed buffered + streaming methods on the same REST API.
