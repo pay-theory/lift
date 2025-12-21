@@ -1,9 +1,16 @@
 # Changelog
 
-## Unreleased
+## v1.0.80 - 2025-12-21
+
+### Added
+- **Response Streaming**: Added Server-Sent Events (SSE) support for Lambda response streaming via `LiftRestAPI` construct. See `docs/response-streaming.md` for usage.
+- **LiftRestAPI Construct**: New CDK construct for API Gateway v1 with enhanced configuration options and streaming support.
+- **IP Gating Documentation**: Added comprehensive documentation for IP authorization and error handling patterns.
 
 ### Changed
 - **Observability** (BREAKING): Removed `WithDefaultErrorNotifications` function which contained hardcoded internal account IDs. Replaced with `WithEnvironmentErrorNotifications` which reads the SNS topic ARN from the `ERROR_NOTIFICATION_SNS_TOPIC_ARN` environment variable. See migration guide at `/docs/MIGRATION_SNS_NOTIFICATIONS.md`.
+- **REST API Configuration**: Refactored REST API configuration into dedicated helper methods for improved maintainability.
+- **Streaming Error Handling**: Improved error handling for streaming responses.
 
 ## v1.0.71 - 2025-10-27
 
