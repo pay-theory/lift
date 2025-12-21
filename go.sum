@@ -14,6 +14,8 @@ github.com/aws/aws-cdk-go/awscdk/v2 v2.220.0 h1:2Ro9+oz5QhZ02UqAIyBoeQGGb+AvSv4A
 github.com/aws/aws-cdk-go/awscdk/v2 v2.220.0/go.mod h1:MzAbeaZ2ikHSDYMTbf/KerTp4iuO6uXvEm9k/vSCE3U=
 github.com/aws/aws-lambda-go v1.50.0 h1:0GzY18vT4EsCvIyk3kn3ZH5Jg30NRlgYaai1w0aGPMU=
 github.com/aws/aws-lambda-go v1.50.0/go.mod h1:dpMpZgvWx5vuQJfBt0zqBha60q7Dd7RfgJv23DymV8A=
+github.com/aws/aws-lambda-go v1.51.0 h1:/THH60NjiAs3K5TWet3Gx5w8MdR7oPOQH9utaKYY1JQ=
+github.com/aws/aws-lambda-go v1.51.0/go.mod h1:dpMpZgvWx5vuQJfBt0zqBha60q7Dd7RfgJv23DymV8A=
 github.com/aws/aws-sdk-go-v2 v1.39.4 h1:qTsQKcdQPHnfGYBBs+Btl8QwxJeoWcOcPcixK90mRhg=
 github.com/aws/aws-sdk-go-v2 v1.39.4/go.mod h1:yWSxrnioGUZ4WVv9TgMrNUeLV3PFESn/v+6T/Su8gnM=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.2 h1:t9yYsydLYNBk9cJ73rgPhPWqOh/52fcWDQB5b1JsKSY=

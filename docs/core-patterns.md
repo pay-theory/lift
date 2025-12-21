@@ -251,7 +251,7 @@ func tenantMiddleware() lift.Middleware {
 
 **IMPORTANT**: SSE streaming requires two things:
 1. **Lambda response streaming build**: compile with `-tags lambda.norpc`
-2. **REST API v1 streaming integration**: deploy behind API Gateway REST API (v1) with `ResponseTransferMode: STREAM` (use `LiftRestAPI` with `EnableStreaming`)
+2. **REST API v1 streaming integration**: deploy behind API Gateway REST API (v1) with `ResponseTransferMode: STREAM` (use `LiftRestAPI` with `EnableStreaming` or enable per-method via `IntegrationOptions.EnableStreaming`)
 
 #### Step 1: Implement an SSE handler
 
@@ -286,6 +286,8 @@ api := liftconstructs.NewLiftRestAPI(stack, jsii.String("RestAPI"), &liftconstru
 
 api.AddLambdaIntegration(jsii.String("/events"), jsii.String("GET"), fn)
 ```
+
+If you only want to stream specific endpoints, keep `EnableStreaming` off and enable streaming per method using `AddLambdaIntegrationWithOptions` + `IntegrationOptions.EnableStreaming`.
 
 #### Step 3: Build for Lambda response streaming
 

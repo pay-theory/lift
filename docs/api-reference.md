@@ -648,8 +648,12 @@ log.Println("Processing") // ❌ No context
 
 **Purpose:** Stream Server-Sent Events (SSE) to the client over a single HTTP response  
 **When to use:** Progress updates, live feeds, one-way server → client notifications  
-**Requires:** Lambda response streaming build (`-tags lambda.norpc`) and an integration that supports streaming (API Gateway REST API v1 with `ResponseTransferMode: STREAM`)  
+**Requires:** Lambda response streaming build (`-tags lambda.norpc`) and an integration that supports streaming (API Gateway REST API v1 with `ResponseTransferMode: STREAM` + `/response-streaming-invocations`)  
 **When NOT to use:** Bidirectional messaging (use WebSockets) or background work that must outlive the request
+
+**Return type:** API Gateway REST API (v1) triggers return `events.APIGatewayProxyStreamingResponse`; other triggers return `events.LambdaFunctionURLStreamingResponse`.
+
+**Multi-value headers (APIGW v1 streaming only):** call `ctx.AddMultiValueHeader("Header-Name", "value")` before returning `lift.SSEResponse(...)` to populate `multiValueHeaders` in the streaming response metadata.
 
 ```go
 // CORRECT: Configure an SSE streaming response and return from the handler.

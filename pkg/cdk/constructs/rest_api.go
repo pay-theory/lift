@@ -18,9 +18,15 @@ type LiftRestAPIProps struct {
 	APICommonProps
 	// AppName is an alias for Name (backwards compatible).
 	AppName *string
-	// EnableStreaming enables API Gateway REST API response streaming.
+	// EnableStreaming enables API Gateway REST API response streaming by default
+	// for methods added via AddLambdaIntegration*.
+	//
+	// Methods can override this default via IntegrationOptions.EnableStreaming.
 	EnableStreaming *bool
-	// StreamingTimeout sets integration timeout in seconds (up to 15 minutes).
+	// StreamingTimeout sets the default integration timeout in seconds for streaming
+	// methods (up to 15 minutes).
+	//
+	// Methods can override this default via IntegrationOptions.StreamingTimeoutSeconds.
 	StreamingTimeout *int
 	// Certificate configures a custom domain when DomainName is set.
 	Certificate awscertificatemanager.ICertificate
@@ -40,9 +46,10 @@ type LiftRestAPI struct {
 	RestAPI  awsapigateway.RestApi
 	LogGroup awslogs.ILogGroup
 
-	// streamingTimeoutMillis is non-zero when response streaming is enabled.
-	// It is passed through to API Gateway as Integration.TimeoutInMillis.
-	streamingTimeoutMillis float64
+	// defaultStreamingEnabled controls whether methods stream by default.
+	defaultStreamingEnabled bool
+	// defaultStreamingTimeoutMillis is applied to streaming method integrations as Integration.TimeoutInMillis.
+	defaultStreamingTimeoutMillis float64
 }
 
 // GetResourceName returns the API name
@@ -85,13 +92,15 @@ func (b *liftRestAPIBuilder) build() *LiftRestAPI {
 	// Create REST API
 	restApi := b.createRestAPI(logGroup)
 
-	streamingTimeoutMillis := b.resolveStreamingTimeoutMillis()
+	defaultStreamingEnabled := b.resolveDefaultStreamingEnabled()
+	defaultStreamingTimeoutMillis := b.resolveDefaultStreamingTimeoutMillis()
 
 	return &LiftRestAPI{
-		Construct:              b.construct,
-		RestAPI:                restApi,
-		LogGroup:               logGroup,
-		streamingTimeoutMillis: streamingTimeoutMillis,
+		Construct:                     b.construct,
+		RestAPI:                       restApi,
+		LogGroup:                      logGroup,
+		defaultStreamingEnabled:       defaultStreamingEnabled,
+		defaultStreamingTimeoutMillis: defaultStreamingTimeoutMillis,
 	}
 }
 
@@ -226,12 +235,11 @@ func (b *liftRestAPIBuilder) applyDefaultAuthorizer(apiProps *awsapigateway.Rest
 	}
 }
 
-func (b *liftRestAPIBuilder) resolveStreamingTimeoutMillis() float64 {
-	if b.props.EnableStreaming == nil || !*b.props.EnableStreaming {
-		return 0
-	}
+func (b *liftRestAPIBuilder) resolveDefaultStreamingEnabled() bool {
+	return b.props.EnableStreaming != nil && *b.props.EnableStreaming
+}
 
-	// Default to 15 minutes when streaming is enabled.
+func (b *liftRestAPIBuilder) resolveDefaultStreamingTimeoutMillis() float64 {
 	timeoutSeconds := 15 * 60
 	if b.props.StreamingTimeout != nil && *b.props.StreamingTimeout > 0 {
 		timeoutSeconds = *b.props.StreamingTimeout
@@ -281,6 +289,10 @@ type IntegrationOptions struct {
 	RequestValidator awsapigateway.IRequestValidator
 	// API key required
 	ApiKeyRequired *bool
+	// EnableStreaming overrides LiftRestAPIProps.EnableStreaming for this method.
+	EnableStreaming *bool
+	// StreamingTimeoutSeconds overrides LiftRestAPIProps.StreamingTimeout for this method.
+	StreamingTimeoutSeconds *int
 }
 
 // AddLambdaIntegrationWithOptions adds a Lambda function with additional options
@@ -310,8 +322,8 @@ func (api *LiftRestAPI) AddLambdaIntegrationWithOptions(path *string, method *st
 	// Add method to resource
 	added := resource.AddMethod(method, integration, methodOptions)
 
-	if api.streamingTimeoutMillis > 0 {
-		api.configureStreamingIntegration(added, fn)
+	if streamingEnabled, timeoutMillis := api.resolveStreamingIntegration(options); streamingEnabled {
+		api.configureStreamingIntegration(added, fn, timeoutMillis)
 	}
 }
 
@@ -335,7 +347,34 @@ func (api *LiftRestAPI) getOrCreateResource(path *string) awsapigateway.IResourc
 	return current
 }
 
-func (api *LiftRestAPI) configureStreamingIntegration(method awsapigateway.Method, fn awslambda.IFunction) {
+func (api *LiftRestAPI) resolveStreamingIntegration(options *IntegrationOptions) (bool, float64) {
+	streamingEnabled := api.defaultStreamingEnabled
+	timeoutMillis := api.defaultStreamingTimeoutMillis
+
+	if options != nil {
+		if options.EnableStreaming != nil {
+			streamingEnabled = *options.EnableStreaming
+		}
+		if streamingEnabled && options.StreamingTimeoutSeconds != nil && *options.StreamingTimeoutSeconds > 0 {
+			timeoutSeconds := *options.StreamingTimeoutSeconds
+			if timeoutSeconds > 15*60 {
+				timeoutSeconds = 15 * 60
+			}
+			timeoutMillis = float64(timeoutSeconds * 1000)
+		}
+	}
+
+	if !streamingEnabled {
+		return false, 0
+	}
+	if timeoutMillis <= 0 {
+		timeoutMillis = float64(15 * 60 * 1000)
+	}
+
+	return true, timeoutMillis
+}
+
+func (api *LiftRestAPI) configureStreamingIntegration(method awsapigateway.Method, fn awslambda.IFunction, timeoutMillis float64) {
 	child := method.Node().DefaultChild()
 	cfnMethod, ok := child.(awsapigateway.CfnMethod)
 	if !ok {
@@ -355,9 +394,7 @@ func (api *LiftRestAPI) configureStreamingIntegration(method awsapigateway.Metho
 
 	cfnMethod.AddOverride(jsii.String("Properties.Integration.ResponseTransferMode"), "STREAM")
 	cfnMethod.AddOverride(jsii.String("Properties.Integration.Uri"), uri)
-	if api.streamingTimeoutMillis > 0 {
-		cfnMethod.AddOverride(jsii.String("Properties.Integration.TimeoutInMillis"), api.streamingTimeoutMillis)
-	}
+	cfnMethod.AddOverride(jsii.String("Properties.Integration.TimeoutInMillis"), timeoutMillis)
 }
 
 // CreateAPIKey creates an API key for the REST API

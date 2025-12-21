@@ -82,6 +82,7 @@ func main() {
 - Sets `Content-Type: text/event-stream`
 - Formats each `SSEEvent` into SSE wire format (`event:`, `id:`, `retry:`, `data:`)
 - Returns an AWS Lambda streaming response type so the runtime can stream bytes to the client
+- For API Gateway REST API (v1), supports `multiValueHeaders` response metadata via `ctx.AddMultiValueHeader(...)`
 
 ### Client: Minimal browser example
 
@@ -136,9 +137,36 @@ func NewStreamingAPIStack(scope constructs.Construct, id *string) awscdk.Stack {
 ```
 
 **What the construct configures:**
-- `ResponseTransferMode: STREAM` on REST API method integrations
+- `ResponseTransferMode: STREAM` on streaming-enabled REST API method integrations
 - Streaming Lambda invocation URI: `.../2021-11-15/functions/{arn}/response-streaming-invocations`
 - Optional longer integration timeout (up to 15 minutes)
+
+### Selective Streaming: Only Enable Streaming Where Needed
+
+If you only want to stream specific endpoints (for example `/events`), keep `EnableStreaming` off globally and enable it per method. This allows you to compile only the streaming Lambda with `-tags lambda.norpc`.
+
+```go
+timeoutSeconds := 15 * 60
+
+api := liftconstructs.NewLiftRestAPI(stack, jsii.String("RestAPI"), &liftconstructs.LiftRestAPIProps{
+	APICommonProps: liftconstructs.APICommonProps{
+		Name: jsii.String("my-rest-api"),
+	},
+	EnableStreaming:  jsii.Bool(false), // default: buffered
+	StreamingTimeout: &timeoutSeconds,  // used by streaming-enabled methods
+})
+
+api.AddLambdaIntegrationWithOptions(
+	jsii.String("/events"),
+	jsii.String("GET"),
+	streamingFn,
+	&liftconstructs.IntegrationOptions{
+		EnableStreaming: jsii.Bool(true), // streaming for this method only
+	},
+)
+
+api.AddLambdaIntegration(jsii.String("/health"), jsii.String("GET"), bufferedFn)
+```
 
 ### INCORRECT: HTTP API v2 expecting streaming SSE
 
@@ -154,6 +182,24 @@ api := constructs.NewLiftAPI(stack, jsii.String("HttpAPI"), &constructs.LiftAPIP
 - **SSE streaming**: one-way (server → client) over HTTP, simplest client support.
 - **WebSockets**: two-way (client ↔ server) messaging; see `docs/streamer-guide.md`.
 - **Streamer async patterns**: useful when work must continue after the request lifecycle or needs durable fanout; SSE is not durable by itself.
+
+## Platform Limits & Gotchas
+
+API Gateway response streaming has important platform behaviors:
+- **Integration timeout**: up to **15 minutes** (900 seconds) for streaming-enabled methods.
+- **Idle timeout**: connections can be closed if no data is sent for too long (**5 minutes** for regional/private, **30 seconds** for edge).
+- **Throughput**: responses larger than **10MB** can be throttled to **~2MB/s**.
+- **Not supported** (streaming mode): VTL mapping templates, integration response caching, and content encoding.
+
+### Heartbeats (Keep-Alive)
+
+To avoid idle timeouts, emit periodic SSE events even when you have no “real” updates:
+
+```go
+eventChan <- lift.SSEEvent{Event: "keepalive", Data: "ping"} // client can ignore
+```
+
+Choose a heartbeat interval **lower than your idle timeout** (for edge endpoints, assume ≤30s).
 
 ## Next: Detailed APIs and Edge Cases
 

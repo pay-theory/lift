@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.81 - 2025-12-21
+
+### Added
+- **CDK (LiftRestAPI)**: Per-method response streaming overrides via `IntegrationOptions.EnableStreaming` and `IntegrationOptions.StreamingTimeoutSeconds`, enabling mixed buffered + streaming methods on the same REST API.
+
+### Changed
+- **Runtime (SSE)**: `lift.SSEResponse` returns `events.APIGatewayProxyStreamingResponse` for API Gateway REST API (v1) triggers (keeps `events.LambdaFunctionURLStreamingResponse` for other trigger types).
+- **Runtime (SSE)**: Added `ctx.AddMultiValueHeader(...)` support for API Gateway REST API (v1) streaming responses (`multiValueHeaders` metadata).
+- **Dependencies**: Updated `github.com/aws/aws-lambda-go` to include `events.APIGatewayProxyStreamingResponse`.
+- **Docs**: Clarified per-method streaming configuration (`ResponseTransferMode=STREAM` + `/response-streaming-invocations`) and documented key platform limits (15m integration timeout, idle timeouts).
+
 ## v1.0.80 - 2025-12-21
 
 ### Added
