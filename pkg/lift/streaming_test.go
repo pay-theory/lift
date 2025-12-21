@@ -24,7 +24,7 @@ func TestSSEResponse_ReturnsStreamingResponse(t *testing.T) {
 	respAny, err := app.HandleRequest(context.Background(), newAPIGatewayV1Event("GET", "/stream"))
 	require.NoError(t, err)
 
-	streamingResp, ok := respAny.(*events.LambdaFunctionURLStreamingResponse)
+	streamingResp, ok := respAny.(*events.APIGatewayProxyStreamingResponse)
 	require.True(t, ok, "expected streaming response, got %T", respAny)
 
 	body, err := io.ReadAll(streamingResp)
@@ -39,6 +39,31 @@ func TestSSEResponse_ReturnsStreamingResponse(t *testing.T) {
 	require.Contains(t, bodyStr, "data: goodbye\n\n")
 }
 
+func TestSSEResponse_ReturnsFunctionURLStreamingResponseForNonV1Triggers(t *testing.T) {
+	app := New()
+
+	require.NoError(t, app.GET("/stream", func(ctx *Context) error {
+		eventChan := make(chan SSEEvent, 1)
+		eventChan <- SSEEvent{Data: "hello"}
+		close(eventChan)
+
+		return SSEResponse(ctx, eventChan)
+	}))
+
+	respAny, err := app.HandleRequest(context.Background(), newAPIGatewayV2Event("GET", "/stream"))
+	require.NoError(t, err)
+
+	streamingResp, ok := respAny.(*events.LambdaFunctionURLStreamingResponse)
+	require.True(t, ok, "expected function-url streaming response, got %T", respAny)
+
+	body, err := io.ReadAll(streamingResp)
+	require.NoError(t, err)
+
+	bodyStr := string(body)
+	require.Contains(t, bodyStr, "text/event-stream")
+	require.Contains(t, bodyStr, "data: hello\n\n")
+}
+
 func newAPIGatewayV1Event(method, path string) map[string]any {
 	return map[string]any{
 		"resource":   path,
@@ -50,6 +75,22 @@ func newAPIGatewayV1Event(method, path string) map[string]any {
 			"stage":            "prod",
 			"requestTimeEpoch": "0",
 		},
+		"isBase64Encoded": false,
+	}
+}
+
+func newAPIGatewayV2Event(method, path string) map[string]any {
+	return map[string]any{
+		"version":  "2.0",
+		"routeKey": method + " " + path,
+		"rawPath":  path,
+		"requestContext": map[string]any{
+			"http": map[string]any{
+				"method": method,
+				"path":   path,
+			},
+		},
+		"headers":         map[string]any{},
 		"isBase64Encoded": false,
 	}
 }

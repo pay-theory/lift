@@ -200,8 +200,8 @@ func NewLiftRestAPI(scope constructs.Construct, id *string, props *LiftRestAPIPr
 | `APICommonProps.DomainName` | `*string` | `nil` | Custom domain |
 | `APICommonProps.CertificateArn` | `*string` | `nil` | ACM certificate ARN (domain) |
 | `Certificate` | `awscertificatemanager.ICertificate` | `nil` | Certificate object (domain) |
-| `EnableStreaming` | `*bool` | `false` | Enable REST API response streaming integrations |
-| `StreamingTimeout` | `*int` | `900` (when streaming enabled) | Integration timeout in seconds (max 900) |
+| `EnableStreaming` | `*bool` | `false` | Enable response streaming integrations by default (overridable per method) |
+| `StreamingTimeout` | `*int` | `900` | Default streaming integration timeout in seconds (max 900) |
 | `EndpointType` | `awsapigateway.EndpointType` | `REGIONAL` | Endpoint type |
 | `DefaultAuthorizer` | `awsapigateway.IAuthorizer` | `nil` | Default authorizer |
 
@@ -210,14 +210,19 @@ func NewLiftRestAPI(scope constructs.Construct, id *string, props *LiftRestAPIPr
 | Method | Description |
 |--------|-------------|
 | `AddLambdaIntegration(path, method, fn)` | Adds a Lambda proxy integration |
-| `AddLambdaIntegrationWithOptions(path, method, fn, options)` | Adds integration with authorizer/validator/api-key settings |
+| `AddLambdaIntegrationWithOptions(path, method, fn, options)` | Adds integration with authorizer/validator/api-key + per-method streaming overrides |
 
 #### Streaming Behavior
 
-When `EnableStreaming` is true:
+Streaming can be enabled per method:
+- Default behavior comes from `LiftRestAPIProps.EnableStreaming`
+- Override per method via `IntegrationOptions.EnableStreaming`
+- Set default timeout via `LiftRestAPIProps.StreamingTimeout` and override per method via `IntegrationOptions.StreamingTimeoutSeconds`
+
+When streaming is enabled for a method:
 - The method integration is configured with `ResponseTransferMode: STREAM`
 - Lift sets the streaming invocation URI: `.../2021-11-15/functions/{arn}/response-streaming-invocations`
-- Lift can extend the integration timeout up to 15 minutes (900 seconds)
+- Lift overrides `TimeoutInMillis` (max 900 seconds)
 
 #### Example: SSE endpoint behind REST API v1
 

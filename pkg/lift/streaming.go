@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/aws/aws-lambda-go/events"
+
+	"github.com/pay-theory/lift/pkg/lift/adapters"
 )
 
 // SSEEvent represents a single Server-Sent Event.
@@ -69,7 +71,12 @@ func (c *Context) clearStreamingState() {
 
 // SSEResponse configures a streaming response that emits SSE-formatted events
 // from eventChan. This requires the Lambda integration to be configured for
-// response streaming (for example API Gateway REST API with STREAM transfer).
+// response streaming (for example API Gateway REST API v1 with STREAM transfer).
+//
+// When invoked via API Gateway REST API (v1), Lift returns an
+// events.APIGatewayProxyStreamingResponse (supports multiValueHeaders). For
+// other trigger types, Lift returns an events.LambdaFunctionURLStreamingResponse
+// for compatibility with Function URL response streaming.
 //
 // Note: AWS Lambda response streaming in Go requires compiling with
 // `-tags lambda.norpc` (or using a provided runtime) when deployed.
@@ -86,13 +93,21 @@ func SSEResponse(ctx *Context, eventChan <-chan SSEEvent) error {
 	headers := map[string]string{
 		HeaderContentType: "text/event-stream",
 		"Cache-Control":   "no-cache",
-		"Connection":      "keep-alive",
 	}
 
-	streamingResp := &events.LambdaFunctionURLStreamingResponse{
-		StatusCode: 200,
-		Headers:    headers,
-		Body:       pipeReader,
+	var streamingResp any
+	if ctx.Request != nil && ctx.Request.TriggerType == adapters.TriggerAPIGateway {
+		streamingResp = &events.APIGatewayProxyStreamingResponse{
+			StatusCode: 200,
+			Headers:    headers,
+			Body:       pipeReader,
+		}
+	} else {
+		streamingResp = &events.LambdaFunctionURLStreamingResponse{
+			StatusCode: 200,
+			Headers:    headers,
+			Body:       pipeReader,
+		}
 	}
 
 	// Keep the standard Lift response in sync for middleware that inspects it
