@@ -15,9 +15,10 @@ func WithErrorNotifications(snsClient *sns.Client, topicARN string) CloudWatchLo
 	}
 }
 
-// WithDefaultErrorNotifications creates CloudWatch logger options with default SNS error notifications
-func WithDefaultErrorNotifications(snsClient *sns.Client) CloudWatchLoggerOptions {
-	notifier := observability.WithDefaultErrorNotifications(snsClient)
+// WithEnvironmentErrorNotifications creates CloudWatch logger options with SNS error notifications
+// using the topic ARN from the ERROR_NOTIFICATION_SNS_TOPIC_ARN environment variable.
+func WithEnvironmentErrorNotifications(snsClient *sns.Client) CloudWatchLoggerOptions {
+	notifier := observability.WithEnvironmentErrorNotifications(snsClient)
 
 	return CloudWatchLoggerOptions{
 		Notifier: notifier,

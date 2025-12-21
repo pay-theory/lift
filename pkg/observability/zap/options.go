@@ -13,11 +13,11 @@ func WithSNSNotifier(notifier *observability.SNSNotifier) ZapLoggerOptions {
 	}
 }
 
-// WithDefaultErrorNotifications creates a ZapLoggerOptions with default SNS notifications for errors.
-// This uses the centralized cross-account SNS topic pattern used by all Pay Theory services.
-// This is the recommended method for all Lift-based services.
-func WithDefaultErrorNotifications(snsClient *sns.Client) ZapLoggerOptions {
-	notifier := observability.WithDefaultErrorNotifications(snsClient)
+// WithEnvironmentErrorNotifications creates a ZapLoggerOptions with SNS notifications
+// using the topic ARN from the ERROR_NOTIFICATION_SNS_TOPIC_ARN environment variable.
+// Returns a notifier configured from the environment, or nil if the variable is not set.
+func WithEnvironmentErrorNotifications(snsClient *sns.Client) ZapLoggerOptions {
+	notifier := observability.WithEnvironmentErrorNotifications(snsClient)
 
 	return ZapLoggerOptions{
 		Notifier: notifier,

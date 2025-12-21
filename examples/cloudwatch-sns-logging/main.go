@@ -36,9 +36,10 @@ func main() {
 		Format:        "json",
 	}
 
-	// Example 1: Using the helper function with default SNS topic
+	// Example 1: Using the helper function with environment-based SNS topic
+	// Set ERROR_NOTIFICATION_SNS_TOPIC_ARN environment variable before running
 	logger1, err := cloudwatch.NewCloudWatchLogger(loggerConfig, cwClient,
-		cloudwatch.WithDefaultErrorNotifications(snsClient))
+		cloudwatch.WithEnvironmentErrorNotifications(snsClient))
 	if err != nil {
 		log.Fatalf("Failed to create CloudWatch logger: %v", err)
 	}

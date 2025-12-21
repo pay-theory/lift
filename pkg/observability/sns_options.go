@@ -11,37 +11,21 @@ func WithSNSNotifier(notifier *SNSNotifier) interface{} {
 	return notifier
 }
 
-// WithDefaultErrorNotifications creates an SNS notifier using the centralized
-// cross-account topic pattern used by all Pay Theory services (matching Python services).
+// WithEnvironmentErrorNotifications creates an SNS notifier using the topic ARN
+// from the ERROR_NOTIFICATION_SNS_TOPIC_ARN environment variable.
 //
-// This publishes to the main Pay Theory account (805600764437) for centralized error monitoring
-// across all Pay Theory services and partners. The topic ARN format is:
-// arn:aws:sns:us-east-1:805600764437:global-logs-publisher-topic-{stage}
+// This is the recommended method for configuring SNS error notifications.
+// Returns nil if the environment variable is not set.
 //
-// Supported stages: paytheory, paytheorylab, paytheorystudy
-// Defaults to paytheory for unknown stages.
+// Example usage:
 //
-// This is the recommended method for all Lift-based services.
-func WithDefaultErrorNotifications(snsClient SNSClient) *SNSNotifier {
-	stage := os.Getenv("STAGE")
-
-	// Default to paytheory if stage not set
-	if stage == "" {
-		stage = "paytheory"
+//	export ERROR_NOTIFICATION_SNS_TOPIC_ARN="arn:aws:sns:us-east-1:123456789012:my-error-topic"
+//	notifier := observability.WithEnvironmentErrorNotifications(snsClient)
+func WithEnvironmentErrorNotifications(snsClient SNSClient) *SNSNotifier {
+	topicARN := os.Getenv("ERROR_NOTIFICATION_SNS_TOPIC_ARN")
+	if topicARN == "" {
+		return nil
 	}
-
-	// Map stage to the appropriate cross-account SNS topic
-	var topicARN string
-	switch stage {
-	case "paytheorylab":
-		topicARN = "arn:aws:sns:us-east-1:805600764437:global-logs-publisher-topic-paytheorylab"
-	case "paytheorystudy":
-		topicARN = "arn:aws:sns:us-east-1:805600764437:global-logs-publisher-topic-paytheorystudy"
-	default:
-		// Default to paytheory for production and unknown stages
-		topicARN = "arn:aws:sns:us-east-1:805600764437:global-logs-publisher-topic-paytheory"
-	}
-
 	return WithErrorNotifications(snsClient, topicARN)
 }
 

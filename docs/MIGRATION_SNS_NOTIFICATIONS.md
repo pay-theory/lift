@@ -2,130 +2,70 @@
 
 ## Summary
 
-The Lift framework now supports centralized SNS error notifications matching the Python services pattern. All Pay Theory services (in any account) use the same centralized cross-account SNS topics.
+This guide covers migration to the new SNS error notification API.
 
-## What Changed
+## Breaking Change
 
-### Before (v1.0.56)
-- `WithDefaultErrorNotifications` required `AWS_ACCOUNT_ID` environment variable
-- If `AWS_ACCOUNT_ID` was not set, SNS notifications silently failed (returned `nil`)
-- Services like bin-lookup-service had SNS configured but it wasn't working
+`WithDefaultErrorNotifications` has been replaced with `WithEnvironmentErrorNotifications`.
 
-### After (Current)
-- `WithDefaultErrorNotifications` uses centralized cross-account SNS topics
-- Only requires `STAGE` environment variable
-- Works for ALL services in ANY account (kernel, partner, etc.)
-- Auto-detection available via `WithPartnerErrorNotifications` if needed
+### Migration
 
-## Migration Steps
-
-### For Most Services (99% of cases)
-
-**No code changes needed!** Just ensure you have the `STAGE` environment variable set.
-
+**Before:**
 ```go
-// This continues to work - now uses centralized SNS topics
 logger, err := zap.NewZapLogger(loggerConfig,
     zap.WithDefaultErrorNotifications(snsClient))
 ```
 
-**Before:**
-- Required: `PARTNER`, `STAGE`, `AWS_REGION`, `AWS_ACCOUNT_ID`
-- Result: SNS notifications silently failed if `AWS_ACCOUNT_ID` not set
-
 **After:**
-- Required: `STAGE` only
-- Result: SNS notifications work out-of-the-box
-
-### For Services Using Partner-Specific Topics (Rare)
-
-If you explicitly need partner-specific SNS topics instead of centralized monitoring:
-
 ```go
-// Use this instead of WithDefaultErrorNotifications
+// Option 1: Environment variable (recommended)
+// Set: ERROR_NOTIFICATION_SNS_TOPIC_ARN=arn:aws:sns:us-east-1:123456789012:my-topic
+logger, err := zap.NewZapLogger(loggerConfig,
+    zap.WithEnvironmentErrorNotifications(snsClient))
+
+// Option 2: Explicit ARN
+topicARN := os.Getenv("ERROR_NOTIFICATION_SNS_TOPIC_ARN")
+logger, err := zap.NewZapLogger(loggerConfig,
+    zap.WithErrorNotifications(snsClient, topicARN))
+
+// Option 3: Partner-based (auto-detects account)
 logger, err := zap.NewZapLogger(loggerConfig,
     zap.WithPartnerErrorNotifications(snsClient))
 ```
 
-**Requires:**
-- `PARTNER`, `STAGE`, `AWS_REGION`
-- `AWS_ACCOUNT_ID` (optional - auto-detected via STS if not set)
+## Environment Variables
 
-## Verification
+### New API
+| Variable | Description |
+|----------|-------------|
+| `ERROR_NOTIFICATION_SNS_TOPIC_ARN` | Full SNS topic ARN |
 
-### Check Current Behavior
+### Partner Notifications API
+| Variable | Description |
+|----------|-------------|
+| `PARTNER` | Partner identifier |
+| `STAGE` | Deployment stage |
+| `AWS_REGION` | AWS region |
+| `AWS_ACCOUNT_ID` | (Optional) Auto-detected via STS |
 
-1. **bin-lookup-service** (and similar services):
-   ```bash
-   # Check if AWS_ACCOUNT_ID is set
-   aws lambda get-function --function-name bin-lookup-austin-paytheory \
-     --query "Configuration.Environment.Variables.AWS_ACCOUNT_ID"
+## Verification Checklist
 
-   # If it returns null, SNS notifications were NOT working
-   ```
-
-2. **K3** (after deployment):
-   ```bash
-   # Test SNS notification
-   curl https://k3.qakernel.paytheory.com/test/sns
-
-   # Check CloudWatch Logs for error entry
-   aws logs tail /aws/lambda/k3-qakernel-paytheory --since 1m --filter-pattern "TEST"
-
-   # Check SNS topic for notification (if you have access)
-   ```
-
-## SNS Topic Structure
-
-All services publish to:
-```
-arn:aws:sns:us-east-1:805600764437:global-logs-publisher-topic-{stage}
-```
-
-**Stages:**
-- `paytheory` (production)
-- `paytheorylab` (lab/testing)
-- `paytheorystudy` (study/development)
+- [ ] Updated code to use new API
+- [ ] Set `ERROR_NOTIFICATION_SNS_TOPIC_ARN` environment variable
+- [ ] Lambda role has `sns:Publish` permission
+- [ ] Tested error notifications work
 
 ## IAM Requirements
 
-Your Lambda execution role needs:
 ```json
 {
   "Effect": "Allow",
   "Action": ["sns:Publish"],
-  "Resource": "*"
+  "Resource": "arn:aws:sns:{region}:{account}:{topic-name}"
 }
 ```
 
-This is typically provided by:
-- `kernel-common-service-policy` (for kernel services)
-- Similar managed policies for partner services
+## See Also
 
-## Backward Compatibility
-
-✅ **Non-Breaking Change**
-- Services using `WithDefaultErrorNotifications` continue to work
-- Previous implementation was non-functional (required `AWS_ACCOUNT_ID` which was never set)
-- No code changes required for most services
-
-## Testing Checklist
-
-- [ ] Service builds successfully
-- [ ] `STAGE` environment variable is set
-- [ ] Lambda role has `sns:Publish` permission
-- [ ] Error logs appear in CloudWatch Logs
-- [ ] SNS notifications are sent (check downstream subscribers)
-- [ ] No errors in Lambda logs related to SNS
-
-## Rollback
-
-If you need to rollback:
-1. Pin Lift to previous version: `github.com/pay-theory/lift v1.0.56`
-2. Set `AWS_ACCOUNT_ID` environment variable (SNS will still not work, but no errors)
-
-## Support
-
-- Documentation: `/docs/SNS_ERROR_NOTIFICATIONS.md`
-- Examples: `/examples/zap-sns-logging/`
-- AWS Account ID Auto-Detection: `/docs/AWS_ACCOUNT_ID_AUTO_DETECTION.md`
+- [SNS Error Notifications](./SNS_ERROR_NOTIFICATIONS.md)
+- [AWS Account ID Auto-Detection](./AWS_ACCOUNT_ID_AUTO_DETECTION.md)

@@ -291,8 +291,8 @@ func TestLiftLambdaRole_WithCustomManagedPolicies(t *testing.T) {
 	// Create role with custom managed policies
 	liftRole := NewLiftLambdaRole(stack, jsii.String("TestRole"), &LiftLambdaRoleProps{
 		ManagedPolicyArns: []string{
-			"arn:aws:iam::058264189048:policy/kernel-common-sqs-policy",
-			"arn:aws:iam::058264189048:policy/kernel-common-service-policy",
+			"arn:aws:iam::123456789012:policy/kernel-common-sqs-policy",
+			"arn:aws:iam::123456789012:policy/kernel-common-service-policy",
 		},
 		EnableCloudWatchInsights: jsii.Bool(true),
 	})
