@@ -658,6 +658,8 @@ type requestHandlerBuilder struct {
 	request  *Request
 	routeErr error
 	cancel   context.CancelFunc
+
+	streamingResponse bool
 }
 
 // newRequestHandlerBuilder creates a new request handler builder.
@@ -696,15 +698,37 @@ func (b *requestHandlerBuilder) build() (any, error) {
 		return b.app.handleError(b.liftCtx, err)
 	}
 	b.configureContext()
-	defer b.cancelTimeout()
+	defer func() {
+		if b.streamingResponse {
+			return
+		}
+		b.cancelTimeout()
+	}()
 	b.routeRequest()
 
 	if b.routeErr != nil {
+		if state := b.liftCtx.streamingState(); state != nil && state.abort != nil {
+			state.abort(b.routeErr)
+			b.liftCtx.clearStreamingState()
+		}
 		return b.app.handleError(b.liftCtx, b.routeErr)
 	}
 
 	if err := b.enforceTenantRequirement(); err != nil {
+		if state := b.liftCtx.streamingState(); state != nil && state.abort != nil {
+			state.abort(err)
+			b.liftCtx.clearStreamingState()
+		}
 		return b.app.handleError(b.liftCtx, err)
+	}
+
+	if state := b.liftCtx.streamingState(); state != nil && state.response != nil {
+		if state.start != nil {
+			state.start()
+		}
+		b.streamingResponse = true
+		b.liftCtx.clearStreamingState()
+		return state.response, nil
 	}
 
 	if err := b.validateResponseGuardrails(); err != nil {
@@ -772,6 +796,10 @@ func (b *requestHandlerBuilder) configureContext() {
 	} else {
 		b.liftCtx.Context = b.ctx
 		b.cancel = nil
+	}
+
+	if b.cancel != nil {
+		b.liftCtx.Set(requestCancelKey, b.cancel)
 	}
 
 	if b.app.hasInterceptingMiddleware {

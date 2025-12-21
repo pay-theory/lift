@@ -8,6 +8,7 @@ This document defines the core patterns that are fundamental to using Lift corre
 1. [Lambda Handler Initialization](#lambda-handler-initialization)
 2. [API Gateway JSON Parsing](#api-gateway-json-parsing)
 3. [Multi-tenant Request Handling](#multi-tenant-request-handling)
+4. [Response Streaming (SSE)](#response-streaming-sse)
 
 ---
 
@@ -241,6 +242,84 @@ func tenantMiddleware() lift.Middleware {
         })
     }
 }
+
+---
+
+## Response Streaming (SSE)
+
+### The Canonical Pattern
+
+**IMPORTANT**: SSE streaming requires two things:
+1. **Lambda response streaming build**: compile with `-tags lambda.norpc`
+2. **REST API v1 streaming integration**: deploy behind API Gateway REST API (v1) with `ResponseTransferMode: STREAM` (use `LiftRestAPI` with `EnableStreaming`)
+
+#### Step 1: Implement an SSE handler
+
+```go
+// CORRECT: SSE endpoint streams multiple events over a single HTTP response.
+func Events(ctx *lift.Context) error {
+    ch := make(chan lift.SSEEvent, 8)
+
+    go func() {
+        defer close(ch)
+        ch <- lift.SSEEvent{Event: "status", Data: "connected"}
+        ch <- lift.SSEEvent{Event: "message", Data: "hello"}
+        ch <- lift.SSEEvent{Event: "done", Data: "complete"}
+    }()
+
+    return lift.SSEResponse(ctx, ch)
+}
+```
+
+#### Step 2: Deploy with LiftRestAPI streaming enabled
+
+```go
+timeoutSeconds := 15 * 60
+
+api := liftconstructs.NewLiftRestAPI(stack, jsii.String("RestAPI"), &liftconstructs.LiftRestAPIProps{
+    APICommonProps: liftconstructs.APICommonProps{
+        Name: jsii.String("my-rest-api"),
+    },
+    EnableStreaming:  jsii.Bool(true),
+    StreamingTimeout: &timeoutSeconds,
+})
+
+api.AddLambdaIntegration(jsii.String("/events"), jsii.String("GET"), fn)
+```
+
+#### Step 3: Build for Lambda response streaming
+
+```bash
+# CORRECT: required for response streaming types
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -tags lambda.norpc -o bootstrap main.go
+```
+
+### Common Mistakes to Avoid
+
+❌ **WRONG**: Do NOT attempt to stream by calling `ctx.JSON` multiple times:
+
+```go
+func Bad(ctx *lift.Context) error {
+    _ = ctx.JSON(map[string]string{"event": "start"})
+    // ... long work ...
+    return ctx.JSON(map[string]string{"event": "done"}) // ❌ sends only a final response
+}
+```
+
+❌ **WRONG**: Do NOT use `LiftAPI` (HTTP API v2) and expect SSE streaming integrations:
+
+```go
+// HTTP API v2 is not configured for REST API v1 streaming integrations.
+api := liftconstructs.NewLiftAPI(stack, jsii.String("HttpAPI"), &liftconstructs.LiftAPIProps{
+    APICommonProps: liftconstructs.APICommonProps{Name: jsii.String("my-http-api")},
+})
+```
+
+### Key Points
+
+- SSE is **one-way** (server → client). For bidirectional messaging, use WebSockets.
+- Close the event channel to finish the response.
+- See `docs/response-streaming.md` for deeper details and client examples.
 
 // Usage
 app.Use(tenantMiddleware())

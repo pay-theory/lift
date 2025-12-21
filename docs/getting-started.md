@@ -461,6 +461,7 @@ Now that you have a working Lift application:
 2. **Add Monitoring**: Set up CloudWatch dashboards and alerts
 3. **Add WebSockets**: Build real-time features
 4. **Add Event Processing**: Handle SQS, S3, and EventBridge events
+5. **Add Response Streaming (SSE)**: Stream progress/events over HTTP with [Response Streaming (SSE)](./response-streaming.md)
 
 ## Common Patterns
 

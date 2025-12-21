@@ -97,6 +97,65 @@ patterns:
               }
           return ctx.JSON(resp)
           }
+
+  sse_streaming:
+    name: "SSE (Server-Sent Events) Streaming Pattern"
+    problem: "Clients need one-way, real-time updates over HTTP (progress, notifications, live feeds)"
+    solution: "Use lift.SSEResponse with a channel of lift.SSEEvent and deploy behind API Gateway REST API (v1) streaming integrations"
+    correct_example: |
+      import (
+          "time"
+
+          "github.com/aws/aws-lambda-go/lambda"
+          "github.com/pay-theory/lift/pkg/lift"
+      )
+
+      func main() {
+          app := lift.New()
+
+          // CORRECT: Configure SSE streaming response from a handler.
+          _ = app.GET("/events", func(ctx *lift.Context) error {
+              ch := make(chan lift.SSEEvent, 8)
+
+              go func() {
+                  defer close(ch)
+                  ch <- lift.SSEEvent{Event: "status", Data: "connected"}
+                  ch <- lift.SSEEvent{Event: "progress", Data: time.Now().UTC().Format(time.RFC3339)}
+                  ch <- lift.SSEEvent{Event: "done", Data: "complete"}
+              }()
+
+              return lift.SSEResponse(ctx, ch)
+          })
+
+          // NOTE: Build with `-tags lambda.norpc` for response streaming support.
+          lambda.Start(app.HandleRequest)
+      }
+    anti_patterns:
+      - name: "Buffered JSON Response for Streaming Use Case"
+        why: "Sends only a single response at the end; the client receives no incremental updates"
+        incorrect_example: |
+          func Events(ctx *lift.Context) error {
+              // INCORRECT: You cannot stream by calling ctx.JSON multiple times.
+              _ = ctx.JSON(map[string]string{"event": "start"})
+              time.Sleep(5 * time.Second)
+              return ctx.JSON(map[string]string{"event": "done"})
+          }
+        consequences:
+          - no_incremental_delivery
+          - client_cannot_receive_progress
+      - name: "HTTP API v2 Expecting SSE Streaming"
+        why: "Lift's SSE streaming integration is implemented for API Gateway REST API (v1) streaming integrations"
+        incorrect_example: |
+          // INCORRECT: Deploying behind HTTP API v2 without REST API v1 streaming integration.
+          // The handler may run, but the integration will buffer responses.
+          api := constructs.NewLiftAPI(stack, jsii.String("HttpAPI"), &constructs.LiftAPIProps{
+              APICommonProps: constructs.APICommonProps{
+                  Name: jsii.String("my-http-api"),
+              },
+          })
+        consequences:
+          - response_buffered_by_gateway
+          - sse_client_disconnects_or_times_out
   
   middleware_composition:
     name: "Middleware Composition Pattern"

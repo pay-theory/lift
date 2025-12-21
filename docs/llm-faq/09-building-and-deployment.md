@@ -35,7 +35,7 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
 - `GOOS=linux` - Target Linux operating system (Lambda runtime)
 - `GOARCH=arm64` - Target ARM64 architecture (Graviton2)
 - `CGO_ENABLED=0` - Disable CGO for static binary
-- `-tags lambda.norpc` - Optimize for Lambda RPC
+- `-tags lambda.norpc` - Required for Lambda response streaming types (and avoids the RPC runtime path)
 - `-ldflags="-s -w"` - Strip debug info, reduce binary size
 - `-o dist/bootstrap` - Output filename must be "bootstrap"
 - `cmd/main.go` - Entry point
@@ -847,4 +847,3 @@ aws lambda update-alias \
 5. Document operational procedures
 
 Following these best practices ensures reliable, secure, and efficient deployment of Lift applications to production.
-

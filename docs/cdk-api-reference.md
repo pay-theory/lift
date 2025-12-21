@@ -7,6 +7,7 @@ This document provides a comprehensive API reference for all Lift CDK constructs
 - [Core Constructs](#core-constructs)
   - [LiftFunction](#liftfunction) - `pkg/cdk/constructs/lambda.go`
   - [LiftAPI](#liftapi) - `pkg/cdk/constructs/api.go`
+  - [LiftRestAPI](#liftrestapi) - `pkg/cdk/constructs/rest_api.go`
   - [LiftTable](#lifttable) - `pkg/cdk/constructs/dynamodb.go`
 - [Middleware Constructs](#middleware-constructs)
   - [RateLimitedFunction](#ratelimitedfunction) - `pkg/cdk/constructs/ratelimited.go`
@@ -169,6 +170,71 @@ api := constructs.NewLiftAPI(stack, jsii.String("API"), &constructs.LiftAPIProps
     EnableAccessLogging: jsii.Bool(true),
     EnableDetailedMetrics: jsii.Bool(true),
 })
+```
+
+### LiftRestAPI
+
+**File**: `pkg/cdk/constructs/rest_api.go`  
+**Type**: API Gateway REST API (v1) Construct  
+**Purpose:** Use REST API v1 features (notably response streaming / SSE)
+
+Lift provides two API Gateway constructs:
+- `LiftAPI` (HTTP API v2): best default for most REST APIs
+- `LiftRestAPI` (REST API v1): use when you need REST API-specific capabilities like response streaming
+
+#### Constructor
+
+```go
+func NewLiftRestAPI(scope constructs.Construct, id *string, props *LiftRestAPIProps) *LiftRestAPI
+```
+
+#### Key Properties (LiftRestAPIProps)
+
+**Struct Definition**: `pkg/cdk/constructs/rest_api.go`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `APICommonProps.Name` | `*string` | required | API name |
+| `APICommonProps.StageName` | `*string` | `"prod"` | Deployment stage |
+| `APICommonProps.EnableCORS` | `*bool` | `false` | Enable CORS headers |
+| `APICommonProps.DomainName` | `*string` | `nil` | Custom domain |
+| `APICommonProps.CertificateArn` | `*string` | `nil` | ACM certificate ARN (domain) |
+| `Certificate` | `awscertificatemanager.ICertificate` | `nil` | Certificate object (domain) |
+| `EnableStreaming` | `*bool` | `false` | Enable REST API response streaming integrations |
+| `StreamingTimeout` | `*int` | `900` (when streaming enabled) | Integration timeout in seconds (max 900) |
+| `EndpointType` | `awsapigateway.EndpointType` | `REGIONAL` | Endpoint type |
+| `DefaultAuthorizer` | `awsapigateway.IAuthorizer` | `nil` | Default authorizer |
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `AddLambdaIntegration(path, method, fn)` | Adds a Lambda proxy integration |
+| `AddLambdaIntegrationWithOptions(path, method, fn, options)` | Adds integration with authorizer/validator/api-key settings |
+
+#### Streaming Behavior
+
+When `EnableStreaming` is true:
+- The method integration is configured with `ResponseTransferMode: STREAM`
+- Lift sets the streaming invocation URI: `.../2021-11-15/functions/{arn}/response-streaming-invocations`
+- Lift can extend the integration timeout up to 15 minutes (900 seconds)
+
+#### Example: SSE endpoint behind REST API v1
+
+```go
+timeoutSeconds := 15 * 60
+
+api := liftconstructs.NewLiftRestAPI(stack, jsii.String("RestAPI"), &liftconstructs.LiftRestAPIProps{
+	APICommonProps: liftconstructs.APICommonProps{
+		Name:      jsii.String("my-rest-api"),
+		StageName: jsii.String("prod"),
+	},
+	EnableStreaming:  jsii.Bool(true),
+	StreamingTimeout: &timeoutSeconds,
+})
+
+api.AddLambdaIntegration(jsii.String("/events"), jsii.String("GET"), fn)
+// In the Lambda handler for /events, return lift.SSEResponse(ctx, ch)
 ```
 
 ### LiftTable

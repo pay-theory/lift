@@ -7,6 +7,7 @@
 - [Core Types](#core-types)
 - [App Methods](#app-methods)
 - [Context Methods](#context-methods)
+- [Response Streaming](#response-streaming)
 - [Handler Types](#handler-types)
 - [Middleware](#middleware)
 - [Security Context](#security-context)
@@ -639,6 +640,59 @@ ctx.Logger.Error("Database error",
 
 // INCORRECT: Don't use package logger
 log.Println("Processing") // ❌ No context
+```
+
+## Response Streaming
+
+### `lift.SSEResponse(ctx *lift.Context, eventChan <-chan lift.SSEEvent) error`
+
+**Purpose:** Stream Server-Sent Events (SSE) to the client over a single HTTP response  
+**When to use:** Progress updates, live feeds, one-way server → client notifications  
+**Requires:** Lambda response streaming build (`-tags lambda.norpc`) and an integration that supports streaming (API Gateway REST API v1 with `ResponseTransferMode: STREAM`)  
+**When NOT to use:** Bidirectional messaging (use WebSockets) or background work that must outlive the request
+
+```go
+// CORRECT: Configure an SSE streaming response and return from the handler.
+func Events(ctx *lift.Context) error {
+	ch := make(chan lift.SSEEvent, 8)
+
+	go func() {
+		defer close(ch)
+		ch <- lift.SSEEvent{Event: "status", Data: "connected"}
+		ch <- lift.SSEEvent{Event: "message", Data: "hello"}
+		ch <- lift.SSEEvent{Event: "done", Data: "complete"}
+	}()
+
+	return lift.SSEResponse(ctx, ch)
+}
+
+// INCORRECT: Attempting to send JSON after configuring streaming.
+func Bad(ctx *lift.Context) error {
+	ch := make(chan lift.SSEEvent, 1)
+	ch <- lift.SSEEvent{Event: "status", Data: "connected"}
+	close(ch)
+	_ = lift.SSEResponse(ctx, ch)
+	return ctx.JSON(map[string]string{"ok": "true"}) // ❌ conflicting response type
+}
+```
+
+### `lift.SSEEvent`
+
+**Purpose:** Represents a single SSE frame emitted by `SSEResponse`  
+**Fields:**
+- `Event` (optional): event type (maps to `event:`)
+- `Data` (required): payload (maps to one or more `data:` lines)
+- `ID` (optional): event id (maps to `id:`)
+- `Retry` (optional): reconnect time in ms (maps to `retry:`)
+
+```go
+// Example SSE event with metadata
+lift.SSEEvent{
+	ID:    "42",
+	Event: "progress",
+	Data:  "50%",
+	Retry: 1000,
+}
 ```
 
 ## Handler Types

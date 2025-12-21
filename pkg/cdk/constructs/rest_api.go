@@ -16,6 +16,14 @@ import (
 //nolint:govet // Embedding maintains logical grouping with minimal benefit from reordering.
 type LiftRestAPIProps struct {
 	APICommonProps
+	// AppName is an alias for Name (backwards compatible).
+	AppName *string
+	// EnableStreaming enables API Gateway REST API response streaming.
+	EnableStreaming *bool
+	// StreamingTimeout sets integration timeout in seconds (up to 15 minutes).
+	StreamingTimeout *int
+	// Certificate configures a custom domain when DomainName is set.
+	Certificate awscertificatemanager.ICertificate
 	// Enable detailed CloudWatch metrics (REST API only)
 	EnableDetailedMetrics *bool
 	// API Key configuration
@@ -31,6 +39,9 @@ type LiftRestAPI struct {
 	constructs.Construct
 	RestAPI  awsapigateway.RestApi
 	LogGroup awslogs.ILogGroup
+
+	enableStreaming        bool
+	streamingTimeoutMillis *float64
 }
 
 // GetResourceName returns the API name
@@ -54,6 +65,9 @@ type liftRestAPIBuilder struct {
 
 // newLiftRestAPIBuilder creates a new Lift REST API builder
 func newLiftRestAPIBuilder(construct constructs.Construct, props *LiftRestAPIProps) *liftRestAPIBuilder {
+	if props == nil {
+		props = &LiftRestAPIProps{}
+	}
 	return &liftRestAPIBuilder{
 		construct: construct,
 		props:     props,
@@ -68,10 +82,15 @@ func (b *liftRestAPIBuilder) build() *LiftRestAPI {
 	// Create REST API
 	restApi := b.createRestAPI(logGroup)
 
+	enableStreaming := b.props != nil && b.props.EnableStreaming != nil && *b.props.EnableStreaming
+	streamingTimeoutMillis := b.resolveStreamingTimeoutMillis(enableStreaming)
+
 	return &LiftRestAPI{
-		Construct: b.construct,
-		RestAPI:   restApi,
-		LogGroup:  logGroup,
+		Construct:              b.construct,
+		RestAPI:                restApi,
+		LogGroup:               logGroup,
+		enableStreaming:        enableStreaming,
+		streamingTimeoutMillis: streamingTimeoutMillis,
 	}
 }
 
@@ -81,11 +100,18 @@ func (b *liftRestAPIBuilder) createLogGroup() awslogs.ILogGroup {
 		return nil
 	}
 
+	if b.props.Name == nil && b.props.AppName != nil {
+		b.props.Name = b.props.AppName
+	}
 	return CreateAPILogGroup(b.construct, b.props.Name, b.props.AccessLogGroup)
 }
 
 // createRestAPI creates the REST API with configuration
 func (b *liftRestAPIBuilder) createRestAPI(logGroup awslogs.ILogGroup) awsapigateway.RestApi {
+	if b.props != nil && b.props.Name == nil && b.props.AppName != nil {
+		b.props.Name = b.props.AppName
+	}
+
 	// Set defaults
 	stageName := "prod"
 	if b.props.StageName != nil {
@@ -139,11 +165,18 @@ func (b *liftRestAPIBuilder) createRestAPI(logGroup awslogs.ILogGroup) awsapigat
 	}
 
 	// Configure custom domain if provided
-	if b.props.DomainName != nil && b.props.CertificateArn != nil {
-		cert := awscertificatemanager.Certificate_FromCertificateArn(b.construct, jsii.String("Certificate"), b.props.CertificateArn)
-		apiProps.DomainName = &awsapigateway.DomainNameOptions{
-			DomainName:  b.props.DomainName,
-			Certificate: cert,
+	if b.props.DomainName != nil {
+		var cert awscertificatemanager.ICertificate
+		if b.props.Certificate != nil {
+			cert = b.props.Certificate
+		} else if b.props.CertificateArn != nil {
+			cert = awscertificatemanager.Certificate_FromCertificateArn(b.construct, jsii.String("Certificate"), b.props.CertificateArn)
+		}
+		if cert != nil {
+			apiProps.DomainName = &awsapigateway.DomainNameOptions{
+				DomainName:  b.props.DomainName,
+				Certificate: cert,
+			}
 		}
 	}
 
@@ -155,6 +188,31 @@ func (b *liftRestAPIBuilder) createRestAPI(logGroup awslogs.ILogGroup) awsapigat
 	}
 
 	return awsapigateway.NewRestApi(b.construct, jsii.String("RestApi"), apiProps)
+}
+
+func (b *liftRestAPIBuilder) resolveStreamingTimeoutMillis(enableStreaming bool) *float64 {
+	if b.props == nil {
+		return nil
+	}
+
+	// Default to 15 minutes when streaming is enabled.
+	timeoutSeconds := 0
+	if b.props.StreamingTimeout != nil {
+		timeoutSeconds = *b.props.StreamingTimeout
+	} else if enableStreaming {
+		timeoutSeconds = 15 * 60
+	}
+
+	if timeoutSeconds <= 0 {
+		return nil
+	}
+
+	if timeoutSeconds > 15*60 {
+		timeoutSeconds = 15 * 60
+	}
+
+	timeoutMillis := float64(timeoutSeconds * 1000)
+	return &timeoutMillis
 }
 
 // createCORSConfig creates CORS preflight configuration
@@ -221,7 +279,11 @@ func (api *LiftRestAPI) AddLambdaIntegrationWithOptions(path *string, method *st
 	}
 
 	// Add method to resource
-	resource.AddMethod(method, integration, methodOptions)
+	added := resource.AddMethod(method, integration, methodOptions)
+
+	if api.enableStreaming {
+		api.configureStreamingIntegration(added, fn)
+	}
 }
 
 // getOrCreateResource gets or creates a resource for the given path
@@ -242,6 +304,31 @@ func (api *LiftRestAPI) getOrCreateResource(path *string) awsapigateway.IResourc
 	}
 
 	return current
+}
+
+func (api *LiftRestAPI) configureStreamingIntegration(method awsapigateway.Method, fn awslambda.IFunction) {
+	child := method.Node().DefaultChild()
+	cfnMethod, ok := child.(awsapigateway.CfnMethod)
+	if !ok {
+		return
+	}
+
+	stack := awscdk.Stack_Of(api.Construct)
+	uri := awscdk.Fn_Join(jsii.String(""), &[]*string{
+		jsii.String("arn:"),
+		awscdk.Aws_PARTITION(),
+		jsii.String(":apigateway:"),
+		stack.Region(),
+		jsii.String(":lambda:path/2021-11-15/functions/"),
+		fn.FunctionArn(),
+		jsii.String("/response-streaming-invocations"),
+	})
+
+	cfnMethod.AddOverride(jsii.String("Properties.Integration.ResponseTransferMode"), "STREAM")
+	cfnMethod.AddOverride(jsii.String("Properties.Integration.Uri"), uri)
+	if api.streamingTimeoutMillis != nil {
+		cfnMethod.AddOverride(jsii.String("Properties.Integration.TimeoutInMillis"), *api.streamingTimeoutMillis)
+	}
 }
 
 // CreateAPIKey creates an API key for the REST API
