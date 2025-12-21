@@ -43,9 +43,9 @@ lambdaRole := awsiam.NewRole(stack, jsii.String("K3LambdaRole"), &awsiam.RolePro
 
 // Attach managed policies (4 policies)
 lambdaRole.AddManagedPolicy(awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("CloudWatchLambdaInsightsExecutionRolePolicy")))
-lambdaRole.AddManagedPolicy(awsiam.ManagedPolicy_FromManagedPolicyArn(stack, jsii.String("KernelCommonSQSPolicy"), jsii.String("arn:aws:iam::058264189048:policy/kernel-common-sqs-policy")))
-lambdaRole.AddManagedPolicy(awsiam.ManagedPolicy_FromManagedPolicyArn(stack, jsii.String("KernelCommonServicePolicy"), jsii.String("arn:aws:iam::058264189048:policy/kernel-common-service-policy")))
-lambdaRole.AddManagedPolicy(awsiam.ManagedPolicy_FromManagedPolicyArn(stack, jsii.String("KernelCommonEncryptionPolicy"), jsii.String("arn:aws:iam::058264189048:policy/kernel-common-encryption-policy")))
+lambdaRole.AddManagedPolicy(awsiam.ManagedPolicy_FromManagedPolicyArn(stack, jsii.String("KernelCommonSQSPolicy"), jsii.String("arn:aws:iam::{ACCOUNT_ID}:policy/kernel-common-sqs-policy")))
+lambdaRole.AddManagedPolicy(awsiam.ManagedPolicy_FromManagedPolicyArn(stack, jsii.String("KernelCommonServicePolicy"), jsii.String("arn:aws:iam::{ACCOUNT_ID}:policy/kernel-common-service-policy")))
+lambdaRole.AddManagedPolicy(awsiam.ManagedPolicy_FromManagedPolicyArn(stack, jsii.String("KernelCommonEncryptionPolicy"), jsii.String("arn:aws:iam::{ACCOUNT_ID}:policy/kernel-common-encryption-policy")))
 
 // KMS MAC permissions (9 lines)
 lambdaRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
@@ -55,7 +55,7 @@ lambdaRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
         jsii.String("kms:VerifyMac"),
     },
     Resources: &[]*string{
-        jsii.String("arn:aws:kms:*:058264189048:key/mrk-*"),
+        jsii.String("arn:aws:kms:*:{ACCOUNT_ID}:key/mrk-*"),
     },
 }))
 
@@ -83,8 +83,8 @@ lambdaRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 }))
 
 // DynamoDB permissions (18 lines)
-tokensTableArn := fmt.Sprintf("arn:aws:dynamodb:%s:058264189048:table/k3-%s-%s-tokens", region, props.Partner, props.Stage)
-countersTableArn := fmt.Sprintf("arn:aws:dynamodb:%s:058264189048:table/k3-%s-%s-dukpt-counters", region, props.Partner, props.Stage)
+tokensTableArn := fmt.Sprintf("arn:aws:dynamodb:%s:{ACCOUNT_ID}:table/k3-%s-%s-tokens", region, props.Partner, props.Stage)
+countersTableArn := fmt.Sprintf("arn:aws:dynamodb:%s:{ACCOUNT_ID}:table/k3-%s-%s-dukpt-counters", region, props.Partner, props.Stage)
 
 lambdaRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
     Effect: awsiam.Effect_ALLOW,
@@ -110,8 +110,8 @@ lambdaRole.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 ```go
 // 25 lines of declarative configuration
 roleName := fmt.Sprintf("k3-%s-%s-%s-lambda-role", props.Partner, props.Stage, region)
-tokensTableArn := fmt.Sprintf("arn:aws:dynamodb:%s:058264189048:table/k3-%s-%s-tokens", region, props.Partner, props.Stage)
-countersTableArn := fmt.Sprintf("arn:aws:dynamodb:%s:058264189048:table/k3-%s-%s-dukpt-counters", region, props.Partner, props.Stage)
+tokensTableArn := fmt.Sprintf("arn:aws:dynamodb:%s:{ACCOUNT_ID}:table/k3-%s-%s-tokens", region, props.Partner, props.Stage)
+countersTableArn := fmt.Sprintf("arn:aws:dynamodb:%s:{ACCOUNT_ID}:table/k3-%s-%s-dukpt-counters", region, props.Partner, props.Stage)
 
 liftLambdaRole := liftcdk.NewLiftLambdaRole(stack, jsii.String("K3LambdaRole"), &liftcdk.LiftLambdaRoleProps{
     RoleName:    jsii.String(roleName),
@@ -123,9 +123,9 @@ liftLambdaRole := liftcdk.NewLiftLambdaRole(stack, jsii.String("K3LambdaRole"), 
 
     // Attach kernel-common managed policies
     ManagedPolicyArns: []string{
-        "arn:aws:iam::058264189048:policy/kernel-common-sqs-policy",
-        "arn:aws:iam::058264189048:policy/kernel-common-service-policy",
-        "arn:aws:iam::058264189048:policy/kernel-common-encryption-policy",
+        "arn:aws:iam::{ACCOUNT_ID}:policy/kernel-common-sqs-policy",
+        "arn:aws:iam::{ACCOUNT_ID}:policy/kernel-common-service-policy",
+        "arn:aws:iam::{ACCOUNT_ID}:policy/kernel-common-encryption-policy",
     },
 
     // DynamoDB access

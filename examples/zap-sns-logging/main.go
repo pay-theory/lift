@@ -31,8 +31,9 @@ func main() {
 		Format: "json", // JSON format for structured logs in CloudWatch
 	}
 
-	// Create Zap logger with default SNS error notifications
-	logger, err := zap.NewZapLogger(loggerConfig, zap.WithDefaultErrorNotifications(snsClient))
+	// Create Zap logger with environment-based SNS error notifications
+	// Set ERROR_NOTIFICATION_SNS_TOPIC_ARN environment variable before running
+	logger, err := zap.NewZapLogger(loggerConfig, zap.WithEnvironmentErrorNotifications(snsClient))
 	if err != nil {
 		log.Fatalf("Failed to create Zap logger: %v", err)
 	}

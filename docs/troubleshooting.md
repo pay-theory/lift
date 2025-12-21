@@ -403,6 +403,77 @@ func AsyncHandler(ctx *lift.Context) error {
 }
 ```
 
+### Problem: "SSE endpoint buffers events (client receives them all at once)"
+
+**Symptoms:**
+- Browser `EventSource` connects but no incremental events arrive
+- All events appear only after the request completes (or never)
+- You see a normal 200 response instead of a streaming response
+
+**Root Cause:** API Gateway is buffering the Lambda response because streaming is not enabled on the REST API integration.
+
+**Solution:**
+1. **Use LiftRestAPI (REST API v1) with streaming enabled**
+```go
+timeoutSeconds := 15 * 60
+api := liftconstructs.NewLiftRestAPI(stack, jsii.String("RestAPI"), &liftconstructs.LiftRestAPIProps{
+    APICommonProps: liftconstructs.APICommonProps{
+        Name: jsii.String("my-rest-api"),
+    },
+    EnableStreaming:  jsii.Bool(true),
+    StreamingTimeout: &timeoutSeconds,
+})
+api.AddLambdaIntegration(jsii.String("/events"), jsii.String("GET"), fn)
+```
+
+2. **Return an SSE streaming response from the handler**
+```go
+func Events(ctx *lift.Context) error {
+    ch := make(chan lift.SSEEvent, 8)
+    go func() {
+        defer close(ch)
+        ch <- lift.SSEEvent{Event: "status", Data: "connected"}
+        ch <- lift.SSEEvent{Event: "done", Data: "complete"}
+    }()
+    return lift.SSEResponse(ctx, ch)
+}
+```
+
+3. **Build with response streaming support**
+```bash
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -tags lambda.norpc -o bootstrap main.go
+```
+
+### Problem: "SSE stream disconnects after ~30 seconds"
+
+**Symptoms:**
+- Events stop around 29–30 seconds
+- Client reconnects repeatedly
+- Lambda logs show a timeout or cancellation
+
+**Root Cause:** One of the default timeouts is still set to ~30 seconds:
+- Lift `Config.Timeout` default is 30 seconds
+- Lambda function timeout may be 30 seconds
+- REST API integration timeout defaults to 29 seconds
+
+**Solution:**
+```go
+// 1) Lift runtime timeout (controls request context deadline)
+app := lift.New(lift.WithConfig(&lift.Config{
+    Timeout: 15 * 60, // seconds (max 15 minutes)
+}))
+
+// 2) REST API integration timeout (controls API Gateway → Lambda integration)
+timeoutSeconds := 15 * 60
+api := liftconstructs.NewLiftRestAPI(stack, jsii.String("RestAPI"), &liftconstructs.LiftRestAPIProps{
+    APICommonProps: liftconstructs.APICommonProps{Name: jsii.String("my-rest-api")},
+    EnableStreaming:  jsii.Bool(true),
+    StreamingTimeout: &timeoutSeconds,
+})
+
+// 3) Lambda function timeout must also be >= your stream duration (max 15 minutes).
+```
+
 ## Middleware Issues
 
 ### Error: "middleware executing in wrong order"

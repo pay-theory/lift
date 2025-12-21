@@ -197,6 +197,59 @@ decisions:
           app.Handle(websocket.Adapter(func(ctx *lift.Context, event websocket.Event) error {
               // Handle connection, message, or disconnect
           }))
+
+  choosing_api_gateway_type:
+    question: "Should I deploy Lift behind API Gateway HTTP API (v2) or REST API (v1)?"
+    decision_tree:
+      - condition: "Need response streaming (SSE) or long-lived HTTP responses"
+        choice: "REST API (v1) with LiftRestAPI + EnableStreaming"
+        reason: "Lift's SSE streaming integration is implemented for REST API v1 response streaming integrations"
+        example: |
+          timeoutSeconds := 15 * 60
+
+          api := liftconstructs.NewLiftRestAPI(stack, jsii.String("RestAPI"), &liftconstructs.LiftRestAPIProps{
+              APICommonProps: liftconstructs.APICommonProps{
+                  Name: jsii.String("my-rest-api"),
+              },
+              EnableStreaming:  jsii.Bool(true),
+              StreamingTimeout: &timeoutSeconds,
+          })
+
+          api.AddLambdaIntegration(jsii.String("/events"), jsii.String("GET"), fn)
+          // In the handler, return lift.SSEResponse(ctx, ch)
+          // Build the Lambda with: go build -tags lambda.norpc
+
+      - condition: "Standard REST API without streaming requirements"
+        choice: "HTTP API (v2) with LiftAPI"
+        reason: "HTTP API v2 is typically the best default for standard REST APIs"
+        example: |
+          api := liftconstructs.NewLiftAPI(stack, jsii.String("HttpAPI"), &liftconstructs.LiftAPIProps{
+              APICommonProps: liftconstructs.APICommonProps{
+                  Name: jsii.String("my-http-api"),
+              },
+          })
+
+  choosing_real_time_transport:
+    question: "What transport should I use for real-time updates?"
+    decision_tree:
+      - condition: "One-way server → client updates over HTTP"
+        choice: "SSE streaming (lift.SSEResponse)"
+        reason: "Simple client support and ideal for progress/events"
+        example: |
+          return lift.SSEResponse(ctx, eventChan)
+
+      - condition: "Bidirectional messaging (client ↔ server)"
+        choice: "WebSockets"
+        reason: "Two-way communication with connection management"
+        example: |
+          app.WebSocket("sendMessage", SendMessageHandler)
+
+      - condition: "Work must outlive the request or be durable"
+        choice: "Async processing + durable messaging"
+        reason: "SSE/WebSockets are not durable work queues; use SQS/EventBridge for durable processing"
+        example: |
+          // Enqueue work, then notify clients via WebSocket/SSE when ready.
+          app.SQS("work-queue", ProcessWork)
   
   choosing_data_access:
     question: "How should I access data from my Lambda?"

@@ -11,6 +11,7 @@ The Lift CDK package (`pkg/cdk`) provides high-level constructs and patterns for
 - [Best Practices Guide](./best-practices.md) - Comprehensive guide for production deployments
 - [API Documentation](/pkg/cdk/README.md) - Detailed construct and pattern reference
 - [Examples](/pkg/cdk/examples/) - Working examples of CDK deployments
+- [Response Streaming (SSE)](../response-streaming.md) - Stream events over REST API v1 integrations
 
 ## Getting Started
 
@@ -52,6 +53,7 @@ lift cdk-diff
 
 - **LiftFunction** - Optimized Lambda function with ARM64, tracing, and multi-tenant support
 - **LiftAPI** - API Gateway HTTP API with CORS, custom domains, and rate limiting
+- **LiftRestAPI** - API Gateway REST API (v1) with optional response streaming (SSE)
 - **LiftTable** - DynamoDB table with single-table design, GSI, and auto-scaling
 - **SecureFunction** - Enhanced Lambda function with security best practices
 - **RateLimitedFunction** - Lambda function with built-in rate limiting

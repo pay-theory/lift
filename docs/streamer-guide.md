@@ -36,6 +36,8 @@ Use the streamer package when you need:
 
 For simpler use cases, consider using `lift.WebSocketContext` which wraps streamer internally.
 
+**Not SSE:** The streamer package is for **WebSockets**, not Server-Sent Events (SSE). For one-way HTTP streaming, see [Response Streaming (SSE)](./response-streaming.md).
+
 ## Installation
 
 The streamer package is included with Lift. No additional installation needed:
@@ -717,4 +719,3 @@ For questions or issues:
 - Review the [examples](../examples/)
 - Check the [troubleshooting guide](./troubleshooting.md)
 - Open an issue on GitHub
-

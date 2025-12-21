@@ -17,6 +17,7 @@ concepts:
       - middleware_system
       - event_source_adapters
       - websocket_support
+      - response_streaming
       - cdk_constructs
       - testing_utilities
     replaces:
@@ -151,13 +152,16 @@ concepts:
     provides:
       - lift_function_constructs
       - api_gateway_integration
+      - rest_api_v1_integration
+      - response_streaming_integration
       - websocket_api_support
       - middleware_enabled_deployments
       - security_by_default
       - operational_excellence
     constructs:
       - LiftFunction: base Lambda function construct
-      - LiftAPIGateway: REST API Gateway v2 integration
+      - LiftAPI: API Gateway HTTP API (v2) integration
+      - LiftRestAPI: API Gateway REST API (v1) integration
       - LiftWebSocketAPI: WebSocket API Gateway support
       - RateLimitedLiftFunction: rate limiting enabled functions
     features:
@@ -201,6 +205,28 @@ concepts:
     middleware:
       - WebSocketAuth: authentication for WebSocket connections
       - WebSocketMetrics: metrics collection for WebSocket events
+
+  response_streaming:
+    type: feature_set
+    purpose: long-lived HTTP responses that stream incremental data
+    provides:
+      - server_sent_events
+      - incremental_progress_updates
+      - long_poll_replacement
+    requires:
+      - api_gateway_rest_api_v1_streaming_integration
+      - lambda_response_streaming_build
+    implementation:
+      - lift.SSEResponse: configure SSE streaming response
+      - lift.SSEEvent: represent SSE frames
+    use_when:
+      - need_one_way_server_to_client_stream
+      - need_sse_in_browser_clients
+      - need_up_to_15_minute_streaming_timeout
+    dont_use_when:
+      - need_bidirectional_messaging
+      - need_durable_fanout_or_background_work
+      - only_http_api_v2_available
   
   validation:
     type: feature

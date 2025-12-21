@@ -651,13 +651,14 @@ func (a *App) HandleRequest(ctx context.Context, event any) (any, error) {
 // requestHandlerBuilder builds and executes Lambda request handling.
 // It is responsible for constructing the request handling pipeline.
 type requestHandlerBuilder struct {
-	app      *App
-	ctx      context.Context
-	event    any
-	liftCtx  *Context
-	request  *Request
-	routeErr error
-	cancel   context.CancelFunc
+	app     *App
+	ctx     context.Context
+	event   any
+	liftCtx *Context
+	request *Request
+	cancel  context.CancelFunc
+
+	streamingResponse bool
 }
 
 // newRequestHandlerBuilder creates a new request handler builder.
@@ -696,15 +697,20 @@ func (b *requestHandlerBuilder) build() (any, error) {
 		return b.app.handleError(b.liftCtx, err)
 	}
 	b.configureContext()
-	defer b.cancelTimeout()
-	b.routeRequest()
+	defer b.cancelTimeoutUnlessStreaming()
 
-	if b.routeErr != nil {
-		return b.app.handleError(b.liftCtx, b.routeErr)
+	if err := b.routeRequest(); err != nil {
+		b.abortStreaming(err)
+		return b.app.handleError(b.liftCtx, err)
 	}
 
 	if err := b.enforceTenantRequirement(); err != nil {
+		b.abortStreaming(err)
 		return b.app.handleError(b.liftCtx, err)
+	}
+
+	if resp, ok := b.takeStreamingResponse(); ok {
+		return resp, nil
 	}
 
 	if err := b.validateResponseGuardrails(); err != nil {
@@ -722,6 +728,44 @@ func (b *requestHandlerBuilder) build() (any, error) {
 	}
 
 	return b.liftCtx.Response, nil
+}
+
+func (b *requestHandlerBuilder) cancelTimeoutUnlessStreaming() {
+	if b.streamingResponse {
+		return
+	}
+	b.cancelTimeout()
+}
+
+func (b *requestHandlerBuilder) abortStreaming(err error) {
+	if b.liftCtx == nil {
+		return
+	}
+	state := b.liftCtx.streamingState()
+	if state == nil || state.abort == nil {
+		return
+	}
+	state.abort(err)
+	b.liftCtx.clearStreamingState()
+}
+
+func (b *requestHandlerBuilder) takeStreamingResponse() (any, bool) {
+	if b.liftCtx == nil {
+		return nil, false
+	}
+
+	state := b.liftCtx.streamingState()
+	if state == nil || state.response == nil {
+		return nil, false
+	}
+
+	if state.start != nil {
+		state.start()
+	}
+	b.streamingResponse = true
+	b.liftCtx.clearStreamingState()
+
+	return state.response, true
 }
 
 // ensureAppStarted ensures the app is properly initialized.
@@ -772,6 +816,10 @@ func (b *requestHandlerBuilder) configureContext() {
 	} else {
 		b.liftCtx.Context = b.ctx
 		b.cancel = nil
+	}
+
+	if b.cancel != nil {
+		b.liftCtx.Set(requestCancelKey, b.cancel)
 	}
 
 	if b.app.hasInterceptingMiddleware {
@@ -1003,7 +1051,7 @@ func estimateS3RecordSize(record any) int64 {
 
 // routeRequest routes the request based on trigger type.
 // It determines the type of request and routes it accordingly.
-func (b *requestHandlerBuilder) routeRequest() {
+func (b *requestHandlerBuilder) routeRequest() error {
 	err := b.executeWithTimeout(func() error {
 		switch {
 		case b.request.TriggerType == adapters.TriggerWebSocket:
@@ -1014,9 +1062,7 @@ func (b *requestHandlerBuilder) routeRequest() {
 			return b.routeHTTP()
 		}
 	})
-	if err != nil {
-		b.routeErr = err
-	}
+	return err
 }
 
 func (b *requestHandlerBuilder) executeWithTimeout(fn func() error) error {
