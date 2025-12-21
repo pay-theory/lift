@@ -50,7 +50,10 @@ func (c *Context) streamingState() *streamingState {
 		return nil
 	}
 	val := c.Get(streamingStateKey)
-	state, _ := val.(*streamingState)
+	state, ok := val.(*streamingState)
+	if !ok {
+		return nil
+	}
 	return state
 }
 
@@ -106,7 +109,10 @@ func SSEResponse(ctx *Context, eventChan <-chan SSEEvent) error {
 
 	var startOnce sync.Once
 	cancelAny := ctx.Get(requestCancelKey)
-	cancel, _ := cancelAny.(context.CancelFunc)
+	cancel, ok := cancelAny.(context.CancelFunc)
+	if !ok {
+		cancel = nil
+	}
 	startFn := func() {
 		startOnce.Do(func() {
 			go func() {
@@ -120,10 +126,14 @@ func SSEResponse(ctx *Context, eventChan <-chan SSEEvent) error {
 
 	abortFn := func(err error) {
 		if err == nil {
-			_ = pipeWriter.Close()
+			if closeErr := pipeWriter.Close(); closeErr != nil {
+				_ = closeErr
+			}
 			return
 		}
-		_ = pipeWriter.CloseWithError(err)
+		if closeErr := pipeWriter.CloseWithError(err); closeErr != nil {
+			_ = closeErr
+		}
 	}
 
 	ctx.setStreamingState(&streamingState{
@@ -141,7 +151,9 @@ func streamSSE(ctx context.Context, writer *io.PipeWriter, eventChan <-chan SSEE
 	}
 
 	defer func() {
-		_ = writer.Close()
+		if err := writer.Close(); err != nil {
+			_ = err
+		}
 	}()
 
 	for {
