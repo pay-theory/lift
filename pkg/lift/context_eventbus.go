@@ -16,8 +16,24 @@ func (c *Context) EventBusRecords() ([]events.DynamoDBEventRecord, error) {
 		return nil, fmt.Errorf("not an EventBus event")
 	}
 
-	records := make([]events.DynamoDBEventRecord, 0, len(c.Request.Records))
-	for _, record := range c.Request.Records {
+	return decodeDynamoDBStreamRecords(c.Request.Records)
+}
+
+// DynamoDBRecords returns the typed DynamoDB stream records for a DynamoDB-triggered invocation.
+func (c *Context) DynamoDBRecords() ([]events.DynamoDBEventRecord, error) {
+	if c == nil || c.Request == nil {
+		return nil, fmt.Errorf("context request is required")
+	}
+	if c.Request.TriggerType != TriggerEventBus {
+		return nil, fmt.Errorf("not a DynamoDB stream event")
+	}
+
+	return decodeDynamoDBStreamRecords(c.Request.Records)
+}
+
+func decodeDynamoDBStreamRecords(rawRecords []any) ([]events.DynamoDBEventRecord, error) {
+	records := make([]events.DynamoDBEventRecord, 0, len(rawRecords))
+	for _, record := range rawRecords {
 		switch v := record.(type) {
 		case events.DynamoDBEventRecord:
 			records = append(records, v)

@@ -76,6 +76,15 @@ func (a *App) eventBusRoutesSnapshot() []*eventBusRoute {
 	return append([]*eventBusRoute(nil), a.eventBusRoutes...)
 }
 
+func (a *App) hasEventBusRoutes() bool {
+	if a == nil {
+		return false
+	}
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return len(a.eventBusRoutes) > 0
+}
+
 func (b *requestHandlerBuilder) routeEventBus() error {
 	routes := b.app.eventBusRoutesSnapshot()
 	records, err := b.liftCtx.EventBusRecords()
