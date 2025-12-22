@@ -405,7 +405,7 @@ func TestEventUnmarshalPayloadInvalid(t *testing.T) {
 func TestDefaultEventBusConfig(t *testing.T) {
 	config := DefaultEventBusConfig()
 
-	assert.Equal(t, "lift-events", config.TableName)
+	assert.Empty(t, config.TableName)
 	assert.Equal(t, 30*24*time.Hour, config.TTL)
 	assert.True(t, config.EnableMetrics)
 	assert.Equal(t, "Lift/EventBus", config.MetricsNamespace)

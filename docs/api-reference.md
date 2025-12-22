@@ -311,6 +311,38 @@ app.EventBridge("my-rule", func(ctx *lift.Context) error {
 })
 ```
 
+## EventBus (Durable)
+
+Lift includes a durable EventBus in `github.com/pay-theory/lift/pkg/services` backed by DynamoDB via DynamORM.
+
+- Full guide: `docs/eventbus-guide.md`
+
+### `services.NewDynamoDBEventBus(db core.ExtendedDB, config services.EventBusConfig) *services.DynamoDBEventBus`
+
+```go
+import (
+    "context"
+    "os"
+
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/session"
+    "github.com/pay-theory/lift/pkg/services"
+)
+
+ctx := context.Background()
+db, err := dynamorm.New(session.Config{Region: os.Getenv("AWS_REGION")})
+if err != nil {
+    panic(err)
+}
+
+bus := services.NewDynamoDBEventBus(db, services.EventBusConfig{
+    TableName: os.Getenv("EVENT_BUS_TABLE_NAME"),
+})
+
+event, _ := services.NewEvent("partner.created", "tenant-123", "partner-456", map[string]any{"name": "Acme"})
+_, _ = bus.Publish(ctx, event)
+```
+
 ## Context Methods
 
 ### Request Methods
@@ -1254,6 +1286,25 @@ app.WebSocket("joinRoom", JoinRoomHandler)
 
 // Default handler for unmatched routes
 app.WebSocket("$default", DefaultWebSocketHandler)
+```
+
+### Action Routing via `$default`
+
+If your API Gateway WebSocket API only defines `$connect`, `$disconnect`, and `$default`, you can dispatch by `body.action` inside your `$default` handler:
+
+```go
+app := lift.New(lift.WithWebSocketSupport())
+
+actions := app.WebSocketActions()
+actions.On("sendMessage", SendMessageHandler)
+actions.On("joinRoom", JoinRoomHandler)
+actions.Default(DefaultWebSocketHandler) // missing/unknown/invalid action
+```
+
+To change the JSON action field name (default: `"action"`):
+
+```go
+actions := app.WebSocketActions(lift.WithWebSocketActionField("type"))
 ```
 
 ### WebSocket Context

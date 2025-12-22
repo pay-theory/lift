@@ -93,7 +93,9 @@ type Event struct {
 
 ```bash
 go get github.com/pay-theory/lift
-go get github.com/aws/aws-sdk-go-v2/service/dynamodb
+go get github.com/pay-theory/dynamorm@v1.0.39
+
+# Optional (only if you want EventBus CloudWatch metrics)
 go get github.com/aws/aws-sdk-go-v2/service/cloudwatch
 ```
 
@@ -105,27 +107,38 @@ package main
 import (
     "context"
     "log"
+    "time"
 
     "github.com/aws/aws-sdk-go-v2/config"
     "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-    "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/session"
     "github.com/pay-theory/lift/pkg/services"
 )
 
 func main() {
-    // Load AWS config
-    cfg, err := config.LoadDefaultConfig(context.Background())
+    ctx := context.Background()
+
+    // Load AWS config (used here for region + CloudWatch client)
+    awsCfg, err := config.LoadDefaultConfig(ctx)
     if err != nil {
         log.Fatal(err)
     }
 
-    // Create DynamoDB client
-    dynamoClient := dynamodb.NewFromConfig(cfg)
-    cloudwatchClient := cloudwatch.NewFromConfig(cfg)
+    // Initialize DynamORM (use this for all DynamoDB access)
+    db, err := dynamorm.New(session.Config{
+        Region: awsCfg.Region,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Optional: CloudWatch metrics
+    cloudwatchClient := cloudwatch.NewFromConfig(awsCfg)
 
     // Create EventBus
-    eventBus := services.NewDynamoDBEventBus(dynamoClient, services.EventBusConfig{
-        TableName:        "my-app-events",
+    eventBus := services.NewDynamoDBEventBus(db, services.EventBusConfig{
+        TableName:        "my-app-events-live",
         TTL:              30 * 24 * time.Hour, // 30 days
         EnableMetrics:    true,
         MetricsNamespace: "MyApp/EventBus",
@@ -145,7 +158,7 @@ func main() {
         log.Fatal(err)
     }
 
-    eventID, err := eventBus.Publish(context.Background(), event)
+    eventID, err := eventBus.Publish(ctx, event)
     if err != nil {
         log.Fatal(err)
     }
@@ -362,28 +375,35 @@ package main
 
 import (
     "context"
-    "encoding/json"
     "log"
     "os"
 
     "github.com/aws/aws-lambda-go/lambda"
     "github.com/aws/aws-sdk-go-v2/config"
-    "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/session"
     "github.com/pay-theory/lift/pkg/services"
 )
 
 var eventBus services.EventBus
 
 func init() {
-    cfg, err := config.LoadDefaultConfig(context.Background())
+    ctx := context.Background()
+
+    cfg, err := config.LoadDefaultConfig(ctx)
     if err != nil {
         log.Fatal(err)
     }
 
-    dynamoClient := dynamodb.NewFromConfig(cfg)
+    db, err := dynamorm.New(session.Config{
+        Region: cfg.Region,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
     tableName := os.Getenv("EVENT_BUS_TABLE_NAME")
 
-    eventBus = services.NewDynamoDBEventBus(dynamoClient, services.EventBusConfig{
+    eventBus = services.NewDynamoDBEventBus(db, services.EventBusConfig{
         TableName: tableName,
     })
 }
@@ -436,34 +456,85 @@ package main
 
 import (
     "context"
+    "fmt"
     "log"
 
     "github.com/aws/aws-lambda-go/events"
     "github.com/aws/aws-lambda-go/lambda"
-    "github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
     "github.com/pay-theory/lift/pkg/services"
 )
 
 func handler(ctx context.Context, event events.DynamoDBEvent) error {
     for _, record := range event.Records {
-        if record.EventName == "INSERT" || record.EventName == "MODIFY" {
-            // Unmarshal the new image
-            var busEvent services.Event
-            err := attributevalue.UnmarshalMap(record.Change.NewImage, &busEvent)
-            if err != nil {
-                log.Printf("Failed to unmarshal event: %v", err)
-                continue
-            }
+        if record.EventName != "INSERT" && record.EventName != "MODIFY" {
+            continue
+        }
 
-            // Route to appropriate handler
-            if err := processEvent(ctx, &busEvent); err != nil {
-                log.Printf("Failed to process event %s: %v", busEvent.ID, err)
-                return err // Return error to retry
-            }
+        busEvent, err := eventFromStreamImage(record.Change.NewImage)
+        if err != nil {
+            log.Printf("Failed to parse event: %v", err)
+            continue
+        }
+
+        // Route to appropriate handler
+        if err := processEvent(ctx, busEvent); err != nil {
+            log.Printf("Failed to process event %s: %v", busEvent.ID, err)
+            return err // Return error to retry
         }
     }
 
     return nil
+}
+
+func eventFromStreamImage(image map[string]events.DynamoDBAttributeValue) (*services.Event, error) {
+    if image == nil {
+        return nil, fmt.Errorf("missing NewImage")
+    }
+
+    id, ok := stringAttr(image, "id")
+    if !ok {
+        return nil, fmt.Errorf("missing id")
+    }
+    eventType, ok := stringAttr(image, "event_type")
+    if !ok {
+        return nil, fmt.Errorf("missing event_type")
+    }
+
+    tenantID, _ := stringAttr(image, "tenant_id")
+    sourceID, _ := stringAttr(image, "source_id")
+    payload, _ := bytesAttr(image, "payload")
+
+    return &services.Event{
+        ID:        id,
+        EventType: eventType,
+        TenantID:  tenantID,
+        SourceID:  sourceID,
+        Payload:   payload,
+    }, nil
+}
+
+func stringAttr(image map[string]events.DynamoDBAttributeValue, key string) (string, bool) {
+    av, ok := image[key]
+    if !ok || av.IsNull() || av.DataType() != events.DataTypeString {
+        return "", false
+    }
+    return av.String(), true
+}
+
+func bytesAttr(image map[string]events.DynamoDBAttributeValue, key string) ([]byte, bool) {
+    av, ok := image[key]
+    if !ok || av.IsNull() {
+        return nil, false
+    }
+
+    switch av.DataType() {
+    case events.DataTypeBinary:
+        return av.Binary(), true
+    case events.DataTypeString:
+        return []byte(av.String()), true
+    default:
+        return nil, false
+    }
 }
 
 func processEvent(ctx context.Context, event *services.Event) error {
@@ -493,14 +564,27 @@ func main() {
 
 **Recommended naming convention**:
 ```
-{app-name}-{environment}-events
+{app}-events-{stage}
+
+# Or (multi-tenant)
+{app}-{tenant}-events-{stage}
 ```
 
 Examples:
-- `autheory-prod-events`
-- `autheory-dev-events`
-- `payment-service-staging-events`
-- `partner-hub-prod-events`
+- `autheory-events-live`
+- `autheory-events-lab`
+- `partner-hub-events-study`
+- `autheory-acme-events-live`
+
+You can generate the table name deterministically from deployment inputs using Lift's naming helpers:
+
+```go
+tableName, ok := naming.ResourceNameFromEnv("events") // uses APP_NAME, STAGE, optional PARTNER
+if !ok {
+    return fmt.Errorf("APP_NAME and STAGE are required for deterministic naming")
+}
+eventBus := services.NewDynamoDBEventBus(db, services.EventBusConfig{TableName: tableName})
+```
 
 ### Basic Table Deployment
 
@@ -509,6 +593,7 @@ package main
 
 import (
     "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
     "github.com/aws/constructs-go/constructs/v10"
     "github.com/aws/jsii-runtime-go"
     liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
@@ -524,7 +609,7 @@ func NewMyStack(scope constructs.Construct, id string, props *MyStackProps) awsc
     // IMPORTANT: Always specify a unique TableName to avoid conflicts
     // with other applications in the same AWS account
     eventBusTable := liftconstructs.NewEventBusTable(stack, jsii.String("EventBus"), &liftconstructs.EventBusTableProps{
-        TableName:                 jsii.String("my-app-prod-events"),  // Must be unique!
+        TableName:                 jsii.String("my-app-events-live"),  // Must be unique!
         EnablePointInTimeRecovery: jsii.Bool(true),
         EnableStream:              jsii.Bool(true),
         EnableEventIDIndex:        jsii.Bool(true),
@@ -541,7 +626,10 @@ func NewMyStack(scope constructs.Construct, id string, props *MyStackProps) awsc
 
     // Grant permissions
     eventBusTable.GrantReadWrite(publisherFunction.Function)
-    eventBusTable.AddEnvironmentVariables(publisherFunction.Function)
+    env := eventBusTable.GetEnvironmentVariables()
+    for key, value := range *env {
+        publisherFunction.Function.AddEnvironment(jsii.String(key), value, nil)
+    }
 
     return stack
 }
@@ -554,8 +642,10 @@ package main
 
 import (
     "github.com/aws/aws-cdk-go/awscdk/v2"
+    "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
     "github.com/aws/constructs-go/constructs/v10"
     "github.com/aws/jsii-runtime-go"
+    liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
     liftpatterns "github.com/pay-theory/lift/pkg/cdk/patterns"
 )
 
@@ -565,11 +655,11 @@ func NewMyStack(scope constructs.Construct, id string, props *awscdk.StackProps)
     // Create complete EventBus with table and processor
     // AppName should be unique within your AWS account
     eventBus := liftpatterns.NewEventBusPattern(stack, jsii.String("EventBus"), &liftpatterns.EventBusPatternProps{
-        AppName:           "my-app-prod",  // REQUIRED and must be unique!
+        AppName:           "my-app-live",  // REQUIRED and must be unique!
+        TableName:         jsii.String("my-app-events-live"),
         EnableStream:      jsii.Bool(true),
         ProcessorCodePath: jsii.String("./build/processor"),
         BatchSize:         jsii.Number(10),
-        TTLInDays:         jsii.Number(30),
     })
 
     // Create API Lambda
@@ -590,8 +680,8 @@ func NewMyStack(scope constructs.Construct, id string, props *awscdk.StackProps)
 ### Multi-Environment Deployment
 
 ```go
-// Example: Deploy separate EventBus for each environment
-// Each environment gets its own table with unique name
+// Example: Deploy separate EventBus for each stage
+// Stages: lab, study, live
 
 type DeploymentEnvironment struct {
     Name      string
@@ -603,17 +693,19 @@ func deployEventBusForEnvironment(stack awscdk.Stack, env DeploymentEnvironment)
     
     return liftpatterns.NewEventBusPattern(stack, jsii.String(env.Name + "EventBus"), &liftpatterns.EventBusPatternProps{
         AppName:           appName,  // Unique per environment
+        TableName:         jsii.String(fmt.Sprintf("my-app-events-%s", env.Name)),
         EnableStream:      jsii.Bool(true),
         ProcessorCodePath: jsii.String("./build/processor"),
         Tags: &map[string]*string{
-            "Environment": jsii.String(env.Name),
+            "Stage": jsii.String(env.Name),
         },
     })
 }
 
 // Usage:
-prodEventBus := deployEventBusForEnvironment(stack, DeploymentEnvironment{Name: "prod", IsProd: true})
-devEventBus := deployEventBusForEnvironment(stack, DeploymentEnvironment{Name: "dev", IsProd: false})
+liveEventBus := deployEventBusForEnvironment(stack, DeploymentEnvironment{Name: "live", IsProd: true})
+labEventBus := deployEventBusForEnvironment(stack, DeploymentEnvironment{Name: "lab", IsProd: false})
+studyEventBus := deployEventBusForEnvironment(stack, DeploymentEnvironment{Name: "study", IsProd: false})
 ```
 
 ### Multi-Tier Deployment
@@ -621,7 +713,7 @@ devEventBus := deployEventBusForEnvironment(stack, DeploymentEnvironment{Name: "
 ```go
 // Create separate EventBus for each tenant tier with unique table names
 premiumEventBus := liftpatterns.NewEventBusPattern(stack, jsii.String("PremiumEventBus"), &liftpatterns.EventBusPatternProps{
-    AppName:                   "my-app-prod-premium",  // Unique name!
+    AppName:                   "my-app-live-premium",  // Unique name!
     BillingMode:               awsdynamodb.BillingMode_PROVISIONED,
     EnablePointInTimeRecovery: jsii.Bool(true),
     ProcessorCodePath:         jsii.String("./build/premium-processor"),
@@ -632,7 +724,7 @@ premiumEventBus := liftpatterns.NewEventBusPattern(stack, jsii.String("PremiumEv
 })
 
 standardEventBus := liftpatterns.NewEventBusPattern(stack, jsii.String("StandardEventBus"), &liftpatterns.EventBusPatternProps{
-    AppName:           "my-app-prod-standard",  // Unique name!
+    AppName:           "my-app-live-standard",  // Unique name!
     ProcessorCodePath: jsii.String("./build/standard-processor"),
     Tags: &map[string]*string{
         "Tier": jsii.String("Standard"),
@@ -654,17 +746,17 @@ eventBus2 := liftpatterns.NewEventBusPattern(stack, jsii.String("EventBus"), &li
 
 // ✅ GOOD: Unique names prevent conflicts
 eventBus1 := liftpatterns.NewEventBusPattern(stack, jsii.String("EventBus"), &liftpatterns.EventBusPatternProps{
-    AppName: "autheory-prod",  // Unique: app + environment
+    AppName: "autheory-live",  // Unique: app + stage
 })
 
 eventBus2 := liftpatterns.NewEventBusPattern(stack, jsii.String("EventBus"), &liftpatterns.EventBusPatternProps{
-    AppName: "payment-service-prod",  // Different app - no conflict
+    AppName: "payment-service-live",  // Different app - no conflict
 })
 
 // ✅ GOOD: Explicit table names (most control)
 eventBus := liftpatterns.NewEventBusPattern(stack, jsii.String("EventBus"), &liftpatterns.EventBusPatternProps{
-    AppName:   "autheory-prod",
-    TableName: jsii.String("autheory-prod-events-v2"),  // Full control over name
+    AppName:   "autheory-live",
+    TableName: jsii.String("autheory-events-live-v2"),  // Full control over name
 })
 ```
 
@@ -879,14 +971,15 @@ func TestEventBusIntegration(t *testing.T) {
         t.Skip("Skipping integration test")
     }
 
-    // Create real DynamoDB client
+    // Create real DynamORM DB (requires an actual DynamoDB table)
     cfg, err := config.LoadDefaultConfig(context.Background())
     require.NoError(t, err)
 
-    dynamoClient := dynamodb.NewFromConfig(cfg)
+    db, err := dynamorm.New(session.Config{Region: cfg.Region})
+    require.NoError(t, err)
 
     // Create EventBus with test table
-    eventBus := services.NewDynamoDBEventBus(dynamoClient, services.EventBusConfig{
+    eventBus := services.NewDynamoDBEventBus(db, services.EventBusConfig{
         TableName: "test-events-" + uuid.New().String(),
     })
 
@@ -1008,7 +1101,7 @@ BatchSize:        jsii.Number(100),  // Process more per invocation
 eventBus := services.NewMemoryEventBus()
 
 // Use this instead:
-eventBus := services.NewDynamoDBEventBus(dynamoClient, config)
+eventBus := services.NewDynamoDBEventBus(db, config)
 ```
 
 ## Migration from In-Memory EventBus
@@ -1030,8 +1123,8 @@ eventBus := liftpatterns.NewEventBusPattern(stack, jsii.String("EventBus"), &lif
 
 // New code
 cfg, _ := config.LoadDefaultConfig(context.Background())
-dynamoClient := dynamodb.NewFromConfig(cfg)
-eventBus := services.NewDynamoDBEventBus(dynamoClient, services.EventBusConfig{
+db, _ := dynamorm.New(session.Config{Region: cfg.Region})
+eventBus := services.NewDynamoDBEventBus(db, services.EventBusConfig{
     TableName: os.Getenv("EVENT_BUS_TABLE_NAME"),
 })
 ```
@@ -1055,10 +1148,11 @@ eventBus := liftpatterns.NewEventBusPattern(stack, jsii.String("EventBus"), &lif
 
 ## Related Documentation
 
-- [DynamORM Integration Guide](./dynamorm-integration.md)
-- [CDK Patterns Guide](./cdk/README.md)
+- [API Reference](./api-reference.md)
+- [CDK Guide](./cdk/README.md)
+- [DynamoDB Streams Patterns](./cdk/dynamo-streams-patterns.md)
 - [Testing Guide](./testing-guide.md)
-- [Observability Guide](./observability.md)
+- [Troubleshooting](./troubleshooting.md)
 
 ## Support
 
@@ -1067,4 +1161,3 @@ For issues or questions:
 - Check existing documentation
 - Review CloudWatch logs and metrics
 - Enable debug logging
-

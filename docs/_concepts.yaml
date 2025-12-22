@@ -20,6 +20,7 @@ concepts:
       - response_streaming
       - cdk_constructs
       - testing_utilities
+      - durable_eventbus
     replaces:
       - raw_lambda_handlers
       - gin_on_lambda
@@ -205,6 +206,22 @@ concepts:
     middleware:
       - WebSocketAuth: authentication for WebSocket connections
       - WebSocketMetrics: metrics collection for WebSocket events
+
+  eventbus:
+    type: feature_set
+    purpose: durable event bus for serverless workloads
+    provides:
+      - dynamodb_persisted_events
+      - time_ordered_event_ids
+      - multi_tenant_queries
+      - batch_publish
+      - optional_stream_processing
+    implementation:
+      - services.EventBus: interface for publish/query/get/delete
+      - services.DynamoDBEventBus: DynamORM-backed DynamoDB implementation
+      - services.MemoryEventBus: in-memory test implementation
+    docs:
+      - docs/eventbus-guide.md
 
   response_streaming:
     type: feature_set

@@ -457,11 +457,12 @@ sam deploy --guided
 
 Now that you have a working Lift application:
 
-1. **Add a Database**: Integrate with DynamoDB using [DynamORM](./DYNAMORM_GUIDE.md)
+1. **Add a Database**: Integrate with DynamoDB using DynamORM (see `examples/dynamorm-multi-tenant/README.md`)
 2. **Add Monitoring**: Set up CloudWatch dashboards and alerts
 3. **Add WebSockets**: Build real-time features
-4. **Add Event Processing**: Handle SQS, S3, and EventBridge events
-5. **Add Response Streaming (SSE)**: Stream progress/events over HTTP with [Response Streaming (SSE)](./response-streaming.md)
+4. **Add Durable EventBus**: Persist events with `services.EventBus` (see `docs/eventbus-guide.md`)
+5. **Add Event Processing**: Handle SQS, S3, and EventBridge events
+6. **Add Response Streaming (SSE)**: Stream progress/events over HTTP with [Response Streaming (SSE)](./response-streaming.md)
 
 ## Common Patterns
 

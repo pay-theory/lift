@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"os"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/naming"
 )
 
 // IdempotencyRecord stores idempotent request data
@@ -32,7 +34,13 @@ type IdempotencyRecord struct {
 
 // TableName returns the DynamoDB table name from environment
 func (i *IdempotencyRecord) TableName() string {
-	return os.Getenv("IDEMPOTENCY_TABLE_NAME")
+	if tableName := os.Getenv("IDEMPOTENCY_TABLE_NAME"); tableName != "" {
+		return tableName
+	}
+	if tableName, ok := naming.ResourceNameFromEnv("idempotency"); ok {
+		return tableName
+	}
+	return "idempotency"
 }
 
 // Status constants
