@@ -8,19 +8,29 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudfront"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudfrontorigins"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53targets"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
+	"github.com/pay-theory/lift/pkg/naming"
 )
 
 // FrontendDistributionProps defines properties for a multi-origin "frontend + API" distribution.
 type FrontendDistributionProps struct {
-	// Required: apex/canonical domain (e.g., "example.com").
-	DomainName *string
-
 	// Required: hosted zone authoritative for DomainName.
 	HostedZone awsroute53.IHostedZone
+	// Optional: custom domain certificate. If omitted, Lift creates a DNS-validated certificate in us-east-1.
+	Certificate awscertificatemanager.ICertificate
+	// Optional: override response headers policy for static content.
+	ResponseHeadersPolicy awscloudfront.IResponseHeadersPolicy
+	// Optional: cache policy for API behaviors.
+	// Note: Authorization must be forwarded via CachePolicy (not OriginRequestPolicy).
+	ApiCachePolicy awscloudfront.ICachePolicy
+	// Optional: origin request policy for API behaviors (default: none).
+	ApiOriginRequestPolicy awscloudfront.IOriginRequestPolicy
+
+	// Required: apex/canonical domain (e.g., "example.com").
+	DomainName *string
 
 	// Required: API origin host (e.g., "api.example.com" or "*.execute-api.*.amazonaws.com").
 	ApiOriginDomainName *string
@@ -32,12 +42,8 @@ type FrontendDistributionProps struct {
 	BucketName *string
 
 	// Optional: bucket configuration.
-	RemovalPolicy     awscdk.RemovalPolicy
 	AutoDeleteObjects *bool
 	Versioned         *bool
-
-	// Optional: custom domain certificate. If omitted, Lift creates a DNS-validated certificate in us-east-1.
-	Certificate awscertificatemanager.ICertificate
 
 	// Optional: additional SANs to include when Lift creates a certificate.
 	SubjectAlternativeNames *[]*string
@@ -53,28 +59,23 @@ type FrontendDistributionProps struct {
 	WebAclId *string
 
 	// Optional: distribution tuning.
-	PriceClass awscloudfront.PriceClass
-	HttpVersion awscloudfront.HttpVersion
 	EnableIpv6 *bool
 
 	// Optional: cache path patterns that should receive long-lived "hashed asset" caching.
 	HashedAssetPathPatterns *[]*string
 
-	// Optional: override response headers policy for static content.
-	ResponseHeadersPolicy awscloudfront.IResponseHeadersPolicy
-
 	// Optional: path patterns routed to the API origin (default: ["api/*", "graphql", ".well-known/*"]).
 	ApiPathPatterns *[]*string
 
-	// Optional: cache policy for API behaviors.
-	// Note: Authorization must be forwarded via CachePolicy (not OriginRequestPolicy).
-	ApiCachePolicy awscloudfront.ICachePolicy
-
-	// Optional: origin request policy for API behaviors (default: none).
-	ApiOriginRequestPolicy awscloudfront.IOriginRequestPolicy
-
 	// Optional: tags applied to created resources.
 	Tags *map[string]*string
+
+	// Optional: bucket configuration.
+	RemovalPolicy awscdk.RemovalPolicy
+
+	// Optional: distribution tuning.
+	PriceClass  awscloudfront.PriceClass
+	HttpVersion awscloudfront.HttpVersion
 }
 
 // FrontendDistribution creates an S3-backed static site with API proxy behaviors.
@@ -91,43 +92,7 @@ type FrontendDistribution struct {
 // NewFrontendDistribution creates a CloudFront distribution with a static S3 origin and API proxy behaviors.
 func NewFrontendDistribution(scope constructs.Construct, id *string, props *FrontendDistributionProps) *FrontendDistribution {
 	construct := constructs.NewConstruct(scope, id)
-	if props == nil {
-		props = &FrontendDistributionProps{}
-	}
-	if props.DomainName == nil || strings.TrimSpace(*props.DomainName) == "" {
-		panic("FrontendDistribution requires DomainName")
-	}
-	if props.HostedZone == nil {
-		panic("FrontendDistribution requires HostedZone")
-	}
-	if props.ApiOriginDomainName == nil || strings.TrimSpace(*props.ApiOriginDomainName) == "" {
-		panic("FrontendDistribution requires ApiOriginDomainName")
-	}
-
-	if props.EnableWWWRedirect == nil {
-		props.EnableWWWRedirect = jsii.Bool(true)
-	}
-	if props.SinglePageApp == nil {
-		props.SinglePageApp = jsii.Bool(false)
-	}
-	if props.EnableIpv6 == nil {
-		props.EnableIpv6 = jsii.Bool(true)
-	}
-	if props.HttpVersion == "" {
-		props.HttpVersion = awscloudfront.HttpVersion_HTTP2
-	}
-	if props.PriceClass == "" {
-		props.PriceClass = awscloudfront.PriceClass_PRICE_CLASS_ALL
-	}
-	if props.RemovalPolicy == "" {
-		props.RemovalPolicy = awscdk.RemovalPolicy_RETAIN
-	}
-	if props.Versioned == nil {
-		props.Versioned = jsii.Bool(false)
-	}
-	if props.RemovalPolicy == awscdk.RemovalPolicy_DESTROY && props.AutoDeleteObjects == nil {
-		props.AutoDeleteObjects = jsii.Bool(true)
-	}
+	props = normalizeFrontendDistributionProps(props)
 
 	nameCtx, hasNameCtx := cloudfrontNamingContext(props.AppName, props.Stage, props.Partner)
 
@@ -145,84 +110,30 @@ func NewFrontendDistribution(scope constructs.Construct, id *string, props *Fron
 		Encryption:        awss3.BucketEncryption_S3_MANAGED,
 	})
 
-	if props.Tags != nil {
-		for k, v := range *props.Tags {
-			awscdk.Tags_Of(frontend.Bucket).Add(jsii.String(k), v, nil)
-		}
-	}
-	if hasNameCtx {
-		awscdk.Tags_Of(frontend.Bucket).Add(jsii.String("Application"), jsii.String(nameCtx.AppName), nil)
-		awscdk.Tags_Of(frontend.Bucket).Add(jsii.String("Environment"), jsii.String(nameCtx.Stage), nil)
-		if nameCtx.Tenant != "" {
-			awscdk.Tags_Of(frontend.Bucket).Add(jsii.String("Partner"), jsii.String(nameCtx.Tenant), nil)
-		}
-	}
-	awscdk.Tags_Of(frontend.Bucket).Add(jsii.String("Framework"), jsii.String("Lift"), nil)
-	awscdk.Tags_Of(frontend.Bucket).Add(jsii.String("Component"), jsii.String("FrontendDistribution"), nil)
+	applyStandardConstructTags(frontend.Bucket, props.Tags, nameCtx, hasNameCtx, "FrontendDistribution")
 
-	cert := props.Certificate
-	if cert == nil {
-		sans := []*string{}
-		if props.SubjectAlternativeNames != nil {
-			sans = append(sans, (*props.SubjectAlternativeNames)...)
-		}
-		if *props.EnableWWWRedirect {
-			www := props.WWWDomainName
-			if www == nil || strings.TrimSpace(*www) == "" {
-				www = jsii.String("www." + strings.TrimSuffix(strings.TrimSpace(*props.DomainName), "."))
-			}
-			sans = append(sans, www)
-			props.WWWDomainName = www
-		}
-
-		cert = awscertificatemanager.NewDnsValidatedCertificate(construct, jsii.String("Certificate"), &awscertificatemanager.DnsValidatedCertificateProps{
-			DomainName:              props.DomainName,
-			HostedZone:              props.HostedZone,
-			Region:                  jsii.String("us-east-1"),
-			SubjectAlternativeNames: &sans,
-		})
-	}
-	frontend.Certificate = cert
+	frontend.Certificate = resolveFrontendDistributionCertificate(construct, props)
 
 	staticOrigin := awscloudfrontorigins.S3BucketOrigin_WithOriginAccessControl(frontend.Bucket, &awscloudfrontorigins.S3BucketOriginWithOACProps{})
 
 	htmlCache := newStaticSiteHTMLCachePolicy(construct, nameCtx, hasNameCtx)
 	assetCache := newStaticSiteAssetCachePolicy(construct, nameCtx, hasNameCtx)
-	headersPolicy := props.ResponseHeadersPolicy
-	if headersPolicy == nil {
-		headersPolicy = newStaticSiteResponseHeadersPolicy(construct, props.DomainName)
-	}
+	headersPolicy := resolveFrontendDistributionHeadersPolicy(construct, props)
 
 	defaultBehavior := &awscloudfront.BehaviorOptions{
-		Origin:               staticOrigin,
-		ViewerProtocolPolicy: awscloudfront.ViewerProtocolPolicy_REDIRECT_TO_HTTPS,
-		CachePolicy:          htmlCache,
+		Origin:                staticOrigin,
+		ViewerProtocolPolicy:  awscloudfront.ViewerProtocolPolicy_REDIRECT_TO_HTTPS,
+		CachePolicy:           htmlCache,
 		ResponseHeadersPolicy: headersPolicy,
-		Compress:             jsii.Bool(true),
+		Compress:              jsii.Bool(true),
 	}
 
-	errorResponses := []*awscloudfront.ErrorResponse(nil)
-	if *props.SinglePageApp {
-		errorResponses = []*awscloudfront.ErrorResponse{
-			{
-				HttpStatus:         jsii.Number(403),
-				ResponseHttpStatus: jsii.Number(200),
-				ResponsePagePath:   jsii.String("/index.html"),
-				Ttl:                awscdk.Duration_Seconds(jsii.Number(0)),
-			},
-			{
-				HttpStatus:         jsii.Number(404),
-				ResponseHttpStatus: jsii.Number(200),
-				ResponsePagePath:   jsii.String("/index.html"),
-				Ttl:                awscdk.Duration_Seconds(jsii.Number(0)),
-			},
-		}
-	}
+	errorResponses := errorResponsesForSinglePageApp(props.SinglePageApp)
 
 	frontend.Distribution = awscloudfront.NewDistribution(construct, jsii.String("Distribution"), &awscloudfront.DistributionProps{
 		DefaultBehavior:   defaultBehavior,
 		DomainNames:       &[]*string{props.DomainName},
-		Certificate:       cert,
+		Certificate:       frontend.Certificate,
 		DefaultRootObject: jsii.String("index.html"),
 		EnableIpv6:        props.EnableIpv6,
 		HttpVersion:       props.HttpVersion,
@@ -231,46 +142,67 @@ func NewFrontendDistribution(scope constructs.Construct, id *string, props *Fron
 		ErrorResponses:    &errorResponses,
 	})
 
-	if props.Tags != nil {
-		for k, v := range *props.Tags {
-			awscdk.Tags_Of(frontend.Distribution).Add(jsii.String(k), v, nil)
-		}
-	}
-	if hasNameCtx {
-		awscdk.Tags_Of(frontend.Distribution).Add(jsii.String("Application"), jsii.String(nameCtx.AppName), nil)
-		awscdk.Tags_Of(frontend.Distribution).Add(jsii.String("Environment"), jsii.String(nameCtx.Stage), nil)
-		if nameCtx.Tenant != "" {
-			awscdk.Tags_Of(frontend.Distribution).Add(jsii.String("Partner"), jsii.String(nameCtx.Tenant), nil)
-		}
-	}
-	awscdk.Tags_Of(frontend.Distribution).Add(jsii.String("Framework"), jsii.String("Lift"), nil)
-	awscdk.Tags_Of(frontend.Distribution).Add(jsii.String("Component"), jsii.String("FrontendDistribution"), nil)
+	applyStandardConstructTags(frontend.Distribution, props.Tags, nameCtx, hasNameCtx, "FrontendDistribution")
+	addHashedAssetBehaviors(frontend.Distribution, staticOrigin, props.HashedAssetPathPatterns, assetCache, headersPolicy)
+	addFrontendDistributionAPIBehaviors(construct, frontend.Distribution, props, nameCtx, hasNameCtx)
+	addCloudFrontAliasRecords(construct, props.HostedZone, props.DomainName, frontend.Distribution, props.EnableIpv6)
+	frontend.WWWRedirect = maybeAddFrontendWWWRedirect(construct, props, frontend.Certificate)
 
-	// Long-lived asset behaviors.
-	assetPatterns := props.HashedAssetPathPatterns
-	if assetPatterns == nil {
-		assetPatterns = &[]*string{
-			jsii.String("assets/*"),
-			jsii.String("static/*"),
-			jsii.String("build/*"),
-			jsii.String("dist/*"),
-			jsii.String("_next/*"),
-			jsii.String("_nuxt/*"),
-		}
+	return frontend
+}
+
+func normalizeFrontendDistributionProps(props *FrontendDistributionProps) *FrontendDistributionProps {
+	if props == nil {
+		props = &FrontendDistributionProps{}
 	}
-	for _, pattern := range *assetPatterns {
-		if pattern == nil || strings.TrimSpace(*pattern) == "" {
-			continue
-		}
-		frontend.Distribution.AddBehavior(pattern, staticOrigin, &awscloudfront.AddBehaviorOptions{
-			ViewerProtocolPolicy: awscloudfront.ViewerProtocolPolicy_REDIRECT_TO_HTTPS,
-			CachePolicy:          assetCache,
-			ResponseHeadersPolicy: headersPolicy,
-			Compress:             jsii.Bool(true),
-		})
+	if props.DomainName == nil || strings.TrimSpace(*props.DomainName) == "" {
+		panic("FrontendDistribution requires DomainName")
+	}
+	if props.HostedZone == nil {
+		panic("FrontendDistribution requires HostedZone")
+	}
+	if props.ApiOriginDomainName == nil || strings.TrimSpace(*props.ApiOriginDomainName) == "" {
+		panic("FrontendDistribution requires ApiOriginDomainName")
 	}
 
-	// API behaviors (no caching).
+	ensureBool(&props.EnableWWWRedirect, true)
+	ensureBool(&props.SinglePageApp, false)
+	ensureBool(&props.EnableIpv6, true)
+	ensureHttpVersion(&props.HttpVersion, awscloudfront.HttpVersion_HTTP2)
+	ensurePriceClass(&props.PriceClass, awscloudfront.PriceClass_PRICE_CLASS_ALL)
+	ensureRemovalPolicy(&props.RemovalPolicy, awscdk.RemovalPolicy_RETAIN)
+	ensureBool(&props.Versioned, false)
+	defaultAutoDeleteObjectsIfDestroy(props.RemovalPolicy, &props.AutoDeleteObjects)
+
+	return props
+}
+
+func resolveFrontendDistributionCertificate(scope constructs.Construct, props *FrontendDistributionProps) awscertificatemanager.ICertificate {
+	if props.Certificate != nil {
+		return props.Certificate
+	}
+
+	sans := []*string{}
+	if props.SubjectAlternativeNames != nil {
+		sans = append(sans, (*props.SubjectAlternativeNames)...)
+	}
+	if props.EnableWWWRedirect != nil && *props.EnableWWWRedirect {
+		www := resolveWWWDomainName(props.DomainName, props.WWWDomainName)
+		sans = append(sans, www)
+		props.WWWDomainName = www
+	}
+
+	return ensureCloudFrontCertificate(scope, nil, props.DomainName, props.HostedZone, sans)
+}
+
+func resolveFrontendDistributionHeadersPolicy(scope constructs.Construct, props *FrontendDistributionProps) awscloudfront.IResponseHeadersPolicy {
+	if props.ResponseHeadersPolicy != nil {
+		return props.ResponseHeadersPolicy
+	}
+	return newStaticSiteResponseHeadersPolicy(scope, props.DomainName)
+}
+
+func addFrontendDistributionAPIBehaviors(scope constructs.Construct, distribution awscloudfront.Distribution, props *FrontendDistributionProps, nameCtx naming.Context, hasNameCtx bool) {
 	apiPatterns := props.ApiPathPatterns
 	if apiPatterns == nil {
 		apiPatterns = &[]*string{
@@ -279,60 +211,44 @@ func NewFrontendDistribution(scope constructs.Construct, id *string, props *Fron
 			jsii.String(".well-known/*"),
 		}
 	}
+
 	apiOrigin := awscloudfrontorigins.NewHttpOrigin(props.ApiOriginDomainName, &awscloudfrontorigins.HttpOriginProps{
 		ProtocolPolicy: awscloudfront.OriginProtocolPolicy_HTTPS_ONLY,
 	})
+
 	apiCachePolicy := props.ApiCachePolicy
 	if apiCachePolicy == nil {
-		apiCachePolicy = defaultAPICachePolicy(construct, nameCtx, hasNameCtx)
+		apiCachePolicy = defaultAPICachePolicy(scope, nameCtx, hasNameCtx)
 	}
-	apiOriginRequestPolicy := props.ApiOriginRequestPolicy
 
 	for _, pattern := range *apiPatterns {
 		if pattern == nil || strings.TrimSpace(*pattern) == "" {
 			continue
 		}
-		frontend.Distribution.AddBehavior(pattern, apiOrigin, &awscloudfront.AddBehaviorOptions{
-			AllowedMethods:      awscloudfront.AllowedMethods_ALLOW_ALL(),
-			CachedMethods:       awscloudfront.CachedMethods_CACHE_GET_HEAD_OPTIONS(),
-			CachePolicy:         apiCachePolicy,
-			OriginRequestPolicy: apiOriginRequestPolicy,
+		distribution.AddBehavior(pattern, apiOrigin, &awscloudfront.AddBehaviorOptions{
+			AllowedMethods:       awscloudfront.AllowedMethods_ALLOW_ALL(),
+			CachedMethods:        awscloudfront.CachedMethods_CACHE_GET_HEAD_OPTIONS(),
+			CachePolicy:          apiCachePolicy,
+			OriginRequestPolicy:  props.ApiOriginRequestPolicy,
 			ViewerProtocolPolicy: awscloudfront.ViewerProtocolPolicy_REDIRECT_TO_HTTPS,
-			Compress:            jsii.Bool(true),
+			Compress:             jsii.Bool(true),
 		})
 	}
+}
 
-	// DNS records.
-	aliasTarget := awsroute53.RecordTarget_FromAlias(awsroute53targets.NewCloudFrontTarget(frontend.Distribution))
-	awsroute53.NewARecord(construct, jsii.String("AliasA"), &awsroute53.ARecordProps{
-		Zone:       props.HostedZone,
-		RecordName: relativeRecordName(props.HostedZone, props.DomainName),
-		Target:     aliasTarget,
+func maybeAddFrontendWWWRedirect(scope constructs.Construct, props *FrontendDistributionProps, cert awscertificatemanager.ICertificate) *HostRedirect {
+	if props.EnableWWWRedirect == nil || !*props.EnableWWWRedirect {
+		return nil
+	}
+
+	www := resolveWWWDomainName(props.DomainName, props.WWWDomainName)
+	return NewHostRedirect(scope, jsii.String("WWWRedirect"), &HostRedirectProps{
+		FromDomainName: www,
+		ToDomainName:   props.DomainName,
+		HostedZone:     props.HostedZone,
+		Certificate:    cert,
+		WebAclId:       props.WebAclId,
+		EnableIpv6:     props.EnableIpv6,
+		Tags:           props.Tags,
 	})
-	if props.EnableIpv6 != nil && *props.EnableIpv6 {
-		awsroute53.NewAaaaRecord(construct, jsii.String("AliasAAAA"), &awsroute53.AaaaRecordProps{
-			Zone:       props.HostedZone,
-			RecordName: relativeRecordName(props.HostedZone, props.DomainName),
-			Target:     aliasTarget,
-		})
-	}
-
-	// Optional www redirect distribution.
-	if *props.EnableWWWRedirect {
-		www := props.WWWDomainName
-		if www == nil || strings.TrimSpace(*www) == "" {
-			www = jsii.String("www." + strings.TrimSuffix(strings.TrimSpace(*props.DomainName), "."))
-		}
-		frontend.WWWRedirect = NewHostRedirect(construct, jsii.String("WWWRedirect"), &HostRedirectProps{
-			FromDomainName: www,
-			ToDomainName:   props.DomainName,
-			HostedZone:     props.HostedZone,
-			Certificate:    cert,
-			WebAclId:       props.WebAclId,
-			EnableIpv6:     props.EnableIpv6,
-			Tags:           props.Tags,
-		})
-	}
-
-	return frontend
 }

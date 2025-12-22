@@ -125,7 +125,11 @@ func (b *requestHandlerBuilder) routeEventBus() error {
 			if results[0].IsNil() {
 				return nil
 			}
-			return results[0].Interface().(error)
+			err, ok := results[0].Interface().(error)
+			if !ok {
+				return SystemError("EventBus handler return value must be error")
+			}
+			return err
 		})
 
 		finalHandler := Handler(handler)

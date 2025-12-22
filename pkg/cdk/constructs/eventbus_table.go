@@ -50,53 +50,109 @@ type EventBusTable struct {
 func NewEventBusTable(scope constructs.Construct, id *string, props *EventBusTableProps) *EventBusTable {
 	construct := constructs.NewConstruct(scope, id)
 
-	// Apply defaults
+	props = defaultEventBusTableProps(props)
+
+	tableName := resolveEventBusTableName(construct, id, props.TableName)
+	billingMode := resolveEventBusBillingMode(props.BillingMode)
+	removalPolicy := resolveEventBusRemovalPolicy(props.RemovalPolicy)
+	ttlAttribute := resolveEventBusTTLAttribute(props.TimeToLiveAttribute)
+	enablePITR := resolveEventBusEnablePITR(props.EnablePointInTimeRecovery)
+	enableStream := props.EnableStream != nil && *props.EnableStream
+	streamViewType := resolveEventBusStreamViewType(props.StreamViewType, enableStream)
+
+	table := awsdynamodb.NewTable(construct, jsii.String("Table"), buildEventBusTableProps(tableName, billingMode, removalPolicy, ttlAttribute, enablePITR, enableStream, streamViewType, props))
+
+	eventIDIndex := addEventBusEventIDIndexIfEnabled(table, billingMode, props.EnableEventIDIndex)
+	addEventBusTenantTimestampIndex(table, billingMode)
+	applyEventBusTableTags(table, props)
+
+	streamArn := resolveEventBusStreamArn(table, enableStream)
+
+	eventBusTable := &EventBusTable{
+		Construct: construct,
+		Table:     table,
+		StreamArn: streamArn,
+	}
+	if eventIDIndex != nil {
+		eventBusTable.EventIDIndex = *eventIDIndex
+	}
+
+	addEventBusTableOutputs(construct, table, tableName, streamArn)
+
+	return eventBusTable
+}
+
+func defaultEventBusTableProps(props *EventBusTableProps) *EventBusTableProps {
 	if props == nil {
-		props = &EventBusTableProps{}
+		return &EventBusTableProps{}
+	}
+	return props
+}
+
+func resolveEventBusTableName(scope constructs.Construct, id *string, tableName *string) *string {
+	if tableName != nil {
+		return tableName
 	}
 
-	tableName := props.TableName
-	if tableName == nil {
-		// Prefer deterministic names when APP_NAME/STAGE[/PARTNER] are available.
-		if resolved, ok := naming.ResourceNameFromEnv("events"); ok {
-			tableName = jsii.String(resolved)
-		} else {
-			// IMPORTANT: TableName is effectively required to avoid conflicts
-			// between multiple applications in the same AWS account.
-			// If not provided, we'll use the construct ID with stack name prefix
-			// to generate a unique name, but explicit naming is recommended.
-			stack := awscdk.Stack_Of(construct)
-			stackName := *stack.StackName()
-			tableName = jsii.String(stackName + "-" + *id)
-		}
+	// Prefer deterministic names when APP_NAME/STAGE[/PARTNER] are available.
+	if resolved, ok := naming.ResourceNameFromEnv("events"); ok {
+		return jsii.String(resolved)
 	}
 
-	billingMode := props.BillingMode
+	// IMPORTANT: TableName is effectively required to avoid conflicts
+	// between multiple applications in the same AWS account.
+	// If not provided, we'll use the construct ID with stack name prefix
+	// to generate a unique name, but explicit naming is recommended.
+	stack := awscdk.Stack_Of(scope)
+	stackName := *stack.StackName()
+	return jsii.String(stackName + "-" + *id)
+}
+
+func resolveEventBusBillingMode(billingMode awsdynamodb.BillingMode) awsdynamodb.BillingMode {
 	if billingMode == "" {
-		billingMode = awsdynamodb.BillingMode_PAY_PER_REQUEST
+		return awsdynamodb.BillingMode_PAY_PER_REQUEST
 	}
+	return billingMode
+}
 
-	removalPolicy := props.RemovalPolicy
+func resolveEventBusRemovalPolicy(removalPolicy awscdk.RemovalPolicy) awscdk.RemovalPolicy {
 	if removalPolicy == "" {
-		removalPolicy = awscdk.RemovalPolicy_RETAIN
+		return awscdk.RemovalPolicy_RETAIN
 	}
+	return removalPolicy
+}
 
-	ttlAttribute := props.TimeToLiveAttribute
+func resolveEventBusTTLAttribute(ttlAttribute *string) *string {
 	if ttlAttribute == nil {
-		ttlAttribute = jsii.String("ttl")
+		return jsii.String("ttl")
 	}
+	return ttlAttribute
+}
 
-	enablePITR := props.EnablePointInTimeRecovery
+func resolveEventBusEnablePITR(enablePITR *bool) *bool {
 	if enablePITR == nil {
-		enablePITR = jsii.Bool(true)
+		return jsii.Bool(true)
 	}
+	return enablePITR
+}
 
-	streamViewType := props.StreamViewType
-	if streamViewType == "" && (props.EnableStream != nil && *props.EnableStream) {
-		streamViewType = awsdynamodb.StreamViewType_NEW_IMAGE
+func resolveEventBusStreamViewType(streamViewType awsdynamodb.StreamViewType, enableStream bool) awsdynamodb.StreamViewType {
+	if streamViewType == "" && enableStream {
+		return awsdynamodb.StreamViewType_NEW_IMAGE
 	}
+	return streamViewType
+}
 
-	// Build table properties
+func buildEventBusTableProps(
+	tableName *string,
+	billingMode awsdynamodb.BillingMode,
+	removalPolicy awscdk.RemovalPolicy,
+	ttlAttribute *string,
+	enablePITR *bool,
+	enableStream bool,
+	streamViewType awsdynamodb.StreamViewType,
+	props *EventBusTableProps,
+) *awsdynamodb.TableProps {
 	tableProps := &awsdynamodb.TableProps{
 		TableName:   tableName,
 		BillingMode: billingMode,
@@ -114,50 +170,50 @@ func NewEventBusTable(scope constructs.Construct, id *string, props *EventBusTab
 		Encryption:          awsdynamodb.TableEncryption_AWS_MANAGED,
 	}
 
-	// Add provisioned capacity if specified
+	// Add provisioned capacity if specified.
 	if billingMode == awsdynamodb.BillingMode_PROVISIONED {
-		if props.ReadCapacity != nil {
-			tableProps.ReadCapacity = props.ReadCapacity
-		} else {
+		tableProps.ReadCapacity = props.ReadCapacity
+		if tableProps.ReadCapacity == nil {
 			tableProps.ReadCapacity = jsii.Number(5)
 		}
-		if props.WriteCapacity != nil {
-			tableProps.WriteCapacity = props.WriteCapacity
-		} else {
+		tableProps.WriteCapacity = props.WriteCapacity
+		if tableProps.WriteCapacity == nil {
 			tableProps.WriteCapacity = jsii.Number(5)
 		}
 	}
 
-	// Enable streams if requested
-	if props.EnableStream != nil && *props.EnableStream {
+	// Enable streams if requested.
+	if enableStream {
 		tableProps.Stream = streamViewType
 	}
 
-	// Create table
-	table := awsdynamodb.NewTable(construct, jsii.String("Table"), tableProps)
+	return tableProps
+}
 
-	// Add GSI for event ID lookups if requested
-	var eventIDIndex *awsdynamodb.GlobalSecondaryIndexProps
-	if props.EnableEventIDIndex != nil && *props.EnableEventIDIndex {
-		indexProps := &awsdynamodb.GlobalSecondaryIndexProps{
-			IndexName: jsii.String("event-id-index"),
-			PartitionKey: &awsdynamodb.Attribute{
-				Name: jsii.String("id"),
-				Type: awsdynamodb.AttributeType_STRING,
-			},
-			ProjectionType: awsdynamodb.ProjectionType_ALL,
-		}
-
-		if billingMode == awsdynamodb.BillingMode_PROVISIONED {
-			indexProps.ReadCapacity = jsii.Number(5)
-			indexProps.WriteCapacity = jsii.Number(5)
-		}
-
-		table.AddGlobalSecondaryIndex(indexProps)
-		eventIDIndex = indexProps
+func addEventBusEventIDIndexIfEnabled(table awsdynamodb.Table, billingMode awsdynamodb.BillingMode, enabled *bool) *awsdynamodb.GlobalSecondaryIndexProps {
+	if enabled == nil || !*enabled {
+		return nil
 	}
 
-	// Add tenant ID + timestamp GSI for efficient tenant queries
+	indexProps := &awsdynamodb.GlobalSecondaryIndexProps{
+		IndexName: jsii.String("event-id-index"),
+		PartitionKey: &awsdynamodb.Attribute{
+			Name: jsii.String("id"),
+			Type: awsdynamodb.AttributeType_STRING,
+		},
+		ProjectionType: awsdynamodb.ProjectionType_ALL,
+	}
+
+	if billingMode == awsdynamodb.BillingMode_PROVISIONED {
+		indexProps.ReadCapacity = jsii.Number(5)
+		indexProps.WriteCapacity = jsii.Number(5)
+	}
+
+	table.AddGlobalSecondaryIndex(indexProps)
+	return indexProps
+}
+
+func addEventBusTenantTimestampIndex(table awsdynamodb.Table, billingMode awsdynamodb.BillingMode) {
 	tenantIndexProps := &awsdynamodb.GlobalSecondaryIndexProps{
 		IndexName: jsii.String("tenant-timestamp-index"),
 		PartitionKey: &awsdynamodb.Attribute{
@@ -177,56 +233,46 @@ func NewEventBusTable(scope constructs.Construct, id *string, props *EventBusTab
 	}
 
 	table.AddGlobalSecondaryIndex(tenantIndexProps)
+}
 
-	// Apply tags if provided
-	if props.Tags != nil {
+func applyEventBusTableTags(table awsdynamodb.Table, props *EventBusTableProps) {
+	if props != nil && props.Tags != nil {
 		for key, value := range *props.Tags {
 			awscdk.Tags_Of(table).Add(jsii.String(key), value, nil)
 		}
 	}
 
-	// Add standard tags
 	awscdk.Tags_Of(table).Add(jsii.String("ManagedBy"), jsii.String("Lift"), nil)
 	awscdk.Tags_Of(table).Add(jsii.String("Purpose"), jsii.String("EventBus"), nil)
+}
 
-	// Get stream ARN if enabled
-	var streamArn *string
-	if props.EnableStream != nil && *props.EnableStream {
-		streamArn = table.TableStreamArn()
+func resolveEventBusStreamArn(table awsdynamodb.Table, enableStream bool) *string {
+	if !enableStream {
+		return nil
 	}
+	return table.TableStreamArn()
+}
 
-	eventBusTable := &EventBusTable{
-		Construct: construct,
-		Table:     table,
-		StreamArn: streamArn,
-	}
-
-	if eventIDIndex != nil {
-		eventBusTable.EventIDIndex = *eventIDIndex
-	}
-
-	// Output useful values
-	awscdk.NewCfnOutput(construct, jsii.String("EventBusTableName"), &awscdk.CfnOutputProps{
+func addEventBusTableOutputs(scope constructs.Construct, table awsdynamodb.Table, tableName *string, streamArn *string) {
+	awscdk.NewCfnOutput(scope, jsii.String("EventBusTableName"), &awscdk.CfnOutputProps{
 		Value:       table.TableName(),
 		Description: jsii.String("EventBus DynamoDB table name"),
 		ExportName:  jsii.String(*tableName + "-name"),
 	})
 
-	awscdk.NewCfnOutput(construct, jsii.String("EventBusTableArn"), &awscdk.CfnOutputProps{
+	awscdk.NewCfnOutput(scope, jsii.String("EventBusTableArn"), &awscdk.CfnOutputProps{
 		Value:       table.TableArn(),
 		Description: jsii.String("EventBus DynamoDB table ARN"),
 		ExportName:  jsii.String(*tableName + "-arn"),
 	})
 
 	if streamArn != nil {
-		awscdk.NewCfnOutput(construct, jsii.String("EventBusStreamArn"), &awscdk.CfnOutputProps{
+		awscdk.NewCfnOutput(scope, jsii.String("EventBusStreamArn"), &awscdk.CfnOutputProps{
 			Value:       streamArn,
 			Description: jsii.String("EventBus DynamoDB stream ARN"),
 			ExportName:  jsii.String(*tableName + "-stream-arn"),
 		})
 	}
-
-	return eventBusTable
 }
 
 // GrantReadWrite grants read and write permissions to a Lambda function

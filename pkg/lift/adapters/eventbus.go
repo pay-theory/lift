@@ -62,7 +62,7 @@ func (a *EventBusAdapter) Adapt(rawEvent any) (*Request, error) {
 	}
 
 	var stream events.DynamoDBEvent
-	if err := json.Unmarshal(rawBytes, &stream); err != nil {
+	if err = json.Unmarshal(rawBytes, &stream); err != nil {
 		return nil, fmt.Errorf("failed to decode DynamoDB stream event: %w", err)
 	}
 

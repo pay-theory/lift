@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-// ExponentialBackoff returns base*2^(attempt-1) capped by max.
+// ExponentialBackoff returns base*2^(attempt-1) capped by maxDelay.
 //
 // attempt is 1-based (attempt=1 returns base). When attempt <= 0, 0 is returned.
-func ExponentialBackoff(attempt int, base time.Duration, max time.Duration) time.Duration {
+func ExponentialBackoff(attempt int, base time.Duration, maxDelay time.Duration) time.Duration {
 	if attempt <= 0 {
 		return 0
 	}
@@ -19,8 +19,8 @@ func ExponentialBackoff(attempt int, base time.Duration, max time.Duration) time
 
 	exp := minInt(attempt-1, 30)
 	delay := base * time.Duration(1<<exp)
-	if max > 0 && delay > max {
-		delay = max
+	if maxDelay > 0 && delay > maxDelay {
+		delay = maxDelay
 	}
 	return delay
 }
@@ -28,8 +28,8 @@ func ExponentialBackoff(attempt int, base time.Duration, max time.Duration) time
 // ExponentialBackoffWithJitter applies equal jitter to ExponentialBackoff using a deterministic seed.
 //
 // The returned delay is in the range [baseDelay/2, baseDelay] where baseDelay is the exponential value.
-func ExponentialBackoffWithJitter(attempt int, base time.Duration, max time.Duration, seed string) time.Duration {
-	delay := ExponentialBackoff(attempt, base, max)
+func ExponentialBackoffWithJitter(attempt int, base time.Duration, maxDelay time.Duration, seed string) time.Duration {
+	delay := ExponentialBackoff(attempt, base, maxDelay)
 	if delay <= 0 {
 		return 0
 	}
@@ -42,7 +42,10 @@ func ExponentialBackoffWithJitter(attempt int, base time.Duration, max time.Dura
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(seed))
 	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], uint64(attempt))
+	if attempt < 0 {
+		attempt = 0
+	}
+	binary.LittleEndian.PutUint64(buf[:], uint64(attempt)) //nolint:gosec // attempt is sanitized to be >= 0
 	_, _ = h.Write(buf[:])
 
 	jitterRange := half.Nanoseconds()
@@ -50,6 +53,6 @@ func ExponentialBackoffWithJitter(attempt int, base time.Duration, max time.Dura
 		return delay
 	}
 
-	jitter := int64(h.Sum64() % uint64(jitterRange))
+	jitter := int64(h.Sum64() % uint64(jitterRange)) //nolint:gosec // result is mod positive int64, so it fits in int64
 	return half + time.Duration(jitter)*time.Nanosecond
 }

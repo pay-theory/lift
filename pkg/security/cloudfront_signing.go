@@ -16,20 +16,19 @@ import (
 // It is a thin wrapper around aws-sdk-go-v2's CloudFront signing helpers, wired to
 // Lift's SecretsProvider for loading private keys at runtime.
 type CloudFrontSigner struct {
-	keyPairID string
 	privKey   *rsa.PrivateKey
 	urlSigner *sign.URLSigner
+	keyPairID string
 }
 
 // CloudFrontCookieOptions configures optional attributes on signed cookies.
 type CloudFrontCookieOptions struct {
+	// Optional: if set, applies Expires to all cookies.
+	Expires  time.Time
 	Path     string
 	Domain   string
-	Secure   bool
 	SameSite http.SameSite
-
-	// Optional: if set, applies Expires to all cookies.
-	Expires time.Time
+	Secure   bool
 }
 
 // NewCloudFrontSigner creates a signer from an RSA private key PEM (PKCS#1 or PKCS#8).
@@ -106,4 +105,3 @@ func (s *CloudFrontSigner) SignCookies(resource string, expires time.Time, opts 
 
 	return cookieSigner.Sign(resource, expires, optionFns...)
 }
-

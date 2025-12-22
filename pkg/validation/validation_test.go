@@ -119,4 +119,3 @@ func TestValidate(t *testing.T) {
 		t.Errorf("expected aggregated error string to contain %d separators, got %d", len(validationErrs)-1, count)
 	}
 }
-

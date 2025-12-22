@@ -40,4 +40,3 @@ func TestCloudFrontSigner_SignsURLAndCookies(t *testing.T) {
 	require.Equal(t, "CloudFront-Signature", cookies[1].Name)
 	require.Equal(t, "CloudFront-Key-Pair-Id", cookies[2].Name)
 }
-

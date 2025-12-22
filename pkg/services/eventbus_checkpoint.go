@@ -19,13 +19,14 @@ const (
 //
 // The primary key is scoped to a consumer name so multiple processors can independently dedupe the same event.
 type EventBusCheckpoint struct {
+	ProcessedAt time.Time `dynamodb:"processed_at" json:"processed_at"`
+
 	PK string `dynamorm:"pk,attr:pk" dynamodb:"pk" json:"-"`
 	SK string `dynamorm:"sk,attr:sk" dynamodb:"sk" json:"-"`
 
-	Consumer    string    `dynamodb:"consumer" json:"consumer"`
-	EventID     string    `dynamodb:"event_id" json:"event_id"`
-	EventType   string    `dynamodb:"event_type,omitempty" json:"event_type,omitempty"`
-	ProcessedAt time.Time `dynamodb:"processed_at" json:"processed_at"`
+	Consumer  string `dynamodb:"consumer" json:"consumer"`
+	EventID   string `dynamodb:"event_id" json:"event_id"`
+	EventType string `dynamodb:"event_type,omitempty" json:"event_type,omitempty"`
 
 	TTL int64 `dynamorm:"ttl,omitempty" dynamodb:"ttl,omitempty" json:"-"`
 }

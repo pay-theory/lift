@@ -21,36 +21,30 @@ const (
 // Scheduled events are stored in the same DynamoDB table as EventBus events to avoid requiring
 // additional infrastructure. They are keyed by a fixed partition key with a sort key ordered by
 // due time.
-type EventBusScheduledEvent struct {
-	PK string `dynamorm:"pk,attr:pk" dynamodb:"pk" json:"-"`
-	SK string `dynamorm:"sk,attr:sk" dynamodb:"sk" json:"-"`
-
-	DueAt     time.Time `dynamodb:"due_at" json:"due_at"`
-	CreatedAt time.Time `dynamodb:"created_at" json:"created_at"`
-
-	EventID       string `dynamodb:"event_id" json:"event_id"`
-	EventType     string `dynamodb:"event_type" json:"event_type"`
-	TenantID      string `dynamodb:"tenant_id" json:"tenant_id"`
-	SourceID      string `dynamodb:"source_id" json:"source_id"`
-	CorrelationID string `dynamodb:"correlation_id,omitempty" json:"correlation_id,omitempty"`
-
-	Payload  json.RawMessage   `dynamodb:"payload" json:"payload"`
-	Metadata map[string]string `dynamodb:"metadata,omitempty" json:"metadata,omitempty"`
-	Tags     []string          `dynamodb:"tags,omitempty" json:"tags,omitempty"`
-
-	Version    int `dynamodb:"version" json:"version"`
-	RetryCount int `dynamodb:"retry_count" json:"retry_count"`
-
+type EventBusScheduledEvent struct { //nolint:govet // fieldalignment: complex mix of time, slices, and maps
+	DueAt         time.Time `dynamodb:"due_at" json:"due_at"`
+	CreatedAt     time.Time `dynamodb:"created_at" json:"created_at"`
 	LastAttemptAt time.Time `dynamodb:"last_attempt_at,omitempty" json:"last_attempt_at,omitempty"`
-	LastError     string    `dynamodb:"last_error,omitempty" json:"last_error,omitempty"`
 
-	// Lease fields are used to safely drain scheduled events with multiple concurrent drainers.
-	// They are optional and only used by EventBusDrainDueScheduled.
-	LeaseID    string `dynamodb:"lease_id,omitempty" json:"lease_id,omitempty"`
-	LeaseOwner string `dynamodb:"lease_owner,omitempty" json:"lease_owner,omitempty"`
-	LeaseUntil int64  `dynamodb:"lease_until,omitempty" json:"lease_until,omitempty"`
+	Metadata map[string]string `dynamodb:"metadata,omitempty" json:"metadata,omitempty"`
 
-	TTL int64 `dynamorm:"ttl,omitempty" dynamodb:"ttl,omitempty" json:"-"`
+	Payload       json.RawMessage `dynamodb:"payload" json:"payload"`
+	Tags          []string        `dynamodb:"tags,omitempty" json:"tags,omitempty"`
+	EventID       string          `dynamodb:"event_id" json:"event_id"`
+	EventType     string          `dynamodb:"event_type" json:"event_type"`
+	TenantID      string          `dynamodb:"tenant_id" json:"tenant_id"`
+	SourceID      string          `dynamodb:"source_id" json:"source_id"`
+	CorrelationID string          `dynamodb:"correlation_id,omitempty" json:"correlation_id,omitempty"`
+	LastError     string          `dynamodb:"last_error,omitempty" json:"last_error,omitempty"`
+	LeaseID       string          `dynamodb:"lease_id,omitempty" json:"lease_id,omitempty"`
+	LeaseOwner    string          `dynamodb:"lease_owner,omitempty" json:"lease_owner,omitempty"`
+	PK            string          `dynamorm:"pk,attr:pk" dynamodb:"pk" json:"-"`
+	SK            string          `dynamorm:"sk,attr:sk" dynamodb:"sk" json:"-"`
+
+	LeaseUntil int64 `dynamodb:"lease_until,omitempty" json:"lease_until,omitempty"`
+	TTL        int64 `dynamorm:"ttl,omitempty" dynamodb:"ttl,omitempty" json:"-"`
+	Version    int   `dynamodb:"version" json:"version"`
+	RetryCount int   `dynamodb:"retry_count" json:"retry_count"`
 }
 
 func (*EventBusScheduledEvent) TableName() string {
@@ -282,18 +276,11 @@ type EventBusScheduleDrainResult struct {
 
 // EventBusScheduleDrainOptions configures EventBusDrainDueScheduledWithOptions.
 type EventBusScheduleDrainOptions struct {
-	// LeaseDuration controls how long a drainer claims an item while publishing.
-	LeaseDuration time.Duration
 	// LeaseOwner is optional metadata stored alongside the lease.
 	LeaseOwner string
 
-	// ContinueOnPublishError enables retry/backoff semantics for publish failures.
-	// When false, the drainer stops and returns the publish error.
-	ContinueOnPublishError bool
-
-	// MaxPublishAttempts controls when a scheduled item is quarantined after repeated publish failures.
-	// When == 0, a default is applied. When < 0, items are never quarantined and will retry indefinitely.
-	MaxPublishAttempts int
+	// LeaseDuration controls how long a drainer claims an item while publishing.
+	LeaseDuration time.Duration
 
 	// RetryBaseDelay is the base delay for exponential backoff after a publish failure.
 	RetryBaseDelay time.Duration
@@ -303,6 +290,14 @@ type EventBusScheduleDrainOptions struct {
 	// QuarantineRetention controls TTL on quarantine records.
 	// When == 0, a default is applied. When < 0, quarantine records do not expire.
 	QuarantineRetention time.Duration
+
+	// MaxPublishAttempts controls when a scheduled item is quarantined after repeated publish failures.
+	// When == 0, a default is applied. When < 0, items are never quarantined and will retry indefinitely.
+	MaxPublishAttempts int
+
+	// ContinueOnPublishError enables retry/backoff semantics for publish failures.
+	// When false, the drainer stops and returns the publish error.
+	ContinueOnPublishError bool
 }
 
 func (o EventBusScheduleDrainOptions) withDefaults() EventBusScheduleDrainOptions {
@@ -344,11 +339,8 @@ func EventBusDrainDueScheduled(ctx context.Context, db core.ExtendedDB, bus Even
 //   - extending LeaseUntil with exponential backoff + jitter
 //   - quarantining items after MaxPublishAttempts (when > 0)
 func EventBusDrainDueScheduledWithOptions(ctx context.Context, db core.ExtendedDB, bus EventBus, now time.Time, limit int, opts EventBusScheduleDrainOptions) (EventBusScheduleDrainResult, error) {
-	if db == nil {
-		return EventBusScheduleDrainResult{}, fmt.Errorf("db is required")
-	}
-	if bus == nil {
-		return EventBusScheduleDrainResult{}, fmt.Errorf("bus is required")
+	if err := validateEventBusDrainScheduledInputs(db, bus); err != nil {
+		return EventBusScheduleDrainResult{}, err
 	}
 
 	items, err := EventBusDueScheduled(ctx, db, now, limit)
@@ -361,88 +353,126 @@ func EventBusDrainDueScheduledWithOptions(ctx context.Context, db core.ExtendedD
 	result := EventBusScheduleDrainResult{Due: len(items)}
 	for i := range items {
 		item := items[i]
-
-		leaseID, claimed, err := EventBusClaimScheduled(ctx, db, &item, now, opts.LeaseDuration, opts.LeaseOwner)
-		if err != nil {
+		if err := drainDueScheduledItem(ctx, db, bus, now, opts, &item, &result); err != nil {
 			return result, err
 		}
-		if !claimed {
-			continue
-		}
-		result.Claimed++
-
-		event := item.Event()
-		if event == nil {
-			continue
-		}
-
-		// Ensure stable keys so replays are safe.
-		if event.CreatedAt.IsZero() && !item.CreatedAt.IsZero() {
-			event.CreatedAt = item.CreatedAt
-		}
-		if event.PublishedAt.IsZero() && !item.DueAt.IsZero() {
-			event.PublishedAt = item.DueAt
-		}
-		if event.PartitionKey == "" {
-			event.PartitionKey = fmt.Sprintf("%s#%s", event.TenantID, event.EventType)
-		}
-		if event.SortKey == "" {
-			event.SortKey = fmt.Sprintf("%d#%s", item.DueAt.UTC().UnixNano(), event.ID)
-		}
-
-		if _, err := bus.Publish(ctx, event); err != nil {
-			if errors.Is(err, dynamormerrors.ErrConditionFailed) {
-				result.AlreadyPublished++
-				if err := EventBusDeleteScheduledClaimed(ctx, db, &item, leaseID); err != nil {
-					if errors.Is(err, dynamormerrors.ErrConditionFailed) {
-						continue
-					}
-					return result, err
-				}
-				result.Deleted++
-				continue
-			}
-
-			if !opts.ContinueOnPublishError {
-				return result, fmt.Errorf("failed to publish scheduled event %q: %w", item.EventID, err)
-			}
-
-			attempt := item.RetryCount + 1
-			if opts.MaxPublishAttempts > 0 && attempt >= opts.MaxPublishAttempts {
-				quarantined, qErr := EventBusQuarantineScheduled(ctx, db, &item, leaseID, err, attempt, opts.QuarantineRetention)
-				if qErr != nil {
-					return result, qErr
-				}
-				if quarantined {
-					result.Quarantined++
-				}
-				continue
-			}
-
-			delay := ExponentialBackoffWithJitter(attempt, opts.RetryBaseDelay, opts.RetryMaxDelay, item.EventID)
-			if delay <= 0 {
-				delay = opts.RetryBaseDelay
-			}
-
-			if err := EventBusBackoffScheduled(ctx, db, &item, leaseID, now, delay, err); err != nil {
-				if errors.Is(err, dynamormerrors.ErrConditionFailed) {
-					continue
-				}
-				return result, err
-			}
-			result.Rescheduled++
-			continue
-		}
-
-		result.Published++
-		if err := EventBusDeleteScheduledClaimed(ctx, db, &item, leaseID); err != nil {
-			if errors.Is(err, dynamormerrors.ErrConditionFailed) {
-				continue
-			}
-			return result, err
-		}
-		result.Deleted++
 	}
 
 	return result, nil
+}
+
+func validateEventBusDrainScheduledInputs(db core.ExtendedDB, bus EventBus) error {
+	if db == nil {
+		return fmt.Errorf("db is required")
+	}
+	if bus == nil {
+		return fmt.Errorf("bus is required")
+	}
+	return nil
+}
+
+func drainDueScheduledItem(ctx context.Context, db core.ExtendedDB, bus EventBus, now time.Time, opts EventBusScheduleDrainOptions, item *EventBusScheduledEvent, result *EventBusScheduleDrainResult) error {
+	leaseID, claimed, err := EventBusClaimScheduled(ctx, db, item, now, opts.LeaseDuration, opts.LeaseOwner)
+	if err != nil {
+		return err
+	}
+	if !claimed {
+		return nil
+	}
+	result.Claimed++
+
+	event := item.Event()
+	if event == nil {
+		return nil
+	}
+
+	applyScheduledEventStableKeys(event, item)
+
+	if _, err := bus.Publish(ctx, event); err != nil {
+		return handleScheduledPublishError(ctx, db, item, leaseID, now, opts, result, err)
+	}
+
+	result.Published++
+	return deleteScheduledItemIfLeaseHeld(ctx, db, item, leaseID, result)
+}
+
+func applyScheduledEventStableKeys(event *Event, item *EventBusScheduledEvent) {
+	if event == nil || item == nil {
+		return
+	}
+
+	if event.CreatedAt.IsZero() && !item.CreatedAt.IsZero() {
+		event.CreatedAt = item.CreatedAt
+	}
+	if event.PublishedAt.IsZero() && !item.DueAt.IsZero() {
+		event.PublishedAt = item.DueAt
+	}
+	if event.PartitionKey == "" {
+		event.PartitionKey = fmt.Sprintf("%s#%s", event.TenantID, event.EventType)
+	}
+	if event.SortKey == "" {
+		event.SortKey = fmt.Sprintf("%d#%s", item.DueAt.UTC().UnixNano(), event.ID)
+	}
+}
+
+func handleScheduledPublishError(ctx context.Context, db core.ExtendedDB, item *EventBusScheduledEvent, leaseID string, now time.Time, opts EventBusScheduleDrainOptions, result *EventBusScheduleDrainResult, publishErr error) error {
+	if errors.Is(publishErr, dynamormerrors.ErrConditionFailed) {
+		result.AlreadyPublished++
+		return deleteScheduledItemIfLeaseHeld(ctx, db, item, leaseID, result)
+	}
+
+	if !opts.ContinueOnPublishError {
+		return fmt.Errorf("failed to publish scheduled event %q: %w", item.EventID, publishErr)
+	}
+
+	attempt := item.RetryCount + 1
+	if shouldQuarantineScheduled(attempt, opts) {
+		return quarantineScheduledItem(ctx, db, item, leaseID, publishErr, attempt, opts, result)
+	}
+
+	return backoffScheduledItem(ctx, db, item, leaseID, now, publishErr, attempt, opts, result)
+}
+
+func shouldQuarantineScheduled(attempt int, opts EventBusScheduleDrainOptions) bool {
+	return opts.MaxPublishAttempts > 0 && attempt >= opts.MaxPublishAttempts
+}
+
+func quarantineScheduledItem(ctx context.Context, db core.ExtendedDB, item *EventBusScheduledEvent, leaseID string, publishErr error, attempt int, opts EventBusScheduleDrainOptions, result *EventBusScheduleDrainResult) error {
+	quarantined, err := EventBusQuarantineScheduled(ctx, db, item, leaseID, publishErr, attempt, opts.QuarantineRetention)
+	if err != nil {
+		return err
+	}
+	if quarantined {
+		result.Quarantined++
+	}
+	return nil
+}
+
+func backoffScheduledItem(ctx context.Context, db core.ExtendedDB, item *EventBusScheduledEvent, leaseID string, now time.Time, publishErr error, attempt int, opts EventBusScheduleDrainOptions, result *EventBusScheduleDrainResult) error {
+	delay := ExponentialBackoffWithJitter(attempt, opts.RetryBaseDelay, opts.RetryMaxDelay, item.EventID)
+	if delay <= 0 {
+		delay = opts.RetryBaseDelay
+	}
+
+	if err := EventBusBackoffScheduled(ctx, db, item, leaseID, now, delay, publishErr); err != nil {
+		if errors.Is(err, dynamormerrors.ErrConditionFailed) {
+			return nil
+		}
+		return err
+	}
+
+	result.Rescheduled++
+	return nil
+}
+
+func deleteScheduledItemIfLeaseHeld(ctx context.Context, db core.ExtendedDB, item *EventBusScheduledEvent, leaseID string, result *EventBusScheduleDrainResult) error {
+	if err := EventBusDeleteScheduledClaimed(ctx, db, item, leaseID); err != nil {
+		if errors.Is(err, dynamormerrors.ErrConditionFailed) {
+			return nil
+		}
+		return err
+	}
+
+	result.Deleted++
+	return nil
 }

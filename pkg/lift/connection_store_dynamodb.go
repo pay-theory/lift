@@ -7,10 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pay-theory/dynamorm"
 	"github.com/pay-theory/dynamorm/pkg/core"
 	dynamormerrors "github.com/pay-theory/dynamorm/pkg/errors"
-	"github.com/pay-theory/dynamorm/pkg/session"
 
 	"github.com/pay-theory/lift/pkg/naming"
 )
@@ -49,19 +47,9 @@ func NewDynamoDBConnectionStore(_ context.Context, config DynamoDBConnectionStor
 		return nil, err
 	}
 
-	sessionConfig := session.Config{
-		Region: config.Region,
-	}
-	if config.Endpoint != "" {
-		sessionConfig.Endpoint = config.Endpoint
-	}
-	if config.MaxRetries > 0 {
-		sessionConfig.MaxRetries = config.MaxRetries
-	}
-
-	db, err := dynamorm.New(sessionConfig)
+	db, err := initializeDynamORM(config.Region, config.Endpoint, config.MaxRetries)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize DynamORM: %w", err)
+		return nil, err
 	}
 
 	return &DynamoDBConnectionStore{

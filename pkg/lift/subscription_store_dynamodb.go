@@ -6,9 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pay-theory/dynamorm"
 	"github.com/pay-theory/dynamorm/pkg/core"
-	"github.com/pay-theory/dynamorm/pkg/session"
 )
 
 // DynamoDBSubscriptionStore implements SubscriptionStore using the WebSocket connections DynamoDB table.
@@ -45,19 +43,9 @@ func NewDynamoDBSubscriptionStore(_ context.Context, config DynamoDBSubscription
 		return nil, err
 	}
 
-	sessionConfig := session.Config{
-		Region: config.Region,
-	}
-	if config.Endpoint != "" {
-		sessionConfig.Endpoint = config.Endpoint
-	}
-	if config.MaxRetries > 0 {
-		sessionConfig.MaxRetries = config.MaxRetries
-	}
-
-	db, err := dynamorm.New(sessionConfig)
+	db, err := initializeDynamORM(config.Region, config.Endpoint, config.MaxRetries)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize DynamORM: %w", err)
+		return nil, err
 	}
 
 	return &DynamoDBSubscriptionStore{

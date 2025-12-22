@@ -52,7 +52,9 @@ func NewDynamoDBEventBus(db core.ExtendedDB, config EventBusConfig) *DynamoDBEve
 	if config.TableName != "" {
 		// Override Event.TableName() for the process lifetime.
 		// DynamORM caches table metadata per model type, so table names must be stable.
-		_ = setEventBusTableNameOverride(config.TableName)
+		if err := setEventBusTableNameOverride(config.TableName); err != nil {
+			panic(fmt.Sprintf("failed to set event bus table name override: %v", err))
+		}
 	} else {
 		config.TableName = (&Event{}).TableName()
 	}

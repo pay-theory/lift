@@ -101,9 +101,9 @@ func defaultAPICachePolicy(scope constructs.Construct, nameCtx naming.Context, h
 	}
 
 	return awscloudfront.NewCachePolicy(scope, jsii.String("ApiCachePolicy"), &awscloudfront.CachePolicyProps{
-		CachePolicyName: name,
-		Comment:         jsii.String("Lift API cache policy (TTL 0; forwards auth + CORS headers)"),
-		CookieBehavior:  awscloudfront.CacheCookieBehavior_None(),
+		CachePolicyName:     name,
+		Comment:             jsii.String("Lift API cache policy (TTL 0; forwards auth + CORS headers)"),
+		CookieBehavior:      awscloudfront.CacheCookieBehavior_None(),
 		QueryStringBehavior: awscloudfront.CacheQueryStringBehavior_All(),
 		HeaderBehavior: awscloudfront.CacheHeaderBehavior_AllowList(
 			jsii.String("Authorization"),
@@ -116,8 +116,8 @@ func defaultAPICachePolicy(scope constructs.Construct, nameCtx naming.Context, h
 		),
 		EnableAcceptEncodingBrotli: jsii.Bool(true),
 		EnableAcceptEncodingGzip:   jsii.Bool(true),
-		MinTtl:     awscdk.Duration_Seconds(jsii.Number(0)),
-		DefaultTtl: awscdk.Duration_Seconds(jsii.Number(0)),
-		MaxTtl:     awscdk.Duration_Seconds(jsii.Number(0)),
+		MinTtl:                     awscdk.Duration_Seconds(jsii.Number(0)),
+		DefaultTtl:                 awscdk.Duration_Seconds(jsii.Number(0)),
+		MaxTtl:                     awscdk.Duration_Seconds(jsii.Number(0)),
 	})
 }

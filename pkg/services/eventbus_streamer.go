@@ -28,10 +28,10 @@ type EventBusFanoutOptions struct {
 
 // EventBusFanoutResult summarizes a fanout attempt.
 type EventBusFanoutResult struct {
+	Failed    map[string]error
+	Gone      []string
 	Attempted int
 	Sent      int
-	Gone      []string
-	Failed    map[string]error
 }
 
 type eventBusFanoutEnvelope struct {

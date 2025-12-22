@@ -79,10 +79,10 @@ func (s *stubEscalator) GetEscalationLevels() []EscalationLevel {
 
 func TestTriggerAlertRuleMatching(t *testing.T) {
 	config := AlertManagerConfig{
-		Enabled:       true,
+		Enabled:        true,
 		MaxHistorySize: 10,
-		AlertTimeout:  time.Minute,
-		FlushInterval: time.Minute,
+		AlertTimeout:   time.Minute,
+		FlushInterval:  time.Minute,
 	}
 	am := NewAlertManager(config)
 
@@ -176,10 +176,10 @@ func TestSuppressionConditions(t *testing.T) {
 
 func TestDeduplicationReplacesAlert(t *testing.T) {
 	config := AlertManagerConfig{
-		Enabled:       true,
+		Enabled:        true,
 		MaxHistorySize: 10,
-		AlertTimeout:  time.Minute,
-		FlushInterval: time.Minute,
+		AlertTimeout:   time.Minute,
+		FlushInterval:  time.Minute,
 	}
 	am := NewAlertManager(config)
 	am.AddProcessor(&stubProcessor{id: "dedupe"})
@@ -222,10 +222,10 @@ func TestDeduplicationReplacesAlert(t *testing.T) {
 
 func TestEscalationInvocation(t *testing.T) {
 	config := AlertManagerConfig{
-		Enabled:       true,
+		Enabled:        true,
 		MaxHistorySize: 5,
-		AlertTimeout:  time.Minute,
-		FlushInterval: time.Minute,
+		AlertTimeout:   time.Minute,
+		FlushInterval:  time.Minute,
 	}
 	am := NewAlertManager(config)
 

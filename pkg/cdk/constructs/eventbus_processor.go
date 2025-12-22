@@ -13,18 +13,14 @@ import (
 )
 
 // EventBusProcessorProps defines properties for an EventBus DynamoDB stream processor.
-type EventBusProcessorProps struct {
+type EventBusProcessorProps struct { //nolint:govet // fieldalignment: FunctionProps is large and opaque
+	// Lambda function configuration (required).
+	FunctionProps awslambda.FunctionProps
+
 	// Existing EventBus table (optional). If omitted, a new EventBusTable is created.
 	Table *EventBusTable
 	// Properties for creating a new EventBus table (optional).
 	TableProps *EventBusTableProps
-
-	// Lambda function configuration (required).
-	FunctionProps awslambda.FunctionProps
-
-	// EventTypes filters stream events by `dynamodb.NewImage.event_type.S`.
-	// When empty, no filter is applied (the processor will receive all stream records).
-	EventTypes []string
 
 	// Optional event source overrides.
 	EventSourceProps *awslambdaeventsources.DynamoEventSourceProps
@@ -37,11 +33,15 @@ type EventBusProcessorProps struct {
 	BisectBatchOnError      *bool
 	ReportBatchItemFailures *bool
 
+	DeadLetterQueueProps *awssqs.QueueProps
+
+	// EventTypes filters stream events by `dynamodb.NewImage.event_type.S`.
+	// When empty, no filter is applied (the processor will receive all stream records).
+	EventTypes []string
+
+	StartingPosition  awslambda.StartingPosition
 	MaxBatchingWindow awscdk.Duration
 	MaxRecordAge      awscdk.Duration
-	StartingPosition  awslambda.StartingPosition
-
-	DeadLetterQueueProps *awssqs.QueueProps
 }
 
 // EventBusProcessor wires an EventBus table stream to a Lambda function with sensible defaults.
@@ -203,51 +203,51 @@ func applyUserDynamoEventSourceProps(target *awslambdaeventsources.DynamoEventSo
 		return
 	}
 
+	applyNonZeroStartingPosition(target, overrides)
+	applyPtrOverride(&target.BatchSize, overrides.BatchSize)
+	applyPtrOverride(&target.Enabled, overrides.Enabled)
+	applyDurationOverride(&target.MaxBatchingWindow, overrides.MaxBatchingWindow)
+	applyDurationOverride(&target.MaxRecordAge, overrides.MaxRecordAge)
+	applyPtrOverride(&target.BisectBatchOnError, overrides.BisectBatchOnError)
+	applyPtrOverride(&target.RetryAttempts, overrides.RetryAttempts)
+	applyPtrOverride(&target.ReportBatchItemFailures, overrides.ReportBatchItemFailures)
+	applyPtrOverride(&target.ParallelizationFactor, overrides.ParallelizationFactor)
+	applyEventSourceDlqOverride(target, overrides)
+	applyPtrOverride(&target.Filters, overrides.Filters)
+	applyKMSKeyOverride(target, overrides)
+	applyPtrOverride(&target.ProvisionedPollerConfig, overrides.ProvisionedPollerConfig)
+	applyDurationOverride(&target.TumblingWindow, overrides.TumblingWindow)
+	applyPtrOverride(&target.MetricsConfig, overrides.MetricsConfig)
+}
+
+func applyNonZeroStartingPosition(target, overrides *awslambdaeventsources.DynamoEventSourceProps) {
 	// StartingPosition is required, so only override when explicitly set.
 	if overrides.StartingPosition != "" {
 		target.StartingPosition = overrides.StartingPosition
 	}
-	if overrides.BatchSize != nil {
-		target.BatchSize = overrides.BatchSize
+}
+
+func applyPtrOverride[T any](dst **T, src *T) {
+	if src != nil {
+		*dst = src
 	}
-	if overrides.MaxBatchingWindow != nil {
-		target.MaxBatchingWindow = overrides.MaxBatchingWindow
+}
+
+func applyDurationOverride(dst *awscdk.Duration, src awscdk.Duration) {
+	if src != nil {
+		*dst = src
 	}
-	if overrides.MaxRecordAge != nil {
-		target.MaxRecordAge = overrides.MaxRecordAge
-	}
-	if overrides.BisectBatchOnError != nil {
-		target.BisectBatchOnError = overrides.BisectBatchOnError
-	}
-	if overrides.RetryAttempts != nil {
-		target.RetryAttempts = overrides.RetryAttempts
-	}
-	if overrides.ReportBatchItemFailures != nil {
-		target.ReportBatchItemFailures = overrides.ReportBatchItemFailures
-	}
-	if overrides.ParallelizationFactor != nil {
-		target.ParallelizationFactor = overrides.ParallelizationFactor
-	}
-	if overrides.Enabled != nil {
-		target.Enabled = overrides.Enabled
-	}
+}
+
+func applyEventSourceDlqOverride(target, overrides *awslambdaeventsources.DynamoEventSourceProps) {
 	if overrides.OnFailure != nil {
 		target.OnFailure = overrides.OnFailure
 	}
-	if overrides.Filters != nil {
-		target.Filters = overrides.Filters
-	}
+}
+
+func applyKMSKeyOverride(target, overrides *awslambdaeventsources.DynamoEventSourceProps) {
 	if overrides.FilterEncryption != nil {
 		target.FilterEncryption = overrides.FilterEncryption
-	}
-	if overrides.ProvisionedPollerConfig != nil {
-		target.ProvisionedPollerConfig = overrides.ProvisionedPollerConfig
-	}
-	if overrides.TumblingWindow != nil {
-		target.TumblingWindow = overrides.TumblingWindow
-	}
-	if overrides.MetricsConfig != nil {
-		target.MetricsConfig = overrides.MetricsConfig
 	}
 }
 

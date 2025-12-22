@@ -28,4 +28,3 @@ func TestContext_S3BucketName(t *testing.T) {
 	ctx := Context{AppName: "Repo_Name", Stage: "dev", Tenant: "Partner"}
 	require.Equal(t, "repo-name-partner-events-lab", ctx.S3BucketName("events"))
 }
-

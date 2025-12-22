@@ -45,8 +45,8 @@ func WithWebSocketActionExtractor(extractor WebSocketActionExtractor) WebSocketA
 type WebSocketActionRouter struct {
 	handlers       map[string]WebSocketHandler
 	defaultHandler WebSocketHandler
-	actionField    string
 	extractor      WebSocketActionExtractor
+	actionField    string
 }
 
 // NewWebSocketActionRouter creates a new action router.

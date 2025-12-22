@@ -19,34 +19,30 @@ const (
 // EventBusQuarantinedScheduledEvent stores a poison scheduled publish request after repeated failures.
 //
 // Records are co-located in the EventBus table to avoid additional infrastructure.
-type EventBusQuarantinedScheduledEvent struct {
-	PK string `dynamorm:"pk,attr:pk" dynamodb:"pk" json:"-"`
-	SK string `dynamorm:"sk,attr:sk" dynamodb:"sk" json:"-"`
-
+type EventBusQuarantinedScheduledEvent struct { //nolint:govet // fieldalignment: complex mix of time, slices, and maps
 	QuarantinedAt time.Time `dynamodb:"quarantined_at" json:"quarantined_at"`
-	Attempts      int       `dynamodb:"attempts" json:"attempts"`
-	Cause         string    `dynamodb:"cause,omitempty" json:"cause,omitempty"`
-
-	// Copied from the scheduled request.
-	DueAt     time.Time `dynamodb:"due_at" json:"due_at"`
-	CreatedAt time.Time `dynamodb:"created_at" json:"created_at"`
-
-	EventID       string `dynamodb:"event_id" json:"event_id"`
-	EventType     string `dynamodb:"event_type" json:"event_type"`
-	TenantID      string `dynamodb:"tenant_id" json:"tenant_id"`
-	SourceID      string `dynamodb:"source_id" json:"source_id"`
-	CorrelationID string `dynamodb:"correlation_id,omitempty" json:"correlation_id,omitempty"`
-
-	Payload  json.RawMessage   `dynamodb:"payload" json:"payload"`
-	Metadata map[string]string `dynamodb:"metadata,omitempty" json:"metadata,omitempty"`
-	Tags     []string          `dynamodb:"tags,omitempty" json:"tags,omitempty"`
-
-	Version       int       `dynamodb:"version" json:"version"`
-	RetryCount    int       `dynamodb:"retry_count" json:"retry_count"`
+	DueAt         time.Time `dynamodb:"due_at" json:"due_at"`
+	CreatedAt     time.Time `dynamodb:"created_at" json:"created_at"`
 	LastAttemptAt time.Time `dynamodb:"last_attempt_at,omitempty" json:"last_attempt_at,omitempty"`
-	LastError     string    `dynamodb:"last_error,omitempty" json:"last_error,omitempty"`
 
-	TTL int64 `dynamorm:"ttl,omitempty" dynamodb:"ttl,omitempty" json:"-"`
+	Metadata map[string]string `dynamodb:"metadata,omitempty" json:"metadata,omitempty"`
+
+	Payload       json.RawMessage `dynamodb:"payload" json:"payload"`
+	Tags          []string        `dynamodb:"tags,omitempty" json:"tags,omitempty"`
+	Cause         string          `dynamodb:"cause,omitempty" json:"cause,omitempty"`
+	EventID       string          `dynamodb:"event_id" json:"event_id"`
+	EventType     string          `dynamodb:"event_type" json:"event_type"`
+	TenantID      string          `dynamodb:"tenant_id" json:"tenant_id"`
+	SourceID      string          `dynamodb:"source_id" json:"source_id"`
+	CorrelationID string          `dynamodb:"correlation_id,omitempty" json:"correlation_id,omitempty"`
+	LastError     string          `dynamodb:"last_error,omitempty" json:"last_error,omitempty"`
+	PK            string          `dynamorm:"pk,attr:pk" dynamodb:"pk" json:"-"`
+	SK            string          `dynamorm:"sk,attr:sk" dynamodb:"sk" json:"-"`
+
+	TTL        int64 `dynamorm:"ttl,omitempty" dynamodb:"ttl,omitempty" json:"-"`
+	Attempts   int   `dynamodb:"attempts" json:"attempts"`
+	Version    int   `dynamodb:"version" json:"version"`
+	RetryCount int   `dynamodb:"retry_count" json:"retry_count"`
 }
 
 func (*EventBusQuarantinedScheduledEvent) TableName() string {

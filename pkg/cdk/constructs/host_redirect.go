@@ -71,7 +71,7 @@ func NewHostRedirect(scope constructs.Construct, id *string, props *HostRedirect
 
 	cert := props.Certificate
 	if cert == nil {
-		cert = awscertificatemanager.NewDnsValidatedCertificate(construct, jsii.String("Certificate"), &awscertificatemanager.DnsValidatedCertificateProps{
+		cert = awscertificatemanager.NewDnsValidatedCertificate(construct, jsii.String("Certificate"), &awscertificatemanager.DnsValidatedCertificateProps{ //nolint:staticcheck // Required for CloudFront cross-region support
 			DomainName: props.FromDomainName,
 			HostedZone: props.HostedZone,
 			Region:     jsii.String("us-east-1"),
@@ -126,9 +126,9 @@ func NewHostRedirect(scope constructs.Construct, id *string, props *HostRedirect
 		WebAclId:    props.WebAclId,
 		EnableIpv6:  props.EnableIpv6,
 		DefaultBehavior: &awscloudfront.BehaviorOptions{
-			Origin: origin,
+			Origin:               origin,
 			ViewerProtocolPolicy: awscloudfront.ViewerProtocolPolicy_REDIRECT_TO_HTTPS,
-			CachePolicy: awscloudfront.CachePolicy_CACHING_DISABLED(),
+			CachePolicy:          awscloudfront.CachePolicy_CACHING_DISABLED(),
 			FunctionAssociations: &[]*awscloudfront.FunctionAssociation{
 				{
 					Function:  redirect.Function,

@@ -1,10 +1,12 @@
 package naming
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"strings"
 )
+
+const defaultBucketName = "bucket"
 
 // SanitizeS3BucketName converts an arbitrary name into a valid S3 bucket name.
 //
@@ -13,7 +15,7 @@ import (
 func SanitizeS3BucketName(name string) string {
 	raw := strings.ToLower(strings.TrimSpace(name))
 	if raw == "" {
-		raw = "bucket"
+		raw = defaultBucketName
 	}
 
 	out := make([]byte, 0, len(raw))
@@ -33,14 +35,14 @@ func SanitizeS3BucketName(name string) string {
 
 	safe := strings.Trim(string(out), "-")
 	if safe == "" {
-		safe = "bucket"
+		safe = defaultBucketName
 	}
 	if len(safe) < 3 {
-		safe = safe + "-bucket"
+		safe += "-bucket"
 	}
 
 	if len(safe) > 63 {
-		sum := sha1.Sum([]byte(raw))
+		sum := sha256.Sum256([]byte(raw))
 		suffix := hex.EncodeToString(sum[:])[:8]
 
 		// Leave room for "-<hash>".
@@ -50,7 +52,7 @@ func SanitizeS3BucketName(name string) string {
 		}
 		base := strings.Trim(safe[:maxBase], "-")
 		if base == "" {
-			base = "bucket"
+			base = defaultBucketName
 		}
 		safe = base + "-" + suffix
 	}
@@ -58,7 +60,7 @@ func SanitizeS3BucketName(name string) string {
 	safe = strings.Trim(safe, "-")
 	if len(safe) < 3 {
 		// Worst-case: if trimming removed everything, fall back to a stable name.
-		sum := sha1.Sum([]byte(raw))
+		sum := sha256.Sum256([]byte(raw))
 		safe = "bucket-" + hex.EncodeToString(sum[:])[:8]
 	}
 
@@ -78,4 +80,3 @@ func S3BucketNameFromEnv(resource string) (string, bool) {
 	}
 	return ctx.S3BucketName(resource), true
 }
-
