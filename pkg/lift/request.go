@@ -75,6 +75,7 @@ const (
 	TriggerSQS          = adapters.TriggerSQS
 	TriggerS3           = adapters.TriggerS3
 	TriggerEventBridge  = adapters.TriggerEventBridge
+	TriggerEventBus     = adapters.TriggerEventBus
 	TriggerWebSocket    = adapters.TriggerWebSocket
 	TriggerUnknown      = adapters.TriggerUnknown
 )

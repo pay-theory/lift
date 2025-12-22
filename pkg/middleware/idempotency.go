@@ -217,7 +217,7 @@ func (s *idempotencyService) extractKey(ctx *lift.Context) string {
 
 // determineState checks the current state of an idempotency key
 func (s *idempotencyService) determineState(ctx *lift.Context, key string) (idempotencyState, *IdempotencyRecord) {
-	record, err := s.store.Get(ctx.Request.Context(), key)
+	record, err := s.store.Get(ctx, key)
 
 	if err != nil || record == nil {
 		return stateNew, nil
@@ -267,7 +267,7 @@ func (s *idempotencyService) handleConcurrent(_ *lift.Context, _ string, _ *Idem
 
 // handleExpired handles expired processing states
 func (s *idempotencyService) handleExpired(ctx *lift.Context, key string, next lift.Handler) error {
-	if err := s.store.Delete(ctx.Request.Context(), key); err != nil {
+	if err := s.store.Delete(ctx, key); err != nil {
 		s.logError(ctx, "Failed to delete expired idempotency key", key, err)
 	}
 	return s.processNew(ctx, key, next)
@@ -286,7 +286,7 @@ func (s *idempotencyService) processNew(ctx *lift.Context, key string, next lift
 
 	// Store result
 	record := s.createRecord(key, processor, err)
-	if storeErr := s.store.Set(ctx.Request.Context(), key, record); storeErr != nil {
+	if storeErr := s.store.Set(ctx, key, record); storeErr != nil {
 		s.logError(ctx, "Failed to store idempotency record", key, storeErr)
 	}
 
@@ -296,7 +296,7 @@ func (s *idempotencyService) processNew(ctx *lift.Context, key string, next lift
 // setProcessing marks a key as being processed
 func (s *idempotencyService) setProcessing(ctx *lift.Context, key string) error {
 	expiresAt := time.Now().Add(s.options.ProcessingTimeout)
-	return s.store.SetProcessing(ctx.Request.Context(), key, expiresAt)
+	return s.store.SetProcessing(ctx, key, expiresAt)
 }
 
 // createRecord creates an idempotency record from the processing result

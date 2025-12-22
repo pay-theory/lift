@@ -37,6 +37,39 @@ processor := constructs.NewS3Processor(stack, jsii.String("S3Processor"), &const
 })
 ```
 
+### Deterministic Bucket Naming (Recommended)
+
+S3 bucket names must be **globally unique** and **DNS-safe** (lowercase letters, numbers, and hyphens; 3–63 chars). For predictable naming across environments, generate bucket names from deployment inputs:
+
+- Required: `APP_NAME`, `STAGE`
+- Optional: `PARTNER`
+- Stage aliases are normalized (`dev→lab`, `sandbox→study`, `prod→live`)
+
+Lift provides S3-safe naming helpers in `pkg/naming`:
+
+```go
+import "github.com/pay-theory/lift/pkg/naming"
+
+nameCtx := naming.FromEnv().Normalize()
+if !nameCtx.IsComplete() {
+    panic("APP_NAME and STAGE are required for deterministic naming")
+}
+
+processor := constructs.NewS3Processor(stack, jsii.String("Uploads"), &constructs.S3ProcessorProps{
+    FunctionProps: awslambda.FunctionProps{
+        FunctionName: jsii.String(nameCtx.ResourceName("uploads-processor")),
+        Code:         awslambda.Code_FromAsset(jsii.String("./dist")),
+        Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
+    },
+    BucketProps: &awss3.BucketProps{
+        BucketName: jsii.String(nameCtx.S3BucketName("uploads")),
+    },
+})
+_ = processor
+```
+
+If you omit `BucketProps.BucketName`, Lift defaults to `<function-name>-bucket`. Ensure your function name results in a valid S3 bucket name, or set an explicit bucket name.
+
 ### With Event Filtering
 
 ```go

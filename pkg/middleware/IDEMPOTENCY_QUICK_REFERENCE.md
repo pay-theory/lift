@@ -61,20 +61,11 @@ async function createPayment(amount) {
 }
 ```
 
-## Production Setup (DynamoDB)
+## Production Setup (DynamORM + DynamoDB)
 
 ```go
-// AWS Setup
-cfg, _ := config.LoadDefaultConfig(context.TODO())
-dynamoClient := dynamodb.NewFromConfig(cfg)
-
-// Create store
-store := middleware.NewDynamoDBIdempotencyStore(
-    dynamoClient, 
-    middleware.DynamoDBStoreConfig{
-        TableName: "idempotency-keys",
-    },
-)
+db, _ := dynamorm.New(session.Config{Region: "us-east-1"})
+store := middleware.NewDynamORMIdempotencyStoreWithDB(db)
 
 // Use same as memory store
 app.Use(lift.Middleware(middleware.Idempotency(middleware.IdempotencyOptions{

@@ -9,6 +9,10 @@ This document provides a comprehensive API reference for all Lift CDK constructs
   - [LiftAPI](#liftapi) - `pkg/cdk/constructs/api.go`
   - [LiftRestAPI](#liftrestapi) - `pkg/cdk/constructs/rest_api.go`
   - [LiftTable](#lifttable) - `pkg/cdk/constructs/dynamodb.go`
+  - [StaticSite](#staticsite) - `pkg/cdk/constructs/static_site.go`
+  - [FrontendDistribution](#frontenddistribution) - `pkg/cdk/constructs/frontend_distribution.go`
+  - [MediaCDN](#mediacdn) - `pkg/cdk/constructs/media_cdn.go`
+  - [HostRedirect](#hostredirect) - `pkg/cdk/constructs/host_redirect.go`
 - [Middleware Constructs](#middleware-constructs)
   - [RateLimitedFunction](#ratelimitedfunction) - `pkg/cdk/constructs/ratelimited.go`
   - [IdempotentFunction](#idempotentfunction) - `pkg/cdk/constructs/idempotent.go`
@@ -304,6 +308,70 @@ table := constructs.NewLiftTable(stack, jsii.String("DataTable"), &constructs.Li
             },
         },
     },
+})
+```
+
+### StaticSite
+
+CloudFront-backed static site with private S3 (OAC), Route53, and ACM (us-east-1).
+
+**File**: `pkg/cdk/constructs/static_site.go`
+
+```go
+site := constructs.NewStaticSite(stack, jsii.String("Site"), &constructs.StaticSiteProps{
+    DomainName: jsii.String("example.com"),
+    HostedZone: hostedZone,
+    AppName:    jsii.String("my-repo"),
+    Stage:      jsii.String("live"),
+    SinglePageApp: jsii.Bool(true),
+})
+_ = site
+```
+
+### FrontendDistribution
+
+Single-host CloudFront distribution: static UI from private S3 + API proxy path behaviors (no SSR).
+
+**File**: `pkg/cdk/constructs/frontend_distribution.go`
+
+```go
+frontend := constructs.NewFrontendDistribution(stack, jsii.String("Frontend"), &constructs.FrontendDistributionProps{
+    DomainName:          jsii.String("example.com"),
+    HostedZone:          hostedZone,
+    ApiOriginDomainName: jsii.String("api.example.com"),
+    AppName:             jsii.String("my-repo"),
+    Stage:               jsii.String("study"),
+})
+_ = frontend
+```
+
+### MediaCDN
+
+Media-focused CloudFront distribution backed by private S3 (OAC), with optional signed URL/cookie support via Key Groups.
+
+**File**: `pkg/cdk/constructs/media_cdn.go`
+
+```go
+cdn := constructs.NewMediaCDN(stack, jsii.String("Media"), &constructs.MediaCDNProps{
+    DomainName: jsii.String("media.example.com"),
+    HostedZone: hostedZone,
+    EnablePrivateMedia: jsii.Bool(true),
+    PublicKeyEncoded:   jsii.String("-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"),
+})
+_ = cdn
+```
+
+### HostRedirect
+
+Host-to-host redirect distribution using a CloudFront Function returning a 308 (preserves path+query).
+
+**File**: `pkg/cdk/constructs/host_redirect.go`
+
+```go
+constructs.NewHostRedirect(stack, jsii.String("Redirect"), &constructs.HostRedirectProps{
+    FromDomainName: jsii.String("www.example.com"),
+    ToDomainName:   jsii.String("example.com"),
+    HostedZone:     hostedZone,
 })
 ```
 

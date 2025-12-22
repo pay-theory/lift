@@ -156,6 +156,8 @@ concepts:
       - rest_api_v1_integration
       - response_streaming_integration
       - websocket_api_support
+      - cloudfront_static_frontends
+      - cloudfront_media_cdn
       - middleware_enabled_deployments
       - security_by_default
       - operational_excellence
@@ -165,6 +167,13 @@ concepts:
       - LiftRestAPI: API Gateway REST API (v1) integration
       - LiftWebSocketAPI: WebSocket API Gateway support
       - RateLimitedLiftFunction: rate limiting enabled functions
+      - EventBusTable: DynamoDB table for EventBus
+      - EventBusProcessor: DynamoDB stream processor wiring for EventBus
+      - EventBusScheduler: EventBridge schedule wiring for delayed publish
+      - StaticSite: S3 + CloudFront static site (OAC, Route53, ACM)
+      - FrontendDistribution: single-host UI + API proxy distribution
+      - MediaCDN: media-friendly CloudFront distribution (optional private media)
+      - HostRedirect: CloudFront Function host redirect (308)
     features:
       - automatic_iam_roles
       - xray_tracing_enabled
@@ -215,7 +224,14 @@ concepts:
       - time_ordered_event_ids
       - multi_tenant_queries
       - batch_publish
+      - idempotent_publish
       - optional_stream_processing
+      - scheduled_events
+      - lease_based_draining
+      - quarantine_and_replay
+      - consumer_checkpointing
+      - websocket_fanout_helpers
+      - governance_tags
     implementation:
       - services.EventBus: interface for publish/query/get/delete
       - services.DynamoDBEventBus: DynamORM-backed DynamoDB implementation

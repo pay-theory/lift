@@ -114,6 +114,26 @@ func TestAdapterRegistry_DetectAndAdapt(t *testing.T) {
 			shouldError:  false,
 		},
 		{
+			name: "EventBus (DynamoDB Stream) Event",
+			event: map[string]any{
+				"Records": []any{
+					map[string]any{
+						"eventSource": "aws:dynamodb",
+						"eventName":   "INSERT",
+						"eventID":     "test-ddb-event-id",
+						"dynamodb": map[string]any{
+							"NewImage": map[string]any{
+								"id":         map[string]any{"S": "evt_123"},
+								"event_type": map[string]any{"S": "partner.created"},
+							},
+						},
+					},
+				},
+			},
+			expectedType: TriggerEventBus,
+			shouldError:  false,
+		},
+		{
 			name: "Unknown Event",
 			event: map[string]any{
 				"unknown": "event",
@@ -336,6 +356,7 @@ func TestAdapterRegistry_ListSupportedTriggers(t *testing.T) {
 		TriggerSQS,
 		TriggerS3,
 		TriggerEventBridge,
+		TriggerEventBus,
 		TriggerWebSocket,
 	}
 

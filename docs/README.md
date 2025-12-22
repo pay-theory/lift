@@ -10,6 +10,7 @@
 
 ### 📚 Core Documentation
 - [API Reference](./api-reference.md) - Complete API documentation with examples
+- [CDK Documentation](./cdk/README.md) - Deploy Lift apps with AWS CDK (includes CloudFront + S3 patterns)
 - [EventBus Guide](./eventbus-guide.md) - Durable DynamORM-backed EventBus (DynamoDB)
 - [Response Streaming (SSE)](./response-streaming.md) - Server-Sent Events via API Gateway REST API (v1)
 - [Troubleshooting Guide](./troubleshooting.md) - Problem-solution mapping

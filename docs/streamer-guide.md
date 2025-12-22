@@ -100,6 +100,41 @@ if err != nil {
 }
 ```
 
+### EventBus Fanout
+
+Streamer commonly pairs with Lift’s EventBus for “publish → push to sockets” flows:
+
+```go
+result, err := services.FanoutEventBusEvent(ctx, client, event, services.EventBusFanoutOptions{
+    ResolveConnectionIDs: services.TenantConnectionsResolver(connectionStore),
+})
+_ = result // result.Gone contains stale/gone connections
+_ = err
+```
+
+### Subscription-Aware Fanout (Topics)
+
+For “topic/stream scoped” fanout (home/public/list/hashtag/etc.) without scans, pair `services.TopicConnectionsResolver` with a `lift.SubscriptionStore`.
+
+Lift ships a DynamORM-backed subscription store that co-locates subscription rows in the same `websocket-connections` table:
+
+```go
+subscriptionStore, _ := lift.NewDynamoDBSubscriptionStoreWithDB(db, lift.DynamoDBSubscriptionStoreConfig{})
+
+resolver := services.TopicConnectionsResolver(subscriptionStore, func(e *services.Event) []string {
+    // Derive topics from the event (metadata/tags are common)
+    return []string{"home", "public"}
+})
+
+result, err := services.FanoutEventBusEvent(ctx, client, event, services.EventBusFanoutOptions{
+    ResolveConnectionIDs: resolver,
+})
+_ = result
+_ = err
+```
+
+On disconnect, you can clean up subscriptions efficiently with `subscriptionStore.DeleteByConnection(ctx, connectionID)`.
+
 ## API Reference
 
 ### Client Interface

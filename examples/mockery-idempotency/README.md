@@ -121,15 +121,9 @@ Health check endpoint
 **When to use:** ALL production environments
 
 ```go
-// CORRECT: Production setup with DynamoDB
-cfg, _ := config.LoadDefaultConfig(context.TODO())
-dynamoClient := dynamodb.NewFromConfig(cfg)
-
-store := middleware.NewDynamoDBIdempotencyStore(dynamoClient, 
-    middleware.DynamoDBStoreConfig{
-        TableName: "mockery-idempotency-keys",  // REQUIRED: Persistent table
-        TTL:       24 * time.Hour,             // REQUIRED: Prevent infinite growth
-    })
+// CORRECT: Production setup with DynamORM (DynamoDB)
+db, _ := dynamorm.New(session.Config{Region: "us-east-1"})
+store := middleware.NewDynamORMIdempotencyStoreWithDB(db)
 
 // INCORRECT: Memory store in production
 // store := middleware.NewMemoryIdempotencyStore()  // Lost on restart!

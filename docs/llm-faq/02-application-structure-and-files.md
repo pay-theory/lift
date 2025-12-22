@@ -382,7 +382,7 @@ go 1.23.10
 require (
     github.com/pay-theory/lift
     github.com/aws/aws-lambda-go v1.49.0
-    github.com/pay-theory/dynamorm v1.0.23
+    github.com/pay-theory/dynamorm v1.0.39
     github.com/golang-jwt/jwt/v5 v5.2.2
     github.com/google/uuid v1.6.0
 )
@@ -576,4 +576,3 @@ func main() {
 - **Document thoroughly:** README with setup and API docs
 
 This structure scales from simple single-file functions to complex multi-service applications while maintaining Go best practices from 2025.
-

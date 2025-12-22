@@ -502,45 +502,24 @@ func decompressRecord(data string) ([]byte, error) {
 ```go
 import (
     "context"
-    "fmt"
     "time"
-    "github.com/aws/aws-sdk-go-v2/aws"
-    "github.com/aws/aws-sdk-go-v2/config"
-    "github.com/aws/aws-sdk-go-v2/service/dynamodb"
-    "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+    "github.com/pay-theory/dynamorm/pkg/core"
 )
 
 // Store processing checkpoint
 type Checkpoint struct {
-    ShardID        string
-    SequenceNumber string
-    Timestamp      time.Time
+    Timestamp      time.Time `dynamorm:"updated_at" json:"timestamp"`
+    ShardID        string    `dynamorm:"pk" json:"shard_id"`
+    SequenceNumber string    `dynamorm:"sk" json:"sequence_number"`
 }
 
-func saveCheckpoint(ctx context.Context, shardID, sequenceNumber string) error {
-    cfg, err := config.LoadDefaultConfig(ctx)
-    if err != nil {
-        return err
-    }
-    
-    dynamoClient := dynamodb.NewFromConfig(cfg)
-    
-    checkpoint := Checkpoint{
+func saveCheckpoint(ctx context.Context, db core.ExtendedDB, shardID, sequenceNumber string) error {
+    checkpoint := &Checkpoint{
         ShardID:        shardID,
         SequenceNumber: sequenceNumber,
         Timestamp:      time.Now(),
     }
-    
-    // Save to DynamoDB
-    _, err = dynamoClient.PutItem(ctx, &dynamodb.PutItemInput{
-        TableName: aws.String("kinesis-checkpoints"),
-        Item: map[string]types.AttributeValue{
-            "ShardID":        &types.AttributeValueMemberS{Value: checkpoint.ShardID},
-            "SequenceNumber": &types.AttributeValueMemberS{Value: checkpoint.SequenceNumber},
-            "Timestamp":      &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", checkpoint.Timestamp.Unix())},
-        },
-    })
-    return err
+    return db.WithContext(ctx).Model(checkpoint).CreateOrUpdate()
 }
 ```
 

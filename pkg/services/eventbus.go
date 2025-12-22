@@ -36,30 +36,30 @@ type Event struct {
 	_ struct{} `dynamorm:"naming:snake_case"`
 
 	// Primary identifiers and timestamps (8-byte aligned)
-	PublishedAt time.Time `json:"published_at" dynamodbav:"published_at" dynamorm:"index:tenant-timestamp-index,sk"`
-	CreatedAt   time.Time `json:"created_at" dynamodbav:"created_at" dynamorm:"created_at"`
-	ExpiresAt   time.Time `json:"expires_at,omitempty" dynamodbav:"expires_at,omitempty" dynamorm:"omitempty"`
+	PublishedAt time.Time `json:"published_at" dynamodb:"published_at" dynamodbav:"published_at" dynamorm:"index:tenant-timestamp-index,sk"`
+	CreatedAt   time.Time `json:"created_at" dynamodb:"created_at" dynamodbav:"created_at" dynamorm:"created_at"`
+	ExpiresAt   time.Time `json:"expires_at,omitempty" dynamodb:"expires_at,omitempty" dynamodbav:"expires_at,omitempty" dynamorm:"omitempty"`
 
 	// String fields (16 bytes each)
-	ID            string `json:"id" dynamodbav:"id" dynamorm:"index:event-id-index,pk"`                       // ULID for ordering
-	EventType     string `json:"event_type" dynamodbav:"event_type"`                                          // e.g., "partner.created"
-	TenantID      string `json:"tenant_id" dynamodbav:"tenant_id" dynamorm:"index:tenant-timestamp-index,pk"` // For multi-tenancy
-	SourceID      string `json:"source_id" dynamodbav:"source_id"`                                            // Source entity ID
-	PartitionKey  string `json:"partition_key" dynamodbav:"pk" dynamorm:"pk,attr:pk"`                         // DynamoDB partition key
-	SortKey       string `json:"sort_key" dynamodbav:"sk" dynamorm:"sk,attr:sk"`                              // DynamoDB sort key
-	CorrelationID string `json:"correlation_id,omitempty" dynamodbav:"correlation_id,omitempty" dynamorm:"omitempty"`
+	ID            string `json:"id" dynamodb:"id" dynamodbav:"id" dynamorm:"index:event-id-index,pk"`                              // ULID for ordering
+	EventType     string `json:"event_type" dynamodb:"event_type" dynamodbav:"event_type"`                                         // e.g., "partner.created"
+	TenantID      string `json:"tenant_id" dynamodb:"tenant_id" dynamodbav:"tenant_id" dynamorm:"index:tenant-timestamp-index,pk"` // For multi-tenancy
+	SourceID      string `json:"source_id" dynamodb:"source_id" dynamodbav:"source_id"`                                            // Source entity ID
+	PartitionKey  string `json:"partition_key" dynamodb:"pk" dynamodbav:"pk" dynamorm:"pk,attr:pk"`                                // DynamoDB partition key
+	SortKey       string `json:"sort_key" dynamodb:"sk" dynamodbav:"sk" dynamorm:"sk,attr:sk"`                                     // DynamoDB sort key
+	CorrelationID string `json:"correlation_id,omitempty" dynamodb:"correlation_id,omitempty" dynamodbav:"correlation_id,omitempty" dynamorm:"omitempty"`
 
 	// Complex types
-	Payload  json.RawMessage   `json:"payload" dynamodbav:"payload"`                       // Event data
-	Metadata map[string]string `json:"metadata,omitempty" dynamodbav:"metadata,omitempty"` // Additional context
-	Tags     []string          `json:"tags,omitempty" dynamodbav:"tags,omitempty"`         // For filtering
+	Payload  json.RawMessage   `json:"payload" dynamodb:"payload" dynamodbav:"payload"`                                  // Event data
+	Metadata map[string]string `json:"metadata,omitempty" dynamodb:"metadata,omitempty" dynamodbav:"metadata,omitempty"` // Additional context
+	Tags     []string          `json:"tags,omitempty" dynamodb:"tags,omitempty" dynamodbav:"tags,omitempty"`             // For filtering
 
 	// TTL is stored in the DynamoDB TTL attribute ("ttl") as a Unix timestamp in seconds.
-	TTL int64 `json:"-" dynamodbav:"ttl,omitempty" dynamorm:"ttl,omitempty"`
+	TTL int64 `json:"-" dynamodb:"ttl,omitempty" dynamodbav:"ttl,omitempty" dynamorm:"ttl,omitempty"`
 
 	// Smaller numeric types
-	Version    int `json:"version" dynamodbav:"version"`         // Schema version
-	RetryCount int `json:"retry_count" dynamodbav:"retry_count"` // For failed processing
+	Version    int `json:"version" dynamodb:"version" dynamodbav:"version"`             // Schema version
+	RetryCount int `json:"retry_count" dynamodb:"retry_count" dynamodbav:"retry_count"` // For failed processing
 }
 
 const (

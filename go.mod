@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-lambda-go v1.51.0
 	github.com/aws/aws-sdk-go-v2 v1.41.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.4
+	github.com/aws/aws-sdk-go-v2/feature/cloudfront/sign v1.9.11
 	github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi v1.29.1
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.32.9
 	github.com/aws/aws-sdk-go-v2/service/appconfig v1.42.9

@@ -16,6 +16,8 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
+	"github.com/pay-theory/lift/pkg/naming"
 )
 
 // BaseManagementTableProps defines common properties for management tables.
@@ -51,7 +53,11 @@ func createManagementTable(scope constructs.Construct, id *string, props *BaseMa
 
 	// Set table specific defaults
 	if props.TableName == nil {
-		props.TableName = jsii.String(props.DefaultTableName)
+		if resolved, ok := naming.ResourceNameFromEnv(props.DefaultTableName); ok {
+			props.TableName = jsii.String(resolved)
+		} else {
+			props.TableName = jsii.String(props.DefaultTableName)
+		}
 	}
 
 	// Enable TTL for cleanup

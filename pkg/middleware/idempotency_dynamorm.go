@@ -3,8 +3,12 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/pay-theory/dynamorm/pkg/core"
+	dynamormerrors "github.com/pay-theory/dynamorm/pkg/errors"
 
 	"github.com/pay-theory/lift/pkg/dynamorm"
 	"github.com/pay-theory/lift/pkg/lift"
@@ -18,6 +22,7 @@ const (
 
 // DynamORMIdempotencyStore implements IdempotencyStore using DynamORM
 type DynamORMIdempotencyStore struct {
+	db      core.ExtendedDB
 	wrapper *dynamorm.DynamORMWrapper
 }
 
@@ -27,6 +32,13 @@ func NewDynamORMIdempotencyStore() *DynamORMIdempotencyStore {
 	return &DynamORMIdempotencyStore{}
 }
 
+// NewDynamORMIdempotencyStoreWithDB creates a store using a provided DynamORM core DB.
+func NewDynamORMIdempotencyStoreWithDB(db core.ExtendedDB) *DynamORMIdempotencyStore {
+	return &DynamORMIdempotencyStore{
+		db: db,
+	}
+}
+
 // NewDynamORMIdempotencyStoreWithWrapper creates a store with a specific DynamORM wrapper
 func NewDynamORMIdempotencyStoreWithWrapper(wrapper *dynamorm.DynamORMWrapper) *DynamORMIdempotencyStore {
 	return &DynamORMIdempotencyStore{
@@ -34,18 +46,35 @@ func NewDynamORMIdempotencyStoreWithWrapper(wrapper *dynamorm.DynamORMWrapper) *
 	}
 }
 
-// getDB gets the DynamORM wrapper from context or uses the configured one
-func (d *DynamORMIdempotencyStore) getDB(ctx context.Context) (*dynamorm.DynamORMWrapper, error) {
+func (d *DynamORMIdempotencyStore) getDB(ctx context.Context) (core.ExtendedDB, error) {
+	if d.db != nil {
+		return d.db, nil
+	}
+
 	if d.wrapper != nil {
-		return d.wrapper, nil
+		db, ok := d.wrapper.GetCoreDB().(core.ExtendedDB)
+		if !ok {
+			return nil, fmt.Errorf("DynamORM wrapper does not expose core.ExtendedDB")
+		}
+		return db, nil
 	}
 
-	// Try to get from Lift context if available
+	// Try to get from Lift context if available (preferred so middleware can inject DBs).
 	if liftCtx, ok := ctx.(*lift.Context); ok {
-		return dynamorm.TenantDB(liftCtx)
+		if db, ok := liftCtx.DB.(core.ExtendedDB); ok && db != nil {
+			return db, nil
+		}
+
+		wrapper, err := dynamorm.TenantDB(liftCtx)
+		if err == nil && wrapper != nil {
+			db, ok := wrapper.GetCoreDB().(core.ExtendedDB)
+			if ok && db != nil {
+				return db, nil
+			}
+		}
 	}
 
-	return nil, fmt.Errorf("DynamORM not available - ensure DynamORM middleware is configured")
+	return nil, fmt.Errorf("DynamORM not available - provide a core.ExtendedDB or configure DynamORM middleware")
 }
 
 // Get retrieves a stored response by key
@@ -55,16 +84,17 @@ func (d *DynamORMIdempotencyStore) Get(ctx context.Context, key string) (*Idempo
 		return nil, err
 	}
 
-	// Create DynamORM model instance with key
-	record := &models.IdempotencyRecord{
-		IdempotencyKey: key,
-		SK:             "IDEMPOTENCY",
-	}
-
-	// Use DynamORM to get the record
-	err = db.Get(ctx, key, record)
+	record := &models.IdempotencyRecord{}
+	err = db.WithContext(ctx).
+		Model(&models.IdempotencyRecord{}).
+		Where("IdempotencyKey", "=", key).
+		Where("SK", "=", "IDEMPOTENCY").
+		First(record)
 	if err != nil {
-		return nil, fmt.Errorf("record not found: %s", key)
+		if errors.Is(err, dynamormerrors.ErrItemNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get idempotency record: %w", err)
 	}
 
 	// Convert DynamORM model to middleware record
@@ -128,8 +158,8 @@ func (d *DynamORMIdempotencyStore) Set(ctx context.Context, key string, record *
 		dynamormRecord.CompletedAt = time.Now()
 	}
 
-	// Use DynamORM to save the record
-	return db.Put(ctx, dynamormRecord)
+	// Use DynamORM to upsert the record
+	return db.WithContext(ctx).Model(dynamormRecord).CreateOrUpdate()
 }
 
 // SetProcessing marks a key as being processed
@@ -150,7 +180,7 @@ func (d *DynamORMIdempotencyStore) SetProcessing(ctx context.Context, key string
 		LockedUntil:    expiresAt,
 	}
 
-	return db.Put(ctx, record)
+	return db.WithContext(ctx).Model(record).IfNotExists().Create()
 }
 
 // Delete removes a key from the store
@@ -160,5 +190,9 @@ func (d *DynamORMIdempotencyStore) Delete(ctx context.Context, key string) error
 		return err
 	}
 
-	return db.Delete(ctx, key)
+	return db.WithContext(ctx).
+		Model(&models.IdempotencyRecord{}).
+		Where("IdempotencyKey", "=", key).
+		Where("SK", "=", "IDEMPOTENCY").
+		Delete()
 }

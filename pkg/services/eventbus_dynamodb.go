@@ -119,7 +119,7 @@ func (d *DynamoDBEventBus) Publish(ctx context.Context, event *Event) (string, e
 			time.Sleep(delay)
 		}
 
-		err := d.db.WithContext(ctx).Model(event).Create()
+		err := d.db.WithContext(ctx).Model(event).IfNotExists().Create()
 		if err == nil {
 			// Success
 			duration := time.Since(startTime)
@@ -129,6 +129,16 @@ func (d *DynamoDBEventBus) Publish(ctx context.Context, event *Event) (string, e
 			})
 			d.emitMetric(ctx, "PublishLatency", float64(duration.Milliseconds()), map[string]string{
 				"event_type": event.EventType,
+			})
+			return event.ID, nil
+		}
+
+		if errors.Is(err, dynamormerrors.ErrConditionFailed) {
+			// Idempotent publish: the event already exists under the provided PK/SK.
+			// Treat this as success to avoid overwriting and re-triggering downstream processing.
+			d.emitMetric(ctx, "PublishDeduped", 1, map[string]string{
+				"event_type": event.EventType,
+				"tenant_id":  event.TenantID,
 			})
 			return event.ID, nil
 		}

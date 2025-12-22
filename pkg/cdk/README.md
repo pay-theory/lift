@@ -9,6 +9,8 @@ The Lift CDK package provides high-level constructs optimized for deploying serv
 - **LiftFunction**: Lambda function construct with Lift-optimized defaults
 - **LiftAPI**: API Gateway HTTP API construct with built-in CORS and custom domain support
 - **LiftTable**: DynamoDB table construct with multi-tenant support
+- **StaticSite / FrontendDistribution**: CloudFront-backed static frontends (OAC, Route53, ACM)
+- **MediaCDN**: CloudFront-backed media CDN (optional signed URLs/cookies)
 - **LiftApp**: Complete application pattern combining all components
 
 ## Installation
@@ -114,6 +116,17 @@ Features:
 - Auto-scaling configuration
 - Point-in-time recovery
 - TTL support
+
+## CloudFront Constructs
+
+Lift includes first-class CloudFront constructs for static sites and media CDNs:
+
+- `constructs.NewStaticSite` - private S3 + CloudFront (OAC) + Route53 + ACM (us-east-1), optional `www -> apex` redirect
+- `constructs.NewFrontendDistribution` - static S3 origin + API proxy behaviors (`/api/*`, `/graphql`, `/.well-known/*`)
+- `constructs.NewMediaCDN` - media-friendly CDN, optional private media via Key Groups
+- `constructs.NewHostRedirect` - standalone host redirect using a CloudFront Function (308)
+
+See `docs/cdk/cloudfront-patterns.md` for usage patterns and defaults.
 
 ### LiftApp Pattern
 

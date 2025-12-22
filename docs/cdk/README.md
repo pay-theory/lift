@@ -11,6 +11,7 @@ The Lift CDK package (`pkg/cdk`) provides high-level constructs and patterns for
 - [Best Practices Guide](./best-practices.md) - Comprehensive guide for production deployments
 - [API Documentation](/pkg/cdk/README.md) - Detailed construct and pattern reference
 - [Examples](/pkg/cdk/examples/) - Working examples of CDK deployments
+- [CloudFront Patterns](./cloudfront-patterns.md) - Static sites, media CDN, redirects
 - [Response Streaming (SSE)](../response-streaming.md) - Stream events over REST API v1 integrations
 
 ## Getting Started
@@ -55,6 +56,10 @@ lift cdk-diff
 - **LiftAPI** - API Gateway HTTP API with CORS, custom domains, and rate limiting
 - **LiftRestAPI** - API Gateway REST API (v1) with optional response streaming (SSE)
 - **LiftTable** - DynamoDB table with single-table design, GSI, and auto-scaling
+- **StaticSite** - S3 + CloudFront static site (OAC, certificate, Route53, www→apex redirect)
+- **FrontendDistribution** - Single-host UI + API proxy CloudFront distribution
+- **MediaCDN** - Media-focused CloudFront distribution (optional private media)
+- **HostRedirect** - CloudFront Function host redirect (308)
 - **SecureFunction** - Enhanced Lambda function with security best practices
 - **RateLimitedFunction** - Lambda function with built-in rate limiting
 - **ComplianceStack** - Complete compliance framework implementation

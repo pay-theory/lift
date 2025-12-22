@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
+	"github.com/pay-theory/lift/pkg/naming"
 )
 
 // EventBusTableProps defines properties for the EventBus DynamoDB table
@@ -55,13 +57,18 @@ func NewEventBusTable(scope constructs.Construct, id *string, props *EventBusTab
 
 	tableName := props.TableName
 	if tableName == nil {
-		// IMPORTANT: TableName is effectively required to avoid conflicts
-		// between multiple applications in the same AWS account.
-		// If not provided, we'll use the construct ID with stack name prefix
-		// to generate a unique name, but explicit naming is recommended.
-		stack := awscdk.Stack_Of(construct)
-		stackName := *stack.StackName()
-		tableName = jsii.String(stackName + "-" + *id)
+		// Prefer deterministic names when APP_NAME/STAGE[/PARTNER] are available.
+		if resolved, ok := naming.ResourceNameFromEnv("events"); ok {
+			tableName = jsii.String(resolved)
+		} else {
+			// IMPORTANT: TableName is effectively required to avoid conflicts
+			// between multiple applications in the same AWS account.
+			// If not provided, we'll use the construct ID with stack name prefix
+			// to generate a unique name, but explicit naming is recommended.
+			stack := awscdk.Stack_Of(construct)
+			stackName := *stack.StackName()
+			tableName = jsii.String(stackName + "-" + *id)
+		}
 	}
 
 	billingMode := props.BillingMode

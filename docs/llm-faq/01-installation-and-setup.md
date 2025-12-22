@@ -67,7 +67,6 @@ When you install Lift, Go automatically installs these core dependencies:
 - `github.com/aws/aws-sdk-go-v2` v1.36.5 - AWS SDK for Go v2
 
 **Key AWS Service Clients:**
-- `github.com/aws/aws-sdk-go-v2/service/dynamodb` - DynamoDB operations
 - `github.com/aws/aws-sdk-go-v2/service/s3` - S3 operations
 - `github.com/aws/aws-sdk-go-v2/service/sns` - SNS notifications
 - `github.com/aws/aws-sdk-go-v2/service/cloudwatch` - Metrics and logging
@@ -75,7 +74,7 @@ When you install Lift, Go automatically installs these core dependencies:
 **Additional Production Dependencies:**
 - `github.com/golang-jwt/jwt/v5` v5.2.2 - JWT authentication
 - `go.uber.org/zap` v1.27.0 - Structured logging
-- `github.com/pay-theory/dynamorm` v1.0.23 - DynamoDB ORM
+- `github.com/pay-theory/dynamorm` v1.0.39 - DynamoDB ORM (preferred for all DynamoDB access)
 - `github.com/pay-theory/limited` v1.0.0 - Rate limiting
 - `github.com/google/uuid` v1.6.0 - UUID generation
 
@@ -324,4 +323,3 @@ GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o bootstrap main.go
 - **Set up proper tooling** (linters, IDE extensions) for development efficiency
 
 The Lift framework follows modern Go conventions and integrates seamlessly with the Go ecosystem as of 2025.
-

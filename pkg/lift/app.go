@@ -97,6 +97,7 @@ type App struct { //nolint:govet // fieldalignment: keep readable order; negligi
 
 	// Maps/slices (24 bytes)
 	wsRoutes          map[string]WebSocketHandler
+	eventBusRoutes    []*eventBusRoute
 	middleware        []middlewareEntry
 	preferredAdapters []adapters.TriggerType
 	features          map[string]bool
@@ -727,6 +728,12 @@ func (b *requestHandlerBuilder) build() (any, error) {
 		return b.liftCtx.Response.Body, nil
 	}
 
+	// DynamoDB stream processors expect the raw batch response (e.g. BatchItemFailures),
+	// not an API Gateway proxy response wrapper.
+	if b.request.TriggerType == adapters.TriggerEventBus {
+		return b.liftCtx.Response.Body, nil
+	}
+
 	return b.liftCtx.Response, nil
 }
 
@@ -1056,6 +1063,8 @@ func (b *requestHandlerBuilder) routeRequest() error {
 		switch {
 		case b.request.TriggerType == adapters.TriggerWebSocket:
 			return b.routeWebSocket()
+		case b.request.TriggerType == adapters.TriggerEventBus:
+			return b.routeEventBus()
 		case b.isEventTrigger():
 			return b.routeEvent()
 		default:
