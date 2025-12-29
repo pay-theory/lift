@@ -221,6 +221,11 @@ func addFrontendDistributionAPIBehaviors(scope constructs.Construct, distributio
 		apiCachePolicy = defaultAPICachePolicy(scope, nameCtx, hasNameCtx)
 	}
 
+	apiOriginRequestPolicy := props.ApiOriginRequestPolicy
+	if apiOriginRequestPolicy == nil {
+		apiOriginRequestPolicy = defaultAPIOriginRequestPolicy(scope, nameCtx, hasNameCtx)
+	}
+
 	for _, pattern := range *apiPatterns {
 		if pattern == nil || strings.TrimSpace(*pattern) == "" {
 			continue
@@ -229,7 +234,7 @@ func addFrontendDistributionAPIBehaviors(scope constructs.Construct, distributio
 			AllowedMethods:       awscloudfront.AllowedMethods_ALLOW_ALL(),
 			CachedMethods:        awscloudfront.CachedMethods_CACHE_GET_HEAD_OPTIONS(),
 			CachePolicy:          apiCachePolicy,
-			OriginRequestPolicy:  props.ApiOriginRequestPolicy,
+			OriginRequestPolicy:  apiOriginRequestPolicy,
 			ViewerProtocolPolicy: awscloudfront.ViewerProtocolPolicy_REDIRECT_TO_HTTPS,
 			Compress:             jsii.Bool(true),
 		})
