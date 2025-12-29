@@ -12,6 +12,9 @@ websocket-enhanced
 # CDK binary
 /cdk
 
+# Lift CLI binary (use go build -o ./bin/lift ./cmd/lift instead)
+/lift
+
 # Bootstrap files
 bootstrap
 */bootstrap

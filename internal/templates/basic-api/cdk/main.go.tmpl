@@ -1,0 +1,83 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/constructs-go/constructs/v10"
+	"github.com/aws/jsii-runtime-go"
+	"github.com/pay-theory/lift/pkg/cdk/constructs"
+)
+
+func main() {
+	defer jsii.Close()
+
+	app := awscdk.NewApp(nil)
+
+	stage := app.Node().TryGetContext(jsii.String("stage"))
+	appName := app.Node().TryGetContext(jsii.String("appName"))
+
+	// Bootstrap placeholder - allows cdk synth to succeed without context
+	if stage == nil && appName == nil {
+		awscdk.NewStack(app, jsii.String("CDKBootstrapPlaceholder"), &awscdk.StackProps{
+			Env: env(),
+		})
+		app.Synth(nil)
+		return
+	}
+
+	// Validate required parameters
+	if stage == nil {
+		fmt.Println("Error: stage is required")
+		fmt.Println("Usage: cdk deploy --context stage=<dev|staging|live>")
+		os.Exit(1)
+	}
+
+	// Set defaults
+	stageStr := stage.(string)
+	appNameStr := "{{ .AppName }}"
+	if appName != nil {
+		appNameStr = appName.(string)
+	}
+
+	// Create stack name
+	serviceStackName := fmt.Sprintf("%s-service-%s", appNameStr, stageStr)
+
+	// Create the service stack
+	stack := awscdk.NewStack(app, jsii.String(serviceStackName), &awscdk.StackProps{
+		Env:         env(),
+		Description: jsii.String(fmt.Sprintf("%s service stack for %s stage", appNameStr, stageStr)),
+	})
+
+	// Create the API Lambda function using Lift CDK constructs
+	apiFunction := constructs.NewLiftFunction(stack, jsii.String("ApiFunction"), &constructs.LiftFunctionProps{
+		FunctionProps: awslambda.FunctionProps{
+			FunctionName: jsii.String(fmt.Sprintf("%s-api-%s", appNameStr, stageStr)),
+			Code:         awslambda.Code_FromAsset(jsii.String(filepath.Join("..", "dist", "api")), nil),
+			Handler:      jsii.String("bootstrap"),
+			Description:  jsii.String(fmt.Sprintf("%s API handler for %s", appNameStr, stageStr)),
+		},
+		EnableTracing: jsii.Bool(true),
+		EnableMetrics: jsii.Bool(true),
+	})
+
+	// Export the function ARN
+	awscdk.NewCfnOutput(stack, jsii.String("ApiFunctionArn"), &awscdk.CfnOutputProps{
+		Value:       apiFunction.Function.FunctionArn(),
+		Description: jsii.String("API Lambda function ARN"),
+		ExportName:  jsii.String(fmt.Sprintf("%s-%s-ApiFunctionArn", appNameStr, stageStr)),
+	})
+
+	app.Synth(nil)
+}
+
+// env returns the AWS environment from environment variables
+func env() *awscdk.Environment {
+	return &awscdk.Environment{
+		Account: jsii.String(os.Getenv("CDK_DEFAULT_ACCOUNT")),
+		Region:  jsii.String(os.Getenv("CDK_DEFAULT_REGION")),
+	}
+}
