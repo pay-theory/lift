@@ -10,3 +10,11 @@ import "embed"
 //go:embed basic-api/.gitignore.tmpl
 //go:embed basic-api/.github/workflows/*.tmpl
 var BasicAPIFS embed.FS
+
+// BasicAPIPTFS embeds PT-mode devops files (buildspec.yml, shell/*, cdk/*, lift.yaml).
+// These are generated instead of .github/workflows/* when --pt flag is used.
+//
+//go:embed basic-api-pt/*
+//go:embed basic-api-pt/shell/*
+//go:embed basic-api-pt/cdk/*
+var BasicAPIPTFS embed.FS

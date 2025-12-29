@@ -102,6 +102,41 @@ functions:
 	}
 }
 
+func TestUpCommand_RequiresPartnerWhenTemplateUsesPartner(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+
+	liftYAML := `version: 1
+app:
+  name: partner-required-test
+
+functions:
+  api:
+    cmd: ./cmd/api
+    out: ./dist/api/bootstrap
+
+cdk:
+  path: ./cdk
+  deploy_order:
+    - service
+  stacks:
+    service:
+      name_template: "{{.AppName}}-service-{{.Partner}}-{{.Stage}}"
+`
+	setupUpDownTestProject(t, tmpDir, liftYAML)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	var calls []capturedCDKCall
+	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+
+	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--partner is required")
+	assert.Empty(t, calls, "expected no commands to run when partner preflight fails")
+}
+
 func TestUpCommand_DomainResolution(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()
@@ -372,24 +407,30 @@ func TestUpCommand_StackNameTemplateRendering(t *testing.T) {
 	cmd := &UpCommand{}
 
 	tests := []struct {
-		name     string
-		template string
-		appName  string
-		stage    string
-		want     string
-		wantErr  bool
+		name       string
+		template   string
+		appName    string
+		stage      string
+		partner    string
+		targetMode string
+		want       string
+		wantErr    bool
 	}{
-		{"basic template", "{{.AppName}}-{{.Stage}}", "myapp", "dev", "myapp-dev", false},
-		{"data stack template", "{{.AppName}}-data-{{.Stage}}", "myapp", "live", "myapp-data-live", false},
-		{"prefix only uses appName", "prefix-{{.AppName}}", "app", "staging", "prefix-app", false},
-		{"undefined field produces empty", "{{.InvalidField}}", "app", "dev", "<no value>", false}, // Go templates don't error on undefined map keys
-		{"empty template errors", "", "app", "dev", "", true},
-		{"invalid template syntax", "{{.AppName", "app", "dev", "", true},
+		{"basic template", "{{.AppName}}-{{.Stage}}", "myapp", "dev", "", "", "myapp-dev", false},
+		{"data stack template", "{{.AppName}}-data-{{.Stage}}", "myapp", "live", "", "", "myapp-data-live", false},
+		{"prefix only uses appName", "prefix-{{.AppName}}", "app", "staging", "", "", "prefix-app", false},
+		{"undefined field produces empty", "{{.InvalidField}}", "app", "dev", "", "", "<no value>", false}, // Go templates don't error on undefined map keys
+		{"empty template errors", "", "app", "dev", "", "", "", true},
+		{"invalid template syntax", "{{.AppName", "app", "dev", "", "", "", true},
+		// PT mode templates
+		{"pt template with partner", "{{.AppName}}-{{.Partner}}-{{.Stage}}", "myapp", "dev", "qakernel", "", "myapp-qakernel-dev", false},
+		{"pt template with partner and targetMode", "{{.AppName}}-{{.Partner}}-{{.TargetMode}}-{{.Stage}}", "myapp", "dev", "partner1", "standard", "myapp-partner1-standard-dev", false},
+		{"pt template empty partner produces empty", "{{.AppName}}-{{.Partner}}-{{.Stage}}", "myapp", "dev", "", "", "myapp--dev", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := cmd.renderStackName(tt.template, tt.appName, tt.stage)
+			got, err := cmd.renderStackName(tt.template, tt.appName, tt.stage, tt.partner, tt.targetMode)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -408,7 +449,7 @@ func TestUpCommand_CDKContextFlags(t *testing.T) {
 	}
 
 	t.Run("without domains", func(t *testing.T) {
-		args := cmd.buildCDKArgs("deploy", "test-stack", cfg, "dev", nil)
+		args := cmd.buildCDKArgs("deploy", "test-stack", cfg, "dev", "", "", nil)
 
 		assert.Contains(t, args, "deploy")
 		assert.Contains(t, args, "test-stack")
@@ -438,12 +479,40 @@ func TestUpCommand_CDKContextFlags(t *testing.T) {
 			Services:        map[string]string{"api": "api.dev.example.com"},
 		}
 
-		args := cmd.buildCDKArgs("deploy", "test-stack", cfg, "dev", resolved)
+		args := cmd.buildCDKArgs("deploy", "test-stack", cfg, "dev", "", "", resolved)
 
 		// Convert to searchable string for easier testing
 		argsStr := strings.Join(args, " ")
 		assert.Contains(t, argsStr, "baseDomain=example.com")
 		assert.Contains(t, argsStr, "stageRootDomain=dev.example.com")
 		assert.Contains(t, argsStr, "serviceDomain.api=api.dev.example.com")
+	})
+
+	t.Run("with partner (PT mode)", func(t *testing.T) {
+		args := cmd.buildCDKArgs("deploy", "test-stack", cfg, "dev", "mypartner", "", nil)
+
+		// Convert to searchable string for easier testing
+		argsStr := strings.Join(args, " ")
+		assert.Contains(t, argsStr, "partner=mypartner")
+		assert.Contains(t, argsStr, "targetMode=standard") // Default when partner is set
+	})
+
+	t.Run("with partner and targetMode (PT mode)", func(t *testing.T) {
+		args := cmd.buildCDKArgs("deploy", "test-stack", cfg, "staging", "paytheory", "custom", nil)
+
+		// Convert to searchable string for easier testing
+		argsStr := strings.Join(args, " ")
+		assert.Contains(t, argsStr, "partner=paytheory")
+		assert.Contains(t, argsStr, "targetMode=custom")
+		assert.Contains(t, argsStr, "stage=staging")
+	})
+
+	t.Run("without partner no PT context", func(t *testing.T) {
+		args := cmd.buildCDKArgs("deploy", "test-stack", cfg, "dev", "", "", nil)
+
+		// Convert to searchable string for easier testing
+		argsStr := strings.Join(args, " ")
+		assert.NotContains(t, argsStr, "partner=")
+		assert.NotContains(t, argsStr, "targetMode=")
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -200,14 +201,189 @@ func TestNewCommandV2_DefaultTemplateIsBasicAPI(t *testing.T) {
 	assert.Equal(t, "basic-api", cfg.App.Template)
 }
 
-func TestNewCommandV2_PTFlagReturnsNotImplementedError(t *testing.T) {
-	cmd := &NewCommandV2{}
-	args := []string{"my-app", "--base-domain", "example.com", "--pt"}
+func TestNewCommandV2_PTModeGeneratesBuildspec(t *testing.T) {
+	// Create temp dir as working directory
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
 
-	err := cmd.Execute(context.Background(), args)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not yet implemented")
-	assert.Contains(t, err.Error(), "Milestone 6")
+	cmd := &NewCommandV2{}
+	args := []string{"pt-app", "--base-domain", "example.com", "--pt"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "pt-app")
+
+	// Verify PT devops files exist
+	assertFileExists(t, filepath.Join(appDir, "buildspec.yml"))
+	assertFileExists(t, filepath.Join(appDir, "shell", "build.sh"))
+	assertFileExists(t, filepath.Join(appDir, "shell", "deploy.sh"))
+	assertFileExists(t, filepath.Join(appDir, "shell", "init_env_vars.sh"))
+	assertFileExists(t, filepath.Join(appDir, "shell", "DEPLOYMENT.md"))
+
+	// Verify GitHub workflows are NOT generated in PT mode
+	_, err = os.Stat(filepath.Join(appDir, ".github", "workflows", "deploy.yml"))
+	assert.True(t, os.IsNotExist(err), "deploy.yml should not exist in PT mode")
+	_, err = os.Stat(filepath.Join(appDir, ".github", "workflows", "pr.yml"))
+	assert.True(t, os.IsNotExist(err), "pr.yml should not exist in PT mode")
+
+	// Verify core project files still exist
+	assertFileExists(t, filepath.Join(appDir, "lift.yaml"))
+	assertFileExists(t, filepath.Join(appDir, "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "cmd", "api", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "main.go"))
+}
+
+func TestNewCommandV2_PTModeBuildspecContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"content-test", "--base-domain", "example.com", "--pt"}
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "content-test")
+
+	// Read buildspec.yml and verify key content
+	buildspecContent, err := os.ReadFile(filepath.Join(appDir, "buildspec.yml"))
+	require.NoError(t, err)
+	content := string(buildspecContent)
+
+	// Verify CodeBuild env vars
+	assert.Contains(t, content, "PARTNER")
+	assert.Contains(t, content, "STAGE")
+	assert.Contains(t, content, "TARGET_MODE")
+
+	// Verify cdk deploy or synth
+	assert.True(t, strings.Contains(content, "cdk deploy") || strings.Contains(content, "cdk synth"))
+
+	// Verify Go 1.25 or higher
+	assert.Contains(t, content, "golang: 1.25")
+
+	// Verify lift.yaml contains partner in stack name template
+	liftYAMLContent, err := os.ReadFile(filepath.Join(appDir, "lift.yaml"))
+	require.NoError(t, err)
+	liftYAML := string(liftYAMLContent)
+	assert.Contains(t, liftYAML, "{{.Partner}}", "lift.yaml should include {{.Partner}} in stack name template")
+
+	// Verify CDK main.go reads partner context
+	cdkMainContent, err := os.ReadFile(filepath.Join(appDir, "cdk", "main.go"))
+	require.NoError(t, err)
+	cdkMain := string(cdkMainContent)
+	assert.Contains(t, cdkMain, "partner", "cdk/main.go should read partner context")
+	assert.Contains(t, cdkMain, "targetMode", "cdk/main.go should read targetMode context")
+}
+
+func TestNewCommandV2_PTModeShellScriptsContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"shell-test", "--base-domain", "example.com", "--pt"}
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "shell-test")
+
+	// Verify deploy.sh content
+	deployContent, err := os.ReadFile(filepath.Join(appDir, "shell", "deploy.sh"))
+	require.NoError(t, err)
+	deployStr := string(deployContent)
+
+	assert.Contains(t, deployStr, "--partner")
+	assert.Contains(t, deployStr, "--stage")
+	assert.Contains(t, deployStr, "--target-mode")
+	assert.Contains(t, deployStr, "deploy|destroy|diff|synth|bootstrap")
+	assert.Contains(t, deployStr, "dev|staging|live")
+
+	// Verify build.sh content
+	buildContent, err := os.ReadFile(filepath.Join(appDir, "shell", "build.sh"))
+	require.NoError(t, err)
+	buildStr := string(buildContent)
+
+	assert.Contains(t, buildStr, "GOOS=linux")
+	assert.Contains(t, buildStr, "GOARCH=arm64")
+	assert.Contains(t, buildStr, "-mod=mod")
+
+	// Verify init_env_vars.sh content
+	initContent, err := os.ReadFile(filepath.Join(appDir, "shell", "init_env_vars.sh"))
+	require.NoError(t, err)
+	initStr := string(initContent)
+
+	assert.Contains(t, initStr, "PARTNER")
+	assert.Contains(t, initStr, "STAGE")
+	assert.Contains(t, initStr, "TARGET_MODE")
+}
+
+func TestNewCommandV2_PTModeShellScriptsExecutable(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"exec-test", "--base-domain", "example.com", "--pt"}
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "exec-test")
+
+	// Verify shell scripts have executable permissions
+	for _, script := range []string{"build.sh", "deploy.sh", "init_env_vars.sh"} {
+		info, err := os.Stat(filepath.Join(appDir, "shell", script))
+		require.NoError(t, err)
+		// Check for owner execute bit (0100)
+		assert.True(t, info.Mode()&0100 != 0, "%s should be executable", script)
+	}
+}
+
+func TestNewCommandV2_PTModeREADMEContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"readme-test", "--base-domain", "example.com", "--pt"}
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "readme-test")
+
+	// Verify README.md exists
+	assertFileExists(t, filepath.Join(appDir, "README.md"))
+
+	// Read README.md and verify it's PT-focused
+	readmeContent, err := os.ReadFile(filepath.Join(appDir, "README.md"))
+	require.NoError(t, err)
+	readmeStr := string(readmeContent)
+
+	// Verify PT-specific content
+	assert.Contains(t, readmeStr, "Pay Theory-style deployment")
+	assert.Contains(t, readmeStr, "CodeBuild")
+	assert.Contains(t, readmeStr, "buildspec.yml")
+	assert.Contains(t, readmeStr, "./shell/deploy.sh")
+	assert.Contains(t, readmeStr, "--partner")
+	assert.Contains(t, readmeStr, "PARTNER")
+	assert.Contains(t, readmeStr, "STAGE")
+	assert.Contains(t, readmeStr, "lift up --stage dev --partner")
+
+	// Verify GitHub Actions content is NOT present
+	assert.NotContains(t, readmeStr, "GitHub Actions")
+	assert.NotContains(t, readmeStr, "vars.AWS_ROLE_ARN")
+	assert.NotContains(t, readmeStr, "GitHub Environments")
 }
 
 func TestNewCommandV2_UnknownTemplateReturnsError(t *testing.T) {

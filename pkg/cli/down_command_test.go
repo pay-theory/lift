@@ -53,6 +53,37 @@ cdk:
 	}
 }
 
+func TestDownCommand_RequiresPartnerWhenTemplateUsesPartner(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+
+	liftYAML := `version: 1
+app:
+  name: partner-required-test
+
+cdk:
+  path: ./cdk
+  deploy_order:
+    - service
+  stacks:
+    service:
+      name_template: "{{.AppName}}-service-{{.Partner}}-{{.Stage}}"
+`
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "cdk"), 0750))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "lift.yaml"), []byte(liftYAML), 0600))
+	require.NoError(t, os.Chdir(tmpDir))
+
+	var calls []capturedCDKCall
+	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls)}
+	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--partner is required")
+	assert.Empty(t, calls, "expected no commands to run when partner preflight fails")
+}
+
 func TestDownCommand_ReverseDestroyOrder(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()

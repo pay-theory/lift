@@ -23,7 +23,19 @@ type UpCommand struct {
 
 func (c *UpCommand) Name() string        { return "up" }
 func (c *UpCommand) Description() string { return "Build and deploy the Lift project for a stage" }
-func (c *UpCommand) Usage() string       { return "lift up --stage <dev|staging|live>" }
+func (c *UpCommand) Usage() string {
+	return `lift up --stage <dev|staging|live> [--partner <name>] [--target-mode <mode>]
+
+Flags:
+  --stage <stage>         Deployment stage: dev, staging, or live (default: dev)
+  --partner <name>        Partner name for PT-mode deployments (optional)
+  --target-mode <mode>    Target mode for PT-mode deployments (default: standard)
+
+Examples:
+  lift up --stage dev
+  lift up --stage staging --partner mypartner
+  lift up --stage live --partner mypartner --target-mode custom`
+}
 
 // Execute runs the up command. It:
 // 1. Finds the project root by walking up for lift.yaml
@@ -34,14 +46,25 @@ func (c *UpCommand) Usage() string       { return "lift up --stage <dev|staging|
 // 6. Deploys stacks in order using CDK
 // 7. Writes the state file on success
 func (c *UpCommand) Execute(ctx context.Context, args []string) error {
-	// Parse --stage flag
+	// Parse flags
 	stage := "dev" // default
+	partner := ""
+	targetMode := ""
+
 	for i, arg := range args {
-		if arg == "--stage" && i+1 < len(args) {
+		switch {
+		case arg == "--stage" && i+1 < len(args):
 			stage = args[i+1]
-		}
-		if strings.HasPrefix(arg, "--stage=") {
+		case strings.HasPrefix(arg, "--stage="):
 			stage = strings.TrimPrefix(arg, "--stage=")
+		case arg == "--partner" && i+1 < len(args):
+			partner = args[i+1]
+		case strings.HasPrefix(arg, "--partner="):
+			partner = strings.TrimPrefix(arg, "--partner=")
+		case arg == "--target-mode" && i+1 < len(args):
+			targetMode = args[i+1]
+		case strings.HasPrefix(arg, "--target-mode="):
+			targetMode = strings.TrimPrefix(arg, "--target-mode=")
 		}
 	}
 
@@ -66,6 +89,19 @@ func (c *UpCommand) Execute(ctx context.Context, args []string) error {
 	cfg, err := liftconfig.LoadConfig(root)
 	if err != nil {
 		return err
+	}
+
+	requiresPartner := cdkTemplatesUsePartner(cfg)
+	requiresTargetMode := cdkTemplatesUseTargetMode(cfg)
+
+	// Enforce partner requirement when stack name templates reference {{.Partner}}.
+	if requiresPartner && partner == "" {
+		return fmt.Errorf("--partner is required for this project (cdk stack name_template references {{.Partner}})")
+	}
+
+	// Default targetMode to "standard" when relevant.
+	if targetMode == "" && (partner != "" || requiresTargetMode) {
+		targetMode = "standard"
 	}
 
 	fmt.Printf("🚀 Deploying %s to stage: %s\n", cfg.App.Name, stage)
@@ -107,7 +143,7 @@ func (c *UpCommand) Execute(ctx context.Context, args []string) error {
 	fmt.Printf("\n")
 
 	// Deploy stacks
-	if err := c.deployStacks(ctx, root, cfg, stage, resolved); err != nil {
+	if err := c.deployStacks(ctx, root, cfg, stage, partner, targetMode, resolved); err != nil {
 		return err
 	}
 
@@ -139,7 +175,7 @@ func (c *UpCommand) Execute(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (c *UpCommand) deployStacks(ctx context.Context, root string, cfg *liftconfig.Config, stage string, resolved *domains.ResolvedDomains) error {
+func (c *UpCommand) deployStacks(ctx context.Context, root string, cfg *liftconfig.Config, stage, partner, targetMode string, resolved *domains.ResolvedDomains) error {
 	if cfg.CDK == nil || len(cfg.CDK.DeployOrder) == 0 {
 		fmt.Printf("⚠️  No CDK stacks configured in deploy_order, skipping deployment\n")
 		return nil
@@ -159,14 +195,14 @@ func (c *UpCommand) deployStacks(ctx context.Context, root string, cfg *liftconf
 			return fmt.Errorf("stack %q in deploy_order not found in cdk.stacks", stackKey)
 		}
 
-		stackName, err := c.renderStackName(stackCfg.NameTemplate, cfg.App.Name, stage)
+		stackName, err := c.renderStackName(stackCfg.NameTemplate, cfg.App.Name, stage, partner, targetMode)
 		if err != nil {
 			return fmt.Errorf("failed to render stack name for %q: %w", stackKey, err)
 		}
 
 		fmt.Printf("  📤 Deploying stack: %s\n", stackName)
 
-		cdkArgs := c.buildCDKArgs("deploy", stackName, cfg, stage, resolved)
+		cdkArgs := c.buildCDKArgs("deploy", stackName, cfg, stage, partner, targetMode, resolved)
 		if err := c.runCDK(ctx, cdkDir, cdkArgs); err != nil {
 			return fmt.Errorf("failed to deploy stack %q: %w", stackName, err)
 		}
@@ -176,7 +212,7 @@ func (c *UpCommand) deployStacks(ctx context.Context, root string, cfg *liftconf
 	return nil
 }
 
-func (c *UpCommand) buildCDKArgs(command, stackName string, cfg *liftconfig.Config, stage string, resolved *domains.ResolvedDomains) []string {
+func (c *UpCommand) buildCDKArgs(command, stackName string, cfg *liftconfig.Config, stage, partner, targetMode string, resolved *domains.ResolvedDomains) []string {
 	args := []string{command, stackName}
 
 	if command == "deploy" {
@@ -190,6 +226,19 @@ func (c *UpCommand) buildCDKArgs(command, stackName string, cfg *liftconfig.Conf
 	args = append(args, "--context", fmt.Sprintf("stage=%s", stage))
 	args = append(args, "--context", fmt.Sprintf("appName=%s", cfg.App.Name))
 
+	// Default targetMode to "standard" if partner is set but targetMode is not.
+	if partner != "" && targetMode == "" {
+		targetMode = "standard"
+	}
+
+	// Add optional context flags
+	if partner != "" {
+		args = append(args, "--context", fmt.Sprintf("partner=%s", partner))
+	}
+	if targetMode != "" {
+		args = append(args, "--context", fmt.Sprintf("targetMode=%s", targetMode))
+	}
+
 	if resolved != nil {
 		args = append(args, "--context", fmt.Sprintf("baseDomain=%s", resolved.BaseDomain))
 		args = append(args, "--context", fmt.Sprintf("stageRootDomain=%s", resolved.StageRootDomain))
@@ -201,7 +250,9 @@ func (c *UpCommand) buildCDKArgs(command, stackName string, cfg *liftconfig.Conf
 	return args
 }
 
-func (c *UpCommand) renderStackName(tmpl, appName, stage string) (string, error) {
+// renderStackName renders a stack name template with the provided values.
+// Supports: {{.AppName}}, {{.Stage}}, {{.Partner}}, {{.TargetMode}}
+func (c *UpCommand) renderStackName(tmpl, appName, stage, partner, targetMode string) (string, error) {
 	if tmpl == "" {
 		return "", fmt.Errorf("name_template is required")
 	}
@@ -213,8 +264,10 @@ func (c *UpCommand) renderStackName(tmpl, appName, stage string) (string, error)
 
 	var buf bytes.Buffer
 	data := map[string]string{
-		"AppName": appName,
-		"Stage":   stage,
+		"AppName":    appName,
+		"Stage":      stage,
+		"Partner":    partner,
+		"TargetMode": targetMode,
 	}
 	if err := t.Execute(&buf, data); err != nil {
 		return "", err
@@ -236,4 +289,27 @@ func (c *UpCommand) runCDK(ctx context.Context, cdkDir string, args []string) er
 	cmd.Stderr = os.Stderr
 
 	return cmd.Run()
+}
+
+func cdkTemplatesUsePartner(cfg *liftconfig.Config) bool {
+	return cdkTemplatesContain(cfg, ".Partner")
+}
+
+func cdkTemplatesUseTargetMode(cfg *liftconfig.Config) bool {
+	return cdkTemplatesContain(cfg, ".TargetMode")
+}
+
+func cdkTemplatesContain(cfg *liftconfig.Config, substr string) bool {
+	if cfg == nil || cfg.CDK == nil || cfg.CDK.Stacks == nil {
+		return false
+	}
+	for _, stack := range cfg.CDK.Stacks {
+		if stack == nil {
+			continue
+		}
+		if strings.Contains(stack.NameTemplate, substr) {
+			return true
+		}
+	}
+	return false
 }
