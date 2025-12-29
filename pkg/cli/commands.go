@@ -55,6 +55,7 @@ func NewCLI(version string) *CLI {
 
 	// Register Lift project commands
 	cli.RegisterCommand(&UpCommand{})
+	cli.RegisterCommand(&DownCommand{})
 
 	return cli
 }
@@ -497,6 +498,7 @@ func (c *HelpCommand) Execute(_ context.Context, args []string) error {
 		{"new", "Create a new Lift project"},
 		{"build", "Build Lambda functions defined in lift.yaml"},
 		{"up", "Build and deploy the Lift project for a stage"},
+		{"down", "Destroy the Lift project deployment for a stage"},
 		{"dev", "Start development server with hot reload"},
 		{"test", "Run comprehensive test suite"},
 		{"benchmark", "Execute performance benchmarks"},

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -118,8 +119,13 @@ func TestNewCommandV2_GeneratedProjectLiftUpSucceeds(t *testing.T) {
 	projectDir := filepath.Join(tmpDir, "test-project")
 	require.NoError(t, os.Chdir(projectDir))
 
-	// Run lift up
-	upCmd := &UpCommand{}
+	// Run lift up with mocked cmdFactory to avoid requiring real go/cdk toolchain
+	upCmd := &UpCommand{
+		cmdFactory: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			// Return a command that succeeds (true exits with 0)
+			return exec.CommandContext(ctx, "true")
+		},
+	}
 	err = upCmd.Execute(context.Background(), nil)
 	require.NoError(t, err)
 }
