@@ -7,9 +7,8 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/pay-theory/lift/pkg/cdk/constructs"
+	liftcdk "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
 
 func main() {
@@ -53,7 +52,7 @@ func main() {
 	})
 
 	// Create the API Lambda function using Lift CDK constructs
-	apiFunction := constructs.NewLiftFunction(stack, jsii.String("ApiFunction"), &constructs.LiftFunctionProps{
+	apiFunction := liftcdk.NewLiftFunction(stack, jsii.String("ApiFunction"), &liftcdk.LiftFunctionProps{
 		FunctionProps: awslambda.FunctionProps{
 			FunctionName: jsii.String(fmt.Sprintf("%s-api-%s", appNameStr, stageStr)),
 			Code:         awslambda.Code_FromAsset(jsii.String(filepath.Join("..", "dist", "api")), nil),

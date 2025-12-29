@@ -33,6 +33,7 @@ func TestNewCommandV2_CreateAppDirectory(t *testing.T) {
 	// Verify expected files exist
 	assertFileExists(t, filepath.Join(appDir, "lift.yaml"))
 	assertFileExists(t, filepath.Join(appDir, "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "README.md"))
 	assertFileExists(t, filepath.Join(appDir, "cmd", "api", "main.go"))
 	assertFileExists(t, filepath.Join(appDir, "cdk", "main.go"))
 	assertFileExists(t, filepath.Join(appDir, "cdk", "go.mod"))
@@ -250,6 +251,51 @@ func TestNewCommandV2_VerifyGitHubWorkflowContent(t *testing.T) {
 	assert.Contains(t, string(deployContent), "dev")
 	assert.Contains(t, string(deployContent), "staging")
 	assert.Contains(t, string(deployContent), "live")
+}
+
+func TestNewCommandV2_VerifyREADMEContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-app", "--template", "basic-api", "--base-domain", "example.com"}
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	// Read README.md and verify key content
+	readmePath := filepath.Join(tmpDir, "my-app", "README.md")
+	readmeContent, err := os.ReadFile(readmePath)
+	require.NoError(t, err)
+
+	// Verify CI Setup section exists
+	assert.Contains(t, string(readmeContent), "## CI Setup")
+	assert.Contains(t, string(readmeContent), "GitHub Actions")
+	assert.Contains(t, string(readmeContent), "OIDC")
+
+	// Verify environment creation instructions
+	assert.Contains(t, string(readmeContent), "Create GitHub Environments")
+	assert.Contains(t, string(readmeContent), "`dev`")
+	assert.Contains(t, string(readmeContent), "`staging`")
+	assert.Contains(t, string(readmeContent), "`live`")
+
+	// Verify variable instructions
+	assert.Contains(t, string(readmeContent), "AWS_ROLE_ARN")
+	assert.Contains(t, string(readmeContent), "AWS_REGION")
+
+	// Verify stage deployment isolation is mentioned
+	assert.Contains(t, string(readmeContent), "stage-isolated deployments")
+
+	// Verify quickstart commands
+	assert.Contains(t, string(readmeContent), "lift build")
+	assert.Contains(t, string(readmeContent), "lift up --stage dev")
+
+	// Verify stages section with domains
+	assert.Contains(t, string(readmeContent), "api.dev.example.com")
+	assert.Contains(t, string(readmeContent), "api.staging.example.com")
+	assert.Contains(t, string(readmeContent), "api.example.com")
 }
 
 func TestNewCommandV2_VerifyLiftYAMLFullSchema(t *testing.T) {
