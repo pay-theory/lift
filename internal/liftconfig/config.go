@@ -55,7 +55,7 @@ type Build struct {
 	GOOS     string   `yaml:"goos,omitempty"`
 	GOARCH   string   `yaml:"goarch,omitempty"`
 	CGO      int      `yaml:"cgo,omitempty"`
-	Trimpath bool     `yaml:"trimpath,omitempty"`
+	Trimpath *bool    `yaml:"trimpath,omitempty"`
 	LDFlags  string   `yaml:"ldflags,omitempty"`
 	Tags     []string `yaml:"tags,omitempty"`
 }
