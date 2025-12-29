@@ -1,0 +1,78 @@
+# {{.AppName}} Deployment Guide
+
+This project uses Pay Theory-style deployment (CodeBuild + shell scripts).
+
+## Prerequisites
+
+- AWS CLI configured with appropriate credentials
+- AWS CDK CLI installed (`npm install -g aws-cdk`)
+- Go 1.25 or later
+- Node.js 20 or later
+
+## Environment Variables
+
+The deployment system uses these environment variables:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PARTNER` | Yes | Partner identifier for multi-tenant isolation |
+| `STAGE` | Yes | Deployment stage: `dev`, `staging`, or `live` |
+| `TARGET_MODE` | No | Deployment mode (default: `standard`) |
+| `AWS_REGION` | No | AWS region (auto-detected if not set) |
+
+## Local Development
+
+### Initialize Environment
+
+```bash
+source ./shell/init_env_vars.sh
+```
+
+Edit the file to set your `PARTNER` value before sourcing.
+
+### Build Lambda Functions
+
+```bash
+./shell/build.sh
+```
+
+### Deploy
+
+```bash
+# Deploy all stacks to dev
+./shell/deploy.sh --partner mypartner --stage dev
+
+# Deploy only data stack
+./shell/deploy.sh --partner mypartner --stage dev --stack data
+
+# Deploy only service stack (requires data stack)
+./shell/deploy.sh --partner mypartner --stage dev --stack service
+```
+
+### Destroy
+
+```bash
+./shell/deploy.sh --partner mypartner --stage dev --command destroy
+```
+
+### Using `lift` CLI
+
+You can also use the `lift` CLI with partner context:
+
+```bash
+lift build
+lift up --stage dev --partner mypartner
+lift down --stage dev --partner mypartner
+```
+
+## Stack Naming
+
+Stacks are named with the pattern:
+
+- `{{.AppName}}-data-<partner>-<stage>`
+- `{{.AppName}}-service-<partner>-<stage>`
+
+Example:
+
+- `{{.AppName}}-data-mypartner-dev`
+- `{{.AppName}}-service-mypartner-dev`

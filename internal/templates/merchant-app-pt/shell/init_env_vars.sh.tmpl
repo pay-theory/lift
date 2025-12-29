@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# {{.AppName}} Environment Variables Initialization
+# Source this file to set up environment variables for local development
+#
+# Usage: source ./shell/init_env_vars.sh
+#
+# Customize PARTNER and STAGE as needed for your deployment target.
+
+export PARTNER="your-partner"
+export STAGE="dev"
+export TARGET_MODE="standard"
+export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query 'Account' --output text)
+export CDK_DEFAULT_REGION="${AWS_REGION:-us-east-1}"
+export AWS_RETRY_MODE="adaptive"
+export AWS_MAX_ATTEMPTS=10
+
+echo "Environment variables initialized:"
+echo "  PARTNER=$PARTNER"
+echo "  STAGE=$STAGE"
+echo "  TARGET_MODE=$TARGET_MODE"
+echo "  CDK_DEFAULT_ACCOUNT=$CDK_DEFAULT_ACCOUNT"
+echo "  CDK_DEFAULT_REGION=$CDK_DEFAULT_REGION"

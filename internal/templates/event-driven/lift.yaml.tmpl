@@ -1,0 +1,45 @@
+version: 1
+
+app:
+  name: {{ .AppName }}
+  template: event-driven
+
+domains:
+  base_domain: {{ .BaseDomain }}
+
+stages:
+  dev:
+    root_domain: dev.{{ .BaseDomain }}
+  staging:
+    root_domain: staging.{{ .BaseDomain }}
+  live:
+    root_domain: {{ .BaseDomain }}
+
+services:
+  api:
+    subdomain: api
+
+build:
+  goos: linux
+  goarch: arm64
+  cgo: 0
+  trimpath: true
+  ldflags: "-s -w"
+  tags:
+    - lambda.norpc
+
+functions:
+  api:
+    cmd: ./cmd/api
+    out: ./dist/api/bootstrap
+  processor:
+    cmd: ./cmd/processor
+    out: ./dist/processor/bootstrap
+
+cdk:
+  path: ./cdk
+  deploy_order:
+    - service
+  stacks:
+    service:
+      name_template: "{{ "{{" }}.AppName{{ "}}" }}-service-{{ "{{" }}.Stage{{ "}}" }}"

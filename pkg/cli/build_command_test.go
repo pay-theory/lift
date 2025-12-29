@@ -606,3 +606,154 @@ func main() {}
 	// Verify the output exists at the configured path
 	assertFileExists(t, filepath.Join(projectDir, "dist", "api", "bootstrap"))
 }
+
+// =============================================================================
+// Integration tests for new templates: microservice, event-driven, merchant-app
+// =============================================================================
+
+// TestBuildCommand_MicroserviceTemplate_CanBuild verifies that microservice template
+// generates a project that can be built successfully.
+func TestBuildCommand_MicroserviceTemplate_CanBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Generate a microservice project
+	newCmd := &NewCommandV2{}
+	err = newCmd.Execute(context.Background(), []string{"my-microservice", "--template", "microservice", "--base-domain", "example.com"})
+	require.NoError(t, err)
+
+	projectDir := filepath.Join(tmpDir, "my-microservice")
+
+	// Replace the generated main.go with a simple one
+	simpleMain := `package main
+
+func main() {}
+`
+	err = os.WriteFile(filepath.Join(projectDir, "cmd", "api", "main.go"), []byte(simpleMain), 0600)
+	require.NoError(t, err)
+
+	// Change to project directory
+	require.NoError(t, os.Chdir(projectDir))
+
+	// Build the project
+	buildCmd := &BuildCommand{
+		cmdFactory: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			c := exec.CommandContext(ctx, name, arg...)
+			setHermeticEnv(t, c, tmpDir)
+			return c
+		},
+	}
+
+	err = buildCmd.Execute(context.Background(), nil)
+	require.NoError(t, err)
+
+	// Verify the output exists for api function
+	assertFileExists(t, filepath.Join(projectDir, "dist", "api", "bootstrap"))
+}
+
+// TestBuildCommand_EventDrivenTemplate_CanBuild verifies that event-driven template
+// generates a project that can be built successfully.
+func TestBuildCommand_EventDrivenTemplate_CanBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Generate an event-driven project
+	newCmd := &NewCommandV2{}
+	err = newCmd.Execute(context.Background(), []string{"my-event-app", "--template", "event-driven", "--base-domain", "example.com"})
+	require.NoError(t, err)
+
+	projectDir := filepath.Join(tmpDir, "my-event-app")
+
+	// Replace the generated main.go files with simple ones
+	simpleMain := `package main
+
+func main() {}
+`
+	err = os.WriteFile(filepath.Join(projectDir, "cmd", "api", "main.go"), []byte(simpleMain), 0600)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(projectDir, "cmd", "processor", "main.go"), []byte(simpleMain), 0600)
+	require.NoError(t, err)
+
+	// Change to project directory
+	require.NoError(t, os.Chdir(projectDir))
+
+	// Build the project
+	buildCmd := &BuildCommand{
+		cmdFactory: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			c := exec.CommandContext(ctx, name, arg...)
+			setHermeticEnv(t, c, tmpDir)
+			return c
+		},
+	}
+
+	err = buildCmd.Execute(context.Background(), nil)
+	require.NoError(t, err)
+
+	// Verify the outputs exist for both functions
+	assertFileExists(t, filepath.Join(projectDir, "dist", "api", "bootstrap"))
+	assertFileExists(t, filepath.Join(projectDir, "dist", "processor", "bootstrap"))
+}
+
+// TestBuildCommand_MerchantAppTemplate_CanBuild verifies that merchant-app template
+// generates a project that can be built successfully.
+func TestBuildCommand_MerchantAppTemplate_CanBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Generate a merchant-app project
+	newCmd := &NewCommandV2{}
+	err = newCmd.Execute(context.Background(), []string{"my-merchant-app", "--template", "merchant-app", "--base-domain", "example.com"})
+	require.NoError(t, err)
+
+	projectDir := filepath.Join(tmpDir, "my-merchant-app")
+
+	// Replace the generated main.go files with simple ones
+	simpleMain := `package main
+
+func main() {}
+`
+	err = os.WriteFile(filepath.Join(projectDir, "cmd", "api", "main.go"), []byte(simpleMain), 0600)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(projectDir, "cmd", "worker", "main.go"), []byte(simpleMain), 0600)
+	require.NoError(t, err)
+
+	// Change to project directory
+	require.NoError(t, os.Chdir(projectDir))
+
+	// Build the project
+	buildCmd := &BuildCommand{
+		cmdFactory: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			c := exec.CommandContext(ctx, name, arg...)
+			setHermeticEnv(t, c, tmpDir)
+			return c
+		},
+	}
+
+	err = buildCmd.Execute(context.Background(), nil)
+	require.NoError(t, err)
+
+	// Verify the outputs exist for both functions
+	assertFileExists(t, filepath.Join(projectDir, "dist", "api", "bootstrap"))
+	assertFileExists(t, filepath.Join(projectDir, "dist", "worker", "bootstrap"))
+}

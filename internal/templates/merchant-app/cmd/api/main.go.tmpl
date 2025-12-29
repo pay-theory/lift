@@ -1,0 +1,32 @@
+package main
+
+import (
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/pay-theory/lift/pkg/lift"
+)
+
+func main() {
+	// Create Lift app
+	app := lift.New()
+
+	// Health endpoint
+	app.GET("/health", func(ctx *lift.Context) error {
+		return ctx.JSON(map[string]string{
+			"status":  "healthy",
+			"service": "{{ .AppName }}-api",
+		})
+	})
+
+	// Hello endpoint
+	app.GET("/", func(ctx *lift.Context) error {
+		return ctx.JSON(map[string]string{
+			"message": "Hello from {{ .AppName }}!",
+		})
+	})
+
+	// Run local test if not in Lambda
+	app.RunLocalTest()
+
+	// Start Lambda
+	lambda.Start(app.HandleRequest)
+}

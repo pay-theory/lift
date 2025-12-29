@@ -4,6 +4,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"embed"
 	"fmt"
 	"io/fs"
 	"os"
@@ -14,6 +15,28 @@ import (
 	"github.com/pay-theory/lift/internal/liftconfig"
 	"github.com/pay-theory/lift/internal/templates"
 )
+
+// templateInfo holds information about a template including its embedded FS and root path.
+type templateInfo struct {
+	FS   embed.FS
+	Root string
+}
+
+// availableTemplates lists all available templates.
+var availableTemplates = map[string]templateInfo{
+	"basic-api":    {FS: templates.BasicAPIFS, Root: "basic-api"},
+	"microservice": {FS: templates.MicroserviceFS, Root: "microservice"},
+	"event-driven": {FS: templates.EventDrivenFS, Root: "event-driven"},
+	"merchant-app": {FS: templates.MerchantAppFS, Root: "merchant-app"},
+}
+
+// ptTemplates lists templates that have PT variants.
+var ptTemplates = map[string]templateInfo{
+	"basic-api":    {FS: templates.BasicAPIPTFS, Root: "basic-api-pt"},
+	"microservice": {FS: templates.MicroservicePTFS, Root: "microservice-pt"},
+	"event-driven": {FS: templates.EventDrivenPTFS, Root: "event-driven-pt"},
+	"merchant-app": {FS: templates.MerchantAppPTFS, Root: "merchant-app-pt"},
+}
 
 // NewCommandV2 implements the "lift new" command for Milestone 2+.
 // It scaffolds a new Lift project using embedded templates.
@@ -30,9 +53,18 @@ Flags:
   --pt                    Generate Pay Theory devops assets (buildspec.yml, shell/*)
                           instead of GitHub Actions workflows
 
+Available templates:
+  - basic-api (default)   Single Lambda API with minimal infrastructure
+  - microservice          Lightweight single Lambda microservice
+  - event-driven          API + processor with SQS queue for async processing
+  - merchant-app          Multi-Lambda, multi-stack (data + service) architecture
+
 Examples:
   lift new my-app --base-domain example.com
   lift new --template basic-api --base-domain example.com
+  lift new my-app --template microservice --base-domain example.com
+  lift new my-app --template event-driven --base-domain example.com
+  lift new my-app --template merchant-app --base-domain example.com
   lift new my-app --base-domain example.com --pt`
 }
 
@@ -78,7 +110,7 @@ func (c *NewCommandV2) Execute(_ context.Context, args []string) error {
 	}
 
 	// Print success message
-	c.printSuccess(targetDir, opts.appName, opts.pt)
+	c.printSuccess(targetDir, opts.appName, opts.pt, opts.template)
 
 	return nil
 }
@@ -132,8 +164,23 @@ func (c *NewCommandV2) parseArgs(args []string) (*newOpts, error) {
 
 func (c *NewCommandV2) validateOpts(opts *newOpts) error {
 	// Validate template
-	if opts.template != "basic-api" {
-		return fmt.Errorf("unknown template: %s\n\nAvailable templates:\n  - basic-api (default)", opts.template)
+	if _, ok := availableTemplates[opts.template]; !ok {
+		templateList := make([]string, 0, len(availableTemplates))
+		for name := range availableTemplates {
+			templateList = append(templateList, name)
+		}
+		return fmt.Errorf("unknown template: %s\n\nAvailable templates:\n  - %s", opts.template, strings.Join(templateList, "\n  - "))
+	}
+
+	// Validate PT mode is available for the selected template
+	if opts.pt {
+		if _, ok := ptTemplates[opts.template]; !ok {
+			templateList := make([]string, 0, len(ptTemplates))
+			for name := range ptTemplates {
+				templateList = append(templateList, name)
+			}
+			return fmt.Errorf("--pt mode is not available for template %s\n\nTemplates with PT support:\n  - %s", opts.template, strings.Join(templateList, "\n  - "))
+		}
 	}
 
 	// Validate base-domain for domain-enabled templates
@@ -199,15 +246,17 @@ func (c *NewCommandV2) scaffold(targetDir string, opts *newOpts) error {
 		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
 	}
 
+	// Get the template info
+	tmplInfo := availableTemplates[opts.template]
+
 	// Walk the embedded template FS and render each file
-	templateRoot := "basic-api"
-	err := fs.WalkDir(templates.BasicAPIFS, templateRoot, func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(tmplInfo.FS, tmplInfo.Root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
 		// Get relative path from template root
-		relPath, err := filepath.Rel(templateRoot, path)
+		relPath, err := filepath.Rel(tmplInfo.Root, path)
 		if err != nil {
 			return err
 		}
@@ -250,7 +299,7 @@ func (c *NewCommandV2) scaffold(targetDir string, opts *newOpts) error {
 		}
 
 		// Read and render template file
-		content, err := templates.BasicAPIFS.ReadFile(path)
+		content, err := tmplInfo.FS.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read template %s: %w", path, err)
 		}
@@ -280,7 +329,7 @@ func (c *NewCommandV2) scaffold(targetDir string, opts *newOpts) error {
 
 	// In PT mode, also scaffold PT-specific files (buildspec.yml, shell/*)
 	if opts.pt {
-		if err := c.scaffoldPTFiles(targetDir, data); err != nil {
+		if err := c.scaffoldPTFiles(targetDir, data, opts.template); err != nil {
 			return fmt.Errorf("failed to scaffold PT files: %w", err)
 		}
 	}
@@ -289,16 +338,19 @@ func (c *NewCommandV2) scaffold(targetDir string, opts *newOpts) error {
 }
 
 // scaffoldPTFiles scaffolds Pay Theory-style devops files (buildspec.yml, shell/*)
-func (c *NewCommandV2) scaffoldPTFiles(targetDir string, data TemplateData) error {
-	ptTemplateRoot := "basic-api-pt"
+func (c *NewCommandV2) scaffoldPTFiles(targetDir string, data TemplateData, templateName string) error {
+	ptTemplate, ok := ptTemplates[templateName]
+	if !ok {
+		return fmt.Errorf("internal error: PT template not found for %s", templateName)
+	}
 
-	return fs.WalkDir(templates.BasicAPIPTFS, ptTemplateRoot, func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(ptTemplate.FS, ptTemplate.Root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
 		// Get relative path from template root
-		relPath, err := filepath.Rel(ptTemplateRoot, path)
+		relPath, err := filepath.Rel(ptTemplate.Root, path)
 		if err != nil {
 			return err
 		}
@@ -320,7 +372,7 @@ func (c *NewCommandV2) scaffoldPTFiles(targetDir string, data TemplateData) erro
 		}
 
 		// Read and render template file
-		content, err := templates.BasicAPIPTFS.ReadFile(path)
+		content, err := ptTemplate.FS.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read PT template %s: %w", path, err)
 		}
@@ -365,7 +417,7 @@ func (c *NewCommandV2) renderTemplate(content string, data TemplateData) (string
 	return buf.String(), nil
 }
 
-func (c *NewCommandV2) printSuccess(targetDir string, appName string, ptMode bool) {
+func (c *NewCommandV2) printSuccess(targetDir string, appName string, ptMode bool, templateName string) {
 	name := appName
 	if name == "" {
 		name = filepath.Base(targetDir)
@@ -373,12 +425,25 @@ func (c *NewCommandV2) printSuccess(targetDir string, appName string, ptMode boo
 
 	fmt.Printf("✅ Created Lift project: %s\n", name)
 	fmt.Printf("📁 Location: %s\n", targetDir)
+	fmt.Printf("📦 Template: %s\n", templateName)
 	fmt.Printf("\n")
 	fmt.Printf("📁 Project structure:\n")
 	fmt.Printf("   %s/\n", name)
 	fmt.Printf("   ├── lift.yaml          # Project configuration\n")
 	fmt.Printf("   ├── go.mod             # Go module\n")
-	fmt.Printf("   ├── cmd/api/main.go    # Lambda entrypoint\n")
+
+	// Print function structure based on template
+	switch templateName {
+	case "event-driven":
+		fmt.Printf("   ├── cmd/api/main.go    # API Lambda entrypoint\n")
+		fmt.Printf("   ├── cmd/processor/main.go  # Processor Lambda entrypoint\n")
+	case "merchant-app":
+		fmt.Printf("   ├── cmd/api/main.go    # API Lambda entrypoint\n")
+		fmt.Printf("   ├── cmd/worker/main.go # Worker Lambda entrypoint\n")
+	default:
+		fmt.Printf("   ├── cmd/api/main.go    # Lambda entrypoint\n")
+	}
+
 	fmt.Printf("   ├── cdk/               # CDK infrastructure\n")
 	fmt.Printf("   │   ├── cdk.json\n")
 	fmt.Printf("   │   ├── go.mod\n")

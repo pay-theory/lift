@@ -1,0 +1,96 @@
+# {{.AppName}}
+
+A Lift-powered microservice using Pay Theory-style deployment.
+
+## Prerequisites
+
+- Go 1.25 or later
+- Node.js 20 or later (for CDK)
+- AWS CLI configured with appropriate credentials
+- AWS CDK CLI (`npm install -g aws-cdk`)
+
+## Project Structure
+
+```
+{{.AppName}}/
+├── cmd/api/           # Lambda entrypoint
+├── cdk/               # CDK infrastructure
+├── dist/              # Build outputs (generated)
+├── shell/             # Deployment scripts
+│   ├── build.sh       # Build Lambda functions
+│   ├── deploy.sh      # Deploy with CDK
+│   └── init_env_vars.sh
+├── buildspec.yml      # CodeBuild specification
+└── lift.yaml          # Lift project configuration
+```
+
+## Quick Start
+
+```bash
+# Initialize environment (edit PARTNER first)
+source ./shell/init_env_vars.sh
+
+# Build Lambda functions
+./shell/build.sh
+
+# Deploy to dev
+./shell/deploy.sh --partner <partner> --stage dev
+```
+
+## Deployment
+
+### Using Shell Scripts
+
+```bash
+# Deploy to dev
+./shell/deploy.sh --partner mypartner --stage dev
+
+# Deploy to staging
+./shell/deploy.sh --partner mypartner --stage staging
+
+# Deploy to production
+./shell/deploy.sh --partner mypartner --stage live
+
+# Show what would change (diff)
+./shell/deploy.sh --partner mypartner --stage dev --command diff
+
+# Destroy deployment
+./shell/deploy.sh --partner mypartner --stage dev --command destroy
+
+# Bootstrap CDK (first-time setup)
+./shell/deploy.sh --partner mypartner --stage dev --command bootstrap
+```
+
+### Using Lift CLI
+
+```bash
+# Build all functions
+lift build
+
+# Deploy with partner context
+lift up --stage dev --partner mypartner
+
+# Deploy with custom target mode
+lift up --stage dev --partner mypartner --target-mode custom
+
+# Destroy
+lift down --stage dev --partner mypartner
+```
+
+## Stages
+
+| Stage | Domain | Description |
+|-------|--------|-------------|
+| `dev` | `api.dev.{{.BaseDomain}}` | Development environment |
+| `staging` | `api.staging.{{.BaseDomain}}` | Staging/QA environment |
+| `live` | `api.{{.BaseDomain}}` | Production environment |
+
+## Stack Naming
+
+Stacks are named with the pattern: `{{.AppName}}-service-<partner>-<stage>`
+
+Example: `{{.AppName}}-service-mypartner-dev`
+
+## Documentation
+
+See `shell/DEPLOYMENT.md` for additional deployment details.

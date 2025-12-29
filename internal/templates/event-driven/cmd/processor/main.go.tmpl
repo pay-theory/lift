@@ -1,0 +1,25 @@
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+)
+
+func main() {
+	lambda.Start(handler)
+}
+
+func handler(ctx context.Context, sqsEvent events.SQSEvent) error {
+	for _, message := range sqsEvent.Records {
+		fmt.Printf("Processing message: %s\n", message.Body)
+		
+		// TODO: Process the SQS message
+		// Add your business logic here
+		
+		fmt.Printf("Successfully processed message ID: %s\n", message.MessageId)
+	}
+	return nil
+}

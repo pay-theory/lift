@@ -537,3 +537,399 @@ func assertFileExists(t *testing.T, path string) {
 		t.Errorf("expected file to exist: %s", path)
 	}
 }
+
+// =============================================================================
+// Tests for new templates: microservice, event-driven, merchant-app
+// =============================================================================
+
+func TestNewCommandV2_MicroserviceTemplate_CreatesExpectedFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-microservice", "--template", "microservice", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-microservice")
+
+	// Verify expected files exist
+	assertFileExists(t, filepath.Join(appDir, "lift.yaml"))
+	assertFileExists(t, filepath.Join(appDir, "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "README.md"))
+	assertFileExists(t, filepath.Join(appDir, "cmd", "api", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "cdk.json"))
+	assertFileExists(t, filepath.Join(appDir, ".gitignore"))
+	assertFileExists(t, filepath.Join(appDir, ".github", "workflows", "deploy.yml"))
+	assertFileExists(t, filepath.Join(appDir, ".github", "workflows", "pr.yml"))
+}
+
+func TestNewCommandV2_MicroserviceTemplate_LiftYAMLValid(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-microservice", "--template", "microservice", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-microservice")
+	cfg, err := liftconfig.LoadConfig(appDir)
+	require.NoError(t, err)
+
+	// Verify template name
+	assert.Equal(t, "microservice", cfg.App.Template)
+	assert.Equal(t, "my-microservice", cfg.App.Name)
+
+	// Verify stage domains
+	assert.Equal(t, "dev.example.com", cfg.Stages["dev"].RootDomain)
+	assert.Equal(t, "staging.example.com", cfg.Stages["staging"].RootDomain)
+	assert.Equal(t, "example.com", cfg.Stages["live"].RootDomain)
+
+	// Verify functions - microservice has only api
+	require.NotNil(t, cfg.Functions)
+	require.Contains(t, cfg.Functions, "api")
+	assert.Equal(t, "./cmd/api", cfg.Functions["api"].Cmd)
+	assert.Equal(t, "./dist/api/bootstrap", cfg.Functions["api"].Out)
+}
+
+func TestNewCommandV2_EventDrivenTemplate_CreatesExpectedFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-event-app", "--template", "event-driven", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-event-app")
+
+	// Verify expected files exist
+	assertFileExists(t, filepath.Join(appDir, "lift.yaml"))
+	assertFileExists(t, filepath.Join(appDir, "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "README.md"))
+	assertFileExists(t, filepath.Join(appDir, "cmd", "api", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cmd", "processor", "main.go")) // event-driven has processor
+	assertFileExists(t, filepath.Join(appDir, "cdk", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "cdk.json"))
+	assertFileExists(t, filepath.Join(appDir, ".gitignore"))
+	assertFileExists(t, filepath.Join(appDir, ".github", "workflows", "deploy.yml"))
+	assertFileExists(t, filepath.Join(appDir, ".github", "workflows", "pr.yml"))
+}
+
+func TestNewCommandV2_EventDrivenTemplate_LiftYAMLValid(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-event-app", "--template", "event-driven", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-event-app")
+	cfg, err := liftconfig.LoadConfig(appDir)
+	require.NoError(t, err)
+
+	// Verify template name
+	assert.Equal(t, "event-driven", cfg.App.Template)
+	assert.Equal(t, "my-event-app", cfg.App.Name)
+
+	// Verify stage domains
+	assert.Equal(t, "dev.example.com", cfg.Stages["dev"].RootDomain)
+	assert.Equal(t, "staging.example.com", cfg.Stages["staging"].RootDomain)
+	assert.Equal(t, "example.com", cfg.Stages["live"].RootDomain)
+
+	// Verify functions - event-driven has api and processor
+	require.NotNil(t, cfg.Functions)
+	require.Contains(t, cfg.Functions, "api")
+	require.Contains(t, cfg.Functions, "processor")
+	assert.Equal(t, "./cmd/api", cfg.Functions["api"].Cmd)
+	assert.Equal(t, "./dist/api/bootstrap", cfg.Functions["api"].Out)
+	assert.Equal(t, "./cmd/processor", cfg.Functions["processor"].Cmd)
+	assert.Equal(t, "./dist/processor/bootstrap", cfg.Functions["processor"].Out)
+}
+
+func TestNewCommandV2_EventDrivenTemplate_CDKHasSQS(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-event-app", "--template", "event-driven", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-event-app")
+
+	// Read CDK main.go and verify SQS resources
+	cdkMainContent, err := os.ReadFile(filepath.Join(appDir, "cdk", "main.go"))
+	require.NoError(t, err)
+	cdkMain := string(cdkMainContent)
+
+	// Verify SQS queue is created
+	assert.Contains(t, cdkMain, "awssqs")
+	assert.Contains(t, cdkMain, "ProcessingQueue")
+	assert.Contains(t, cdkMain, "DeadLetterQueue")
+	assert.Contains(t, cdkMain, "SqsEventSource")
+}
+
+func TestNewCommandV2_MerchantAppTemplate_CreatesExpectedFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-merchant-app", "--template", "merchant-app", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-merchant-app")
+
+	// Verify expected files exist
+	assertFileExists(t, filepath.Join(appDir, "lift.yaml"))
+	assertFileExists(t, filepath.Join(appDir, "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "README.md"))
+	assertFileExists(t, filepath.Join(appDir, "cmd", "api", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cmd", "worker", "main.go")) // merchant-app has worker
+	assertFileExists(t, filepath.Join(appDir, "cdk", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "cdk.json"))
+	assertFileExists(t, filepath.Join(appDir, ".gitignore"))
+	assertFileExists(t, filepath.Join(appDir, ".github", "workflows", "deploy.yml"))
+	assertFileExists(t, filepath.Join(appDir, ".github", "workflows", "pr.yml"))
+}
+
+func TestNewCommandV2_MerchantAppTemplate_LiftYAMLValid(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-merchant-app", "--template", "merchant-app", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-merchant-app")
+	cfg, err := liftconfig.LoadConfig(appDir)
+	require.NoError(t, err)
+
+	// Verify template name
+	assert.Equal(t, "merchant-app", cfg.App.Template)
+	assert.Equal(t, "my-merchant-app", cfg.App.Name)
+
+	// Verify stage domains
+	assert.Equal(t, "dev.example.com", cfg.Stages["dev"].RootDomain)
+	assert.Equal(t, "staging.example.com", cfg.Stages["staging"].RootDomain)
+	assert.Equal(t, "example.com", cfg.Stages["live"].RootDomain)
+
+	// Verify functions - merchant-app has api and worker
+	require.NotNil(t, cfg.Functions)
+	require.Contains(t, cfg.Functions, "api")
+	require.Contains(t, cfg.Functions, "worker")
+	assert.Equal(t, "./cmd/api", cfg.Functions["api"].Cmd)
+	assert.Equal(t, "./dist/api/bootstrap", cfg.Functions["api"].Out)
+	assert.Equal(t, "./cmd/worker", cfg.Functions["worker"].Cmd)
+	assert.Equal(t, "./dist/worker/bootstrap", cfg.Functions["worker"].Out)
+}
+
+func TestNewCommandV2_MerchantAppTemplate_MultiStackDeployOrder(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-merchant-app", "--template", "merchant-app", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-merchant-app")
+	cfg, err := liftconfig.LoadConfig(appDir)
+	require.NoError(t, err)
+
+	// Verify multi-stack deploy order
+	require.NotNil(t, cfg.CDK)
+	require.NotNil(t, cfg.CDK.DeployOrder)
+	require.Len(t, cfg.CDK.DeployOrder, 2)
+	assert.Equal(t, "data", cfg.CDK.DeployOrder[0])
+	assert.Equal(t, "service", cfg.CDK.DeployOrder[1])
+
+	// Verify stack configurations
+	require.NotNil(t, cfg.CDK.Stacks)
+	require.Contains(t, cfg.CDK.Stacks, "data")
+	require.Contains(t, cfg.CDK.Stacks, "service")
+}
+
+func TestNewCommandV2_MerchantAppTemplate_CDKHasDynamoDB(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-merchant-app", "--template", "merchant-app", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-merchant-app")
+
+	// Read CDK main.go and verify DynamoDB resources
+	cdkMainContent, err := os.ReadFile(filepath.Join(appDir, "cdk", "main.go"))
+	require.NoError(t, err)
+	cdkMain := string(cdkMainContent)
+
+	// Verify DynamoDB table is created
+	assert.Contains(t, cdkMain, "awsdynamodb")
+	assert.Contains(t, cdkMain, "MainTable")
+	assert.Contains(t, cdkMain, "dataStack")
+	assert.Contains(t, cdkMain, "serviceStack")
+	assert.Contains(t, cdkMain, "AddDependency")
+}
+
+func TestNewCommandV2_PTModeSupportsNewTemplates(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	tests := []struct {
+		name          string
+		template      string
+		appName       string
+		wantFunctions []string
+		wantStacks    []string
+	}{
+		{
+			name:          "microservice",
+			template:      "microservice",
+			appName:       "pt-microservice",
+			wantFunctions: []string{"api"},
+			wantStacks:    []string{"service"},
+		},
+		{
+			name:          "event-driven",
+			template:      "event-driven",
+			appName:       "pt-event-driven",
+			wantFunctions: []string{"api", "processor"},
+			wantStacks:    []string{"service"},
+		},
+		{
+			name:          "merchant-app",
+			template:      "merchant-app",
+			appName:       "pt-merchant-app",
+			wantFunctions: []string{"api", "worker"},
+			wantStacks:    []string{"data", "service"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &NewCommandV2{}
+			args := []string{tt.appName, "--template", tt.template, "--base-domain", "example.com", "--pt"}
+
+			err := cmd.Execute(context.Background(), args)
+			require.NoError(t, err)
+
+			appDir := filepath.Join(tmpDir, tt.appName)
+
+			// Verify PT devops files exist
+			assertFileExists(t, filepath.Join(appDir, "buildspec.yml"))
+			assertFileExists(t, filepath.Join(appDir, "shell", "build.sh"))
+			assertFileExists(t, filepath.Join(appDir, "shell", "deploy.sh"))
+			assertFileExists(t, filepath.Join(appDir, "shell", "init_env_vars.sh"))
+			assertFileExists(t, filepath.Join(appDir, "shell", "DEPLOYMENT.md"))
+
+			// Verify GitHub workflows are NOT generated in PT mode
+			_, err = os.Stat(filepath.Join(appDir, ".github"))
+			assert.True(t, os.IsNotExist(err), ".github should not exist in PT mode")
+
+			// Verify lift.yaml + cdk main exist
+			assertFileExists(t, filepath.Join(appDir, "lift.yaml"))
+			assertFileExists(t, filepath.Join(appDir, "cdk", "main.go"))
+
+			// Verify lift.yaml app/template and functions
+			cfg, err := liftconfig.LoadConfig(appDir)
+			require.NoError(t, err)
+			assert.Equal(t, tt.appName, cfg.App.Name)
+			assert.Equal(t, tt.template, cfg.App.Template)
+
+			for _, fn := range tt.wantFunctions {
+				require.Contains(t, cfg.Functions, fn)
+			}
+			for _, stack := range tt.wantStacks {
+				require.Contains(t, cfg.CDK.Stacks, stack)
+			}
+
+			// Verify stack name templates include partner marker (enables CLI preflight)
+			liftYAMLContent, err := os.ReadFile(filepath.Join(appDir, "lift.yaml"))
+			require.NoError(t, err)
+			assert.Contains(t, string(liftYAMLContent), "{{.Partner}}")
+
+			// Verify CDK app reads partner context
+			cdkMainContent, err := os.ReadFile(filepath.Join(appDir, "cdk", "main.go"))
+			require.NoError(t, err)
+			assert.Contains(t, string(cdkMainContent), "partner")
+			assert.Contains(t, string(cdkMainContent), "targetMode")
+
+			// Verify buildspec includes partner/stage vars
+			buildspecContent, err := os.ReadFile(filepath.Join(appDir, "buildspec.yml"))
+			require.NoError(t, err)
+			buildspec := string(buildspecContent)
+			assert.Contains(t, buildspec, "PARTNER")
+			assert.Contains(t, buildspec, "STAGE")
+			assert.Contains(t, buildspec, "TARGET_MODE")
+
+			// Verify buildspec deploys expected stacks
+			if tt.template == "merchant-app" {
+				assert.Contains(t, buildspec, tt.appName+"-data-$PARTNER-$STAGE")
+				assert.Contains(t, buildspec, tt.appName+"-service-$PARTNER-$STAGE")
+			} else {
+				assert.Contains(t, buildspec, tt.appName+"-service-$PARTNER-$STAGE")
+			}
+		})
+	}
+}
+
+func TestNewCommandV2_AllTemplatesListedInUsage(t *testing.T) {
+	cmd := &NewCommandV2{}
+	usage := cmd.Usage()
+
+	// Verify all templates are mentioned in usage
+	assert.Contains(t, usage, "basic-api")
+	assert.Contains(t, usage, "microservice")
+	assert.Contains(t, usage, "event-driven")
+	assert.Contains(t, usage, "merchant-app")
+}
