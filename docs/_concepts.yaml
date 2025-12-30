@@ -11,10 +11,12 @@ concepts:
       - type_safe_handlers
       - automatic_error_handling
       - structured_logging
+      - sns_error_notifications
       - distributed_tracing
       - request_validation
       - multi_tenant_support
       - middleware_system
+      - ip_authorization
       - event_source_adapters
       - websocket_support
       - response_streaming
@@ -127,6 +129,58 @@ concepts:
       - Recover_before_business_logic
       - Auth_before_authorization
       - RateLimit_after_auth
+
+  sns_error_notifications:
+    type: feature
+    purpose: publish error logs to an SNS topic for proactive alerting
+    provides:
+      - sns_publishing_on_error_logs
+      - environment_based_configuration
+      - partner_topic_convention_support
+    configuration:
+      - ERROR_NOTIFICATION_SNS_TOPIC_ARN
+      - PARTNER
+      - STAGE
+      - AWS_REGION
+      - AWS_ACCOUNT_ID
+    key_methods:
+      - zap.WithEnvironmentErrorNotifications: read topic ARN from ERROR_NOTIFICATION_SNS_TOPIC_ARN
+      - zap.WithErrorNotifications: configure an explicit topic ARN
+      - zap.WithPartnerErrorNotifications: construct topic ARN from partner/stage (+ AWS account auto-detection)
+    iam_requirements:
+      - "sns:Publish"
+      - "sts:GetCallerIdentity (optional)"
+    related_docs:
+      - docs/sns-error-notifications.md
+      - docs/aws-account-id-auto-detection.md
+      - docs/migration-sns-error-notifications.md
+
+  aws_account_id_auto_detection:
+    type: utility
+    purpose: resolve AWS account ID for partner-scoped SNS topic ARNs
+    strategy:
+      - env_var: AWS_ACCOUNT_ID
+      - fallback: "STS GetCallerIdentity"
+    caching: process_lifetime
+    related_docs:
+      - docs/aws-account-id-auto-detection.md
+
+  ip_authorization:
+    type: feature
+    purpose: restrict requests based on caller IP allowlists
+    provides:
+      - ip_gating_middleware
+      - source_ip_extraction
+      - safe_initialization_patterns
+    key_methods:
+      - security.NewIPAuthorizationServiceFromEnv: load allowlist configuration from environment/SSM
+      - security.ExtractClientIP: determine caller IP from API Gateway headers/context
+    common_failure_modes:
+      - init_time_panics
+      - missing_partner_stage_env
+      - misconfigured_proxy_headers
+    related_docs:
+      - docs/ip-gating-and-error-handling.md
   
   event_adapters:
     type: integration_layer

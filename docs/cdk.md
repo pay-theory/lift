@@ -8,11 +8,14 @@ The Lift CDK package (`pkg/cdk`) provides high-level constructs and patterns for
 
 ## Quick Links
 
-- [Best Practices Guide](./best-practices.md) - Comprehensive guide for production deployments
+- [Best Practices Guide](./cdk-best-practices.md) - Comprehensive guide for production deployments
+- [CDK Getting Started](./cdk-getting-started.md) - Step-by-step CDK setup for Lift
+- [CDK Integration Guide](./cdk-guide.md) - Deep dive into constructs and patterns
+- [CDK API Reference](./cdk-api-reference.md) - Full construct/pattern reference with code locations
 - [API Documentation](/pkg/cdk/README.md) - Detailed construct and pattern reference
 - [Examples](/pkg/cdk/examples/) - Working examples of CDK deployments
-- [CloudFront Patterns](./cloudfront-patterns.md) - Static sites, media CDN, redirects
-- [Response Streaming (SSE)](../response-streaming.md) - Stream events over REST API v1 integrations
+- [CloudFront Patterns](./cdk-cloudfront-patterns.md) - Static sites, media CDN, redirects
+- [Response Streaming (SSE)](./response-streaming.md) - Stream events over REST API v1 integrations
 
 ## Getting Started
 
@@ -235,7 +238,7 @@ GOOS=linux GOARCH=arm64 go build -o dist/bootstrap cmd/main.go
 
 ## Next Steps
 
-1. Read the [Best Practices Guide](./best-practices.md)
+1. Read the [Best Practices Guide](./cdk-best-practices.md)
 2. Explore [example deployments](/pkg/cdk/examples/)
 3. Check out [pre-built stacks](/pkg/cdk/stacks/)
 4. Join the Lift community for support

@@ -1,6 +1,6 @@
 // Package liftconfig provides configuration parsing and project root detection
 // for the Lift CLI. It implements the lift.yaml contract defined in
-// docs/planning/lift-cli-contract-v1.md.
+// docs/cli-contract-v1.md.
 package liftconfig
 
 import (

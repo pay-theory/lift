@@ -1287,8 +1287,8 @@ _ = liftconstructs.NewEventBusProcessor(stack, jsii.String("Processor"), &liftco
 ## Related Documentation
 
 - [API Reference](./api-reference.md)
-- [CDK Guide](./cdk/README.md)
-- [DynamoDB Streams Patterns](./cdk/dynamo-streams-patterns.md)
+- [CDK Guide](./cdk.md)
+- [DynamoDB Streams Patterns](./cdk-dynamo-streams-patterns.md)
 - [Testing Guide](./testing-guide.md)
 - [Troubleshooting](./troubleshooting.md)
 

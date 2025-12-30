@@ -254,7 +254,7 @@ lift up --stage dev --partner mypartner
 lift up --stage staging --partner mypartner --target-mode custom
 ```
 
-See [CI Documentation](./ci.md) for full PT mode CI guidance.
+See [CI Documentation](./cli-ci.md) for full PT mode CI guidance.
 
 ## Adding to Existing Projects
 
@@ -276,6 +276,6 @@ This will:
 
 ## Next Steps
 
-- [CI/CD Configuration](./ci.md) - Set up GitHub Actions or CodeBuild
-- [CDK Reference](../cdk-api-reference.md) - Infrastructure patterns
-- [API Reference](../api-reference.md) - Framework documentation
+- [CI/CD Configuration](./cli-ci.md) - Set up GitHub Actions or CodeBuild
+- [CDK Reference](./cdk-api-reference.md) - Infrastructure patterns
+- [API Reference](./api-reference.md) - Framework documentation

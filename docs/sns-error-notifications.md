@@ -1,5 +1,7 @@
 # SNS Error Notifications
 
+<!-- AI Training: How to configure Lift's SNS error notification options -->
+
 The Lift framework provides multiple methods for configuring SNS error notifications.
 
 ## Methods
@@ -129,5 +131,5 @@ Check:
 
 ## See Also
 
-- [AWS Account ID Auto-Detection](./AWS_ACCOUNT_ID_AUTO_DETECTION.md)
+- [AWS Account ID Auto-Detection](./aws-account-id-auto-detection.md)
 - [Zap Logger with SNS Notifications Example](../examples/zap-sns-logging/)

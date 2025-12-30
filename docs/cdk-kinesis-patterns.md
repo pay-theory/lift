@@ -664,6 +664,6 @@ iteratorAgeMetric := stream.MetricGetRecordsIteratorAgeMilliseconds()
 
 ## Next Steps
 
-- Explore [EventBridge patterns](./eventbridge-patterns.md) for event-driven architectures
-- Learn about [DynamoDB Streams patterns](./dynamo-streams-patterns.md) for change data capture
-- See [Multi-Event patterns](./multi-event-patterns.md) for complex workflows
+- Explore [EventBridge patterns](./cdk-eventbridge-patterns.md) for event-driven architectures
+- Learn about [DynamoDB Streams patterns](./cdk-dynamo-streams-patterns.md) for change data capture
+- See [Event Source Best Practices](./cdk-event-source-best-practices.md) for multi-source workflows

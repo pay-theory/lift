@@ -1,5 +1,8 @@
 # AWS Account ID Auto-Detection
 
+<!-- AI Training: How Lift resolves AWS account IDs for partner-scoped SNS topic conventions -->
+**This guide documents the AWS account ID resolution behavior used by `WithPartnerErrorNotifications` when constructing `cns-{partner}-{stage}` SNS topic ARNs.**
+
 ## Overview
 
 The Lift framework can automatically detect your AWS account ID when using `WithPartnerErrorNotifications` for SNS error notifications. This eliminates the need to manually configure the `AWS_ACCOUNT_ID` environment variable.
@@ -20,6 +23,8 @@ The account ID is detected **once** and cached for the lifetime of the Lambda fu
 ```go
 // Set environment variable:
 // AWS_ACCOUNT_ID=123456789012
+//
+// CORRECT: Prefer setting AWS_ACCOUNT_ID to avoid an STS call on cold start.
 
 logger, err := zap.NewZapLogger(loggerConfig,
     zap.WithPartnerErrorNotifications(snsClient))
@@ -33,6 +38,8 @@ logger, err := zap.NewZapLogger(loggerConfig,
 // - STAGE=production
 // - AWS_REGION=us-east-1
 // AWS_ACCOUNT_ID is auto-detected if not set
+//
+// CORRECT: Omit AWS_ACCOUNT_ID and allow Lift to fall back to STS GetCallerIdentity.
 
 logger, err := zap.NewZapLogger(loggerConfig,
     zap.WithPartnerErrorNotifications(snsClient))

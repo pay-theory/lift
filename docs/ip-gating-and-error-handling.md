@@ -1,14 +1,18 @@
 # Robust IP Gating and Error Handling in Lift
 
+<!-- AI Training: Canonical patterns for IP authorization middleware and safe initialization -->
+**This guide documents CORRECT and INCORRECT patterns for IP authorization (“IP gating”) in Lift, with a focus on avoiding silent init failures and returning structured errors.**
+
 This guide details how to implement IP Authorization (IP Gating) safely within a Lift application, ensuring that initialization failures are caught and logged, preventing silent 500 errors.
 
 ## 1. Safe Initialization Pattern
 
 The primary cause of silent 500 errors during Lambda startup is performing external service initialization (like loading SSM parameters) inside the `main()` function or global scope without proper error handling. If these fail, the process exits before the Lambda runtime can even register a handler.
 
-### Bad Pattern (Avoid)
+### INCORRECT: Init-Time External Calls
 ```go
 func main() {
+    // INCORRECT: If this fails (e.g., missing env var), the process can crash before the Lambda runtime registers a handler.
     // If this fails (e.g., missing env var), the process crashes immediately.
     // CloudWatch often swallows these "init" phase logs unless explicitly checked.
     service := initializeServiceOrPanic() 
@@ -18,7 +22,7 @@ func main() {
 }
 ```
 
-### Recommended Pattern: Lazy Initialization
+### CORRECT: Lazy Initialization (sync.Once)
 Initialize your services *inside* the handler or using a `sync.Once` pattern. This defers the error until a request is processed, allowing Lift's error handling middleware to catch and log it properly.
 
 ```go

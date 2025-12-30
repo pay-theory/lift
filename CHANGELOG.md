@@ -19,7 +19,7 @@
 - **IP Gating Documentation**: Added comprehensive documentation for IP authorization and error handling patterns.
 
 ### Changed
-- **Observability** (BREAKING): Removed `WithDefaultErrorNotifications` function which contained hardcoded internal account IDs. Replaced with `WithEnvironmentErrorNotifications` which reads the SNS topic ARN from the `ERROR_NOTIFICATION_SNS_TOPIC_ARN` environment variable. See migration guide at `/docs/MIGRATION_SNS_NOTIFICATIONS.md`.
+- **Observability** (BREAKING): Removed `WithDefaultErrorNotifications` function which contained hardcoded internal account IDs. Replaced with `WithEnvironmentErrorNotifications` which reads the SNS topic ARN from the `ERROR_NOTIFICATION_SNS_TOPIC_ARN` environment variable. See migration guide at `/docs/migration-sns-error-notifications.md`.
 - **REST API Configuration**: Refactored REST API configuration into dedicated helper methods for improved maintainability.
 - **Streaming Error Handling**: Improved error handling for streaming responses.
 
@@ -57,6 +57,6 @@
 ### JWT Consolidation
 
 - Canonical API is `middleware.JWTAuth(middleware.JWTConfig)`.
-- `lift.WithJWTAuth` and `lift.WithSimpleJWTAuth` are now deprecated; see `docs/migrations/jwt-consolidation.md`.
+- `lift.WithJWTAuth` and `lift.WithSimpleJWTAuth` are now deprecated; see `docs/migration-jwt-consolidation.md`.
 
 > Note: `HealthEndpointsConfig` gained an optional `Logger` field; this is backwards-compatible. Existing uses continue to work without changes.

@@ -718,6 +718,6 @@ topic.AddSubscription(
 
 ## Next Steps
 
-- Explore [EventBridge patterns](./eventbridge-patterns.md) for event-driven architectures
-- Learn about [SQS patterns](./sqs-patterns.md) for queue-based processing
-- See [Multi-Event patterns](./multi-event-patterns.md) for complex workflows
+- Explore [EventBridge patterns](./cdk-eventbridge-patterns.md) for event-driven architectures
+- Learn about [Event Source Best Practices](./cdk-event-source-best-practices.md) for queue-based processing
+- See [Event-Driven API Pattern](./cdk-event-driven-api-pattern.md) for complex workflows

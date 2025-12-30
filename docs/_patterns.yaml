@@ -175,7 +175,8 @@ patterns:
       
       // API group with auth
       api := app.Group("/api")
-      api.Use(middleware.JWT(jwtConfig))
+      jwtConfig := middleware.JWTConfig{Secret: "your-secret"} // typically from env/SSM
+      api.Use(middleware.JWTAuth(jwtConfig))
       api.Use(middleware.UserRateLimitWithLimited(100, 15*time.Minute))
       
       // Admin group with additional checks
@@ -211,6 +212,92 @@ patterns:
               // Actual business logic buried
               return getOrders(ctx)
           }
+
+  sns_error_notifications:
+    name: "SNS Error Notifications Pattern"
+    problem: "Teams need proactive alerts when Lambda errors occur"
+    solution: "Configure Lift's Zap logger with an SNS error notification option"
+    correct_example: |
+      import (
+          liftzap "github.com/pay-theory/lift/pkg/observability/zap"
+          "github.com/aws/aws-sdk-go-v2/service/sns"
+      )
+
+      func initLogger(snsClient *sns.Client) error {
+          // CORRECT: Read the SNS topic ARN from ERROR_NOTIFICATION_SNS_TOPIC_ARN.
+          logger, err := liftzap.NewZapLogger(liftzap.Config{},
+              liftzap.WithEnvironmentErrorNotifications(snsClient),
+          )
+          _ = logger
+          return err
+      }
+    anti_patterns:
+      - name: "Hardcoded Topic ARN"
+        why: "Hardcoding topic ARNs makes deployments brittle across accounts/stages and breaks rotation"
+        incorrect_example: |
+          // INCORRECT: Hardcode SNS topic ARNs in code.
+          topicARN := "arn:aws:sns:us-east-1:123456789012:errors"
+          logger, _ := liftzap.NewZapLogger(liftzap.Config{},
+              liftzap.WithErrorNotifications(snsClient, topicARN),
+          )
+          _ = logger
+        consequences:
+          - per_environment_drift
+          - accidental_cross_account_notifications
+
+  ip_authorization_lazy_initialization:
+    name: "IP Authorization Lazy Initialization Pattern"
+    problem: "SSM/env-dependent initialization can fail during Lambda init, causing hard-to-debug 500s"
+    solution: "Use sync.Once/lazy initialization inside the request path so Lift can log and return structured errors"
+    correct_example: |
+      import (
+          "context"
+          "sync"
+
+          "github.com/pay-theory/lift/pkg/lift"
+          "github.com/pay-theory/lift/pkg/security"
+      )
+
+      type Service struct {
+          once sync.Once
+          svc  *security.IPAuthorizationService
+          err  error
+      }
+
+      func (s *Service) Get(ctx context.Context) (*security.IPAuthorizationService, error) {
+          s.once.Do(func() {
+              s.svc, s.err = security.NewIPAuthorizationServiceFromEnv(ctx, "my-component")
+          })
+          return s.svc, s.err
+      }
+
+      func IPAuthorization(provider *Service) lift.Middleware {
+          return func(next lift.Handler) lift.Handler {
+              return lift.HandlerFunc(func(ctx *lift.Context) error {
+                  // CORRECT: Lazy init happens inside the request path.
+                  svc, err := provider.Get(ctx.Context)
+                  if err != nil {
+                      ctx.Logger.Error("Failed to initialize IP Authorization service", "error", err)
+                      return lift.SystemError("Service configuration error").WithCause(err)
+                  }
+                  _ = svc
+                  return next.Handle(ctx)
+              })
+          }
+      }
+    anti_patterns:
+      - name: "Init-time External Calls"
+        why: "If init fails before handler registration, errors can be hard to see and requests may return generic 500s"
+        incorrect_example: |
+          // INCORRECT: Perform SSM/env-dependent initialization in main() and panic on failure.
+          func main() {
+              svc := mustInitFromSSM()
+              _ = svc
+              lambda.Start(app.HandleRequest)
+          }
+        consequences:
+          - silent_init_failures
+          - missing_application_logs
   
   request_validation:
     name: "Declarative Validation Pattern"

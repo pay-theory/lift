@@ -2,7 +2,7 @@
 
 Status: draft (for alignment)
 
-Contract (v1): `docs/planning/lift-cli-contract-v1.md`
+Contract (v1): `./cli-contract-v1.md`
 
 ## Problem Statement
 
