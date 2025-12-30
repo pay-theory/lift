@@ -516,3 +516,78 @@ func TestUpCommand_CDKContextFlags(t *testing.T) {
 		assert.NotContains(t, argsStr, "targetMode=")
 	})
 }
+
+// =============================================================================
+// Prerequisite check tests
+// =============================================================================
+
+func TestUpCommand_GoNotFound_ReturnsActionableError(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+
+	liftYAML := `version: 1
+app:
+  name: prereq-test
+functions:
+  api:
+    cmd: ./cmd/api
+    out: ./dist/api/bootstrap
+`
+	setupUpDownTestProject(t, tmpDir, liftYAML)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Mock lookPath that simulates missing go
+	cmd := &UpCommand{
+		lookPath: func(name string) (string, error) {
+			if name == "go" {
+				return "", &PrereqError{Binary: "go", Message: "not found"}
+			}
+			return "/usr/bin/" + name, nil
+		},
+	}
+
+	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
+	require.Error(t, err)
+	assert.True(t, IsPrereqError(err))
+	assert.Contains(t, err.Error(), "go not found")
+	assert.Contains(t, err.Error(), "https://go.dev/doc/install")
+}
+
+func TestUpCommand_CDKNotFound_ReturnsActionableError(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+
+	liftYAML := `version: 1
+app:
+  name: prereq-test
+functions:
+  api:
+    cmd: ./cmd/api
+    out: ./dist/api/bootstrap
+`
+	setupUpDownTestProject(t, tmpDir, liftYAML)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Mock lookPath that finds go but not cdk
+	cmd := &UpCommand{
+		lookPath: func(name string) (string, error) {
+			if name == "go" {
+				return "/usr/bin/go", nil
+			}
+			if name == "cdk" {
+				return "", &PrereqError{Binary: "cdk", Message: "not found"}
+			}
+			return "/usr/bin/" + name, nil
+		},
+	}
+
+	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
+	require.Error(t, err)
+	assert.True(t, IsPrereqError(err))
+	assert.Contains(t, err.Error(), "cdk not found")
+	assert.Contains(t, err.Error(), "npm install -g aws-cdk")
+}

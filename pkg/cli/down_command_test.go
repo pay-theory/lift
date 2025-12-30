@@ -376,3 +376,46 @@ cdk:
 	require.NoError(t, err)
 	assert.Equal(t, "new-domain.com", state.BaseDomain)
 }
+
+// =============================================================================
+// Prerequisite check tests
+// =============================================================================
+
+func TestDownCommand_CDKNotFound_ReturnsActionableError(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+
+	liftYAML := `version: 1
+app:
+  name: prereq-test
+
+cdk:
+  path: ./cdk
+  deploy_order:
+    - service
+  stacks:
+    service:
+      name_template: "{{.AppName}}-{{.Stage}}"
+`
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "cdk"), 0750))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "lift.yaml"), []byte(liftYAML), 0600))
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Mock lookPath that simulates missing cdk
+	cmd := &DownCommand{
+		lookPath: func(name string) (string, error) {
+			if name == "cdk" {
+				return "", &PrereqError{Binary: "cdk", Message: "not found"}
+			}
+			return "/usr/bin/" + name, nil
+		},
+	}
+
+	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
+	require.Error(t, err)
+	assert.True(t, IsPrereqError(err))
+	assert.Contains(t, err.Error(), "cdk not found")
+	assert.Contains(t, err.Error(), "npm install -g aws-cdk")
+}

@@ -19,6 +19,8 @@ import (
 type UpCommand struct {
 	// For testing: allows overriding how commands are created
 	cmdFactory func(ctx context.Context, name string, arg ...string) *exec.Cmd
+	// For testing: allows overriding binary lookup
+	lookPath LookPathFunc
 }
 
 func (c *UpCommand) Name() string        { return "up" }
@@ -70,6 +72,14 @@ func (c *UpCommand) Execute(ctx context.Context, args []string) error {
 
 	// Validate stage
 	if err := domains.ValidateStage(stage); err != nil {
+		return err
+	}
+
+	// Check for required binaries before proceeding
+	if err := CheckGo(c.lookPath); err != nil {
+		return err
+	}
+	if err := CheckCDK(c.lookPath); err != nil {
 		return err
 	}
 

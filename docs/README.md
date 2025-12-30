@@ -16,6 +16,10 @@
 - [Troubleshooting Guide](./troubleshooting.md) - Problem-solution mapping
 - [Migration Guide](./migration-guide.md) - Migrating from raw Lambda handlers
 
+### 🔧 CLI Documentation
+- [CLI Getting Started](./cli/getting-started.md) - Install the CLI, create projects, deploy
+- [CI/CD Configuration](./cli/ci.md) - GitHub Actions, OIDC, CodeBuild setup
+
 ### 🤖 AI Knowledge Base
 - [Concepts](./_concepts.yaml) - Machine-readable concept hierarchy
 - [Patterns](./_patterns.yaml) - Correct/incorrect pattern documentation  

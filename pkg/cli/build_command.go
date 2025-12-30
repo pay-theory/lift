@@ -21,6 +21,8 @@ import (
 type BuildCommand struct {
 	// For testing: allows overriding how commands are created
 	cmdFactory func(ctx context.Context, name string, arg ...string) *exec.Cmd
+	// For testing: allows overriding binary lookup
+	lookPath LookPathFunc
 }
 
 func (c *BuildCommand) Name() string {
@@ -53,6 +55,11 @@ func (c *BuildCommand) Execute(ctx context.Context, args []string) error {
 				return fmt.Errorf("invalid architecture: %s (must be arm64 or amd64)", archOverride)
 			}
 		}
+	}
+
+	// Check for Go binary before proceeding
+	if err := CheckGo(c.lookPath); err != nil {
+		return err
 	}
 
 	// Find project root

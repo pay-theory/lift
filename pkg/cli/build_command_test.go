@@ -757,3 +757,41 @@ func main() {}
 	assertFileExists(t, filepath.Join(projectDir, "dist", "api", "bootstrap"))
 	assertFileExists(t, filepath.Join(projectDir, "dist", "worker", "bootstrap"))
 }
+
+// =============================================================================
+// Prerequisite check tests
+// =============================================================================
+
+func TestBuildCommand_GoNotFound_ReturnsActionableError(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+
+	// Create minimal project
+	liftYAML := `version: 1
+
+app:
+  name: prereq-test
+
+functions:
+  api:
+    cmd: ./cmd/api
+    out: ./dist/api/bootstrap
+`
+	setupTestProject(t, tmpDir, liftYAML)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Create command with mock lookPath that simulates missing go
+	cmd := &BuildCommand{
+		lookPath: func(name string) (string, error) {
+			return "", &PrereqError{Binary: name, Message: "not found"}
+		},
+	}
+
+	err = cmd.Execute(context.Background(), nil)
+	require.Error(t, err)
+	assert.True(t, IsPrereqError(err))
+	assert.Contains(t, err.Error(), "go not found")
+	assert.Contains(t, err.Error(), "https://go.dev/doc/install")
+}

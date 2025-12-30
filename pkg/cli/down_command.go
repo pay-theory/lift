@@ -17,6 +17,8 @@ import (
 type DownCommand struct {
 	// For testing: allows overriding how commands are created
 	cmdFactory func(ctx context.Context, name string, arg ...string) *exec.Cmd
+	// For testing: allows overriding binary lookup
+	lookPath LookPathFunc
 }
 
 func (c *DownCommand) Name() string        { return "down" }
@@ -64,6 +66,11 @@ func (c *DownCommand) Execute(ctx context.Context, args []string) error {
 
 	// Validate stage
 	if err := domains.ValidateStage(stage); err != nil {
+		return err
+	}
+
+	// Check for CDK binary before proceeding
+	if err := CheckCDK(c.lookPath); err != nil {
 		return err
 	}
 
