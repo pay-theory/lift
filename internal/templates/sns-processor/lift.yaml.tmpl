@@ -2,7 +2,7 @@ version: 1
 
 app:
   name: {{ .AppName }}
-  template: merchant-app
+  template: sns-processor
 
 domains:
   base_domain: {{ .BaseDomain }}
@@ -15,10 +15,6 @@ stages:
   live:
     root_domain: {{ .BaseDomain }}
 
-services:
-  api:
-    subdomain: api
-
 build:
   goos: linux
   goarch: arm64
@@ -29,24 +25,14 @@ build:
     - lambda.norpc
 
 functions:
-  api:
-    cmd: ./cmd/api
-    out: ./dist/api/bootstrap
-  worker:
-    cmd: ./cmd/worker
-    out: ./dist/worker/bootstrap
+  processor:
+    cmd: ./cmd/processor
+    out: ./dist/processor/bootstrap
 
 cdk:
   path: ./cdk
   deploy_order:
-    {{ if .EnableData }}
-    - data
-    {{ end }}
     - service
   stacks:
-    {{ if .EnableData }}
-    data:
-      name_template: "{{ "{{" }}.AppName{{ "}}" }}-data-{{ "{{" }}.Stage{{ "}}" }}"
-    {{ end }}
     service:
       name_template: "{{ "{{" }}.AppName{{ "}}" }}-service-{{ "{{" }}.Stage{{ "}}" }}"

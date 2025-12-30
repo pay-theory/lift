@@ -1,0 +1,26 @@
+# Deployment Guide
+
+This project was scaffolded with `lift new --pt`.
+
+## Prerequisites
+
+- Go 1.25+
+- Node.js 20+
+- AWS CLI configured
+- AWS CDK CLI installed (`npm install -g aws-cdk`)
+
+## Environment Variables
+
+These scripts use:
+
+- `PARTNER` (required)
+- `STAGE` (required: dev|staging|live)
+- `TARGET_MODE` (optional; default: standard)
+
+## Typical Flow
+
+```bash
+source ./shell/init_env_vars.sh
+./shell/build.sh
+./shell/deploy.sh --partner <partner> --stage dev
+```

@@ -429,6 +429,50 @@ func TestNewCommandV2_VerifyGitHubWorkflowContent(t *testing.T) {
 	assert.Contains(t, string(deployContent), "live")
 }
 
+func TestNewCommandV2_BasicAPITemplate_CDKHasDynamoDBByDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-app", "--template", "basic-api", "--base-domain", "example.com"}
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-app")
+
+	cdkMainContent, err := os.ReadFile(filepath.Join(appDir, "cdk", "main.go"))
+	require.NoError(t, err)
+	cdkMain := string(cdkMainContent)
+
+	assert.Contains(t, cdkMain, "NewLiftTable")
+	assert.Contains(t, cdkMain, "EnableDynamORM")
+}
+
+func TestNewCommandV2_NoDataFlag_DisablesDynamoDBScaffolding(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-app", "--template", "basic-api", "--base-domain", "example.com", "--no-data"}
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-app")
+
+	cdkMainContent, err := os.ReadFile(filepath.Join(appDir, "cdk", "main.go"))
+	require.NoError(t, err)
+	cdkMain := string(cdkMainContent)
+
+	assert.NotContains(t, cdkMain, "NewLiftTable")
+	assert.NotContains(t, cdkMain, "EnableDynamORM")
+}
+
 func TestNewCommandV2_VerifyREADMEContent(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()
@@ -695,6 +739,92 @@ func TestNewCommandV2_EventDrivenTemplate_CDKHasSQS(t *testing.T) {
 	assert.Contains(t, cdkMain, "SqsEventSource")
 }
 
+func TestNewCommandV2_SNSProcessorTemplate_CreatesExpectedFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-sns-app", "--template", "sns-processor", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-sns-app")
+
+	// Verify expected files exist
+	assertFileExists(t, filepath.Join(appDir, "lift.yaml"))
+	assertFileExists(t, filepath.Join(appDir, "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "README.md"))
+	assertFileExists(t, filepath.Join(appDir, "cmd", "processor", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "main.go"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "go.mod"))
+	assertFileExists(t, filepath.Join(appDir, "cdk", "cdk.json"))
+	assertFileExists(t, filepath.Join(appDir, ".gitignore"))
+	assertFileExists(t, filepath.Join(appDir, ".github", "workflows", "deploy.yml"))
+	assertFileExists(t, filepath.Join(appDir, ".github", "workflows", "pr.yml"))
+}
+
+func TestNewCommandV2_SNSProcessorTemplate_LiftYAMLValid(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-sns-app", "--template", "sns-processor", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-sns-app")
+	cfg, err := liftconfig.LoadConfig(appDir)
+	require.NoError(t, err)
+
+	// Verify template name
+	assert.Equal(t, "sns-processor", cfg.App.Template)
+	assert.Equal(t, "my-sns-app", cfg.App.Name)
+
+	// Verify stage domains
+	assert.Equal(t, "dev.example.com", cfg.Stages["dev"].RootDomain)
+	assert.Equal(t, "staging.example.com", cfg.Stages["staging"].RootDomain)
+	assert.Equal(t, "example.com", cfg.Stages["live"].RootDomain)
+
+	// Verify functions - sns-processor has processor
+	require.NotNil(t, cfg.Functions)
+	require.Contains(t, cfg.Functions, "processor")
+	assert.Equal(t, "./cmd/processor", cfg.Functions["processor"].Cmd)
+	assert.Equal(t, "./dist/processor/bootstrap", cfg.Functions["processor"].Out)
+}
+
+func TestNewCommandV2_SNSProcessorTemplate_CDKHasSNSAndDynamoDB(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cmd := &NewCommandV2{}
+	args := []string{"my-sns-app", "--template", "sns-processor", "--base-domain", "example.com"}
+
+	err = cmd.Execute(context.Background(), args)
+	require.NoError(t, err)
+
+	appDir := filepath.Join(tmpDir, "my-sns-app")
+
+	// Read CDK main.go and verify SNS + DynamoDB via Lift constructs
+	cdkMainContent, err := os.ReadFile(filepath.Join(appDir, "cdk", "main.go"))
+	require.NoError(t, err)
+	cdkMain := string(cdkMainContent)
+
+	assert.Contains(t, cdkMain, "awssns")
+	assert.Contains(t, cdkMain, "NewSNSProcessor")
+	assert.Contains(t, cdkMain, "NewLiftTable")
+}
+
 func TestNewCommandV2_MerchantAppTemplate_CreatesExpectedFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, err := os.Getwd()
@@ -847,6 +977,13 @@ func TestNewCommandV2_PTModeSupportsNewTemplates(t *testing.T) {
 			wantStacks:    []string{"service"},
 		},
 		{
+			name:          "sns-processor",
+			template:      "sns-processor",
+			appName:       "pt-sns-processor",
+			wantFunctions: []string{"processor"},
+			wantStacks:    []string{"service"},
+		},
+		{
 			name:          "merchant-app",
 			template:      "merchant-app",
 			appName:       "pt-merchant-app",
@@ -932,4 +1069,6 @@ func TestNewCommandV2_AllTemplatesListedInUsage(t *testing.T) {
 	assert.Contains(t, usage, "microservice")
 	assert.Contains(t, usage, "event-driven")
 	assert.Contains(t, usage, "merchant-app")
+	assert.Contains(t, usage, "sns-processor")
+	assert.Contains(t, usage, "--no-data")
 }

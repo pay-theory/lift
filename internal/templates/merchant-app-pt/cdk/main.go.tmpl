@@ -1,16 +1,16 @@
 package main
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
+	import (
+		"fmt"
+		"os"
+		"path/filepath"
 
-	"github.com/aws/aws-cdk-go/awscdk/v2"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/jsii-runtime-go"
-	liftcdk "github.com/pay-theory/lift/pkg/cdk/constructs"
-)
+		"github.com/aws/aws-cdk-go/awscdk/v2"
+		"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+		{{ if .EnableData }}"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"{{ end }}
+		"github.com/aws/jsii-runtime-go"
+		liftcdk "github.com/pay-theory/lift/pkg/cdk/constructs"
+	)
 
 func main() {
 	defer jsii.Close()
@@ -58,10 +58,18 @@ func main() {
 	// Log deployment context
 	fmt.Printf("Deploying %s for partner=%s stage=%s targetMode=%s\n", appNameStr, partnerStr, stageStr, targetModeStr)
 
+		{{ if .EnableData }}
+		// Deterministic resource names (derive instead of exporting outputs)
+		tableName := fmt.Sprintf("%s-main-%s-%s", appNameStr, partnerStr, stageStr)
+		{{ end }}
+
+	{{ if .EnableData }}
 	// Create stack names
 	dataStackName := fmt.Sprintf("%s-data-%s-%s", appNameStr, partnerStr, stageStr)
+	{{ end }}
 	serviceStackName := fmt.Sprintf("%s-service-%s-%s", appNameStr, partnerStr, stageStr)
 
+	{{ if .EnableData }}
 	// ============================================
 	// DATA STACK
 	// ============================================
@@ -70,35 +78,16 @@ func main() {
 		Description: jsii.String(fmt.Sprintf("%s data stack for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
 	})
 
-	// Create the main DynamoDB table (partner-scoped)
-	table := awsdynamodb.NewTable(dataStack, jsii.String("MainTable"), &awsdynamodb.TableProps{
-		TableName: jsii.String(fmt.Sprintf("%s-main-%s-%s", appNameStr, partnerStr, stageStr)),
-		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("pk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		SortKey: &awsdynamodb.Attribute{
-			Name: jsii.String("sk"),
-			Type: awsdynamodb.AttributeType_STRING,
-		},
-		BillingMode:         awsdynamodb.BillingMode_PAY_PER_REQUEST,
-		RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
-		PointInTimeRecovery: jsii.Bool(true),
+	// Create the main DynamoDB table using LiftTable (DynamORM-friendly PK/SK)
+	dataTable := liftcdk.NewLiftTable(dataStack, jsii.String("MainTable"), &liftcdk.LiftTableProps{
+		TableName:           jsii.String(tableName),
+		PartitionKeyName:    jsii.String("PK"),
+		SortKeyName:         jsii.String("SK"),
 		TimeToLiveAttribute: jsii.String("ttl"),
+		RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
 	})
-
-	// Export table name and ARN
-	awscdk.NewCfnOutput(dataStack, jsii.String("TableName"), &awscdk.CfnOutputProps{
-		Value:       table.TableName(),
-		Description: jsii.String("Main DynamoDB table name"),
-		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-TableName", appNameStr, partnerStr, stageStr)),
-	})
-
-	awscdk.NewCfnOutput(dataStack, jsii.String("TableArn"), &awscdk.CfnOutputProps{
-		Value:       table.TableArn(),
-		Description: jsii.String("Main DynamoDB table ARN"),
-		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-TableArn", appNameStr, partnerStr, stageStr)),
-	})
+	_ = dataTable
+	{{ end }}
 
 	// ============================================
 	// SERVICE STACK
@@ -108,8 +97,13 @@ func main() {
 		Description: jsii.String(fmt.Sprintf("%s service stack for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
 	})
 
+	{{ if .EnableData }}
 	// Add dependency: service stack depends on data stack
 	serviceStack.AddDependency(dataStack, jsii.String("Data resources must exist before service"))
+
+	// Reference the data table by deterministic name (avoids CloudFormation exports)
+	table := awsdynamodb.Table_FromTableName(serviceStack, jsii.String("MainTableRef"), jsii.String(tableName))
+	{{ end }}
 
 	// Create the API Lambda function
 	apiFunction := liftcdk.NewLiftFunction(serviceStack, jsii.String("ApiFunction"), &liftcdk.LiftFunctionProps{
@@ -119,7 +113,6 @@ func main() {
 			Handler:      jsii.String("bootstrap"),
 			Description:  jsii.String(fmt.Sprintf("%s API handler for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
 			Environment: &map[string]*string{
-				"TABLE_NAME":   table.TableName(),
 				"PARTNER":      jsii.String(partnerStr),
 				"STAGE":        jsii.String(stageStr),
 				"TARGET_MODE":  jsii.String(targetModeStr),
@@ -127,6 +120,10 @@ func main() {
 		},
 		EnableTracing: jsii.Bool(true),
 		EnableMetrics: jsii.Bool(true),
+		{{ if .EnableData }}
+		EnableDynamORM:    jsii.Bool(true),
+		DynamORMTableName: jsii.String(tableName),
+		{{ end }}
 	})
 
 	// Create the Worker Lambda function
@@ -137,7 +134,6 @@ func main() {
 			Handler:      jsii.String("bootstrap"),
 			Description:  jsii.String(fmt.Sprintf("%s worker for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
 			Environment: &map[string]*string{
-				"TABLE_NAME":   table.TableName(),
 				"PARTNER":      jsii.String(partnerStr),
 				"STAGE":        jsii.String(stageStr),
 				"TARGET_MODE":  jsii.String(targetModeStr),
@@ -145,26 +141,22 @@ func main() {
 		},
 		EnableTracing: jsii.Bool(true),
 		EnableMetrics: jsii.Bool(true),
+		{{ if .EnableData }}
+		EnableDynamORM:    jsii.Bool(true),
+		DynamORMTableName: jsii.String(tableName),
+		{{ end }}
 	})
 
+	{{ if .EnableData }}
 	// Grant access to the table
 	table.GrantReadWriteData(apiFunction.Function)
 	table.GrantReadWriteData(workerFunction.Function)
+	{{ else }}
+	_ = apiFunction
+	_ = workerFunction
+	{{ end }}
 
 	// LIFT:ADD_FUNCTIONS
-
-	// Outputs
-	awscdk.NewCfnOutput(serviceStack, jsii.String("ApiFunctionArn"), &awscdk.CfnOutputProps{
-		Value:       apiFunction.Function.FunctionArn(),
-		Description: jsii.String("API Lambda function ARN"),
-		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-ApiFunctionArn", appNameStr, partnerStr, stageStr)),
-	})
-
-	awscdk.NewCfnOutput(serviceStack, jsii.String("WorkerFunctionArn"), &awscdk.CfnOutputProps{
-		Value:       workerFunction.Function.FunctionArn(),
-		Description: jsii.String("Worker Lambda function ARN"),
-		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-WorkerFunctionArn", appNameStr, partnerStr, stageStr)),
-	})
 
 	// LIFT:ADD_OUTPUTS
 

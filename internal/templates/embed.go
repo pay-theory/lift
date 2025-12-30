@@ -43,6 +43,14 @@ var EventDrivenFS embed.FS
 //go:embed merchant-app/.github/workflows/*.tmpl
 var MerchantAppFS embed.FS
 
+// SNSProcessorFS embeds all template files for the sns-processor template.
+//
+//go:embed sns-processor/*
+//go:embed sns-processor/**/*
+//go:embed sns-processor/.gitignore.tmpl
+//go:embed sns-processor/.github/workflows/*.tmpl
+var SNSProcessorFS embed.FS
+
 // MicroservicePTFS embeds PT-mode devops files (buildspec.yml, shell/*, cdk/*, lift.yaml).
 // These are generated instead of .github/workflows/* when --pt flag is used.
 //
@@ -66,3 +74,11 @@ var EventDrivenPTFS embed.FS
 //go:embed merchant-app-pt/shell/*
 //go:embed merchant-app-pt/cdk/*
 var MerchantAppPTFS embed.FS
+
+// SNSProcessorPTFS embeds PT-mode devops files (buildspec.yml, shell/*, cdk/*, lift.yaml).
+// These are generated instead of .github/workflows/* when --pt flag is used.
+//
+//go:embed sns-processor-pt/*
+//go:embed sns-processor-pt/shell/*
+//go:embed sns-processor-pt/cdk/*
+var SNSProcessorPTFS embed.FS

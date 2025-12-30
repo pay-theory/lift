@@ -68,18 +68,9 @@ func NewMyLiftStack(scope constructs.Construct, id string, props *MyLiftStackPro
         },
     })
 
-    // Add stack outputs - Based on lift_app.go:166-183
-    awscdk.NewCfnOutput(stack, jsii.String("ApiUrl"), &awscdk.CfnOutputProps{
-        Value:       app.API.GetUrl(),
-        Description: jsii.String("API Gateway endpoint URL"),
-        ExportName:  jsii.String("MyLiftApp-ApiUrl"),
-    })
-
-    awscdk.NewCfnOutput(stack, jsii.String("FunctionName"), &awscdk.CfnOutputProps{
-        Value:       app.Function.Function.FunctionName(),
-        Description: jsii.String("Lambda function name"),
-        ExportName:  jsii.String("MyLiftApp-FunctionName"),
-    })
+    // Prefer deterministic naming + domain configuration over outputs/exports.
+    // If you need to reference resources across stacks, compute names from known inputs
+    // (appName/stage/partner) and import by name/ARN rather than using exports.
 
     return stack
 }

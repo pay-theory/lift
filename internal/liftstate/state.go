@@ -19,11 +19,11 @@ const CurrentVersion = 1
 
 // StageState represents the persisted state for a deployed stage.
 type StageState struct {
-	Version         int                     `json:"version"`
+	Services        map[string]ServiceState `json:"services,omitempty"`
 	Stage           string                  `json:"stage"`
 	BaseDomain      string                  `json:"baseDomain,omitempty"`
 	StageRootDomain string                  `json:"stageRootDomain,omitempty"`
-	Services        map[string]ServiceState `json:"services,omitempty"`
+	Version         int                     `json:"version"`
 }
 
 // ServiceState represents the persisted state for a service within a stage.
@@ -37,7 +37,7 @@ type ServiceState struct {
 func Load(projectRoot, stage string) (*StageState, error) {
 	statePath := StatePath(projectRoot, stage)
 
-	data, err := os.ReadFile(statePath)
+	data, err := os.ReadFile(statePath) //nolint:gosec // statePath is derived from the project root and stage name
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil

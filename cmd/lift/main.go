@@ -16,6 +16,10 @@ import (
 var Version = "dev"
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Create context with cancellation on interrupt
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -34,6 +38,8 @@ func main() {
 	// Execute with command line arguments (skip program name)
 	if err := app.Execute(ctx, os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
+
+	return 0
 }

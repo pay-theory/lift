@@ -263,11 +263,9 @@ func NewMyLiftStack(scope constructs.Construct, id string, props *awscdk.StackPr
         Timeout:           jsii.Number(30),
     })
 
-    // Add stack outputs
-    awscdk.NewCfnOutput(stack, jsii.String("ApiEndpoint"), &awscdk.CfnOutputProps{
-        Value:       app.API.GetUrl(),
-        Description: jsii.String("API Gateway endpoint"),
-    })
+    // Prefer deterministic naming + domain configuration over outputs/exports.
+    // If you need cross-stack references, derive resource names from known inputs
+    // (appName/stage/partner) and import by name/ARN rather than using exports.
 
     return stack
 }

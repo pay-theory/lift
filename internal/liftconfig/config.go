@@ -16,14 +16,14 @@ const ConfigFileName = "lift.yaml"
 
 // Config represents the parsed lift.yaml configuration
 type Config struct {
-	Version   int                  `yaml:"version"`
-	App       AppConfig            `yaml:"app"`
 	Domains   *Domains             `yaml:"domains,omitempty"`
 	Stages    StageMap             `yaml:"stages,omitempty"`
 	Services  map[string]*Service  `yaml:"services,omitempty"`
 	Build     *Build               `yaml:"build,omitempty"`
 	Functions map[string]*Function `yaml:"functions,omitempty"`
 	CDK       *CDKConfig           `yaml:"cdk,omitempty"`
+	App       AppConfig            `yaml:"app"`
+	Version   int                  `yaml:"version"`
 }
 
 // AppConfig contains application metadata
@@ -54,10 +54,10 @@ type Service struct {
 type Build struct {
 	GOOS     string   `yaml:"goos,omitempty"`
 	GOARCH   string   `yaml:"goarch,omitempty"`
-	CGO      int      `yaml:"cgo,omitempty"`
 	Trimpath *bool    `yaml:"trimpath,omitempty"`
 	LDFlags  string   `yaml:"ldflags,omitempty"`
 	Tags     []string `yaml:"tags,omitempty"`
+	CGO      int      `yaml:"cgo,omitempty"`
 }
 
 // Function represents a Lambda function build configuration
@@ -68,9 +68,9 @@ type Function struct {
 
 // CDKConfig contains CDK deployment configuration
 type CDKConfig struct {
+	Stacks      map[string]*Stack `yaml:"stacks,omitempty"`
 	Path        string            `yaml:"path,omitempty"`
 	DeployOrder []string          `yaml:"deploy_order,omitempty"`
-	Stacks      map[string]*Stack `yaml:"stacks,omitempty"`
 }
 
 // Stack represents a CDK stack configuration
@@ -83,7 +83,7 @@ type Stack struct {
 func LoadConfig(root string) (*Config, error) {
 	configPath := filepath.Join(root, ConfigFileName)
 
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(configPath) //nolint:gosec // configPath is derived from the discovered project root
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, &ConfigNotFoundError{Path: configPath}
@@ -110,8 +110,8 @@ func (e *ConfigNotFoundError) Error() string {
 
 // ConfigParseError is returned when lift.yaml cannot be parsed
 type ConfigParseError struct {
-	Path string
 	Err  error
+	Path string
 }
 
 func (e *ConfigParseError) Error() string {

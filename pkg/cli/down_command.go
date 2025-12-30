@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/pay-theory/lift/internal/domains"
 	"github.com/pay-theory/lift/internal/liftconfig"
@@ -42,27 +41,7 @@ Examples:
 // 3. Destroys stacks in reverse deploy order using CDK
 // 4. Removes the state file on success (clears domain lock)
 func (c *DownCommand) Execute(ctx context.Context, args []string) error {
-	// Parse flags
-	stage := "dev" // default
-	partner := ""
-	targetMode := ""
-
-	for i, arg := range args {
-		switch {
-		case arg == "--stage" && i+1 < len(args):
-			stage = args[i+1]
-		case strings.HasPrefix(arg, "--stage="):
-			stage = strings.TrimPrefix(arg, "--stage=")
-		case arg == "--partner" && i+1 < len(args):
-			partner = args[i+1]
-		case strings.HasPrefix(arg, "--partner="):
-			partner = strings.TrimPrefix(arg, "--partner=")
-		case arg == "--target-mode" && i+1 < len(args):
-			targetMode = args[i+1]
-		case strings.HasPrefix(arg, "--target-mode="):
-			targetMode = strings.TrimPrefix(arg, "--target-mode=")
-		}
-	}
+	stage, partner, targetMode := parseDeployFlags(args)
 
 	// Validate stage
 	if err := domains.ValidateStage(stage); err != nil {
@@ -70,39 +49,18 @@ func (c *DownCommand) Execute(ctx context.Context, args []string) error {
 	}
 
 	// Check for CDK binary before proceeding
-	if err := CheckCDK(c.lookPath); err != nil {
+	if err := CheckPrereqs(c.lookPath, "cdk"); err != nil {
 		return err
 	}
 
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
-	}
-
-	// Find project root
-	root, err := liftconfig.FindProjectRoot(cwd)
+	root, cfg, err := loadProjectConfigFromCwd()
 	if err != nil {
 		return err
 	}
 
-	// Load and validate configuration
-	cfg, err := liftconfig.LoadConfig(root)
+	partner, targetMode, err = resolveDeployContext(cfg, partner, targetMode)
 	if err != nil {
 		return err
-	}
-
-	requiresPartner := cdkTemplatesUsePartner(cfg)
-	requiresTargetMode := cdkTemplatesUseTargetMode(cfg)
-
-	// Enforce partner requirement when stack name templates reference {{.Partner}}.
-	if requiresPartner && partner == "" {
-		return fmt.Errorf("--partner is required for this project (cdk stack name_template references {{.Partner}})")
-	}
-
-	// Default targetMode to "standard" when relevant.
-	if targetMode == "" && (partner != "" || requiresTargetMode) {
-		targetMode = "standard"
 	}
 
 	fmt.Printf("🗑️  Destroying %s stage: %s\n", cfg.App.Name, stage)
@@ -178,7 +136,7 @@ func (c *DownCommand) buildCDKArgs(stackName string, cfg *liftconfig.Config, sta
 
 	// Default targetMode to "standard" if partner is set but targetMode is not.
 	if partner != "" && targetMode == "" {
-		targetMode = "standard"
+		targetMode = defaultTargetMode
 	}
 
 	// Add optional context flags

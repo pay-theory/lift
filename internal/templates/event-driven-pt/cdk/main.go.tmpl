@@ -85,6 +85,17 @@ func main() {
 		},
 	})
 
+	{{ if .EnableData }}
+	// DynamoDB table (default data layer)
+	table := liftcdk.NewLiftTable(stack, jsii.String("MainTable"), &liftcdk.LiftTableProps{
+		TableName:           jsii.String(fmt.Sprintf("%s-main-%s-%s", appNameStr, partnerStr, stageStr)),
+		PartitionKeyName:    jsii.String("PK"),
+		SortKeyName:         jsii.String("SK"),
+		TimeToLiveAttribute: jsii.String("ttl"),
+		RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
+	})
+	{{ end }}
+
 	// Create the API Lambda function
 	apiFunction := liftcdk.NewLiftFunction(stack, jsii.String("ApiFunction"), &liftcdk.LiftFunctionProps{
 		FunctionProps: awslambda.FunctionProps{
@@ -101,6 +112,10 @@ func main() {
 		},
 		EnableTracing: jsii.Bool(true),
 		EnableMetrics: jsii.Bool(true),
+		{{ if .EnableData }}
+		EnableDynamORM:    jsii.Bool(true),
+		DynamORMTableName: table.GetTableName(),
+		{{ end }}
 	})
 
 	// Grant API function permission to send messages to the queue
@@ -122,6 +137,10 @@ func main() {
 		},
 		EnableTracing: jsii.Bool(true),
 		EnableMetrics: jsii.Bool(true),
+		{{ if .EnableData }}
+		EnableDynamORM:    jsii.Bool(true),
+		DynamORMTableName: table.GetTableName(),
+		{{ end }}
 	})
 
 	// Add SQS event source to processor
@@ -129,26 +148,13 @@ func main() {
 		BatchSize: jsii.Number(10),
 	}))
 
+	{{ if .EnableData }}
+	// Grant both functions access to the DynamoDB table
+	table.GrantReadWriteData(apiFunction.Function)
+	table.GrantReadWriteData(processorFunction.Function)
+	{{ end }}
+
 	// LIFT:ADD_FUNCTIONS
-
-	// Outputs
-	awscdk.NewCfnOutput(stack, jsii.String("ApiFunctionArn"), &awscdk.CfnOutputProps{
-		Value:       apiFunction.Function.FunctionArn(),
-		Description: jsii.String("API Lambda function ARN"),
-		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-ApiFunctionArn", appNameStr, partnerStr, stageStr)),
-	})
-
-	awscdk.NewCfnOutput(stack, jsii.String("ProcessorFunctionArn"), &awscdk.CfnOutputProps{
-		Value:       processorFunction.Function.FunctionArn(),
-		Description: jsii.String("Processor Lambda function ARN"),
-		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-ProcessorFunctionArn", appNameStr, partnerStr, stageStr)),
-	})
-
-	awscdk.NewCfnOutput(stack, jsii.String("QueueUrl"), &awscdk.CfnOutputProps{
-		Value:       queue.QueueUrl(),
-		Description: jsii.String("Processing queue URL"),
-		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-QueueUrl", appNameStr, partnerStr, stageStr)),
-	})
 
 	// LIFT:ADD_OUTPUTS
 

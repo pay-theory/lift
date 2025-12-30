@@ -10,8 +10,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pay-theory/lift/internal/liftconfig"
 	"gopkg.in/yaml.v3"
+
+	"github.com/pay-theory/lift/internal/liftconfig"
 )
 
 // AddCommand implements the "lift add" command for incremental scaffolding.
@@ -199,24 +200,24 @@ func main() {
 	// Start Lambda
 	lambda.Start(app.HandleRequest)
 }
-`, appName, name, name)
+	`, appName, name, name)
 
 	mainPath := filepath.Join(cmdDir, "main.go")
-	return os.WriteFile(mainPath, []byte(mainContent), 0644)
+	return os.WriteFile(mainPath, []byte(mainContent), 0600)
 }
 
 // updateLiftYAML adds the new function to lift.yaml using YAML node editing
 func (c *AddCommand) updateLiftYAML(root, name string) error {
 	configPath := filepath.Join(root, "lift.yaml")
 
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(configPath) //nolint:gosec // file path is derived from the discovered project root
 	if err != nil {
 		return err
 	}
 
 	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return err
+	if unmarshalErr := yaml.Unmarshal(data, &doc); unmarshalErr != nil {
+		return unmarshalErr
 	}
 
 	// The document should have a single document node
@@ -265,7 +266,7 @@ func (c *AddCommand) updateLiftYAML(root, name string) error {
 		return err
 	}
 
-	return os.WriteFile(configPath, output, 0644)
+	return os.WriteFile(configPath, output, 0600)
 }
 
 // isPTProject detects if this is a PT-mode project
@@ -309,7 +310,7 @@ func detectStackVariable(content string) string {
 func (c *AddCommand) updateCDK(root, name, appName string, isPT bool) error {
 	cdkPath := filepath.Join(root, "cdk", "main.go")
 
-	data, err := os.ReadFile(cdkPath)
+	data, err := os.ReadFile(cdkPath) //nolint:gosec // file path is derived from the discovered project root
 	if err != nil {
 		return err
 	}
@@ -322,26 +323,21 @@ func (c *AddCommand) updateCDK(root, name, appName string, isPT bool) error {
 	stackVar := detectStackVariable(content)
 
 	// Generate the function code to insert
-	var functionCode, outputCode string
+	var functionCode string
 	if isPT {
 		functionCode = c.generatePTFunctionCode(name, appName, stackVar)
-		outputCode = c.generatePTOutputCode(name, appName, stackVar)
 	} else {
 		functionCode = c.generateFunctionCode(name, appName, stackVar)
-		outputCode = c.generateOutputCode(name, appName, stackVar)
 	}
 
 	// Try to find markers
 	const functionsMarker = "// LIFT:ADD_FUNCTIONS"
-	const outputsMarker = "// LIFT:ADD_OUTPUTS"
 
 	hasFunctionsMarker := strings.Contains(content, functionsMarker)
-	hasOutputsMarker := strings.Contains(content, outputsMarker)
 
-	if hasFunctionsMarker && hasOutputsMarker {
+	if hasFunctionsMarker {
 		// Insert at markers
 		content = strings.Replace(content, functionsMarker, functionCode+"\n\n\t"+functionsMarker, 1)
-		content = strings.Replace(content, outputsMarker, outputCode+"\n\n\t"+outputsMarker, 1)
 	} else {
 		// Fallback: insert before app.Synth(nil)
 		synthPattern := "app.Synth(nil)"
@@ -350,7 +346,7 @@ func (c *AddCommand) updateCDK(root, name, appName string, isPT bool) error {
 			return fmt.Errorf("could not find insertion point in cdk/main.go (no markers or app.Synth)")
 		}
 
-		insertion := functionCode + "\n\n\t" + outputCode + "\n\n\t"
+		insertion := functionCode + "\n\n\t"
 		content = content[:insertPoint] + insertion + content[insertPoint:]
 	}
 
@@ -359,14 +355,14 @@ func (c *AddCommand) updateCDK(root, name, appName string, isPT bool) error {
 	if err != nil {
 		// If formatting fails, write unformatted and warn
 		fmt.Printf("  ⚠️  Warning: could not format cdk/main.go: %v\n", err)
-		return os.WriteFile(cdkPath, []byte(content), 0644)
+		return os.WriteFile(cdkPath, []byte(content), 0600)
 	}
 
-	return os.WriteFile(cdkPath, formatted, 0644)
+	return os.WriteFile(cdkPath, formatted, 0600)
 }
 
 // generateFunctionCode generates the LiftFunction code for default projects
-func (c *AddCommand) generateFunctionCode(name, appName, stackVar string) string {
+func (c *AddCommand) generateFunctionCode(name, _, stackVar string) string {
 	pascalName := toPascalCase(name)
 	return fmt.Sprintf(`// Create the %s Lambda function
 	%sFunction := liftcdk.NewLiftFunction(%s, jsii.String("%sFunction"), &liftcdk.LiftFunctionProps{
@@ -378,21 +374,12 @@ func (c *AddCommand) generateFunctionCode(name, appName, stackVar string) string
 		},
 		EnableTracing: jsii.Bool(true),
 		EnableMetrics: jsii.Bool(true),
-	})`, name, toLowerCamel(name), stackVar, pascalName, name, name, name)
-}
-
-// generateOutputCode generates the CfnOutput code for default projects
-func (c *AddCommand) generateOutputCode(name, appName, stackVar string) string {
-	pascalName := toPascalCase(name)
-	return fmt.Sprintf(`awscdk.NewCfnOutput(%s, jsii.String("%sFunctionArn"), &awscdk.CfnOutputProps{
-		Value:       %sFunction.Function.FunctionArn(),
-		Description: jsii.String("%s Lambda function ARN"),
-		ExportName:  jsii.String(fmt.Sprintf("%%s-%%s-%sFunctionArn", appNameStr, stageStr)),
-	})`, stackVar, pascalName, toLowerCamel(name), pascalName, pascalName)
+	})
+	_ = %sFunction`, name, toLowerCamel(name), stackVar, pascalName, name, name, name, toLowerCamel(name))
 }
 
 // generatePTFunctionCode generates the LiftFunction code for PT projects
-func (c *AddCommand) generatePTFunctionCode(name, appName, stackVar string) string {
+func (c *AddCommand) generatePTFunctionCode(name, _, stackVar string) string {
 	pascalName := toPascalCase(name)
 	return fmt.Sprintf(`// Create the %s Lambda function
 	%sFunction := liftcdk.NewLiftFunction(%s, jsii.String("%sFunction"), &liftcdk.LiftFunctionProps{
@@ -409,17 +396,8 @@ func (c *AddCommand) generatePTFunctionCode(name, appName, stackVar string) stri
 		},
 		EnableTracing: jsii.Bool(true),
 		EnableMetrics: jsii.Bool(true),
-	})`, name, toLowerCamel(name), stackVar, pascalName, name, name, name)
-}
-
-// generatePTOutputCode generates the CfnOutput code for PT projects
-func (c *AddCommand) generatePTOutputCode(name, appName, stackVar string) string {
-	pascalName := toPascalCase(name)
-	return fmt.Sprintf(`awscdk.NewCfnOutput(%s, jsii.String("%sFunctionArn"), &awscdk.CfnOutputProps{
-		Value:       %sFunction.Function.FunctionArn(),
-		Description: jsii.String("%s Lambda function ARN"),
-		ExportName:  jsii.String(fmt.Sprintf("%%s-%%s-%%s-%sFunctionArn", appNameStr, partnerStr, stageStr)),
-	})`, stackVar, pascalName, toLowerCamel(name), pascalName, pascalName)
+	})
+		_ = %sFunction`, name, toLowerCamel(name), stackVar, pascalName, name, name, name, toLowerCamel(name))
 }
 
 // updatePTBuildFiles updates buildspec.yml and shell/build.sh for PT projects
@@ -441,7 +419,7 @@ func (c *AddCommand) updatePTBuildFiles(root, name string) error {
 func (c *AddCommand) updateBuildspecYML(root, name string) error {
 	buildspecPath := filepath.Join(root, "buildspec.yml")
 
-	data, err := os.ReadFile(buildspecPath)
+	data, err := os.ReadFile(buildspecPath) //nolint:gosec // file path is derived from the discovered project root
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // No buildspec.yml, skip
@@ -469,7 +447,7 @@ func (c *AddCommand) updateBuildspecYML(root, name string) error {
 	if loc := markerRe.FindStringSubmatchIndex(content); loc != nil {
 		indent := content[loc[2]:loc[3]]
 		insertBuildSteps(indent, loc[0])
-		return os.WriteFile(buildspecPath, []byte(content), 0644)
+		return os.WriteFile(buildspecPath, []byte(content), 0600)
 	}
 
 	// Fallback: insert before the synth step, attempting to infer indentation.
@@ -479,14 +457,14 @@ func (c *AddCommand) updateBuildspecYML(root, name string) error {
 		insertBuildSteps(indent, loc[0])
 	}
 
-	return os.WriteFile(buildspecPath, []byte(content), 0644)
+	return os.WriteFile(buildspecPath, []byte(content), 0600)
 }
 
 // updateBuildSH adds build steps for the new function
 func (c *AddCommand) updateBuildSH(root, name string) error {
 	buildshPath := filepath.Join(root, "shell", "build.sh")
 
-	data, err := os.ReadFile(buildshPath)
+	data, err := os.ReadFile(buildshPath) //nolint:gosec // file path is derived from the discovered project root
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // No shell/build.sh, skip
@@ -518,16 +496,14 @@ fi
 
 	outputLine := fmt.Sprintf(`echo "   - dist/%s/bootstrap"`, name)
 
-	if strings.Contains(content, functionMarker) {
-		content = strings.Replace(content, functionMarker, buildStep+"\n"+functionMarker, 1)
-	}
+	content = strings.Replace(content, functionMarker, buildStep+"\n"+functionMarker, 1)
+	content = strings.Replace(content, outputMarker, outputLine+"\n"+outputMarker, 1)
 
-	if strings.Contains(content, outputMarker) {
-		content = strings.Replace(content, outputMarker, outputLine+"\n"+outputMarker, 1)
+	mode := os.FileMode(0750)
+	if info, statErr := os.Stat(buildshPath); statErr == nil {
+		mode = info.Mode()
 	}
-
-	// Ensure file remains executable
-	return os.WriteFile(buildshPath, []byte(content), 0750)
+	return os.WriteFile(buildshPath, []byte(content), mode)
 }
 
 // toPascalCase converts a snake_case or lowercase name to PascalCase

@@ -24,18 +24,20 @@ type templateInfo struct {
 
 // availableTemplates lists all available templates.
 var availableTemplates = map[string]templateInfo{
-	"basic-api":    {FS: templates.BasicAPIFS, Root: "basic-api"},
-	"microservice": {FS: templates.MicroserviceFS, Root: "microservice"},
-	"event-driven": {FS: templates.EventDrivenFS, Root: "event-driven"},
-	"merchant-app": {FS: templates.MerchantAppFS, Root: "merchant-app"},
+	"basic-api":     {FS: templates.BasicAPIFS, Root: "basic-api"},
+	"microservice":  {FS: templates.MicroserviceFS, Root: "microservice"},
+	"event-driven":  {FS: templates.EventDrivenFS, Root: "event-driven"},
+	"merchant-app":  {FS: templates.MerchantAppFS, Root: "merchant-app"},
+	"sns-processor": {FS: templates.SNSProcessorFS, Root: "sns-processor"},
 }
 
 // ptTemplates lists templates that have PT variants.
 var ptTemplates = map[string]templateInfo{
-	"basic-api":    {FS: templates.BasicAPIPTFS, Root: "basic-api-pt"},
-	"microservice": {FS: templates.MicroservicePTFS, Root: "microservice-pt"},
-	"event-driven": {FS: templates.EventDrivenPTFS, Root: "event-driven-pt"},
-	"merchant-app": {FS: templates.MerchantAppPTFS, Root: "merchant-app-pt"},
+	"basic-api":     {FS: templates.BasicAPIPTFS, Root: "basic-api-pt"},
+	"microservice":  {FS: templates.MicroservicePTFS, Root: "microservice-pt"},
+	"event-driven":  {FS: templates.EventDrivenPTFS, Root: "event-driven-pt"},
+	"merchant-app":  {FS: templates.MerchantAppPTFS, Root: "merchant-app-pt"},
+	"sns-processor": {FS: templates.SNSProcessorPTFS, Root: "sns-processor-pt"},
 }
 
 // NewCommandV2 implements the "lift new" command for Milestone 2+.
@@ -50,6 +52,7 @@ func (c *NewCommandV2) Usage() string {
 Flags:
   --template <name>       Template to use (default: basic-api)
   --base-domain <apex>    Base domain for the project (required for domain-enabled templates)
+  --no-data               Scaffold without DynamoDB (templates include data by default)
   --pt                    Generate Pay Theory devops assets (buildspec.yml, shell/*)
                           instead of GitHub Actions workflows
 
@@ -58,6 +61,7 @@ Available templates:
   - microservice          Lightweight single Lambda microservice
   - event-driven          API + processor with SQS queue for async processing
   - merchant-app          Multi-Lambda, multi-stack (data + service) architecture
+  - sns-processor         SNS topic + processor Lambda + DynamoDB table
 
 Examples:
   lift new my-app --base-domain example.com
@@ -65,6 +69,8 @@ Examples:
   lift new my-app --template microservice --base-domain example.com
   lift new my-app --template event-driven --base-domain example.com
   lift new my-app --template merchant-app --base-domain example.com
+  lift new my-app --template sns-processor --base-domain example.com
+  lift new my-app --template microservice --base-domain example.com --no-data
   lift new my-app --base-domain example.com --pt`
 }
 
@@ -73,6 +79,7 @@ type TemplateData struct {
 	AppName    string
 	ModuleName string
 	BaseDomain string
+	EnableData bool
 }
 
 // Execute runs the new command with the provided arguments.
@@ -89,8 +96,8 @@ func (c *NewCommandV2) Execute(_ context.Context, args []string) error {
 	}
 
 	// Validate options
-	if err := c.validateOpts(opts); err != nil {
-		return err
+	if validateErr := c.validateOpts(opts); validateErr != nil {
+		return validateErr
 	}
 
 	// Determine target directory
@@ -121,6 +128,7 @@ type newOpts struct {
 	template   string
 	baseDomain string
 	pt         bool
+	noData     bool
 }
 
 func (c *NewCommandV2) parseArgs(args []string) (*newOpts, error) {
@@ -147,6 +155,8 @@ func (c *NewCommandV2) parseArgs(args []string) (*newOpts, error) {
 			return nil, nil // Signal to caller to exit without error
 		case arg == "--pt":
 			opts.pt = true
+		case arg == "--no-data":
+			opts.noData = true
 		case strings.HasPrefix(arg, "-"):
 			return nil, fmt.Errorf("unknown flag: %s\nUsage: %s", arg, c.Usage())
 		default:
@@ -228,94 +238,84 @@ func (c *NewCommandV2) checkExistingProject(targetDir string) error {
 }
 
 func (c *NewCommandV2) scaffold(targetDir string, opts *newOpts) error {
-	// Determine app name if not provided
-	appName := opts.appName
-	if appName == "" {
-		appName = filepath.Base(targetDir)
-	}
-
-	// Create template data
-	data := TemplateData{
-		AppName:    appName,
-		ModuleName: appName, // Default module name to app name
-		BaseDomain: opts.baseDomain,
-	}
+	data := c.buildTemplateData(targetDir, opts)
 
 	// Create target directory if needed
 	if err := os.MkdirAll(targetDir, 0750); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
 	}
 
-	// Get the template info
 	tmplInfo := availableTemplates[opts.template]
+	if err := c.scaffoldTemplateFiles(targetDir, tmplInfo, data, opts); err != nil {
+		return err
+	}
 
-	// Walk the embedded template FS and render each file
-	err := fs.WalkDir(tmplInfo.FS, tmplInfo.Root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	// In PT mode, also scaffold PT-specific files (buildspec.yml, shell/*)
+	if opts.pt {
+		if err := c.scaffoldPTFiles(targetDir, data, opts.template); err != nil {
+			return fmt.Errorf("failed to scaffold PT files: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (c *NewCommandV2) buildTemplateData(targetDir string, opts *newOpts) TemplateData {
+	appName := opts.appName
+	if appName == "" {
+		appName = filepath.Base(targetDir)
+	}
+
+	return TemplateData{
+		AppName:    appName,
+		ModuleName: appName,
+		BaseDomain: opts.baseDomain,
+		EnableData: !opts.noData,
+	}
+}
+
+func (c *NewCommandV2) scaffoldTemplateFiles(targetDir string, tmplInfo templateInfo, data TemplateData, opts *newOpts) error {
+	err := fs.WalkDir(tmplInfo.FS, tmplInfo.Root, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
 
-		// Get relative path from template root
 		relPath, err := filepath.Rel(tmplInfo.Root, path)
 		if err != nil {
 			return err
 		}
 
-		// Skip root
 		if relPath == "." {
 			return nil
 		}
 
-		// In PT mode, skip .github directory entirely
-		if opts.pt && (strings.HasPrefix(relPath, ".github") || relPath == ".github") {
-			if d.IsDir() {
+		if skip, skipDir := c.shouldSkipTemplatePath(relPath, d, opts); skip {
+			if skipDir {
 				return fs.SkipDir
 			}
 			return nil
 		}
 
-		// In PT mode, skip README.md (we have a PT-specific one)
-		if opts.pt && (relPath == "README.md.tmpl" || relPath == "README.md") {
-			return nil
-		}
-
-		// In PT mode, skip lift.yaml and cdk/main.go (we have PT-specific versions with partner support)
-		if opts.pt && (relPath == "lift.yaml.tmpl" || relPath == "lift.yaml") {
-			return nil
-		}
-		if opts.pt && (relPath == filepath.Join("cdk", "main.go.tmpl") || relPath == filepath.Join("cdk", "main.go")) {
-			return nil
-		}
-
-		// Compute target path
-		targetPath := filepath.Join(targetDir, relPath)
-
-		// Strip .tmpl extension (TrimSuffix is a no-op if suffix not present)
-		targetPath = strings.TrimSuffix(targetPath, ".tmpl")
+		targetPath := filepath.Join(targetDir, strings.TrimSuffix(relPath, ".tmpl"))
 
 		if d.IsDir() {
-			// Create directory
 			return os.MkdirAll(targetPath, 0750)
 		}
 
-		// Read and render template file
 		content, err := tmplInfo.FS.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read template %s: %w", path, err)
 		}
 
-		// Parse and execute template
 		rendered, err := c.renderTemplate(string(content), data)
 		if err != nil {
 			return fmt.Errorf("failed to render template %s: %w", path, err)
 		}
 
-		// Ensure parent directory exists
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0750); err != nil {
 			return fmt.Errorf("failed to create directory for %s: %w", targetPath, err)
 		}
 
-		// Write file
 		if err := os.WriteFile(targetPath, []byte(rendered), 0600); err != nil {
 			return fmt.Errorf("failed to write %s: %w", targetPath, err)
 		}
@@ -327,14 +327,31 @@ func (c *NewCommandV2) scaffold(targetDir string, opts *newOpts) error {
 		return fmt.Errorf("failed to scaffold project: %w", err)
 	}
 
-	// In PT mode, also scaffold PT-specific files (buildspec.yml, shell/*)
-	if opts.pt {
-		if err := c.scaffoldPTFiles(targetDir, data, opts.template); err != nil {
-			return fmt.Errorf("failed to scaffold PT files: %w", err)
-		}
+	return nil
+}
+
+func (c *NewCommandV2) shouldSkipTemplatePath(relPath string, d fs.DirEntry, opts *newOpts) (skip bool, skipDir bool) {
+	if !opts.pt {
+		return false, false
 	}
 
-	return nil
+	// In PT mode, skip base template files that are replaced by PT variants.
+	if relPath == "README.md.tmpl" || relPath == "README.md" {
+		return true, false
+	}
+	if relPath == "lift.yaml.tmpl" || relPath == "lift.yaml" {
+		return true, false
+	}
+	if relPath == "cdk/main.go.tmpl" || relPath == "cdk/main.go" {
+		return true, false
+	}
+
+	// In PT mode, skip .github directory entirely (PT uses buildspec/shell).
+	if relPath == ".github" || strings.HasPrefix(relPath, ".github/") {
+		return true, d.IsDir()
+	}
+
+	return false, false
 }
 
 // scaffoldPTFiles scaffolds Pay Theory-style devops files (buildspec.yml, shell/*)
@@ -440,6 +457,8 @@ func (c *NewCommandV2) printSuccess(targetDir string, appName string, ptMode boo
 	case "merchant-app":
 		fmt.Printf("   ├── cmd/api/main.go    # API Lambda entrypoint\n")
 		fmt.Printf("   ├── cmd/worker/main.go # Worker Lambda entrypoint\n")
+	case "sns-processor":
+		fmt.Printf("   ├── cmd/processor/main.go  # SNS processor Lambda entrypoint\n")
 	default:
 		fmt.Printf("   ├── cmd/api/main.go    # Lambda entrypoint\n")
 	}

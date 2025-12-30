@@ -708,6 +708,53 @@ func main() {}
 	assertFileExists(t, filepath.Join(projectDir, "dist", "processor", "bootstrap"))
 }
 
+// TestBuildCommand_SNSProcessorTemplate_CanBuild verifies that sns-processor template
+// generates a project that can be built successfully.
+func TestBuildCommand_SNSProcessorTemplate_CanBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// Generate an SNS processor project
+	newCmd := &NewCommandV2{}
+	err = newCmd.Execute(context.Background(), []string{"my-sns-app", "--template", "sns-processor", "--base-domain", "example.com"})
+	require.NoError(t, err)
+
+	projectDir := filepath.Join(tmpDir, "my-sns-app")
+
+	// Replace the generated main.go with a simple one
+	simpleMain := `package main
+
+func main() {}
+`
+	err = os.WriteFile(filepath.Join(projectDir, "cmd", "processor", "main.go"), []byte(simpleMain), 0600)
+	require.NoError(t, err)
+
+	// Change to project directory
+	require.NoError(t, os.Chdir(projectDir))
+
+	// Build the project
+	buildCmd := &BuildCommand{
+		cmdFactory: func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+			c := exec.CommandContext(ctx, name, arg...)
+			setHermeticEnv(t, c, tmpDir)
+			return c
+		},
+	}
+
+	err = buildCmd.Execute(context.Background(), nil)
+	require.NoError(t, err)
+
+	// Verify the output exists for processor function
+	assertFileExists(t, filepath.Join(projectDir, "dist", "processor", "bootstrap"))
+}
+
 // TestBuildCommand_MerchantAppTemplate_CanBuild verifies that merchant-app template
 // generates a project that can be built successfully.
 func TestBuildCommand_MerchantAppTemplate_CanBuild(t *testing.T) {

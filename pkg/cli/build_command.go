@@ -37,45 +37,42 @@ func (c *BuildCommand) Usage() string {
 	return "lift build [--arch arm64|amd64]"
 }
 
+func parseArchOverride(args []string) (string, error) {
+	archOverride := ""
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+
+		switch {
+		case arg == "--arch" && i+1 < len(args):
+			i++
+			archOverride = args[i]
+		case strings.HasPrefix(arg, "--arch="):
+			archOverride = strings.TrimPrefix(arg, "--arch=")
+		}
+
+		if archOverride != "" && archOverride != "arm64" && archOverride != "amd64" {
+			return "", fmt.Errorf("invalid architecture: %s (must be arm64 or amd64)", archOverride)
+		}
+	}
+
+	return archOverride, nil
+}
+
 // Execute builds all Lambda functions defined in lift.yaml.
 // It supports running from project root or any subdirectory.
 func (c *BuildCommand) Execute(ctx context.Context, args []string) error {
-	// Parse --arch flag (override from CLI)
-	archOverride := ""
-	for i, arg := range args {
-		if arg == "--arch" && i+1 < len(args) {
-			archOverride = args[i+1]
-			if archOverride != "arm64" && archOverride != "amd64" {
-				return fmt.Errorf("invalid architecture: %s (must be arm64 or amd64)", archOverride)
-			}
-		}
-		if strings.HasPrefix(arg, "--arch=") {
-			archOverride = strings.TrimPrefix(arg, "--arch=")
-			if archOverride != "arm64" && archOverride != "amd64" {
-				return fmt.Errorf("invalid architecture: %s (must be arm64 or amd64)", archOverride)
-			}
-		}
+	archOverride, err := parseArchOverride(args)
+	if err != nil {
+		return err
 	}
 
 	// Check for Go binary before proceeding
-	if err := CheckGo(c.lookPath); err != nil {
-		return err
+	if prereqErr := CheckGo(c.lookPath); prereqErr != nil {
+		return prereqErr
 	}
 
-	// Find project root
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
-	}
-
-	root, err := liftconfig.FindProjectRoot(cwd)
-	if err != nil {
-		// ProjectNotFoundError already has actionable message
-		return err
-	}
-
-	// Load configuration
-	cfg, err := liftconfig.LoadConfig(root)
+	root, cfg, err := loadProjectConfigFromCwd()
 	if err != nil {
 		return err
 	}
@@ -113,10 +110,10 @@ func (c *BuildCommand) Execute(ctx context.Context, args []string) error {
 type buildConfig struct {
 	goos     string
 	goarch   string
-	cgo      bool
-	trimpath bool
 	ldflags  string
 	tags     []string
+	cgo      bool
+	trimpath bool
 }
 
 // resolveBuildConfig merges defaults with lift.yaml build config and CLI overrides
@@ -162,7 +159,7 @@ func (c *BuildCommand) resolveBuildConfig(cfg *liftconfig.Config, archOverride s
 
 func mergeTags(base, extra []string) []string {
 	seen := make(map[string]struct{}, len(base)+len(extra))
-	var merged []string
+	merged := make([]string, 0, len(base)+len(extra))
 
 	for _, tag := range base {
 		tag = strings.TrimSpace(tag)
@@ -191,23 +188,96 @@ func mergeTags(base, extra []string) []string {
 	return merged
 }
 
-// buildFunction builds a single Lambda function
-func (c *BuildCommand) buildFunction(ctx context.Context, root, name string, fn *liftconfig.Function, bc buildConfig, retriedWithMod *bool) error {
-	// Validate function config
+func validateFunctionConfig(name string, fn *liftconfig.Function) error {
 	if fn.Cmd == "" {
 		return fmt.Errorf("function %q is missing 'cmd' field (package path to build)", name)
 	}
 	if fn.Out == "" {
 		return fmt.Errorf("function %q is missing 'out' field (output path)", name)
 	}
+	return nil
+}
+
+func resolveOutputPath(root, out string) string {
+	if filepath.IsAbs(out) {
+		return out
+	}
+	return filepath.Join(root, out)
+}
+
+func buildGoBuildArgs(outPath, pkgPath string, bc buildConfig) []string {
+	args := []string{"build"}
+
+	if bc.trimpath {
+		args = append(args, "-trimpath")
+	}
+
+	if bc.ldflags != "" {
+		args = append(args, "-ldflags", bc.ldflags)
+	}
+
+	if len(bc.tags) > 0 {
+		args = append(args, "-tags", strings.Join(bc.tags, ","))
+	}
+
+	return append(args, "-o", outPath, pkgPath)
+}
+
+func (c *BuildCommand) runGoBuild(ctx context.Context, root string, args []string, bc buildConfig) (string, error) {
+	var cmd *exec.Cmd
+	if c.cmdFactory != nil {
+		cmd = c.cmdFactory(ctx, "go", args...)
+	} else {
+		cmd = exec.CommandContext(ctx, "go", args...)
+	}
+
+	cmd.Dir = root
+
+	cgoEnabled := "0"
+	if bc.cgo {
+		cgoEnabled = "1"
+	}
+
+	env := cmd.Env
+	if len(env) == 0 {
+		env = os.Environ()
+	}
+	env = append(env,
+		"GOOS="+bc.goos,
+		"GOARCH="+bc.goarch,
+		"CGO_ENABLED="+cgoEnabled,
+	)
+	cmd.Env = env
+
+	cmd.Stdout = os.Stdout
+
+	var stderr bytes.Buffer
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+
+	err := cmd.Run()
+	return stderr.String(), err
+}
+
+func formatBuildFailure(name string, args []string, stderr string, err error) error {
+	stderr = strings.TrimSpace(stderr)
+	if stderr == "" {
+		return fmt.Errorf("build failed for function %q\n  command: go %s\n  error: %w",
+			name, strings.Join(args, " "), err)
+	}
+
+	return fmt.Errorf("build failed for function %q\n  command: go %s\n  error: %w\n  stderr: %s",
+		name, strings.Join(args, " "), err, stderr)
+}
+
+// buildFunction builds a single Lambda function
+func (c *BuildCommand) buildFunction(ctx context.Context, root, name string, fn *liftconfig.Function, bc buildConfig, retriedWithMod *bool) error {
+	if err := validateFunctionConfig(name, fn); err != nil {
+		return err
+	}
 
 	fmt.Printf("  📦 %s: %s → %s\n", name, fn.Cmd, fn.Out)
 
-	// Resolve output path relative to project root
-	outPath := fn.Out
-	if !filepath.IsAbs(outPath) {
-		outPath = filepath.Join(root, outPath)
-	}
+	outPath := resolveOutputPath(root, fn.Out)
 
 	// Ensure output directory exists
 	outDir := filepath.Dir(outPath)
@@ -215,65 +285,10 @@ func (c *BuildCommand) buildFunction(ctx context.Context, root, name string, fn 
 		return fmt.Errorf("failed to create output directory %s: %w", outDir, err)
 	}
 
-	// Build go build arguments
-	buildArgs := []string{"build"}
-
-	// Add -trimpath if enabled
-	if bc.trimpath {
-		buildArgs = append(buildArgs, "-trimpath")
-	}
-
-	// Add -ldflags if set
-	if bc.ldflags != "" {
-		buildArgs = append(buildArgs, "-ldflags", bc.ldflags)
-	}
-
-	// Add -tags if set
-	if len(bc.tags) > 0 {
-		buildArgs = append(buildArgs, "-tags", strings.Join(bc.tags, ","))
-	}
-
-	// Add output and package path
-	buildArgs = append(buildArgs, "-o", outPath, fn.Cmd)
-
-	// Create command
-	runBuild := func(args []string) (string, error) {
-		var cmd *exec.Cmd
-		if c.cmdFactory != nil {
-			cmd = c.cmdFactory(ctx, "go", args...)
-		} else {
-			cmd = exec.CommandContext(ctx, "go", args...)
-		}
-
-		// Set working directory to project root
-		cmd.Dir = root
-
-		// Set environment variables (respect cmdFactory overrides)
-		cgoEnabled := "0"
-		if bc.cgo {
-			cgoEnabled = "1"
-		}
-		baseEnv := cmd.Env
-		if len(baseEnv) == 0 {
-			baseEnv = os.Environ()
-		}
-		cmd.Env = append(baseEnv,
-			"GOOS="+bc.goos,
-			"GOARCH="+bc.goarch,
-			"CGO_ENABLED="+cgoEnabled,
-		)
-
-		cmd.Stdout = os.Stdout
-
-		var stderr bytes.Buffer
-		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
-
-		err := cmd.Run()
-		return stderr.String(), err
-	}
+	buildArgs := buildGoBuildArgs(outPath, fn.Cmd, bc)
 
 	failedArgs := buildArgs
-	stderr, err := runBuild(buildArgs)
+	stderr, err := c.runGoBuild(ctx, root, buildArgs, bc)
 	if err == nil {
 		return nil
 	}
@@ -284,14 +299,13 @@ func (c *BuildCommand) buildFunction(ctx context.Context, root, name string, fn 
 
 		buildArgsMod := append([]string{buildArgs[0], "-mod=mod"}, buildArgs[1:]...)
 		failedArgs = buildArgsMod
-		stderr, err = runBuild(buildArgsMod)
+		stderr, err = c.runGoBuild(ctx, root, buildArgsMod, bc)
 		if err == nil {
 			return nil
 		}
 	}
 
-	return fmt.Errorf("build failed for function %q\n  command: go %s\n  error: %w",
-		name, strings.Join(failedArgs, " "), err)
+	return formatBuildFailure(name, failedArgs, stderr, err)
 }
 
 func shouldRetryWithMod(stderr string) bool {

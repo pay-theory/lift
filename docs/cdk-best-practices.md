@@ -96,14 +96,26 @@ func main() {
 }
 ```
 
-### DO: Use Stack Outputs for Cross-Stack References
+### DO: Use Deterministic Naming for Cross-Stack References
+
+CloudFormation Outputs/Exports create brittle, implicit dependencies between stacks (and require consumers to know output/export names).
+
+Prefer deterministic naming conventions for resources and derive those names from known inputs (like `appName`, `stage`, and `partner`). When another stack needs a resource, import it by name/ARN using the same naming convention.
+
 ```go
-// ✅ Export important values
-awscdk.NewCfnOutput(stack, jsii.String("ApiEndpoint"), &awscdk.CfnOutputProps{
-    Value:       api.ApiEndpoint(),
-    ExportName:  jsii.String("MyApp-ApiEndpoint"),
-    Description: jsii.String("API Gateway endpoint URL"),
+// ✅ Prefer deterministic names + lookups over outputs/exports.
+tableName := fmt.Sprintf("%s-main-%s", appNameStr, stageStr)
+
+// Data stack creates table with that name
+liftcdk.NewLiftTable(dataStack, jsii.String("MainTable"), &liftcdk.LiftTableProps{
+    TableName:        jsii.String(tableName),
+    PartitionKeyName: jsii.String("PK"),
+    SortKeyName:      jsii.String("SK"),
 })
+
+// Service stack imports by name
+table := awsdynamodb.Table_FromTableName(serviceStack, jsii.String("MainTable"), jsii.String(tableName))
+_ = table
 ```
 
 ## Environment Management

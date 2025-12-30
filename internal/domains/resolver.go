@@ -14,9 +14,9 @@ var ValidStages = []string{"dev", "staging", "live"}
 
 // ResolvedDomains contains all resolved domain information for a stage.
 type ResolvedDomains struct {
+	Services        map[string]string `json:"services,omitempty"`
 	BaseDomain      string            `json:"baseDomain,omitempty"`
 	StageRootDomain string            `json:"stageRootDomain,omitempty"`
-	Services        map[string]string `json:"services,omitempty"`
 }
 
 // ValidateStage validates that a stage name is one of dev, staging, or live.

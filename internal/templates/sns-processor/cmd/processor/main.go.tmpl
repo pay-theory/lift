@@ -1,0 +1,26 @@
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+)
+
+func main() {
+	lambda.Start(handler)
+}
+
+func handler(ctx context.Context, snsEvent events.SNSEvent) error {
+	for _, record := range snsEvent.Records {
+		fmt.Printf("Processing SNS message ID: %s\n", record.SNS.MessageID)
+		fmt.Printf("Message: %s\n", record.SNS.Message)
+
+		// TODO: process the message
+		// - SNS topic metadata is available via SNS_TOPIC_ARN / SNS_TOPIC_NAME env vars
+		{{ if .EnableData }}// - If you want to persist data, use DynamORM and read the table name from DYNAMODB_TABLE_NAME{{ end }}
+		_ = ctx
+	}
+	return nil
+}

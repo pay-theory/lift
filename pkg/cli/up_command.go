@@ -48,27 +48,7 @@ Examples:
 // 6. Deploys stacks in order using CDK
 // 7. Writes the state file on success
 func (c *UpCommand) Execute(ctx context.Context, args []string) error {
-	// Parse flags
-	stage := "dev" // default
-	partner := ""
-	targetMode := ""
-
-	for i, arg := range args {
-		switch {
-		case arg == "--stage" && i+1 < len(args):
-			stage = args[i+1]
-		case strings.HasPrefix(arg, "--stage="):
-			stage = strings.TrimPrefix(arg, "--stage=")
-		case arg == "--partner" && i+1 < len(args):
-			partner = args[i+1]
-		case strings.HasPrefix(arg, "--partner="):
-			partner = strings.TrimPrefix(arg, "--partner=")
-		case arg == "--target-mode" && i+1 < len(args):
-			targetMode = args[i+1]
-		case strings.HasPrefix(arg, "--target-mode="):
-			targetMode = strings.TrimPrefix(arg, "--target-mode=")
-		}
-	}
+	stage, partner, targetMode := parseDeployFlags(args)
 
 	// Validate stage
 	if err := domains.ValidateStage(stage); err != nil {
@@ -76,42 +56,18 @@ func (c *UpCommand) Execute(ctx context.Context, args []string) error {
 	}
 
 	// Check for required binaries before proceeding
-	if err := CheckGo(c.lookPath); err != nil {
-		return err
-	}
-	if err := CheckCDK(c.lookPath); err != nil {
+	if err := CheckPrereqs(c.lookPath, "go", "cdk"); err != nil {
 		return err
 	}
 
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
-	}
-
-	// Find project root
-	root, err := liftconfig.FindProjectRoot(cwd)
+	root, cfg, err := loadProjectConfigFromCwd()
 	if err != nil {
 		return err
 	}
 
-	// Load and validate configuration
-	cfg, err := liftconfig.LoadConfig(root)
+	partner, targetMode, err = resolveDeployContext(cfg, partner, targetMode)
 	if err != nil {
 		return err
-	}
-
-	requiresPartner := cdkTemplatesUsePartner(cfg)
-	requiresTargetMode := cdkTemplatesUseTargetMode(cfg)
-
-	// Enforce partner requirement when stack name templates reference {{.Partner}}.
-	if requiresPartner && partner == "" {
-		return fmt.Errorf("--partner is required for this project (cdk stack name_template references {{.Partner}})")
-	}
-
-	// Default targetMode to "standard" when relevant.
-	if targetMode == "" && (partner != "" || requiresTargetMode) {
-		targetMode = "standard"
 	}
 
 	fmt.Printf("🚀 Deploying %s to stage: %s\n", cfg.App.Name, stage)
@@ -123,65 +79,92 @@ func (c *UpCommand) Execute(ctx context.Context, args []string) error {
 		return err
 	}
 
-	// Check domain lock
-	if resolved != nil {
-		existingState, err := liftstate.Load(root, stage)
-		if err != nil {
-			return err
-		}
-
-		services := make(map[string]string)
-		for name, domain := range resolved.Services {
-			services[name] = domain
-		}
-
-		if err := liftstate.CheckDomainLock(existingState, stage, resolved.BaseDomain, resolved.StageRootDomain, services); err != nil {
-			return err
-		}
-
-		if existingState != nil {
-			fmt.Printf("✅ Domain configuration matches existing deployment\n\n")
-		}
+	if err := c.checkDomainLock(root, stage, resolved); err != nil {
+		return err
 	}
 
 	// Build before deploy
-	fmt.Printf("📦 Building functions...\n")
-	buildCmd := &BuildCommand{cmdFactory: c.cmdFactory}
-	if err := buildCmd.Execute(ctx, nil); err != nil {
-		return fmt.Errorf("build failed: %w", err)
+	if err := c.buildFunctions(ctx); err != nil {
+		return err
 	}
-	fmt.Printf("\n")
 
 	// Deploy stacks
 	if err := c.deployStacks(ctx, root, cfg, stage, partner, targetMode, resolved); err != nil {
 		return err
 	}
 
-	// Write state on success
-	if resolved != nil {
-		state := &liftstate.StageState{
-			Stage:           stage,
-			BaseDomain:      resolved.BaseDomain,
-			StageRootDomain: resolved.StageRootDomain,
-			Services:        make(map[string]liftstate.ServiceState),
-		}
-		for name, domain := range resolved.Services {
-			subdomain := ""
-			if cfg.Services != nil && cfg.Services[name] != nil {
-				subdomain = cfg.Services[name].Subdomain
-			}
-			state.Services[name] = liftstate.ServiceState{
-				Subdomain: subdomain,
-				Domain:    domain,
-			}
-		}
-		if err := liftstate.Save(root, state); err != nil {
-			return fmt.Errorf("deployment succeeded but failed to save state: %w", err)
-		}
-		fmt.Printf("\n🔒 State saved to %s\n", liftstate.StatePath(root, stage))
+	if err := c.saveState(root, cfg, stage, resolved); err != nil {
+		return err
 	}
 
 	fmt.Printf("\n✅ Deployment complete!\n")
+	return nil
+}
+
+func (c *UpCommand) checkDomainLock(root, stage string, resolved *domains.ResolvedDomains) error {
+	if resolved == nil {
+		return nil
+	}
+
+	existingState, err := liftstate.Load(root, stage)
+	if err != nil {
+		return err
+	}
+
+	services := make(map[string]string, len(resolved.Services))
+	for name, domain := range resolved.Services {
+		services[name] = domain
+	}
+
+	if err := liftstate.CheckDomainLock(existingState, stage, resolved.BaseDomain, resolved.StageRootDomain, services); err != nil {
+		return err
+	}
+
+	if existingState != nil {
+		fmt.Printf("✅ Domain configuration matches existing deployment\n\n")
+	}
+
+	return nil
+}
+
+func (c *UpCommand) buildFunctions(ctx context.Context) error {
+	fmt.Printf("📦 Building functions...\n")
+	buildCmd := &BuildCommand{cmdFactory: c.cmdFactory}
+	if err := buildCmd.Execute(ctx, nil); err != nil {
+		return fmt.Errorf("build failed: %w", err)
+	}
+	fmt.Printf("\n")
+	return nil
+}
+
+func (c *UpCommand) saveState(root string, cfg *liftconfig.Config, stage string, resolved *domains.ResolvedDomains) error {
+	if resolved == nil {
+		return nil
+	}
+
+	state := &liftstate.StageState{
+		Stage:           stage,
+		BaseDomain:      resolved.BaseDomain,
+		StageRootDomain: resolved.StageRootDomain,
+		Services:        make(map[string]liftstate.ServiceState, len(resolved.Services)),
+	}
+
+	for name, domain := range resolved.Services {
+		subdomain := ""
+		if cfg.Services != nil && cfg.Services[name] != nil {
+			subdomain = cfg.Services[name].Subdomain
+		}
+		state.Services[name] = liftstate.ServiceState{
+			Subdomain: subdomain,
+			Domain:    domain,
+		}
+	}
+
+	if err := liftstate.Save(root, state); err != nil {
+		return fmt.Errorf("deployment succeeded but failed to save state: %w", err)
+	}
+
+	fmt.Printf("\n🔒 State saved to %s\n", liftstate.StatePath(root, stage))
 	return nil
 }
 
@@ -238,7 +221,7 @@ func (c *UpCommand) buildCDKArgs(command, stackName string, cfg *liftconfig.Conf
 
 	// Default targetMode to "standard" if partner is set but targetMode is not.
 	if partner != "" && targetMode == "" {
-		targetMode = "standard"
+		targetMode = defaultTargetMode
 	}
 
 	// Add optional context flags

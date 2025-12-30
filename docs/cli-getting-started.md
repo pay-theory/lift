@@ -100,11 +100,22 @@ Lift provides several project templates:
 | `microservice` | Lightweight single Lambda microservice |
 | `event-driven` | API + processor with SQS queue for async processing |
 | `merchant-app` | Multi-Lambda (api + worker), multi-stack architecture |
+| `sns-processor` | SNS topic + processor Lambda + DynamoDB table |
 
 Specify a template with `--template`:
 
 ```bash
 lift new my-app --template microservice --base-domain example.com
+```
+
+### Data By Default
+
+All templates scaffold a DynamoDB table configured for DynamORM by default.
+
+To scaffold without data resources, pass `--no-data`:
+
+```bash
+lift new my-app --template microservice --base-domain example.com --no-data
 ```
 
 ### The `--base-domain` Flag

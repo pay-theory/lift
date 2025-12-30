@@ -200,8 +200,10 @@ func main() {
 
 	contentStr := string(cdkContent)
 	assert.Contains(t, contentStr, "notificationFunction")
+	assert.Contains(t, contentStr, "_ = notificationFunction")
 	assert.Contains(t, contentStr, `"notification"`)
-	assert.Contains(t, contentStr, "NotificationFunctionArn")
+	assert.NotContains(t, contentStr, "NotificationFunctionArn")
+	assert.NotContains(t, contentStr, "NewCfnOutput(")
 }
 
 func TestAddCommand_FunctionErrorIfAlreadyExists(t *testing.T) {
@@ -431,6 +433,7 @@ echo "   - dist/api/bootstrap"
 	cdkContent, err := os.ReadFile(filepath.Join(cdkDir, "main.go"))
 	require.NoError(t, err)
 	assert.Contains(t, string(cdkContent), "partnerStr")
+	assert.Contains(t, string(cdkContent), "_ = workerFunction")
 }
 
 // =============================================================================
@@ -789,10 +792,6 @@ func env() *awscdk.Environment {
 	assert.Contains(t, contentStr, "liftcdk.NewLiftFunction(stack,",
 		"Generated function must use 'stack' variable, not 'serviceStack'")
 
-	// Also verify the output uses the correct stack variable
-	assert.Contains(t, contentStr, "awscdk.NewCfnOutput(stack,",
-		"Generated output must use 'stack' variable, not 'serviceStack'")
-
 	// Ensure we did NOT accidentally generate code using serviceStack
 	// Count occurrences - should only have the ones from original code
 	assert.NotContains(t, contentStr, "NewLiftFunction(serviceStack,",
@@ -982,7 +981,8 @@ func main() {
 
 	contentStr := string(cdkContent)
 	assert.Contains(t, contentStr, "fallbackFunction")
-	assert.Contains(t, contentStr, "FallbackFunctionArn")
+	assert.NotContains(t, contentStr, "FallbackFunctionArn")
+	assert.NotContains(t, contentStr, "NewCfnOutput(")
 
 	// Verify the function code appears before app.Synth
 	fnIndex := strings.Index(contentStr, "fallbackFunction")

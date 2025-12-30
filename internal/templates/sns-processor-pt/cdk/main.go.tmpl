@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
 	"github.com/aws/jsii-runtime-go"
 	liftcdk "github.com/pay-theory/lift/pkg/cdk/constructs"
 )
@@ -63,11 +64,11 @@ func main() {
 	// Create the service stack
 	stack := awscdk.NewStack(app, jsii.String(serviceStackName), &awscdk.StackProps{
 		Env:         env(),
-		Description: jsii.String(fmt.Sprintf("%s service stack for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
+		Description: jsii.String(fmt.Sprintf("%s SNS processor stack for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
 	})
 
 	{{ if .EnableData }}
-	// DynamoDB table (default data layer)
+	// DynamoDB table (simple persistence layer)
 	table := liftcdk.NewLiftTable(stack, jsii.String("MainTable"), &liftcdk.LiftTableProps{
 		TableName:           jsii.String(fmt.Sprintf("%s-main-%s-%s", appNameStr, partnerStr, stageStr)),
 		PartitionKeyName:    jsii.String("PK"),
@@ -77,33 +78,37 @@ func main() {
 	})
 	{{ end }}
 
-	// Create the API Lambda function using Lift CDK constructs
-	// Function name includes partner for isolation
-	apiFunction := liftcdk.NewLiftFunction(stack, jsii.String("ApiFunction"), &liftcdk.LiftFunctionProps{
-		FunctionProps: awslambda.FunctionProps{
-			FunctionName: jsii.String(fmt.Sprintf("%s-api-%s-%s", appNameStr, partnerStr, stageStr)),
-			Code:         awslambda.Code_FromAsset(jsii.String(filepath.Join("..", "dist", "api")), nil),
-			Handler:      jsii.String("bootstrap"),
-			Description:  jsii.String(fmt.Sprintf("%s API handler for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
-			Environment: &map[string]*string{
-				"PARTNER":     jsii.String(partnerStr),
-				"STAGE":       jsii.String(stageStr),
-				"TARGET_MODE": jsii.String(targetModeStr),
+	// SNS processor (topic + subscription + optional DLQ)
+	processor := liftcdk.NewSNSProcessor(stack, jsii.String("Processor"), &liftcdk.SNSProcessorProps{
+		FunctionProps: &liftcdk.LiftFunctionProps{
+			FunctionProps: awslambda.FunctionProps{
+				FunctionName: jsii.String(fmt.Sprintf("%s-processor-%s-%s", appNameStr, partnerStr, stageStr)),
+				Code:         awslambda.Code_FromAsset(jsii.String(filepath.Join("..", "dist", "processor")), nil),
+				Handler:      jsii.String("bootstrap"),
+				Description:  jsii.String(fmt.Sprintf("%s SNS processor for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
+				Environment: &map[string]*string{
+					"PARTNER":      jsii.String(partnerStr),
+					"STAGE":        jsii.String(stageStr),
+					"TARGET_MODE":  jsii.String(targetModeStr),
+				},
 			},
+			EnableTracing: jsii.Bool(true),
+			EnableMetrics: jsii.Bool(true),
+			{{ if .EnableData }}
+			EnableDynamORM:    jsii.Bool(true),
+			DynamORMTableName: table.GetTableName(),
+			{{ end }}
 		},
-		EnableTracing: jsii.Bool(true),
-		EnableMetrics: jsii.Bool(true),
-		{{ if .EnableData }}
-		EnableDynamORM:    jsii.Bool(true),
-		DynamORMTableName: table.GetTableName(),
-		{{ end }}
+		TopicProps: &awssns.TopicProps{
+			TopicName: jsii.String(fmt.Sprintf("%s-topic-%s-%s", appNameStr, partnerStr, stageStr)),
+		},
 	})
 
 	{{ if .EnableData }}
-	// Grant API function access to the table
-	table.GrantReadWriteData(apiFunction.Function)
+	// Grant the processor access to the DynamoDB table
+	table.GrantReadWriteData(processor.Function.Function)
 	{{ else }}
-	_ = apiFunction
+	_ = processor
 	{{ end }}
 
 	// LIFT:ADD_FUNCTIONS
