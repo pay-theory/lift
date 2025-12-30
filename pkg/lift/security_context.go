@@ -20,10 +20,20 @@ type SecurityContext struct {
 // NewSecurityContext wraps an existing Context with security features and
 // generates a per-request ID used for audit trails.
 func NewSecurityContext(ctx *Context) *SecurityContext {
-	return &SecurityContext{
+	sc := &SecurityContext{
 		Context:   ctx,
 		requestID: generateRequestID(),
 	}
+
+	// Restore principal from context values when middleware has already
+	// authenticated the request and stored it on the underlying Context.
+	if ctx != nil {
+		if principal, ok := ctx.Get("principal").(*security.Principal); ok && principal != nil {
+			sc.principal = principal
+		}
+	}
+
+	return sc
 }
 
 // SetPrincipal attaches the authenticated principal to the context and exposes

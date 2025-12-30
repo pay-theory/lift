@@ -136,6 +136,59 @@ func TestCircuitBreakerRecoveryToClosed(t *testing.T) {
 	}
 }
 
+func TestCircuitBreakerConfigHelpers(t *testing.T) {
+	t.Parallel()
+
+	tenant := NewTenantCircuitBreaker("tenant")
+	if !tenant.PerTenant {
+		t.Fatal("expected NewTenantCircuitBreaker to set PerTenant")
+	}
+
+	operation := NewOperationCircuitBreaker("operation")
+	if !operation.PerOperation {
+		t.Fatal("expected NewOperationCircuitBreaker to set PerOperation")
+	}
+
+	shouldTrip := func(error) bool { return false }
+	fallback := func(*lift.Context) error { return nil }
+
+	advanced := NewAdvancedCircuitBreaker("advanced", shouldTrip, fallback)
+	if advanced.ShouldTrip == nil || advanced.FallbackHandler == nil {
+		t.Fatal("expected NewAdvancedCircuitBreaker to set ShouldTrip and FallbackHandler")
+	}
+}
+
+func TestCircuitBreakerGetStats(t *testing.T) {
+	t.Parallel()
+
+	cb := &circuitBreaker{
+		state:                CircuitBreakerHalfOpen,
+		failureCount:         2,
+		successCount:         3,
+		lastFailureTime:      time.Unix(1, 0),
+		lastSuccessTime:      time.Unix(2, 0),
+		stateChangedAt:       time.Unix(3, 0),
+		nextRetryAt:          time.Unix(4, 0),
+		consecutiveFailures:  1,
+		consecutiveSuccesses: 2,
+		requestHistory: []requestRecord{
+			{success: true},
+			{success: false},
+		},
+	}
+
+	stats := cb.GetStats()
+	if stats.TotalRequests != 5 {
+		t.Fatalf("expected total requests 5, got %d", stats.TotalRequests)
+	}
+	if stats.ErrorRate != 0.5 {
+		t.Fatalf("expected error rate 0.5, got %f", stats.ErrorRate)
+	}
+	if stats.State != CircuitBreakerHalfOpen {
+		t.Fatalf("expected state %s, got %s", CircuitBreakerHalfOpen, stats.State)
+	}
+}
+
 func newCircuitBreakerContext() *lift.Context {
 	req := lift.NewRequest(nil)
 	req.Method = "GET"
