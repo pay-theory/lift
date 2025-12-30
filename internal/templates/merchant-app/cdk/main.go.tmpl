@@ -146,6 +146,8 @@ func main() {
 	// Grant Worker function read/write access to the table
 	table.GrantReadWriteData(workerFunction.Function)
 
+	// LIFT:ADD_FUNCTIONS
+
 	// Outputs
 	awscdk.NewCfnOutput(serviceStack, jsii.String("ApiFunctionArn"), &awscdk.CfnOutputProps{
 		Value:       apiFunction.Function.FunctionArn(),
@@ -158,6 +160,8 @@ func main() {
 		Description: jsii.String("Worker Lambda function ARN"),
 		ExportName:  jsii.String(fmt.Sprintf("%s-%s-WorkerFunctionArn", appNameStr, stageStr)),
 	})
+
+	// LIFT:ADD_OUTPUTS
 
 	app.Synth(nil)
 }

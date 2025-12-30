@@ -24,6 +24,7 @@ phases:
       - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -mod=mod -ldflags="-s -w" -tags lambda.norpc -trimpath -o dist/api/bootstrap ./cmd/api
       - echo "Building worker..."
       - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -mod=mod -ldflags="-s -w" -tags lambda.norpc -trimpath -o dist/worker/bootstrap ./cmd/worker
+      # LIFT:ADD_FUNCTION_BUILDS
       - echo "Synthesizing CDK stacks..."
       - cd cdk
       - go mod tidy

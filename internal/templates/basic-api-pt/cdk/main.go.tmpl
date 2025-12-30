@@ -84,12 +84,16 @@ func main() {
 		EnableMetrics: jsii.Bool(true),
 	})
 
+	// LIFT:ADD_FUNCTIONS
+
 	// Export the function ARN
 	awscdk.NewCfnOutput(stack, jsii.String("ApiFunctionArn"), &awscdk.CfnOutputProps{
 		Value:       apiFunction.Function.FunctionArn(),
 		Description: jsii.String("API Lambda function ARN"),
 		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-ApiFunctionArn", appNameStr, partnerStr, stageStr)),
 	})
+
+	// LIFT:ADD_OUTPUTS
 
 	app.Synth(nil)
 }

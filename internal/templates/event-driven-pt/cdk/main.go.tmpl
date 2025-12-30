@@ -129,6 +129,8 @@ func main() {
 		BatchSize: jsii.Number(10),
 	}))
 
+	// LIFT:ADD_FUNCTIONS
+
 	// Outputs
 	awscdk.NewCfnOutput(stack, jsii.String("ApiFunctionArn"), &awscdk.CfnOutputProps{
 		Value:       apiFunction.Function.FunctionArn(),
@@ -147,6 +149,8 @@ func main() {
 		Description: jsii.String("Processing queue URL"),
 		ExportName:  jsii.String(fmt.Sprintf("%s-%s-%s-QueueUrl", appNameStr, partnerStr, stageStr)),
 	})
+
+	// LIFT:ADD_OUTPUTS
 
 	app.Synth(nil)
 }
