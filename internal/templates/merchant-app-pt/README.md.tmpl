@@ -1,0 +1,69 @@
+# {{.AppName}}
+
+A multi-stack Lift application using Pay Theory-style deployment.
+
+## Project Structure
+
+```
+{{.AppName}}/
+├── cmd/
+│   ├── api/            # API Lambda entrypoint
+│   └── worker/         # Worker Lambda entrypoint
+├── cdk/                # CDK infrastructure (data + service stacks)
+├── dist/               # Build outputs (generated)
+├── shell/              # Deployment scripts
+│   ├── build.sh
+│   ├── deploy.sh
+│   └── init_env_vars.sh
+├── buildspec.yml       # CodeBuild specification
+└── lift.yaml           # Lift project configuration
+```
+
+## Quick Start
+
+```bash
+# Initialize environment (edit PARTNER first)
+source ./shell/init_env_vars.sh
+
+# Build Lambda functions
+./shell/build.sh
+
+# Deploy both stacks to dev
+./shell/deploy.sh --partner <partner> --stage dev
+```
+
+## Deploy Options
+
+```bash
+# Deploy all stacks (data then service)
+./shell/deploy.sh --partner mypartner --stage dev --stack --all
+
+# Deploy only data stack
+./shell/deploy.sh --partner mypartner --stage dev --stack data
+
+# Deploy only service stack (requires data stack already deployed)
+./shell/deploy.sh --partner mypartner --stage dev --stack service
+```
+
+## Using Lift CLI
+
+```bash
+lift build
+lift up --stage dev --partner mypartner
+```
+
+## Stack Naming
+
+Stacks are named with the pattern:
+
+- `{{.AppName}}-data-<partner>-<stage>`
+- `{{.AppName}}-service-<partner>-<stage>`
+
+Example:
+
+- `{{.AppName}}-data-mypartner-dev`
+- `{{.AppName}}-service-mypartner-dev`
+
+## Documentation
+
+See `shell/DEPLOYMENT.md` for additional deployment details.

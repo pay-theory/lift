@@ -31,6 +31,7 @@ func TestLiftApiDomainUsesDefaultStageWithoutHostedZone(t *testing.T) {
 	})
 
 	require.NotNil(t, liftDomain)
+	require.NotNil(t, liftDomain.GetDomainName())
 	defaultStage := api.DefaultStage()
 	require.NotNil(t, defaultStage)
 

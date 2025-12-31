@@ -4,11 +4,11 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
+	"github.com/pay-theory/lift/pkg/naming"
 )
 
 // EventBusPatternProps defines properties for the EventBus pattern
@@ -32,6 +32,8 @@ type EventBusPatternProps struct {
 
 	// String field
 	AppName string // Application name prefix (REQUIRED)
+	Stage   string // Deployment stage (recommended: lab, study, live)
+	Partner string // Optional tenant/partner identifier
 }
 
 // EventBusPattern represents a complete EventBus deployment
@@ -64,7 +66,13 @@ func NewEventBusPattern(scope constructs.Construct, id *string, props *EventBusP
 	// Apply defaults
 	tableName := props.TableName
 	if tableName == nil {
-		tableName = jsii.String(props.AppName + "-events")
+		nameCtx := naming.Context{AppName: props.AppName, Stage: props.Stage, Tenant: props.Partner}
+		if nameCtx.IsComplete() {
+			nameCtx = nameCtx.Normalize()
+			tableName = jsii.String(nameCtx.ResourceName("events"))
+		} else {
+			tableName = jsii.String(props.AppName + "-events")
+		}
 	}
 
 	enableStream := props.EnableStream
@@ -144,9 +152,12 @@ func (p *EventBusPattern) createStreamProcessor(props *EventBusPatternProps, tab
 	}
 
 	// Build environment variables
-	environment := map[string]*string{
-		"EVENT_BUS_TABLE_NAME": table.GetTableName(),
-		"APP_NAME":             jsii.String(props.AppName),
+	environment := map[string]*string{"APP_NAME": jsii.String(props.AppName)}
+	if props.Stage != "" {
+		environment[naming.EnvStage] = jsii.String(naming.NormalizeStage(props.Stage))
+	}
+	if props.Partner != "" {
+		environment[naming.EnvTenant] = jsii.String(props.Partner)
 	}
 
 	if props.ProcessorEnvironment != nil {
@@ -155,35 +166,33 @@ func (p *EventBusPattern) createStreamProcessor(props *EventBusPatternProps, tab
 		}
 	}
 
-	// Create processor function
-	processor := liftconstructs.NewLiftFunction(p.Construct, jsii.String("EventProcessor"), &liftconstructs.LiftFunctionProps{
+	functionName := props.AppName + "-eventbus-processor"
+	nameCtx := naming.Context{AppName: props.AppName, Stage: props.Stage, Tenant: props.Partner}
+	if nameCtx.IsComplete() {
+		nameCtx = nameCtx.Normalize()
+		functionName = nameCtx.ResourceName("eventbus-processor")
+	}
+
+	processor := liftconstructs.NewEventBusProcessor(p.Construct, jsii.String("EventProcessor"), &liftconstructs.EventBusProcessorProps{
+		Table: table,
 		FunctionProps: awslambda.FunctionProps{
-			FunctionName: jsii.String(props.AppName + "-event-processor"),
+			FunctionName: jsii.String(functionName),
 			Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
 			Code:         awslambda.Code_FromAsset(props.ProcessorCodePath, nil),
 			Handler:      handler,
 			MemorySize:   memory,
 			Timeout:      timeout,
+			Tracing:      awslambda.Tracing_ACTIVE,
 			Environment:  &environment,
 		},
-		EnableTracing: jsii.Bool(true),
-	})
-
-	// Grant permissions
-	table.GrantReadWrite(processor.Function)
-	table.GrantStreamRead(processor.Function)
-
-	// Add DynamoDB stream as event source
-	processor.Function.AddEventSource(awslambdaeventsources.NewDynamoEventSource(table.Table, &awslambdaeventsources.DynamoEventSourceProps{
-		StartingPosition:      awslambda.StartingPosition_LATEST,
 		BatchSize:             batchSize,
 		BisectBatchOnError:    jsii.Bool(true),
 		RetryAttempts:         jsii.Number(3),
 		MaxRecordAge:          awscdk.Duration_Hours(jsii.Number(1)),
 		ParallelizationFactor: jsii.Number(1),
-	}))
+	})
 
-	return processor
+	return processor.Function
 }
 
 // GrantPublish grants permissions to publish events to the bus

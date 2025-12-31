@@ -770,6 +770,28 @@ type Mutation {
 }
 ```
 
+### With Durable EventBus
+Lift includes a durable EventBus in `github.com/pay-theory/lift/pkg/services` backed by DynamoDB via DynamORM (see `docs/eventbus-guide.md`).
+
+```go
+import (
+    "context"
+    "os"
+
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/session"
+    "github.com/pay-theory/lift/pkg/services"
+)
+
+db, _ := dynamorm.New(session.Config{Region: os.Getenv("AWS_REGION")})
+bus := services.NewDynamoDBEventBus(db, services.EventBusConfig{
+    TableName: os.Getenv("EVENT_BUS_TABLE_NAME"),
+})
+
+event, _ := services.NewEvent("order.placed", "tenant-123", "order-456", map[string]any{"amount": 1000})
+_, _ = bus.Publish(context.Background(), event)
+```
+
 ### With EventBridge Scheduled Events
 ```go
 // Same Context interface for all event types

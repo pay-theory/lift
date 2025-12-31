@@ -15,6 +15,7 @@ const (
 	TriggerSQS          TriggerType = "sqs"
 	TriggerS3           TriggerType = "s3"
 	TriggerEventBridge  TriggerType = "eventbridge"
+	TriggerEventBus     TriggerType = "eventbus"
 	TriggerWebSocket    TriggerType = "websocket"
 	TriggerUnknown      TriggerType = "unknown"
 )
@@ -71,6 +72,7 @@ func NewAdapterRegistry() *AdapterRegistry {
 	registry.Register(NewSQSAdapter())
 	registry.Register(NewS3Adapter())
 	registry.Register(NewEventBridgeAdapter())
+	registry.Register(NewEventBusAdapter())
 	registry.Register(NewWebSocketAdapter())
 
 	return registry

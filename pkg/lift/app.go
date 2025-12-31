@@ -97,6 +97,7 @@ type App struct { //nolint:govet // fieldalignment: keep readable order; negligi
 
 	// Maps/slices (24 bytes)
 	wsRoutes          map[string]WebSocketHandler
+	eventBusRoutes    []*eventBusRoute
 	middleware        []middlewareEntry
 	preferredAdapters []adapters.TriggerType
 	features          map[string]bool
@@ -727,6 +728,12 @@ func (b *requestHandlerBuilder) build() (any, error) {
 		return b.liftCtx.Response.Body, nil
 	}
 
+	// DynamoDB stream processors expect the raw batch response (e.g. BatchItemFailures),
+	// not an API Gateway proxy response wrapper.
+	if b.request.TriggerType == adapters.TriggerEventBus {
+		return b.liftCtx.Response.Body, nil
+	}
+
 	return b.liftCtx.Response, nil
 }
 
@@ -1056,6 +1063,8 @@ func (b *requestHandlerBuilder) routeRequest() error {
 		switch {
 		case b.request.TriggerType == adapters.TriggerWebSocket:
 			return b.routeWebSocket()
+		case b.request.TriggerType == adapters.TriggerEventBus && b.app != nil && b.app.hasEventBusRoutes():
+			return b.routeEventBus()
 		case b.isEventTrigger():
 			return b.routeEvent()
 		default:
@@ -1251,6 +1260,11 @@ func (a *App) detectAndAdaptEvent(event any) (*Request, error) {
 
 // handleError processes errors and returns appropriate responses.
 func (a *App) handleError(ctx *Context, err error) (any, error) {
+	// DynamoDB stream processors should generally surface errors so Lambda retries (or sends to DLQ).
+	// EventBus handlers use BatchItemFailures to avoid returning errors for per-record failures.
+	if ctx != nil && ctx.Request != nil && ctx.Request.TriggerType == adapters.TriggerEventBus {
+		return nil, err
+	}
 	if a.isAppSyncRequest(ctx) {
 		return a.handleAppSyncError(ctx, err)
 	}
@@ -1461,6 +1475,24 @@ func (a *App) EventBridge(pattern string, handler any) error {
 		return fmt.Errorf("invalid EventBridge handler: %w", err)
 	}
 	a.eventRouter.AddEventRoute(TriggerEventBridge, pattern, h)
+	return nil
+}
+
+// DynamoDB registers a handler for DynamoDB stream events.
+//
+// Parameters:
+//   - pattern: The pattern for the DynamoDB event
+//   - handler: The handler function for the event
+//
+// Returns:
+//   - An error if the handler type is unsupported
+func (a *App) DynamoDB(pattern string, handler any) error {
+	h, err := a.convertEventHandler(handler)
+	if err != nil {
+		return fmt.Errorf("invalid DynamoDB handler: %w", err)
+	}
+	// DynamoDB stream events are currently adapted via the EventBus adapter.
+	a.eventRouter.AddEventRoute(TriggerEventBus, pattern, h)
 	return nil
 }
 

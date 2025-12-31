@@ -225,6 +225,26 @@ func TestSecurityAuditHeaders(t *testing.T) {
 	})
 }
 
+func TestSecurityHeadersWithNonce(t *testing.T) {
+	middleware := SecurityHeadersWithNonce()
+
+	ctx := createSecurityTestContext("GET", "/test", nil)
+
+	handler := middleware(lift.HandlerFunc(func(ctx *lift.Context) error {
+		return ctx.OK(map[string]string{"status": "ok"})
+	}))
+
+	err := handler.Handle(ctx)
+	require.NoError(t, err)
+
+	nonce, ok := ctx.Get("csp_nonce").(string)
+	require.True(t, ok)
+	require.NotEmpty(t, nonce)
+
+	csp := ctx.Response.Headers["Content-Security-Policy"]
+	assert.Contains(t, csp, "nonce-"+nonce)
+}
+
 func TestIsSensitivePath(t *testing.T) {
 	testCases := []struct {
 		path      string

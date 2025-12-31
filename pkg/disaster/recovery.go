@@ -18,6 +18,14 @@ var (
 	errInvalidHealthInterval   = errors.New("disaster: health check interval must be greater than zero when enabled")
 )
 
+var (
+	validateTargetRegionDelay     = 2 * time.Second
+	stopTrafficToPrimaryDelay     = time.Second
+	activateStandbyRegionDelay    = 5 * time.Second
+	updateDNSRecordsDelay         = 3 * time.Second
+	startTrafficToNewPrimaryDelay = time.Second
+)
+
 // DisasterRecoveryManager manages disaster recovery operations
 type DisasterRecoveryManager struct {
 	healthMonitor   *HealthMonitor
@@ -647,14 +655,14 @@ func (drm *DisasterRecoveryManager) executeFailoverStep(ctx context.Context, ste
 // validateTargetRegion validates the target region
 func (drm *DisasterRecoveryManager) validateTargetRegion(_ context.Context, _ *FailoverStep) error {
 	// Implementation would validate that the target region is ready
-	time.Sleep(2 * time.Second) // Simulate validation time
+	time.Sleep(validateTargetRegionDelay) // Simulate validation time
 	return nil
 }
 
 // stopTrafficToPrimary stops traffic to the primary region
 func (drm *DisasterRecoveryManager) stopTrafficToPrimary(_ context.Context, _ *FailoverStep) error {
 	// Implementation would stop traffic routing
-	time.Sleep(1 * time.Second) // Simulate traffic stop time
+	time.Sleep(stopTrafficToPrimaryDelay) // Simulate traffic stop time
 	return nil
 }
 
@@ -667,21 +675,21 @@ func (drm *DisasterRecoveryManager) synchronizeData(ctx context.Context, _ *Fail
 // activateStandbyRegion activates the standby region
 func (drm *DisasterRecoveryManager) activateStandbyRegion(_ context.Context, _ *FailoverStep) error {
 	// Implementation would activate services in the standby region
-	time.Sleep(5 * time.Second) // Simulate activation time
+	time.Sleep(activateStandbyRegionDelay) // Simulate activation time
 	return nil
 }
 
 // updateDNSRecords updates DNS records
 func (drm *DisasterRecoveryManager) updateDNSRecords(_ context.Context, _ *FailoverStep) error {
 	// Implementation would update DNS records
-	time.Sleep(3 * time.Second) // Simulate DNS update time
+	time.Sleep(updateDNSRecordsDelay) // Simulate DNS update time
 	return nil
 }
 
 // startTrafficToNewPrimary starts traffic to the new primary
 func (drm *DisasterRecoveryManager) startTrafficToNewPrimary(_ context.Context, _ *FailoverStep) error {
 	// Implementation would start traffic routing
-	time.Sleep(1 * time.Second) // Simulate traffic start time
+	time.Sleep(startTrafficToNewPrimaryDelay) // Simulate traffic start time
 	return nil
 }
 

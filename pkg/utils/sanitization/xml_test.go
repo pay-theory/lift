@@ -58,7 +58,7 @@ func TestSanitizeXML(t *testing.T) {
 			},
 		},
 		{
-			name: "HTML-escaped XML",
+			name:  "HTML-escaped XML",
 			input: `Response: &lt;AcctNum&gt;4005562231212149&lt;/AcctNum&gt; and &lt;CVV&gt;999&lt;/CVV&gt;`,
 			contains: []string{
 				"2149", // Last 4 digits preserved

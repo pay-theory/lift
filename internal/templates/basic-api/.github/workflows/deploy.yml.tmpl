@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Stage to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - live
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ "{{" }} inputs.stage {{ "}}" }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install AWS CDK
+        run: npm install -g aws-cdk
+
+      - name: Install Lift CLI
+        run: go install github.com/pay-theory/lift/cmd/lift@latest
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ "{{" }} vars.AWS_ROLE_ARN {{ "}}" }}
+          aws-region: ${{ "{{" }} vars.AWS_REGION || 'us-east-1' {{ "}}" }}
+
+      - name: Deploy
+        run: lift up --stage ${{ "{{" }} inputs.stage {{ "}}" }}

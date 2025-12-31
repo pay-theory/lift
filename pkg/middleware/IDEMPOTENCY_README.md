@@ -42,11 +42,11 @@ func main() {
     store := middleware.NewMemoryIdempotencyStore()
     
     // Add idempotency middleware
-    app.Use(middleware.Idempotency(middleware.IdempotencyOptions{
+    app.Use(lift.Middleware(middleware.Idempotency(middleware.IdempotencyOptions{
         Store: store,
         HeaderName: "Idempotency-Key",
         TTL: 24 * time.Hour,
-    }))
+    })))
     
     // Your routes
     app.POST("/payment", createPayment)
@@ -55,20 +55,33 @@ func main() {
 }
 ```
 
-### With DynamoDB Store
+### With DynamORM (DynamoDB) Store
 
 ```go
-// Setup DynamoDB client
-cfg, _ := config.LoadDefaultConfig(context.Background())
-dynamoClient := dynamodb.NewFromConfig(cfg)
+import (
+    "log"
 
-// Create store
-store := middleware.NewDynamoDBIdempotencyStore(dynamoClient, "idempotency-keys")
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/session"
+    "github.com/pay-theory/lift/pkg/lift"
+    "github.com/pay-theory/lift/pkg/middleware"
+)
+
+var idempotencyStore middleware.IdempotencyStore
+
+func init() {
+    db, err := dynamorm.New(session.Config{Region: "us-east-1"})
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    idempotencyStore = middleware.NewDynamORMIdempotencyStoreWithDB(db)
+}
 
 // Use in middleware
-app.Use(middleware.Idempotency(middleware.IdempotencyOptions{
-    Store: store,
-}))
+app.Use(lift.Middleware(middleware.Idempotency(middleware.IdempotencyOptions{
+    Store: idempotencyStore,
+})))
 ```
 
 ## Configuration Options
@@ -125,10 +138,7 @@ type IdempotencyStore interface {
 
 ### DynamoDB Table Schema
 
-For the DynamoDB implementation:
-- **Partition Key**: `pk` (string) - The idempotency key
-- **TTL Attribute**: `ttl` (number) - Unix timestamp for automatic expiration
-- **Attributes**: status, response, status_code, error, created_at, request_hash
+Lift stores idempotency records using DynamORM; the table name defaults to `idempotency` or derives from `APP_NAME`/`STAGE` via `pkg/naming` when present.
 
 ## Testing
 

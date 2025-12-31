@@ -8,9 +8,9 @@ import (
 
 func TestSanitizeJSON(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		contains []string // Strings that should appear in output
+		name        string
+		input       string
+		contains    []string // Strings that should appear in output
 		notContains []string // Strings that should NOT appear in output
 	}{
 		{
@@ -71,13 +71,13 @@ func TestSanitizeJSON(t *testing.T) {
 			},
 		},
 		{
-			name: "Empty JSON",
-			input: "",
+			name:     "Empty JSON",
+			input:    "",
 			contains: []string{"(empty)"},
 		},
 		{
-			name: "Malformed JSON",
-			input: `{"invalid": json}`,
+			name:     "Malformed JSON",
+			input:    `{"invalid": json}`,
 			contains: []string{"(malformed JSON"},
 		},
 		{

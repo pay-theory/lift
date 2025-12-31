@@ -71,6 +71,7 @@ func TestDynamoStreamProcessor_DisabledDLQ_Basic(t *testing.T) {
 	assert.Nil(t, processor.DeadLetterQueue)
 	assert.NotNil(t, processor.Function)
 	assert.NotNil(t, processor.StreamingTable)
+	assert.Nil(t, processor.GetDeadLetterQueueUrl())
 }
 
 func TestDynamoStreamProcessor_HelperMethods_Basic(t *testing.T) {

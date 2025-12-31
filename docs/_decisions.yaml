@@ -155,6 +155,30 @@ decisions:
                   "age": "must be at least 18",
               },
           })
+
+  choosing_error_notifications:
+    question: "How should I configure SNS error notifications?"
+    decision_tree:
+      - condition: "You have a specific SNS topic ARN per environment"
+        choice: "zap.WithEnvironmentErrorNotifications"
+        reason: "Simple per-stage configuration via ERROR_NOTIFICATION_SNS_TOPIC_ARN"
+        example: |
+          // Set: ERROR_NOTIFICATION_SNS_TOPIC_ARN=arn:aws:sns:us-east-1:123456789012:my-error-topic
+          logger, err := zap.NewZapLogger(loggerConfig, zap.WithEnvironmentErrorNotifications(snsClient))
+
+      - condition: "You want to pass an explicit SNS topic ARN (tests or custom wiring)"
+        choice: "zap.WithErrorNotifications"
+        reason: "Gives direct control of the SNS topic ARN"
+        example: |
+          topicARN := "arn:aws:sns:us-east-1:123456789012:my-error-topic"
+          logger, err := zap.NewZapLogger(loggerConfig, zap.WithErrorNotifications(snsClient, topicARN))
+
+      - condition: "You follow the cns-{partner}-{stage} topic convention"
+        choice: "zap.WithPartnerErrorNotifications"
+        reason: "Constructs topic ARN from PARTNER/STAGE/AWS_REGION and can auto-detect AWS account ID"
+        example: |
+          // Requires: PARTNER, STAGE, AWS_REGION (AWS_ACCOUNT_ID optional)
+          logger, err := zap.NewZapLogger(loggerConfig, zap.WithPartnerErrorNotifications(snsClient))
   
   choosing_event_source:
     question: "How should I handle different AWS event sources?"

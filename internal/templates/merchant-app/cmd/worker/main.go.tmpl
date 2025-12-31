@@ -1,0 +1,22 @@
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/aws/aws-lambda-go/lambda"
+)
+
+func main() {
+	lambda.Start(handler)
+}
+
+func handler(ctx context.Context, event interface{}) error {
+	fmt.Printf("Worker received event: %+v\n", event)
+	
+	// TODO: Process the event
+	// Add your business logic here
+	
+	fmt.Println("Worker processing complete")
+	return nil
+}

@@ -122,7 +122,7 @@ func TestNewLiftSQSAlarmsWithCustomConfig(t *testing.T) {
 		AlarmTopic:      topic,
 		AlarmNamePrefix: jsii.String("test-service"),
 		Config: &SQSAlarmsConfig{
-			VisibleMessagesThreshold: jsii.Number(5),
+			VisibleMessagesThreshold:  jsii.Number(5),
 			OldestMessageAgeThreshold: jsii.Number(600),
 		},
 	})

@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# {{.AppName}} Build Script
+# Build Lambda functions for deployment
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Get script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+cd "$PROJECT_ROOT"
+
+# Create dist directories for Lambda binaries
+mkdir -p dist/api
+mkdir -p dist/worker
+
+# Build API Lambda
+print_status "Building api..."
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build \
+    -mod=mod \
+    -ldflags="-s -w" \
+    -tags lambda.norpc \
+    -trimpath \
+    -o dist/api/bootstrap \
+    ./cmd/api
+if [ $? -eq 0 ]; then
+    print_success "api build successful!"
+else
+    print_error "api build failed!"
+    exit 1
+fi
+
+# Build Worker Lambda
+print_status "Building worker..."
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build \
+    -mod=mod \
+    -ldflags="-s -w" \
+    -tags lambda.norpc \
+    -trimpath \
+    -o dist/worker/bootstrap \
+    ./cmd/worker
+if [ $? -eq 0 ]; then
+    print_success "worker build successful!"
+else
+    print_error "worker build failed!"
+    exit 1
+fi
+
+# LIFT:ADD_FUNCTION_BUILDS
+
+print_success "Lambda functions built successfully!"
+echo "   - dist/api/bootstrap"
+echo "   - dist/worker/bootstrap"
+# LIFT:ADD_OUTPUT_LINES

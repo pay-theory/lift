@@ -1,0 +1,344 @@
+package constructs
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudfront"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudfrontorigins"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
+	"github.com/aws/constructs-go/constructs/v10"
+	"github.com/aws/jsii-runtime-go"
+
+	"github.com/pay-theory/lift/pkg/naming"
+)
+
+// StaticSiteProps defines properties for a CloudFront-backed static site.
+type StaticSiteProps struct {
+	// Required: hosted zone authoritative for DomainName.
+	HostedZone awsroute53.IHostedZone
+	// Optional: enable access logs (log bucket auto-created unless provided).
+	AccessLogsBucket awss3.IBucket
+	// Optional: custom domain certificate. If omitted, Lift creates a DNS-validated certificate in us-east-1.
+	Certificate awscertificatemanager.ICertificate
+	// Optional: override response headers policy.
+	ResponseHeadersPolicy awscloudfront.IResponseHeadersPolicy
+
+	// Required: apex/canonical domain (e.g., "example.com").
+	DomainName *string
+
+	// Optional: stable naming inputs for deterministic bucket names.
+	AppName    *string
+	Stage      *string
+	Partner    *string
+	BucketName *string
+
+	// Optional: bucket configuration.
+	AutoDeleteObjects *bool
+	Versioned         *bool
+
+	// Optional: enable access logs (log bucket auto-created unless provided).
+	EnableAccessLogs *bool
+	AccessLogsPrefix *string
+
+	// Optional: additional SANs to include when Lift creates a certificate.
+	SubjectAlternativeNames *[]*string
+
+	// Optional: enable www.<domain> redirect to apex (default true).
+	EnableWWWRedirect *bool
+	WWWDomainName     *string
+
+	// Optional: treat site as SPA by serving /index.html for 403/404 (default false).
+	SinglePageApp *bool
+
+	// Optional: WAFv2 Web ACL ARN (global scope) to attach to the distribution.
+	WebAclId *string
+
+	// Optional: distribution tuning.
+	EnableIpv6 *bool
+
+	// Optional: cache path patterns that should receive long-lived "hashed asset" caching.
+	HashedAssetPathPatterns *[]*string
+
+	// Optional: tags applied to created resources.
+	Tags *map[string]*string
+
+	// Optional: bucket configuration.
+	RemovalPolicy awscdk.RemovalPolicy
+
+	// Optional: distribution tuning.
+	PriceClass  awscloudfront.PriceClass
+	HttpVersion awscloudfront.HttpVersion
+}
+
+// StaticSite creates an S3 + CloudFront + Route53 static site with OAC and safe defaults.
+type StaticSite struct {
+	constructs.Construct
+
+	Bucket       awss3.Bucket
+	Distribution awscloudfront.Distribution
+	Certificate  awscertificatemanager.ICertificate
+
+	// WWWRedirect is set when EnableWWWRedirect is true.
+	WWWRedirect *HostRedirect
+}
+
+// NewStaticSite creates a CloudFront distribution backed by a private S3 bucket.
+func NewStaticSite(scope constructs.Construct, id *string, props *StaticSiteProps) *StaticSite {
+	construct := constructs.NewConstruct(scope, id)
+	props = normalizeStaticSiteProps(props)
+
+	nameCtx, hasNameCtx := cloudfrontNamingContext(props.AppName, props.Stage, props.Partner)
+
+	site := &StaticSite{Construct: construct}
+
+	bucketName := resolveS3BucketName(construct, id, props.BucketName, nameCtx, hasNameCtx, "static-site")
+	site.Bucket = awss3.NewBucket(construct, jsii.String("Bucket"), &awss3.BucketProps{
+		BucketName:        bucketName,
+		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
+		EnforceSSL:        jsii.Bool(true),
+		ObjectOwnership:   awss3.ObjectOwnership_BUCKET_OWNER_ENFORCED,
+		RemovalPolicy:     props.RemovalPolicy,
+		AutoDeleteObjects: props.AutoDeleteObjects,
+		Versioned:         props.Versioned,
+		Encryption:        awss3.BucketEncryption_S3_MANAGED,
+	})
+
+	applyStandardConstructTags(site.Bucket, props.Tags, nameCtx, hasNameCtx, "StaticSite")
+
+	site.Certificate = resolveStaticSiteCertificate(construct, props)
+
+	origin := awscloudfrontorigins.S3BucketOrigin_WithOriginAccessControl(site.Bucket, &awscloudfrontorigins.S3BucketOriginWithOACProps{})
+
+	htmlCache := newStaticSiteHTMLCachePolicy(construct, nameCtx, hasNameCtx)
+	assetCache := newStaticSiteAssetCachePolicy(construct, nameCtx, hasNameCtx)
+	headersPolicy := resolveStaticSiteHeadersPolicy(construct, props)
+
+	defaultBehavior := &awscloudfront.BehaviorOptions{
+		Origin:                origin,
+		ViewerProtocolPolicy:  awscloudfront.ViewerProtocolPolicy_REDIRECT_TO_HTTPS,
+		CachePolicy:           htmlCache,
+		ResponseHeadersPolicy: headersPolicy,
+		Compress:              jsii.Bool(true),
+	}
+
+	errorResponses := errorResponsesForSinglePageApp(props.SinglePageApp)
+
+	site.Distribution = awscloudfront.NewDistribution(construct, jsii.String("Distribution"), &awscloudfront.DistributionProps{
+		DefaultBehavior:   defaultBehavior,
+		DomainNames:       &[]*string{props.DomainName},
+		Certificate:       site.Certificate,
+		DefaultRootObject: jsii.String("index.html"),
+		EnableIpv6:        props.EnableIpv6,
+		HttpVersion:       props.HttpVersion,
+		PriceClass:        props.PriceClass,
+		WebAclId:          props.WebAclId,
+		ErrorResponses:    &errorResponses,
+		EnableLogging:     props.EnableAccessLogs,
+		LogBucket:         resolveStaticSiteLogBucket(construct, id, props, nameCtx, hasNameCtx),
+		LogFilePrefix:     props.AccessLogsPrefix,
+	})
+
+	applyStandardConstructTags(site.Distribution, props.Tags, nameCtx, hasNameCtx, "StaticSite")
+	addCloudFrontAliasRecords(construct, props.HostedZone, props.DomainName, site.Distribution, props.EnableIpv6)
+	addHashedAssetBehaviors(site.Distribution, origin, props.HashedAssetPathPatterns, assetCache, headersPolicy)
+	site.WWWRedirect = maybeAddStaticSiteWWWRedirect(construct, props, site.Certificate)
+
+	return site
+}
+
+func normalizeStaticSiteProps(props *StaticSiteProps) *StaticSiteProps {
+	if props == nil {
+		props = &StaticSiteProps{}
+	}
+	if props.DomainName == nil || strings.TrimSpace(*props.DomainName) == "" {
+		panic("StaticSite requires DomainName")
+	}
+	if props.HostedZone == nil {
+		panic("StaticSite requires HostedZone")
+	}
+
+	ensureBool(&props.EnableWWWRedirect, true)
+	ensureBool(&props.SinglePageApp, false)
+	ensureBool(&props.EnableAccessLogs, false)
+	ensureBool(&props.EnableIpv6, true)
+	ensureHttpVersion(&props.HttpVersion, awscloudfront.HttpVersion_HTTP2)
+	ensurePriceClass(&props.PriceClass, awscloudfront.PriceClass_PRICE_CLASS_ALL)
+	ensureRemovalPolicy(&props.RemovalPolicy, awscdk.RemovalPolicy_RETAIN)
+	ensureBool(&props.Versioned, false)
+	defaultAutoDeleteObjectsIfDestroy(props.RemovalPolicy, &props.AutoDeleteObjects)
+
+	return props
+}
+
+func resolveStaticSiteCertificate(scope constructs.Construct, props *StaticSiteProps) awscertificatemanager.ICertificate {
+	if props.Certificate != nil {
+		return props.Certificate
+	}
+
+	sans := []*string{}
+	if props.SubjectAlternativeNames != nil {
+		sans = append(sans, (*props.SubjectAlternativeNames)...)
+	}
+	if props.EnableWWWRedirect != nil && *props.EnableWWWRedirect {
+		www := resolveWWWDomainName(props.DomainName, props.WWWDomainName)
+		sans = append(sans, www)
+		props.WWWDomainName = www
+	}
+
+	return ensureCloudFrontCertificate(scope, nil, props.DomainName, props.HostedZone, sans)
+}
+
+func resolveStaticSiteHeadersPolicy(scope constructs.Construct, props *StaticSiteProps) awscloudfront.IResponseHeadersPolicy {
+	if props.ResponseHeadersPolicy != nil {
+		return props.ResponseHeadersPolicy
+	}
+	return newStaticSiteResponseHeadersPolicy(scope, props.DomainName)
+}
+
+func maybeAddStaticSiteWWWRedirect(scope constructs.Construct, props *StaticSiteProps, cert awscertificatemanager.ICertificate) *HostRedirect {
+	if props.EnableWWWRedirect == nil || !*props.EnableWWWRedirect {
+		return nil
+	}
+
+	www := resolveWWWDomainName(props.DomainName, props.WWWDomainName)
+	return NewHostRedirect(scope, jsii.String("WWWRedirect"), &HostRedirectProps{
+		FromDomainName: www,
+		ToDomainName:   props.DomainName,
+		HostedZone:     props.HostedZone,
+		Certificate:    cert,
+		WebAclId:       props.WebAclId,
+		EnableIpv6:     props.EnableIpv6,
+		Tags:           props.Tags,
+	})
+}
+
+func resolveStaticSiteLogBucket(scope constructs.Construct, id *string, props *StaticSiteProps, nameCtx naming.Context, hasNameCtx bool) awss3.IBucket {
+	if props == nil {
+		return nil
+	}
+	if props.EnableAccessLogs == nil || !*props.EnableAccessLogs {
+		return nil
+	}
+	if props.AccessLogsBucket != nil {
+		return props.AccessLogsBucket
+	}
+
+	bucketName := resolveS3BucketName(scope, jsii.String(*id+"Logs"), nil, nameCtx, hasNameCtx, "static-site-logs")
+	return awss3.NewBucket(scope, jsii.String("AccessLogsBucket"), &awss3.BucketProps{
+		BucketName:        bucketName,
+		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
+		EnforceSSL:        jsii.Bool(true),
+		ObjectOwnership:   awss3.ObjectOwnership_OBJECT_WRITER,
+		RemovalPolicy:     awscdk.RemovalPolicy_RETAIN,
+		Encryption:        awss3.BucketEncryption_S3_MANAGED,
+	})
+}
+
+func newStaticSiteHTMLCachePolicy(scope constructs.Construct, nameCtx naming.Context, hasNameCtx bool) awscloudfront.CachePolicy {
+	return newStaticSiteCachePolicy(scope, nameCtx, hasNameCtx, "html", "Lift static site HTML cache policy",
+		awscdk.Duration_Seconds(jsii.Number(0)),
+		awscdk.Duration_Minutes(jsii.Number(1)),
+		awscdk.Duration_Minutes(jsii.Number(5)))
+}
+
+func newStaticSiteAssetCachePolicy(scope constructs.Construct, nameCtx naming.Context, hasNameCtx bool) awscloudfront.CachePolicy {
+	return newStaticSiteCachePolicy(scope, nameCtx, hasNameCtx, "assets", "Lift static site hashed asset cache policy",
+		awscdk.Duration_Days(jsii.Number(1)),
+		awscdk.Duration_Days(jsii.Number(365)),
+		awscdk.Duration_Days(jsii.Number(365)))
+}
+
+func newStaticSiteCachePolicy(scope constructs.Construct, nameCtx naming.Context, hasNameCtx bool, suffix, comment string, minTtl, defaultTtl, maxTtl awscdk.Duration) awscloudfront.CachePolicy {
+	name := (*string)(nil)
+	if hasNameCtx {
+		name = jsii.String(fmt.Sprintf("%s-%s", nameCtx.ResourceName("static-site-cache"), suffix))
+	}
+
+	return awscloudfront.NewCachePolicy(scope, jsii.String(fmt.Sprintf("%sCachePolicy", titleCase(suffix))), &awscloudfront.CachePolicyProps{
+		CachePolicyName:            name,
+		Comment:                    jsii.String(comment),
+		CookieBehavior:             awscloudfront.CacheCookieBehavior_None(),
+		HeaderBehavior:             awscloudfront.CacheHeaderBehavior_None(),
+		QueryStringBehavior:        awscloudfront.CacheQueryStringBehavior_None(),
+		EnableAcceptEncodingBrotli: jsii.Bool(true),
+		EnableAcceptEncodingGzip:   jsii.Bool(true),
+		MinTtl:                     minTtl,
+		DefaultTtl:                 defaultTtl,
+		MaxTtl:                     maxTtl,
+	})
+}
+
+func titleCase(s string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func newStaticSiteResponseHeadersPolicy(scope constructs.Construct, domainName *string) awscloudfront.ResponseHeadersPolicy {
+	domain := ""
+	if domainName != nil {
+		domain = strings.TrimSuffix(strings.TrimSpace(*domainName), ".")
+	}
+	connect := []string{"'self'"}
+	if domain != "" {
+		connect = append(connect, "https://api."+domain, "wss://ws."+domain)
+	}
+
+	csp := strings.Join([]string{
+		"default-src 'self'",
+		"base-uri 'self'",
+		"object-src 'none'",
+		"frame-ancestors 'none'",
+		"img-src 'self' data: https:",
+		"font-src 'self' data: https:",
+		"style-src 'self' 'unsafe-inline'",
+		"script-src 'self' 'unsafe-inline'",
+		"connect-src " + strings.Join(connect, " "),
+	}, "; ") + ";"
+
+	return awscloudfront.NewResponseHeadersPolicy(scope, jsii.String("ResponseHeadersPolicy"), &awscloudfront.ResponseHeadersPolicyProps{
+		Comment: jsii.String("Lift static site security headers"),
+		SecurityHeadersBehavior: &awscloudfront.ResponseSecurityHeadersBehavior{
+			ContentSecurityPolicy: &awscloudfront.ResponseHeadersContentSecurityPolicy{
+				ContentSecurityPolicy: jsii.String(csp),
+				Override:              jsii.Bool(true),
+			},
+			ContentTypeOptions: &awscloudfront.ResponseHeadersContentTypeOptions{Override: jsii.Bool(true)},
+			FrameOptions: &awscloudfront.ResponseHeadersFrameOptions{
+				FrameOption: awscloudfront.HeadersFrameOption_DENY,
+				Override:    jsii.Bool(true),
+			},
+			ReferrerPolicy: &awscloudfront.ResponseHeadersReferrerPolicy{
+				ReferrerPolicy: awscloudfront.HeadersReferrerPolicy_STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+				Override:       jsii.Bool(true),
+			},
+			StrictTransportSecurity: &awscloudfront.ResponseHeadersStrictTransportSecurity{
+				AccessControlMaxAge: awscdk.Duration_Days(jsii.Number(365)),
+				IncludeSubdomains:   jsii.Bool(true),
+				Override:            jsii.Bool(true),
+			},
+			XssProtection: &awscloudfront.ResponseHeadersXSSProtection{
+				Protection: jsii.Bool(true),
+				ModeBlock:  jsii.Bool(true),
+				Override:   jsii.Bool(true),
+			},
+		},
+		CustomHeadersBehavior: &awscloudfront.ResponseCustomHeadersBehavior{
+			CustomHeaders: &[]*awscloudfront.ResponseCustomHeader{
+				{
+					Header:   jsii.String("Permissions-Policy"),
+					Value:    jsii.String("camera=(), microphone=(), geolocation=(), payment=()"),
+					Override: jsii.Bool(true),
+				},
+			},
+		},
+		RemoveHeaders: &[]*string{
+			jsii.String("Server"),
+		},
+	})
+}

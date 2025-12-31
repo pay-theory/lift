@@ -12,8 +12,10 @@
 package constructs
 
 import (
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
+	"github.com/aws/jsii-runtime-go"
 )
 
 // ConnectionTableProps defines properties for the WebSocket connection table.
@@ -25,6 +27,8 @@ type ConnectionTableProps struct {
 	TableName *string
 	// Enable TTL for automatic connection cleanup
 	TimeToLiveAttribute *string
+	// Enable default GSIs used by Lift's connection store (default: true)
+	EnableConnectionIndexes *bool
 }
 
 // ConnectionTable is a table for managing WebSocket connections.
@@ -57,6 +61,47 @@ func NewConnectionTable(scope constructs.Construct, id *string, props *Connectio
 		DefaultTableName: "websocket-connections",
 		PermissionMethod: "GrantConnectionManagement",
 	})
+
+	// Add default GSIs for querying connections by user and tenant.
+	// These indexes match Lift's built-in DynamoDBConnectionStore patterns:
+	// - gsi1: USER#<userId> → CONNECTION#<connectionId>
+	// - gsi2: TENANT#<tenantId> → CONNECTION#<connectionId>
+	enableIndexes := true
+	if props != nil && props.EnableConnectionIndexes != nil {
+		enableIndexes = *props.EnableConnectionIndexes
+	}
+
+	if enableIndexes {
+		gsi1 := awsdynamodb.GlobalSecondaryIndexProps{
+			IndexName: jsii.String("gsi1"),
+			PartitionKey: &awsdynamodb.Attribute{
+				Name: jsii.String("gsi1pk"),
+				Type: awsdynamodb.AttributeType_STRING,
+			},
+			SortKey: &awsdynamodb.Attribute{
+				Name: jsii.String("gsi1sk"),
+				Type: awsdynamodb.AttributeType_STRING,
+			},
+			ProjectionType: awsdynamodb.ProjectionType_ALL,
+		}
+		liftTable.Table.AddGlobalSecondaryIndex(&gsi1)
+		liftTable.GSIs[*gsi1.IndexName] = &gsi1
+
+		gsi2 := awsdynamodb.GlobalSecondaryIndexProps{
+			IndexName: jsii.String("gsi2"),
+			PartitionKey: &awsdynamodb.Attribute{
+				Name: jsii.String("gsi2pk"),
+				Type: awsdynamodb.AttributeType_STRING,
+			},
+			SortKey: &awsdynamodb.Attribute{
+				Name: jsii.String("gsi2sk"),
+				Type: awsdynamodb.AttributeType_STRING,
+			},
+			ProjectionType: awsdynamodb.ProjectionType_ALL,
+		}
+		liftTable.Table.AddGlobalSecondaryIndex(&gsi2)
+		liftTable.GSIs[*gsi2.IndexName] = &gsi2
+	}
 
 	return &ConnectionTable{
 		construct: scope,

@@ -182,8 +182,18 @@ func (b *kinesisProcessorBuilder) createConsumer(stream awskinesis.IStream) awsk
 		return nil
 	}
 
+	consumerName := b.props.ConsumerName
+	if consumerName == nil || *consumerName == "" {
+		if b.props.FunctionProps != nil && b.props.FunctionProps.FunctionName != nil && *b.props.FunctionProps.FunctionName != "" {
+			consumerName = jsii.String(*b.props.FunctionProps.FunctionName + "-consumer")
+		} else {
+			consumerName = jsii.String("kinesis-consumer")
+		}
+	}
+
 	return awskinesis.NewStreamConsumer(b.construct, jsii.String("Consumer"), &awskinesis.StreamConsumerProps{
-		Stream: stream,
+		Stream:             stream,
+		StreamConsumerName: consumerName,
 	})
 }
 
@@ -324,6 +334,8 @@ func (esb *kinesisEventSourceBuilder) configureBatching(props *awslambdaeventsou
 func (esb *kinesisEventSourceBuilder) configureProcessing(props *awslambdaeventsources.KinesisEventSourceProps) {
 	if esb.props.StartingPosition != nil {
 		props.StartingPosition = *esb.props.StartingPosition
+	} else if props.StartingPosition == "" {
+		props.StartingPosition = awslambda.StartingPosition_LATEST
 	}
 }
 

@@ -1,0 +1,127 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
+	"github.com/aws/jsii-runtime-go"
+	liftcdk "github.com/pay-theory/lift/pkg/cdk/constructs"
+)
+
+func main() {
+	defer jsii.Close()
+
+	app := awscdk.NewApp(nil)
+
+	stage := app.Node().TryGetContext(jsii.String("stage"))
+	appName := app.Node().TryGetContext(jsii.String("appName"))
+	partner := app.Node().TryGetContext(jsii.String("partner"))
+	targetMode := app.Node().TryGetContext(jsii.String("targetMode"))
+
+	// Bootstrap placeholder - allows cdk synth to succeed without context
+	if stage == nil && appName == nil && partner == nil {
+		awscdk.NewStack(app, jsii.String("CDKBootstrapPlaceholder"), &awscdk.StackProps{
+			Env: env(),
+		})
+		app.Synth(nil)
+		return
+	}
+
+	// Validate required parameters for PT mode
+	if stage == nil {
+		fmt.Println("Error: stage is required")
+		fmt.Println("Usage: cdk deploy --context stage=<dev|staging|live> --context partner=<partner>")
+		os.Exit(1)
+	}
+	if partner == nil {
+		fmt.Println("Error: partner is required for PT mode deployments")
+		fmt.Println("Usage: cdk deploy --context stage=<dev|staging|live> --context partner=<partner>")
+		os.Exit(1)
+	}
+
+	// Set defaults
+	stageStr := stage.(string)
+	partnerStr := partner.(string)
+	appNameStr := "{{ .AppName }}"
+	if appName != nil {
+		appNameStr = appName.(string)
+	}
+	targetModeStr := "standard"
+	if targetMode != nil {
+		targetModeStr = targetMode.(string)
+	}
+
+	// Log deployment context
+	fmt.Printf("Deploying %s for partner=%s stage=%s targetMode=%s\n", appNameStr, partnerStr, stageStr, targetModeStr)
+
+	// Create stack name with partner for multi-tenant isolation
+	serviceStackName := fmt.Sprintf("%s-service-%s-%s", appNameStr, partnerStr, stageStr)
+
+	// Create the service stack
+	stack := awscdk.NewStack(app, jsii.String(serviceStackName), &awscdk.StackProps{
+		Env:         env(),
+		Description: jsii.String(fmt.Sprintf("%s SNS processor stack for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
+	})
+
+	{{ if .EnableData }}
+	// DynamoDB table (simple persistence layer)
+	table := liftcdk.NewLiftTable(stack, jsii.String("MainTable"), &liftcdk.LiftTableProps{
+		TableName:           jsii.String(fmt.Sprintf("%s-main-%s-%s", appNameStr, partnerStr, stageStr)),
+		PartitionKeyName:    jsii.String("PK"),
+		SortKeyName:         jsii.String("SK"),
+		TimeToLiveAttribute: jsii.String("ttl"),
+		RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
+	})
+	{{ end }}
+
+	// SNS processor (topic + subscription + optional DLQ)
+	processor := liftcdk.NewSNSProcessor(stack, jsii.String("Processor"), &liftcdk.SNSProcessorProps{
+		FunctionProps: &liftcdk.LiftFunctionProps{
+			FunctionProps: awslambda.FunctionProps{
+				FunctionName: jsii.String(fmt.Sprintf("%s-processor-%s-%s", appNameStr, partnerStr, stageStr)),
+				Code:         awslambda.Code_FromAsset(jsii.String(filepath.Join("..", "dist", "processor")), nil),
+				Handler:      jsii.String("bootstrap"),
+				Description:  jsii.String(fmt.Sprintf("%s SNS processor for partner %s, stage %s", appNameStr, partnerStr, stageStr)),
+				Environment: &map[string]*string{
+					"PARTNER":      jsii.String(partnerStr),
+					"STAGE":        jsii.String(stageStr),
+					"TARGET_MODE":  jsii.String(targetModeStr),
+				},
+			},
+			EnableTracing: jsii.Bool(true),
+			EnableMetrics: jsii.Bool(true),
+			{{ if .EnableData }}
+			EnableDynamORM:    jsii.Bool(true),
+			DynamORMTableName: table.GetTableName(),
+			{{ end }}
+		},
+		TopicProps: &awssns.TopicProps{
+			TopicName: jsii.String(fmt.Sprintf("%s-topic-%s-%s", appNameStr, partnerStr, stageStr)),
+		},
+	})
+
+	{{ if .EnableData }}
+	// Grant the processor access to the DynamoDB table
+	table.GrantReadWriteData(processor.Function.Function)
+	{{ else }}
+	_ = processor
+	{{ end }}
+
+	// LIFT:ADD_FUNCTIONS
+
+	// LIFT:ADD_OUTPUTS
+
+	app.Synth(nil)
+}
+
+// env returns the AWS environment from environment variables
+func env() *awscdk.Environment {
+	return &awscdk.Environment{
+		Account: jsii.String(os.Getenv("CDK_DEFAULT_ACCOUNT")),
+		Region:  jsii.String(os.Getenv("CDK_DEFAULT_REGION")),
+	}
+}

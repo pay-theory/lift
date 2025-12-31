@@ -1,0 +1,171 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	{{ if .EnableData }}"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"{{ end }}
+	"github.com/aws/jsii-runtime-go"
+	liftcdk "github.com/pay-theory/lift/pkg/cdk/constructs"
+)
+
+func main() {
+	defer jsii.Close()
+
+	app := awscdk.NewApp(nil)
+
+	stage := app.Node().TryGetContext(jsii.String("stage"))
+	appName := app.Node().TryGetContext(jsii.String("appName"))
+
+	// Bootstrap placeholder - allows cdk synth to succeed without context
+	if stage == nil && appName == nil {
+		awscdk.NewStack(app, jsii.String("CDKBootstrapPlaceholder"), &awscdk.StackProps{
+			Env: env(),
+		})
+		app.Synth(nil)
+		return
+	}
+
+	// Validate required parameters
+	if stage == nil {
+		fmt.Println("Error: stage is required")
+		fmt.Println("Usage: cdk deploy --context stage=<dev|staging|live>")
+		os.Exit(1)
+	}
+
+	// Set defaults
+	stageStr := stage.(string)
+	appNameStr := "{{ .AppName }}"
+	if appName != nil {
+		appNameStr = appName.(string)
+	}
+
+	{{ if .EnableData }}
+	// Deterministic resource names (derive instead of exporting outputs)
+	tableName := fmt.Sprintf("%s-main-%s", appNameStr, stageStr)
+	{{ end }}
+
+	{{ if .EnableData }}
+	// Create stack names
+	dataStackName := fmt.Sprintf("%s-data-%s", appNameStr, stageStr)
+	{{ end }}
+	serviceStackName := fmt.Sprintf("%s-service-%s", appNameStr, stageStr)
+
+	{{ if .EnableData }}
+	// ============================================
+	// DATA STACK
+	// ============================================
+	dataStack := awscdk.NewStack(app, jsii.String(dataStackName), &awscdk.StackProps{
+		Env:         env(),
+		Description: jsii.String(fmt.Sprintf("%s data stack for %s stage", appNameStr, stageStr)),
+	})
+
+	// Create the main DynamoDB table using LiftTable (DynamORM-friendly PK/SK)
+	dataTable := liftcdk.NewLiftTable(dataStack, jsii.String("MainTable"), &liftcdk.LiftTableProps{
+		TableName:           jsii.String(tableName),
+		PartitionKeyName:    jsii.String("PK"),
+		SortKeyName:         jsii.String("SK"),
+		TimeToLiveAttribute: jsii.String("ttl"),
+		RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
+	})
+
+	// Add GSI for query patterns
+	dataTable.Table.AddGlobalSecondaryIndex(&awsdynamodb.GlobalSecondaryIndexProps{
+		IndexName: jsii.String("gsi1"),
+		PartitionKey: &awsdynamodb.Attribute{
+			Name: jsii.String("gsi1pk"),
+			Type: awsdynamodb.AttributeType_STRING,
+		},
+		SortKey: &awsdynamodb.Attribute{
+			Name: jsii.String("gsi1sk"),
+			Type: awsdynamodb.AttributeType_STRING,
+		},
+		ProjectionType: awsdynamodb.ProjectionType_ALL,
+	})
+	{{ end }}
+
+	// ============================================
+	// SERVICE STACK
+	// ============================================
+	serviceStack := awscdk.NewStack(app, jsii.String(serviceStackName), &awscdk.StackProps{
+		Env:         env(),
+		Description: jsii.String(fmt.Sprintf("%s service stack for %s stage", appNameStr, stageStr)),
+	})
+
+	{{ if .EnableData }}
+	// Add dependency: service stack depends on data stack
+	serviceStack.AddDependency(dataStack, jsii.String("Data resources must exist before service"))
+
+	// Reference the data table by deterministic name (avoids CloudFormation exports)
+	table := awsdynamodb.Table_FromTableName(serviceStack, jsii.String("MainTableRef"), jsii.String(tableName))
+	{{ end }}
+
+	// Create the API Lambda function
+	apiFunction := liftcdk.NewLiftFunction(serviceStack, jsii.String("ApiFunction"), &liftcdk.LiftFunctionProps{
+		FunctionProps: awslambda.FunctionProps{
+			FunctionName: jsii.String(fmt.Sprintf("%s-api-%s", appNameStr, stageStr)),
+			Code:         awslambda.Code_FromAsset(jsii.String(filepath.Join("..", "dist", "api")), nil),
+			Handler:      jsii.String("bootstrap"),
+			Description:  jsii.String(fmt.Sprintf("%s API handler for %s", appNameStr, stageStr)),
+			Environment: &map[string]*string{
+				"STAGE": jsii.String(stageStr),
+			},
+		},
+		EnableTracing: jsii.Bool(true),
+		EnableMetrics: jsii.Bool(true),
+		{{ if .EnableData }}
+		EnableDynamORM:    jsii.Bool(true),
+		DynamORMTableName: jsii.String(tableName),
+		{{ end }}
+	})
+
+	{{ if .EnableData }}
+	// Grant API function read/write access to the table
+	table.GrantReadWriteData(apiFunction.Function)
+	{{ else }}
+	_ = apiFunction
+	{{ end }}
+
+	// Create the Worker Lambda function
+	workerFunction := liftcdk.NewLiftFunction(serviceStack, jsii.String("WorkerFunction"), &liftcdk.LiftFunctionProps{
+		FunctionProps: awslambda.FunctionProps{
+			FunctionName: jsii.String(fmt.Sprintf("%s-worker-%s", appNameStr, stageStr)),
+			Code:         awslambda.Code_FromAsset(jsii.String(filepath.Join("..", "dist", "worker")), nil),
+			Handler:      jsii.String("bootstrap"),
+			Description:  jsii.String(fmt.Sprintf("%s worker for %s", appNameStr, stageStr)),
+			Environment: &map[string]*string{
+				"STAGE": jsii.String(stageStr),
+			},
+		},
+		EnableTracing: jsii.Bool(true),
+		EnableMetrics: jsii.Bool(true),
+		{{ if .EnableData }}
+		EnableDynamORM:    jsii.Bool(true),
+		DynamORMTableName: jsii.String(tableName),
+		{{ end }}
+	})
+
+	{{ if .EnableData }}
+	// Grant Worker function read/write access to the table
+	table.GrantReadWriteData(workerFunction.Function)
+	{{ else }}
+	_ = workerFunction
+	{{ end }}
+
+	// LIFT:ADD_FUNCTIONS
+
+	// LIFT:ADD_OUTPUTS
+
+	app.Synth(nil)
+}
+
+// env returns the AWS environment from environment variables
+func env() *awscdk.Environment {
+	return &awscdk.Environment{
+		Account: jsii.String(os.Getenv("CDK_DEFAULT_ACCOUNT")),
+		Region:  jsii.String(os.Getenv("CDK_DEFAULT_REGION")),
+	}
+}

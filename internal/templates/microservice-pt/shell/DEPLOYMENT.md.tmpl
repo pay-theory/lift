@@ -1,0 +1,137 @@
+# {{.AppName}} Deployment Guide
+
+This project uses Pay Theory-style deployment (CodeBuild + shell scripts).
+
+## Prerequisites
+
+- AWS CLI configured with appropriate credentials
+- AWS CDK CLI installed (`npm install -g aws-cdk`)
+- Go 1.25 or later
+- Node.js 20 or later
+
+## Environment Variables
+
+The deployment system uses these environment variables:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PARTNER` | Yes | Partner identifier for multi-tenant isolation |
+| `STAGE` | Yes | Deployment stage: `dev`, `staging`, or `live` |
+| `TARGET_MODE` | No | Deployment mode (default: `standard`) |
+| `AWS_REGION` | No | AWS region (auto-detected if not set) |
+
+## Local Development
+
+### Initialize Environment
+
+```bash
+source ./shell/init_env_vars.sh
+```
+
+Edit the file to set your `PARTNER` value before sourcing.
+
+### Build Lambda Functions
+
+```bash
+./shell/build.sh
+```
+
+### Deploy
+
+```bash
+# Deploy to dev
+./shell/deploy.sh --partner mypartner --stage dev
+
+# Deploy to staging
+./shell/deploy.sh --partner mypartner --stage staging
+
+# Deploy to production
+./shell/deploy.sh --partner mypartner --stage live
+```
+
+### Other Commands
+
+```bash
+# Show what would change
+./shell/deploy.sh --partner mypartner --stage dev --command diff
+
+# Synthesize CloudFormation templates
+./shell/deploy.sh --partner mypartner --stage dev --command synth
+
+# Destroy deployment
+./shell/deploy.sh --partner mypartner --stage dev --command destroy
+
+# Bootstrap CDK (first-time setup)
+./shell/deploy.sh --partner mypartner --stage dev --command bootstrap
+```
+
+### Using `lift` CLI
+
+You can also use the `lift` CLI with partner context:
+
+```bash
+# Build all functions
+lift build
+
+# Deploy to dev with partner
+lift up --stage dev --partner mypartner
+
+# Destroy
+lift down --stage dev --partner mypartner
+```
+
+## CodeBuild Integration
+
+This project includes a `buildspec.yml` for AWS CodeBuild. It expects:
+
+1. CodeBuild environment variables set:
+   - `PARTNER`
+   - `STAGE`
+   - `TARGET_MODE` (optional, defaults to `standard`)
+   - `AWS_REGION`
+
+2. IAM permissions for:
+   - CDK bootstrap resources
+   - CloudFormation stack management
+   - Lambda deployment
+   - Other resources as defined in CDK
+
+## Stack Naming
+
+Stacks are named with the pattern: `{{.AppName}}-service-<partner>-<stage>`
+
+Example: `{{.AppName}}-service-mypartner-dev`
+
+## Stages
+
+| Stage | Description |
+|-------|-------------|
+| `dev` | Development environment |
+| `staging` | Staging/QA environment |
+| `live` | Production environment |
+
+## Troubleshooting
+
+### CDK Bootstrap Required
+
+If you see "CDK bootstrap required" error:
+
+```bash
+./shell/deploy.sh --partner mypartner --stage dev --command bootstrap
+```
+
+### Missing Permissions
+
+Ensure your AWS credentials have permissions to:
+- Create/update CloudFormation stacks
+- Deploy Lambda functions
+- Access other AWS services used by your stack
+
+### Build Failures
+
+Check Go module dependencies:
+
+```bash
+go mod tidy
+go mod verify
+```

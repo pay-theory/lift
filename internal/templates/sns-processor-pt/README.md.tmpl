@@ -1,0 +1,54 @@
+# {{.AppName}}
+
+An SNS-driven serverless processor built with Lift (Pay Theory deployment mode).
+
+## Project Structure
+
+```
+{{.AppName}}/
+├── cmd/processor/      # SNS processor Lambda entrypoint
+├── cdk/                # CDK infrastructure
+├── dist/               # Build outputs (generated)
+├── shell/              # Deployment scripts
+│   ├── build.sh
+│   ├── deploy.sh
+│   └── init_env_vars.sh
+├── buildspec.yml       # CodeBuild specification
+└── lift.yaml           # Lift project configuration
+```
+
+## Quick Start
+
+```bash
+# Initialize environment (edit PARTNER first)
+source ./shell/init_env_vars.sh
+
+# Build Lambda functions
+./shell/build.sh
+
+# Deploy to dev
+./shell/deploy.sh --partner <partner> --stage dev
+```
+
+## Using Lift CLI
+
+```bash
+# Build all functions
+lift build
+
+# Deploy with partner context
+lift up --stage dev --partner <partner>
+
+# Destroy
+lift down --stage dev --partner <partner>
+```
+
+## Stack Naming
+
+Stacks are named with the pattern: `{{.AppName}}-service-<partner>-<stage>`
+
+Example: `{{.AppName}}-service-mypartner-dev`
+
+## Documentation
+
+See `shell/DEPLOYMENT.md` for additional deployment details.

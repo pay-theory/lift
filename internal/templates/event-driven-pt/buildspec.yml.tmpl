@@ -1,0 +1,36 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.25
+      nodejs: 20
+    commands:
+      - npm install -g aws-cdk
+  pre_build:
+    commands:
+      - apt-get update -y
+  build:
+    commands:
+      - export PARTNER=$PARTNER
+      - export STAGE=$STAGE
+      - export TARGET_MODE=${TARGET_MODE:-standard}
+      - export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query 'Account' --output text)
+      - export CDK_DEFAULT_REGION=${AWS_REGION:-us-east-1}
+      - echo "Building Lambda functions..."
+      - mkdir -p dist/api
+      - mkdir -p dist/processor
+      - echo "Building api..."
+      - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -mod=mod -ldflags="-s -w" -tags lambda.norpc -trimpath -o dist/api/bootstrap ./cmd/api
+      - echo "Building processor..."
+      - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -mod=mod -ldflags="-s -w" -tags lambda.norpc -trimpath -o dist/processor/bootstrap ./cmd/processor
+      # LIFT:ADD_FUNCTION_BUILDS
+      - echo "Synthesizing CDK stacks..."
+      - cd cdk
+      - go mod tidy
+      - cdk synth
+      - echo "Deploying service stack..."
+      - cdk deploy {{.AppName}}-service-$PARTNER-$STAGE --require-approval never --context partner=$PARTNER --context stage=$STAGE --context targetMode=$TARGET_MODE
+  post_build:
+    commands:
+      - echo Build completed on `date`

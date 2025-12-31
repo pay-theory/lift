@@ -1,0 +1,87 @@
+# {{.AppName}}
+
+An SNS-driven serverless processor built with Lift.
+
+## Architecture
+
+This template provides:
+
+- **SNS Topic**: for publishing events
+- **Processor Lambda**: subscribed to the topic
+{{ if .EnableData }}- **DynamoDB Table**: a simple persistence layer (DynamORM-ready){{ end }}
+
+{{ if .EnableData }}
+```
+┌──────────────┐     ┌──────────────┐     ┌────────────────┐
+│ SNS Publish  │────▶│  SNS Topic   │────▶│ Processor Lambda│
+└──────────────┘     └──────────────┘     └───────┬────────┘
+                                                   │
+                                                   ▼
+                                            ┌──────────────┐
+                                            │  DynamoDB     │
+                                            │   Table       │
+                                            └──────────────┘
+```
+{{ else }}
+```
+┌──────────────┐     ┌──────────────┐     ┌────────────────┐
+│ SNS Publish  │────▶│  SNS Topic   │────▶│ Processor Lambda│
+└──────────────┘     └──────────────┘     └────────────────┘
+```
+{{ end }}
+
+## Quick Start
+
+```bash
+# Build the project
+lift build
+
+# Deploy to dev stage
+lift up --stage dev
+```
+
+## Publishing a Test Message
+
+This template uses deterministic naming. For `--stage dev`, the topic name is:
+
+`{{.AppName}}-topic-dev`
+
+Publish a test message:
+
+```bash
+AWS_REGION=${AWS_REGION:-us-east-1}
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+TOPIC_ARN="arn:aws:sns:${AWS_REGION}:${AWS_ACCOUNT_ID}:{{.AppName}}-topic-dev"
+
+aws sns publish --topic-arn "$TOPIC_ARN" --message '{"hello":"world"}'
+```
+
+## Development
+
+### Prerequisites
+
+- Go 1.25+
+- AWS CDK CLI (`npm install -g aws-cdk`)
+- Lift CLI (`go install github.com/pay-theory/lift/cmd/lift@latest`)
+- AWS credentials configured
+
+### Project Structure
+
+```
+{{.AppName}}/
+├── lift.yaml                 # Project configuration
+├── go.mod                    # Go module
+├── cmd/
+│   └── processor/main.go     # SNS processor Lambda entrypoint
+├── cdk/                      # CDK infrastructure
+│   ├── cdk.json
+│   ├── go.mod
+│   └── main.go
+└── .github/workflows/        # CI/CD
+    ├── deploy.yml
+    └── pr.yml
+```
+
+## License
+
+MIT

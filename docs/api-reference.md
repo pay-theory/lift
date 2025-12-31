@@ -309,7 +309,95 @@ app.EventBridge("my-rule", func(ctx *lift.Context) error {
     // Handle EventBridge events
     return nil
 })
+
+// CORRECT: EventBus stream processing (routes by event_type and decodes via DynamORM)
+app.EventBus("partner.*", func(ctx *lift.Context, event *services.Event) error {
+    // Handle EventBus events published to DynamoDB
+    return nil
+})
 ```
+
+## EventBus (Durable)
+
+Lift includes a durable EventBus in `github.com/pay-theory/lift/pkg/services` backed by DynamoDB via DynamORM.
+
+- Full guide: `docs/eventbus-guide.md`
+
+### `services.NewDynamoDBEventBus(db core.ExtendedDB, config services.EventBusConfig) *services.DynamoDBEventBus`
+
+```go
+import (
+    "context"
+    "os"
+
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/session"
+    "github.com/pay-theory/lift/pkg/services"
+)
+
+ctx := context.Background()
+db, err := dynamorm.New(session.Config{Region: os.Getenv("AWS_REGION")})
+if err != nil {
+    panic(err)
+}
+
+// Table name is derived from APP_NAME/STAGE[/PARTNER] by default.
+bus := services.NewDynamoDBEventBus(db, services.EventBusConfig{})
+
+event, _ := services.NewEvent("partner.created", "tenant-123", "partner-456", map[string]any{"name": "Acme"})
+_, _ = bus.Publish(ctx, event)
+```
+
+### `services.EventFromStreamRecord(record events.DynamoDBEventRecord) (*services.Event, error)`
+
+Decode a DynamoDB stream record (INSERT/MODIFY/REMOVE) into a typed `*services.Event`.
+
+### `ctx.EventBusRecords() ([]events.DynamoDBEventRecord, error)`
+
+Access the typed DynamoDB stream records for an EventBus-triggered invocation.
+
+### `services.EventBusIsProcessed(ctx, db, consumer, eventID) (bool, error)`
+
+Check whether a consumer has already processed an event.
+
+### `services.EventBusMarkProcessed(ctx, db, consumer, event, retention) (bool, error)`
+
+Write a per-consumer checkpoint using a conditional write (idempotent).
+
+### `services.EventBusSchedule(ctx, db, event, dueAt, retention) (bool, error)`
+
+Schedule a delayed publish by writing a scheduling item into the EventBus table (idempotent).
+
+### `services.EventBusDrainDueScheduled(ctx, db, bus, now, limit) (services.EventBusScheduleDrainResult, error)`
+
+Drain and publish due scheduled items (intended for an EventBridge scheduled Lambda). Stops on the first publish error.
+
+### `services.EventBusDrainDueScheduledWithOptions(ctx, db, bus, now, limit, opts) (services.EventBusScheduleDrainResult, error)`
+
+Drain and publish due scheduled items with optional backoff/quarantine semantics (lease-based, no scans).
+
+### `services.EventBusQuarantineScheduled(ctx, db, scheduledItem, leaseID, cause, attempts, retention) (bool, error)`
+
+Move a poison scheduled item to a quarantine record (co-located in the EventBus table) and delete it from the schedule queue.
+
+### `services.EventBusReplayQuarantinedScheduled(ctx, db, quarantined) error`
+
+Restore a quarantined scheduled item back into the schedule queue.
+
+### `services.FanoutEventBusEvent(ctx, streamerClient, event, services.EventBusFanoutOptions) (services.EventBusFanoutResult, error)`
+
+Convenience helper for “EventBus stream processor → push to sockets” using `pkg/streamer` (collects gone connections).
+
+### Subscription-Aware Fanout Helpers
+
+- `services.UserConnectionsResolverFromMetadata(connectionStore, metadataKey)`
+- `services.TopicConnectionsResolver(subscriptionStore, topicsFn)`
+- `services.UnionConnectionsResolver(resolvers...)`
+
+### Governance Tags
+
+- `services.ApplyGovernanceTags(event, tenantID, userID, feature)`
+- `services.GovernanceTagTenant(tenantID)`, `services.GovernanceTagUser(userID)`, `services.GovernanceTagFeature(feature)`
 
 ## Context Methods
 
@@ -1254,6 +1342,25 @@ app.WebSocket("joinRoom", JoinRoomHandler)
 
 // Default handler for unmatched routes
 app.WebSocket("$default", DefaultWebSocketHandler)
+```
+
+### Action Routing via `$default`
+
+If your API Gateway WebSocket API only defines `$connect`, `$disconnect`, and `$default`, you can dispatch by `body.action` inside your `$default` handler:
+
+```go
+app := lift.New(lift.WithWebSocketSupport())
+
+actions := app.WebSocketActions()
+actions.On("sendMessage", SendMessageHandler)
+actions.On("joinRoom", JoinRoomHandler)
+actions.Default(DefaultWebSocketHandler) // missing/unknown/invalid action
+```
+
+To change the JSON action field name (default: `"action"`):
+
+```go
+actions := app.WebSocketActions(lift.WithWebSocketActionField("type"))
 ```
 
 ### WebSocket Context

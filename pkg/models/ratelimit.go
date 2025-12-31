@@ -3,6 +3,8 @@ package models
 import (
 	"os"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/naming"
 )
 
 // RateLimitRecord is compatible with both DynamORM and the Limited library
@@ -21,7 +23,13 @@ type RateLimitRecord struct {
 
 // TableName returns the DynamoDB table name from environment
 func (r *RateLimitRecord) TableName() string {
-	return os.Getenv("RATE_LIMIT_TABLE_NAME")
+	if tableName := os.Getenv("RATE_LIMIT_TABLE_NAME"); tableName != "" {
+		return tableName
+	}
+	if tableName, ok := naming.ResourceNameFromEnv("rate-limits"); ok {
+		return tableName
+	}
+	return "rate-limits"
 }
 
 // NewRateLimitRecord creates a new rate limit record with defaults

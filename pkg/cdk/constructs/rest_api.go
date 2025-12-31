@@ -399,14 +399,14 @@ func (api *LiftRestAPI) configureStreamingIntegration(method awsapigateway.Metho
 
 // CreateAPIKey creates an API key for the REST API
 func (api *LiftRestAPI) CreateAPIKey(name *string) awsapigateway.IApiKey {
-	return awsapigateway.NewApiKey(api, jsii.String("ApiKey"), &awsapigateway.ApiKeyProps{
+	return awsapigateway.NewApiKey(api.Construct, jsii.String("ApiKey"), &awsapigateway.ApiKeyProps{
 		ApiKeyName: name,
 	})
 }
 
 // CreateUsagePlan creates a usage plan with throttling and quota
 func (api *LiftRestAPI) CreateUsagePlan(name *string, throttle *awsapigateway.ThrottleSettings, quota *awsapigateway.QuotaSettings) awsapigateway.UsagePlan {
-	return awsapigateway.NewUsagePlan(api, jsii.String("UsagePlan"), &awsapigateway.UsagePlanProps{
+	return awsapigateway.NewUsagePlan(api.Construct, jsii.String("UsagePlan"), &awsapigateway.UsagePlanProps{
 		Name:     name,
 		Throttle: throttle,
 		Quota:    quota,
@@ -426,7 +426,7 @@ func (api *LiftRestAPI) GetUrl() *string {
 
 // GetArn returns the ARN of the API
 func (api *LiftRestAPI) GetArn() *string {
-	return api.RestAPI.ArnForExecuteApi(jsii.String("*"), jsii.String("*"), jsii.String("*"))
+	return api.RestAPI.ArnForExecuteApi(jsii.String("*"), jsii.String("/*"), jsii.String("*"))
 }
 
 // GrantInvoke grants invoke permissions to a principal

@@ -1,0 +1,58 @@
+# {{.AppName}}
+
+An event-driven Lift application using Pay Theory-style deployment.
+
+## Project Structure
+
+```
+{{.AppName}}/
+├── cmd/
+│   ├── api/            # API Lambda entrypoint
+│   └── processor/      # Processor Lambda entrypoint (SQS)
+├── cdk/                # CDK infrastructure
+├── dist/               # Build outputs (generated)
+├── shell/              # Deployment scripts
+│   ├── build.sh
+│   ├── deploy.sh
+│   └── init_env_vars.sh
+├── buildspec.yml       # CodeBuild specification
+└── lift.yaml           # Lift project configuration
+```
+
+## Quick Start
+
+```bash
+# Initialize environment (edit PARTNER first)
+source ./shell/init_env_vars.sh
+
+# Build Lambda functions
+./shell/build.sh
+
+# Deploy to dev
+./shell/deploy.sh --partner <partner> --stage dev
+```
+
+## Using Lift CLI
+
+```bash
+lift build
+lift up --stage dev --partner mypartner
+```
+
+## Stages
+
+| Stage | Domain | Description |
+|-------|--------|-------------|
+| `dev` | `api.dev.{{.BaseDomain}}` | Development environment |
+| `staging` | `api.staging.{{.BaseDomain}}` | Staging/QA environment |
+| `live` | `api.{{.BaseDomain}}` | Production environment |
+
+## Stack Naming
+
+Stacks are named with the pattern: `{{.AppName}}-service-<partner>-<stage>`
+
+Example: `{{.AppName}}-service-mypartner-dev`
+
+## Documentation
+
+See `shell/DEPLOYMENT.md` for additional deployment details.

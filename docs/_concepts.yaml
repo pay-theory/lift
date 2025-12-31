@@ -11,15 +11,18 @@ concepts:
       - type_safe_handlers
       - automatic_error_handling
       - structured_logging
+      - sns_error_notifications
       - distributed_tracing
       - request_validation
       - multi_tenant_support
       - middleware_system
+      - ip_authorization
       - event_source_adapters
       - websocket_support
       - response_streaming
       - cdk_constructs
       - testing_utilities
+      - durable_eventbus
     replaces:
       - raw_lambda_handlers
       - gin_on_lambda
@@ -126,6 +129,58 @@ concepts:
       - Recover_before_business_logic
       - Auth_before_authorization
       - RateLimit_after_auth
+
+  sns_error_notifications:
+    type: feature
+    purpose: publish error logs to an SNS topic for proactive alerting
+    provides:
+      - sns_publishing_on_error_logs
+      - environment_based_configuration
+      - partner_topic_convention_support
+    configuration:
+      - ERROR_NOTIFICATION_SNS_TOPIC_ARN
+      - PARTNER
+      - STAGE
+      - AWS_REGION
+      - AWS_ACCOUNT_ID
+    key_methods:
+      - zap.WithEnvironmentErrorNotifications: read topic ARN from ERROR_NOTIFICATION_SNS_TOPIC_ARN
+      - zap.WithErrorNotifications: configure an explicit topic ARN
+      - zap.WithPartnerErrorNotifications: construct topic ARN from partner/stage (+ AWS account auto-detection)
+    iam_requirements:
+      - "sns:Publish"
+      - "sts:GetCallerIdentity (optional)"
+    related_docs:
+      - docs/sns-error-notifications.md
+      - docs/aws-account-id-auto-detection.md
+      - docs/migration-sns-error-notifications.md
+
+  aws_account_id_auto_detection:
+    type: utility
+    purpose: resolve AWS account ID for partner-scoped SNS topic ARNs
+    strategy:
+      - env_var: AWS_ACCOUNT_ID
+      - fallback: "STS GetCallerIdentity"
+    caching: process_lifetime
+    related_docs:
+      - docs/aws-account-id-auto-detection.md
+
+  ip_authorization:
+    type: feature
+    purpose: restrict requests based on caller IP allowlists
+    provides:
+      - ip_gating_middleware
+      - source_ip_extraction
+      - safe_initialization_patterns
+    key_methods:
+      - security.NewIPAuthorizationServiceFromEnv: load allowlist configuration from environment/SSM
+      - security.ExtractClientIP: determine caller IP from API Gateway headers/context
+    common_failure_modes:
+      - init_time_panics
+      - missing_partner_stage_env
+      - misconfigured_proxy_headers
+    related_docs:
+      - docs/ip-gating-and-error-handling.md
   
   event_adapters:
     type: integration_layer
@@ -155,6 +210,8 @@ concepts:
       - rest_api_v1_integration
       - response_streaming_integration
       - websocket_api_support
+      - cloudfront_static_frontends
+      - cloudfront_media_cdn
       - middleware_enabled_deployments
       - security_by_default
       - operational_excellence
@@ -164,6 +221,13 @@ concepts:
       - LiftRestAPI: API Gateway REST API (v1) integration
       - LiftWebSocketAPI: WebSocket API Gateway support
       - RateLimitedLiftFunction: rate limiting enabled functions
+      - EventBusTable: DynamoDB table for EventBus
+      - EventBusProcessor: DynamoDB stream processor wiring for EventBus
+      - EventBusScheduler: EventBridge schedule wiring for delayed publish
+      - StaticSite: S3 + CloudFront static site (OAC, Route53, ACM)
+      - FrontendDistribution: single-host UI + API proxy distribution
+      - MediaCDN: media-friendly CloudFront distribution (optional private media)
+      - HostRedirect: CloudFront Function host redirect (308)
     features:
       - automatic_iam_roles
       - xray_tracing_enabled
@@ -205,6 +269,29 @@ concepts:
     middleware:
       - WebSocketAuth: authentication for WebSocket connections
       - WebSocketMetrics: metrics collection for WebSocket events
+
+  eventbus:
+    type: feature_set
+    purpose: durable event bus for serverless workloads
+    provides:
+      - dynamodb_persisted_events
+      - time_ordered_event_ids
+      - multi_tenant_queries
+      - batch_publish
+      - idempotent_publish
+      - optional_stream_processing
+      - scheduled_events
+      - lease_based_draining
+      - quarantine_and_replay
+      - consumer_checkpointing
+      - websocket_fanout_helpers
+      - governance_tags
+    implementation:
+      - services.EventBus: interface for publish/query/get/delete
+      - services.DynamoDBEventBus: DynamORM-backed DynamoDB implementation
+      - services.MemoryEventBus: in-memory test implementation
+    docs:
+      - docs/eventbus-guide.md
 
   response_streaming:
     type: feature_set

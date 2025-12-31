@@ -2,6 +2,7 @@ package constructs
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
@@ -121,7 +122,7 @@ func NewLiftHostedZone(scope constructs.Construct, id *string, props *LiftHosted
 	if *props.EnableCfnExport {
 		exportName := props.CfnExportName
 		if exportName == nil {
-			exportName = jsii.String(fmt.Sprintf("HostedZoneId-%s", *props.ZoneName))
+			exportName = jsii.String(sanitizeCloudFormationExportName(fmt.Sprintf("HostedZoneId-%s", *props.ZoneName)))
 		}
 
 		awscdk.NewCfnOutput(this, jsii.String("ZoneIdOutput"), &awscdk.CfnOutputProps{
@@ -176,4 +177,34 @@ func (z *LiftHostedZone) AddCNAMERecord(recordName *string, domainName *string, 
 		DomainName: domainName,
 		Ttl:        ttl,
 	})
+}
+
+func sanitizeCloudFormationExportName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "export"
+	}
+
+	var out strings.Builder
+	out.Grow(len(name))
+
+	lastWasDash := false
+	for _, r := range name {
+		isAllowed := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == ':' || r == '-'
+		if isAllowed {
+			out.WriteRune(r)
+			lastWasDash = r == '-'
+			continue
+		}
+		if !lastWasDash {
+			out.WriteByte('-')
+			lastWasDash = true
+		}
+	}
+
+	sanitized := strings.Trim(out.String(), "-")
+	if sanitized == "" {
+		return "export"
+	}
+	return sanitized
 }

@@ -386,7 +386,9 @@ func (bb *s3BucketBuilder) shouldEnableReplication() bool {
 }
 
 // enableCrossRegionReplication enables cross-region replication
-func (bb *s3BucketBuilder) enableCrossRegionReplication(_ awss3.IBucket) {
+func (bb *s3BucketBuilder) enableCrossRegionReplication(sourceBucket awss3.IBucket) {
+	bb.processor.Bucket = sourceBucket
+	bb.processor.ReplicationBucket = bb.props.ReplicationBucket
 	bb.processor.enableCrossRegionReplication()
 }
 

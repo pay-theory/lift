@@ -2,17 +2,16 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/oklog/ulid/v2"
+	"github.com/pay-theory/dynamorm/pkg/core"
+	dynamormerrors "github.com/pay-theory/dynamorm/pkg/errors"
 )
 
 // minInt returns the smaller of two integers
@@ -23,21 +22,18 @@ func minInt(a, b int) int {
 	return b
 }
 
-// DynamoDBEventBus implements EventBus using DynamoDB for durable storage
-// This implementation is serverless-safe and survives Lambda container recycling
+// DynamoDBEventBus implements EventBus using DynamORM-backed DynamoDB storage.
+// This implementation is serverless-safe and survives Lambda container recycling.
 type DynamoDBEventBus struct {
 	handlers map[string][]EventHandler // For local processing if needed (24 bytes)
-	client   *dynamodb.Client          // DynamoDB client (8 bytes)
+	db       core.ExtendedDB           // DynamORM DB (8 bytes)
 	cwClient *cloudwatch.Client        // CloudWatch client (8 bytes)
 	config   EventBusConfig            // Configuration (variable size)
 }
 
-// NewDynamoDBEventBus creates a new DynamoDB-backed event bus
-func NewDynamoDBEventBus(client *dynamodb.Client, config EventBusConfig) *DynamoDBEventBus {
+// NewDynamoDBEventBus creates a new DynamoDB-backed event bus using DynamORM.
+func NewDynamoDBEventBus(db core.ExtendedDB, config EventBusConfig) *DynamoDBEventBus {
 	// Apply defaults
-	if config.TableName == "" {
-		config.TableName = "lift-events"
-	}
 	if config.TTL == 0 {
 		config.TTL = 30 * 24 * time.Hour
 	}
@@ -53,9 +49,18 @@ func NewDynamoDBEventBus(client *dynamodb.Client, config EventBusConfig) *Dynamo
 	if config.MetricsNamespace == "" {
 		config.MetricsNamespace = "Lift/EventBus"
 	}
+	if config.TableName != "" {
+		// Override Event.TableName() for the process lifetime.
+		// DynamORM caches table metadata per model type, so table names must be stable.
+		if err := setEventBusTableNameOverride(config.TableName); err != nil {
+			panic(fmt.Sprintf("failed to set event bus table name override: %v", err))
+		}
+	} else {
+		config.TableName = (&Event{}).TableName()
+	}
 
 	return &DynamoDBEventBus{
-		client:   client,
+		db:       db,
 		config:   config,
 		handlers: make(map[string][]EventHandler),
 	}
@@ -102,21 +107,8 @@ func (d *DynamoDBEventBus) Publish(ctx context.Context, event *Event) (string, e
 	if d.config.TTL > 0 && event.ExpiresAt.IsZero() {
 		event.ExpiresAt = now.Add(d.config.TTL)
 	}
-
-	// Convert to DynamoDB attribute values
-	item, err := attributevalue.MarshalMap(event)
-	if err != nil {
-		d.emitMetric(ctx, "PublishError", 1, map[string]string{
-			"error_type": "marshal_error",
-		})
-		return "", fmt.Errorf("failed to marshal event: %w", err)
-	}
-
-	// Add TTL attribute (Unix timestamp)
 	if !event.ExpiresAt.IsZero() {
-		item["ttl"] = &dynamodbtypes.AttributeValueMemberN{
-			Value: fmt.Sprintf("%d", event.ExpiresAt.Unix()),
-		}
+		event.TTL = event.ExpiresAt.Unix()
 	}
 
 	// Put item with retry
@@ -129,11 +121,7 @@ func (d *DynamoDBEventBus) Publish(ctx context.Context, event *Event) (string, e
 			time.Sleep(delay)
 		}
 
-		_, err = d.client.PutItem(ctx, &dynamodb.PutItemInput{
-			TableName: aws.String(d.config.TableName),
-			Item:      item,
-		})
-
+		err := d.db.WithContext(ctx).Model(event).IfNotExists().Create()
 		if err == nil {
 			// Success
 			duration := time.Since(startTime)
@@ -143,6 +131,16 @@ func (d *DynamoDBEventBus) Publish(ctx context.Context, event *Event) (string, e
 			})
 			d.emitMetric(ctx, "PublishLatency", float64(duration.Milliseconds()), map[string]string{
 				"event_type": event.EventType,
+			})
+			return event.ID, nil
+		}
+
+		if errors.Is(err, dynamormerrors.ErrConditionFailed) {
+			// Idempotent publish: the event already exists under the provided PK/SK.
+			// Treat this as success to avoid overwriting and re-triggering downstream processing.
+			d.emitMetric(ctx, "PublishDeduped", 1, map[string]string{
+				"event_type": event.EventType,
+				"tenant_id":  event.TenantID,
 			})
 			return event.ID, nil
 		}
@@ -171,63 +169,48 @@ func (d *DynamoDBEventBus) Query(ctx context.Context, query *EventQuery) ([]*Eve
 		return nil, fmt.Errorf("tenant_id is required for queries")
 	}
 
-	// For tenant-wide queries without event type, use the GSI
-	// For event-type specific queries, use the main table with composite key
-	var keyCondition expression.KeyConditionBuilder
-	var indexName *string
+	// For tenant-wide queries without event type, use the GSI.
+	// For event-type specific queries, use the main table with composite key.
 	useGSI := query.EventType == ""
 
-	if query.EventType != "" {
-		// Query specific event type using main table
-		partitionKey := fmt.Sprintf("%s#%s", query.TenantID, query.EventType)
-		keyCondition = expression.Key("pk").Equal(expression.Value(partitionKey))
+	q := d.db.WithContext(ctx).Model(&Event{})
+
+	if useGSI {
+		q = q.Index("tenant-timestamp-index").
+			Where("TenantID", "=", query.TenantID)
+
+		applyPublishedAtTimeRange(q, query)
+		q = q.OrderBy("PublishedAt", "DESC")
 	} else {
-		// Query all event types for tenant using GSI
-		keyCondition = expression.Key("tenant_id").Equal(expression.Value(query.TenantID))
-		indexName = aws.String("tenant-timestamp-index")
+		partitionKey := fmt.Sprintf("%s#%s", query.TenantID, query.EventType)
+		q = q.Where("PartitionKey", "=", partitionKey)
+
+		applySortKeyTimeRange(q, query)
+		q = q.OrderBy("SortKey", "DESC")
 	}
 
-	// Add time range to sort key condition if specified
-	keyCondition = applyTimeRangeToKeyCondition(keyCondition, query, useGSI)
-
-	// Build filter expression for tags if specified
-	filterExpr, hasFilter := buildTagFilterExpression(query.Tags)
-
-	// Build expression
-	expr, err := buildQueryExpression(keyCondition, filterExpr, hasFilter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build expression: %w", err)
+	// Add tag filters (AND semantics)
+	for _, tag := range query.Tags {
+		if tag == "" {
+			continue
+		}
+		q = q.Filter("Tags", "CONTAINS", tag)
 	}
 
-	// Set limit with safe conversion
-	limit := int32(100)
+	limit := 100
 	if query.Limit > 0 && query.Limit <= 1000 {
-		limit = int32(query.Limit) // Safe: already validated range
+		limit = query.Limit
 	}
-
-	// Execute query
-	input := &dynamodb.QueryInput{
-		TableName:                 aws.String(d.config.TableName),
-		KeyConditionExpression:    expr.KeyCondition(),
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
-		Limit:                     aws.Int32(limit),
-		ScanIndexForward:          aws.Bool(false), // Most recent first
-		IndexName:                 indexName,
-	}
-
-	if expr.Filter() != nil {
-		input.FilterExpression = expr.Filter()
-	}
+	q = q.Limit(limit)
 
 	if query.LastEvaluatedKey != nil {
-		lastKeyMarshaled, marshalErr := attributevalue.MarshalMap(query.LastEvaluatedKey)
-		if marshalErr == nil {
-			input.ExclusiveStartKey = lastKeyMarshaled
+		if cursor, ok := query.LastEvaluatedKey["cursor"].(string); ok && cursor != "" {
+			q = q.Cursor(cursor)
 		}
 	}
 
-	result, err := d.client.Query(ctx, input)
+	var events []*Event
+	page, err := q.AllPaginated(&events)
 	if err != nil {
 		d.emitMetric(ctx, "QueryError", 1, map[string]string{
 			"error_type": "query_failed",
@@ -235,19 +218,10 @@ func (d *DynamoDBEventBus) Query(ctx context.Context, query *EventQuery) ([]*Eve
 		return nil, fmt.Errorf("failed to query events: %w", err)
 	}
 
-	// Unmarshal results
-	var events []*Event
-	err = attributevalue.UnmarshalListOfMaps(result.Items, &events)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal events: %w", err)
-	}
-
-	// Set pagination token if there are more results
-	if result.LastEvaluatedKey != nil {
-		nextKey := make(map[string]interface{})
-		if unmarshalErr := attributevalue.UnmarshalMap(result.LastEvaluatedKey, &nextKey); unmarshalErr == nil {
-			query.NextKey = nextKey
-		}
+	if page != nil && page.HasMore && page.NextCursor != "" {
+		query.NextKey = map[string]interface{}{"cursor": page.NextCursor}
+	} else {
+		query.NextKey = nil
 	}
 
 	d.emitMetric(ctx, "QuerySuccess", 1, map[string]string{
@@ -255,6 +229,32 @@ func (d *DynamoDBEventBus) Query(ctx context.Context, query *EventQuery) ([]*Eve
 	})
 
 	return events, nil
+}
+
+func applySortKeyTimeRange(q core.Query, query *EventQuery) {
+	switch {
+	case query.StartTime != nil && query.EndTime != nil:
+		startKey := fmt.Sprintf("%d#", query.StartTime.UnixNano())
+		endKey := fmt.Sprintf("%d#", query.EndTime.UnixNano()+1) // exclusive upper bound
+		q.Where("SortKey", "BETWEEN", []any{startKey, endKey})
+	case query.StartTime != nil:
+		startKey := fmt.Sprintf("%d#", query.StartTime.UnixNano())
+		q.Where("SortKey", ">=", startKey)
+	case query.EndTime != nil:
+		endKey := fmt.Sprintf("%d#", query.EndTime.UnixNano())
+		q.Where("SortKey", "<", endKey)
+	}
+}
+
+func applyPublishedAtTimeRange(q core.Query, query *EventQuery) {
+	switch {
+	case query.StartTime != nil && query.EndTime != nil:
+		q.Where("PublishedAt", "BETWEEN", []any{*query.StartTime, *query.EndTime})
+	case query.StartTime != nil:
+		q.Where("PublishedAt", ">=", *query.StartTime)
+	case query.EndTime != nil:
+		q.Where("PublishedAt", "<=", *query.EndTime)
+	}
 }
 
 // Subscribe registers a handler (for DynamoDB Streams integration)
@@ -273,39 +273,21 @@ func (d *DynamoDBEventBus) Subscribe(_ context.Context, eventType string, handle
 }
 
 // GetEvent retrieves a specific event by ID
-// This uses a scan which can be slow - consider adding a GSI on ID if needed
 func (d *DynamoDBEventBus) GetEvent(ctx context.Context, eventID string) (*Event, error) {
 	if eventID == "" {
 		return nil, fmt.Errorf("event ID cannot be empty")
 	}
 
-	// Build filter expression
-	filter := expression.Name("id").Equal(expression.Value(eventID))
-	expr, err := expression.NewBuilder().WithFilter(filter).Build()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build expression: %w", err)
-	}
-
-	// Scan for the event (consider adding GSI for better performance)
-	result, err := d.client.Scan(ctx, &dynamodb.ScanInput{
-		TableName:                 aws.String(d.config.TableName),
-		FilterExpression:          expr.Filter(),
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
-		Limit:                     aws.Int32(1),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get event: %w", err)
-	}
-
-	if len(result.Items) == 0 {
-		return nil, fmt.Errorf("event not found: %s", eventID)
-	}
-
 	var event Event
-	err = attributevalue.UnmarshalMap(result.Items[0], &event)
+	err := d.db.WithContext(ctx).Model(&Event{}).
+		Index("event-id-index").
+		Where("ID", "=", eventID).
+		First(&event)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal event: %w", err)
+		if errors.Is(err, dynamormerrors.ErrItemNotFound) {
+			return nil, fmt.Errorf("event not found: %s", eventID)
+		}
+		return nil, fmt.Errorf("failed to get event: %w", err)
 	}
 
 	return &event, nil
@@ -323,14 +305,10 @@ func (d *DynamoDBEventBus) DeleteEvent(ctx context.Context, eventID string) erro
 		return err
 	}
 
-	// Delete the item
-	_, err = d.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
-		TableName: aws.String(d.config.TableName),
-		Key: map[string]dynamodbtypes.AttributeValue{
-			"pk": &dynamodbtypes.AttributeValueMemberS{Value: event.PartitionKey},
-			"sk": &dynamodbtypes.AttributeValueMemberS{Value: event.SortKey},
-		},
-	})
+	err = d.db.WithContext(ctx).Model(&Event{}).
+		Where("PartitionKey", "=", event.PartitionKey).
+		Where("SortKey", "=", event.SortKey).
+		Delete()
 	if err != nil {
 		d.emitMetric(ctx, "DeleteError", 1, map[string]string{
 			"error_type": "delete_failed",
@@ -339,31 +317,6 @@ func (d *DynamoDBEventBus) DeleteEvent(ctx context.Context, eventID string) erro
 	}
 
 	d.emitMetric(ctx, "DeleteSuccess", 1, nil)
-	return nil
-}
-
-// ProcessStreamRecord processes a DynamoDB Stream record
-// This is typically called from a Lambda function triggered by DynamoDB Streams
-func (d *DynamoDBEventBus) ProcessStreamRecord(ctx context.Context, record map[string]dynamodbtypes.AttributeValue) error {
-	// Unmarshal the event
-	var event Event
-	err := attributevalue.UnmarshalMap(record, &event)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal stream record: %w", err)
-	}
-
-	// Call registered handlers
-	if handlers, ok := d.handlers[event.EventType]; ok {
-		for _, handler := range handlers {
-			if err := handler(ctx, &event); err != nil {
-				// Log error but continue processing other handlers
-				d.emitMetric(ctx, "HandlerError", 1, map[string]string{
-					"event_type": event.EventType,
-				})
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -443,158 +396,56 @@ func stringContains(s, substr string) bool {
 	return false
 }
 
-// BatchPublish publishes multiple events in a batch operation
-// This is more efficient than publishing events one at a time
+// BatchPublish publishes multiple events in a batch operation.
+// This is more efficient than publishing events one at a time.
 func (d *DynamoDBEventBus) BatchPublish(ctx context.Context, events []*Event) ([]string, error) {
 	if len(events) == 0 {
 		return nil, fmt.Errorf("no events to publish")
 	}
 
 	eventIDs := make([]string, 0, len(events))
-	batches := d.batchEvents(events)
+	now := time.Now()
 
-	for _, batch := range batches {
-		ids, err := d.publishBatch(ctx, batch)
-		if err != nil {
-			return eventIDs, err
+	for _, event := range events {
+		if event == nil {
+			return eventIDs, fmt.Errorf("event cannot be nil")
 		}
-		eventIDs = append(eventIDs, ids...)
+
+		if event.ID == "" {
+			event.ID = ulid.Make().String()
+		}
+
+		if event.PublishedAt.IsZero() {
+			event.PublishedAt = now
+		}
+		if event.CreatedAt.IsZero() {
+			event.CreatedAt = now
+		}
+
+		if event.PartitionKey == "" {
+			event.PartitionKey = fmt.Sprintf("%s#%s", event.TenantID, event.EventType)
+		}
+		if event.SortKey == "" {
+			event.SortKey = fmt.Sprintf("%d#%s", now.UnixNano(), event.ID)
+		}
+
+		if d.config.TTL > 0 && event.ExpiresAt.IsZero() {
+			event.ExpiresAt = now.Add(d.config.TTL)
+		}
+		if !event.ExpiresAt.IsZero() {
+			event.TTL = event.ExpiresAt.Unix()
+		}
+
+		eventIDs = append(eventIDs, event.ID)
+	}
+
+	if err := d.db.WithContext(ctx).Model(&Event{}).BatchCreate(events); err != nil {
+		d.emitMetric(ctx, "BatchPublishError", 1, map[string]string{
+			"error_type": "batch_write_failed",
+		})
+		return eventIDs, fmt.Errorf("failed to batch publish events: %w", err)
 	}
 
 	d.emitMetric(ctx, "BatchPublishSuccess", float64(len(events)), nil)
 	return eventIDs, nil
-}
-
-// publishBatch processes a single batch of events
-func (d *DynamoDBEventBus) publishBatch(ctx context.Context, batch []*Event) ([]string, error) {
-	writeRequests := make([]dynamodbtypes.WriteRequest, 0, len(batch))
-	eventIDs := make([]string, 0, len(batch))
-
-	for _, event := range batch {
-		if err := d.prepareEvent(event); err != nil {
-			return eventIDs, err
-		}
-
-		item, err := d.marshalEventWithTTL(event)
-		if err != nil {
-			return eventIDs, err
-		}
-
-		writeRequests = append(writeRequests, dynamodbtypes.WriteRequest{
-			PutRequest: &dynamodbtypes.PutRequest{Item: item},
-		})
-		eventIDs = append(eventIDs, event.ID)
-	}
-
-	return eventIDs, d.executeBatchWrite(ctx, writeRequests)
-}
-
-// prepareEvent sets IDs, timestamps, and keys for an event
-func (d *DynamoDBEventBus) prepareEvent(event *Event) error {
-	if event.ID == "" {
-		event.ID = ulid.Make().String()
-	}
-
-	now := time.Now()
-	if event.PublishedAt.IsZero() {
-		event.PublishedAt = now
-	}
-	if event.CreatedAt.IsZero() {
-		event.CreatedAt = now
-	}
-
-	if event.PartitionKey == "" {
-		event.PartitionKey = fmt.Sprintf("%s#%s", event.TenantID, event.EventType)
-	}
-	if event.SortKey == "" {
-		event.SortKey = fmt.Sprintf("%d#%s", now.UnixNano(), event.ID)
-	}
-
-	if d.config.TTL > 0 && event.ExpiresAt.IsZero() {
-		event.ExpiresAt = now.Add(d.config.TTL)
-	}
-
-	return nil
-}
-
-// marshalEventWithTTL marshals an event and adds TTL attribute
-func (d *DynamoDBEventBus) marshalEventWithTTL(event *Event) (map[string]dynamodbtypes.AttributeValue, error) {
-	item, err := attributevalue.MarshalMap(event)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal event: %w", err)
-	}
-
-	if !event.ExpiresAt.IsZero() {
-		item["ttl"] = &dynamodbtypes.AttributeValueMemberN{
-			Value: fmt.Sprintf("%d", event.ExpiresAt.Unix()),
-		}
-	}
-
-	return item, nil
-}
-
-// executeBatchWrite executes a DynamoDB batch write operation with retry for unprocessed items
-func (d *DynamoDBEventBus) executeBatchWrite(ctx context.Context, writeRequests []dynamodbtypes.WriteRequest) error {
-	requestItems := map[string][]dynamodbtypes.WriteRequest{
-		d.config.TableName: writeRequests,
-	}
-
-	attempt := 0
-	for attempt <= d.config.RetryAttempts {
-		if attempt > 0 {
-			// Exponential backoff for retries
-			backoffMultiplier := 1 << minInt(attempt-1, 10)
-			delay := d.config.RetryBaseDelay * time.Duration(backoffMultiplier)
-			time.Sleep(delay)
-		}
-
-		result, err := d.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
-			RequestItems: requestItems,
-		})
-
-		if err != nil {
-			if isRetryableError(err) && attempt < d.config.RetryAttempts {
-				attempt++
-				continue
-			}
-			d.emitMetric(ctx, "BatchPublishError", 1, map[string]string{
-				"error_type": "batch_write_failed",
-			})
-			return fmt.Errorf("failed to batch publish events: %w", err)
-		}
-
-		// Check for unprocessed items
-		if result.UnprocessedItems == nil || len(result.UnprocessedItems[d.config.TableName]) == 0 {
-			// All items processed successfully
-			return nil
-		}
-
-		// Retry unprocessed items
-		requestItems = result.UnprocessedItems
-		d.emitMetric(ctx, "BatchPublishRetry", float64(len(requestItems[d.config.TableName])), map[string]string{
-			"attempt": fmt.Sprintf("%d", attempt+1),
-		})
-		attempt++
-	}
-
-	// Still have unprocessed items after all retries
-	unprocessedCount := len(requestItems[d.config.TableName])
-	d.emitMetric(ctx, "BatchPublishError", 1, map[string]string{
-		"error_type":        "unprocessed_items",
-		"unprocessed_count": fmt.Sprintf("%d", unprocessedCount),
-	})
-	return fmt.Errorf("failed to process %d items after %d attempts", unprocessedCount, d.config.RetryAttempts+1)
-}
-
-// batchEvents splits events into batches of max size
-func (d *DynamoDBEventBus) batchEvents(events []*Event) [][]*Event {
-	var batches [][]*Event
-	for i := 0; i < len(events); i += d.config.MaxBatchSize {
-		end := i + d.config.MaxBatchSize
-		if end > len(events) {
-			end = len(events)
-		}
-		batches = append(batches, events[i:end])
-	}
-	return batches
 }

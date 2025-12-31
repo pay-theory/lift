@@ -1,0 +1,35 @@
+package main
+
+import (
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/pay-theory/lift/pkg/lift"
+)
+
+func main() {
+	// Create Lift app
+	app := lift.New()
+
+	// Health endpoint
+	app.GET("/health", func(ctx *lift.Context) error {
+		return ctx.JSON(map[string]string{
+			"status":  "healthy",
+			"service": "{{ .AppName }}-api",
+		})
+	})
+
+	// Event submission endpoint
+	app.POST("/events", func(ctx *lift.Context) error {
+		// TODO: Parse event payload and publish to SQS queue
+		// The queue URL is available via QUEUE_URL environment variable
+		return ctx.JSON(map[string]string{
+			"status":  "accepted",
+			"message": "Event submitted for processing",
+		})
+	})
+
+	// Run local test if not in Lambda
+	app.RunLocalTest()
+
+	// Start Lambda
+	lambda.Start(app.HandleRequest)
+}

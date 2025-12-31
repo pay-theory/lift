@@ -121,7 +121,7 @@ func (auth *APIKeyAuthorizer) createValidatorFunction(props *APIKeyAuthorizerPro
 
 	code := generateAPIKeyValidatorCode(*props.APIKeySource, *props.APIKeyParameter, tableName)
 
-	fn := NewLiftFunction(auth, jsii.String("ValidatorFunction"), &LiftFunctionProps{
+	fn := NewLiftFunction(auth.Construct, jsii.String("ValidatorFunction"), &LiftFunctionProps{
 		FunctionProps: awslambda.FunctionProps{
 			Runtime:    awslambda.Runtime_NODEJS_18_X(),
 			Handler:    jsii.String("index.handler"),

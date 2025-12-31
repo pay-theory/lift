@@ -50,32 +50,23 @@ curl -X POST https://api.example.com/api/payments \
 
 If the same request is sent again with the same idempotency key, the cached response is returned without executing the handler.
 
-## Production Setup with DynamoDB
+## Production Setup with DynamORM (DynamoDB)
 
-For production environments, use the DynamoDB store for distributed idempotency:
+For production environments, use the DynamORM store for distributed idempotency:
 
 ```go
 import (
-    "github.com/aws/aws-sdk-go-v2/config"
-    "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+    "github.com/pay-theory/dynamorm"
+    "github.com/pay-theory/dynamorm/pkg/session"
 )
 
-// Load AWS config
-cfg, err := config.LoadDefaultConfig(context.TODO())
+db, err := dynamorm.New(session.Config{Region: "us-east-1"})
 if err != nil {
     log.Fatal(err)
 }
 
-// Create DynamoDB client
-dynamoClient := dynamodb.NewFromConfig(cfg)
-
-// Create DynamoDB idempotency store
-store := middleware.NewDynamoDBIdempotencyStore(dynamoClient, middleware.DynamoDBStoreConfig{
-    TableName:      "idempotency-keys",
-    PartitionKey:   "id",
-    TTLAttribute:   "expires_at",
-    ConsistentRead: true,
-})
+// Create DynamORM idempotency store
+store := middleware.NewDynamORMIdempotencyStoreWithDB(db)
 
 // Use with middleware
 app.Use(lift.Middleware(middleware.Idempotency(middleware.IdempotencyOptions{
@@ -86,32 +77,7 @@ app.Use(lift.Middleware(middleware.Idempotency(middleware.IdempotencyOptions{
 })))
 ```
 
-### DynamoDB Table Setup
-
-Create the DynamoDB table with this configuration:
-
-```json
-{
-  "TableName": "idempotency-keys",
-  "KeySchema": [
-    {
-      "AttributeName": "id",
-      "KeyType": "HASH"
-    }
-  ],
-  "AttributeDefinitions": [
-    {
-      "AttributeName": "id",
-      "AttributeType": "S"
-    }
-  ],
-  "BillingMode": "PAY_PER_REQUEST",
-  "TimeToLiveSpecification": {
-    "AttributeName": "expires_at",
-    "Enabled": true
-  }
-}
-```
+Lift includes a CDK construct for idempotency tables in `pkg/cdk/constructs/idempotency_table.go`.
 
 ## Configuration Options
 
