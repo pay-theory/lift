@@ -146,3 +146,14 @@ func TestPrereqError_ErrorMessage(t *testing.T) {
 	err := &PrereqError{Binary: "test", Message: "custom message"}
 	assert.Equal(t, "custom message", err.Error())
 }
+
+func TestCheckCDKAndNode_NilLookPath_CoversDefault(t *testing.T) {
+	// We don't assume cdk/node are installed in CI. This test is only asserting
+	// that nil lookPath is handled and the resulting error (if any) is actionable.
+	if err := CheckCDK(nil); err != nil {
+		require.True(t, IsPrereqError(err))
+	}
+	if err := CheckNode(nil); err != nil {
+		require.True(t, IsPrereqError(err))
+	}
+}

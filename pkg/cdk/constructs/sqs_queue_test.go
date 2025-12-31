@@ -49,6 +49,12 @@ func TestLiftSQSQueue_WithExistingFunction(t *testing.T) {
 	if queue.GetQueueUrl() == nil {
 		t.Error("Queue URL should not be nil")
 	}
+	if queue.GetQueueArn() == nil {
+		t.Error("Queue ARN should not be nil")
+	}
+	if queue.GetQueueName() == nil {
+		t.Error("Queue name should not be nil")
+	}
 }
 
 func TestLiftSQSQueue_WithCustomEnvironmentVariable(t *testing.T) {

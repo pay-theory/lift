@@ -24,11 +24,19 @@ const (
 	allView             = "ALL"
 )
 
+type dynamodbClient interface {
+	DescribeTable(ctx context.Context, params *dynamodb.DescribeTableInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DescribeTableOutput, error)
+	Scan(ctx context.Context, params *dynamodb.ScanInput, optFns ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error)
+}
+
 // DynamORMScaffoldCommand scaffolds DynamORM models, CDK constructs, and examples
 type DynamORMScaffoldCommand struct{}
 
 // DynamORMMigrateCommand handles migration from existing DynamoDB tables to DynamORM
-type DynamORMMigrateCommand struct{}
+type DynamORMMigrateCommand struct {
+	awsConfigFunc     func(ctx context.Context, region string) (aws.Config, error)
+	newDynamoDBClient func(cfg aws.Config) dynamodbClient
+}
 
 func (c *DynamORMScaffoldCommand) Name() string { return "scaffold" }
 func (c *DynamORMScaffoldCommand) Description() string {
@@ -713,12 +721,24 @@ func (c *DynamORMMigrateCommand) Execute(ctx context.Context, args []string) err
 	}
 
 	// Create AWS session
-	cfg, err := awsConfig(ctx, config.Region)
+	awsConfigFunc := c.awsConfigFunc
+	if awsConfigFunc == nil {
+		awsConfigFunc = awsConfig
+	}
+
+	cfg, err := awsConfigFunc(ctx, config.Region)
 	if err != nil {
 		return fmt.Errorf("failed to create AWS config: %w", err)
 	}
 
-	client := dynamodb.NewFromConfig(cfg)
+	newClient := c.newDynamoDBClient
+	if newClient == nil {
+		newClient = func(cfg aws.Config) dynamodbClient {
+			return dynamodb.NewFromConfig(cfg)
+		}
+	}
+
+	client := newClient(cfg)
 
 	// Analyze table
 	fmt.Printf("🔍 Analyzing table: %s\n", config.TableName)
@@ -846,7 +866,7 @@ func awsConfig(ctx context.Context, region string) (aws.Config, error) {
 	return config.LoadDefaultConfig(ctx, config.WithRegion(region))
 }
 
-func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynamodb.Client, tableName string) (*TableAnalysis, error) {
+func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client dynamodbClient, tableName string) (*TableAnalysis, error) {
 	builder := newTableAnalysisBuilder(ctx, c, client, tableName)
 	return builder.build()
 }
@@ -856,7 +876,7 @@ func (c *DynamORMMigrateCommand) analyzeTable(ctx context.Context, client *dynam
 type tableAnalysisBuilder struct {
 	// Pointers first (8 bytes each)
 	cmd      *DynamORMMigrateCommand
-	client   *dynamodb.Client
+	client   dynamodbClient
 	table    *types.TableDescription
 	analysis *TableAnalysis
 	// Interface (16 bytes)
@@ -866,7 +886,7 @@ type tableAnalysisBuilder struct {
 }
 
 // newTableAnalysisBuilder creates a new table analysis builder
-func newTableAnalysisBuilder(ctx context.Context, cmd *DynamORMMigrateCommand, client *dynamodb.Client, tableName string) *tableAnalysisBuilder {
+func newTableAnalysisBuilder(ctx context.Context, cmd *DynamORMMigrateCommand, client dynamodbClient, tableName string) *tableAnalysisBuilder {
 	return &tableAnalysisBuilder{
 		cmd:       cmd,
 		ctx:       ctx,
@@ -994,8 +1014,8 @@ func (tab *tableAnalysisBuilder) sampleTableItems() {
 // finalizeAnalysis determines complexity and generates recommendations
 func (tab *tableAnalysisBuilder) finalizeAnalysis() {
 	tab.analysis.MigrationComplexity = tab.cmd.determineMigrationComplexity(tab.analysis)
-	tab.analysis.RecommendedModel = tab.cmd.generateRecommendedModel(tab.analysis)
 	tab.analysis.MultiTenantCandidate = tab.cmd.isMultiTenantCandidate(tab.analysis)
+	tab.analysis.RecommendedModel = tab.cmd.generateRecommendedModel(tab.analysis)
 }
 
 // keySchemaAnalyzer analyzes key schemas
@@ -1158,7 +1178,7 @@ func (c *DynamORMMigrateCommand) convertDynamoType(attrType types.ScalarAttribut
 	}
 }
 
-func (c *DynamORMMigrateCommand) sampleItems(ctx context.Context, client *dynamodb.Client, tableName string, analysis *TableAnalysis) error {
+func (c *DynamORMMigrateCommand) sampleItems(ctx context.Context, client dynamodbClient, tableName string, analysis *TableAnalysis) error {
 	// Scan a few items to understand the structure
 	scanInput := &dynamodb.ScanInput{
 		TableName: aws.String(tableName),
@@ -1368,11 +1388,11 @@ type {{.ModelName}} struct {
 	CreatedAt time.Time ` + "`" + `json:"created_at" dynamodb:"created_at"` + "`" + `
 	UpdatedAt time.Time ` + "`" + `json:"updated_at" dynamodb:"updated_at"` + "`" + `
 	
-	{{if .TTLSpec}}// TTL field
-	{{.TTLSpec.AttributeName}} int64 ` + "`" + `json:"{{.TTLSpec.AttributeName | ToSnakeCase}}" dynamodb:"{{.TTLSpec.AttributeName}}"` + "`" + `
+	{{if .TimeToLiveSpec}}// TTL field
+	{{.TimeToLiveSpec.AttributeName}} int64 ` + "`" + `json:"{{.TimeToLiveSpec.AttributeName | ToSnakeCase}}" dynamodb:"{{.TimeToLiveSpec.AttributeName}}"` + "`" + `
 	{{end}}
 	
-	{{range .GSIs}}// GSI fields for {{.IndexName}}
+	{{range .GlobalSecondaryIndexes}}// GSI fields for {{.IndexName}}
 	{{.PartitionKey.Name}} string ` + "`" + `json:"{{.PartitionKey.Name | ToSnakeCase}}" dynamodb:"{{.PartitionKey.Name}}" gsi:"{{.IndexName}}"` + "`" + `
 	{{if .SortKey}}{{.SortKey.Name}} string ` + "`" + `json:"{{.SortKey.Name | ToSnakeCase}}" dynamodb:"{{.SortKey.Name}}" gsi:"{{.IndexName}}"` + "`" + `
 	{{end}}{{end}}
@@ -1387,7 +1407,7 @@ func New{{.ModelName}}({{if .IsMultiTenant}}{{.PartitionKey.Name | ToSnakeCase}}
 		{{if .SortKey}}{{.SortKey.Name}}: {{.SortKey.Name | ToSnakeCase}},
 		{{end}}CreatedAt: now,
 		UpdatedAt: now,
-		{{if .TTLSpec}}{{.TTLSpec.AttributeName}}: now.Add(24 * time.Hour).Unix(),
+		{{if .TimeToLiveSpec}}{{.TimeToLiveSpec.AttributeName}}: now.Add(24 * time.Hour).Unix(),
 		{{end}}
 	}
 }
@@ -1400,7 +1420,7 @@ func (m *{{.ModelName}}) TableName() string {
 // Update updates the {{.ModelName}} timestamp
 func (m *{{.ModelName}}) Update() {
 	m.UpdatedAt = time.Now()
-	{{if .TTLSpec}}m.{{.TTLSpec.AttributeName}} = time.Now().Add(24 * time.Hour).Unix()
+	{{if .TimeToLiveSpec}}m.{{.TimeToLiveSpec.AttributeName}} = time.Now().Add(24 * time.Hour).Unix()
 	{{end}}
 }
 `
@@ -1504,7 +1524,7 @@ func New{{.ModelName}}Table(scope constructs.Construct, id *string, props *{{.Mo
 	{{end}}
 	
 	// Configure TTL if present
-	{{if .TTLSpec}}props.DynamORMTableProps.TimeToLiveAttribute = jsii.String("{{.TTLSpec.AttributeName}}")
+	{{if .TimeToLiveSpec}}props.DynamORMTableProps.TimeToLiveAttribute = jsii.String("{{.TimeToLiveSpec.AttributeName}}")
 	{{end}}
 	
 	// Configure streams if present
@@ -1518,7 +1538,7 @@ func New{{.ModelName}}Table(scope constructs.Construct, id *string, props *{{.Mo
 	// Create the DynamORM table
 	this.DynamORMTable = constructs.NewDynamORMTable(this, jsii.String("Table"), props.DynamORMTableProps)
 	
-	{{range .GSIs}}// Add {{.IndexName}} GSI from migration
+	{{range .GlobalSecondaryIndexes}}// Add {{.IndexName}} GSI from migration
 	this.DynamORMTable.AddGSI(&constructs.GSIProps{
 		IndexName: jsii.String("{{.IndexName}}"),
 		PartitionKey: &awsdynamodb.Attribute{
@@ -2052,14 +2072,14 @@ func Test{{.ModelName}}_New{{.ModelName}}(t *testing.T) {
 	{{if .SortKey}}assert.Equal(t, "sort123", {{.ModelName | ToLowerCase}}.{{.SortKey.Name}}){{end}}{{end}}
 	assert.False(t, {{.ModelName | ToLowerCase}}.CreatedAt.IsZero())
 	assert.False(t, {{.ModelName | ToLowerCase}}.UpdatedAt.IsZero())
-	{{if .TTLSpec}}assert.Greater(t, {{.ModelName | ToLowerCase}}.{{.TTLSpec.AttributeName}}, int64(0)){{end}}
+	{{if .TimeToLiveSpec}}assert.Greater(t, {{.ModelName | ToLowerCase}}.{{.TimeToLiveSpec.AttributeName}}, int64(0)){{end}}
 }
 
 func Test{{.ModelName}}_Update(t *testing.T) {
 	{{if .IsMultiTenant}}{{.ModelName | ToLowerCase}} := New{{.ModelName}}("tenant123"{{if .SortKey}}, "sort123"{{end}}){{else}}{{.ModelName | ToLowerCase}} := New{{.ModelName}}("pk123"{{if .SortKey}}, "sort123"{{end}}){{end}}
 	
 	originalUpdatedAt := {{.ModelName | ToLowerCase}}.UpdatedAt
-	{{if .TTLSpec}}originalTTL := {{.ModelName | ToLowerCase}}.{{.TTLSpec.AttributeName}}{{end}}
+	{{if .TimeToLiveSpec}}originalTTL := {{.ModelName | ToLowerCase}}.{{.TimeToLiveSpec.AttributeName}}{{end}}
 	
 	// Wait a bit to ensure timestamp changes
 	time.Sleep(10 * time.Millisecond)
@@ -2067,7 +2087,7 @@ func Test{{.ModelName}}_Update(t *testing.T) {
 	{{.ModelName | ToLowerCase}}.Update()
 	
 	assert.True(t, {{.ModelName | ToLowerCase}}.UpdatedAt.After(originalUpdatedAt))
-	{{if .TTLSpec}}assert.Greater(t, {{.ModelName | ToLowerCase}}.{{.TTLSpec.AttributeName}}, originalTTL){{end}}
+	{{if .TimeToLiveSpec}}assert.Greater(t, {{.ModelName | ToLowerCase}}.{{.TimeToLiveSpec.AttributeName}}, originalTTL){{end}}
 }
 
 func Test{{.ModelName}}_DynamORMIntegration(t *testing.T) {
@@ -2119,7 +2139,7 @@ func Test{{.ModelName}}_DynamORMIntegration(t *testing.T) {
 	assert.Equal(t, dynamorm.ErrNotFound, err)
 }
 
-{{range .GSIs}}func Test{{$.ModelName}}_{{.IndexName}}GSI(t *testing.T) {
+{{range .GlobalSecondaryIndexes}}func Test{{$.ModelName}}_{{.IndexName}}GSI(t *testing.T) {
 	ctx := context.Background()
 	
 	// Setup test environment  
@@ -2194,22 +2214,22 @@ func Test{{.ModelName}}_DynamORMIntegration(t *testing.T) {
 }
 {{end}}
 
-{{if .TTLSpec}}func Test{{.ModelName}}_TTLHandling(t *testing.T) {
+{{if .TimeToLiveSpec}}func Test{{.ModelName}}_TTLHandling(t *testing.T) {
 	{{if .IsMultiTenant}}{{.ModelName | ToLowerCase}} := New{{.ModelName}}("tenant123"{{if .SortKey}}, "sort123"{{end}}){{else}}{{.ModelName | ToLowerCase}} := New{{.ModelName}}("pk123"{{if .SortKey}}, "sort123"{{end}}){{end}}
 	
 	// Test initial TTL is set
-	assert.Greater(t, {{.ModelName | ToLowerCase}}.{{.TTLSpec.AttributeName}}, int64(0))
+	assert.Greater(t, {{.ModelName | ToLowerCase}}.{{.TimeToLiveSpec.AttributeName}}, int64(0))
 	
 	// Test TTL is in the future
 	futureTime := time.Now().Add(time.Hour).Unix()
-	assert.LessOrEqual(t, {{.ModelName | ToLowerCase}}.{{.TTLSpec.AttributeName}}, futureTime)
+	assert.LessOrEqual(t, {{.ModelName | ToLowerCase}}.{{.TimeToLiveSpec.AttributeName}}, futureTime)
 	
 	// Test Update refreshes TTL
-	originalTTL := {{.ModelName | ToLowerCase}}.{{.TTLSpec.AttributeName}}
+	originalTTL := {{.ModelName | ToLowerCase}}.{{.TimeToLiveSpec.AttributeName}}
 	time.Sleep(10 * time.Millisecond)
 	{{.ModelName | ToLowerCase}}.Update()
 	
-	assert.Greater(t, {{.ModelName | ToLowerCase}}.{{.TTLSpec.AttributeName}}, originalTTL)
+	assert.Greater(t, {{.ModelName | ToLowerCase}}.{{.TimeToLiveSpec.AttributeName}}, originalTTL)
 }
 {{end}}
 

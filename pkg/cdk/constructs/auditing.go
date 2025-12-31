@@ -351,7 +351,7 @@ func (b *auditingConstructBuilder) build() *AuditingConstruct {
 	dashboard, alarms := b.setupMonitoring(applicationLogGroup, databaseLogGroup, auditLogGroup)
 
 	// Store audit configuration
-	storeAuditConfiguration(b.construct, b.props)
+	storeAuditConfiguration(b.construct, b.props, b.config)
 
 	return &AuditingConstruct{
 		Construct:              b.construct,
@@ -742,20 +742,25 @@ func createAuditLambdaFunction(scope constructs.Construct, id string, props *Aud
 	Description  string
 	Permissions  string // PermissionRead or PermissionReadWrite
 }) awslambda.Function {
+	environmentName := props.Environment
+	if environmentName == nil {
+		environmentName = jsii.String("prod")
+	}
+
 	// Create environment variables
 	environment := &map[string]*string{
 		"AUDIT_BUCKET": bucket.BucketName(),
 		"APP_NAME":     props.AppName,
-		"ENVIRONMENT":  props.Environment,
+		"ENVIRONMENT":  environmentName,
 	}
 
 	// Create the Lambda function
 	function := awslambda.NewFunction(scope, jsii.String(id), &awslambda.FunctionProps{
 		FunctionName: jsii.String(config.FunctionName),
 		Description:  jsii.String(config.Description),
-		Runtime:      awslambda.Runtime_GO_1_X(),
-		Code:         awslambda.Code_FromInline(jsii.String("// Placeholder audit function code")),
-		Handler:      jsii.String("main"),
+		Runtime:      awslambda.Runtime_NODEJS_18_X(),
+		Code:         awslambda.Code_FromInline(jsii.String("exports.handler = async () => ({ statusCode: 200, body: \"ok\" });")),
+		Handler:      jsii.String("index.handler"),
 		Timeout:      config.Timeout,
 		Environment:  environment,
 	})
@@ -997,16 +1002,36 @@ func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogG
 }
 
 // storeAuditConfiguration stores audit configuration in SSM Parameter Store
-func storeAuditConfiguration(scope constructs.Construct, props *AuditingProps) {
+func storeAuditConfiguration(scope constructs.Construct, props *AuditingProps, config *auditingConstructConfig) {
+	if props == nil {
+		return
+	}
+
+	auditLevel := props.AuditLevel
+	if auditLevel == "" && config != nil {
+		auditLevel = config.auditLevel
+	}
+	if auditLevel == "" {
+		auditLevel = AuditLevelDetailed
+	}
+
+	retentionDays := props.LogRetentionDays
+	if retentionDays == nil && config != nil {
+		retentionDays = config.logRetentionDays
+	}
+	if retentionDays == nil {
+		retentionDays = jsii.Number(2555)
+	}
+
 	awsssm.NewStringParameter(scope, jsii.String("AuditLevel"), &awsssm.StringParameterProps{
 		ParameterName: jsii.String(fmt.Sprintf("/%s/audit/level", *props.AppName)),
-		StringValue:   jsii.String(string(props.AuditLevel)),
+		StringValue:   jsii.String(string(auditLevel)),
 		Description:   jsii.String("Audit logging level"),
 	})
 
 	awsssm.NewStringParameter(scope, jsii.String("AuditRetentionDays"), &awsssm.StringParameterProps{
 		ParameterName: jsii.String(fmt.Sprintf("/%s/audit/retention-days", *props.AppName)),
-		StringValue:   jsii.String(fmt.Sprintf("%.0f", *props.LogRetentionDays)),
+		StringValue:   jsii.String(fmt.Sprintf("%.0f", *retentionDays)),
 		Description:   jsii.String("Audit log retention period in days"),
 	})
 

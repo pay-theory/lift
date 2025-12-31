@@ -79,9 +79,13 @@ func parseIPList(ipList string) []string {
 
 // SSMIPAuthorizer handles IP authorization using AWS SSM parameters with caching
 type SSMIPAuthorizer struct {
-	ssmClient *ssm.Client
+	ssmClient ssmClient
 	cache     *cache.Cache
 	cacheTTL  time.Duration
+}
+
+type ssmClient interface {
+	GetParameter(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error)
 }
 
 // SSMIPAuthorizerConfig configures the SSM IP authorizer

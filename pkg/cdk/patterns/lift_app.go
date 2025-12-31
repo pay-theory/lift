@@ -107,13 +107,18 @@ func (b *liftAppBuilder) prepareEnvironment() {
 		}
 	}
 
-	// Add database table name if enabled
-	if b.props.EnableDatabase != nil && *b.props.EnableDatabase {
-		tableName := b.props.DatabaseTableName
-		if tableName == nil {
-			tableName = jsii.String(*b.props.AppName + "-table")
+	// Prefer an explicitly provided table reference when present.
+	if b.props.DatabaseTable != nil {
+		b.env["DYNAMODB_TABLE"] = b.props.DatabaseTable.Table.TableName()
+	} else {
+		// Add database table name if enabled
+		if b.props.EnableDatabase != nil && *b.props.EnableDatabase {
+			tableName := b.props.DatabaseTableName
+			if tableName == nil {
+				tableName = jsii.String(*b.props.AppName + "-table")
+			}
+			b.env["DYNAMODB_TABLE"] = tableName
 		}
-		b.env["DYNAMODB_TABLE"] = tableName
 	}
 
 	// Add rate limit table name if enabled

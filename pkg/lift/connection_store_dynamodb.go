@@ -15,7 +15,7 @@ import (
 
 // DynamoDBConnectionStore implements ConnectionStore using DynamoDB
 type DynamoDBConnectionStore struct {
-	db       core.ExtendedDB
+	db       dynamormDB
 	ttlHours int
 }
 
@@ -53,7 +53,7 @@ func NewDynamoDBConnectionStore(_ context.Context, config DynamoDBConnectionStor
 	}
 
 	return &DynamoDBConnectionStore{
-		db:       db,
+		db:       wrapDynamormDB(db),
 		ttlHours: config.TTLHours,
 	}, nil
 }
@@ -72,7 +72,7 @@ func NewDynamoDBConnectionStoreWithDB(db core.ExtendedDB, config DynamoDBConnect
 	}
 
 	return &DynamoDBConnectionStore{
-		db:       db,
+		db:       wrapDynamormDB(db),
 		ttlHours: config.TTLHours,
 	}, nil
 }

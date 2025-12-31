@@ -19,7 +19,7 @@ import (
 //
 // This allows fanout without scans and allows disconnect cleanup without scanning by topic.
 type DynamoDBSubscriptionStore struct {
-	db       core.ExtendedDB
+	db       dynamormDB
 	ttlHours int
 }
 
@@ -49,7 +49,7 @@ func NewDynamoDBSubscriptionStore(_ context.Context, config DynamoDBSubscription
 	}
 
 	return &DynamoDBSubscriptionStore{
-		db:       db,
+		db:       wrapDynamormDB(db),
 		ttlHours: config.TTLHours,
 	}, nil
 }
@@ -67,7 +67,7 @@ func NewDynamoDBSubscriptionStoreWithDB(db core.ExtendedDB, config DynamoDBSubsc
 	}
 
 	return &DynamoDBSubscriptionStore{
-		db:       db,
+		db:       wrapDynamormDB(db),
 		ttlHours: config.TTLHours,
 	}, nil
 }
@@ -151,7 +151,7 @@ func (s *DynamoDBSubscriptionStore) Subscribe(ctx context.Context, tenantID stri
 	}
 
 	// Use a transaction for atomicity (2 items).
-	return s.db.TransactWrite(ctx, func(tx core.TransactionBuilder) error {
+	return s.db.TransactWrite(ctx, func(tx dynamormTransaction) error {
 		tx.Put(forward)
 		tx.Put(reverse)
 		return nil
@@ -183,7 +183,7 @@ func (s *DynamoDBSubscriptionStore) Unsubscribe(ctx context.Context, tenantID st
 		SK: subscriptionConnectionSK(tenantID, topic),
 	}
 
-	return s.db.TransactWrite(ctx, func(tx core.TransactionBuilder) error {
+	return s.db.TransactWrite(ctx, func(tx dynamormTransaction) error {
 		tx.Delete(forward)
 		tx.Delete(reverse)
 		return nil

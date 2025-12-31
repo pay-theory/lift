@@ -328,6 +328,12 @@ func (c *CacheMiddleware) serveResult(ctx *lift.Context, result any) error {
 	ctx.Response.Header("X-Cache", "MISS")
 	ctx.Response.Header("X-Cache-Key", c.generateKey(ctx))
 
+	// If the downstream handler already wrote the response (typical Lift usage),
+	// avoid re-writing the body and just add the cache headers.
+	if ctx.Response != nil && ctx.Response.IsWritten() {
+		return nil
+	}
+
 	return ctx.JSON(result)
 }
 

@@ -16,9 +16,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 )
 
+type secretsManagerClient interface {
+	GetSecretValue(ctx context.Context, params *secretsmanager.GetSecretValueInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error)
+	UpdateSecret(ctx context.Context, params *secretsmanager.UpdateSecretInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.UpdateSecretOutput, error)
+	CreateSecret(ctx context.Context, params *secretsmanager.CreateSecretInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.CreateSecretOutput, error)
+	RotateSecret(ctx context.Context, params *secretsmanager.RotateSecretInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.RotateSecretOutput, error)
+	DeleteSecret(ctx context.Context, params *secretsmanager.DeleteSecretInput, optFns ...func(*secretsmanager.Options)) (*secretsmanager.DeleteSecretOutput, error)
+}
+
 // AWSSecretsManager implements the SecretsProvider interface using AWS Secrets Manager
 type AWSSecretsManager struct {
-	client         *secretsmanager.Client
+	client         secretsManagerClient
 	cache          *SecretCache          // Legacy plain text cache (deprecated)
 	encryptedCache *EncryptedSecretCache // New encrypted cache
 	keyPrefix      string

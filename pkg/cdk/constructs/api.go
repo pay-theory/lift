@@ -495,7 +495,7 @@ func (api *LiftAPI) AddRoutes(routes map[string]map[string]awslambda.IFunction) 
 //   - The API key authorizer
 func (api *LiftAPI) EnableApiKeyAuth() awsapigatewayv2.IHttpRouteAuthorizer {
 	// HTTP APIs don't have built-in API key support, so we use a Lambda authorizer
-	authorizer := NewAPIKeyAuthorizer(api, jsii.String("APIKeyAuth"), &APIKeyAuthorizerProps{
+	authorizer := NewAPIKeyAuthorizer(api.Construct, jsii.String("APIKeyAuth"), &APIKeyAuthorizerProps{
 		APIKeySource:    jsii.String("header"),
 		APIKeyParameter: jsii.String("X-API-Key"),
 		ResultsCacheTtl: jsii.Number(300), // Cache for 5 minutes
@@ -652,6 +652,6 @@ func (api *LiftAPI) GrantInvoke(grantee awsiam.IGrantable) awsiam.Grant {
 	return awsiam.Grant_AddToPrincipal(&awsiam.GrantOnPrincipalOptions{
 		Grantee:      grantee,
 		Actions:      &[]*string{jsii.String("execute-api:Invoke")},
-		ResourceArns: &[]*string{api.HttpAPI.ArnForExecuteApi(jsii.String("*"), jsii.String("*"), jsii.String("*"))},
+		ResourceArns: &[]*string{api.HttpAPI.ArnForExecuteApi(jsii.String("*"), jsii.String("/*"), jsii.String("*"))},
 	})
 }

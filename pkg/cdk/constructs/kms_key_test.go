@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -149,4 +150,46 @@ func TestLiftKMSKey_Tags(t *testing.T) {
 	// We can't directly test tag application in unit tests, but we can verify the key was created
 	template := assertions.Template_FromStack(stack, nil)
 	template.ResourceCountIs(jsii.String("AWS::KMS::Key"), jsii.Number(1))
+}
+
+func TestLiftKMSKey_HelperMethodsAndGrants(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
+
+	key := NewLiftKMSKey(stack, jsii.String("TestKey"), &LiftKMSKeyProps{
+		Description: jsii.String("Test key"),
+		AliasName:   jsii.String("alias/test/key"),
+	})
+
+	grantee := awsiam.NewRole(stack, jsii.String("Grantee"), &awsiam.RoleProps{
+		AssumedBy: awsiam.NewServicePrincipal(jsii.String("lambda.amazonaws.com"), nil),
+	})
+
+	if key.GetKey() == nil {
+		t.Fatal("expected key")
+	}
+	if key.GetKeyArn() == nil {
+		t.Fatal("expected key arn")
+	}
+	if key.GetKeyId() == nil {
+		t.Fatal("expected key id")
+	}
+	if key.GetResourceName() == nil {
+		t.Fatal("expected resource name")
+	}
+
+	key.GrantEncryptDecrypt(grantee)
+	key.GrantDecrypt(grantee)
+	key.GrantEncrypt(grantee)
+	key.GrantGenerateMac(grantee)
+
+	key.AddToResourcePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect: awsiam.Effect_ALLOW,
+		Actions: &[]*string{
+			jsii.String("kms:DescribeKey"),
+		},
+		Resources: &[]*string{
+			jsii.String("*"),
+		},
+	}))
 }

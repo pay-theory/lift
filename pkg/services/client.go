@@ -395,6 +395,9 @@ func (c *ServiceClient) isRetryableStatusCode(statusCode int) bool {
 // isRetryableError checks if an error is retryable
 func (c *ServiceClient) isRetryableError(err error) bool {
 	errStr := err.Error()
+	if strings.HasPrefix(errStr, "retryable status code:") {
+		return true
+	}
 	for _, retryableErr := range c.retryPolicy.RetryableErrors {
 		if contains(errStr, retryableErr) {
 			return true

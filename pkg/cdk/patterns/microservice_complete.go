@@ -483,15 +483,22 @@ func (m *MicroserviceComplete) createCluster(props *MicroserviceCompleteProps) {
 }
 
 func (m *MicroserviceComplete) setupServiceDiscovery(props *MicroserviceCompleteProps) {
-	// Create private DNS namespace
-	m.Namespace = awsservicediscovery.NewPrivateDnsNamespace(m.Construct, jsii.String("Namespace"), &awsservicediscovery.PrivateDnsNamespaceProps{
-		Name:        props.ServiceDiscovery.Namespace,
-		Vpc:         m.VPC,
-		Description: jsii.String(fmt.Sprintf("Service discovery namespace for %s", *props.ServiceName)),
-	})
+	if props.ServiceDiscovery == nil || props.ServiceDiscovery.Namespace == nil {
+		return
+	}
 
-	// Note: Cannot set default namespace on ICluster interface
-	// This would need to be done when creating the cluster
+	cluster, ok := m.Cluster.(awsecs.Cluster)
+	if !ok {
+		return
+	}
+
+	namespace := cluster.AddDefaultCloudMapNamespace(&awsecs.CloudMapNamespaceOptions{
+		Name: props.ServiceDiscovery.Namespace,
+		Vpc:  m.VPC,
+	})
+	if privateNamespace, ok := namespace.(awsservicediscovery.IPrivateDnsNamespace); ok {
+		m.Namespace = privateNamespace
+	}
 }
 
 func (m *MicroserviceComplete) createTaskDefinition(props *MicroserviceCompleteProps) {
@@ -524,7 +531,6 @@ func (m *MicroserviceComplete) createTaskDefinition(props *MicroserviceCompleteP
 		Image: containerImage,
 		Logging: awsecs.LogDrivers_AwsLogs(&awsecs.AwsLogDriverProps{
 			StreamPrefix: jsii.String(*props.ServiceName),
-			LogRetention: props.ContainerConfig.LogRetentionDays,
 			LogGroup: awslogs.NewLogGroup(m.Construct, jsii.String("LogGroup"), &awslogs.LogGroupProps{
 				LogGroupName:  jsii.String(fmt.Sprintf("/ecs/%s", *props.ServiceName)),
 				Retention:     props.ContainerConfig.LogRetentionDays,
@@ -739,13 +745,14 @@ func (m *MicroserviceComplete) setupAutoScaling(props *MicroserviceCompleteProps
 
 	// Request-based scaling if load balancer is configured
 	if m.TargetGroup != nil && props.AutoScaling.RequestsPerTarget != nil {
-		m.ScalableTarget.ScaleOnRequestCount(jsii.String("RequestScaling"), &awsecs.RequestCountScalingProps{
-			RequestsPerTarget: props.AutoScaling.RequestsPerTarget,
-			// TargetGroup should be concrete type, not interface
-			// This would need refactoring to work properly
-			ScaleInCooldown:  *props.AutoScaling.ScaleInCooldown,
-			ScaleOutCooldown: *props.AutoScaling.ScaleOutCooldown,
-		})
+		if targetGroup, ok := m.TargetGroup.(awselasticloadbalancingv2.ApplicationTargetGroup); ok {
+			m.ScalableTarget.ScaleOnRequestCount(jsii.String("RequestScaling"), &awsecs.RequestCountScalingProps{
+				RequestsPerTarget: props.AutoScaling.RequestsPerTarget,
+				TargetGroup:       targetGroup,
+				ScaleInCooldown:   *props.AutoScaling.ScaleInCooldown,
+				ScaleOutCooldown:  *props.AutoScaling.ScaleOutCooldown,
+			})
+		}
 	}
 
 	// Scheduled scaling actions

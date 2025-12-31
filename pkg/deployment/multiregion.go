@@ -21,6 +21,7 @@ type MultiRegionDeployer struct {
 	healthCheckers   map[string]*RegionHealthChecker
 	deploymentStatus map[string]RegionDeploymentStatus
 	regions          []string
+	deployMu         sync.Mutex
 	mu               sync.RWMutex
 	primaryRegion    string
 	applicationName  string
@@ -390,8 +391,8 @@ func NewMultiRegionDeployer(config MultiRegionConfig, infraConfig Infrastructure
 
 // DeployAll deploys to all regions using the specified strategy
 func (mrd *MultiRegionDeployer) DeployAll(ctx context.Context, strategy DeploymentStrategyConfig) error {
-	mrd.mu.Lock()
-	defer mrd.mu.Unlock()
+	mrd.deployMu.Lock()
+	defer mrd.deployMu.Unlock()
 
 	switch strategy.Type {
 	case "rolling":
@@ -599,7 +600,9 @@ func (mrd *MultiRegionDeployer) healthCheckBatch(ctx context.Context, regions []
 				return
 			}
 
+			mrd.mu.RLock()
 			status := mrd.deploymentStatus[r]
+			mrd.mu.RUnlock()
 			for endpoint := range status.Endpoints {
 				if err := healthChecker.CheckHealth(ctx, endpoint); err != nil {
 					mrd.updateRegionStatus(r, StatusDeployed, HealthUnhealthy, err.Error())
@@ -721,6 +724,9 @@ func (mrd *MultiRegionDeployer) rollbackCanary(ctx context.Context) error {
 
 // updateRegionStatus updates the status of a region
 func (mrd *MultiRegionDeployer) updateRegionStatus(region string, status DeploymentStatusType, health HealthStatus, errorMsg string) {
+	mrd.mu.Lock()
+	defer mrd.mu.Unlock()
+
 	mrd.deploymentStatus[region] = RegionDeploymentStatus{
 		Region:          region,
 		Status:          status,
@@ -735,6 +741,9 @@ func (mrd *MultiRegionDeployer) updateRegionStatus(region string, status Deploym
 
 // updateRegionStatusWithEndpoints updates region status with endpoints
 func (mrd *MultiRegionDeployer) updateRegionStatusWithEndpoints(region string, status DeploymentStatusType, health HealthStatus, errorMsg string, endpoints map[string]string) {
+	mrd.mu.Lock()
+	defer mrd.mu.Unlock()
+
 	mrd.deploymentStatus[region] = RegionDeploymentStatus{
 		Region:          region,
 		Status:          status,
@@ -790,19 +799,29 @@ func (mrd *MultiRegionDeployer) StartHealthMonitoring(ctx context.Context, inter
 
 // performHealthChecks performs health checks on all regions
 func (mrd *MultiRegionDeployer) performHealthChecks(ctx context.Context) {
+	mrd.mu.RLock()
+	regions := make([]string, 0, len(mrd.deploymentStatus))
+	for region := range mrd.deploymentStatus {
+		regions = append(regions, region)
+	}
+	mrd.mu.RUnlock()
+
 	var wg sync.WaitGroup
 
-	for region := range mrd.deploymentStatus {
+	for _, region := range regions {
 		wg.Add(1)
 		go func(r string) {
 			defer wg.Done()
 
+			mrd.mu.RLock()
 			healthChecker, exists := mrd.healthCheckers[r]
 			if !exists {
+				mrd.mu.RUnlock()
 				return
 			}
 
 			status := mrd.deploymentStatus[r]
+			mrd.mu.RUnlock()
 			healthy := true
 
 			for endpoint := range status.Endpoints {

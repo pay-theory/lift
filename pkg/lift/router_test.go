@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/pay-theory/lift/pkg/lift/adapters"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewRouter(t *testing.T) {
@@ -208,4 +209,19 @@ func TestRouterHandle(t *testing.T) {
 	if ctx.Param("id") != "123" {
 		t.Errorf("Expected param id=123, got %s", ctx.Param("id"))
 	}
+}
+
+func TestRouterAddRoute_DuplicateRegistrationsPanic(t *testing.T) {
+	router := NewRouter()
+	handler := HandlerFunc(func(_ *Context) error { return nil })
+
+	router.AddRoute("GET", "/users", handler)
+	require.PanicsWithValue(t, "duplicate route registration: GET /users", func() {
+		router.AddRoute("GET", "/users", handler)
+	})
+
+	router.AddRoute("GET", "/users/:id", handler)
+	require.PanicsWithValue(t, "duplicate parameter route registration: GET /users/:id", func() {
+		router.AddRoute("GET", "/users/:id", handler)
+	})
 }
