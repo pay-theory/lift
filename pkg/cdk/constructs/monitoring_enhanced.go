@@ -552,128 +552,192 @@ func (m *EnhancedMonitoring) AddCustomAlarm(name string, alarm awscloudwatch.IAl
 	m.Alarms[name] = alarm
 }
 
-func (m *EnhancedMonitoring) lambdaDashboardRows() []*[]awscloudwatch.IWidget {
-	rows := make([]*[]awscloudwatch.IWidget, 0)
+type graphWidgetDefinition struct {
+	MetricKey string
+	Title     string
+}
 
-	row1 := make([]awscloudwatch.IWidget, 0, 4)
-	if metric := m.Metrics["SuccessRate"]; metric != nil {
-		row1 = append(row1, awscloudwatch.NewSingleValueWidget(&awscloudwatch.SingleValueWidgetProps{
-			Title:   jsii.String("Success Rate"),
-			Metrics: &[]awscloudwatch.IMetric{metric},
-			Width:   jsii.Number(6),
-			Height:  jsii.Number(6),
-		}))
-	}
-	if metric := m.Metrics["ErrorRate"]; metric != nil {
-		row1 = append(row1, awscloudwatch.NewSingleValueWidget(&awscloudwatch.SingleValueWidgetProps{
-			Title:   jsii.String("Error Rate"),
-			Metrics: &[]awscloudwatch.IMetric{metric},
-			Width:   jsii.Number(6),
-			Height:  jsii.Number(6),
-		}))
-	}
-	if metric := m.Metrics["RequestRate"]; metric != nil {
-		row1 = append(row1, awscloudwatch.NewSingleValueWidget(&awscloudwatch.SingleValueWidgetProps{
-			Title:   jsii.String("Request Rate"),
-			Metrics: &[]awscloudwatch.IMetric{metric},
-			Width:   jsii.Number(6),
-			Height:  jsii.Number(6),
-		}))
-	}
-	if metric := m.Metrics["LatencyP99"]; metric != nil {
-		row1 = append(row1, awscloudwatch.NewSingleValueWidget(&awscloudwatch.SingleValueWidgetProps{
-			Title:   jsii.String("P99 Latency"),
-			Metrics: &[]awscloudwatch.IMetric{metric},
-			Width:   jsii.Number(6),
-			Height:  jsii.Number(6),
-		}))
-	}
-	if len(row1) > 0 {
-		rows = append(rows, &row1)
-	}
+func (m *EnhancedMonitoring) graphRow(definitions []graphWidgetDefinition) *[]awscloudwatch.IWidget {
+	row := make([]awscloudwatch.IWidget, 0, len(definitions))
 
-	row2 := make([]awscloudwatch.IWidget, 0, 2)
-	if metric := m.Metrics["Requests"]; metric != nil {
-		row2 = append(row2, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Request Volume"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if metric := m.Metrics["Errors"]; metric != nil {
-		row2 = append(row2, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Errors"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if len(row2) > 0 {
-		rows = append(rows, &row2)
-	}
-
-	if m.Metrics["LatencyP50"] != nil || m.Metrics["LatencyP95"] != nil || m.Metrics["LatencyP99"] != nil {
-		row3Metrics := make([]awscloudwatch.IMetric, 0, 3)
-		if metric := m.Metrics["LatencyP50"]; metric != nil {
-			row3Metrics = append(row3Metrics, metric)
-		}
-		if metric := m.Metrics["LatencyP95"]; metric != nil {
-			row3Metrics = append(row3Metrics, metric)
-		}
-		if metric := m.Metrics["LatencyP99"]; metric != nil {
-			row3Metrics = append(row3Metrics, metric)
-		}
-		row3 := []awscloudwatch.IWidget{
-			awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-				Title:  jsii.String("Latency Percentiles"),
-				Left:   &row3Metrics,
-				Width:  jsii.Number(24),
+	for _, definition := range definitions {
+		if metric := m.Metrics[definition.MetricKey]; metric != nil {
+			row = append(row, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
+				Title:  jsii.String(definition.Title),
+				Left:   &[]awscloudwatch.IMetric{metric},
+				Width:  jsii.Number(12),
 				Height: jsii.Number(6),
-			}),
+			}))
 		}
-		rows = append(rows, &row3)
 	}
 
-	row4 := make([]awscloudwatch.IWidget, 0, 2)
-	if m.Metrics["ColdStarts"] != nil || m.Metrics["ColdStartDuration"] != nil {
-		left := make([]awscloudwatch.IMetric, 0, 1)
-		right := make([]awscloudwatch.IMetric, 0, 1)
-		if metric := m.Metrics["ColdStarts"]; metric != nil {
-			left = append(left, metric)
-		}
-		if metric := m.Metrics["ColdStartDuration"]; metric != nil {
-			right = append(right, metric)
-		}
-		row4 = append(row4, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Cold Starts"),
-			Left:   &left,
-			Right:  &right,
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if m.Metrics["ConcurrentExecutions"] != nil || m.Metrics["MemoryUtilization"] != nil {
-		left := make([]awscloudwatch.IMetric, 0, 2)
-		if metric := m.Metrics["ConcurrentExecutions"]; metric != nil {
-			left = append(left, metric)
-		}
-		if metric := m.Metrics["MemoryUtilization"]; metric != nil {
-			left = append(left, metric)
-		}
-		row4 = append(row4, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Resource Utilization"),
-			Left:   &left,
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if len(row4) > 0 {
-		rows = append(rows, &row4)
+	if len(row) == 0 {
+		return nil
 	}
 
+	return &row
+}
+
+func (m *EnhancedMonitoring) graphRows(definitions ...[]graphWidgetDefinition) []*[]awscloudwatch.IWidget {
+	rows := make([]*[]awscloudwatch.IWidget, 0, len(definitions))
+
+	for _, rowDefinitions := range definitions {
+		if row := m.graphRow(rowDefinitions); row != nil {
+			rows = append(rows, row)
+		}
+	}
+
+	return rows
+}
+
+func appendRowIfNotEmpty(rows []*[]awscloudwatch.IWidget, row *[]awscloudwatch.IWidget) []*[]awscloudwatch.IWidget {
+	if row == nil || len(*row) == 0 {
+		return rows
+	}
+
+	return append(rows, row)
+}
+
+func (m *EnhancedMonitoring) lambdaDashboardRows() []*[]awscloudwatch.IWidget {
+	rows := make([]*[]awscloudwatch.IWidget, 0, 5)
+
+	rows = appendRowIfNotEmpty(rows, m.lambdaSummaryRow())
+	rows = appendRowIfNotEmpty(rows, m.lambdaRequestAndErrorsRow())
+	rows = appendRowIfNotEmpty(rows, m.lambdaLatencyPercentilesRow())
+	rows = appendRowIfNotEmpty(rows, m.lambdaOperationalRow())
+	rows = appendRowIfNotEmpty(rows, m.lambdaActiveAlarmsRow())
+
+	return rows
+}
+
+func (m *EnhancedMonitoring) lambdaSummaryRow() *[]awscloudwatch.IWidget {
+	definitions := []struct {
+		MetricKey string
+		Title     string
+	}{
+		{MetricKey: "SuccessRate", Title: "Success Rate"},
+		{MetricKey: "ErrorRate", Title: "Error Rate"},
+		{MetricKey: "RequestRate", Title: "Request Rate"},
+		{MetricKey: "LatencyP99", Title: "P99 Latency"},
+	}
+
+	row := make([]awscloudwatch.IWidget, 0, len(definitions))
+	for _, definition := range definitions {
+		if metric := m.Metrics[definition.MetricKey]; metric != nil {
+			row = append(row, awscloudwatch.NewSingleValueWidget(&awscloudwatch.SingleValueWidgetProps{
+				Title:   jsii.String(definition.Title),
+				Metrics: &[]awscloudwatch.IMetric{metric},
+				Width:   jsii.Number(6),
+				Height:  jsii.Number(6),
+			}))
+		}
+	}
+
+	if len(row) == 0 {
+		return nil
+	}
+
+	return &row
+}
+
+func (m *EnhancedMonitoring) lambdaRequestAndErrorsRow() *[]awscloudwatch.IWidget {
+	return m.graphRow([]graphWidgetDefinition{
+		{MetricKey: "Requests", Title: "Request Volume"},
+		{MetricKey: "Errors", Title: "Errors"},
+	})
+}
+
+func (m *EnhancedMonitoring) lambdaLatencyPercentilesRow() *[]awscloudwatch.IWidget {
+	metricKeys := []string{"LatencyP50", "LatencyP95", "LatencyP99"}
+
+	metrics := make([]awscloudwatch.IMetric, 0, len(metricKeys))
+	for _, metricKey := range metricKeys {
+		if metric := m.Metrics[metricKey]; metric != nil {
+			metrics = append(metrics, metric)
+		}
+	}
+
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	row := []awscloudwatch.IWidget{
+		awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
+			Title:  jsii.String("Latency Percentiles"),
+			Left:   &metrics,
+			Width:  jsii.Number(24),
+			Height: jsii.Number(6),
+		}),
+	}
+
+	return &row
+}
+
+func (m *EnhancedMonitoring) lambdaOperationalRow() *[]awscloudwatch.IWidget {
+	row := make([]awscloudwatch.IWidget, 0, 2)
+
+	if widget := m.lambdaColdStartsWidget(); widget != nil {
+		row = append(row, widget)
+	}
+	if widget := m.lambdaResourceUtilizationWidget(); widget != nil {
+		row = append(row, widget)
+	}
+
+	if len(row) == 0 {
+		return nil
+	}
+
+	return &row
+}
+
+func (m *EnhancedMonitoring) lambdaColdStartsWidget() awscloudwatch.IWidget {
+	left := make([]awscloudwatch.IMetric, 0, 1)
+	if metric := m.Metrics["ColdStarts"]; metric != nil {
+		left = append(left, metric)
+	}
+
+	right := make([]awscloudwatch.IMetric, 0, 1)
+	if metric := m.Metrics["ColdStartDuration"]; metric != nil {
+		right = append(right, metric)
+	}
+
+	if len(left) == 0 && len(right) == 0 {
+		return nil
+	}
+
+	return awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
+		Title:  jsii.String("Cold Starts"),
+		Left:   &left,
+		Right:  &right,
+		Width:  jsii.Number(12),
+		Height: jsii.Number(6),
+	})
+}
+
+func (m *EnhancedMonitoring) lambdaResourceUtilizationWidget() awscloudwatch.IWidget {
+	left := make([]awscloudwatch.IMetric, 0, 2)
+	if metric := m.Metrics["ConcurrentExecutions"]; metric != nil {
+		left = append(left, metric)
+	}
+	if metric := m.Metrics["MemoryUtilization"]; metric != nil {
+		left = append(left, metric)
+	}
+
+	if len(left) == 0 {
+		return nil
+	}
+
+	return awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
+		Title:  jsii.String("Resource Utilization"),
+		Left:   &left,
+		Width:  jsii.Number(12),
+		Height: jsii.Number(6),
+	})
+}
+
+func (m *EnhancedMonitoring) lambdaActiveAlarmsRow() *[]awscloudwatch.IWidget {
 	if alarm := m.Alarms["HighErrorRate"]; alarm != nil {
-		row5 := []awscloudwatch.IWidget{
+		row := []awscloudwatch.IWidget{
 			awscloudwatch.NewAlarmWidget(&awscloudwatch.AlarmWidgetProps{
 				Title:  jsii.String("Active Alarms"),
 				Alarm:  alarm,
@@ -681,106 +745,36 @@ func (m *EnhancedMonitoring) lambdaDashboardRows() []*[]awscloudwatch.IWidget {
 				Height: jsii.Number(4),
 			}),
 		}
-		rows = append(rows, &row5)
+		return &row
 	}
 
-	return rows
+	return nil
 }
 
 func (m *EnhancedMonitoring) apiDashboardRows() []*[]awscloudwatch.IWidget {
-	rows := make([]*[]awscloudwatch.IWidget, 0)
-
-	row1 := make([]awscloudwatch.IWidget, 0, 2)
-	if metric := m.Metrics["APIRequests"]; metric != nil {
-		row1 = append(row1, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("API Requests"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if metric := m.Metrics["APIIntegrationLatency"]; metric != nil {
-		row1 = append(row1, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Integration Latency"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if len(row1) > 0 {
-		rows = append(rows, &row1)
-	}
-
-	row2 := make([]awscloudwatch.IWidget, 0, 2)
-	if metric := m.Metrics["API4xxErrors"]; metric != nil {
-		row2 = append(row2, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("4xx Errors"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if metric := m.Metrics["API5xxErrors"]; metric != nil {
-		row2 = append(row2, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("5xx Errors"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if len(row2) > 0 {
-		rows = append(rows, &row2)
-	}
-
-	return rows
+	return m.graphRows(
+		[]graphWidgetDefinition{
+			{MetricKey: "APIRequests", Title: "API Requests"},
+			{MetricKey: "APIIntegrationLatency", Title: "Integration Latency"},
+		},
+		[]graphWidgetDefinition{
+			{MetricKey: "API4xxErrors", Title: "4xx Errors"},
+			{MetricKey: "API5xxErrors", Title: "5xx Errors"},
+		},
+	)
 }
 
 func (m *EnhancedMonitoring) dynamoDashboardRows() []*[]awscloudwatch.IWidget {
-	rows := make([]*[]awscloudwatch.IWidget, 0)
-
-	row1 := make([]awscloudwatch.IWidget, 0, 2)
-	if metric := m.Metrics["ConsumedReadCapacity"]; metric != nil {
-		row1 = append(row1, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Consumed Read Capacity"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if metric := m.Metrics["ConsumedWriteCapacity"]; metric != nil {
-		row1 = append(row1, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Consumed Write Capacity"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if len(row1) > 0 {
-		rows = append(rows, &row1)
-	}
-
-	row2 := make([]awscloudwatch.IWidget, 0, 2)
-	if metric := m.Metrics["ReadThrottles"]; metric != nil {
-		row2 = append(row2, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Read Throttles"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if metric := m.Metrics["WriteThrottles"]; metric != nil {
-		row2 = append(row2, awscloudwatch.NewGraphWidget(&awscloudwatch.GraphWidgetProps{
-			Title:  jsii.String("Write Throttles"),
-			Left:   &[]awscloudwatch.IMetric{metric},
-			Width:  jsii.Number(12),
-			Height: jsii.Number(6),
-		}))
-	}
-	if len(row2) > 0 {
-		rows = append(rows, &row2)
-	}
-
-	return rows
+	return m.graphRows(
+		[]graphWidgetDefinition{
+			{MetricKey: "ConsumedReadCapacity", Title: "Consumed Read Capacity"},
+			{MetricKey: "ConsumedWriteCapacity", Title: "Consumed Write Capacity"},
+		},
+		[]graphWidgetDefinition{
+			{MetricKey: "ReadThrottles", Title: "Read Throttles"},
+			{MetricKey: "WriteThrottles", Title: "Write Throttles"},
+		},
+	)
 }
 
 // getMonitoringRetentionDays is reserved for future use
