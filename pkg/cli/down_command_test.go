@@ -45,7 +45,7 @@ cdk:
 			require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "lift.yaml"), []byte(liftYAML), 0600))
 			require.NoError(t, os.Chdir(tmpDir))
 
-			cmd := &DownCommand{cmdFactory: mockCmdFactory(&[]capturedCDKCall{})}
+			cmd := &DownCommand{cmdFactory: mockCmdFactory(&[]capturedCDKCall{}), lookPath: mockLookPathAlwaysFound}
 			err = cmd.Execute(context.Background(), tt.args)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errMsg)
@@ -76,7 +76,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 
 	require.Error(t, err)
@@ -113,7 +113,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -171,7 +171,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -203,7 +203,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -226,7 +226,7 @@ app:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -264,7 +264,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &DownCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "staging"})
 	require.NoError(t, err)
 
@@ -316,7 +316,7 @@ cdk:
 	var calls []capturedCDKCall
 
 	// First deploy
-	upCmd := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	upCmd := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = upCmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -352,13 +352,13 @@ cdk:
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "lift.yaml"), []byte(changedYAML), 0600))
 
 	// Attempt to deploy should fail
-	upCmd2 := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	upCmd2 := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = upCmd2.Execute(context.Background(), []string{"--stage", "dev"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "domain configuration changed")
 
 	// Run down to clear the lock
-	downCmd := &DownCommand{cmdFactory: mockCmdFactory(&calls)}
+	downCmd := &DownCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = downCmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -367,7 +367,7 @@ cdk:
 	require.True(t, os.IsNotExist(err))
 
 	// Now deploy should succeed with new domains
-	upCmd3 := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	upCmd3 := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = upCmd3.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -418,4 +418,8 @@ cdk:
 	assert.True(t, IsPrereqError(err))
 	assert.Contains(t, err.Error(), "cdk not found")
 	assert.Contains(t, err.Error(), "npm install -g aws-cdk")
+}
+
+func mockLookPathAlwaysFound(name string) (string, error) {
+	return "/usr/bin/" + name, nil
 }

@@ -127,6 +127,7 @@ func TestNewCommandV2_GeneratedProjectLiftUpSucceeds(t *testing.T) {
 			// Return a command that succeeds (true exits with 0)
 			return exec.CommandContext(ctx, "true")
 		},
+		lookPath: mockLookPathAlwaysFound,
 	}
 	err = upCmd.Execute(context.Background(), nil)
 	require.NoError(t, err)

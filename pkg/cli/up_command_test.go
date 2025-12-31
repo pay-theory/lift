@@ -93,7 +93,7 @@ functions:
 				setupUpDownTestProject(t, tmpDir, liftYAML)
 				require.NoError(t, os.Chdir(tmpDir))
 
-				cmd := &UpCommand{cmdFactory: mockCmdFactory(&[]capturedCDKCall{})}
+				cmd := &UpCommand{cmdFactory: mockCmdFactory(&[]capturedCDKCall{}), lookPath: mockLookPathAlwaysFound}
 				err = cmd.Execute(context.Background(), tt.args)
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg)
@@ -129,7 +129,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.Error(t, err)
@@ -172,7 +172,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -228,7 +228,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -281,7 +281,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -335,7 +335,7 @@ cdk:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
@@ -367,7 +367,7 @@ cdk:
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "lift.yaml"), []byte(changedYAML), 0600))
 
 	// Attempt to deploy again - should fail
-	cmd2 := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd2 := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd2.Execute(context.Background(), []string{"--stage", "dev"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "domain configuration changed")
@@ -393,7 +393,7 @@ functions:
 	require.NoError(t, os.Chdir(tmpDir))
 
 	var calls []capturedCDKCall
-	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls)}
+	cmd := &UpCommand{cmdFactory: mockCmdFactory(&calls), lookPath: mockLookPathAlwaysFound}
 	err = cmd.Execute(context.Background(), []string{"--stage", "dev"})
 	require.NoError(t, err)
 
