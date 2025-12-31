@@ -1,4 +1,4 @@
-.PHONY: all test build clean lint fmt vet cdk-synth cdk-deploy cdk-diff
+.PHONY: all test build clean lint fmt vet cdk-synth cdk-deploy cdk-diff test-coverage-core coverage-core-report
 
 # Local Go caches (sandbox-safe)
 GOCACHE ?= $(CURDIR)/.gocache
@@ -26,6 +26,15 @@ test: cache-dirs
 test-coverage: cache-dirs
 	go test -covermode=atomic -coverprofile=coverage.out $(TEST_PKGS)
 	go tool cover -func=coverage.out
+
+# Run tests with coverage, then report "core" coverage excluding pkg/testing/**.
+test-coverage-core: cache-dirs
+	go test -covermode=atomic -coverprofile=coverage.out $(TEST_PKGS)
+	bash ./scripts/coverage-core-report.sh coverage.out coverage.core.out
+
+# Report "core" coverage from an existing coverage.out file.
+coverage-core-report:
+	bash ./scripts/coverage-core-report.sh coverage.out coverage.core.out
 
 # Run tests with race detection (exclude examples/)
 test-race: cache-dirs
