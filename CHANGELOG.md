@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.0.82 - 2026-01-04
+
+### Added
+
+- **Lift CLI**: Full implementation of the `lift` command-line tool for project scaffolding and deployment:
+  - `lift new <project-name>` - Bootstrap new Lift projects with pre-configured templates
+  - `lift build` - Compile Lambda functions with configurable build settings in `lift.yaml`
+  - `lift up` - Build and deploy CDK stacks with domain immutability enforcement
+  - `lift down` - Destroy stacks in reverse order and clear state files
+  - `lift add function` - Add new Lambda functions to existing projects with dynamic placeholders
+  - Prerequisite checks for Go and CDK availability with actionable error messages
+  - Partner mode (`--pt`) and target mode (`--partner`, `--target-mode`) support for Pay Theory deployments
+- **Project Templates**: New project templates for common use cases:
+  - `basic-api` - Standard REST API template with GitHub Actions CI/CD
+  - `basic-api-pt` - Pay Theory-specific variant with CodeBuild pipelines
+  - `event-driven` - Event-driven architecture template
+  - `microservice` - Microservice template with enhanced configuration
+  - `merchant-app` - Merchant application template
+- **CDK Constructs**:
+  - `PathRoutedFrontendDistribution` - CloudFront distribution with path-based routing
+  - DynamoDB stream event handling with dedicated registration and context record parsing
+  - CloudFront helper functions and enhanced event bus components
+  - SNS processor template for error notifications
+- **Event Bus**: Comprehensive event bus streaming, scheduling, and processing capabilities with new CDK constructs, DynamoDB durability, and idempotency middleware updates
+- **WebSocket**: Action routing support with naming utilities
+- **DynamoDB Facade**: New facade for simplified DynamoDB interactions
+- **Testing Utilities**: Extensive middleware and enterprise testing utilities, security and circuit breaker test coverage improvements
+- **Documentation**: New comprehensive guides for CDK, CLI, IP gating, error notifications, JWT patterns, and getting started
+
+### Changed
+
+- **CloudWatch**: Modularized dashboard row creation for Lambda monitoring with new helper functions
+- **Go Modules**: Streamlined Go module handling in CI/CD and CDK workflows; removed `constructs-go/constructs/v10` dependency
+- **Documentation**: Complete restructure for clarity; removed outdated development notes
+- **CI/CD**: Added release workflow and updated GitHub Actions configurations
+
+### Fixed
+
+- **CLI Tests**: Mock CDK/Go presence in tests to support CI environments without local installations
+
 ## v1.0.81 - 2025-12-21
 
 ### Added
