@@ -91,17 +91,26 @@ func (p BatchProcessor) Process(ctx context.Context, records []events.SQSMessage
 
 		rawBody := []byte(record.Body)
 
-		envelope, isEnvelope, err := parseLiftEnvelope(rawBody)
 		message := Message{
 			Record:  record,
 			RawBody: rawBody,
 		}
 
-		if isEnvelope {
-			message.Envelope = envelope
-			if err != nil {
+		envelope, isEnvelope, err := parseLiftEnvelope(rawBody)
+		extendedPointer, isExtendedPointer, extErr := ParseSQSExtendedClientPointer(rawBody)
+
+		if isEnvelope || isExtendedPointer {
+			if isEnvelope {
+				message.Envelope = envelope
+			}
+
+			if err != nil || extErr != nil {
 				failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
-				p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: envelope, Err: err})
+				if err != nil {
+					p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: envelope, Err: err})
+				} else {
+					p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: nil, Err: extErr})
+				}
 				continue
 			}
 
@@ -116,7 +125,13 @@ func (p BatchProcessor) Process(ctx context.Context, records []events.SQSMessage
 				continue
 			}
 
-			payload, err := Hydrate(ctx, p.Store, *envelope, p.Options)
+			var payload []byte
+			if isEnvelope {
+				payload, err = Hydrate(ctx, p.Store, *envelope, p.Options)
+			} else {
+				payload, err = p.Store.Get(ctx, extendedPointer.Ref())
+			}
+
 			if err != nil {
 				failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
 				p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: envelope, Err: err})
@@ -133,14 +148,26 @@ func (p BatchProcessor) Process(ctx context.Context, records []events.SQSMessage
 			continue
 		}
 
-		if envelope == nil || p.Store == nil {
+		if p.Store == nil {
 			continue
 		}
 
-		if err := Delete(ctx, p.Store, *envelope); err != nil {
-			p.emitFailure(ctx, Failure{Kind: FailureDelete, Message: message, Envelope: envelope, Err: err})
-			if p.FailOnDeleteError {
-				failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
+		if isEnvelope && envelope != nil {
+			if err := Delete(ctx, p.Store, *envelope); err != nil {
+				p.emitFailure(ctx, Failure{Kind: FailureDelete, Message: message, Envelope: envelope, Err: err})
+				if p.FailOnDeleteError {
+					failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
+				}
+			}
+			continue
+		}
+
+		if isExtendedPointer {
+			if err := p.Store.Delete(ctx, extendedPointer.Ref()); err != nil {
+				p.emitFailure(ctx, Failure{Kind: FailureDelete, Message: message, Envelope: nil, Err: err})
+				if p.FailOnDeleteError {
+					failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
+				}
 			}
 		}
 	}

@@ -36,6 +36,23 @@ Notes:
 - The envelope is **self-describing** (`bucket` + `key`) so consumers don’t need bucket env vars to hydrate/delete.
 - `sha256` is optional; Lift verifies it by default when present.
 
+### Compatibility: Amazon SQS Extended Client Libraries (Java/Python)
+
+Lift’s consumer helper (`sqslargepayload.BatchProcessor`) also supports messages produced by the Amazon SQS extended client libraries (including the legacy system library `amazon-sqs-python-extended-client-lib`).
+
+Those libraries store the payload in S3 and send a pointer in the SQS message body as a JSON array:
+
+```json
+[
+  "software.amazon.payloadoffloading.PayloadS3Pointer",
+  { "s3BucketName": "my-bucket", "s3Key": "uuid-or-key" }
+]
+```
+
+Notes:
+- These messages often include a reserved message attribute (`ExtendedPayloadSize` or legacy `SQSLargePayloadSize`).
+- `Message.Envelope` is only set for Lift’s own `lift:sqs-large-payload:v1` envelopes; extended-client pointers are hydrated the same way, but without a Lift envelope object.
+
 ### Delete-On-Success + TTL Fallback
 
 - Consumers **explicitly delete** the S3 object after successful processing.
@@ -88,6 +105,8 @@ Lift also supports deterministic bucket naming when the naming context is availa
 - Optional: `PARTNER`
 
 If you want producers to derive bucket names at runtime (instead of injecting bucket env vars), ensure the bucket is created with a deterministic name (or explicitly set `BucketProps.BucketName`) and use `pkg/naming` in producer code.
+
+If you are consuming messages produced by an external extended-client producer, ensure the consumer Lambda has `s3:GetObject` and `s3:DeleteObject` access to the bucket/key pattern used by that producer. For producers that write keys at the bucket root (no prefix), set `LargePayload.Prefix` to `""` to grant `*` access within the bucket.
 
 ## Go: Producer Offload Pattern
 

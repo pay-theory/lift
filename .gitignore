@@ -104,6 +104,10 @@ reference
 .gomodcache/
 .gocache/
 
+# Local upstream clones (never commit)
+upstream/
+.upstream/
+
 # direnv and local env shells
 .direnv/
 .envrc
