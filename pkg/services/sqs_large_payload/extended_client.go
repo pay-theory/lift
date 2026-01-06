@@ -108,4 +108,3 @@ func ParseSQSExtendedClientPointer(data []byte) (SQSExtendedClientPointer, bool,
 
 	return pointer, true, nil
 }
-

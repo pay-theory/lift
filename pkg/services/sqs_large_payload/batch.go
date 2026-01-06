@@ -20,10 +20,10 @@ const (
 
 // Failure describes an error encountered while processing an individual SQS message.
 type Failure struct {
-	Kind     FailureKind
-	Message  Message
 	Envelope *Envelope
 	Err      error
+	Kind     FailureKind
+	Message  Message
 }
 
 func (f Failure) Error() string {
@@ -49,9 +49,9 @@ type BatchHooks struct {
 // Message is the per-record context passed to the user handler.
 type Message struct {
 	Record   events.SQSMessage
+	Envelope *Envelope
 	RawBody  []byte
 	Payload  []byte
-	Envelope *Envelope
 }
 
 // MessageHandler processes an individual message (inline or hydrated).
@@ -67,9 +67,9 @@ type MessageHandler func(ctx context.Context, message Message) error
 //   - Return an events.SQSEventResponse containing only the failed message IDs.
 type BatchProcessor struct {
 	Store             ObjectStore
+	Hooks             BatchHooks
 	Options           Options
 	FailOnDeleteError bool
-	Hooks             BatchHooks
 }
 
 // Process handles a batch of SQS messages and returns an SQS batch response suitable for
@@ -85,7 +85,8 @@ func (p BatchProcessor) Process(ctx context.Context, records []events.SQSMessage
 	failures := make([]events.SQSBatchItemFailure, 0)
 
 	for _, record := range records {
-		if record.MessageId == "" {
+		messageID := record.MessageId
+		if messageID == "" {
 			return events.SQSEventResponse{}, errors.New("sqs message missing messageId")
 		}
 
@@ -96,55 +97,41 @@ func (p BatchProcessor) Process(ctx context.Context, records []events.SQSMessage
 			RawBody: rawBody,
 		}
 
-		envelope, isEnvelope, err := parseLiftEnvelope(rawBody)
-		extendedPointer, isExtendedPointer, extErr := ParseSQSExtendedClientPointer(rawBody)
+		pointer, err := parseOffloadPointer(rawBody)
+		if err != nil {
+			failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: messageID})
+			p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: pointer.envelope, Err: err})
+			continue
+		}
 
-		if isEnvelope || isExtendedPointer {
-			if isEnvelope {
-				message.Envelope = envelope
-			}
-
-			if err != nil || extErr != nil {
-				failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
-				if err != nil {
-					p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: envelope, Err: err})
-				} else {
-					p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: nil, Err: extErr})
-				}
-				continue
-			}
-
+		if pointer.kind == offloadPointerNone {
+			message.Payload = rawBody
+		} else {
 			if p.Store == nil {
-				failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
+				failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: messageID})
 				p.emitFailure(ctx, Failure{
 					Kind:     FailureHydrate,
 					Message:  message,
-					Envelope: envelope,
+					Envelope: pointer.envelope,
 					Err:      errors.New("sqs large payload store is nil"),
 				})
 				continue
 			}
 
-			var payload []byte
-			if isEnvelope {
-				payload, err = Hydrate(ctx, p.Store, *envelope, p.Options)
-			} else {
-				payload, err = p.Store.Get(ctx, extendedPointer.Ref())
-			}
-
+			payload, err := p.hydratePointer(ctx, pointer)
 			if err != nil {
-				failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
-				p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: envelope, Err: err})
+				failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: messageID})
+				p.emitFailure(ctx, Failure{Kind: FailureHydrate, Message: message, Envelope: pointer.envelope, Err: err})
 				continue
 			}
+
 			message.Payload = payload
-		} else {
-			message.Payload = rawBody
+			message.Envelope = pointer.envelope
 		}
 
 		if err := handler(ctx, message); err != nil {
-			failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
-			p.emitFailure(ctx, Failure{Kind: FailureHandler, Message: message, Envelope: envelope, Err: err})
+			failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: messageID})
+			p.emitFailure(ctx, Failure{Kind: FailureHandler, Message: message, Envelope: pointer.envelope, Err: err})
 			continue
 		}
 
@@ -152,27 +139,54 @@ func (p BatchProcessor) Process(ctx context.Context, records []events.SQSMessage
 			continue
 		}
 
-		if isEnvelope && envelope != nil {
-			if err := Delete(ctx, p.Store, *envelope); err != nil {
-				p.emitFailure(ctx, Failure{Kind: FailureDelete, Message: message, Envelope: envelope, Err: err})
-				if p.FailOnDeleteError {
-					failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
-				}
-			}
-			continue
-		}
-
-		if isExtendedPointer {
-			if err := p.Store.Delete(ctx, extendedPointer.Ref()); err != nil {
-				p.emitFailure(ctx, Failure{Kind: FailureDelete, Message: message, Envelope: nil, Err: err})
-				if p.FailOnDeleteError {
-					failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
-				}
-			}
+		if err := p.deletePointer(ctx, pointer, message); err != nil && p.FailOnDeleteError {
+			failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: messageID})
 		}
 	}
 
 	return events.SQSEventResponse{BatchItemFailures: failures}, nil
+}
+
+func (p BatchProcessor) hydratePointer(ctx context.Context, pointer offloadPointer) ([]byte, error) {
+	if p.Store == nil {
+		return nil, errors.New("sqs large payload store is nil")
+	}
+
+	switch pointer.kind {
+	case offloadPointerLiftEnvelope:
+		if pointer.envelope == nil {
+			return nil, errors.New("sqs large payload envelope is nil")
+		}
+		return Hydrate(ctx, p.Store, *pointer.envelope, p.Options)
+	case offloadPointerSQSExtendedClient:
+		return p.Store.Get(ctx, pointer.extended.Ref())
+	default:
+		return nil, errors.New("sqs large payload pointer is not offloaded")
+	}
+}
+
+func (p BatchProcessor) deletePointer(ctx context.Context, pointer offloadPointer, message Message) error {
+	if p.Store == nil {
+		return nil
+	}
+
+	switch pointer.kind {
+	case offloadPointerLiftEnvelope:
+		if pointer.envelope == nil {
+			return nil
+		}
+		if err := Delete(ctx, p.Store, *pointer.envelope); err != nil {
+			p.emitFailure(ctx, Failure{Kind: FailureDelete, Message: message, Envelope: pointer.envelope, Err: err})
+			return err
+		}
+	case offloadPointerSQSExtendedClient:
+		if err := p.Store.Delete(ctx, pointer.extended.Ref()); err != nil {
+			p.emitFailure(ctx, Failure{Kind: FailureDelete, Message: message, Envelope: nil, Err: err})
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (p BatchProcessor) emitFailure(ctx context.Context, failure Failure) {
@@ -213,4 +227,32 @@ func parseLiftEnvelope(body []byte) (*Envelope, bool, error) {
 		return nil, true, err
 	}
 	return &envelope, true, nil
+}
+
+type offloadPointerKind uint8
+
+const (
+	offloadPointerNone offloadPointerKind = iota
+	offloadPointerLiftEnvelope
+	offloadPointerSQSExtendedClient
+)
+
+type offloadPointer struct {
+	envelope *Envelope
+	extended SQSExtendedClientPointer
+	kind     offloadPointerKind
+}
+
+func parseOffloadPointer(body []byte) (offloadPointer, error) {
+	envelope, isEnvelope, err := parseLiftEnvelope(body)
+	if isEnvelope {
+		return offloadPointer{kind: offloadPointerLiftEnvelope, envelope: envelope}, err
+	}
+
+	pointer, ok, err := ParseSQSExtendedClientPointer(body)
+	if ok {
+		return offloadPointer{kind: offloadPointerSQSExtendedClient, extended: pointer}, err
+	}
+
+	return offloadPointer{kind: offloadPointerNone}, nil
 }

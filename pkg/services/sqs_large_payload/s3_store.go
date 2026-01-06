@@ -45,12 +45,12 @@ func (s S3Store) Put(ctx context.Context, ref Ref, payload []byte) error {
 }
 
 // Get retrieves the payload bytes from the specified bucket + key.
-func (s S3Store) Get(ctx context.Context, ref Ref) ([]byte, error) {
+func (s S3Store) Get(ctx context.Context, ref Ref) (payload []byte, err error) {
 	if s.Client == nil {
 		return nil, ErrNilS3Client
 	}
-	if err := validateRef(ref); err != nil {
-		return nil, err
+	if validateErr := validateRef(ref); validateErr != nil {
+		return nil, validateErr
 	}
 
 	out, err := s.Client.GetObject(ctx, &s3.GetObjectInput{
@@ -60,9 +60,13 @@ func (s S3Store) Get(ctx context.Context, ref Ref) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = out.Body.Close() }()
+	defer func() {
+		if closeErr := out.Body.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
-	payload, err := io.ReadAll(out.Body)
+	payload, err = io.ReadAll(out.Body)
 	if err != nil {
 		return nil, err
 	}

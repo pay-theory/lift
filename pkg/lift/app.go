@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 )
 

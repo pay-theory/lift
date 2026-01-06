@@ -103,6 +103,7 @@ reference
 # Go caches (never commit)
 .gomodcache/
 .gocache/
+.golangci-lint-cache/
 
 # Local upstream clones (never commit)
 upstream/
