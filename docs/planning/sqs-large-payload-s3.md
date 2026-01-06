@@ -143,13 +143,13 @@ Notes:
 ### Milestone 4 — Lift Core: First-Class SQS Batch Responses
 
 **Deliverables**
-- Update Lift request handling so SQS-triggered handlers can return `events.SQSBatchResponse` (raw) when `ReportBatchItemFailures` is enabled.
+- Update Lift request handling so SQS-triggered handlers can return `events.SQSEventResponse` (raw) when `ReportBatchItemFailures` is enabled.
 - Add tests ensuring:
   - SQS returns raw batch response (not wrapped in API Gateway proxy response)
   - existing HTTP/APIGW behavior is unchanged
 
 **Acceptance Criteria**
-- A handler registered via `app.SQS(...)` can return `events.SQSBatchResponse`, and the Lambda result is exactly the batch response object.
+- A handler registered via `app.SQS(...)` can return `events.SQSEventResponse`, and the Lambda result is exactly the batch response object.
 - Partial failures work end-to-end in tests (successful messages are not re-driven).
 
 ---
@@ -207,4 +207,3 @@ ANSWER: 7 days.
 ANSWER: By default verify integrity, but allow disabling it.
 - Should Lift add a small “publisher binding” helper on `SQSProcessor` to simplify wiring producers (grant + optional convenience env injection)?
 ANSWER: Yes.
-

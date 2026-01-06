@@ -34,6 +34,7 @@
 ### 🏗️ CDK Documentation
 - [CDK Index](./cdk.md) - Deploy Lift apps with AWS CDK (CloudFront, S3, events)
 - [CDK API Reference](./cdk-api-reference.md) - Constructs, patterns, and stacks
+- [SQS Large Payloads via S3](./cdk-sqs-large-payloads.md) - Offload SQS bodies >256KB to S3 (delete-on-success + TTL fallback)
 
 ### 🔧 CLI Documentation
 - [CLI Getting Started](./cli-getting-started.md) - Install the CLI, create projects, deploy
