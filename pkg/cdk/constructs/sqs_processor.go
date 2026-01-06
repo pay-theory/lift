@@ -12,6 +12,8 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+
+	"github.com/pay-theory/lift/pkg/naming"
 )
 
 const (
@@ -101,6 +103,12 @@ type SQSProcessor struct {
 
 	// Event source mapping
 	EventSource awslambdaeventsources.SqsEventSource
+
+	// LargePayloadBucket stores oversized SQS message bodies (optional).
+	LargePayloadBucket awss3.IBucket
+
+	// LargePayloadPrefix scopes object keys + IAM permissions (optional).
+	LargePayloadPrefix *string
 }
 
 // NewSQSProcessor creates a new SQS processor construct
@@ -196,6 +204,9 @@ func (b *sqsProcessorBuilder) build() *SQSProcessor {
 	// Create or use existing queue
 	b.setupQueue()
 
+	// Configure large payload storage if enabled
+	b.setupLargePayload()
+
 	// Create Lambda function
 	b.setupFunction()
 
@@ -240,6 +251,12 @@ func (b *sqsProcessorBuilder) setupPermissions() {
 	if b.processor.DeadLetterQueue != nil {
 		b.processor.DeadLetterQueue.GrantSendMessages(b.processor.Function.Function)
 	}
+
+	if b.processor.LargePayloadBucket != nil && b.processor.LargePayloadPrefix != nil {
+		pattern := jsii.String(*b.processor.LargePayloadPrefix + "*")
+		b.processor.LargePayloadBucket.GrantRead(b.processor.Function.Function, pattern)
+		b.processor.LargePayloadBucket.GrantDelete(b.processor.Function.Function, pattern)
+	}
 }
 
 // setupMonitoring adds monitoring if enabled
@@ -247,6 +264,149 @@ func (b *sqsProcessorBuilder) setupMonitoring() {
 	if b.props.EnableMonitoring != nil && *b.props.EnableMonitoring {
 		b.processor.enableMonitoring()
 	}
+}
+
+func (b *sqsProcessorBuilder) setupLargePayload() {
+	if b.props == nil || b.props.LargePayload == nil {
+		return
+	}
+
+	enabled := true
+	if b.props.LargePayload.Enabled != nil {
+		enabled = *b.props.LargePayload.Enabled
+	}
+	if !enabled {
+		return
+	}
+
+	prefix := b.props.LargePayload.Prefix
+	if prefix == nil {
+		queueName := b.deriveLargePayloadQueueName()
+		if queueName != "" {
+			prefix = jsii.String(fmt.Sprintf("sqs/%s/messages/", queueName))
+		} else {
+			derived := b.processor.Queue.QueueName()
+			if derived != nil && *derived != "" {
+				prefix = jsii.String(fmt.Sprintf("sqs/%s/messages/", *derived))
+			} else {
+				prefix = jsii.String("sqs/messages/")
+			}
+		}
+	}
+
+	b.processor.LargePayloadPrefix = prefix
+	b.processor.LargePayloadBucket = b.resolveLargePayloadBucket(prefix)
+}
+
+func (b *sqsProcessorBuilder) deriveLargePayloadQueueName() string {
+	if b.props == nil {
+		return ""
+	}
+	if b.props.ExistingQueue != nil {
+		return ""
+	}
+
+	if b.props.QueueProps != nil && b.props.QueueProps.QueueName != nil && *b.props.QueueProps.QueueName != "" {
+		queueName := *b.props.QueueProps.QueueName
+		if b.config != nil && b.config.fifoQueue {
+			queueName = ensureFifoSuffix(queueName)
+		}
+		return queueName
+	}
+
+	if b.props.FunctionProps.FunctionName != nil && *b.props.FunctionProps.FunctionName != "" {
+		suffix := ""
+		if b.config != nil && b.config.fifoQueue {
+			suffix = fifoSuffix
+		}
+		return *b.props.FunctionProps.FunctionName + "-queue" + suffix
+	}
+
+	return ""
+}
+
+func ensureFifoSuffix(queueName string) string {
+	if len(queueName) < len(fifoSuffix) || queueName[len(queueName)-len(fifoSuffix):] != fifoSuffix {
+		return queueName + fifoSuffix
+	}
+	return queueName
+}
+
+func (b *sqsProcessorBuilder) resolveLargePayloadBucket(prefix *string) awss3.IBucket {
+	if b.props == nil || b.props.LargePayload == nil {
+		return nil
+	}
+	if b.props.LargePayload.ExistingBucket != nil {
+		return b.props.LargePayload.ExistingBucket
+	}
+
+	// When callers don't provide a bucket, create a shared default bucket once per stack.
+	if b.props.LargePayload.BucketProps == nil {
+		stack := awscdk.Stack_Of(b.processor)
+		if stack != nil {
+			if existing := stack.Node().TryFindChild(jsii.String("SQSLargePayloadBucket")); existing != nil {
+				if bucket, ok := existing.(awss3.Bucket); ok {
+					return bucket
+				}
+			}
+		}
+	}
+
+	bucketProps := &awss3.BucketProps{
+		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
+		Encryption:        awss3.BucketEncryption_S3_MANAGED,
+		EnforceSSL:        jsii.Bool(true),
+	}
+	if b.props.LargePayload.BucketProps != nil {
+		applyNonNilStructFields(bucketProps, b.props.LargePayload.BucketProps)
+	}
+
+	if bucketProps.BucketName == nil {
+		if resolved, ok := naming.S3BucketNameFromEnv("sqs-large-payload"); ok {
+			bucketProps.BucketName = jsii.String(resolved)
+		}
+	}
+
+	expiration := b.props.LargePayload.Expiration
+	if expiration == nil {
+		expiration = awscdk.Duration_Days(jsii.Number(7))
+	}
+
+	lifecyclePrefix := prefix
+	if b.props.LargePayload.BucketProps == nil {
+		lifecyclePrefix = nil
+	}
+	ensureLargePayloadLifecycle(bucketProps, lifecyclePrefix, expiration)
+
+	// Default bucket goes at the stack scope (stable ID) so multiple processors can reuse it.
+	if b.props.LargePayload.BucketProps == nil {
+		stack := awscdk.Stack_Of(b.processor)
+		if stack != nil {
+			return awss3.NewBucket(stack, jsii.String("SQSLargePayloadBucket"), bucketProps)
+		}
+	}
+
+	return awss3.NewBucket(b.processor, jsii.String("LargePayloadBucket"), bucketProps)
+}
+
+func ensureLargePayloadLifecycle(bucketProps *awss3.BucketProps, prefix *string, expiration awscdk.Duration) {
+	if bucketProps == nil || expiration == nil {
+		return
+	}
+
+	rule := &awss3.LifecycleRule{
+		Id:         jsii.String("ExpireLargePayloadObjects"),
+		Enabled:    jsii.Bool(true),
+		Expiration: expiration,
+		Prefix:     prefix,
+	}
+
+	if bucketProps.LifecycleRules == nil {
+		bucketProps.LifecycleRules = &[]*awss3.LifecycleRule{rule}
+		return
+	}
+
+	*bucketProps.LifecycleRules = append(*bucketProps.LifecycleRules, rule)
 }
 
 // sqsQueueBuilder builds SQS queue components
@@ -671,6 +831,24 @@ func (s *SQSProcessor) GrantSendMessages(grantee awslambda.IFunction) {
 // GrantConsumeMessages grants permission to consume messages from the queue
 func (s *SQSProcessor) GrantConsumeMessages(grantee awslambda.IFunction) {
 	s.Queue.GrantConsumeMessages(grantee)
+}
+
+// GrantLargePayloadPublish grants permission to write large payload objects to the payload bucket.
+func (s *SQSProcessor) GrantLargePayloadPublish(grantee awslambda.IFunction) {
+	if s.LargePayloadBucket == nil || s.LargePayloadPrefix == nil {
+		return
+	}
+	s.LargePayloadBucket.GrantWrite(grantee, jsii.String(*s.LargePayloadPrefix+"*"), nil)
+}
+
+// GrantLargePayloadConsume grants permission to read and delete large payload objects from the payload bucket.
+func (s *SQSProcessor) GrantLargePayloadConsume(grantee awslambda.IFunction) {
+	if s.LargePayloadBucket == nil || s.LargePayloadPrefix == nil {
+		return
+	}
+	pattern := jsii.String(*s.LargePayloadPrefix + "*")
+	s.LargePayloadBucket.GrantRead(grantee, pattern)
+	s.LargePayloadBucket.GrantDelete(grantee, pattern)
 }
 
 // AddEnvironmentVariable adds an environment variable to the Lambda function
