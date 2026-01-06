@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambdaeventsources"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	"github.com/aws/constructs-go/constructs/v10"
@@ -51,6 +52,38 @@ type SQSProcessorProps struct {
 	EnableTracing     *bool
 	EnableMultiTenant *bool
 	EnableMonitoring  *bool
+
+	// Large payload support (optional).
+	//
+	// When enabled, Lift provisions (or attaches) an S3 bucket that can store
+	// payloads larger than SQS's 256KB limit. Producers publish a small pointer
+	// envelope to SQS containing the S3 bucket + key. Consumers hydrate the full
+	// payload from S3 and delete it on success (with lifecycle TTL as a fallback).
+	LargePayload *SQSLargePayloadProps
+}
+
+// SQSLargePayloadProps configures S3-backed "extended payloads" for an SQSProcessor.
+type SQSLargePayloadProps struct {
+	// Enabled toggles large payload support. When nil, defaults to true when
+	// LargePayload is provided.
+	Enabled *bool
+
+	// ExistingBucket uses an existing bucket for payload storage (optional).
+	// When provided, BucketProps is ignored.
+	ExistingBucket awss3.IBucket
+
+	// BucketProps creates a new bucket for payload storage when ExistingBucket is nil.
+	// If BucketProps.BucketName is omitted, Lift will derive a deterministic name
+	// when stable naming context is available (see milestone 2).
+	BucketProps *awss3.BucketProps
+
+	// Prefix scopes object storage to a per-queue prefix within the bucket.
+	// If omitted, Lift derives a prefix from the queue name (see milestone 2).
+	Prefix *string
+
+	// Expiration is the S3 lifecycle expiration for payload objects (TTL fallback).
+	// When nil, defaults to 7 days.
+	Expiration awscdk.Duration
 }
 
 // SQSProcessor represents an SQS queue with Lambda processor

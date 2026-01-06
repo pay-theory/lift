@@ -202,6 +202,9 @@ Notes:
 ## Open Questions
 
 - Default TTL duration: should it mirror queue retention (14 days), or a shorter TTL (e.g., 7 days)?
+ANSWER: 7 days.
 - Should the helper support optional integrity verification (`sha256`) by default or only when provided?
+ANSWER: By default verify integrity, but allow disabling it.
 - Should Lift add a small “publisher binding” helper on `SQSProcessor` to simplify wiring producers (grant + optional convenience env injection)?
+ANSWER: Yes.
 
