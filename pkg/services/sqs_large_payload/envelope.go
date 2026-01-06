@@ -67,12 +67,12 @@ func (e Envelope) Validate() error {
 type Options struct {
 	// VerifySHA256 enables integrity checks when the envelope includes a sha256 value.
 	// Default: true.
-	VerifySHA256 bool
+	VerifySHA256 *bool
 }
 
 // DefaultOptions returns the recommended default options.
 func DefaultOptions() Options {
-	return Options{VerifySHA256: true}
+	return Options{VerifySHA256: boolPtr(true)}
 }
 
 // ShouldOffload reports whether the payload should be stored in S3 instead of sent inline via SQS.
@@ -119,6 +119,11 @@ func OffloadIfNeeded(ctx context.Context, store ObjectStore, ref Ref, payload []
 		return payload, nil, nil
 	}
 
+	verify := true
+	if opts.VerifySHA256 != nil {
+		verify = *opts.VerifySHA256
+	}
+
 	envelope := Envelope{
 		Type:   EnvelopeTypeV1,
 		Bucket: ref.Bucket,
@@ -126,7 +131,7 @@ func OffloadIfNeeded(ctx context.Context, store ObjectStore, ref Ref, payload []
 		Bytes:  int64(len(payload)),
 	}
 
-	if opts.VerifySHA256 {
+	if verify {
 		sum := sha256.Sum256(payload)
 		envelope.SHA256 = hex.EncodeToString(sum[:])
 	}
@@ -151,12 +156,17 @@ func Hydrate(ctx context.Context, store ObjectStore, envelope Envelope, opts Opt
 		return nil, err
 	}
 
+	verify := true
+	if opts.VerifySHA256 != nil {
+		verify = *opts.VerifySHA256
+	}
+
 	payload, err := store.Get(ctx, envelope.Ref())
 	if err != nil {
 		return nil, err
 	}
 
-	if opts.VerifySHA256 && envelope.SHA256 != "" {
+	if verify && envelope.SHA256 != "" {
 		sum := sha256.Sum256(payload)
 		if hex.EncodeToString(sum[:]) != envelope.SHA256 {
 			return nil, ErrIntegrityMismatch
@@ -172,4 +182,8 @@ func Delete(ctx context.Context, store ObjectStore, envelope Envelope) error {
 		return err
 	}
 	return store.Delete(ctx, envelope.Ref())
+}
+
+func boolPtr(v bool) *bool {
+	return &v
 }
