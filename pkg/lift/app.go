@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/pay-theory/lift/pkg/lift/adapters"
 )
 
@@ -734,6 +735,15 @@ func (b *requestHandlerBuilder) build() (any, error) {
 		return b.liftCtx.Response.Body, nil
 	}
 
+	// SQS batch processors expect the raw batch response (e.g. BatchItemFailures),
+	// not an API Gateway proxy response wrapper, when ReportBatchItemFailures is enabled.
+	if b.request.TriggerType == adapters.TriggerSQS {
+		switch b.liftCtx.Response.Body.(type) {
+		case events.SQSEventResponse, *events.SQSEventResponse:
+			return b.liftCtx.Response.Body, nil
+		}
+	}
+
 	return b.liftCtx.Response, nil
 }
 
@@ -1263,6 +1273,10 @@ func (a *App) handleError(ctx *Context, err error) (any, error) {
 	// DynamoDB stream processors should generally surface errors so Lambda retries (or sends to DLQ).
 	// EventBus handlers use BatchItemFailures to avoid returning errors for per-record failures.
 	if ctx != nil && ctx.Request != nil && ctx.Request.TriggerType == adapters.TriggerEventBus {
+		return nil, err
+	}
+	// SQS handlers should surface errors so Lambda retries the batch (or sends to DLQ).
+	if ctx != nil && ctx.Request != nil && ctx.Request.TriggerType == adapters.TriggerSQS {
 		return nil, err
 	}
 	if a.isAppSyncRequest(ctx) {
