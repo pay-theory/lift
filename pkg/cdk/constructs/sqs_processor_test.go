@@ -1,6 +1,7 @@
 package constructs
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -329,4 +330,167 @@ func TestSQSProcessor_CustomEventSourceProps(t *testing.T) {
 
 	// Verify custom event source configuration
 	assertResourceExists(t, template, "AWS::Lambda::EventSourceMapping")
+}
+
+func TestSQSProcessor_LargePayload_DefaultBucketLifecycleAndPermissions(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("TestStack"), nil)
+
+	processor := NewSQSProcessor(stack, jsii.String("TestSQSProcessor"), &SQSProcessorProps{
+		FunctionProps: awslambda.FunctionProps{
+			FunctionName: jsii.String("large-payload-processor"),
+			Code:         awslambda.Code_FromInline(jsii.String("exports.handler = async () => {}")),
+			Handler:      jsii.String("index.handler"),
+			Runtime:      awslambda.Runtime_NODEJS_18_X(),
+		},
+		QueueProps: &awssqs.QueueProps{
+			QueueName: jsii.String("large-payload-queue"),
+		},
+		LargePayload: &SQSLargePayloadProps{},
+	})
+
+	if processor == nil {
+		t.Fatal("Processor should be created")
+	}
+	if processor.LargePayloadBucket == nil {
+		t.Fatal("Large payload bucket should be created")
+	}
+	if processor.LargePayloadPrefix == nil {
+		t.Fatal("Large payload prefix should be set")
+	}
+	if got, want := *processor.LargePayloadPrefix, "sqs/large-payload-queue/messages/"; got != want {
+		t.Fatalf("Large payload prefix should be derived, got %q want %q", got, want)
+	}
+
+	template := synthesizeTemplate(t, stack)
+
+	// Verify S3 bucket exists
+	assertResourceCount(t, template, "AWS::S3::Bucket", 1)
+
+	// Verify bucket lifecycle configuration includes default expiration
+	buckets := findResourcesByType(template, "AWS::S3::Bucket")
+	for _, bucket := range buckets {
+		props, ok := bucket["Properties"].(map[string]interface{})
+		if !ok {
+			t.Fatal("Bucket should have Properties")
+		}
+
+		lifecycle, ok := props["LifecycleConfiguration"].(map[string]interface{})
+		if !ok {
+			t.Fatal("Bucket should have LifecycleConfiguration")
+		}
+
+		rules, ok := lifecycle["Rules"].([]interface{})
+		if !ok || len(rules) == 0 {
+			t.Fatal("Bucket should have at least one lifecycle rule")
+		}
+
+		foundExpiration := false
+		for _, rule := range rules {
+			ruleMap, ok := rule.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			if ruleMap["Id"] != "ExpireLargePayloadObjects" {
+				continue
+			}
+
+			if ruleMap["Status"] != "Enabled" {
+				t.Fatalf("Expected lifecycle rule to be enabled, got %v", ruleMap["Status"])
+			}
+
+			if exp, ok := ruleMap["ExpirationInDays"].(float64); !ok || int(exp) != 7 {
+				t.Fatalf("Expected lifecycle rule expiration 7 days, got %v", ruleMap["ExpirationInDays"])
+			}
+
+			foundExpiration = true
+		}
+
+		if !foundExpiration {
+			t.Fatal("Expected to find lifecycle rule ExpireLargePayloadObjects with 7 day expiration")
+		}
+	}
+
+	// Verify IAM policies include s3:GetObject and s3:DeleteObject scoped to the prefix.
+	expectedKeySuffix := "sqs/large-payload-queue/messages/*"
+	policies := findResourcesByType(template, "AWS::IAM::Policy")
+	if len(policies) == 0 {
+		t.Fatal("Expected IAM policies to exist")
+	}
+
+	hasGet := false
+	hasDelete := false
+
+	for _, policy := range policies {
+		props, ok := policy["Properties"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		doc, ok := props["PolicyDocument"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		statements, ok := doc["Statement"].([]interface{})
+		if !ok {
+			continue
+		}
+		for _, statement := range statements {
+			stmt, ok := statement.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			action := stmt["Action"]
+			resource := stmt["Resource"]
+
+			if actionHasPrefix(action, "s3:GetObject") && containsString(resource, expectedKeySuffix) {
+				hasGet = true
+			}
+			if actionHasPrefix(action, "s3:DeleteObject") && containsString(resource, expectedKeySuffix) {
+				hasDelete = true
+			}
+		}
+	}
+
+	if !hasGet {
+		t.Fatalf("Expected IAM policy to grant s3:GetObject on %q", expectedKeySuffix)
+	}
+	if !hasDelete {
+		t.Fatalf("Expected IAM policy to grant s3:DeleteObject on %q", expectedKeySuffix)
+	}
+}
+
+func actionHasPrefix(action interface{}, prefix string) bool {
+	switch a := action.(type) {
+	case string:
+		return strings.HasPrefix(a, prefix)
+	case []interface{}:
+		for _, entry := range a {
+			if actionHasPrefix(entry, prefix) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func containsString(value interface{}, needle string) bool {
+	switch v := value.(type) {
+	case string:
+		return strings.Contains(v, needle)
+	case []interface{}:
+		for _, entry := range v {
+			if containsString(entry, needle) {
+				return true
+			}
+		}
+	case map[string]interface{}:
+		for _, entry := range v {
+			if containsString(entry, needle) {
+				return true
+			}
+		}
+	}
+	return false
 }

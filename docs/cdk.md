@@ -12,6 +12,7 @@ The Lift CDK package (`pkg/cdk`) provides high-level constructs and patterns for
 - [CDK Getting Started](./cdk-getting-started.md) - Step-by-step CDK setup for Lift
 - [CDK Integration Guide](./cdk-guide.md) - Deep dive into constructs and patterns
 - [CDK API Reference](./cdk-api-reference.md) - Full construct/pattern reference with code locations
+- [SQS Large Payloads via S3](./cdk-sqs-large-payloads.md) - Offload SQS bodies >256KB to S3 (pointer envelopes)
 - [API Documentation](/pkg/cdk/README.md) - Detailed construct and pattern reference
 - [Examples](/pkg/cdk/examples/) - Working examples of CDK deployments
 - [CloudFront Patterns](./cdk-cloudfront-patterns.md) - Static sites, media CDN, redirects

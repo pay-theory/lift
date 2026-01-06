@@ -16,6 +16,7 @@ This directory contains working examples demonstrating various features and patt
 - **[websocket-demo](./websocket-demo/)** - WebSocket support with connection management
 - **[websocket-enhanced](./websocket-enhanced/)** - Advanced WebSocket implementation
 - **[event-adapters](./event-adapters/)** - Multiple AWS event source handlers (SQS, S3, EventBridge)
+- **[sqs-large-payload](./sqs-large-payload/)** - SQS payloads >256KB offloaded to S3 (pointer envelope + delete-on-success)
 - **[multi-event-handler](./multi-event-handler/)** - Handling multiple event types
 - **[eventbridge-wakeup](./eventbridge-wakeup/)** - EventBridge scheduled events
 - **[multiple-scheduled-events](./multiple-scheduled-events/)** - Multiple scheduled Lambda triggers

@@ -3,8 +3,10 @@
 # Local Go caches (sandbox-safe)
 GOCACHE ?= $(CURDIR)/.gocache
 GOMODCACHE ?= $(CURDIR)/.gomodcache
+GOLANGCI_LINT_CACHE ?= $(CURDIR)/.golangci-lint-cache
 export GOCACHE
 export GOMODCACHE
+export GOLANGCI_LINT_CACHE
 
 # Discover only packages that contain tests under ./pkg and selected roots.
 # This avoids building unrelated packages (e.g., stacks) and excludes examples.
@@ -16,7 +18,7 @@ all: test build
 
 # Ensure local cache directories exist
 cache-dirs:
-	mkdir -p $(GOCACHE) $(GOMODCACHE)
+	mkdir -p $(GOCACHE) $(GOMODCACHE) $(GOLANGCI_LINT_CACHE)
 
 # Run unit tests (exclude examples/ across the repo)
 test: cache-dirs
