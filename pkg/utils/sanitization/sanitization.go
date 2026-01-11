@@ -136,6 +136,9 @@ func (p *fieldSanitizationProcessor) sanitize() any {
 		case FullyRedact:
 			return redactedValue
 		case PartialMask:
+			if p.keyLower == "card_number" || p.keyLower == "number" {
+				return maskCardNumberValue(p.value)
+			}
 			return handler.handleRestricted()
 		}
 	}
@@ -258,6 +261,20 @@ func (h *classificationHandler) handlePublic() any {
 // handleUnknown handles unknown classification (default to redact)
 func (h *classificationHandler) handleUnknown() any {
 	return redactedValue
+}
+
+func maskCardNumberValue(value any) any {
+	if value == nil {
+		return nil
+	}
+	switch typed := value.(type) {
+	case string:
+		return MaskBINLast4(typed)
+	case []byte:
+		return MaskBINLast4(string(typed))
+	default:
+		return MaskBINLast4(fmt.Sprintf("%v", typed))
+	}
 }
 
 // sanitizeUserContent sanitizes user-generated content

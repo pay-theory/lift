@@ -13,12 +13,13 @@ func TestSanitizeXML(t *testing.T) {
 		notContains []string // Strings that should NOT appear in output
 	}{
 		{
-			name: "Card number with last 4 digits",
+			name: "Card number with BIN + last 4 digits",
 			input: `<xml>
 				<AcctNum>4111111111111111</AcctNum>
 				<Amount>1000</Amount>
 			</xml>`,
 			contains: []string{
+				"411111", // BIN preserved
 				"1111",   // Last 4 digits preserved
 				"Amount", // Non-sensitive field preserved
 				"1000",
@@ -126,9 +127,10 @@ func TestSanitizeXML(t *testing.T) {
 				</Customer>
 			</RapidConnectRequest>`,
 			contains: []string{
-				"1111",  // Card last 4
-				"5000",  // Amount preserved
-				"Email", // Non-sensitive field name
+				"411111", // BIN preserved
+				"1111",   // Last 4 preserved
+				"5000",   // Amount preserved
+				"Email",  // Non-sensitive field name
 				"test@example.com",
 			},
 			notContains: []string{
@@ -195,17 +197,17 @@ func TestMaskCardNumber(t *testing.T) {
 		{
 			name:     "16-digit card number",
 			input:    "<AcctNum>4111111111111111</AcctNum>",
-			expected: "<AcctNum>************1111</AcctNum>",
+			expected: "<AcctNum>411111******1111</AcctNum>",
 		},
 		{
 			name:     "15-digit card number (Amex)",
 			input:    "<AcctNum>378282246310005</AcctNum>",
-			expected: "<AcctNum>***********0005</AcctNum>",
+			expected: "<AcctNum>378282*****0005</AcctNum>",
 		},
 		{
 			name:     "HTML-escaped",
 			input:    "&lt;AcctNum&gt;4005562231212149&lt;/AcctNum&gt;",
-			expected: "&lt;AcctNum&gt;************2149&lt;/AcctNum&gt;",
+			expected: "&lt;AcctNum&gt;400556******2149&lt;/AcctNum&gt;",
 		},
 		{
 			name:     "Short number (4 digits or less)",
