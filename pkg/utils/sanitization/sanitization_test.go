@@ -38,6 +38,18 @@ func TestSanitizeFieldValue(t *testing.T) {
 
 		// Sensitive number fields (DataRestricted)
 		{
+			name:     "card_number bin + last 4",
+			key:      "card_number",
+			value:    "4111111111111111",
+			expected: "411111******1111",
+		},
+		{
+			name:     "number bin + last 4",
+			key:      "number",
+			value:    "4111111111111111",
+			expected: "411111******1111",
+		},
+		{
 			name:     "ssn with dashes",
 			key:      "ssn",
 			value:    "123-45-6789",

@@ -11,7 +11,7 @@ import "regexp"
 //
 // Patterns are applied in order, so more specific patterns should come before general ones.
 var PaymentXMLPatterns = []XMLSanitizationPattern{
-	// Card numbers (AcctNum) - show last 4 digits only
+	// Card numbers (AcctNum) - show BIN + last 4 digits
 	{
 		Name:        "AcctNum",
 		Pattern:     regexp.MustCompile(`<AcctNum>(\d{12,19})</AcctNum>`),

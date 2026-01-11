@@ -61,9 +61,13 @@ func TestJWTAuth_MissingToken_UsesErrorHandler(t *testing.T) {
 		return nil
 	}))
 
-	require.NoError(t, handler.Handle(ctx))
+	err := handler.Handle(ctx)
+	require.Error(t, err)
+	var liftErr *lift.LiftError
+	require.ErrorAs(t, err, &liftErr)
+	require.Equal(t, lift.ErrorCodeUnauthorized, liftErr.Code)
+	require.Equal(t, 401, liftErr.StatusCode)
 	require.False(t, called)
-	require.Equal(t, 401, ctx.Response.StatusCode)
 }
 
 func TestJWTAuth_ValidToken_SetsClaimsAndCallsNext(t *testing.T) {
@@ -124,8 +128,12 @@ func TestJWTAuth_ValidatorError_UsesErrorHandler(t *testing.T) {
 		return nil
 	}))
 
-	require.NoError(t, handler.Handle(ctx))
-	require.Equal(t, 401, ctx.Response.StatusCode)
+	err := handler.Handle(ctx)
+	require.Error(t, err)
+	var liftErr *lift.LiftError
+	require.ErrorAs(t, err, &liftErr)
+	require.Equal(t, lift.ErrorCodeUnauthorized, liftErr.Code)
+	require.Equal(t, 401, liftErr.StatusCode)
 }
 
 func TestCreateExtractor_ParsesHeaderQueryCookieLookups(t *testing.T) {

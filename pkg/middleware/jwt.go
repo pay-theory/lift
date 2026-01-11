@@ -33,7 +33,8 @@ func DefaultJWTConfig() JWTConfig {
 		Algorithm:   algorithmHS256,
 		TokenLookup: "header:Authorization",
 		ErrorHandler: func(ctx *lift.Context, err error) error {
-			return ctx.Unauthorized("Invalid or missing token", err)
+			_ = ctx
+			return lift.Unauthorized("Invalid or missing token").WithCause(err)
 		},
 	}
 }

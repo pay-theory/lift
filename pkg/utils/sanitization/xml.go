@@ -34,7 +34,7 @@ func SanitizeXML(xmlString string, patterns []XMLSanitizationPattern) string {
 	return result
 }
 
-// MaskCardNumber shows only last 4 digits of card numbers (PCI DSS compliant)
+// MaskCardNumber shows BIN + last 4 digits of card numbers (PCI DSS compliant)
 // Handles both <AcctNum>1234567890123456</AcctNum> and HTML-escaped variants
 func MaskCardNumber(match string) string {
 	// Determine if this is HTML-escaped XML
@@ -53,8 +53,12 @@ func MaskCardNumber(match string) string {
 
 	if end > start {
 		number := match[start:end]
+		if len(number) > 10 {
+			// Show BIN + last 4 digits for PCI compliance
+			masked := number[:6] + strings.Repeat("*", len(number)-10) + number[len(number)-4:]
+			return match[:start] + masked + match[end:]
+		}
 		if len(number) > 4 {
-			// Show only last 4 digits for PCI compliance
 			masked := strings.Repeat("*", len(number)-4) + number[len(number)-4:]
 			return match[:start] + masked + match[end:]
 		}

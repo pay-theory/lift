@@ -715,6 +715,7 @@ func (c *Context) Created(data any) error {
 }
 
 // BadRequest sends a 400 Bad Request response.
+//
 // Deprecated: Use ValidationError instead.
 //
 // This method sets the response status code to 400 and sends a JSON response
@@ -754,6 +755,7 @@ func (c *Context) BadRequest(message string, err error) error {
 }
 
 // NotFound sends a 404 Not Found response.
+//
 // Deprecated: Prefer returning lift.NotFound(...) and let error middleware handle formatting.
 //
 // This method sets the response status code to 404 and sends a JSON response
@@ -789,6 +791,7 @@ func (c *Context) NotFound(message string, err error) error {
 }
 
 // Forbidden sends a 403 Forbidden response.
+//
 // Deprecated: Use AuthorizationError from the errors package instead.
 //
 // This method sets the response status code to 403 and sends a JSON response
@@ -828,6 +831,7 @@ func (c *Context) Forbidden(message string, err error) error {
 }
 
 // SystemError sends a 500 Internal Server Error response.
+//
 // Deprecated: Prefer returning lift.SystemError(...) and let error middleware handle formatting.
 //
 // This method sets the response status code to 500 and sends a JSON response
@@ -867,6 +871,7 @@ func (c *Context) SystemError(message string, err error) error {
 }
 
 // Unauthorized sends a 401 Unauthorized response.
+//
 // Deprecated: Prefer returning lift.Unauthorized(...) and let error middleware handle formatting.
 //
 // This method sets the response status code to 401 and sends a JSON response
