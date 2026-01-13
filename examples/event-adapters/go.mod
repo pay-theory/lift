@@ -6,7 +6,6 @@ replace github.com/pay-theory/lift => ../..
 
 require (
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.220.0
-	github.com/aws/constructs-go/constructs/v10 v10.4.2
 	github.com/aws/jsii-runtime-go v1.117.0
 	github.com/pay-theory/lift v0.0.0-00010101000000-000000000000
 )
@@ -17,6 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.4 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.4 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/cloudfront/sign v1.9.11 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.16 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.16 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.16 // indirect
@@ -32,6 +32,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.4 // indirect
+	github.com/aws/constructs-go/constructs/v10 v10.4.2 // indirect
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/cdklabs/awscdk-asset-awscli-go/awscliv1/v2 v2.2.257 // indirect
 	github.com/cdklabs/awscdk-asset-node-proxy-agent-go/nodeproxyagentv6/v2 v2.1.0 // indirect

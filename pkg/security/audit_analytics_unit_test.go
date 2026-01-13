@@ -11,12 +11,12 @@ import (
 )
 
 type fakeRiskScorer struct {
-	riskScore       *RiskScore
-	riskScoreErr    error
-	aggregate       *AggregateRiskScore
-	aggregateErr    error
-	calculateCalls  int
-	aggregateCalls  int
+	riskScore        *RiskScore
+	riskScoreErr     error
+	aggregate        *AggregateRiskScore
+	aggregateErr     error
+	calculateCalls   int
+	aggregateCalls   int
 	updateModelCalls int
 }
 
@@ -94,9 +94,9 @@ func (f *fakePredictiveModel) UpdateModel(context.Context, []*AnalyticsDataPoint
 }
 
 type fakeAnalyticsDataStore struct {
-	storeErr     error
-	stored       []*AnalyticsDataPoint
-	aggregated   *AggregatedMetrics
+	storeErr      error
+	stored        []*AnalyticsDataPoint
+	aggregated    *AggregatedMetrics
 	aggregatedErr error
 }
 

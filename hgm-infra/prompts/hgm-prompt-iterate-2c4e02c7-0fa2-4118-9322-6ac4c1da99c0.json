@@ -1,0 +1,26 @@
+{
+  "prompt": {
+    "action": "iterate",
+    "expected_outputs": [
+      "hgm-infra/prompts/hgm-prompt-iterate-M1-CON-1-gofmt.json",
+      "hgm-infra/evidence/hgm-rubric-report.json",
+      "hgm-infra/evidence/CON-1-output.log",
+      "hgm-infra/evidence/*-output.log",
+      "hgm-infra/planning/lift-lint-green-roadmap.md"
+    ],
+    "guardrails": [
+      "Do not weaken or bypass any verifier checks (no exclusions/disablements/threshold changes).",
+      "Do not modify application logic; this step must be formatting-only (gofmt).",
+      "Do not attempt to fix unrelated rubric failures in this step (COM-1, SEC-1, MAI-1, etc.).",
+      "Do not write outside hgm-infra/ except for the gofmt formatting changes required to satisfy CON-1.",
+      "Keep all new evidence and progress notes under hgm-infra/."
+    ],
+    "prompt_text": "You are executing roadmap milestone M1 (Make core lint/build loop reproducible), focusing only on rubric item CON-1 (gofmt/formatter clean).\n\nContext (current verifier state):\n- hgm-infra/evidence/hgm-rubric-report.json shows CON-1=FAIL because several tracked .go files are not gofmt-clean.\n- This step is intended to be purely mechanical formatting, with no behavior changes.\n\nYour tasks (do in order):\n1) Confirm current failure output\n   - Read hgm-infra/evidence/CON-1-output.log to see the current list of files not gofmt-clean.\n   - Do not start fixing other rubric failures in this step (e.g., COM-1 example module compile, SEC-1 gosec scan flags, MAI-1 file budgets).\n\n2) Apply gofmt to ONLY the files listed by the verifier\n   - Run gofmt -w on each file listed in hgm-infra/evidence/CON-1-output.log.\n   - Keep the change set strictly formatting-only: no renames, no refactors, no logic changes, no comment rewrites unless gofmt does it.\n   - If gofmt causes changes beyond those files, revert anything not in the list and re-run gofmt only on the listed files.\n\n3) Re-run the deterministic verifier to refresh evidence\n   - Run: bash ./hgm-infra/verifiers/hgm-verify-rubric.sh\n   - Confirm that CON-1 is now PASS in hgm-infra/evidence/hgm-rubric-report.json, and that hgm-infra/evidence/CON-1-output.log now reports \"gofmt clean\" (or equivalent).\n   - Do not attempt to “fix” any remaining FAIL/BLOCKED items in this step; just leave them as-is and let the verifier record them.\n\n4) Record progress under hgm-infra/\n   - Update hgm-infra/planning/lift-lint-green-roadmap.md in the \"Progress snapshots\" section with a new entry noting that CON-1 (gofmt) is now clean (include the date and reference the evidence path hgm-infra/evidence/CON-1-output.log).\n   - Do not change rubric requirements or thresholds.\n\nAcceptance criteria\n- Running bash ./hgm-infra/verifiers/hgm-verify-rubric.sh results in CON-1=PASS.\n- Only formatting-only diffs are introduced (gofmt output).\n- Evidence artifacts under hgm-infra/evidence/ are refreshed and consistent with the verifier run.\n\nDeliverables\n- Updated gofmt’d files (formatting-only).\n- Updated hgm-infra/evidence/hgm-rubric-report.json + updated hgm-infra/evidence/CON-1-output.log.\n- Updated hgm-infra/planning/lift-lint-green-roadmap.md progress snapshot entry.\n",
+    "schema": 1,
+    "step_description": "Fix gofmt drift so the deterministic verifier’s CON-1 (formatter clean) gate passes.",
+    "step_id": "M1-CON-1"
+  },
+  "request_id": "2c4e02c7-0fa2-4118-9322-6ac4c1da99c0",
+  "status": "OK",
+  "timestamp": "2026-01-13T16:50:10Z"
+}

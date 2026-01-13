@@ -88,4 +88,3 @@ func TestServiceMeshAdapter_ExtractTraceHeaders_CoversAllHeaderTypes(t *testing.
 	require.Equal(t, "b3p", headers["X-B3-ParentSpanId"])
 	require.Equal(t, "1", headers["X-B3-Sampled"])
 }
-

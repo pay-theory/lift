@@ -25,6 +25,7 @@ bash ./hgm-infra/verifiers/hgm-verify-rubric.sh
 
 ## Progress snapshots
 - Baseline (2026-01-13): TBD
+- After M1-CON-1 (2026-01-13): CON-1 (gofmt/formatter clean) is now PASS. Applied gofmt to 57 test files. Evidence: hgm-infra/evidence/CON-1-output.log shows "gofmt clean".
 - After LINT-1 (DATE): TBD
 - After LINT-2 (DATE): TBD
 

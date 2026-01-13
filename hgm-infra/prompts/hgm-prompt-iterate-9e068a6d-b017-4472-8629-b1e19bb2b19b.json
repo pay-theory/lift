@@ -1,0 +1,26 @@
+{
+  "prompt": {
+    "action": "iterate",
+    "expected_outputs": [
+      "hgm-infra/evidence/hgm-rubric-report.json",
+      "hgm-infra/evidence/COM-1-output.log",
+      "hgm-infra/evidence/*-output.log",
+      "hgm-infra/evidence/M2-COM-1-notes.md",
+      "hgm-infra/planning/lift-10of10-roadmap.md"
+    ],
+    "guardrails": [
+      "Do not weaken or bypass any verifier checks (no exclusions/disablements/threshold changes).",
+      "Do not modify production/library code under pkg/**, cmd/**, or internal/** in this step.",
+      "Only modify examples/** to resolve COM-1 compilation failures.",
+      "Do not run go mod tidy at the repo root in this step (example modules only).",
+      "Write all progress notes and evidence under hgm-infra/**."
+    ],
+    "prompt_text": "You are executing milestone M2 (Enforce in CI), focusing ONLY on rubric item COM-1: “All modules compile (no mystery meat)”.\n\nCurrent verifier state (source of truth):\n- hgm-infra/evidence/hgm-rubric-report.json shows COM-1 = FAIL.\n- The COM-1 evidence log indicates the root module compiles, but one or more example submodules under examples/* (each with its own go.mod) fail to compile.\n\nSTRICT SCOPE / CHANGE BOUNDARIES\n- Allowed code changes for this step:\n  - You MAY modify files under examples/** ONLY when required to make example submodules compile (e.g., example module go.sum/go.mod and example-only Go files with compile errors).\n  - You MAY write/update evidence and progress notes under hgm-infra/**.\n- Prohibited changes for this step:\n  - Do NOT modify production/library code under pkg/**, cmd/**, internal/**.\n  - Do NOT modify CI/workflow files.\n  - Do NOT modify the Hypergenium rubric requirements or lower/disable any gates.\n  - Do NOT “fix” COM-1 by changing the verifier to skip examples.\n\nTASKS (do in order)\n\n1) Confirm the exact COM-1 failures\n- Read: hgm-infra/evidence/COM-1-output.log\n- Identify each failing example module directory. The log prints lines like:\n  - “Example module compile check: \u003cdir\u003e”\n  followed by compilation errors.\n\n2) Fix missing dependency checksum entries in example modules (go.sum)\nFor EACH failing example module directory (common ones currently include examples/event-adapters, examples/rate-limiting-limited, examples/websocket-demo):\n- From inside that example module directory, run:\n  - Preferred first: go mod download\n  - If compilation still fails due to module sums or module graph issues: go mod tidy\n- Important guardrail:\n  - Do NOT run go mod tidy at the repo root for this step.\n  - Only run go mod commands inside the failing example module(s).\n\n3) Fix example compilation errors (smallest possible diff)\n- If the COM-1 log shows actual Go compile failures inside an example module (e.g., unused imports), fix them with minimal, mechanical changes limited to that example module.\n- Example: if an example/cdk main.go imports a package but does not use it, remove the unused import (preferred) or use it if it is truly required.\n\n4) Re-run the deterministic verifier to refresh evidence\n- Run: bash ./hgm-infra/verifiers/hgm-verify-rubric.sh\n- Confirm in hgm-infra/evidence/hgm-rubric-report.json:\n  - COM-1 is now PASS\n- Confirm hgm-infra/evidence/COM-1-output.log no longer shows failing example-module compile checks.\n- Do NOT attempt to fix other rubric failures in this step (e.g., SEC-1, MAI-1, or any BLOCKED/TODO items). Let the verifier record them as-is.\n\n5) Record progress under hgm-infra/\n- Create: hgm-infra/evidence/M2-COM-1-notes.md\n  Include:\n  - Date\n  - Which example modules were changed\n  - Commands run (go mod download vs go mod tidy)\n  - Any code fixes made (file paths + one-line description)\n- Update: hgm-infra/planning/lift-10of10-roadmap.md\n  - Append a short note under a new “Progress log” section stating COM-1 is now PASS and pointing to hgm-infra/evidence/COM-1-output.log.\n\nACCEPTANCE CRITERIA\n- bash ./hgm-infra/verifiers/hgm-verify-rubric.sh results in COM-1 = PASS.\n- Changes are limited to examples/** plus evidence/progress notes under hgm-infra/**.\n- No verifier/rubric dilution: do not disable checks, do not reduce scope, do not change thresholds.\n",
+    "schema": 1,
+    "step_description": "Fix example submodule compilation issues so the deterministic verifier’s COM-1 (all modules compile) gate passes.",
+    "step_id": "M2-COM-1"
+  },
+  "request_id": "9e068a6d-b017-4472-8629-b1e19bb2b19b",
+  "status": "OK",
+  "timestamp": "2026-01-13T17:14:52Z"
+}

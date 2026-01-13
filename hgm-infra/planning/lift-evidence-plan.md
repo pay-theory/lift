@@ -35,8 +35,8 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | COM-3 | Lint config validation | `hgm-infra/evidence/COM-3-output.log` | `golangci-lint config verify --config .golangci.yml` |
 | COM-4 | Coverage threshold check | `hgm-infra/evidence/COM-4-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-5 | Security config validation | `hgm-infra/evidence/COM-5-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
-| COM-6 | Logging standards check | `hgm-infra/evidence/COM-6-output.log` | TODO (BLOCKED) |
-| SEC-1 | SAST scan output | `hgm-infra/evidence/SEC-1-output.log` | `golangci-lint ... --enable=gosec` |
+| COM-6 | Logging standards check | `hgm-infra/evidence/COM-6-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
+| SEC-1 | SAST scan output | `hgm-infra/evidence/SEC-1-output.log` | `golangci-lint run --enable-only=gosec --config .golangci.yml ./...` |
 | SEC-2 | Vulnerability scan output | `hgm-infra/evidence/SEC-2-output.log` | TODO (BLOCKED) |
 | SEC-3 | Supply-chain verification | `hgm-infra/evidence/SEC-3-output.log` | TODO (BLOCKED) |
 | SEC-4 | Domain P0 regression tests | `hgm-infra/evidence/SEC-4-output.log` | TODO (BLOCKED) |
@@ -44,8 +44,8 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | CMP-2 | Evidence plan exists | `hgm-infra/planning/lift-evidence-plan.md` | file existence check |
 | CMP-3 | Threat model exists | `hgm-infra/planning/lift-threat-model.md` | file existence check |
 | MAI-1 | File budget check | `hgm-infra/evidence/MAI-1-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
-| MAI-2 | Maintainability roadmap check | `hgm-infra/evidence/MAI-2-output.log` | TODO (BLOCKED) |
-| MAI-3 | Singleton/duplication check | `hgm-infra/evidence/MAI-3-output.log` | TODO (BLOCKED) |
+| MAI-2 | Maintainability roadmap check | `hgm-infra/evidence/MAI-2-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
+| MAI-3 | Singleton/duplication check | `hgm-infra/evidence/MAI-3-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | DOC-1 | Threat model present | `hgm-infra/planning/lift-threat-model.md` | file existence check |
 | DOC-2 | Evidence plan present | `hgm-infra/planning/lift-evidence-plan.md` | file existence check |
 | DOC-3 | Rubric + roadmap present | `hgm-infra/planning/lift-10of10-rubric.md` | file existence check |

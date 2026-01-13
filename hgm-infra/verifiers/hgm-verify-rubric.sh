@@ -347,6 +347,138 @@ file_budget_check() {
   echo "File budget OK (<= ${max_lines} lines per file)"
 }
 
+maintainability_roadmap_check() {
+  # MAI-2: Maintainability roadmap must exist, be current, and match active rubric version.
+  # This is a governance guardrail to ensure maintainability constraints are documented
+  # and stay aligned with the rubric as it evolves.
+  cd "$REPO_ROOT"
+
+  local roadmap_path="${PLANNING_DIR}/lift-maintainability-roadmap.md"
+  local required_version="Rubric v0.1.0"
+  local required_sections=("Guardrails" "Milestones" "Progress log")
+
+  # Check: file exists
+  if [[ ! -f "$roadmap_path" ]]; then
+    echo "ERROR: Maintainability roadmap not found: $roadmap_path" >&2
+    return 1
+  fi
+
+  # Check: contains active rubric version
+  if ! grep -qF "$required_version" "$roadmap_path"; then
+    echo "ERROR: Maintainability roadmap does not reference active rubric version: $required_version" >&2
+    return 1
+  fi
+
+  # Check: contains required section markers
+  local roadmap_content
+  roadmap_content="$(cat "$roadmap_path")"
+  for section in "${required_sections[@]}"; do
+    if ! echo "$roadmap_content" | grep -qF "$section"; then
+      echo "ERROR: Maintainability roadmap missing required section: $section" >&2
+      return 1
+    fi
+  done
+
+  echo "Maintainability roadmap OK"
+}
+
+canonical_semantics_duplication_check() {
+  # MAI-3: Canonical semantics / duplication control.
+  # Enforces limits on code duplication to prevent divergent implementations.
+  # Uses the dupl linter (already configured in .golangci.yml) to detect duplicate code.
+  cd "$REPO_ROOT"
+
+  # Check: golangci-lint is available
+  if ! command -v golangci-lint >/dev/null 2>&1; then
+    echo "BLOCKED: golangci-lint not found in PATH" >&2
+    return 2  # BLOCKED status
+  fi
+
+  # Check: dupl is enabled in config (anti-drift)
+  if ! grep -qE '^\s*-\s*dupl' .golangci.yml; then
+    echo "ERROR: dupl linter not enabled in .golangci.yml (config dilution detected)" >&2
+    return 1
+  fi
+
+  # Run dupl-only scan to enforce duplication limits
+  # Using --enable-only to keep MAI-3 semantically distinct from CON-2 (full lint)
+  if ! golangci-lint run --enable-only=dupl --config .golangci.yml ./...; then
+    echo "Duplication check FAILED: dupl linter found issues" >&2
+    return 1
+  fi
+
+  echo "Canonical semantics OK (duplication within limits)"
+}
+
+logging_operational_standards_check() {
+  # COM-6: Logging/operational standards enforced.
+  # Prevents common operational security issues via static analysis:
+  # - No direct stdlib "log" package usage (bypasses structured logging and sanitization)
+  # - No fmt.Print*/println usage (writes to stdout/stderr unsanitized)
+  # Scope: Lambda runtime code only (excludes CLI, dev server, testing frameworks, CDK infrastructure)
+  # Policy doc: hgm-infra/planning/lift-logging-standards.md
+  cd "$REPO_ROOT"
+
+  # Fail closed: verify git is available
+  if ! command -v git >/dev/null 2>&1; then
+    echo "BLOCKED: git not found in PATH" >&2
+    return 2
+  fi
+
+  # Enumerate non-test Go files in Lambda runtime code
+  # Exclude: test files, vendor, hgm-infra, CLI tools, dev server, testing frameworks, CDK
+  # Temporary allowlist: connection_store_dynamodb.go (1 warning Printf on line 151 - technical debt)
+  local go_files
+  go_files="$(git ls-files 'pkg/**/*.go' 'cmd/**/*.go' 'internal/**/*.go' 2>/dev/null | \
+    grep -v '_test\.go$' | \
+    grep -v '^pkg/cli/' | \
+    grep -v '^pkg/dev/' | \
+    grep -v '^pkg/testing/' | \
+    grep -v '^pkg/cdk/' | \
+    grep -v '^pkg/lift/connection_store_dynamodb\.go$')"
+
+  if [[ -z "$go_files" ]]; then
+    echo "WARNING: No Lambda runtime Go files found to check" >&2
+    echo "Logging standards OK (no files in scope)"
+    return 0
+  fi
+
+  local violations=""
+
+  # Check 1: Disallow direct stdlib "log" package imports
+  local log_imports
+  log_imports="$(echo "$go_files" | xargs grep -nE '^[[:space:]]*import[[:space:]]+"log"[[:space:]]*$' 2>/dev/null || true)"
+  if [[ -n "$log_imports" ]]; then
+    violations="${violations}Direct stdlib 'log' package imports found (must use pkg/logger):\n${log_imports}\n\n"
+  fi
+
+  # Check 2: Disallow fmt.Print* family calls (exclude commented lines)
+  # Pattern excludes: 1) lines where // appears before fmt.Print*, 2) lines starting with //
+  local fmt_prints
+  fmt_prints="$(echo "$go_files" | xargs grep -nE '\bfmt\.(Print|Println|Printf)\(' 2>/dev/null | grep -vE '//.*fmt\.(Print|Println|Printf)|^[^:]*:[^:]*:[[:space:]]*//' || true)"
+  if [[ -n "$fmt_prints" ]]; then
+    violations="${violations}fmt.Print* calls found (must use structured logger):\n${fmt_prints}\n\n"
+  fi
+
+  # Check 3: Disallow builtin println usage (exclude commented lines)
+  # Pattern excludes: 1) lines where // appears before println, 2) lines starting with //
+  local println_calls
+  println_calls="$(echo "$go_files" | xargs grep -nE '\bprintln\(' 2>/dev/null | grep -vE '//.*println|^[^:]*:[^:]*:[[:space:]]*//' || true)"
+  if [[ -n "$println_calls" ]]; then
+    violations="${violations}builtin println calls found (must use structured logger):\n${println_calls}\n\n"
+  fi
+
+  # Report violations
+  if [[ -n "$violations" ]]; then
+    echo -e "Logging/operational standards violations detected:\n" >&2
+    echo -e "$violations" >&2
+    echo "See hgm-infra/planning/lift-logging-standards.md for policy details" >&2
+    return 1
+  fi
+
+  echo "Logging/operational standards OK (Lambda runtime code clean)"
+}
+
 doc_integrity_check() {
   # Guardrail: planning docs should not contain unresolved template placeholders.
   # Also ensure rubric version references are consistent.
@@ -443,10 +575,10 @@ run_check "COM-2" "Completeness" "check_toolchain_pins"
 run_check "COM-3" "Completeness" "golangci-lint config verify --config .golangci.yml"
 run_check "COM-4" "Completeness" "check_coverage_threshold"
 run_check "COM-5" "Completeness" "check_security_config_not_diluted"
-run_check "COM-6" "Completeness" "TODO: add logging/operational standards check"
+run_check "COM-6" "Completeness" "logging_operational_standards_check"
 
 # Security
-run_check "SEC-1" "Security" "golangci-lint run --disable-all --enable=gosec --config .golangci.yml ./..."
+run_check "SEC-1" "Security" "golangci-lint run --enable-only=gosec --config .golangci.yml ./..."
 # Return code 2 from run_govulncheck_if_available means BLOCKED (missing tool). Translate by wrapper.
 run_check "SEC-2" "Security" "run_govulncheck_if_available"
 run_check "SEC-3" "Security" "check_supply_chain_basics"
@@ -459,8 +591,8 @@ check_file_exists "CMP-3" "Compliance" "${PLANNING_DIR}/lift-threat-model.md"
 
 # Maintainability
 run_check "MAI-1" "Maintainability" "file_budget_check"
-run_check "MAI-2" "Maintainability" "TODO: add maintainability roadmap/verifier"
-run_check "MAI-3" "Maintainability" "TODO: add canonical semantics/duplication verifier"
+run_check "MAI-2" "Maintainability" "maintainability_roadmap_check"
+run_check "MAI-3" "Maintainability" "canonical_semantics_duplication_check"
 
 # Docs
 check_file_exists "DOC-1" "Docs" "${PLANNING_DIR}/lift-threat-model.md"

@@ -117,4 +117,3 @@ func TestSecurityError(t *testing.T) {
 	assert.Equal(t, "message", err.Message)
 	assert.Equal(t, "message", err.Error())
 }
-

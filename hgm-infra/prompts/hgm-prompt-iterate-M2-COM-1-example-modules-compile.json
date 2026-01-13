@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "action": "iterate",
+  "pack": {
+    "stage": "live",
+    "version": "ba1a734ab662",
+    "manifest_digest_sha256": "a73df10dc3ead5014e2a67c62fdce039104074bd07a2f6cfef432921d12801eb"
+  },
+  "project": {
+    "name": "lift",
+    "slug": "lift",
+    "rubric_version": "v0.1.0"
+  },
+  "step_id": "M2-COM-1",
+  "step_description": "Fix example submodule compilation issues so the deterministic verifier’s COM-1 (all modules compile) gate passes.",
+  "prompt_text": "You are executing milestone M2 (Enforce in CI), focusing only on rubric item COM-1: \"All modules compile (no mystery meat)\".\n\nCurrent verifier state (from hgm-infra/evidence/hgm-rubric-report.json):\n- COM-1 = FAIL\n- Root module compilation appears OK; failures are coming from nested example modules under examples/* that have their own go.mod files.\n\nScope of this step (strict):\n- You MAY modify files under examples/** that are required to make the example modules compile (e.g., example module go.sum/go.mod, and example-only Go files that do not compile).\n- You MUST NOT modify production/library code under pkg/**, cmd/**, internal/** as part of this step.\n- You MUST NOT change the rubric requirements or lower any gates.\n- You MUST NOT modify the verifier logic except to re-run it for evidence (the goal is to fix the code so it passes, not to weaken checks).\n\nTasks (do in order):\n\n1) Confirm the exact COM-1 failures\n   - Read: hgm-infra/evidence/COM-1-output.log\n   - Identify which example module directories fail (they will be printed as \"Example module compile check: <dir>\" followed by build errors).\n\n2) Fix example module dependency checksum issues (go.sum)\n   For each failing example module directory (for example: examples/event-adapters, examples/rate-limiting-limited, examples/websocket-demo):\n   - From inside that module directory, run one of the following to populate missing go.sum entries:\n     - Prefer: `go mod download` (minimal; should update go.sum as needed)\n     - If download alone is insufficient: `go mod tidy` (may update go.mod/go.sum; acceptable only within the example module)\n   - Do NOT run go mod tidy in the repo root for this step.\n\n3) Fix any example compilation errors\n   - If the COM-1 log shows an example Go compile error (e.g., unused imports), fix it with the smallest possible change.\n   - Keep fixes strictly within the example module(s) that fail.\n   - Example: if examples/event-adapters/cdk/main.go has an unused import, remove the unused import or use it intentionally (prefer removal unless usage is required).\n\n4) Re-run the deterministic verifier to refresh evidence\n   - Run: `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh`\n   - Confirm COM-1 is now PASS in hgm-infra/evidence/hgm-rubric-report.json\n   - Confirm hgm-infra/evidence/COM-1-output.log no longer contains failing example-module compile errors.\n   - Do not attempt to fix other failing rubric items in this step (e.g., SEC-1, MAI-1, TODO/BLOCKED items).\n\n5) Record progress under hgm-infra/\n   - Create a short note file: hgm-infra/evidence/M2-COM-1-notes.md\n     Include:\n     - Date\n     - Which example modules were changed\n     - Commands run (e.g., go mod download / go mod tidy)\n     - Any code fixes made (file paths + one-line description)\n   - Update hgm-infra/planning/lift-10of10-roadmap.md (append a short entry under a new \"Progress log\" section) noting COM-1 is now PASS and referencing the evidence log path.\n\nAcceptance criteria\n- `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` results in COM-1 = PASS.\n- Changes are limited to example modules under examples/** (plus new/updated evidence under hgm-infra/**).\n- No verifier/rubric dilution: no disabling checks, no changing thresholds, no widening excludes.\n\nDeliverables\n- Updated example module files needed for compilation (examples/** only).\n- Refreshed: hgm-infra/evidence/hgm-rubric-report.json and hgm-infra/evidence/COM-1-output.log\n- New: hgm-infra/evidence/M2-COM-1-notes.md\n- Updated: hgm-infra/planning/lift-10of10-roadmap.md\n",
+  "expected_outputs": [
+    "hgm-infra/evidence/hgm-rubric-report.json",
+    "hgm-infra/evidence/COM-1-output.log",
+    "hgm-infra/evidence/*-output.log",
+    "hgm-infra/evidence/M2-COM-1-notes.md",
+    "hgm-infra/planning/lift-10of10-roadmap.md"
+  ],
+  "guardrails": [
+    "Do not weaken or bypass any verifier checks (no exclusions/disablements/threshold changes).",
+    "Do not modify production/library code under pkg/**, cmd/**, internal/** in this step.",
+    "Only modify examples/** to resolve COM-1 compilation failures.",
+    "Do not run go mod tidy at the repo root in this step (example modules only).",
+    "Write all progress notes and evidence under hgm-infra/**."
+  ]
+}

@@ -53,14 +53,14 @@ Enforcement rule (anti-drift):
 | COM-3 | 2 | Lint config schema-valid (no silent skip) | `golangci-lint config verify --config .golangci.yml` |
 | COM-4 | 2 | Coverage threshold not diluted (≥ 90%) | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (COM-4) |
 | COM-5 | 1 | Security scan config not diluted (no excluded high-signal rules) | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (COM-5) |
-| COM-6 | 1 | Logging/operational standards enforced (if applicable) | `TODO: add logging standards check (currently BLOCKED)` |
+| COM-6 | 1 | Logging/operational standards enforced (if applicable) | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (COM-6) |
 
 **10/10 definition:** COM-1 through COM-6 pass.
 
 ## Security (SEC) — abuse-resilient and reviewable
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
-| SEC-1 | 3 | Static security scan green (pinned version) | `golangci-lint run --disable-all --enable=gosec --config .golangci.yml ./...` |
+| SEC-1 | 3 | Static security scan green (pinned version) | `golangci-lint run --enable-only=gosec --config .golangci.yml ./...` |
 | SEC-2 | 3 | Dependency vulnerability scan green | `TODO: add govulncheck in CI (currently BLOCKED)` |
 | SEC-3 | 2 | Supply-chain verification green | `TODO: add supply-chain verification (currently BLOCKED)` |
 | SEC-4 | 2 | Domain-specific P0 regression tests (auth/CHD env invariants) | `TODO: add P0 regression test suite (currently BLOCKED)` |
@@ -80,8 +80,8 @@ Enforcement rule (anti-drift):
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
 | MAI-1 | 4 | File-size/complexity budgets enforced | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (MAI-1) |
-| MAI-2 | 3 | Maintainability roadmap current | `TODO: add maintainability plan + verifier (currently BLOCKED)` |
-| MAI-3 | 3 | Canonical implementations (no duplicate semantics) | `TODO: add duplication/singleton checks (currently BLOCKED)` |
+| MAI-2 | 3 | Maintainability roadmap current | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (MAI-2) |
+| MAI-3 | 3 | Canonical implementations (no duplicate semantics) | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (MAI-3) |
 
 **10/10 definition:** MAI-1 through MAI-3 pass.
 

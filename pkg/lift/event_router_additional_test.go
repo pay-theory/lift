@@ -193,4 +193,3 @@ func TestEventRouter_HandleEvent_AppliesMiddleware(t *testing.T) {
 	require.NoError(t, router.HandleEvent(ctx, []Middleware{mw1, mw2}))
 	require.Equal(t, []string{"mw1", "mw2", "handler"}, order)
 }
-

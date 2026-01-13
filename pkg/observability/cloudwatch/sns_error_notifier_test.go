@@ -24,4 +24,3 @@ func TestCloudWatchSNSErrorNotifierOptions(t *testing.T) {
 		require.Equal(t, "arn:aws:sns:us-east-1:123456789012:topic2", opts.Notifier.GetTopicARN())
 	})
 }
-

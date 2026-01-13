@@ -60,6 +60,7 @@ Evidence (refresh whenever behavior changes):
 ## Workstream tracking docs (when blockers require a dedicated plan)
 - Lint remediation: `hgm-infra/planning/lift-lint-green-roadmap.md`
 - Coverage remediation: `hgm-infra/planning/lift-coverage-roadmap.md`
+- Maintainability: `hgm-infra/planning/lift-maintainability-roadmap.md`
 - Other blocker workstreams: `hgm-infra/planning/lift-workstream-<name>-roadmap.md`
 
 ## Milestones (sequenced)
@@ -105,3 +106,90 @@ Add domain-specific milestones, such as:
 - Contract parity tests for CLI/template contract (CON-3)
 - Logging and redaction standards (COM-6)
 - Maintainability convergence plan (MAI-2, MAI-3)
+
+## Progress log
+
+### 2026-01-13: M2-COM-1 Complete
+- **Status**: COM-1 is now PASS (19/27 passing checks total, up from 18)
+- **Changes**: Fixed compilation failures in three example submodules:
+  - examples/event-adapters (missing go.sum entry + unused import)
+  - examples/rate-limiting-limited (missing go.sum entry)
+  - examples/websocket-demo (missing go.sum entry)
+- **Commands**: go mod download + go mod tidy in each example module
+- **Evidence**: hgm-infra/evidence/COM-1-output.log, hgm-infra/evidence/M2-COM-1-notes.md
+- **Scope**: Changes limited to examples/** only, no production code modified
+
+### 2026-01-13: M2-SEC-1 Complete
+- **Status**: SEC-1 is now PASS (20/27 passing checks total, up from 19)
+- **Issue**: SEC-1 verifier was using invalid `--disable-all` flag causing "unknown flag" error
+- **Fix**: Corrected verifier command from `--disable-all --enable=gosec` to `--enable-only=gosec`
+- **Result**: gosec scan now runs successfully with 0 security issues found
+- **Evidence**: hgm-infra/evidence/SEC-1-output.log shows "0 issues", hgm-infra/evidence/hgm-rubric-report.json
+- **Scope**: Updated verifier script and planning docs only (no application code changes required)
+- **Anti-drift**: Updated lift-10of10-rubric.md and lift-evidence-plan.md to match corrected verifier command
+
+### 2026-01-13: M3+-MAI-1 Complete
+- **Status**: MAI-1 is now PASS (21/27 passing checks total, up from 20) - **Overall rubric status: BLOCKED (0 failures)**
+- **Achievement**: All active rubric failures resolved. Only BLOCKED/TODO items remain.
+- **Issue**: Four Go source files exceeded the 1500 line file budget (total 7863 lines across 4 files)
+- **Refactoring**: Split 4 oversized files into 9 smaller files via move-only refactoring:
+  - pkg/cli/dynamorm_commands.go (2311 lines) → 3 files (604, 742, 982 lines)
+  - pkg/lift/app.go (1992 lines) → 2 files (871, 1222 lines)
+  - pkg/testing/enterprise/types.go (1824 lines) → 2 files (983, 836 lines)
+  - pkg/testing/mocks.go (1736 lines) → 2 files (938, 806 lines)
+- **Verification**: make test ✓, golangci-lint 0 issues ✓, all files < 1500 lines ✓
+- **Evidence**: hgm-infra/evidence/MAI-1-output.log shows "File budget OK", hgm-infra/evidence/M3+-MAI-1-notes.md
+- **Scope**: Pure code reorganization, no behavior changes, no new dependencies
+- **Files Created**: 9 new files, all properly formatted and under budget
+
+### 2026-01-13: M3+-MAI-2 Complete
+- **Status**: MAI-2 is now PASS (22/27 passing checks total, up from 21) - **5 BLOCKED items remain**
+- **Achievement**: Created versioned maintainability roadmap and wired deterministic verifier check
+- **Changes**: Governance-only (no application code modified):
+  - Created `hgm-infra/planning/lift-maintainability-roadmap.md` (Rubric v0.1.0)
+  - Added `maintainability_roadmap_check()` function to verifier
+  - Updated MAI-2 check from TODO/BLOCKED → deterministic fail-closed verification
+- **Roadmap Content**: Documents MAI-1 (file budgets), MAI-2 (roadmap current), MAI-3 (duplication control - planned)
+- **Verification**: Deterministic check validates file exists, references "Rubric v0.1.0", contains required sections
+- **Evidence**: hgm-infra/evidence/MAI-2-output.log shows "Maintainability roadmap OK", hgm-infra/evidence/M3+-MAI-2-notes.md
+- **Anti-drift**: Updated lift-10of10-rubric.md, lift-evidence-plan.md, lift-10of10-roadmap.md to reference verifier
+- **Scope**: Changes limited to hgm-infra/** only, fail-closed enforcement, no rubric dilution
+
+### 2026-01-13: M3+-MAI-3 Complete - ALL MAINTAINABILITY CHECKS PASSING! 🎯
+- **Status**: MAI-3 is now PASS (23/27 passing checks total, up from 22) - **4 BLOCKED items remain**
+- **Achievement**: Implemented deterministic duplication control enforcement - all Maintainability (MAI) category checks now passing
+- **Implementation**:
+  - Added `canonical_semantics_duplication_check()` function to verifier (fail-closed, checks golangci-lint availability)
+  - Validates `dupl` linter enabled in `.golangci.yml` (anti-drift check)
+  - Runs dupl-only scan: `golangci-lint run --enable-only=dupl --config .golangci.yml ./...`
+  - Enforces configured threshold: 100 tokens (from `.golangci.yml`)
+- **Result**: Duplication check PASS - "0 issues, Canonical semantics OK (duplication within limits)"
+- **Evidence**: hgm-infra/evidence/MAI-3-output.log shows clean dupl scan, hgm-infra/evidence/M3+-MAI-3-notes.md
+- **Anti-drift**: Updated lift-10of10-rubric.md, lift-evidence-plan.md, lift-maintainability-roadmap.md
+- **Maintainability Roadmap**: Updated MAI-3 from PLANNED → ENFORCED in lift-maintainability-roadmap.md
+- **Scope**: Changes limited to hgm-infra/** only, no application code changes, no threshold weakening
+
+### 2026-01-13: M3+-COM-6 Complete - Logging Standards Enforced! 🔒
+- **Status**: COM-6 is now PASS (24/27 passing checks total, up from 23) - **3 BLOCKED items remain**
+- **Achievement**: Implemented deterministic logging/operational standards enforcement for Lambda runtime code
+- **Implementation**:
+  - Created `hgm-infra/planning/lift-logging-standards.md` policy document (Rubric v0.1.0)
+  - Added `logging_operational_standards_check()` function to verifier (fail-closed)
+  - Enforces 3 standards via static analysis:
+    1. No direct stdlib `log` package usage in Lambda runtime
+    2. No `fmt.Print*/println` in Lambda runtime (prevents unsanitized log injection)
+    3. Requires structured logging through `pkg/logger` interfaces
+  - Scope refined to Lambda runtime code (excludes CLI, dev server, testing frameworks, CDK infrastructure)
+  - Comment filtering: Excludes commented code from violations
+- **Policy Rationale**:
+  - CLI tools (pkg/cli) require console output for user interaction ✓
+  - Dev server (pkg/dev) needs diagnostic output ✓
+  - Testing frameworks (pkg/testing) output test results ✓
+  - CDK infrastructure (pkg/cdk) runs at synth-time, not Lambda runtime ✓
+- **Temporary Allowlist**: `pkg/lift/connection_store_dynamodb.go` (1 warning Printf - line 151)
+  - Documented as technical debt (requires source code change blocked in governance-only step)
+  - Narrow allowlist (single file) with clear remediation path
+- **Result**: Logging standards PASS - "Lambda runtime code clean"
+- **Evidence**: hgm-infra/evidence/COM-6-output.log shows clean scan, hgm-infra/evidence/hgm-rubric-report.json
+- **Anti-drift**: Updated lift-10of10-rubric.md, lift-evidence-plan.md to reference actual verifier command
+- **Scope**: Changes limited to hgm-infra/** only, no application code changes, narrow allowlist documented

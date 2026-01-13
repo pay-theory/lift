@@ -488,4 +488,3 @@ func TestJSONCacheSerializer_SerializeDeterministicJSON(t *testing.T) {
 	require.NoError(t, json.Unmarshal(encoded, &decoded))
 	require.Equal(t, map[string]any{"a": "b"}, decoded)
 }
-

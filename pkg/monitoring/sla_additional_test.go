@@ -205,4 +205,3 @@ func TestAlertManager_DropsWhenFull(t *testing.T) {
 		t.Fatalf("expected overflow alert to be dropped, got len=%d cap=%d", len(am.alertChannel), cap(am.alertChannel))
 	}
 }
-

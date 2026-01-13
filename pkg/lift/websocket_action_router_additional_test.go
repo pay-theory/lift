@@ -42,4 +42,3 @@ func TestWebSocketActionRouter_Handle_NilRouter(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, ErrorCodeSystemError, err.(*LiftError).Code)
 }
-
