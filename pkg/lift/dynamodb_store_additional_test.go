@@ -576,4 +576,3 @@ func TestDynamoDBSubscriptionStore_TTLIsSet(t *testing.T) {
 	rec := item.(dynamormSubscriptionRecord)
 	require.Greater(t, rec.TTL, time.Now().Unix())
 }
-

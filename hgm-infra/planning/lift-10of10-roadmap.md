@@ -17,7 +17,7 @@ has been run in the target CI environment and evidence has been captured.
 | Completeness | TBD | COM-3, COM-4, COM-6 |
 | Security | TBD | SEC-2, SEC-3, SEC-4 |
 | Compliance Readiness | 10/10 (docs exist once merged) | — |
-| Maintainability | TBD | MAI-2, MAI-3 |
+| Maintainability | TBD | MAI-3 |
 | Docs | TBD | DOC-4, DOC-5 |
 
 Evidence (refresh whenever behavior changes):
@@ -49,7 +49,7 @@ Evidence (refresh whenever behavior changes):
 | CMP-2 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
 | CMP-3 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
 | MAI-1 | TBD | M3+ — Maintainability budgets |
-| MAI-2 | BLOCKED | M3+ — Maintainability convergence |
+| MAI-2 | TBD | M3+ — Maintainability convergence |
 | MAI-3 | BLOCKED | M3+ — Canonical semantics (duplication control) |
 | DOC-1 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
 | DOC-2 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |

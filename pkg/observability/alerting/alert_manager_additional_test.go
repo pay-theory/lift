@@ -10,9 +10,9 @@ import (
 type invalidChannel struct{}
 
 func (invalidChannel) Send(context.Context, *Alert) error { return nil }
-func (invalidChannel) Validate() error                   { return errors.New("invalid channel") }
-func (invalidChannel) GetType() ChannelType              { return ChannelTypeEmail }
-func (invalidChannel) GetConfig() map[string]any         { return map[string]any{} }
+func (invalidChannel) Validate() error                    { return errors.New("invalid channel") }
+func (invalidChannel) GetType() ChannelType               { return ChannelTypeEmail }
+func (invalidChannel) GetConfig() map[string]any          { return map[string]any{} }
 
 type errorChannel struct {
 	ch chan *Alert
@@ -263,7 +263,7 @@ func TestAlertManager_processAlertsAndCleanupExpired(t *testing.T) {
 
 	triggered := &Alert{
 		ID:        "a1",
-		StartTime:  time.Now().Add(-2 * time.Minute),
+		StartTime: time.Now().Add(-2 * time.Minute),
 		Status:    AlertStatusPending,
 		State:     AlertStateTriggered,
 		Events:    []AlertEvent{},
@@ -273,7 +273,7 @@ func TestAlertManager_processAlertsAndCleanupExpired(t *testing.T) {
 	}
 	expired := &Alert{
 		ID:        "a2",
-		StartTime:  time.Now().Add(-6 * time.Minute),
+		StartTime: time.Now().Add(-6 * time.Minute),
 		Status:    AlertStatusActive,
 		State:     AlertStateFiring,
 		Events:    []AlertEvent{},

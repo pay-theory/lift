@@ -70,4 +70,3 @@ func TestDetermineAppSyncErrorType(t *testing.T) {
 	require.Equal(t, "CLIENT_ERROR", determineAppSyncErrorType(400))
 	require.Equal(t, "SYSTEM_ERROR", determineAppSyncErrorType(200))
 }
-

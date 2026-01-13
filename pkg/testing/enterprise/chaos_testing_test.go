@@ -87,4 +87,3 @@ func TestChaosEngineeringTester_logChaosEvent_MonitoringToggle(t *testing.T) {
 		t.Fatalf("expected no metric write when monitoring disabled")
 	}
 }
-

@@ -15,9 +15,11 @@ type stubConnectionStore struct {
 	err   error
 }
 
-func (s stubConnectionStore) Save(_ context.Context, _ *lift.Connection) error           { return nil }
-func (s stubConnectionStore) Get(_ context.Context, _ string) (*lift.Connection, error)  { return nil, nil }
-func (s stubConnectionStore) Delete(_ context.Context, _ string) error                   { return nil }
+func (s stubConnectionStore) Save(_ context.Context, _ *lift.Connection) error { return nil }
+func (s stubConnectionStore) Get(_ context.Context, _ string) (*lift.Connection, error) {
+	return nil, nil
+}
+func (s stubConnectionStore) Delete(_ context.Context, _ string) error { return nil }
 func (s stubConnectionStore) ListByUser(_ context.Context, _ string) ([]*lift.Connection, error) {
 	return nil, nil
 }
@@ -130,4 +132,3 @@ func newWebSocketTestContext(routeKey, eventType, connectionID string, body []by
 	})
 	return lift.NewContext(context.Background(), req)
 }
-

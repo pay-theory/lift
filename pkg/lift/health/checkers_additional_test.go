@@ -19,8 +19,8 @@ type stubConnectionPool struct {
 	healthErr error
 }
 
-func (p *stubConnectionPool) Get(context.Context) (any, error) { return nil, nil }
-func (p *stubConnectionPool) Put(any) error                    { return nil }
+func (p *stubConnectionPool) Get(context.Context) (any, error)  { return nil, nil }
+func (p *stubConnectionPool) Put(any) error                     { return nil }
 func (p *stubConnectionPool) Close() error                      { return nil }
 func (p *stubConnectionPool) Stats() resources.PoolStats        { return p.stats }
 func (p *stubConnectionPool) HealthCheck(context.Context) error { return p.healthErr }

@@ -180,4 +180,3 @@ func TestTimeoutMiddleware_DoesNotDecrementOnErrorOrBadStatus(t *testing.T) {
 	require.Error(t, handler.Handle(ctx))
 	require.Contains(t, metrics.metrics, "timeout.requests.total")
 }
-

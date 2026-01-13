@@ -1,0 +1,54 @@
+{
+  "prompt": {
+    "action": "baseline",
+    "guardrails": [
+      "do not modify application code",
+      "do not modify go.mod/go.sum",
+      "do not modify CI/workflow files or lint configuration",
+      "do not weaken scope/thresholds to make checks pass (no dilution)",
+      "write evidence only under hgm-infra/ (preferably hgm-infra/evidence/)",
+      "do not write outside hgm-infra/",
+      "capture failures by saving/using the verifier-produced evidence logs rather than patching the repo"
+    ],
+    "output_paths": [
+      "hgm-infra/evidence/hgm-rubric-report.json",
+      "hgm-infra/evidence/coverage.out",
+      "hgm-infra/evidence/DOC-5-parity.log",
+      "hgm-infra/evidence/QUA-1-output.log",
+      "hgm-infra/evidence/QUA-2-output.log",
+      "hgm-infra/evidence/QUA-3-output.log",
+      "hgm-infra/evidence/CON-1-output.log",
+      "hgm-infra/evidence/CON-2-output.log",
+      "hgm-infra/evidence/CON-3-output.log",
+      "hgm-infra/evidence/COM-1-output.log",
+      "hgm-infra/evidence/COM-2-output.log",
+      "hgm-infra/evidence/COM-3-output.log",
+      "hgm-infra/evidence/COM-4-output.log",
+      "hgm-infra/evidence/COM-5-output.log",
+      "hgm-infra/evidence/COM-6-output.log",
+      "hgm-infra/evidence/SEC-1-output.log",
+      "hgm-infra/evidence/SEC-2-output.log",
+      "hgm-infra/evidence/SEC-3-output.log",
+      "hgm-infra/evidence/SEC-4-output.log",
+      "hgm-infra/evidence/MAI-1-output.log",
+      "hgm-infra/evidence/MAI-2-output.log",
+      "hgm-infra/evidence/MAI-3-output.log",
+      "hgm-infra/evidence/DOC-4-output.log",
+      "hgm-infra/evidence/verifier-crash.log"
+    ],
+    "prompt_text": "You are a verification-only agent. Your job is to (1) read the Hypergenium planning artifacts under hgm-infra/planning/ to understand the rubric + evidence expectations, (2) run the defined verifier/check commands, and (3) record/confirm evidence artifacts under hgm-infra/evidence/.\n\nStrict rules:\n- Do NOT modify application/source code.\n- Do NOT change repo configuration (go.mod/go.sum, .golangci.yml, .github/workflows/*, Makefile, etc.).\n- Do NOT weaken checks (no exclusions/threshold reductions) to make results look green.\n- Write evidence ONLY under hgm-infra/ (preferably hgm-infra/evidence/). Do not write anywhere else.\n\nContext you must use (source of truth):\n- Rubric: hgm-infra/planning/lift-10of10-rubric.md (Rubric v0.1.0)\n- Evidence plan: hgm-infra/planning/lift-evidence-plan.md\n- Deterministic verifier entrypoint: hgm-infra/verifiers/hgm-verify-rubric.sh\n- Expected report location: hgm-infra/evidence/hgm-rubric-report.json\n\nProcedure:\n1) Read these planning files to understand the expected checks and evidence locations:\n   - hgm-infra/planning/lift-10of10-rubric.md\n   - hgm-infra/planning/lift-evidence-plan.md\n   - hgm-infra/planning/lift-10of10-roadmap.md\n   - (optional context) hgm-infra/planning/lift-ai-drift-recovery.md\n\n2) Run the single deterministic verifier entrypoint from the repository root:\n   - bash ./hgm-infra/verifiers/hgm-verify-rubric.sh\n\n   Notes:\n   - This script is the canonical rubric implementation. It writes per-rubric-ID logs into hgm-infra/evidence/ and produces the machine-readable report at hgm-infra/evidence/hgm-rubric-report.json.\n   - The verifier is fail-closed. Items that are TODO/unconfigured should show as BLOCKED; do not attempt to “resolve” by changing scope.\n\n3) Confirm evidence artifacts exist under hgm-infra/evidence/:\n   - Confirm hgm-infra/evidence/hgm-rubric-report.json exists and is non-empty.\n   - Confirm the per-ID log files exist (e.g., QUA-1-output.log, CON-2-output.log, etc.).\n   - Confirm coverage evidence exists at hgm-infra/evidence/coverage.out if coverage ran.\n   - Confirm DOC-5 parity evidence exists at hgm-infra/evidence/DOC-5-parity.log.\n\n4) If the verifier script itself crashes unexpectedly (not a normal FAIL/BLOCKED rubric result):\n   - Do not patch the repo.\n   - Re-run once to confirm.\n   - Capture the terminal output into: hgm-infra/evidence/verifier-crash.log\n\n5) Reporting (what you should summarize back to the caller, without changing the repo):\n   - Overall status from hgm-infra/evidence/hgm-rubric-report.json (PASS / FAIL / BLOCKED).\n   - For each FAIL item: point to its evidencePath from the report and include a short excerpt (first ~20 lines) from the corresponding log; keep full logs in hgm-infra/evidence/*.\n   - For each BLOCKED item: explain why it is BLOCKED (per the evidence log: TODO, missing tool, or explicit BLOCKED exit code).\n\nA prompt/spec file was generated at: hgm-infra/prompts/hgm-baseline-prompt.spec.json (do not move it; do not write outside hgm-infra/).",
+    "schema": 1,
+    "verifier_commands": [
+      "bash ./hgm-infra/verifiers/hgm-verify-rubric.sh",
+      "make test",
+      "make test-coverage",
+      "golangci-lint config verify --config .golangci.yml",
+      "golangci-lint run --config .golangci.yml ./...",
+      "golangci-lint run --disable-all --enable=gosec --config .golangci.yml ./...",
+      "govulncheck ./..."
+    ]
+  },
+  "request_id": "ca3c58e4-bb3c-4969-9a44-7119aac4df4c",
+  "status": "OK",
+  "timestamp": "2026-01-13T16:38:22Z"
+}

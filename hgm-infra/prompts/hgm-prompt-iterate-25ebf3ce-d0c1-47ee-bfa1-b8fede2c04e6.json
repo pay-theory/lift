@@ -1,0 +1,25 @@
+{
+  "prompt": {
+    "action": "iterate",
+    "expected_outputs": [
+      "hgm-infra/evidence/hgm-rubric-report.json",
+      "hgm-infra/evidence/CON-1-output.log",
+      "hgm-infra/evidence/roadmap-progress-M1-CON-1.md"
+    ],
+    "guardrails": [
+      "Fix only formatter cleanliness (CON-1); do not attempt other remediation in this step",
+      "Do not change go.mod/go.sum (root or examples) in this step",
+      "Do not change .golangci.yml or .github/workflows/*",
+      "Do not weaken checks (no dilution)",
+      "Write new evidence/notes only under hgm-infra/",
+      "Modifying .go files is allowed only to apply gofmt (mechanical formatting)"
+    ],
+    "prompt_text": "You are a remediation agent executing the next Hypergenium roadmap step for this repo.\n\nContext (source of truth):\n- Roadmap: hgm-infra/planning/lift-10of10-roadmap.md (Rubric v0.1.0)\n- Rubric: hgm-infra/planning/lift-10of10-rubric.md\n- Deterministic verifier: bash ./hgm-infra/verifiers/hgm-verify-rubric.sh\n- Current failing item: CON-1 (gofmt/formatter clean)\n  - Evidence from last run: hgm-infra/evidence/CON-1-output.log lists files not gofmt-clean.\n\nGoal\n- Fix ONLY rubric item CON-1 by making the repository gofmt-clean.\n- Refresh verifier evidence after the change.\n\nStrict guardrails\n- Do NOT change lint rules/configuration (.golangci.yml) or CI workflows.\n- Do NOT change go.mod/go.sum (root or example modules) in this step.\n- Do NOT address other failing items (COM-1, SEC-1, MAI-1) in this step; record them only if they still fail after re-verification.\n- Keep changes mechanical: gofmt-only changes are expected.\n- Evidence/notes MUST be written under hgm-infra/.\n\nAllowed write locations\n- You MAY modify tracked .go source files as required to satisfy gofmt (this step explicitly requires it).\n- You MUST write any new evidence/notes only under hgm-infra/ (prefer hgm-infra/evidence/).\n\nProcedure\n1) Reconfirm the current failure (optional but recommended if your workspace may be stale):\n   - bash ./hgm-infra/verifiers/hgm-verify-rubric.sh\n   - Confirm CON-1 is FAIL and review hgm-infra/evidence/CON-1-output.log for the exact file list.\n\n2) Apply gofmt to the failing files (mechanical formatting only):\n   - Use the file list from hgm-infra/evidence/CON-1-output.log.\n   - Run: gofmt -w \u003cfile1\u003e \u003cfile2\u003e ...\n   Notes:\n   - Do not manually refactor logic.\n   - Do not run go mod tidy, go generate, or other code-changing tools beyond gofmt.\n\n3) Validate CON-1 locally before re-running the full verifier:\n   - Run a quick gofmt check, e.g.:\n     - gofmt -l \u003csame files\u003e (should print nothing)\n     - OR re-run: bash ./hgm-infra/verifiers/hgm-verify-rubric.sh (preferred because it records evidence deterministically)\n\n4) Refresh Hypergenium evidence (required):\n   - bash ./hgm-infra/verifiers/hgm-verify-rubric.sh\n   This must regenerate:\n   - hgm-infra/evidence/hgm-rubric-report.json\n   - hgm-infra/evidence/CON-1-output.log (should now indicate gofmt clean / no file list)\n   - other evidence logs (they may still show FAIL/BLOCKED for other items; do not fix them in this step).\n\n5) Record a short progress note under hgm-infra/evidence/:\n   - Create/update: hgm-infra/evidence/roadmap-progress-M1-CON-1.md\n   - Include:\n     - Date/time\n     - What command(s) were run\n     - Summary: CON-1 PASS/FAIL after the final verifier run\n     - If CON-1 is still failing, paste the remaining file list (or point to CON-1-output.log).\n\nDeliverable summary to report back\n- Confirm whether CON-1 is now PASS (from hgm-infra/evidence/hgm-rubric-report.json).\n- Provide the path(s) to the refreshed evidence logs.\n- Do not include large logs inline; keep full logs in hgm-infra/evidence/*.log and only quote short excerpts if needed.",
+    "schema": 1,
+    "step_description": "Make repo gofmt-clean to pass rubric item CON-1 (formatter clean).",
+    "step_id": "M1-CON-1"
+  },
+  "request_id": "25ebf3ce-d0c1-47ee-bfa1-b8fede2c04e6",
+  "status": "OK",
+  "timestamp": "2026-01-13T17:06:21Z"
+}

@@ -110,4 +110,3 @@ func TestMetricsOnlyMiddleware_RecordsRequestDurationAndErrors(t *testing.T) {
 	require.Error(t, errHandler.Handle(errCtx))
 	require.Contains(t, metrics.metrics, "http.errors")
 }
-

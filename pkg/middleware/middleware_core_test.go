@@ -197,4 +197,3 @@ func TestErrorHandlerMiddleware_WritesLiftAndGenericErrors(t *testing.T) {
 	})).Handle(ctx4))
 	require.Greater(t, len(logger.logs), 0)
 }
-

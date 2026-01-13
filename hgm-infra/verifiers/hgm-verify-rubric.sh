@@ -385,6 +385,110 @@ doc_integrity_check() {
   echo "Doc integrity OK"
 }
 
+maintainability_roadmap_check() {
+  local roadmap="${PLANNING_DIR}/lift-maintainability-roadmap.md"
+
+  if [[ ! -f "$roadmap" ]]; then
+    echo "Missing maintainability roadmap: $roadmap" >&2
+    return 1
+  fi
+
+  if ! grep -q "Rubric v${RUBRIC_VERSION}" "$roadmap"; then
+    echo "Maintainability roadmap does not reference Rubric v${RUBRIC_VERSION}" >&2
+    return 1
+  fi
+
+  if ! grep -q "MAI-1" "$roadmap"; then
+    echo "Maintainability roadmap missing MAI-1 reference" >&2
+    return 1
+  fi
+
+  if ! grep -q "MAI-3" "$roadmap"; then
+    echo "Maintainability roadmap missing MAI-3 reference" >&2
+    return 1
+  fi
+
+  if grep -q "{{" "$roadmap"; then
+    echo "Unresolved template placeholder found in $roadmap" >&2
+    grep -n "{{" "$roadmap" | head -n 20 >&2
+    return 1
+  fi
+
+  echo "Maintainability roadmap OK"
+}
+
+check_contract_parity_v1() {
+  local errors=()
+  local contract_doc="${REPO_ROOT}/docs/cli-contract-v1.md"
+
+  if [[ ! -f "$contract_doc" ]]; then
+    errors+=("Missing contract doc: ${contract_doc}")
+  else
+    if ! grep -q "version: 1" "$contract_doc"; then
+      errors+=("Contract doc missing required version example: ${contract_doc}")
+    fi
+    for stage in dev staging live; do
+      if ! grep -q "\`${stage}\`" "$contract_doc"; then
+        errors+=("Contract doc missing stage key '${stage}': ${contract_doc}")
+      fi
+    done
+  fi
+
+  local templates=(basic-api microservice event-driven merchant-app sns-processor)
+  local template
+  for template in "${templates[@]}"; do
+    local variant
+    for variant in "${template}" "${template}-pt"; do
+      local tmpl="${REPO_ROOT}/internal/templates/${variant}/lift.yaml.tmpl"
+      if [[ ! -f "$tmpl" ]]; then
+        errors+=("Missing template: ${tmpl}")
+        continue
+      fi
+
+      if ! grep -Eq "^[[:space:]]*version:[[:space:]]*1[[:space:]]*$" "$tmpl"; then
+        errors+=("Template missing 'version: 1': ${tmpl}")
+      fi
+      if ! grep -Eq "^[[:space:]]*app:[[:space:]]*$" "$tmpl"; then
+        errors+=("Template missing 'app:' section: ${tmpl}")
+      fi
+      if ! grep -Eq "^[[:space:]]*template:[[:space:]]*${template}[[:space:]]*$" "$tmpl"; then
+        errors+=("Template missing 'template: ${template}': ${tmpl}")
+      fi
+      if ! grep -Eq "^[[:space:]]*stages:[[:space:]]*$" "$tmpl"; then
+        errors+=("Template missing 'stages:' section: ${tmpl}")
+      fi
+      local stage
+      for stage in dev staging live; do
+        if ! grep -Eq "^[[:space:]]*${stage}:[[:space:]]*$" "$tmpl"; then
+          errors+=("Template missing stage key '${stage}:' in ${tmpl}")
+        fi
+      done
+      if ! grep -Eq "^[[:space:]]*domains:[[:space:]]*$" "$tmpl"; then
+        errors+=("Template missing 'domains:' section: ${tmpl}")
+      fi
+      if ! grep -Eq "^[[:space:]]*base_domain:" "$tmpl"; then
+        errors+=("Template missing 'base_domain:' entry: ${tmpl}")
+      fi
+    done
+  done
+
+  if (( ${#errors[@]} > 0 )); then
+    echo "Contract parity check failed:" >&2
+    local err
+    for err in "${errors[@]}"; do
+      echo " - ${err}" >&2
+    done
+    return 1
+  fi
+
+  echo "Contract parity v1 OK"
+  echo "Contract doc: ${contract_doc}"
+  for template in "${templates[@]}"; do
+    echo "Template: internal/templates/${template}/lift.yaml.tmpl"
+    echo "Template: internal/templates/${template}-pt/lift.yaml.tmpl"
+  done
+}
+
 check_parity_threats_controls() {
   local threat_model="${PLANNING_DIR}/lift-threat-model.md"
   local controls_matrix="${PLANNING_DIR}/lift-controls-matrix.md"
@@ -435,7 +539,7 @@ run_check "QUA-3" "Quality" "run_coverage"
 # Consistency
 run_check "CON-1" "Consistency" "check_gofmt_clean"
 run_check "CON-2" "Consistency" "golangci-lint run --config .golangci.yml ./..."
-run_check "CON-3" "Consistency" "TODO: add public contract parity checks (CLI/templates/config schema)"
+run_check "CON-3" "Consistency" "check_contract_parity_v1"
 
 # Completeness
 run_check "COM-1" "Completeness" "compile_all_modules"
@@ -446,7 +550,7 @@ run_check "COM-5" "Completeness" "check_security_config_not_diluted"
 run_check "COM-6" "Completeness" "TODO: add logging/operational standards check"
 
 # Security
-run_check "SEC-1" "Security" "golangci-lint run --disable-all --enable=gosec --config .golangci.yml ./..."
+run_check "SEC-1" "Security" "golangci-lint run --enable-only=gosec --config .golangci.yml ./..."
 # Return code 2 from run_govulncheck_if_available means BLOCKED (missing tool). Translate by wrapper.
 run_check "SEC-2" "Security" "run_govulncheck_if_available"
 run_check "SEC-3" "Security" "check_supply_chain_basics"
@@ -459,8 +563,8 @@ check_file_exists "CMP-3" "Compliance" "${PLANNING_DIR}/lift-threat-model.md"
 
 # Maintainability
 run_check "MAI-1" "Maintainability" "file_budget_check"
-run_check "MAI-2" "Maintainability" "TODO: add maintainability roadmap/verifier"
-run_check "MAI-3" "Maintainability" "TODO: add canonical semantics/duplication verifier"
+run_check "MAI-2" "Maintainability" "maintainability_roadmap_check"
+run_check "MAI-3" "Maintainability" "go run ./hgm-infra/verifiers/mai3-dupcheck.go"
 
 # Docs
 check_file_exists "DOC-1" "Docs" "${PLANNING_DIR}/lift-threat-model.md"

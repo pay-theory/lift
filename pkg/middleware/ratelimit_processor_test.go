@@ -192,7 +192,7 @@ func TestRateLimitMiddleware_ExistingEntry_AllowsAndUpdatesEntry(t *testing.T) {
 		DynamORM:      wrapper,
 		DefaultLimit:  5,
 		DefaultWindow: window,
-		TTL:          time.Hour,
+		TTL:           time.Hour,
 	})
 
 	req := lift.NewRequest(&adapters.Request{Method: "GET", Path: "/test"})
@@ -236,7 +236,7 @@ func TestRateLimitMiddleware_WindowReset_ResetsEntry(t *testing.T) {
 		DynamORM:      wrapper,
 		DefaultLimit:  5,
 		DefaultWindow: window,
-		TTL:          time.Hour,
+		TTL:           time.Hour,
 	})
 
 	req := lift.NewRequest(&adapters.Request{Method: "GET", Path: "/test"})

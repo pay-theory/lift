@@ -162,14 +162,14 @@ func TestIndustryComplianceTemplates_ExerciseAll(t *testing.T) {
 	assert.Equal(t, "ecommerce", report.Industry)
 
 	government := NewGovernmentComplianceTemplate(GovernmentComplianceConfig{
-		FedRAMPLevel:    "Moderate",
-		FISMARequired:   true,
-		NISTFramework:   "800-53",
-		STIGCompliance:  true,
-		ATORequired:     true,
-		Section508:      true,
-		CUIHandling:     true,
-		PIIProtection:   true,
+		FedRAMPLevel:      "Moderate",
+		FISMARequired:     true,
+		NISTFramework:     "800-53",
+		STIGCompliance:    true,
+		ATORequired:       true,
+		Section508:        true,
+		CUIHandling:       true,
+		PIIProtection:     true,
 		IncidentReporting: true,
 	})
 	assert.Equal(t, "government", government.GetIndustry())
@@ -188,4 +188,3 @@ func TestIndustryComplianceTemplates_ExerciseAll(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "government", report.Industry)
 }
-

@@ -14,15 +14,15 @@ func TestPerformanceTester_ExecuteTest_CoversTypes(t *testing.T) {
 		Name: "resp_ok",
 		Type: PerformanceTypeResponseTime,
 		Config: PerformanceConfig{
-			TestDuration:     1 * time.Second,
-			ConcurrentUsers:  1,
-			ExpectedP95:      200 * time.Millisecond,
-			ExpectedP99:      300 * time.Millisecond,
-			ExpectedTPS:      1,
-			MaxMemoryMB:      1024,
-			Endpoint:         "/",
-			Method:           "GET",
-			QueryType:        "n/a",
+			TestDuration:    1 * time.Second,
+			ConcurrentUsers: 1,
+			ExpectedP95:     200 * time.Millisecond,
+			ExpectedP99:     300 * time.Millisecond,
+			ExpectedTPS:     1,
+			MaxMemoryMB:     1024,
+			Endpoint:        "/",
+			Method:          "GET",
+			QueryType:       "n/a",
 		},
 	}
 	if result, err := tester.ExecuteTest(ctx, respOK); err != nil || result == nil || !result.Success {
@@ -170,4 +170,3 @@ func TestPerformanceValidator_ThresholdsBaselinesAndReports(t *testing.T) {
 		t.Fatalf("expected absolute threshold exceeded error")
 	}
 }
-
