@@ -585,7 +585,7 @@ run_check "SEC-1" "Security" "golangci-lint run --enable-only=gosec --config .go
 # Return code 2 from run_govulncheck_if_available means BLOCKED (missing tool). Translate by wrapper.
 run_check "SEC-2" "Security" "run_govulncheck_if_available"
 run_check "SEC-3" "Security" "check_supply_chain_basics"
-run_check "SEC-4" "Security" "TODO: add domain P0 tests (e.g., secret redaction, no token logging, CHD/SAD invariants)"
+run_check "SEC-4" "Security" "go test -tags=security_p0 ./internal/securityp0 -count=1"
 
 # Compliance readiness
 check_file_exists "CMP-1" "Compliance" "${PLANNING_DIR}/lift-controls-matrix.md"

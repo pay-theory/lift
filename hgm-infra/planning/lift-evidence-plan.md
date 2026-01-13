@@ -39,7 +39,7 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | SEC-1 | SAST scan output | `hgm-infra/evidence/SEC-1-output.log` | `golangci-lint run --enable-only=gosec --config .golangci.yml ./...` |
 | SEC-2 | Vulnerability scan output | `hgm-infra/evidence/SEC-2-output.log` | TODO (BLOCKED) |
 | SEC-3 | Supply-chain verification | `hgm-infra/evidence/SEC-3-output.log` | TODO (BLOCKED) |
-| SEC-4 | Domain P0 regression tests | `hgm-infra/evidence/SEC-4-output.log` | TODO (BLOCKED) |
+| SEC-4 | Domain P0 regression tests | `hgm-infra/evidence/SEC-4-output.log` | `go test -tags=security_p0 ./internal/securityp0 -count=1` |
 | CMP-1 | Controls matrix exists | `hgm-infra/planning/lift-controls-matrix.md` | file existence check |
 | CMP-2 | Evidence plan exists | `hgm-infra/planning/lift-evidence-plan.md` | file existence check |
 | CMP-3 | Threat model exists | `hgm-infra/planning/lift-threat-model.md` | file existence check |

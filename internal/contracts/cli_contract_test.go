@@ -76,24 +76,24 @@ func TestDomainDerivationContract(t *testing.T) {
 	}
 
 	testCases := []struct {
-		stage               string
-		expectedStageRoot   string
-		expectedAPIService  string
+		stage              string
+		expectedStageRoot  string
+		expectedAPIService string
 	}{
 		{
-			stage:               "dev",
-			expectedStageRoot:   "dev.example.com",
-			expectedAPIService:  "api.dev.example.com",
+			stage:              "dev",
+			expectedStageRoot:  "dev.example.com",
+			expectedAPIService: "api.dev.example.com",
 		},
 		{
-			stage:               "staging",
-			expectedStageRoot:   "staging.example.com",
-			expectedAPIService:  "api.staging.example.com",
+			stage:              "staging",
+			expectedStageRoot:  "staging.example.com",
+			expectedAPIService: "api.staging.example.com",
 		},
 		{
-			stage:               "live",
-			expectedStageRoot:   "example.com",
-			expectedAPIService:  "api.example.com",
+			stage:              "live",
+			expectedStageRoot:  "example.com",
+			expectedAPIService: "api.example.com",
 		},
 	}
 

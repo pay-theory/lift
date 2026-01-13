@@ -63,7 +63,7 @@ Enforcement rule (anti-drift):
 | SEC-1 | 3 | Static security scan green (pinned version) | `golangci-lint run --enable-only=gosec --config .golangci.yml ./...` |
 | SEC-2 | 3 | Dependency vulnerability scan green | `TODO: add govulncheck in CI (currently BLOCKED)` |
 | SEC-3 | 2 | Supply-chain verification green | `TODO: add supply-chain verification (currently BLOCKED)` |
-| SEC-4 | 2 | Domain-specific P0 regression tests (auth/CHD env invariants) | `TODO: add P0 regression test suite (currently BLOCKED)` |
+| SEC-4 | 2 | Domain-specific P0 regression tests (auth/CHD env invariants) | `go test -tags=security_p0 ./internal/securityp0 -count=1` |
 
 **10/10 definition:** SEC-1 through SEC-4 pass.
 

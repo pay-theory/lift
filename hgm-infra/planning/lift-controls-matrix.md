@@ -42,7 +42,7 @@ If you track implementation status, treat it as evidence-driven:
 | Security | THR-1, THR-2, THR-9 | SEC-1 | Baseline SAST stays green | Run `gosec` via golangci-lint under pinned config. | `golangci-lint run --disable-all --enable=gosec --config .golangci.yml ./...` | `hgm-infra/evidence/SEC-1-output.log` |
 | Security | THR-2 | SEC-2 | Dependency vulnerability scan stays green | Add govulncheck to CI and keep it green. | TODO (BLOCKED until added) | `hgm-infra/evidence/SEC-2-output.log` |
 | Supply chain | THR-8 | SEC-3 | Supply-chain verification stays green | Verify action SHA pins, version pins, and release artifact checksums. | TODO (BLOCKED until scripted) | `hgm-infra/evidence/SEC-3-output.log` |
-| Security (P0) | THR-4, THR-5 | SEC-4 | Domain-specific P0 regression tests | Prohibit obvious unsafe behavior in CHD/auth environments (e.g., logging secrets/tokens; persisting SAD). | TODO (BLOCKED until tests exist) | `hgm-infra/evidence/SEC-4-output.log` |
+| Security (P0) | THR-4, THR-5 | SEC-4 | Domain-specific P0 regression tests | Prohibit obvious unsafe behavior in CHD/auth environments (e.g., logging secrets/tokens; persisting SAD). | `go test -tags=security_p0 ./internal/securityp0 -count=1` | `hgm-infra/evidence/SEC-4-output.log` |
 | Docs | THR-6, THR-7 | DOC-5 | Threat model ↔ controls parity | Every threat ID in threat model appears in this matrix. | Built into `hgm-verify-rubric.sh` parity check | `hgm-infra/evidence/DOC-5-parity.log` |
 
 > Add rows as needed for additional anti-drift (release policy, multi-module behavior, contract parity, encryption/tag semantics).
