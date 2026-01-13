@@ -385,6 +385,90 @@ doc_integrity_check() {
   echo "Doc integrity OK"
 }
 
+check_cli_template_contract_parity() {
+  # Deterministic check for CLI template contract parity (CON-3).
+  # Verifies that templates in internal/templates/ adhere to docs/cli-contract-v1.md.
+  #
+  # Checks per template:
+  # 1. lift.yaml.tmpl exists
+  # 2. go.mod.tmpl exists
+  # 3. cdk/ directory exists (for Go CDK contract)
+  # 4. cmd/ directory exists (for Lambda entrypoints)
+  # 5. CI assets exist:
+  #    - Standard templates: .github/workflows/deploy.yml
+  #    - PT templates (*-pt): buildspec.yml and shell/deploy.sh
+
+  local templates_dir="${REPO_ROOT}/internal/templates"
+  local failed=0
+
+  # Find all immediate subdirectories in internal/templates that are not hidden
+  local templates
+  templates=$(find "$templates_dir" -mindepth 1 -maxdepth 1 -type d -not -path '*/.*' -printf '%f\n' | sort)
+
+  if [[ -z "$templates" ]]; then
+    echo "No templates found in ${templates_dir}" >&2
+    return 1
+  fi
+
+  for tmpl in $templates; do
+    local tmpl_path="${templates_dir}/${tmpl}"
+    local is_pt=0
+    if [[ "$tmpl" == *"-pt" ]]; then
+      is_pt=1
+    fi
+
+    # Check 1: lift.yaml or lift.yaml.tmpl
+    if [[ ! -f "${tmpl_path}/lift.yaml" ]] && [[ ! -f "${tmpl_path}/lift.yaml.tmpl" ]]; then
+      echo "FAIL [${tmpl}]: missing lift.yaml[.tmpl] (Project Root contract)" >&2
+      failed=1
+    fi
+
+    # Check 2: go.mod or go.mod.tmpl
+    if [[ ! -f "${tmpl_path}/go.mod" ]] && [[ ! -f "${tmpl_path}/go.mod.tmpl" ]]; then
+      echo "FAIL [${tmpl}]: missing go.mod[.tmpl]" >&2
+      failed=1
+    fi
+
+    # Check 3: cdk/ directory
+    if [[ ! -d "${tmpl_path}/cdk" ]]; then
+      echo "FAIL [${tmpl}]: missing cdk/ directory (Filesystem Layout contract)" >&2
+      failed=1
+    fi
+
+    # Check 4: cmd/ directory
+    if [[ ! -d "${tmpl_path}/cmd" ]]; then
+      echo "FAIL [${tmpl}]: missing cmd/ directory (Filesystem Layout contract)" >&2
+      failed=1
+    fi
+
+    # Check 5: CI assets
+    if [[ $is_pt -eq 1 ]]; then
+      # Pay Theory mode contract: buildspec.yml and shell/deploy.sh
+      if [[ ! -f "${tmpl_path}/buildspec.yml" ]] && [[ ! -f "${tmpl_path}/buildspec.yml.tmpl" ]]; then
+        echo "FAIL [${tmpl}]: missing buildspec.yml[.tmpl] (PT CI contract)" >&2
+        failed=1
+      fi
+      if [[ ! -f "${tmpl_path}/shell/deploy.sh" ]] && [[ ! -f "${tmpl_path}/shell/deploy.sh.tmpl" ]]; then
+        echo "FAIL [${tmpl}]: missing shell/deploy.sh[.tmpl] (PT CI contract)" >&2
+        failed=1
+      fi
+    else
+      # Default mode contract: .github/workflows/deploy.yml
+      if [[ ! -f "${tmpl_path}/.github/workflows/deploy.yml" ]] && [[ ! -f "${tmpl_path}/.github/workflows/deploy.yml.tmpl" ]]; then
+        echo "FAIL [${tmpl}]: missing .github/workflows/deploy.yml[.tmpl] (Default CI contract)" >&2
+        failed=1
+      fi
+    fi
+  done
+
+  if [[ $failed -eq 1 ]]; then
+    echo "CLI template contract parity check FAILED" >&2
+    return 1
+  fi
+
+  echo "CLI template contract parity check PASSED"
+}
+
 check_parity_threats_controls() {
   local threat_model="${PLANNING_DIR}/lift-threat-model.md"
   local controls_matrix="${PLANNING_DIR}/lift-controls-matrix.md"
@@ -435,7 +519,7 @@ run_check "QUA-3" "Quality" "run_coverage"
 # Consistency
 run_check "CON-1" "Consistency" "check_gofmt_clean"
 run_check "CON-2" "Consistency" "golangci-lint run --config .golangci.yml --allow-parallel-runners ./..."
-run_check "CON-3" "Consistency" "TODO: add public contract parity checks (CLI/templates/config schema)"
+run_check "CON-3" "Consistency" "check_cli_template_contract_parity"
 
 # Completeness
 run_check "COM-1" "Completeness" "compile_all_modules"

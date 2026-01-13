@@ -29,7 +29,7 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | QUA-3 | Coverage profile + summary | `hgm-infra/evidence/QUA-3-output.log` + `hgm-infra/evidence/coverage.out` | `make test-coverage` |
 | CON-1 | Formatter diff list | `hgm-infra/evidence/CON-1-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | CON-2 | Lint output | `hgm-infra/evidence/CON-2-output.log` | `golangci-lint run --config .golangci.yml --allow-parallel-runners ./...` |
-| CON-3 | Contract verification output | `hgm-infra/evidence/CON-3-output.log` | TODO (BLOCKED) |
+| CON-3 | Contract verification output | `hgm-infra/evidence/CON-3-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-1 | Module compile check | `hgm-infra/evidence/COM-1-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-2 | Toolchain pin verification | `hgm-infra/evidence/COM-2-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-3 | Lint config validation | `hgm-infra/evidence/COM-3-output.log` | `golangci-lint config verify --config .golangci.yml` |

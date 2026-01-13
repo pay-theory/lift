@@ -34,7 +34,7 @@ Evidence (refresh whenever behavior changes):
 | QUA-3 | PASS | M1.5 — Coverage/quality gates |
 | CON-1 | PASS | M1 — Make core lint/build loop reproducible |
 | CON-2 | PASS | M1 — Make core lint/build loop reproducible |
-| CON-3 | BLOCKED | M3 — Add contract parity checks |
+| CON-3 | FAIL | M3 — Add contract parity checks |
 | COM-1 | PASS | M2 — Enforce in CI |
 | COM-2 | PASS | M2 — Enforce in CI |
 | COM-3 | PASS | M1 — Make core lint/build loop reproducible |
