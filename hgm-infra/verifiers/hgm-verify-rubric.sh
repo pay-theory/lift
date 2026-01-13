@@ -533,7 +533,7 @@ echo ""
 
 # Quality
 run_check "QUA-1" "Quality" "make test"
-run_check "QUA-2" "Quality" "TODO: add integration/contract tests (e.g., go test -tags=integration ./...; or CLI contract tests)"
+run_check "QUA-2" "Quality" "go test ./internal/contracttests -v"
 run_check "QUA-3" "Quality" "run_coverage"
 
 # Consistency

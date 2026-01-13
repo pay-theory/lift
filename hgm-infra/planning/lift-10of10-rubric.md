@@ -31,7 +31,7 @@ Enforcement rule (anti-drift):
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
 | QUA-1 | 4 | Unit tests stay green | `make test` |
-| QUA-2 | 3 | Integration or contract tests stay green | `TODO: add integration/contract test suite (currently BLOCKED)` |
+| QUA-2 | 3 | Integration or contract tests stay green | `go test ./internal/contracttests -v` |
 | QUA-3 | 3 | Coverage ≥ 90% (no denominator games) | `make test-coverage` (evidence copied to `hgm-infra/evidence/coverage.out`) |
 
 **10/10 definition:** QUA-1 through QUA-3 pass.

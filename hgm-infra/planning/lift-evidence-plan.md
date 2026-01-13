@@ -25,7 +25,7 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | Rubric ID | Primary evidence | Evidence path | How to refresh |
 | --- | --- | --- | --- |
 | QUA-1 | Unit test output | `hgm-infra/evidence/QUA-1-output.log` | `make test` |
-| QUA-2 | Integration/contract output | `hgm-infra/evidence/QUA-2-output.log` | TODO (BLOCKED) |
+| QUA-2 | Integration/contract output | `hgm-infra/evidence/QUA-2-output.log` | `go test ./internal/contracttests -v` |
 | QUA-3 | Coverage profile + summary | `hgm-infra/evidence/QUA-3-output.log` + `hgm-infra/evidence/coverage.out` | `make test-coverage` |
 | CON-1 | Formatter diff list | `hgm-infra/evidence/CON-1-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | CON-2 | Lint output | `hgm-infra/evidence/CON-2-output.log` | `golangci-lint run --config .golangci.yml ./...` |
