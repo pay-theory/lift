@@ -1,9 +1,0 @@
-{
-  "schema": 1,
-  "generated_at": "2026-01-12T00:00:00Z",
-  "pack": {
-    "manifest_digest_sha256": "2c9941b4606ca6e8fd2e5dc93b231737c5bc7b26f20eccf134d8bf04e3fb6d2f",
-    "stage": "live",
-    "version": "ef4680f2b5e5"
-  }
-}
