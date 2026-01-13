@@ -547,7 +547,7 @@ run_check "COM-2" "Completeness" "check_toolchain_pins"
 run_check "COM-3" "Completeness" "golangci-lint config verify --config .golangci.yml"
 run_check "COM-4" "Completeness" "check_coverage_threshold"
 run_check "COM-5" "Completeness" "check_security_config_not_diluted"
-run_check "COM-6" "Completeness" "TODO: add logging/operational standards check"
+run_check "COM-6" "Completeness" "go run ./hgm-infra/verifiers/com6-logging-standards-check.go"
 
 # Security
 run_check "SEC-1" "Security" "golangci-lint run --enable-only=gosec --config .golangci.yml ./..."

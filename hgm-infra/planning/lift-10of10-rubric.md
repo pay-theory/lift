@@ -53,7 +53,7 @@ Enforcement rule (anti-drift):
 | COM-3 | 2 | Lint config schema-valid (no silent skip) | `golangci-lint config verify --config .golangci.yml` |
 | COM-4 | 2 | Coverage threshold not diluted (≥ 90%) | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (COM-4) |
 | COM-5 | 1 | Security scan config not diluted (no excluded high-signal rules) | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (COM-5) |
-| COM-6 | 1 | Logging/operational standards enforced (if applicable) | `TODO: add logging standards check (currently BLOCKED)` |
+| COM-6 | 1 | Logging/operational standards enforced (no direct stdout/stderr logging in pkg/cmd) | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (COM-6) |
 
 **10/10 definition:** COM-1 through COM-6 pass.
 

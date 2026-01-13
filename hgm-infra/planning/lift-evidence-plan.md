@@ -35,7 +35,7 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | COM-3 | Lint config validation | `hgm-infra/evidence/COM-3-output.log` | `golangci-lint config verify --config .golangci.yml` |
 | COM-4 | Coverage threshold check | `hgm-infra/evidence/COM-4-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-5 | Security config validation | `hgm-infra/evidence/COM-5-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
-| COM-6 | Logging standards check | `hgm-infra/evidence/COM-6-output.log` | TODO (BLOCKED) |
+| COM-6 | Logging standards check | `hgm-infra/evidence/COM-6-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | SEC-1 | SAST scan output | `hgm-infra/evidence/SEC-1-output.log` | `golangci-lint run --enable-only=gosec --config .golangci.yml ./...` |
 | SEC-2 | Vulnerability scan output | `hgm-infra/evidence/SEC-2-output.log` | TODO (BLOCKED) |
 | SEC-3 | Supply-chain verification | `hgm-infra/evidence/SEC-3-output.log` | TODO (BLOCKED) |
