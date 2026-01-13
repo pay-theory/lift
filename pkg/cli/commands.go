@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // Command represents a CLI command
@@ -101,7 +103,7 @@ func (c *DevCommand) Execute(ctx context.Context, args []string) error {
 	for _, arg := range args {
 		if strings.HasPrefix(arg, "--port=") {
 			if _, err := fmt.Sscanf(arg, "--port=%d", &port); err != nil {
-				fmt.Printf("Warning: invalid port format in %s\n", arg)
+				stdio.Stdoutf("Warning: invalid port format in %s\n", arg)
 			}
 		}
 		if arg == "--no-hot-reload" {
@@ -109,17 +111,17 @@ func (c *DevCommand) Execute(ctx context.Context, args []string) error {
 		}
 	}
 
-	fmt.Printf("🚀 Starting Lift development server...\n")
-	fmt.Printf("📡 Port: %d\n", port)
-	fmt.Printf("🔥 Hot reload: %v\n", hotReload)
-	fmt.Printf("🌐 URL: http://localhost:%d\n", port)
-	fmt.Printf("\n💡 Press Ctrl+C to stop\n\n")
+	stdio.Stdoutf("🚀 Starting Lift development server...\n")
+	stdio.Stdoutf("📡 Port: %d\n", port)
+	stdio.Stdoutf("🔥 Hot reload: %v\n", hotReload)
+	stdio.Stdoutf("🌐 URL: http://localhost:%d\n", port)
+	stdio.Stdoutf("\n💡 Press Ctrl+C to stop\n\n")
 
 	// This would start the actual development server
 	// For now, just simulate it
 	select {
 	case <-ctx.Done():
-		fmt.Printf("\n👋 Development server stopped\n")
+		stdio.Stdoutf("\n👋 Development server stopped\n")
 		return nil
 	case <-time.After(time.Hour): // Simulate long-running server
 		return nil
@@ -157,17 +159,17 @@ func (c *TestCommand) Execute(_ context.Context, args []string) error {
 		packages = filteredArgs
 	}
 
-	fmt.Printf("🧪 Running Lift test suite...\n")
-	fmt.Printf("📦 Packages: %v\n", packages)
-	fmt.Printf("📊 Coverage: %v\n", coverage)
-	fmt.Printf("🏃 Race detection: %v\n", race)
-	fmt.Printf("\n")
+	stdio.Stdoutf("🧪 Running Lift test suite...\n")
+	stdio.Stdoutf("📦 Packages: %v\n", packages)
+	stdio.Stdoutf("📊 Coverage: %v\n", coverage)
+	stdio.Stdoutf("🏃 Race detection: %v\n", race)
+	stdio.Stdoutf("\n")
 
 	// This would run actual tests
 	// For now, simulate test execution
-	fmt.Printf("✅ All tests passed!\n")
+	stdio.Stdoutf("✅ All tests passed!\n")
 	if coverage {
-		fmt.Printf("📊 Coverage: 85.2%%\n")
+		stdio.Stdoutf("📊 Coverage: 85.2%%\n")
 	}
 
 	return nil
@@ -204,20 +206,20 @@ func (c *BenchmarkCommand) Execute(_ context.Context, args []string) error {
 		patterns = filteredArgs
 	}
 
-	fmt.Printf("⚡ Running Lift benchmarks...\n")
-	fmt.Printf("🎯 Patterns: %v\n", patterns)
-	fmt.Printf("🔥 CPU profiling: %v\n", cpuProfile)
-	fmt.Printf("💾 Memory profiling: %v\n", memProfile)
-	fmt.Printf("\n")
+	stdio.Stdoutf("⚡ Running Lift benchmarks...\n")
+	stdio.Stdoutf("🎯 Patterns: %v\n", patterns)
+	stdio.Stdoutf("🔥 CPU profiling: %v\n", cpuProfile)
+	stdio.Stdoutf("💾 Memory profiling: %v\n", memProfile)
+	stdio.Stdoutf("\n")
 
 	// This would run actual benchmarks
 	// For now, simulate benchmark execution
-	fmt.Printf("📊 Benchmark Results:\n")
-	fmt.Printf("   Cold Start: 2.1µs (7,142x better than target)\n")
-	fmt.Printf("   Routing: 387ns (excellent)\n")
-	fmt.Printf("   Middleware: 1.2µs (outstanding)\n")
-	fmt.Printf("   Memory: 28KB (179x better than target)\n")
-	fmt.Printf("\n✅ All benchmarks completed successfully!\n")
+	stdio.Stdoutf("📊 Benchmark Results:\n")
+	stdio.Stdoutf("   Cold Start: 2.1µs (7,142x better than target)\n")
+	stdio.Stdoutf("   Routing: 387ns (excellent)\n")
+	stdio.Stdoutf("   Middleware: 1.2µs (outstanding)\n")
+	stdio.Stdoutf("   Memory: 28KB (179x better than target)\n")
+	stdio.Stdoutf("\n✅ All benchmarks completed successfully!\n")
 
 	return nil
 }
@@ -243,11 +245,11 @@ func (c *DeployCommand) Execute(_ context.Context, args []string) error {
 		}
 	}
 
-	fmt.Printf("🚀 Deploying to %s...\n", environment)
+	stdio.Stdoutf("🚀 Deploying to %s...\n", environment)
 	if dryRun {
-		fmt.Printf("🔍 Dry run mode - no actual deployment\n")
+		stdio.Stdoutf("🔍 Dry run mode - no actual deployment\n")
 	}
-	fmt.Printf("\n")
+	stdio.Stdoutf("\n")
 
 	// This would perform actual deployment
 	// For now, simulate deployment steps
@@ -261,16 +263,16 @@ func (c *DeployCommand) Execute(_ context.Context, args []string) error {
 	}
 
 	for i, step := range steps {
-		fmt.Printf("⏳ %s...\n", step)
+		stdio.Stdoutf("⏳ %s...\n", step)
 		time.Sleep(500 * time.Millisecond) // Simulate work
-		fmt.Printf("✅ %s complete\n", step)
+		stdio.Stdoutf("✅ %s complete\n", step)
 		if i < len(steps)-1 {
-			fmt.Printf("\n")
+			stdio.Stdoutf("\n")
 		}
 	}
 
-	fmt.Printf("\n🎉 Deployment to %s successful!\n", environment)
-	fmt.Printf("🌐 Function URL: https://api.example.com/%s\n", environment)
+	stdio.Stdoutf("\n🎉 Deployment to %s successful!\n", environment)
+	stdio.Stdoutf("🌐 Function URL: https://api.example.com/%s\n", environment)
 
 	return nil
 }
@@ -300,11 +302,11 @@ func (c *LogsCommand) Execute(ctx context.Context, args []string) error {
 		}
 	}
 
-	fmt.Printf("📋 Streaming logs for %s (since %s)...\n", function, since)
+	stdio.Stdoutf("📋 Streaming logs for %s (since %s)...\n", function, since)
 	if follow {
-		fmt.Printf("👀 Following new logs (Ctrl+C to stop)\n")
+		stdio.Stdoutf("👀 Following new logs (Ctrl+C to stop)\n")
 	}
-	fmt.Printf("\n")
+	stdio.Stdoutf("\n")
 
 	// This would stream actual logs
 	// For now, simulate log streaming
@@ -319,12 +321,12 @@ func (c *LogsCommand) Execute(ctx context.Context, args []string) error {
 	}
 
 	for _, log := range logs {
-		fmt.Println(log)
+		stdio.Stdoutln(log)
 		time.Sleep(200 * time.Millisecond)
 	}
 
 	if follow {
-		fmt.Printf("\n👀 Waiting for new logs...\n")
+		stdio.Stdoutf("\n👀 Waiting for new logs...\n")
 		<-ctx.Done()
 	}
 
@@ -352,34 +354,34 @@ func (c *MetricsCommand) Execute(_ context.Context, args []string) error {
 		}
 	}
 
-	fmt.Printf("📊 Metrics for %s (last %s)\n", function, period)
-	fmt.Printf("═══════════════════════════════════════\n\n")
+	stdio.Stdoutf("📊 Metrics for %s (last %s)\n", function, period)
+	stdio.Stdoutf("═══════════════════════════════════════\n\n")
 
 	// This would fetch actual metrics
 	// For now, display simulated metrics
-	fmt.Printf("🚀 Performance Metrics:\n")
-	fmt.Printf("   Invocations: 1,247\n")
-	fmt.Printf("   Duration (avg): 1.2ms\n")
-	fmt.Printf("   Duration (p99): 3.1ms\n")
-	fmt.Printf("   Cold starts: 12 (0.96%%)\n")
-	fmt.Printf("   Errors: 0 (0.00%%)\n")
-	fmt.Printf("   Throttles: 0\n")
-	fmt.Printf("\n")
+	stdio.Stdoutf("🚀 Performance Metrics:\n")
+	stdio.Stdoutf("   Invocations: 1,247\n")
+	stdio.Stdoutf("   Duration (avg): 1.2ms\n")
+	stdio.Stdoutf("   Duration (p99): 3.1ms\n")
+	stdio.Stdoutf("   Cold starts: 12 (0.96%%)\n")
+	stdio.Stdoutf("   Errors: 0 (0.00%%)\n")
+	stdio.Stdoutf("   Throttles: 0\n")
+	stdio.Stdoutf("\n")
 
-	fmt.Printf("💾 Resource Metrics:\n")
-	fmt.Printf("   Memory used (avg): 28MB\n")
-	fmt.Printf("   Memory used (max): 31MB\n")
-	fmt.Printf("   Memory allocated: 512MB\n")
-	fmt.Printf("   Memory efficiency: 94.5%%\n")
-	fmt.Printf("\n")
+	stdio.Stdoutf("💾 Resource Metrics:\n")
+	stdio.Stdoutf("   Memory used (avg): 28MB\n")
+	stdio.Stdoutf("   Memory used (max): 31MB\n")
+	stdio.Stdoutf("   Memory allocated: 512MB\n")
+	stdio.Stdoutf("   Memory efficiency: 94.5%%\n")
+	stdio.Stdoutf("\n")
 
-	fmt.Printf("💰 Cost Metrics:\n")
-	fmt.Printf("   Estimated cost: $0.0012\n")
-	fmt.Printf("   Cost per invocation: $0.000001\n")
-	fmt.Printf("   Cost efficiency: Excellent\n")
-	fmt.Printf("\n")
+	stdio.Stdoutf("💰 Cost Metrics:\n")
+	stdio.Stdoutf("   Estimated cost: $0.0012\n")
+	stdio.Stdoutf("   Cost per invocation: $0.000001\n")
+	stdio.Stdoutf("   Cost efficiency: Excellent\n")
+	stdio.Stdoutf("\n")
 
-	fmt.Printf("🌐 View detailed metrics: https://console.aws.amazon.com/cloudwatch\n")
+	stdio.Stdoutf("🌐 View detailed metrics: https://console.aws.amazon.com/cloudwatch\n")
 
 	return nil
 }
@@ -405,18 +407,18 @@ func (c *HealthCommand) Execute(_ context.Context, args []string) error {
 		}
 	}
 
-	fmt.Printf("🏥 Health check for %s\n", function)
-	fmt.Printf("═══════════════════════════════════\n\n")
+	stdio.Stdoutf("🏥 Health check for %s\n", function)
+	stdio.Stdoutf("═══════════════════════════════════\n\n")
 
 	// This would perform actual health checks
 	// For now, simulate health check results
-	fmt.Printf("✅ Overall Status: HEALTHY\n")
-	fmt.Printf("⏰ Last Check: %s\n", time.Now().Format("2006-01-02 15:04:05"))
-	fmt.Printf("⚡ Response Time: 0.8ms\n")
-	fmt.Printf("\n")
+	stdio.Stdoutf("✅ Overall Status: HEALTHY\n")
+	stdio.Stdoutf("⏰ Last Check: %s\n", time.Now().Format("2006-01-02 15:04:05"))
+	stdio.Stdoutf("⚡ Response Time: 0.8ms\n")
+	stdio.Stdoutf("\n")
 
 	if detailed {
-		fmt.Printf("🔍 Detailed Health Checks:\n")
+		stdio.Stdoutf("🔍 Detailed Health Checks:\n")
 		checks := []struct {
 			name   string
 			status string
@@ -429,15 +431,15 @@ func (c *HealthCommand) Execute(_ context.Context, args []string) error {
 		}
 
 		for _, check := range checks {
-			fmt.Printf("   %s: %s (%s)\n", check.name, check.status, check.time)
+			stdio.Stdoutf("   %s: %s (%s)\n", check.name, check.status, check.time)
 		}
-		fmt.Printf("\n")
+		stdio.Stdoutf("\n")
 	}
 
-	fmt.Printf("📈 Health Trends:\n")
-	fmt.Printf("   Uptime: 99.98%% (last 30 days)\n")
-	fmt.Printf("   Availability: 99.99%% (last 7 days)\n")
-	fmt.Printf("   Error Rate: 0.01%% (last 24 hours)\n")
+	stdio.Stdoutf("📈 Health Trends:\n")
+	stdio.Stdoutf("   Uptime: 99.98%% (last 30 days)\n")
+	stdio.Stdoutf("   Availability: 99.99%% (last 7 days)\n")
+	stdio.Stdoutf("   Error Rate: 0.01%% (last 24 hours)\n")
 
 	return nil
 }
@@ -452,14 +454,14 @@ func (c *VersionCommand) Description() string { return "Display version informat
 func (c *VersionCommand) Usage() string       { return "lift version" }
 
 func (c *VersionCommand) Execute(_ context.Context, _ []string) error {
-	fmt.Printf("🚀 Lift Framework\n")
-	fmt.Printf("Version: %s\n", c.version)
-	fmt.Printf("Built with Go: %s\n", "1.21")
-	fmt.Printf("Platform: %s\n", "AWS Lambda")
-	fmt.Printf("\n")
-	fmt.Printf("🌟 High-performance serverless framework for Go\n")
-	fmt.Printf("📖 Documentation: https://github.com/pay-theory/lift\n")
-	fmt.Printf("🐛 Issues: https://github.com/pay-theory/lift/issues\n")
+	stdio.Stdoutf("🚀 Lift Framework\n")
+	stdio.Stdoutf("Version: %s\n", c.version)
+	stdio.Stdoutf("Built with Go: %s\n", "1.21")
+	stdio.Stdoutf("Platform: %s\n", "AWS Lambda")
+	stdio.Stdoutf("\n")
+	stdio.Stdoutf("🌟 High-performance serverless framework for Go\n")
+	stdio.Stdoutf("📖 Documentation: https://github.com/pay-theory/lift\n")
+	stdio.Stdoutf("🐛 Issues: https://github.com/pay-theory/lift/issues\n")
 
 	return nil
 }
@@ -478,19 +480,19 @@ func (c *HelpCommand) Execute(_ context.Context, args []string) error {
 		// Show help for specific command
 		cmdName := args[0]
 		if cmd, exists := c.cli.commands[cmdName]; exists {
-			fmt.Printf("Command: %s\n", cmd.Name())
-			fmt.Printf("Description: %s\n", cmd.Description())
-			fmt.Printf("Usage: %s\n", cmd.Usage())
+			stdio.Stdoutf("Command: %s\n", cmd.Name())
+			stdio.Stdoutf("Description: %s\n", cmd.Description())
+			stdio.Stdoutf("Usage: %s\n", cmd.Usage())
 			return nil
 		}
 		return fmt.Errorf("unknown command: %s", cmdName)
 	}
 
 	// Show general help
-	fmt.Printf("🚀 Lift Framework CLI\n")
-	fmt.Printf("High-performance serverless framework for Go\n\n")
-	fmt.Printf("Usage: lift <command> [arguments]\n\n")
-	fmt.Printf("Available Commands:\n")
+	stdio.Stdoutf("🚀 Lift Framework CLI\n")
+	stdio.Stdoutf("High-performance serverless framework for Go\n\n")
+	stdio.Stdoutf("Usage: lift <command> [arguments]\n\n")
+	stdio.Stdoutf("Available Commands:\n")
 
 	commands := []struct {
 		name string
@@ -513,10 +515,10 @@ func (c *HelpCommand) Execute(_ context.Context, args []string) error {
 	}
 
 	for _, cmd := range commands {
-		fmt.Printf("  %-12s %s\n", cmd.name, cmd.desc)
+		stdio.Stdoutf("  %-12s %s\n", cmd.name, cmd.desc)
 	}
 
-	fmt.Printf("\nUse 'lift help <command>' for more information about a command.\n")
+	stdio.Stdoutf("\nUse 'lift help <command>' for more information about a command.\n")
 
 	return nil
 }

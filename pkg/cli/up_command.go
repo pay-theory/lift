@@ -13,6 +13,7 @@ import (
 	"github.com/pay-theory/lift/internal/domains"
 	"github.com/pay-theory/lift/internal/liftconfig"
 	"github.com/pay-theory/lift/internal/liftstate"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // UpCommand implements the "lift up" command for building and deploying
@@ -70,8 +71,8 @@ func (c *UpCommand) Execute(ctx context.Context, args []string) error {
 		return err
 	}
 
-	fmt.Printf("🚀 Deploying %s to stage: %s\n", cfg.App.Name, stage)
-	fmt.Printf("📁 Project root: %s\n\n", root)
+	stdio.Stdoutf("🚀 Deploying %s to stage: %s\n", cfg.App.Name, stage)
+	stdio.Stdoutf("📁 Project root: %s\n\n", root)
 
 	// Resolve domains
 	resolved, err := domains.Resolve(cfg, stage)
@@ -97,7 +98,7 @@ func (c *UpCommand) Execute(ctx context.Context, args []string) error {
 		return err
 	}
 
-	fmt.Printf("\n✅ Deployment complete!\n")
+	stdio.Stdoutf("\n✅ Deployment complete!\n")
 	return nil
 }
 
@@ -121,19 +122,19 @@ func (c *UpCommand) checkDomainLock(root, stage string, resolved *domains.Resolv
 	}
 
 	if existingState != nil {
-		fmt.Printf("✅ Domain configuration matches existing deployment\n\n")
+		stdio.Stdoutf("✅ Domain configuration matches existing deployment\n\n")
 	}
 
 	return nil
 }
 
 func (c *UpCommand) buildFunctions(ctx context.Context) error {
-	fmt.Printf("📦 Building functions...\n")
+	stdio.Stdoutf("📦 Building functions...\n")
 	buildCmd := &BuildCommand{cmdFactory: c.cmdFactory}
 	if err := buildCmd.Execute(ctx, nil); err != nil {
 		return fmt.Errorf("build failed: %w", err)
 	}
-	fmt.Printf("\n")
+	stdio.Stdoutf("\n")
 	return nil
 }
 
@@ -164,13 +165,13 @@ func (c *UpCommand) saveState(root string, cfg *liftconfig.Config, stage string,
 		return fmt.Errorf("deployment succeeded but failed to save state: %w", err)
 	}
 
-	fmt.Printf("\n🔒 State saved to %s\n", liftstate.StatePath(root, stage))
+	stdio.Stdoutf("\n🔒 State saved to %s\n", liftstate.StatePath(root, stage))
 	return nil
 }
 
 func (c *UpCommand) deployStacks(ctx context.Context, root string, cfg *liftconfig.Config, stage, partner, targetMode string, resolved *domains.ResolvedDomains) error {
 	if cfg.CDK == nil || len(cfg.CDK.DeployOrder) == 0 {
-		fmt.Printf("⚠️  No CDK stacks configured in deploy_order, skipping deployment\n")
+		stdio.Stdoutf("⚠️  No CDK stacks configured in deploy_order, skipping deployment\n")
 		return nil
 	}
 
@@ -180,7 +181,7 @@ func (c *UpCommand) deployStacks(ctx context.Context, root string, cfg *liftconf
 	}
 	cdkDir := filepath.Join(root, cdkPath)
 
-	fmt.Printf("🏗️  Deploying CDK stacks...\n")
+	stdio.Stdoutf("🏗️  Deploying CDK stacks...\n")
 
 	for _, stackKey := range cfg.CDK.DeployOrder {
 		stackCfg, ok := cfg.CDK.Stacks[stackKey]
@@ -193,13 +194,13 @@ func (c *UpCommand) deployStacks(ctx context.Context, root string, cfg *liftconf
 			return fmt.Errorf("failed to render stack name for %q: %w", stackKey, err)
 		}
 
-		fmt.Printf("  📤 Deploying stack: %s\n", stackName)
+		stdio.Stdoutf("  📤 Deploying stack: %s\n", stackName)
 
 		cdkArgs := c.buildCDKArgs("deploy", stackName, cfg, stage, partner, targetMode, resolved)
 		if err := c.runCDK(ctx, cdkDir, cdkArgs); err != nil {
 			return fmt.Errorf("failed to deploy stack %q: %w", stackName, err)
 		}
-		fmt.Printf("  ✅ Stack %s deployed\n", stackName)
+		stdio.Stdoutf("  ✅ Stack %s deployed\n", stackName)
 	}
 
 	return nil

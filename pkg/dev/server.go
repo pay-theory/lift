@@ -13,6 +13,7 @@ import (
 
 	"github.com/pay-theory/lift/pkg/features"
 	"github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // DevServerConfig configures the development server
@@ -130,34 +131,34 @@ func (s *DevServer) Start(ctx context.Context) error {
 	s.running = true
 	s.mu.Unlock()
 
-	fmt.Printf("🚀 Starting Lift development server...\n")
-	fmt.Printf("📡 Server: http://localhost:%d\n", s.config.Port)
+	stdio.Stdoutf("🚀 Starting Lift development server...\n")
+	stdio.Stdoutf("📡 Server: http://localhost:%d\n", s.config.Port)
 
 	// Start profiler if enabled
 	if s.profiler != nil {
 		go func() {
 			if err := s.profiler.Start(); err != nil {
-				fmt.Printf("⚠️  Failed to start profiler: %v\n", err)
+				stdio.Stdoutf("⚠️  Failed to start profiler: %v\n", err)
 			}
 		}()
-		fmt.Printf("🔍 Profiler: http://localhost:%d/debug/pprof/\n", s.config.ProfilerPort)
+		stdio.Stdoutf("🔍 Profiler: http://localhost:%d/debug/pprof/\n", s.config.ProfilerPort)
 	}
 
 	// Start dashboard
 	go func() {
 		if err := s.dashboard.Start(); err != nil {
-			fmt.Printf("⚠️  Failed to start dashboard: %v\n", err)
+			stdio.Stdoutf("⚠️  Failed to start dashboard: %v\n", err)
 		}
 	}()
-	fmt.Printf("📊 Dashboard: http://localhost:%d\n", s.config.DashboardPort)
+	stdio.Stdoutf("📊 Dashboard: http://localhost:%d\n", s.config.DashboardPort)
 
 	// Start file watcher if enabled
 	if s.watcher != nil {
 		go s.watchForChanges(ctx)
-		fmt.Printf("🔥 Hot reload: enabled\n")
+		stdio.Stdoutf("🔥 Hot reload: enabled\n")
 	}
 
-	fmt.Printf("💡 Press Ctrl+C to stop\n\n")
+	stdio.Stdoutf("💡 Press Ctrl+C to stop\n\n")
 
 	// Start HTTP server
 	return s.startHTTPServer(ctx)
@@ -181,21 +182,21 @@ func (s *DevServer) Stop() error {
 		defer cancel()
 		if err := s.server.Shutdown(ctx); err != nil {
 			// Log error but continue shutdown process
-			fmt.Printf("Warning: Error shutting down server: %v\n", err)
+			stdio.Stdoutf("Warning: Error shutting down server: %v\n", err)
 		}
 	}
 
 	if s.profiler != nil {
 		if err := s.profiler.Stop(); err != nil {
 			// Log error but continue shutdown process
-			fmt.Printf("Warning: Error stopping profiler: %v\n", err)
+			stdio.Stdoutf("Warning: Error stopping profiler: %v\n", err)
 		}
 	}
 
 	if s.dashboard != nil {
 		if err := s.dashboard.Stop(); err != nil {
 			// Log error but continue shutdown process
-			fmt.Printf("Warning: Error stopping dashboard: %v\n", err)
+			stdio.Stdoutf("Warning: Error stopping dashboard: %v\n", err)
 		}
 	}
 
@@ -203,7 +204,7 @@ func (s *DevServer) Stop() error {
 		s.watcher.Stop()
 	}
 
-	fmt.Printf("\n👋 Development server stopped\n")
+	stdio.Stdoutf("\n👋 Development server stopped\n")
 	return nil
 }
 
@@ -282,7 +283,7 @@ func (s *DevServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		// Log error but continue - best effort dev server response
-		fmt.Printf("Warning: Error encoding JSON response: %v\n", err)
+		stdio.Stdoutf("Warning: Error encoding JSON response: %v\n", err)
 	}
 
 	// Update latency stats
@@ -299,7 +300,7 @@ func (s *DevServer) handleStats(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
 		// Log error but continue - best effort dev server response
-		fmt.Printf("Warning: Error encoding JSON stats: %v\n", err)
+		stdio.Stdoutf("Warning: Error encoding JSON stats: %v\n", err)
 	}
 }
 
@@ -317,7 +318,7 @@ func (s *DevServer) handleRestart(w http.ResponseWriter, r *http.Request) {
 			"status": "restart triggered",
 		}); err != nil {
 			// Log error but continue - best effort dev server response
-			fmt.Printf("Warning: Error encoding restart response: %v\n", err)
+			stdio.Stdoutf("Warning: Error encoding restart response: %v\n", err)
 		}
 	default:
 		w.WriteHeader(http.StatusTooManyRequests)
@@ -325,7 +326,7 @@ func (s *DevServer) handleRestart(w http.ResponseWriter, r *http.Request) {
 			"error": "restart already in progress",
 		}); err != nil {
 			// Log error but continue - best effort dev server response
-			fmt.Printf("Warning: Error encoding restart error response: %v\n", err)
+			stdio.Stdoutf("Warning: Error encoding restart error response: %v\n", err)
 		}
 	}
 }
@@ -347,7 +348,7 @@ func (s *DevServer) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(health); err != nil {
 		// Log error but continue - best effort dev server response
-		fmt.Printf("Warning: Error encoding health response: %v\n", err)
+		stdio.Stdoutf("Warning: Error encoding health response: %v\n", err)
 	}
 }
 
@@ -360,7 +361,7 @@ func (s *DevServer) devMiddleware(next http.Handler) http.Handler {
 
 		// Log request in development mode
 		if s.config.LogLevel == "debug" {
-			fmt.Printf("🌐 %s %s\n", r.Method, r.URL.Path)
+			stdio.Stdoutf("🌐 %s %s\n", r.Method, r.URL.Path)
 		}
 
 		next.ServeHTTP(w, r)
@@ -390,7 +391,7 @@ func (s *DevServer) watchForChanges(ctx context.Context) {
 	}
 
 	if err := s.watcher.Start(); err != nil {
-		fmt.Printf("⚠️  Failed to start file watcher: %v\n", err)
+		stdio.Stdoutf("⚠️  Failed to start file watcher: %v\n", err)
 		return
 	}
 
@@ -401,7 +402,7 @@ func (s *DevServer) watchForChanges(ctx context.Context) {
 		case <-s.stopCh:
 			return
 		case event := <-s.watcher.Events():
-			fmt.Printf("🔄 File changed: %s\n", event.Path)
+			stdio.Stdoutf("🔄 File changed: %s\n", event.Path)
 			s.triggerRestart()
 		case <-s.restartCh:
 			s.performRestart()
@@ -420,7 +421,7 @@ func (s *DevServer) triggerRestart() {
 
 // performRestart performs the actual restart
 func (s *DevServer) performRestart() {
-	fmt.Printf("🔄 Restarting server...\n")
+	stdio.Stdoutf("🔄 Restarting server...\n")
 
 	start := time.Now()
 
@@ -433,7 +434,7 @@ func (s *DevServer) performRestart() {
 
 	// Simulate build process
 	if s.config.BuildCommand != "" {
-		fmt.Printf("🔨 Building...\n")
+		stdio.Stdoutf("🔨 Building...\n")
 		// In a real implementation, we'd execute the build command
 		time.Sleep(100 * time.Millisecond) // Simulate build time
 	}
@@ -446,7 +447,7 @@ func (s *DevServer) performRestart() {
 	s.stats.BuildTime = buildTime
 	s.stats.mu.Unlock()
 
-	fmt.Printf("✅ Restart complete (%v)\n", buildTime)
+	stdio.Stdoutf("✅ Restart complete (%v)\n", buildTime)
 }
 
 // GetStats returns current development server statistics

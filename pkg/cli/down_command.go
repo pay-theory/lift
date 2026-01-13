@@ -10,6 +10,7 @@ import (
 	"github.com/pay-theory/lift/internal/domains"
 	"github.com/pay-theory/lift/internal/liftconfig"
 	"github.com/pay-theory/lift/internal/liftstate"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // DownCommand implements the "lift down" command for destroying deployments
@@ -63,8 +64,8 @@ func (c *DownCommand) Execute(ctx context.Context, args []string) error {
 		return err
 	}
 
-	fmt.Printf("🗑️  Destroying %s stage: %s\n", cfg.App.Name, stage)
-	fmt.Printf("📁 Project root: %s\n\n", root)
+	stdio.Stdoutf("🗑️  Destroying %s stage: %s\n", cfg.App.Name, stage)
+	stdio.Stdoutf("📁 Project root: %s\n\n", root)
 
 	// Resolve domains for context
 	resolved, err := domains.Resolve(cfg, stage)
@@ -82,14 +83,14 @@ func (c *DownCommand) Execute(ctx context.Context, args []string) error {
 		return fmt.Errorf("stacks destroyed but failed to remove state file: %w", err)
 	}
 
-	fmt.Printf("\n🔓 Domain lock cleared for stage: %s\n", stage)
-	fmt.Printf("\n✅ Teardown complete!\n")
+	stdio.Stdoutf("\n🔓 Domain lock cleared for stage: %s\n", stage)
+	stdio.Stdoutf("\n✅ Teardown complete!\n")
 	return nil
 }
 
 func (c *DownCommand) destroyStacks(ctx context.Context, root string, cfg *liftconfig.Config, stage, partner, targetMode string, resolved *domains.ResolvedDomains) error {
 	if cfg.CDK == nil || len(cfg.CDK.DeployOrder) == 0 {
-		fmt.Printf("⚠️  No CDK stacks configured in deploy_order, nothing to destroy\n")
+		stdio.Stdoutf("⚠️  No CDK stacks configured in deploy_order, nothing to destroy\n")
 		return nil
 	}
 
@@ -99,7 +100,7 @@ func (c *DownCommand) destroyStacks(ctx context.Context, root string, cfg *liftc
 	}
 	cdkDir := filepath.Join(root, cdkPath)
 
-	fmt.Printf("🏗️  Destroying CDK stacks in reverse order...\n")
+	stdio.Stdoutf("🏗️  Destroying CDK stacks in reverse order...\n")
 
 	// Reverse the deploy order
 	order := cfg.CDK.DeployOrder
@@ -115,13 +116,13 @@ func (c *DownCommand) destroyStacks(ctx context.Context, root string, cfg *liftc
 			return fmt.Errorf("failed to render stack name for %q: %w", stackKey, err)
 		}
 
-		fmt.Printf("  🗑️  Destroying stack: %s\n", stackName)
+		stdio.Stdoutf("  🗑️  Destroying stack: %s\n", stackName)
 
 		cdkArgs := c.buildCDKArgs(stackName, cfg, stage, partner, targetMode, resolved)
 		if err := c.runCDK(ctx, cdkDir, cdkArgs); err != nil {
 			return fmt.Errorf("failed to destroy stack %q: %w", stackName, err)
 		}
-		fmt.Printf("  ✅ Stack %s destroyed\n", stackName)
+		stdio.Stdoutf("  ✅ Stack %s destroyed\n", stackName)
 	}
 
 	return nil

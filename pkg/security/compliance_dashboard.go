@@ -3,9 +3,10 @@ package security
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 const (
@@ -726,7 +727,7 @@ func (cd *ComplianceDashboard) refreshCache(ctx context.Context) {
 
 	for _, timeRange := range timeRanges {
 		if _, err := cd.GetDashboardMetrics(ctx, timeRange); err != nil {
-			log.Printf("Warning: failed to get dashboard metrics for time range %v-%v: %v",
+			stdio.Stderrf("Warning: failed to get dashboard metrics for time range %v-%v: %v",
 				timeRange.Start, timeRange.End, err)
 		}
 	}

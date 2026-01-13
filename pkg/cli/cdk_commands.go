@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 const (
@@ -138,15 +140,15 @@ func NewLiftStack(scope constructs.Construct, id string, props *awscdk.StackProp
 		return fmt.Errorf("failed to create .gitignore: %w", err)
 	}
 
-	fmt.Println("✅ CDK app initialized successfully!")
-	fmt.Println("📁 Created files:")
-	fmt.Println("   cdk/")
-	fmt.Println("   ├── main.go")
-	fmt.Println("   ├── cdk.json")
-	fmt.Println("   └── .gitignore")
-	fmt.Println("\n🚀 Next steps:")
-	fmt.Println("   lift build         # Build your Lambda function")
-	fmt.Println("   lift cdk-deploy    # Deploy to AWS")
+	stdio.Stdoutln("✅ CDK app initialized successfully!")
+	stdio.Stdoutln("📁 Created files:")
+	stdio.Stdoutln("   cdk/")
+	stdio.Stdoutln("   ├── main.go")
+	stdio.Stdoutln("   ├── cdk.json")
+	stdio.Stdoutln("   └── .gitignore")
+	stdio.Stdoutln("\n🚀 Next steps:")
+	stdio.Stdoutln("   lift build         # Build your Lambda function")
+	stdio.Stdoutln("   lift cdk-deploy    # Deploy to AWS")
 
 	return nil
 }
@@ -307,11 +309,11 @@ func (c *CDKInitCommand) writeStackFiles(cdkDir, mainContent, stackType string) 
 		return fmt.Errorf("failed to create cdk.json: %w", err)
 	}
 
-	fmt.Printf("✅ CDK %s stack initialized!\n", stackType)
-	fmt.Println("📁 Created CDK app in cdk/ directory")
-	fmt.Println("\n🚀 Next steps:")
-	fmt.Println("   lift build         # Build your function")
-	fmt.Println("   lift cdk-deploy    # Deploy stack")
+	stdio.Stdoutf("✅ CDK %s stack initialized!\n", stackType)
+	stdio.Stdoutln("📁 Created CDK app in cdk/ directory")
+	stdio.Stdoutln("\n🚀 Next steps:")
+	stdio.Stdoutln("   lift build         # Build your function")
+	stdio.Stdoutln("   lift cdk-deploy    # Deploy stack")
 
 	return nil
 }
@@ -333,7 +335,7 @@ func (c *CDKDeployCommand) Usage() string {
 
 func (c *CDKDeployCommand) Execute(ctx context.Context, args []string) error {
 	// Build the Lambda function first
-	fmt.Println("🔨 Building Lambda function...")
+	stdio.Stdoutln("🔨 Building Lambda function...")
 	if err := c.buildFunction(); err != nil {
 		return fmt.Errorf("build failed: %w", err)
 	}
@@ -356,7 +358,7 @@ func (c *CDKDeployCommand) Execute(ctx context.Context, args []string) error {
 	}
 
 	// Run CDK deploy
-	fmt.Println("🚀 Deploying with CDK...")
+	stdio.Stdoutln("🚀 Deploying with CDK...")
 	cmd := exec.CommandContext(ctx, "cdk", cdkArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -365,7 +367,7 @@ func (c *CDKDeployCommand) Execute(ctx context.Context, args []string) error {
 		return fmt.Errorf("CDK deploy failed: %w", err)
 	}
 
-	fmt.Println("✅ Deployment complete!")
+	stdio.Stdoutln("✅ Deployment complete!")
 	return nil
 }
 
@@ -413,7 +415,7 @@ func (c *CDKSynthCommand) Execute(ctx context.Context, args []string) error {
 	}
 
 	// Run CDK synth
-	fmt.Println("📋 Synthesizing CloudFormation template...")
+	stdio.Stdoutln("📋 Synthesizing CloudFormation template...")
 	cmd := exec.CommandContext(ctx, "cdk", cdkArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -453,7 +455,7 @@ func (c *CDKDiffCommand) Execute(ctx context.Context, args []string) error {
 	}
 
 	// Run CDK diff
-	fmt.Println("🔍 Comparing stack with deployed resources...")
+	stdio.Stdoutln("🔍 Comparing stack with deployed resources...")
 	cmd := exec.CommandContext(ctx, "cdk", cdkArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -503,22 +505,22 @@ func (c *CDKDestroyCommand) Execute(ctx context.Context, args []string) error {
 	}
 
 	// Confirm destruction
-	fmt.Println("⚠️  WARNING: This will destroy all resources in the stack!")
-	fmt.Print("Are you sure? (y/N): ")
+	stdio.Stdoutln("⚠️  WARNING: This will destroy all resources in the stack!")
+	stdio.Stdout("Are you sure? (y/N): ")
 
 	var response string
 	if _, err := fmt.Scanln(&response); err != nil {
 		// If user just presses enter or there's an error, treat as "no"
-		fmt.Println("Destruction canceled")
+		stdio.Stdoutln("Destruction canceled")
 		return nil
 	}
 	if !strings.HasPrefix(strings.ToLower(response), "y") {
-		fmt.Println("Destruction canceled")
+		stdio.Stdoutln("Destruction canceled")
 		return nil
 	}
 
 	// Run CDK destroy
-	fmt.Println("💥 Destroying stack...")
+	stdio.Stdoutln("💥 Destroying stack...")
 	cmd := exec.CommandContext(ctx, "cdk", cdkArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -527,7 +529,7 @@ func (c *CDKDestroyCommand) Execute(ctx context.Context, args []string) error {
 		return fmt.Errorf("CDK destroy failed: %w", err)
 	}
 
-	fmt.Println("✅ Stack destroyed successfully")
+	stdio.Stdoutln("✅ Stack destroyed successfully")
 	return nil
 }
 

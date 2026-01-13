@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
-	"log"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 const (
@@ -285,10 +285,10 @@ func (c *CacheMiddleware) hashQueryParams(params map[string]string) uint64 {
 	for _, k := range keys {
 		// hash.Hash Write never returns an error; still capture return values
 		// to satisfy linters and make intent explicit.
-		_, _ = h.Write([]byte(k))
-		_, _ = h.Write([]byte("="))
-		_, _ = h.Write([]byte(params[k]))
-		_, _ = h.Write([]byte("&"))
+		h.Write([]byte(k))
+		h.Write([]byte("="))
+		h.Write([]byte(params[k]))
+		h.Write([]byte("&"))
 	}
 
 	return h.Sum64()
@@ -591,7 +591,7 @@ func (m *MultiBendCacheStore) Get(ctx context.Context, key string) (any, bool, e
 		if m.strategy == "write_back" {
 			if setErr := m.primary.Set(ctx, key, value, 0); setErr != nil {
 				// Log error but don't fail the read operation
-				log.Printf("Failed to write-back to primary cache: %v", setErr)
+				stdio.Stderrf("Failed to write-back to primary cache: %v", setErr)
 			}
 		}
 		return value, true, nil

@@ -3,10 +3,11 @@ package deployment
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 const (
@@ -567,7 +568,7 @@ func (d *DefaultDeploymentMonitoring) GetMetrics(_ context.Context, _ *Environme
 
 func (d *DefaultDeploymentMonitoring) AlertOnIssue(_ context.Context, env *Environment, issue string) error {
 	// Simulate alerting
-	fmt.Printf("ALERT: Environment %s - %s\n", env.Name, issue)
+	stdio.Stdoutf("ALERT: Environment %s - %s\n", env.Name, issue)
 	return nil
 }
 
@@ -632,7 +633,7 @@ func (h *HTTPHealthCheck) Check(ctx context.Context, env *Environment) error {
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 

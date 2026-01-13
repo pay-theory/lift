@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 const defaultDRTestFrequency = 24 * time.Hour
@@ -507,7 +508,7 @@ func (drm *DisasterRecoveryManager) executeFailover(ctx context.Context, event *
 		"to_region":   event.ToRegion,
 		"reason":      event.Reason,
 	}); err != nil {
-		log.Printf("Failed to send failover started notification: %v", err)
+		stdio.Stderrf("Failed to send failover started notification: %v", err)
 	}
 
 	// Execute failover steps
@@ -574,7 +575,7 @@ func (drm *DisasterRecoveryManager) executeFailover(ctx context.Context, event *
 		"duration": event.Duration,
 		"impact":   event.Impact,
 	}); err != nil {
-		log.Printf("Failed to send failover completed notification: %v", err)
+		stdio.Stderrf("Failed to send failover completed notification: %v", err)
 	}
 
 	return event, nil
@@ -721,7 +722,7 @@ func (drm *DisasterRecoveryManager) rollbackFailover(ctx context.Context, event 
 		"event": event,
 	}); err != nil {
 		// Log notification error but don't fail rollback operation
-		log.Printf("Failed to send failover rollback notification: %v", err)
+		stdio.Stderrf("Failed to send failover rollback notification: %v", err)
 	}
 
 	return event, nil
@@ -791,7 +792,7 @@ func (drm *DisasterRecoveryManager) handleHealthEvent(ctx context.Context, event
 							"to_region":   targetRegion,
 						}); notifyErr != nil {
 							// Log notification error but continue
-							log.Printf("Failed to send recovery test notification: %v", notifyErr)
+							stdio.Stderrf("Failed to send recovery test notification: %v", notifyErr)
 						}
 					}
 				}()
@@ -822,7 +823,7 @@ func (drm *DisasterRecoveryManager) handleSyncEvent(ctx context.Context, event S
 			"replication_lag": event.ReplicationLag,
 		}); err != nil {
 			// Log notification error but continue
-			log.Printf("Failed to send notification: %v", err)
+			stdio.Stderrf("Failed to send notification: %v", err)
 		}
 	}
 }
@@ -890,7 +891,7 @@ func (drm *DisasterRecoveryManager) performDRTest(ctx context.Context) {
 		"scheduled_time": scheduledTime,
 	}); err != nil {
 		// Log notification error but continue with test
-		log.Printf("Failed to send DR test starting notification: %v", err)
+		stdio.Stderrf("Failed to send DR test starting notification: %v", err)
 	}
 
 	if notifyBefore > 0 {
@@ -940,7 +941,7 @@ func (drm *DisasterRecoveryManager) executeTestFailover(ctx context.Context, eve
 		"success": event.Status == FailoverStatusCompleted,
 	}); err != nil {
 		// Log notification error but continue
-		log.Printf("Failed to send DR test completed notification: %v", err)
+		stdio.Stderrf("Failed to send DR test completed notification: %v", err)
 	}
 }
 

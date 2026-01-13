@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // HealthEndpoints provides HTTP endpoints for health checks
@@ -332,7 +332,7 @@ func (he *HealthEndpoints) logError(msg string, err error) {
 		he.logger.Error(msg, map[string]any{"error": err.Error()})
 		return
 	}
-	log.Printf("%s: %v", msg, err)
+	stdio.Stderrf("%s: %v", msg, err)
 }
 
 // HealthMiddleware provides middleware for automatic health monitoring

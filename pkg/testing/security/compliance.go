@@ -3,10 +3,11 @@ package security
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // Helper functions for compliance checking
@@ -24,7 +25,7 @@ func checkAuthenticationRequired(ctx context.Context, client *http.Client, url s
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 
@@ -193,7 +194,7 @@ func (h *HIPAAComplianceChecker) checkTechnicalSafeguards(ctx context.Context, s
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 
@@ -383,7 +384,7 @@ func (p *PCIDSSComplianceChecker) checkVendorDefaults(ctx context.Context, syste
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 
@@ -414,7 +415,7 @@ func (p *PCIDSSComplianceChecker) checkTransmissionEncryption(ctx context.Contex
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 
@@ -635,7 +636,7 @@ func (s *SOC2ComplianceChecker) checkSystemOperations(ctx context.Context, syste
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 
@@ -656,7 +657,7 @@ func (s *SOC2ComplianceChecker) checkAvailability(ctx context.Context, system Sy
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 

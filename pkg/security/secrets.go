@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 type secretsManagerClient interface {
@@ -107,7 +108,7 @@ func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (strin
 	if asm.useEncryption && asm.encryptedCache != nil {
 		if value, err := asm.encryptedCache.Get(name); err != nil {
 			// Log cache retrieval error, but continue to fetch from AWS
-			log.Printf("secrets cache get failed: key=%s err=%v", name, err)
+			stdio.Stderrf("secrets cache get failed: key=%s err=%v", name, err)
 		} else if value != "" {
 			return value, nil
 		}
@@ -142,7 +143,7 @@ func (asm *AWSSecretsManager) GetSecret(ctx context.Context, name string) (strin
 		// Best effort cache update - log errors but don't fail
 		if err := asm.encryptedCache.Set(name, value); err != nil {
 			// Cache failure is not critical, just log it
-			log.Printf("secrets cache set failed: key=%s err=%v", name, err)
+			stdio.Stderrf("secrets cache set failed: key=%s err=%v", name, err)
 		}
 	} else if asm.cache != nil {
 		asm.cache.Set(name, value)

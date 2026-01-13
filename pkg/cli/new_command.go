@@ -14,6 +14,7 @@ import (
 
 	"github.com/pay-theory/lift/internal/liftconfig"
 	"github.com/pay-theory/lift/internal/templates"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // templateInfo holds information about a template including its embedded FS and root path.
@@ -151,7 +152,7 @@ func (c *NewCommandV2) parseArgs(args []string) (*newOpts, error) {
 		case strings.HasPrefix(arg, "--base-domain="):
 			opts.baseDomain = strings.TrimPrefix(arg, "--base-domain=")
 		case arg == "--help" || arg == "-h":
-			fmt.Println(c.Usage())
+			stdio.Stdoutln(c.Usage())
 			return nil, nil // Signal to caller to exit without error
 		case arg == "--pt":
 			opts.pt = true
@@ -440,73 +441,73 @@ func (c *NewCommandV2) printSuccess(targetDir string, appName string, ptMode boo
 		name = filepath.Base(targetDir)
 	}
 
-	fmt.Printf("✅ Created Lift project: %s\n", name)
-	fmt.Printf("📁 Location: %s\n", targetDir)
-	fmt.Printf("📦 Template: %s\n", templateName)
-	fmt.Printf("\n")
-	fmt.Printf("📁 Project structure:\n")
-	fmt.Printf("   %s/\n", name)
-	fmt.Printf("   ├── lift.yaml          # Project configuration\n")
-	fmt.Printf("   ├── go.mod             # Go module\n")
+	stdio.Stdoutf("✅ Created Lift project: %s\n", name)
+	stdio.Stdoutf("📁 Location: %s\n", targetDir)
+	stdio.Stdoutf("📦 Template: %s\n", templateName)
+	stdio.Stdoutf("\n")
+	stdio.Stdoutf("📁 Project structure:\n")
+	stdio.Stdoutf("   %s/\n", name)
+	stdio.Stdoutf("   ├── lift.yaml          # Project configuration\n")
+	stdio.Stdoutf("   ├── go.mod             # Go module\n")
 
 	// Print function structure based on template
 	switch templateName {
 	case "event-driven":
-		fmt.Printf("   ├── cmd/api/main.go    # API Lambda entrypoint\n")
-		fmt.Printf("   ├── cmd/processor/main.go  # Processor Lambda entrypoint\n")
+		stdio.Stdoutf("   ├── cmd/api/main.go    # API Lambda entrypoint\n")
+		stdio.Stdoutf("   ├── cmd/processor/main.go  # Processor Lambda entrypoint\n")
 	case "merchant-app":
-		fmt.Printf("   ├── cmd/api/main.go    # API Lambda entrypoint\n")
-		fmt.Printf("   ├── cmd/worker/main.go # Worker Lambda entrypoint\n")
+		stdio.Stdoutf("   ├── cmd/api/main.go    # API Lambda entrypoint\n")
+		stdio.Stdoutf("   ├── cmd/worker/main.go # Worker Lambda entrypoint\n")
 	case "sns-processor":
-		fmt.Printf("   ├── cmd/processor/main.go  # SNS processor Lambda entrypoint\n")
+		stdio.Stdoutf("   ├── cmd/processor/main.go  # SNS processor Lambda entrypoint\n")
 	default:
-		fmt.Printf("   ├── cmd/api/main.go    # Lambda entrypoint\n")
+		stdio.Stdoutf("   ├── cmd/api/main.go    # Lambda entrypoint\n")
 	}
 
-	fmt.Printf("   ├── cdk/               # CDK infrastructure\n")
-	fmt.Printf("   │   ├── cdk.json\n")
-	fmt.Printf("   │   ├── go.mod\n")
-	fmt.Printf("   │   └── main.go\n")
+	stdio.Stdoutf("   ├── cdk/               # CDK infrastructure\n")
+	stdio.Stdoutf("   │   ├── cdk.json\n")
+	stdio.Stdoutf("   │   ├── go.mod\n")
+	stdio.Stdoutf("   │   └── main.go\n")
 
 	if ptMode {
 		// PT mode structure
-		fmt.Printf("   ├── buildspec.yml      # CodeBuild spec\n")
-		fmt.Printf("   └── shell/             # Deploy scripts\n")
-		fmt.Printf("       ├── build.sh\n")
-		fmt.Printf("       ├── deploy.sh\n")
-		fmt.Printf("       ├── init_env_vars.sh\n")
-		fmt.Printf("       └── DEPLOYMENT.md\n")
+		stdio.Stdoutf("   ├── buildspec.yml      # CodeBuild spec\n")
+		stdio.Stdoutf("   └── shell/             # Deploy scripts\n")
+		stdio.Stdoutf("       ├── build.sh\n")
+		stdio.Stdoutf("       ├── deploy.sh\n")
+		stdio.Stdoutf("       ├── init_env_vars.sh\n")
+		stdio.Stdoutf("       └── DEPLOYMENT.md\n")
 	} else {
 		// GitHub Actions structure
-		fmt.Printf("   └── .github/workflows/ # CI/CD\n")
-		fmt.Printf("       ├── deploy.yml\n")
-		fmt.Printf("       └── pr.yml\n")
+		stdio.Stdoutf("   └── .github/workflows/ # CI/CD\n")
+		stdio.Stdoutf("       ├── deploy.yml\n")
+		stdio.Stdoutf("       └── pr.yml\n")
 	}
 
-	fmt.Printf("\n")
-	fmt.Printf("🚀 Next steps:\n")
+	stdio.Stdoutf("\n")
+	stdio.Stdoutf("🚀 Next steps:\n")
 	if appName != "" {
-		fmt.Printf("   cd %s\n", appName)
+		stdio.Stdoutf("   cd %s\n", appName)
 	}
-	fmt.Printf("   go mod tidy\n")
+	stdio.Stdoutf("   go mod tidy\n")
 
 	if ptMode {
 		// PT mode next steps
-		fmt.Printf("   ./shell/deploy.sh --partner <partner> --stage dev\n")
-		fmt.Printf("\n")
-		fmt.Printf("📖 Or use lift CLI with partner context:\n")
-		fmt.Printf("   lift up --stage dev --partner <partner>\n")
-		fmt.Printf("\n")
-		fmt.Printf("📖 CodeBuild setup:\n")
-		fmt.Printf("   Set environment variables: PARTNER, STAGE, AWS_REGION\n")
-		fmt.Printf("   See shell/DEPLOYMENT.md for details\n")
+		stdio.Stdoutf("   ./shell/deploy.sh --partner <partner> --stage dev\n")
+		stdio.Stdoutf("\n")
+		stdio.Stdoutf("📖 Or use lift CLI with partner context:\n")
+		stdio.Stdoutf("   lift up --stage dev --partner <partner>\n")
+		stdio.Stdoutf("\n")
+		stdio.Stdoutf("📖 CodeBuild setup:\n")
+		stdio.Stdoutf("   Set environment variables: PARTNER, STAGE, AWS_REGION\n")
+		stdio.Stdoutf("   See shell/DEPLOYMENT.md for details\n")
 	} else {
 		// GitHub Actions next steps
-		fmt.Printf("   lift up --stage dev\n")
-		fmt.Printf("\n")
-		fmt.Printf("📖 GitHub setup (for CI/CD):\n")
-		fmt.Printf("   1. Create GitHub Environments: dev, staging, live\n")
-		fmt.Printf("   2. Set environment variable: AWS_ROLE_ARN\n")
-		fmt.Printf("   3. Set environment variable: AWS_REGION (recommended)\n")
+		stdio.Stdoutf("   lift up --stage dev\n")
+		stdio.Stdoutf("\n")
+		stdio.Stdoutf("📖 GitHub setup (for CI/CD):\n")
+		stdio.Stdoutf("   1. Create GitHub Environments: dev, staging, live\n")
+		stdio.Stdoutf("   2. Set environment variable: AWS_ROLE_ARN\n")
+		stdio.Stdoutf("   3. Set environment variable: AWS_REGION (recommended)\n")
 	}
 }

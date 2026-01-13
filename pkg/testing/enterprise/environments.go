@@ -2,11 +2,11 @@ package enterprise
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/testing"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // TestEnvironment represents a testing environment configuration
@@ -193,7 +193,7 @@ func (e *EnterpriseTestSuite) runTestInEnvironment(testCase TestCase, envName st
 	}
 	defer func() {
 		if err := e.dataFixtures.CleanupForEnvironment(env); err != nil {
-			log.Printf("Warning: failed to cleanup data fixtures for environment %s: %v", env.Name, err)
+			stdio.Stderrf("Warning: failed to cleanup data fixtures for environment %s: %v", env.Name, err)
 		}
 	}()
 
@@ -203,7 +203,7 @@ func (e *EnterpriseTestSuite) runTestInEnvironment(testCase TestCase, envName st
 	}
 	defer func() {
 		if err := e.mockServices.CleanupForEnvironment(env); err != nil {
-			log.Printf("Warning: failed to cleanup mock services for environment %s: %v", env.Name, err)
+			stdio.Stderrf("Warning: failed to cleanup mock services for environment %s: %v", env.Name, err)
 		}
 	}()
 

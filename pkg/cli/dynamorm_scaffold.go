@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // DynamORMScaffoldCommand scaffolds DynamORM models, CDK constructs, and examples
@@ -69,11 +71,11 @@ func (c *DynamORMScaffoldCommand) Execute(_ context.Context, args []string) erro
 		return fmt.Errorf("failed to generate example: %w", err)
 	}
 
-	fmt.Printf("✅ Successfully generated DynamORM scaffold for %s\n", config.ModelName)
-	fmt.Printf("📁 Generated files:\n")
-	fmt.Printf("   - models/%s.go\n", strings.ToLower(config.ModelName))
-	fmt.Printf("   - cdk/constructs/%s_table.go\n", strings.ToLower(config.ModelName))
-	fmt.Printf("   - examples/%s_example.go\n", strings.ToLower(config.ModelName))
+	stdio.Stdoutf("✅ Successfully generated DynamORM scaffold for %s\n", config.ModelName)
+	stdio.Stdoutf("📁 Generated files:\n")
+	stdio.Stdoutf("   - models/%s.go\n", strings.ToLower(config.ModelName))
+	stdio.Stdoutf("   - cdk/constructs/%s_table.go\n", strings.ToLower(config.ModelName))
+	stdio.Stdoutf("   - examples/%s_example.go\n", strings.ToLower(config.ModelName))
 
 	return nil
 }
@@ -247,7 +249,7 @@ func (m *{{.ModelName}}) Update() {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Warning: failed to close file: %v\n", err)
+			stdio.Stdoutf("Warning: failed to close file: %v\n", err)
 		}
 	}()
 
@@ -371,7 +373,7 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Warning: failed to close file: %v\n", err)
+			stdio.Stdoutf("Warning: failed to close file: %v\n", err)
 		}
 	}()
 
@@ -401,7 +403,8 @@ type {{.ModelName}}Service struct {
 func New{{.ModelName}}Service() *{{.ModelName}}Service {
 	db, err := dynamorm.New(context.Background())
 	if err != nil {
-		log.Fatal("Failed to initialize DynamORM:", err)
+		stdio.Stderrln("Failed to initialize DynamORM:", err)
+		os.Exit(1)
 	}
 
 	return &{{.ModelName}}Service{
@@ -596,7 +599,7 @@ func main() {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Warning: failed to close file: %v\n", err)
+			stdio.Stdoutf("Warning: failed to close file: %v\n", err)
 		}
 	}()
 

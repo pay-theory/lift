@@ -13,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 const (
@@ -146,7 +148,7 @@ func (c *DynamORMMigrateCommand) Execute(ctx context.Context, args []string) err
 	client := newClient(cfg)
 
 	// Analyze table
-	fmt.Printf("🔍 Analyzing table: %s\n", config.TableName)
+	stdio.Stdoutf("🔍 Analyzing table: %s\n", config.TableName)
 	analysis, err := c.analyzeTable(ctx, client, config.TableName)
 	if err != nil {
 		return fmt.Errorf("failed to analyze table: %w", err)
@@ -163,7 +165,7 @@ func (c *DynamORMMigrateCommand) Execute(ctx context.Context, args []string) err
 		return fmt.Errorf("failed to save analysis: %w", err)
 	}
 
-	fmt.Printf("📊 Analysis complete! Results saved to: %s\n", analysisPath)
+	stdio.Stdoutf("📊 Analysis complete! Results saved to: %s\n", analysisPath)
 	c.printAnalysisSummary(analysis)
 
 	// If analyze-only mode, stop here
@@ -172,12 +174,12 @@ func (c *DynamORMMigrateCommand) Execute(ctx context.Context, args []string) err
 	}
 
 	// Generate migration code
-	fmt.Printf("🚀 Generating migration code...\n")
+	stdio.Stdoutf("🚀 Generating migration code...\n")
 	if err := c.generateMigrationCode(analysis, config); err != nil {
 		return fmt.Errorf("failed to generate migration code: %w", err)
 	}
 
-	fmt.Printf("✅ Migration complete! Generated files in: %s\n", config.OutputDir)
+	stdio.Stdoutf("✅ Migration complete! Generated files in: %s\n", config.OutputDir)
 	return nil
 }
 
@@ -710,34 +712,34 @@ func (c *DynamORMMigrateCommand) saveAnalysis(analysis *TableAnalysis, path stri
 }
 
 func (c *DynamORMMigrateCommand) printAnalysisSummary(analysis *TableAnalysis) {
-	fmt.Printf("\n📋 Analysis Summary for %s:\n", analysis.TableName)
-	fmt.Printf("   • Partition Key: %s (%s)\n", analysis.PartitionKey.Name, analysis.PartitionKey.Type)
+	stdio.Stdoutf("\n📋 Analysis Summary for %s:\n", analysis.TableName)
+	stdio.Stdoutf("   • Partition Key: %s (%s)\n", analysis.PartitionKey.Name, analysis.PartitionKey.Type)
 
 	if analysis.SortKey != nil {
-		fmt.Printf("   • Sort Key: %s (%s)\n", analysis.SortKey.Name, analysis.SortKey.Type)
+		stdio.Stdoutf("   • Sort Key: %s (%s)\n", analysis.SortKey.Name, analysis.SortKey.Type)
 	}
 
-	fmt.Printf("   • GSIs: %d\n", len(analysis.GlobalSecondaryIndexes))
-	fmt.Printf("   • LSIs: %d\n", len(analysis.LocalSecondaryIndexes))
-	fmt.Printf("   • Item Count: %d\n", analysis.ItemCount)
-	fmt.Printf("   • Table Size: %.2f MB\n", float64(analysis.TableSizeBytes)/1024/1024)
-	fmt.Printf("   • Billing Mode: %s\n", analysis.BillingMode)
-	fmt.Printf("   • Migration Complexity: %s\n", analysis.MigrationComplexity)
-	fmt.Printf("   • Recommended Model: %s\n", analysis.RecommendedModel)
-	fmt.Printf("   • Multi-Tenant Candidate: %t\n", analysis.MultiTenantCandidate)
+	stdio.Stdoutf("   • GSIs: %d\n", len(analysis.GlobalSecondaryIndexes))
+	stdio.Stdoutf("   • LSIs: %d\n", len(analysis.LocalSecondaryIndexes))
+	stdio.Stdoutf("   • Item Count: %d\n", analysis.ItemCount)
+	stdio.Stdoutf("   • Table Size: %.2f MB\n", float64(analysis.TableSizeBytes)/1024/1024)
+	stdio.Stdoutf("   • Billing Mode: %s\n", analysis.BillingMode)
+	stdio.Stdoutf("   • Migration Complexity: %s\n", analysis.MigrationComplexity)
+	stdio.Stdoutf("   • Recommended Model: %s\n", analysis.RecommendedModel)
+	stdio.Stdoutf("   • Multi-Tenant Candidate: %t\n", analysis.MultiTenantCandidate)
 
 	if analysis.TimeToLiveSpec != nil {
-		fmt.Printf("   • TTL: %s\n", analysis.TimeToLiveSpec.AttributeName)
+		stdio.Stdoutf("   • TTL: %s\n", analysis.TimeToLiveSpec.AttributeName)
 	}
 
 	if analysis.StreamSpec != nil {
-		fmt.Printf("   • Stream: %s\n", analysis.StreamSpec.ViewType)
+		stdio.Stdoutf("   • Stream: %s\n", analysis.StreamSpec.ViewType)
 	}
 
 	if len(analysis.Warnings) > 0 {
-		fmt.Printf("   ⚠️  Warnings:\n")
+		stdio.Stdoutf("   ⚠️  Warnings:\n")
 		for _, warning := range analysis.Warnings {
-			fmt.Printf("     - %s\n", warning)
+			stdio.Stdoutf("     - %s\n", warning)
 		}
 	}
 }

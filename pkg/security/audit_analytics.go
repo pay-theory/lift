@@ -3,9 +3,10 @@ package security
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // AuditAnalyticsEngine provides advanced audit analytics with ML-based insights
@@ -605,7 +606,7 @@ func (aae *AuditAnalyticsEngine) AnalyzeEvent(ctx context.Context, event *AuditE
 		}
 
 		if err := aae.dataStore.StoreAnalyticsData(ctx, dataPoint); err != nil {
-			log.Printf("Warning: failed to store analytics data: %v", err)
+			stdio.Stderrf("Warning: failed to store analytics data: %v", err)
 		}
 	}
 

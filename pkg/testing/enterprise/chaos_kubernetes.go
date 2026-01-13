@@ -3,8 +3,9 @@ package enterprise
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // ChaosMeshIntegration provides native Kubernetes chaos engineering capabilities
@@ -563,7 +564,7 @@ func (c *ChaosMeshIntegration) CreateExperiment(ctx context.Context, spec *Chaos
 		Tags:     []string{"experiment", "started"},
 	}
 	if err := c.eventBus.PublishEvent(ctx, event); err != nil {
-		log.Printf("Warning: failed to publish chaos experiment start event: %v", err)
+		stdio.Stderrf("Warning: failed to publish chaos experiment start event: %v", err)
 	}
 
 	return result, nil
@@ -602,7 +603,7 @@ func (c *ChaosMeshIntegration) StopExperiment(ctx context.Context, experimentID 
 		Tags:      []string{"experiment", "stopped"},
 	}
 	if err := c.eventBus.PublishEvent(ctx, event); err != nil {
-		log.Printf("Warning: failed to publish chaos experiment stop event: %v", err)
+		stdio.Stderrf("Warning: failed to publish chaos experiment stop event: %v", err)
 	}
 
 	return nil

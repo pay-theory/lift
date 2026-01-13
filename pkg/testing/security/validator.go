@@ -3,10 +3,11 @@ package security
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // SecurityValidator provides comprehensive security testing automation
@@ -434,7 +435,7 @@ func (o *OWASPScanner) scanAccessControl(ctx context.Context, target SecurityTar
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 
@@ -494,7 +495,7 @@ func (o *OWASPScanner) scanInjection(ctx context.Context, target SecurityTarget)
 			continue
 		}
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 
 		// Simple heuristic: SQL errors in response indicate potential injection
@@ -539,7 +540,7 @@ func (o *OWASPScanner) scanMisconfiguration(ctx context.Context, target Security
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			stdio.Stderrf("Warning: failed to close response body: %v", err)
 		}
 	}()
 

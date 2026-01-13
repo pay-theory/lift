@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // HandleTestRequest processes a test request directly through the router.
@@ -578,7 +580,7 @@ func (a *App) RunLocalTest() {
 		if a.logger != nil {
 			a.logger.Debug("Error handling request during local test")
 		} else {
-			fmt.Println("Debug: Error handling request during local test")
+			stdio.Stdoutln("Debug: Error handling request during local test")
 		}
 	}
 }

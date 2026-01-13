@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/features"
 	"github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // DevDashboard provides an interactive web interface for development
@@ -36,7 +36,7 @@ func NewDevDashboard(server *DevServer, port int) *DevDashboard {
 			LocalOnly: true,
 		})
 		if err != nil {
-			log.Printf("Warning: failed to create feature flags: %v", err)
+			stdio.Stderrf("Warning: failed to create feature flags: %v", err)
 			// Continue with nil feature flags
 		}
 	}
@@ -111,7 +111,7 @@ func (d *DevDashboard) handleDashboard(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Set(lift.HeaderContentType, lift.ContentTypeHTML)
 	if err := tmpl.Execute(w, data); err != nil {
-		log.Printf("Failed to execute dashboard template: %v", err)
+		stdio.Stderrf("Failed to execute dashboard template: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
@@ -122,7 +122,7 @@ func (d *DevDashboard) handleAPIStats(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
-		log.Printf("Failed to encode stats: %v", err)
+		stdio.Stderrf("Failed to encode stats: %v", err)
 	}
 }
 
@@ -139,7 +139,7 @@ func (d *DevDashboard) handleAPIHealth(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(health); err != nil {
-		log.Printf("Failed to encode health: %v", err)
+		stdio.Stderrf("Failed to encode health: %v", err)
 	}
 }
 
@@ -156,7 +156,7 @@ func (d *DevDashboard) handleAPIRestart(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "restart triggered",
 	}); err != nil {
-		log.Printf("Failed to encode restart response: %v", err)
+		stdio.Stderrf("Failed to encode restart response: %v", err)
 	}
 }
 
@@ -184,7 +184,7 @@ func (d *DevDashboard) handleAPILogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(logs); err != nil {
 		// Log error but continue - best effort dev dashboard response
-		fmt.Printf("Warning: Error encoding logs response: %v\n", err)
+		stdio.Stdoutf("Warning: Error encoding logs response: %v\n", err)
 	}
 }
 
@@ -198,12 +198,12 @@ func (d *DevDashboard) handleStatic(w http.ResponseWriter, r *http.Request) {
 	case "style.css":
 		w.Header().Set("Content-Type", "text/css")
 		if _, err := w.Write([]byte(dashboardCSS)); err != nil {
-			log.Printf("Failed to write CSS: %v", err)
+			stdio.Stderrf("Failed to write CSS: %v", err)
 		}
 	case "script.js":
 		w.Header().Set("Content-Type", "application/javascript")
 		if _, err := w.Write([]byte(dashboardJS)); err != nil {
-			log.Printf("Failed to write JS: %v", err)
+			stdio.Stderrf("Failed to write JS: %v", err)
 		}
 	default:
 		http.NotFound(w, r)

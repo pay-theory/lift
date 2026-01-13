@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // Error constants
@@ -741,7 +742,7 @@ func (gcm *GDPRConsentManager) RecordConsent(ctx context.Context, consent *Conse
 			},
 		}
 		if err := gcm.auditLogger.LogConsentEvent(ctx, event); err != nil {
-			log.Printf("Warning: failed to log consent event: %v", err)
+			stdio.Stderrf("Warning: failed to log consent event: %v", err)
 		}
 	}
 
@@ -803,7 +804,7 @@ func (gcm *GDPRConsentManager) WithdrawConsent(ctx context.Context, consentID st
 			},
 		}
 		if err := gcm.auditLogger.LogConsentEvent(ctx, event); err != nil {
-			log.Printf("Warning: failed to log consent event: %v", err)
+			stdio.Stderrf("Warning: failed to log consent event: %v", err)
 		}
 	}
 
@@ -829,7 +830,7 @@ func (gcm *GDPRConsentManager) ProcessDataSubjectRequest(ctx context.Context, re
 			Status:        "received",
 		}
 		if err := gcm.auditLogger.LogDataSubjectRequest(ctx, requestLog); err != nil {
-			log.Printf("Warning: failed to log data subject request: %v", err)
+			stdio.Stderrf("Warning: failed to log data subject request: %v", err)
 		}
 	}
 

@@ -3,7 +3,6 @@ package load
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"sort"
 	"sync"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // LoadTest represents a load testing configuration and execution
@@ -330,7 +330,7 @@ func (lt *LoadTest) executeScenario(ctx context.Context, scenario Scenario) {
 	// Cleanup
 	if scenario.Cleanup != nil && setupData != nil {
 		if err := scenario.Cleanup(setupData); err != nil {
-			log.Printf("Warning: load test cleanup failed: %v", err)
+			stdio.Stderrf("Warning: load test cleanup failed: %v", err)
 		}
 	}
 }
@@ -425,7 +425,7 @@ func (lt *LoadTest) printProgress() {
 
 	rps := float64(total) / elapsed.Seconds()
 
-	fmt.Printf("[%v] Requests: %d, Success: %d, Errors: %d, RPS: %.2f\n",
+	stdio.Stdoutf("[%v] Requests: %d, Success: %d, Errors: %d, RPS: %.2f\n",
 		elapsed.Truncate(time.Second), total, success, errors, rps)
 }
 
@@ -487,50 +487,50 @@ func (lt *LoadTest) calculateStats() {
 func (lt *LoadTest) PrintResults() {
 	results := lt.results
 
-	fmt.Printf("\n=== Load Test Results: %s ===\n", results.TestName)
-	fmt.Printf("Duration: %v\n", results.Duration)
-	fmt.Printf("Total Requests: %d\n", results.TotalRequests)
-	fmt.Printf("Successful Requests: %d (%.2f%%)\n",
+	stdio.Stdoutf("\n=== Load Test Results: %s ===\n", results.TestName)
+	stdio.Stdoutf("Duration: %v\n", results.Duration)
+	stdio.Stdoutf("Total Requests: %d\n", results.TotalRequests)
+	stdio.Stdoutf("Successful Requests: %d (%.2f%%)\n",
 		results.SuccessCount,
 		float64(results.SuccessCount)/float64(results.TotalRequests)*100)
-	fmt.Printf("Failed Requests: %d (%.2f%%)\n",
+	stdio.Stdoutf("Failed Requests: %d (%.2f%%)\n",
 		results.ErrorCount,
 		float64(results.ErrorCount)/float64(results.TotalRequests)*100)
-	fmt.Printf("Requests/sec: %.2f\n", results.RequestsPerSec)
-	fmt.Printf("Throughput: %.2f MB/s\n", results.Throughput)
+	stdio.Stdoutf("Requests/sec: %.2f\n", results.RequestsPerSec)
+	stdio.Stdoutf("Throughput: %.2f MB/s\n", results.Throughput)
 
 	if len(results.Latencies) > 0 {
-		fmt.Printf("\nLatency Statistics:\n")
-		fmt.Printf("  Min: %v\n", results.MinLatency)
-		fmt.Printf("  Max: %v\n", results.MaxLatency)
-		fmt.Printf("  Mean: %v\n", results.MeanLatency)
-		fmt.Printf("  Median: %v\n", results.MedianLatency)
+		stdio.Stdoutf("\nLatency Statistics:\n")
+		stdio.Stdoutf("  Min: %v\n", results.MinLatency)
+		stdio.Stdoutf("  Max: %v\n", results.MaxLatency)
+		stdio.Stdoutf("  Mean: %v\n", results.MeanLatency)
+		stdio.Stdoutf("  Median: %v\n", results.MedianLatency)
 
 		for _, p := range lt.Config.Percentiles {
 			key := fmt.Sprintf("P%.0f", p)
 			if latency, exists := results.Percentiles[key]; exists {
-				fmt.Printf("  %s: %v\n", key, latency)
+				stdio.Stdoutf("  %s: %v\n", key, latency)
 			}
 		}
 	}
 
 	if len(results.ErrorsByType) > 0 {
-		fmt.Printf("\nErrors by Type:\n")
+		stdio.Stdoutf("\nErrors by Type:\n")
 		for errorType, count := range results.ErrorsByType {
-			fmt.Printf("  %s: %d\n", errorType, count)
+			stdio.Stdoutf("  %s: %d\n", errorType, count)
 		}
 	}
 
 	if len(results.ErrorsByStatus) > 0 {
-		fmt.Printf("\nErrors by Status Code:\n")
+		stdio.Stdoutf("\nErrors by Status Code:\n")
 		for status, count := range results.ErrorsByStatus {
-			fmt.Printf("  %d: %d\n", status, count)
+			stdio.Stdoutf("  %d: %d\n", status, count)
 		}
 	}
 
-	fmt.Printf("\nScenario Breakdown:\n")
+	stdio.Stdoutf("\nScenario Breakdown:\n")
 	for name, stats := range results.ScenarioStats {
-		fmt.Printf("  %s: %d requests (%.2f%% success)\n",
+		stdio.Stdoutf("  %s: %d requests (%.2f%% success)\n",
 			name, stats.Count,
 			float64(stats.SuccessCount)/float64(stats.Count)*100)
 	}

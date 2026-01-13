@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // Request represents the minimal request interface needed
@@ -544,7 +545,7 @@ func (h *complianceAuditHandler) logViolation(_ LiftContext, session *auditSessi
 	}
 
 	if err := h.framework.auditor.LogSecurityEvent(session.id, securityEvent); err != nil {
-		log.Printf("Warning: failed to log security event: %v", err)
+		stdio.Stderrf("Warning: failed to log security event: %v", err)
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"time"
@@ -12,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/appconfig"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // FeatureFlags manages feature toggles for the application
@@ -87,7 +88,7 @@ func NewFeatureFlags(config FeatureFlagConfig) (*FeatureFlags, error) {
 	// Load initial flags
 	if err := ff.refresh(); err != nil {
 		// Log error but continue with defaults
-		log.Printf("Failed to load initial feature flags: %v", err)
+		stdio.Stderrf("Failed to load initial feature flags: %v", err)
 	}
 
 	// Start refresh goroutine if client is available
@@ -182,7 +183,7 @@ func (ff *FeatureFlags) refreshLoop() {
 		select {
 		case <-ticker.C:
 			if err := ff.refresh(); err != nil {
-				log.Printf("Failed to refresh feature flags: %v", err)
+				stdio.Stderrf("Failed to refresh feature flags: %v", err)
 			}
 		case <-ff.stopRefresh:
 			return

@@ -1,11 +1,12 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 func (c *DynamORMMigrateCommand) generateMigrationModel(analysis *TableAnalysis, config *MigrationConfig) error {
@@ -98,7 +99,7 @@ func (m *{{.ModelName}}) Update() {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Warning: failed to close file: %v\n", err)
+			stdio.Stdoutf("Warning: failed to close file: %v\n", err)
 		}
 	}()
 
@@ -306,7 +307,7 @@ func (t *{{.ModelName}}Table) GrantFullAccess(grantee awscdk.IPrincipal) {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Warning: failed to close file: %v\n", err)
+			stdio.Stdoutf("Warning: failed to close file: %v\n", err)
 		}
 	}()
 
@@ -367,7 +368,8 @@ func main() {
 	ctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(config.Region))
 	if err != nil {
-		log.Fatalf("Failed to load AWS config: %v", err)
+		stdio.Stderrf("Failed to load AWS config: %v", err)
+		os.Exit(1)
 	}
 	
 	client := dynamodb.NewFromConfig(cfg)
@@ -381,36 +383,38 @@ func main() {
 		DryRun:           config.DryRun,
 	}
 	
-	fmt.Printf("🚀 Starting migration from %s to %s\n", config.SourceTableName, config.DestinationTableName)
-	fmt.Printf("   • Batch Size: %d\n", config.BatchSize)
-	fmt.Printf("   • Dry Run: %t\n", config.DryRun)
-	fmt.Printf("   • Region: %s\n", config.Region)
+	stdio.Stdoutf("🚀 Starting migration from %s to %s\n", config.SourceTableName, config.DestinationTableName)
+	stdio.Stdoutf("   • Batch Size: %d\n", config.BatchSize)
+	stdio.Stdoutf("   • Dry Run: %t\n", config.DryRun)
+	stdio.Stdoutf("   • Region: %s\n", config.Region)
 	
 	// Validate source table exists
 	if err := validateSourceTable(ctx, client, config.SourceTableName); err != nil {
-		log.Fatalf("Source table validation failed: %v", err)
+		stdio.Stderrf("Source table validation failed: %v", err)
+		os.Exit(1)
 	}
 	
 	// Create backup if requested
 	if config.BackupBeforeMigration && !config.DryRun {
 		if err := createBackup(ctx, client, config.SourceTableName); err != nil {
-			log.Printf("⚠️  Backup creation failed (continuing): %v", err)
+			stdio.Stderrf("⚠️  Backup creation failed (continuing): %v", err)
 		} else {
-			fmt.Printf("✅ Backup created for %s\n", config.SourceTableName)
+			stdio.Stdoutf("✅ Backup created for %s\n", config.SourceTableName)
 		}
 	}
 	
 	// Perform migration
 	if err := performMigration(ctx, client, config, stats); err != nil {
-		log.Fatalf("Migration failed: %v", err)
+		stdio.Stderrf("Migration failed: %v", err)
+		os.Exit(1)
 	}
 	
 	// Validate migration if requested
 	if config.ValidateAfterMigration && !config.DryRun {
 		if err := validateMigration(ctx, client, config, stats); err != nil {
-			log.Printf("⚠️  Migration validation failed: %v", err)
+			stdio.Stderrf("⚠️  Migration validation failed: %v", err)
 		} else {
-			fmt.Printf("✅ Migration validation passed\n")
+			stdio.Stdoutf("✅ Migration validation passed\n")
 		}
 	}
 	
@@ -493,7 +497,7 @@ func performMigration(ctx context.Context, client *dynamodb.Client, config *Migr
 	}
 	
 	stats.TotalItems = *describeOutput.Table.ItemCount
-	fmt.Printf("📊 Total items to migrate: %d\n", stats.TotalItems)
+	stdio.Stdoutf("📊 Total items to migrate: %d\n", stats.TotalItems)
 	
 	// Scan and migrate items in batches
 	var lastEvaluatedKey map[string]types.AttributeValue
@@ -517,7 +521,7 @@ func performMigration(ctx context.Context, client *dynamodb.Client, config *Migr
 		
 		// Process batch
 		if err := processBatch(ctx, client, config, scanOutput.Items, stats); err != nil {
-			log.Printf("⚠️  Batch processing error: %v", err)
+			stdio.Stderrf("⚠️  Batch processing error: %v", err)
 			stats.ErrorCount++
 		} else {
 			stats.MigratedItems += int64(len(scanOutput.Items))
@@ -525,7 +529,7 @@ func performMigration(ctx context.Context, client *dynamodb.Client, config *Migr
 		
 		// Progress update
 		percentage := float64(stats.MigratedItems) / float64(stats.TotalItems) * 100
-		fmt.Printf("🔄 Progress: %d/%d (%.1f%%)\n", stats.MigratedItems, stats.TotalItems, percentage)
+		stdio.Stdoutf("🔄 Progress: %d/%d (%.1f%%)\n", stats.MigratedItems, stats.TotalItems, percentage)
 		
 		// Check if we need to continue
 		lastEvaluatedKey = scanOutput.LastEvaluatedKey
@@ -543,7 +547,7 @@ func performMigration(ctx context.Context, client *dynamodb.Client, config *Migr
 func processBatch(ctx context.Context, client *dynamodb.Client, config *MigrationConfig, items []map[string]types.AttributeValue, stats *MigrationStats) error {
 	if config.DryRun {
 		// In dry run mode, just log what would be done
-		fmt.Printf("   [DRY RUN] Would migrate %d items\n", len(items))
+		stdio.Stdoutf("   [DRY RUN] Would migrate %d items\n", len(items))
 		return nil
 	}
 	
@@ -611,10 +615,10 @@ func validateMigration(ctx context.Context, client *dynamodb.Client, config *Mig
 		return fmt.Errorf("failed to get destination item count: %w", err)
 	}
 	
-	fmt.Printf("📊 Validation Results:\n")
-	fmt.Printf("   • Source Items: %d\n", sourceCount)
-	fmt.Printf("   • Destination Items: %d\n", destCount)
-	fmt.Printf("   • Difference: %d\n", sourceCount-destCount)
+	stdio.Stdoutf("📊 Validation Results:\n")
+	stdio.Stdoutf("   • Source Items: %d\n", sourceCount)
+	stdio.Stdoutf("   • Destination Items: %d\n", destCount)
+	stdio.Stdoutf("   • Difference: %d\n", sourceCount-destCount)
 	
 	if sourceCount != destCount {
 		return fmt.Errorf("item count mismatch: source=%d, destination=%d", sourceCount, destCount)
@@ -637,21 +641,21 @@ func getItemCount(ctx context.Context, client *dynamodb.Client, tableName string
 func printMigrationSummary(stats *MigrationStats) {
 	duration := stats.EndTime.Sub(stats.StartTime)
 	
-	fmt.Printf("\n📋 Migration Summary:\n")
-	fmt.Printf("   • Source Table: %s\n", stats.SourceTable)
-	fmt.Printf("   • Destination Table: %s\n", stats.DestinationTable)
-	fmt.Printf("   • Duration: %v\n", duration)
-	fmt.Printf("   • Total Items: %d\n", stats.TotalItems)
-	fmt.Printf("   • Migrated Items: %d\n", stats.MigratedItems)
-	fmt.Printf("   • Error Count: %d\n", stats.ErrorCount)
-	fmt.Printf("   • Success Rate: %.2f%%\n", float64(stats.MigratedItems)/float64(stats.TotalItems)*100)
-	fmt.Printf("   • Items/Second: %.2f\n", float64(stats.MigratedItems)/duration.Seconds())
-	fmt.Printf("   • Dry Run: %t\n", stats.DryRun)
+	stdio.Stdoutf("\n📋 Migration Summary:\n")
+	stdio.Stdoutf("   • Source Table: %s\n", stats.SourceTable)
+	stdio.Stdoutf("   • Destination Table: %s\n", stats.DestinationTable)
+	stdio.Stdoutf("   • Duration: %v\n", duration)
+	stdio.Stdoutf("   • Total Items: %d\n", stats.TotalItems)
+	stdio.Stdoutf("   • Migrated Items: %d\n", stats.MigratedItems)
+	stdio.Stdoutf("   • Error Count: %d\n", stats.ErrorCount)
+	stdio.Stdoutf("   • Success Rate: %.2f%%\n", float64(stats.MigratedItems)/float64(stats.TotalItems)*100)
+	stdio.Stdoutf("   • Items/Second: %.2f\n", float64(stats.MigratedItems)/duration.Seconds())
+	stdio.Stdoutf("   • Dry Run: %t\n", stats.DryRun)
 	
 	if stats.ErrorCount == 0 && stats.MigratedItems == stats.TotalItems {
-		fmt.Printf("✅ Migration completed successfully!\n")
+		stdio.Stdoutf("✅ Migration completed successfully!\n")
 	} else {
-		fmt.Printf("⚠️  Migration completed with %d errors\n", stats.ErrorCount)
+		stdio.Stdoutf("⚠️  Migration completed with %d errors\n", stats.ErrorCount)
 	}
 }
 `
@@ -676,7 +680,7 @@ func printMigrationSummary(stats *MigrationStats) {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Warning: failed to close file: %v\n", err)
+			stdio.Stdoutf("Warning: failed to close file: %v\n", err)
 		}
 	}()
 
@@ -948,7 +952,7 @@ func Benchmark{{.ModelName}}_CRUD(b *testing.B) {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Warning: failed to close file: %v\n", err)
+			stdio.Stdoutf("Warning: failed to close file: %v\n", err)
 		}
 	}()
 

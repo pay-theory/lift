@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/pay-theory/lift/internal/liftconfig"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // BuildCommand builds Lambda functions defined in lift.yaml.
@@ -86,7 +87,7 @@ func (c *BuildCommand) Execute(ctx context.Context, args []string) error {
 	buildCfg := c.resolveBuildConfig(cfg, archOverride)
 
 	// Build each function
-	fmt.Printf("🔨 Building %d function(s) for Linux/%s...\n", len(cfg.Functions), buildCfg.goarch)
+	stdio.Stdoutf("🔨 Building %d function(s) for Linux/%s...\n", len(cfg.Functions), buildCfg.goarch)
 
 	names := make([]string, 0, len(cfg.Functions))
 	for name := range cfg.Functions {
@@ -102,7 +103,7 @@ func (c *BuildCommand) Execute(ctx context.Context, args []string) error {
 		}
 	}
 
-	fmt.Printf("\n✅ Build complete!\n")
+	stdio.Stdoutf("\n✅ Build complete!\n")
 	return nil
 }
 
@@ -275,7 +276,7 @@ func (c *BuildCommand) buildFunction(ctx context.Context, root, name string, fn 
 		return err
 	}
 
-	fmt.Printf("  📦 %s: %s → %s\n", name, fn.Cmd, fn.Out)
+	stdio.Stdoutf("  📦 %s: %s → %s\n", name, fn.Cmd, fn.Out)
 
 	outPath := resolveOutputPath(root, fn.Out)
 
@@ -294,7 +295,7 @@ func (c *BuildCommand) buildFunction(ctx context.Context, root, name string, fn 
 	}
 
 	if shouldRetryWithMod(stderr) && retriedWithMod != nil && !*retriedWithMod {
-		fmt.Printf("  🔧 %s: go module metadata needs updates; retrying with `-mod=mod`...\n", name)
+		stdio.Stdoutf("  🔧 %s: go module metadata needs updates; retrying with `-mod=mod`...\n", name)
 		*retriedWithMod = true
 
 		buildArgsMod := append([]string{buildArgs[0], "-mod=mod"}, buildArgs[1:]...)

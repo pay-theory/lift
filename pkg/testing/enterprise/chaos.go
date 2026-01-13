@@ -3,9 +3,10 @@ package enterprise
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // ChaosTest manages chaos engineering tests
@@ -158,7 +159,7 @@ func (c *ChaosTest) executeScenario(ctx context.Context, scenario ChaosScenario)
 	}
 	defer func() {
 		if cleanupErr := failure.Cleanup(); cleanupErr != nil {
-			log.Printf("Warning: failed to cleanup chaos failure: %v", cleanupErr)
+			stdio.Stderrf("Warning: failed to cleanup chaos failure: %v", cleanupErr)
 		}
 	}()
 

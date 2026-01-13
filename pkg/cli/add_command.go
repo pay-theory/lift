@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pay-theory/lift/internal/liftconfig"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // AddCommand implements the "lift add" command for incremental scaffolding.
@@ -96,41 +97,41 @@ func (c *AddCommand) executeAddFunction(_ context.Context, args []string) error 
 		return fmt.Errorf("directory cmd/%s already exists", name)
 	}
 
-	fmt.Printf("🔧 Adding function %q to %s...\n\n", name, cfg.App.Name)
+	stdio.Stdoutf("🔧 Adding function %q to %s...\n\n", name, cfg.App.Name)
 
 	// 1. Create cmd/<name>/main.go
 	if err := c.createFunctionCode(root, name, cfg.App.Name); err != nil {
 		return fmt.Errorf("failed to create function code: %w", err)
 	}
-	fmt.Printf("  ✅ Created cmd/%s/main.go\n", name)
+	stdio.Stdoutf("  ✅ Created cmd/%s/main.go\n", name)
 
 	// 2. Update lift.yaml
 	if err := c.updateLiftYAML(root, name); err != nil {
 		return fmt.Errorf("failed to update lift.yaml: %w", err)
 	}
-	fmt.Printf("  ✅ Updated lift.yaml\n")
+	stdio.Stdoutf("  ✅ Updated lift.yaml\n")
 
 	// 3. Update cdk/main.go
 	isPT := c.isPTProject(cfg)
 	if err := c.updateCDK(root, name, cfg.App.Name, isPT); err != nil {
 		return fmt.Errorf("failed to update cdk/main.go: %w", err)
 	}
-	fmt.Printf("  ✅ Updated cdk/main.go\n")
+	stdio.Stdoutf("  ✅ Updated cdk/main.go\n")
 
 	// 4. For PT projects, update build files
 	if isPT {
 		if err := c.updatePTBuildFiles(root, name); err != nil {
 			return fmt.Errorf("failed to update PT build files: %w", err)
 		}
-		fmt.Printf("  ✅ Updated buildspec.yml\n")
-		fmt.Printf("  ✅ Updated shell/build.sh\n")
+		stdio.Stdoutf("  ✅ Updated buildspec.yml\n")
+		stdio.Stdoutf("  ✅ Updated shell/build.sh\n")
 	}
 
-	fmt.Printf("\n✅ Function %q added successfully!\n", name)
-	fmt.Printf("\n📝 Next steps:\n")
-	fmt.Printf("  1. Implement your handler in cmd/%s/main.go\n", name)
-	fmt.Printf("  2. Run 'lift build' to compile the new function\n")
-	fmt.Printf("  3. Run 'lift up --stage dev' to deploy\n")
+	stdio.Stdoutf("\n✅ Function %q added successfully!\n", name)
+	stdio.Stdoutf("\n📝 Next steps:\n")
+	stdio.Stdoutf("  1. Implement your handler in cmd/%s/main.go\n", name)
+	stdio.Stdoutf("  2. Run 'lift build' to compile the new function\n")
+	stdio.Stdoutf("  3. Run 'lift up --stage dev' to deploy\n")
 
 	return nil
 }
@@ -354,7 +355,7 @@ func (c *AddCommand) updateCDK(root, name, appName string, isPT bool) error {
 	formatted, err := format.Source([]byte(content))
 	if err != nil {
 		// If formatting fails, write unformatted and warn
-		fmt.Printf("  ⚠️  Warning: could not format cdk/main.go: %v\n", err)
+		stdio.Stdoutf("  ⚠️  Warning: could not format cdk/main.go: %v\n", err)
 		return os.WriteFile(cdkPath, []byte(content), 0600)
 	}
 

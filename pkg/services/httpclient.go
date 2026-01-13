@@ -202,7 +202,7 @@ func SecureHTTPClientExample() *http.Client {
 	if issues := ValidateHTTPClientSecurity(client); len(issues) > 0 {
 		// In production, log these issues
 		for _, issue := range issues {
-			_ = issue // Would log: fmt.Printf("HTTP Client Security Issue: %s\n", issue)
+			_ = issue // Would log: stdio.Stdoutf("HTTP Client Security Issue: %s\n", issue)
 		}
 	}
 

@@ -3,7 +3,6 @@ package cloudwatch
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/observability"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // CloudWatchMetricsClient defines the interface for CloudWatch metrics operations
@@ -474,13 +474,13 @@ func (c *metricsCore) backgroundFlusher() {
 		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), c.flushTimeout)
 			if err := c.flush(ctx); err != nil {
-				log.Printf("Warning: periodic metrics flush failed: %v", err)
+				stdio.Stderrf("Warning: periodic metrics flush failed: %v", err)
 			}
 			cancel()
 		case <-c.resources.channels.flushNow:
 			ctx, cancel := context.WithTimeout(context.Background(), c.flushTimeout)
 			if err := c.flush(ctx); err != nil {
-				log.Printf("Warning: manual metrics flush failed: %v", err)
+				stdio.Stderrf("Warning: manual metrics flush failed: %v", err)
 			}
 			cancel()
 		}

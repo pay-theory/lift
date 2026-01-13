@@ -8,6 +8,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 const (
@@ -91,10 +93,10 @@ func (c *DynamORMBenchmarkCommand) Execute(_ context.Context, args []string) err
 		return fmt.Errorf("failed to generate benchmark code: %w", err)
 	}
 
-	fmt.Printf("✅ Benchmark code generated in: %s\n", config.OutputDir)
-	fmt.Printf("📋 Next steps:\n")
-	fmt.Printf("   1. Run: go run %s/benchmark_runner.go\n", config.OutputDir)
-	fmt.Printf("   2. View results in: %s/results.json\n", config.OutputDir)
+	stdio.Stdoutf("✅ Benchmark code generated in: %s\n", config.OutputDir)
+	stdio.Stdoutf("📋 Next steps:\n")
+	stdio.Stdoutf("   1. Run: go run %s/benchmark_runner.go\n", config.OutputDir)
+	stdio.Stdoutf("   2. View results in: %s/results.json\n", config.OutputDir)
 
 	return nil
 }
@@ -310,13 +312,15 @@ func main() {
 	// Load AWS config
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("{{.Region}}"))
 	if err != nil {
-		log.Fatalf("Failed to load AWS config: %v", err)
+		stdio.Stderrf("Failed to load AWS config: %v", err)
+		os.Exit(1)
 	}
 	
 	// Initialize DynamORM
 	db, err := dynamorm.New(ctx, dynamorm.WithAWSConfig(cfg))
 	if err != nil {
-		log.Fatalf("Failed to initialize DynamORM: %v", err)
+		stdio.Stderrf("Failed to initialize DynamORM: %v", err)
+		os.Exit(1)
 	}
 	
 	// Initialize benchmark
@@ -331,12 +335,14 @@ func main() {
 		Warmup:      {{.Warmup.Nanoseconds}}}, // nanoseconds
 	})
 	if err != nil {
-		log.Fatalf("Benchmark failed: %v", err)
+		stdio.Stderrf("Benchmark failed: %v", err)
+		os.Exit(1)
 	}
 	
 	// Save results
 	if err := saveResults(results); err != nil {
-		log.Fatalf("Failed to save results: %v", err)
+		stdio.Stderrf("Failed to save results: %v", err)
+		os.Exit(1)
 	}
 	
 	// Print summary
@@ -364,11 +370,11 @@ func NewBenchmark(db *dynamorm.DB, tableName string) *Benchmark {
 }
 
 func (b *Benchmark) Run(ctx context.Context, config BenchmarkConfig) (*BenchmarkResults, error) {
-	fmt.Printf("🚀 Starting DynamORM benchmark for table: %s\n", b.tableName)
-	fmt.Printf("   • Operations: %v\n", config.Operations)
-	fmt.Printf("   • Concurrency: %d\n", config.Concurrency)
-	fmt.Printf("   • Duration: %v\n", time.Duration(config.Duration))
-	fmt.Printf("   • Item Size: %d bytes\n", config.ItemSize)
+	stdio.Stdoutf("🚀 Starting DynamORM benchmark for table: %s\n", b.tableName)
+	stdio.Stdoutf("   • Operations: %v\n", config.Operations)
+	stdio.Stdoutf("   • Concurrency: %d\n", config.Concurrency)
+	stdio.Stdoutf("   • Duration: %v\n", time.Duration(config.Duration))
+	stdio.Stdoutf("   • Item Size: %d bytes\n", config.ItemSize)
 	
 	results := &BenchmarkResults{
 		TableName:        b.tableName,
@@ -386,7 +392,7 @@ func (b *Benchmark) Run(ctx context.Context, config BenchmarkConfig) (*Benchmark
 	
 	// Warmup
 	if config.Warmup > 0 {
-		fmt.Printf("🔥 Warming up for %v...\n", time.Duration(config.Warmup))
+		stdio.Stdoutf("🔥 Warming up for %v...\n", time.Duration(config.Warmup))
 		warmupStart := time.Now()
 		b.warmup(ctx, time.Duration(config.Warmup), config.Concurrency, config.ItemSize)
 		results.WarmupTime = time.Since(warmupStart)
@@ -394,7 +400,7 @@ func (b *Benchmark) Run(ctx context.Context, config BenchmarkConfig) (*Benchmark
 	
 	// Run each operation benchmark
 	for _, op := range config.Operations {
-		fmt.Printf("📊 Benchmarking %s operation...\n", op)
+		stdio.Stdoutf("📊 Benchmarking %s operation...\n", op)
 		opResult, err := b.benchmarkOperation(ctx, op, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to benchmark %s: %w", op, err)
@@ -583,26 +589,26 @@ func saveResults(results *BenchmarkResults) error {
 }
 
 func printSummary(results *BenchmarkResults) {
-	fmt.Printf("\n📋 Benchmark Summary:\n")
-	fmt.Printf("   • Table: %s\n", results.TableName)
-	fmt.Printf("   • Duration: %v\n", results.Duration)
-	fmt.Printf("   • Concurrency: %d\n", results.Concurrency)
-	fmt.Printf("   • Cold Start: %v\n", results.ColdStartTime)
-	fmt.Printf("   • Warmup: %v\n", results.WarmupTime)
+	stdio.Stdoutf("\n📋 Benchmark Summary:\n")
+	stdio.Stdoutf("   • Table: %s\n", results.TableName)
+	stdio.Stdoutf("   • Duration: %v\n", results.Duration)
+	stdio.Stdoutf("   • Concurrency: %d\n", results.Concurrency)
+	stdio.Stdoutf("   • Cold Start: %v\n", results.ColdStartTime)
+	stdio.Stdoutf("   • Warmup: %v\n", results.WarmupTime)
 	
 	for op, result := range results.OperationResults {
-		fmt.Printf("\n📊 %s Operation:\n", strings.ToUpper(op))
-		fmt.Printf("   • Total Requests: %d\n", result.TotalRequests)
-		fmt.Printf("   • Success Rate: %.2f%%\n", 100-result.ErrorRate)
-		fmt.Printf("   • Throughput: %.2f req/sec\n", result.Throughput)
-		fmt.Printf("   • Avg Latency: %v\n", result.AvgLatency)
-		fmt.Printf("   • P95 Latency: %v\n", result.P95Latency)
-		fmt.Printf("   • P99 Latency: %v\n", result.P99Latency)
-		fmt.Printf("   • Min Latency: %v\n", result.MinLatency)
-		fmt.Printf("   • Max Latency: %v\n", result.MaxLatency)
+		stdio.Stdoutf("\n📊 %s Operation:\n", strings.ToUpper(op))
+		stdio.Stdoutf("   • Total Requests: %d\n", result.TotalRequests)
+		stdio.Stdoutf("   • Success Rate: %.2f%%\n", 100-result.ErrorRate)
+		stdio.Stdoutf("   • Throughput: %.2f req/sec\n", result.Throughput)
+		stdio.Stdoutf("   • Avg Latency: %v\n", result.AvgLatency)
+		stdio.Stdoutf("   • P95 Latency: %v\n", result.P95Latency)
+		stdio.Stdoutf("   • P99 Latency: %v\n", result.P99Latency)
+		stdio.Stdoutf("   • Min Latency: %v\n", result.MinLatency)
+		stdio.Stdoutf("   • Max Latency: %v\n", result.MaxLatency)
 	}
 	
-	fmt.Printf("\n✅ Results saved to results.json\n")
+	stdio.Stdoutf("\n✅ Results saved to results.json\n")
 }
 
 // Define types for compilation
@@ -655,7 +661,7 @@ type BenchmarkEnvironment struct {
 	defer func() {
 		if err := file.Close(); err != nil {
 			// Log file close error but don't fail the operation
-			fmt.Printf("Warning: failed to close file: %v\n", err)
+			stdio.Stdoutf("Warning: failed to close file: %v\n", err)
 		}
 	}()
 

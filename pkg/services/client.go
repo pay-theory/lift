@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/pay-theory/lift/pkg/lift"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // Import these from lift package for consistency
@@ -245,7 +245,7 @@ func (c *ServiceClient) executeRequest(ctx context.Context, instance *ServiceIns
 		}
 		defer func() {
 			if closeErr := resp.Body.Close(); closeErr != nil {
-				log.Printf("Warning: failed to close response body: %v", closeErr)
+				stdio.Stderrf("Warning: failed to close response body: %v", closeErr)
 			}
 		}()
 

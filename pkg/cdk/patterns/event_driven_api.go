@@ -1,8 +1,6 @@
 package patterns
 
 import (
-	"fmt"
-
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudwatch"
@@ -12,6 +10,7 @@ import (
 	"github.com/aws/jsii-runtime-go"
 
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // EventDrivenAPIProps defines properties for an event-driven API pattern
@@ -242,7 +241,7 @@ func (b *eventDrivenAPIBuilder) setupEventHandler() {
 	})
 
 	if err != nil {
-		fmt.Printf("Warning: Failed to create EventBridge handler: %v\n", err)
+		stdio.Stdoutf("Warning: Failed to create EventBridge handler: %v\n", err)
 		b.api.EventHandler = nil
 	} else {
 		b.api.EventHandler = eventHandler

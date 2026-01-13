@@ -3,9 +3,10 @@ package deployment
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // MultiRegionDeployer orchestrates deployments across multiple regions
@@ -428,7 +429,7 @@ func (mrd *MultiRegionDeployer) deployRolling(ctx context.Context, strategy Depl
 		if err := mrd.deployBatch(ctx, batch); err != nil {
 			if strategy.RollbackOnFailure {
 				if rollbackErr := mrd.rollbackBatch(ctx, batch); rollbackErr != nil {
-					log.Printf("Failed to rollback batch %v: %v", batch, rollbackErr)
+					stdio.Stderrf("Failed to rollback batch %v: %v", batch, rollbackErr)
 				}
 			}
 			return fmt.Errorf("failed to deploy batch %v: %w", batch, err)
@@ -489,7 +490,7 @@ func (mrd *MultiRegionDeployer) deployCanary(ctx context.Context, strategy Deplo
 	if err := mrd.monitorCanary(ctx, strategy.CanaryDuration); err != nil {
 		// Rollback canary on failure
 		if rollbackErr := mrd.rollbackCanary(ctx); rollbackErr != nil {
-			log.Printf("Failed to rollback canary: %v", rollbackErr)
+			stdio.Stderrf("Failed to rollback canary: %v", rollbackErr)
 		}
 		return fmt.Errorf("canary monitoring failed: %w", err)
 	}

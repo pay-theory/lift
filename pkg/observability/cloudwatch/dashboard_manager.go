@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // CloudWatchDashboardClient defines the interface for CloudWatch dashboard operations
@@ -506,7 +507,7 @@ func (dm *DashboardManager) StartAutoUpdate(ctx context.Context) {
 			case <-ticker.C:
 				if err := dm.SyncDashboards(ctx); err != nil {
 					// Log error but continue running
-					log.Printf("Failed to sync dashboards: %v", err)
+					stdio.Stderrf("Failed to sync dashboards: %v", err)
 				}
 			case <-ctx.Done():
 				return

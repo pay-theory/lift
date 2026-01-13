@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +22,7 @@ import (
 
 	"github.com/pay-theory/lift/pkg/dynamorm"
 	"github.com/pay-theory/lift/pkg/security"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 const (
@@ -147,7 +147,7 @@ func NewGDPRCompleteService(config GDPRCompleteConfig, db *dynamorm.DynamORMWrap
 	// Generate encryption key from environment or create new one
 	encryptionKey := make([]byte, 32)
 	if _, err := rand.Read(encryptionKey); err != nil {
-		log.Printf("Warning: Failed to generate encryption key: %v", err)
+		stdio.Stderrf("Warning: Failed to generate encryption key: %v", err)
 	}
 
 	service := &GDPRCompleteService{
@@ -241,7 +241,7 @@ func (g *GDPRCompleteService) DeleteUserData(ctx context.Context, dataSubjectID 
 
 	// Send notification
 	if err := g.sendDeletionNotification(ctx, deletionRecord); err != nil {
-		log.Printf("Warning: Failed to send deletion notification: %v", err)
+		stdio.Stderrf("Warning: Failed to send deletion notification: %v", err)
 	}
 
 	g.auditLogger.LogSuccess(ctx, auditID, "Data deletion completed", map[string]interface{}{
@@ -480,7 +480,7 @@ func (b *dataExportBuilder) finalizeExport(_ []byte) error {
 
 	// Send notification
 	if err := b.service.sendExportNotification(b.ctx, b.exportRecord); err != nil {
-		log.Printf("Warning: Failed to send export notification: %v", err)
+		stdio.Stderrf("Warning: Failed to send export notification: %v", err)
 	}
 
 	// Log success
@@ -497,7 +497,7 @@ func (b *dataExportBuilder) finalizeExport(_ []byte) error {
 func (b *dataExportBuilder) updateExportStatus(status string) {
 	b.exportRecord.Status = status
 	if err := b.service.db.Put(b.ctx, b.exportRecord); err != nil {
-		log.Printf("Failed to update export record: %v", err)
+		stdio.Stderrf("Failed to update export record: %v", err)
 	}
 }
 
@@ -585,7 +585,7 @@ func (g *GDPRCompleteService) ProcessConsentUpdate(ctx context.Context, dataSubj
 			"environment": g.config.Environment,
 		},
 	}); err != nil {
-		log.Printf("Failed to log consent event: %v", err)
+		stdio.Stderrf("Failed to log consent event: %v", err)
 	}
 
 	return nil
@@ -628,7 +628,7 @@ func (g *GDPRCompleteService) ProcessBreachNotification(ctx context.Context, bre
 
 	// Send immediate notifications to compliance officer
 	if err := g.sendBreachNotification(ctx, breachRecord); err != nil {
-		log.Printf("Warning: Failed to send breach notification: %v", err)
+		stdio.Stderrf("Warning: Failed to send breach notification: %v", err)
 	}
 
 	// Log breach event
@@ -649,7 +649,7 @@ func (g *GDPRCompleteService) ProcessBreachNotification(ctx context.Context, bre
 			"authority_deadline": authorityDeadline,
 		},
 	}); err != nil {
-		log.Printf("Failed to log privacy breach: %v", err)
+		stdio.Stderrf("Failed to log privacy breach: %v", err)
 	}
 
 	return nil
@@ -790,7 +790,7 @@ func (g *GDPRCompleteService) deleteUserFiles(_ context.Context, dataSubjectID s
 
 	// Implementation would list and delete S3 objects with the prefix
 	// This is a simplified version
-	log.Printf("Would delete S3 objects with prefix: %s", prefix)
+	stdio.Stderrf("Would delete S3 objects with prefix: %s", prefix)
 
 	return nil
 }
@@ -827,7 +827,7 @@ func (g *GDPRCompleteService) uploadToS3(_ context.Context, bucket, key string, 
 	}
 
 	// Implementation would upload to S3
-	log.Printf("Would upload %d bytes to s3://%s/%s", len(data), bucket, key)
+	stdio.Stderrf("Would upload %d bytes to s3://%s/%s", len(data), bucket, key)
 
 	return nil
 }
@@ -922,7 +922,7 @@ func (g *GDPRCompleteService) validateConsentCategories(consent ConsentUpdate) e
 func (g *GDPRCompleteService) updateProcessingRules(_ context.Context, dataSubjectID string, consent ConsentUpdate) error {
 	// Update processing rules based on consent
 	// This would integrate with your application's processing logic
-	log.Printf("Updated processing rules for %s: %v", dataSubjectID, consent.Categories)
+	stdio.Stderrf("Updated processing rules for %s: %v", dataSubjectID, consent.Categories)
 	return nil
 }
 
@@ -932,7 +932,7 @@ func (g *GDPRCompleteService) sendDeletionNotification(_ context.Context, record
 	}
 
 	// Send email notification about data deletion
-	log.Printf("Would send deletion notification for %s", record.DataSubjectID)
+	stdio.Stderrf("Would send deletion notification for %s", record.DataSubjectID)
 	return nil
 }
 
@@ -942,7 +942,7 @@ func (g *GDPRCompleteService) sendExportNotification(_ context.Context, record *
 	}
 
 	// Send email notification with download link
-	log.Printf("Would send export notification for %s", record.DataSubjectID)
+	stdio.Stderrf("Would send export notification for %s", record.DataSubjectID)
 	return nil
 }
 
@@ -952,7 +952,7 @@ func (g *GDPRCompleteService) sendBreachNotification(_ context.Context, record *
 	}
 
 	// Send immediate notification to compliance team
-	log.Printf("Would send breach notification for %s", record.BreachID)
+	stdio.Stderrf("Would send breach notification for %s", record.BreachID)
 	return nil
 }
 
@@ -999,51 +999,51 @@ type PrivacyBreachRecord struct {
 func (al *GDPRAuditLogger) StartOperation(_ context.Context, operation, dataSubjectID string) string {
 	auditID := uuid.New().String()
 	// Implementation would create audit trail entry
-	log.Printf("Started %s operation for %s (audit ID: %s)", operation, dataSubjectID, auditID)
+	stdio.Stderrf("Started %s operation for %s (audit ID: %s)", operation, dataSubjectID, auditID)
 	return auditID
 }
 
 func (al *GDPRAuditLogger) CompleteOperation(_ context.Context, auditID string) {
 	// Implementation would complete audit trail entry
-	log.Printf("Completed operation (audit ID: %s)", auditID)
+	stdio.Stderrf("Completed operation (audit ID: %s)", auditID)
 }
 
 func (al *GDPRAuditLogger) LogError(_ context.Context, auditID, message string, metadata map[string]interface{}) {
 	// Implementation would log error to audit trail
-	log.Printf("Error in operation %s: %s %v", auditID, message, metadata)
+	stdio.Stderrf("Error in operation %s: %s %v", auditID, message, metadata)
 }
 
 func (al *GDPRAuditLogger) LogSuccess(_ context.Context, auditID, message string, metadata map[string]interface{}) {
 	// Implementation would log success to audit trail
-	log.Printf("Success in operation %s: %s %v", auditID, message, metadata)
+	stdio.Stderrf("Success in operation %s: %s %v", auditID, message, metadata)
 }
 
 func (al *GDPRAuditLogger) LogConsentEvent(_ context.Context, event *security.ConsentEvent) error {
 	// Implementation would store consent event
-	log.Printf("Consent event: %s for %s", event.EventType, event.DataSubjectID)
+	stdio.Stderrf("Consent event: %s for %s", event.EventType, event.DataSubjectID)
 	return nil
 }
 
 func (al *GDPRAuditLogger) LogDataSubjectRequest(_ context.Context, request *security.DataSubjectRequestLog) error {
 	// Implementation would store data subject request log
-	log.Printf("Data subject request: %s for %s", request.RequestType, request.DataSubjectID)
+	stdio.Stderrf("Data subject request: %s for %s", request.RequestType, request.DataSubjectID)
 	return nil
 }
 
 func (al *GDPRAuditLogger) LogDataProcessingActivity(_ context.Context, _ *security.DataProcessingLog) error {
 	// Implementation would store data processing activity log
-	log.Printf("Data processing activity logged")
+	stdio.Stderrf("Data processing activity logged")
 	return nil
 }
 
 func (al *GDPRAuditLogger) LogCrossBorderTransfer(_ context.Context, transfer *security.CrossBorderTransferLog) error {
 	// Implementation would store cross-border transfer log
-	log.Printf("Cross-border transfer: %s to %s", transfer.SourceCountry, transfer.DestinationCountry)
+	stdio.Stderrf("Cross-border transfer: %s to %s", transfer.SourceCountry, transfer.DestinationCountry)
 	return nil
 }
 
 func (al *GDPRAuditLogger) LogPrivacyBreach(_ context.Context, breach *security.PrivacyBreachLog) error {
 	// Implementation would store privacy breach log
-	log.Printf("Privacy breach: %s (severity: %s)", breach.BreachType, breach.Severity)
+	stdio.Stderrf("Privacy breach: %s (severity: %s)", breach.BreachType, breach.Severity)
 	return nil
 }

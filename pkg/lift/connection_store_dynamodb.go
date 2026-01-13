@@ -11,6 +11,7 @@ import (
 	dynamormerrors "github.com/pay-theory/dynamorm/pkg/errors"
 
 	"github.com/pay-theory/lift/pkg/naming"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // DynamoDBConnectionStore implements ConnectionStore using DynamoDB
@@ -148,7 +149,7 @@ func (s *DynamoDBConnectionStore) Save(ctx context.Context, conn *Connection) er
 	if err := s.incrementConnectionCounter(ctx); err != nil {
 		// Log the error but don't fail the connection save
 		// The counter is for monitoring, not critical functionality
-		fmt.Printf("Warning: failed to increment connection counter: %v\n", err)
+		stdio.Stdoutf("Warning: failed to increment connection counter: %v\n", err)
 	}
 
 	return nil

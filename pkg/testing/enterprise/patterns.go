@@ -3,9 +3,10 @@ package enterprise
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // EnterpriseTestPatterns provides enterprise-grade testing patterns
@@ -83,7 +84,7 @@ func (e *EnterpriseTestPatterns) RunTestSuite(ctx context.Context, suite TestSui
 	defer func() {
 		if suite.Teardown != nil {
 			if err := suite.Teardown(); err != nil {
-				log.Printf("Warning: test suite teardown failed: %v", err)
+				stdio.Stderrf("Warning: test suite teardown failed: %v", err)
 			}
 		}
 	}()

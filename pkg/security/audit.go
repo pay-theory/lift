@@ -6,9 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // LiftContext represents the minimal interface needed from lift.Context
@@ -301,7 +302,7 @@ func (bal *BufferedAuditLogger) startFlusher() {
 				bal.bufferMu.Lock()
 				if err := bal.flushBuffer(); err != nil {
 					// Log error but continue shutdown
-					log.Printf("Warning: failed to flush audit buffer during shutdown: %v", err)
+					stdio.Stderrf("Warning: failed to flush audit buffer during shutdown: %v", err)
 				}
 				bal.bufferMu.Unlock()
 				return

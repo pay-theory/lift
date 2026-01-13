@@ -4,12 +4,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/pay-theory/lift/pkg/cli"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // Version is set at build time via ldflags
@@ -37,7 +37,7 @@ func run() int {
 
 	// Execute with command line arguments (skip program name)
 	if err := app.Execute(ctx, os.Args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		stdio.Stderrf("Error: %v\n", err)
 		return 1
 	}
 

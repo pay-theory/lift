@@ -15,6 +15,7 @@ import (
 	"github.com/aws/jsii-runtime-go"
 
 	liftconstructs "github.com/pay-theory/lift/pkg/cdk/constructs"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // EventOrchestratorProps defines properties for an event orchestrator pattern
@@ -433,7 +434,7 @@ func (eshb *eventSourceHandlerBuilder) build() *liftconstructs.EventBridgeHandle
 
 	if err != nil {
 		// Log error and return nil
-		fmt.Printf("Warning: Failed to create EventBridge handler for %s: %v\n", sourceName, err)
+		stdio.Stdoutf("Warning: Failed to create EventBridge handler for %s: %v\n", sourceName, err)
 		return nil
 	}
 

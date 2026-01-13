@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"runtime"
@@ -19,6 +18,7 @@ import (
 	"github.com/pay-theory/lift/pkg/lift"
 	"github.com/pay-theory/lift/pkg/lift/health"
 	"github.com/pay-theory/lift/pkg/lift/resources"
+	"github.com/pay-theory/lift/pkg/utils/stdio"
 )
 
 // contextKey is a custom type for context keys to avoid collisions
@@ -94,15 +94,15 @@ func NewLambdaDeployment(app *lift.App, config *DeploymentConfig) (*LambdaDeploy
 		switch checkName {
 		case "app":
 			if err := healthManager.RegisterChecker("app", &AppHealthChecker{app: app}); err != nil {
-				log.Printf("Failed to register app health checker: %v", err)
+				stdio.Stderrf("Failed to register app health checker: %v", err)
 			}
 		case "resources":
 			if err := healthManager.RegisterChecker("resources", &ResourceHealthChecker{}); err != nil {
-				log.Printf("Failed to register resources health checker: %v", err)
+				stdio.Stderrf("Failed to register resources health checker: %v", err)
 			}
 		case "memory":
 			if err := healthManager.RegisterChecker("memory", &MemoryHealthChecker{maxMemoryMB: config.MemoryMB}); err != nil {
-				log.Printf("Failed to register memory health checker: %v", err)
+				stdio.Stderrf("Failed to register memory health checker: %v", err)
 			}
 		}
 	}
