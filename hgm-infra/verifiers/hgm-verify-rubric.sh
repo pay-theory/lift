@@ -547,7 +547,7 @@ run_check "COM-2" "Completeness" "check_toolchain_pins"
 run_check "COM-3" "Completeness" "golangci-lint config verify --config .golangci.yml"
 run_check "COM-4" "Completeness" "check_coverage_threshold"
 run_check "COM-5" "Completeness" "check_security_config_not_diluted"
-run_check "COM-6" "Completeness" "go run ./hgm-infra/verifiers/com6-logging-standards-check.go"
+run_check "COM-6" "Completeness" "go run ./hgm-infra/verifiers/cmd/com6-logging-standards-check"
 
 # Security
 run_check "SEC-1" "Security" "golangci-lint run --enable-only=gosec --config .golangci.yml ./..."
@@ -564,7 +564,7 @@ check_file_exists "CMP-3" "Compliance" "${PLANNING_DIR}/lift-threat-model.md"
 # Maintainability
 run_check "MAI-1" "Maintainability" "file_budget_check"
 run_check "MAI-2" "Maintainability" "maintainability_roadmap_check"
-run_check "MAI-3" "Maintainability" "go run ./hgm-infra/verifiers/mai3-dupcheck.go"
+run_check "MAI-3" "Maintainability" "go run ./hgm-infra/verifiers/cmd/mai3-dupcheck"
 
 # Docs
 check_file_exists "DOC-1" "Docs" "${PLANNING_DIR}/lift-threat-model.md"

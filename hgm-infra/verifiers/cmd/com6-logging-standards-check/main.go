@@ -14,8 +14,8 @@ import (
 
 type violation struct {
 	path string
-	line int
 	rule string
+	line int
 }
 
 var forbiddenSelectors = map[string]map[string]struct{}{
@@ -133,7 +133,7 @@ func scanFiles(files []string) []violation {
 				return true
 			}
 
-			if ident, ok := call.Fun.(*ast.Ident); ok {
+			if ident, okIdent := call.Fun.(*ast.Ident); okIdent {
 				if ident.Name == "println" {
 					pos := fileSet.Position(call.Lparen)
 					violations = append(violations, violation{path: path, line: pos.Line, rule: "builtin println"})
@@ -141,18 +141,18 @@ func scanFiles(files []string) []violation {
 				return true
 			}
 
-			selector, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok {
+			selector, okSelector := call.Fun.(*ast.SelectorExpr)
+			if !okSelector {
 				return true
 			}
 
-			pkgIdent, ok := selector.X.(*ast.Ident)
-			if !ok {
+			pkgIdent, okPkg := selector.X.(*ast.Ident)
+			if !okPkg {
 				return true
 			}
 
-			forbidden, ok := forbiddenSelectors[pkgIdent.Name]
-			if !ok {
+			forbidden, okForbidden := forbiddenSelectors[pkgIdent.Name]
+			if !okForbidden {
 				return true
 			}
 
