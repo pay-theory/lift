@@ -434,7 +434,7 @@ run_check "QUA-3" "Quality" "run_coverage"
 
 # Consistency
 run_check "CON-1" "Consistency" "check_gofmt_clean"
-run_check "CON-2" "Consistency" "golangci-lint run --config .golangci.yml ./..."
+run_check "CON-2" "Consistency" "golangci-lint run --config .golangci.yml --allow-parallel-runners ./..."
 run_check "CON-3" "Consistency" "TODO: add public contract parity checks (CLI/templates/config schema)"
 
 # Completeness
@@ -446,7 +446,7 @@ run_check "COM-5" "Completeness" "check_security_config_not_diluted"
 run_check "COM-6" "Completeness" "TODO: add logging/operational standards check"
 
 # Security
-run_check "SEC-1" "Security" "golangci-lint run --disable-all --enable=gosec --config .golangci.yml ./..."
+run_check "SEC-1" "Security" "golangci-lint run --enable-only=gosec --config .golangci.yml --allow-parallel-runners ./..."
 # Return code 2 from run_govulncheck_if_available means BLOCKED (missing tool). Translate by wrapper.
 run_check "SEC-2" "Security" "run_govulncheck_if_available"
 run_check "SEC-3" "Security" "check_supply_chain_basics"

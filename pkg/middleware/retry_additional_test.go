@@ -16,12 +16,12 @@ func TestRetryMiddleware_TotalTimeoutExceeded_UsesGiveUpHandler(t *testing.T) {
 	gaveUp := false
 
 	mw := RetryMiddleware(RetryConfig{
-		Name:          "retry",
-		MaxAttempts:   3,
-		Strategy:      RetryStrategyFixed,
-		InitialDelay:  50 * time.Millisecond,
-		TotalTimeout:  1 * time.Millisecond,
-		Logger:        logger,
+		Name:         "retry",
+		MaxAttempts:  3,
+		Strategy:     RetryStrategyFixed,
+		InitialDelay: 50 * time.Millisecond,
+		TotalTimeout: 1 * time.Millisecond,
+		Logger:       logger,
 		RetryCondition: func(err error) bool {
 			return err != nil
 		},
@@ -85,4 +85,3 @@ func TestRetryConfigBuilders(t *testing.T) {
 	require.Equal(t, RetryStrategyCustom, customCfg.Strategy)
 	require.NotNil(t, customCfg.CustomBackoff)
 }
-

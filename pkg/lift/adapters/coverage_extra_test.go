@@ -41,4 +41,3 @@ func TestS3AndSQSAdapters_CanHandle_NonMap(t *testing.T) {
 		t.Fatal("expected SQS adapter to reject non-map events")
 	}
 }
-

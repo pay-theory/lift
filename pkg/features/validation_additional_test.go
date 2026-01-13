@@ -394,4 +394,3 @@ func TestValidationMiddleware_BuilderHelpersReturnMiddleware(t *testing.T) {
 	ctx := createCacheTestContext(httpGET, "/things", []byte(`{"name":"ok"}`))
 	require.NoError(t, wrapped.Handle(ctx))
 }
-

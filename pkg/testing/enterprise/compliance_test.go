@@ -13,7 +13,7 @@ type failingEvidenceStorage struct {
 	err error
 }
 
-func (s failingEvidenceStorage) Store(_ context.Context, _ *Evidence) error          { return s.err }
+func (s failingEvidenceStorage) Store(_ context.Context, _ *Evidence) error { return s.err }
 func (s failingEvidenceStorage) Retrieve(_ context.Context, _ string) (*Evidence, error) {
 	return nil, s.err
 }

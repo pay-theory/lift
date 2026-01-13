@@ -101,4 +101,3 @@ func TestTransferValidator_ValidateTransfer(t *testing.T) {
 		t.Fatalf("expected valid transfer to adequate country")
 	}
 }
-

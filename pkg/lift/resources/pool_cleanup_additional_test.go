@@ -17,7 +17,7 @@ type stubResource struct {
 	valid        bool
 }
 
-func (r *stubResource) Initialize(context.Context) error { return nil }
+func (r *stubResource) Initialize(context.Context) error  { return nil }
 func (r *stubResource) HealthCheck(context.Context) error { return r.healthErr }
 func (r *stubResource) Cleanup() error {
 	r.cleanupCalls++
@@ -32,8 +32,10 @@ func (r *stubResource) MarkUsed() { r.lastUsed = time.Now() }
 
 type failingFactory struct{}
 
-func (failingFactory) Create(context.Context) (Resource, error) { return nil, errors.New("create failed") }
-func (failingFactory) Validate(Resource) bool                   { return true }
+func (failingFactory) Create(context.Context) (Resource, error) {
+	return nil, errors.New("create failed")
+}
+func (failingFactory) Validate(Resource) bool { return true }
 
 type initFailResource struct {
 	initErr    error

@@ -217,4 +217,3 @@ func TestPrincipalBuilderValidate_Errors(t *testing.T) {
 		assert.Equal(t, "INVALID_PRINCIPAL", secErr.Code)
 	})
 }
-

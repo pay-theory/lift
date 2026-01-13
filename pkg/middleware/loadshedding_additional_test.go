@@ -189,4 +189,3 @@ func TestLoadSheddingDefaults_ExtractorAndHandlerAndBuilders(t *testing.T) {
 	require.Equal(t, LoadSheddingCustom, customCfg.Strategy)
 	require.NotNil(t, customCfg.CustomShedder)
 }
-

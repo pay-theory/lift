@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "action": "iterate",
+  "step_id": "M3-QUA-1",
+  "step_description": "Restore QUA-1 (make test) to green by fixing the DynamORM scaffold generator to produce the example file(s) expected by tests (examples/<model>_example.go) and by deriving ModuleName from go.mod; refresh Hypergenium verifier evidence and record iteration notes.",
+  "prompt_text": "You are working in the Lift repository. Your task is to restore rubric item **QUA-1 (Quality — unit tests stay green)** by fixing the failing unit test(s) in `make test`, then refreshing Hypergenium verifier evidence under `hgm-infra/`.
+
+Why this is the next step (current state)
+- The latest Hypergenium rubric report (`hgm-infra/evidence/hgm-rubric-report.json`) shows **QUA-1 is not passing**.
+- The captured unit test evidence (`hgm-infra/evidence/QUA-1-output.log`) shows a concrete failing test:
+  - `TestDynamORMScaffoldCommand_Execute_GeneratesFiles` fails because it expects `examples/user_example.go` to exist, but it is not created.
+- Until QUA-1 is green, CI enforcement (and meaningful progress on the M3+ blockers) is unreliable.
+
+Scope / hard constraints
+- You MAY modify application code **only as needed to make unit tests pass**, primarily within the CLI DynamORM scaffold implementation.
+- Preferred scope (keep it tight):
+  - `pkg/cli/dynamorm_scaffold.go`
+  - (Only if absolutely necessary) other `pkg/cli/dynamorm_*.go` files.
+- You MUST NOT weaken tests by deleting assertions or reducing coverage of the contract. If there is a mismatch, prefer fixing production code to satisfy the test contract.
+- You MUST NOT change the Hypergenium verifier logic or thresholds (do not edit `hgm-infra/verifiers/hgm-verify-rubric.sh`).
+- You MUST NOT write any logs/outputs outside `hgm-infra/` (except what normal build/test tools already produce, like `coverage.out`).
+- You MUST NOT do broad refactors or unrelated cleanup.
+
+What is failing (expected)
+From `hgm-infra/evidence/QUA-1-output.log`, `make test` fails with:
+- `TestDynamORMScaffoldCommand_Execute_GeneratesFiles`:
+  - expected file to exist: `.../examples/user_example.go`
+  - got: file missing
+
+Additionally, once the example file exists, the same test is likely to validate that the generated example imports the project module path (it expects `\"example.com/test/models\"` in the generated file). The current scaffold code uses a hard-coded default module name, so be prepared to fix that too.
+
+Acceptance criteria
+1) `make test` is green.
+2) Re-running `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` produces updated evidence and shows **QUA-1 = PASS** in the rubric report.
+3) An iteration notes file is written under `hgm-infra/evidence/` describing what changed and why.
+
+Implementation guidance (recommended minimal fix)
+A) Reproduce locally
+1) Run:
+   - `make test`
+2) Confirm the first failure matches the evidence log (DynamORM scaffold example generation).
+
+B) Fix DynamORM scaffold output contract
+Focus on `pkg/cli/dynamorm_scaffold.go`.
+
+1) Ensure the scaffold creates an `examples/` directory.
+   - Today, `createDirectories()` creates `models`, `cdk/constructs`, and `cmd/lambda`, but not `examples`.
+
+2) Ensure the example usage file is generated where the test expects it.
+   - The test expects: `examples/<lower_model>_example.go` (specifically `examples/user_example.go`).
+   - Update `generateExampleUsage()` so it writes to that path (not `cmd/lambda/main.go`).
+
+3) Ensure the generated example imports the correct module path.
+   - The test creates a temp `go.mod` with `module example.com/test`.
+   - Update scaffolding logic so `ScaffoldConfig.ModuleName` is derived from the local `go.mod` module declaration (e.g., parse the `module ...` line).
+   - Then the generated example should import `\"<module>/models\"`.
+
+Notes / pitfalls
+- Keep changes behavior-preserving outside of the intended scaffold output. This is a contract fix, not a rewrite.
+- Keep file permissions and `#nosec` comments consistent with existing patterns.
+- After edits, run `gofmt` on touched files.
+
+C) Re-run unit tests
+- `make test`
+
+D) Refresh Hypergenium evidence
+1) Run:
+   - `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh`
+2) Confirm `hgm-infra/evidence/hgm-rubric-report.json` shows **QUA-1: PASS**.
+
+E) Record iteration notes (required)
+Create a concise note:
+- Path: `hgm-infra/evidence/iterate-M3-QUA-1-notes.md`
+- Include:
+  - The original failure excerpt (test name and the missing file path), referencing `hgm-infra/evidence/QUA-1-output.log`
+  - The exact contract fixes made (examples directory creation, example file path, module name derivation)
+  - Commands run (`make test`, verifier)
+  - Any remaining rubric items still BLOCKED (do not attempt to fix them in this step)
+
+Completion criteria
+- `make test` passes.
+- Verifier report updated and shows QUA-1 as PASS.
+- Notes file exists under `hgm-infra/evidence/`.
+",
+  "expected_outputs": [
+    "hgm-infra/evidence/hgm-rubric-report.json",
+    "hgm-infra/evidence/QUA-1-output.log",
+    "hgm-infra/evidence/iterate-M3-QUA-1-notes.md"
+  ],
+  "guardrails": [
+    "Keep scope tight: only fix what is required to make `make test` pass (QUA-1)",
+    "Prefer fixing production code to satisfy the test contract; do not weaken tests to pass",
+    "Do not change Hypergenium verifier logic, rubric definitions, or thresholds",
+    "Do not modify CI/workflow files under .github/**",
+    "Do not do broad refactors or unrelated cleanup",
+    "Write iteration notes and evidence only under hgm-infra/"
+  ]
+}

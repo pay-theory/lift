@@ -29,33 +29,33 @@ Evidence (refresh whenever behavior changes):
 ## Rubric-to-milestone mapping
 | Rubric ID | Status | Milestone |
 | --- | --- | --- |
-| QUA-1 | TBD | M2 — Enforce in CI |
+| QUA-1 | PASS | M2 — Enforce in CI |
 | QUA-2 | BLOCKED | M3 — Add contract/integration tests |
-| QUA-3 | TBD | M1.5 — Coverage/quality gates |
-| CON-1 | TBD | M1 — Make core lint/build loop reproducible |
-| CON-2 | TBD | M1 — Make core lint/build loop reproducible |
+| QUA-3 | PASS | M1.5 — Coverage/quality gates |
+| CON-1 | PASS | M1 — Make core lint/build loop reproducible |
+| CON-2 | PASS | M1 — Make core lint/build loop reproducible |
 | CON-3 | BLOCKED | M3 — Add contract parity checks |
-| COM-1 | TBD | M2 — Enforce in CI |
-| COM-2 | TBD | M2 — Enforce in CI |
-| COM-3 | BLOCKED (until golangci-lint binary is available to validate config) | M1 — Make core lint/build loop reproducible |
-| COM-4 | TBD | M1.5 — Coverage/quality gates |
-| COM-5 | TBD | M2 — Enforce in CI |
+| COM-1 | PASS | M2 — Enforce in CI |
+| COM-2 | PASS | M2 — Enforce in CI |
+| COM-3 | PASS | M1 — Make core lint/build loop reproducible |
+| COM-4 | PASS | M1.5 — Coverage/quality gates |
+| COM-5 | PASS | M2 — Enforce in CI |
 | COM-6 | BLOCKED | M3+ — Operational hardening |
-| SEC-1 | TBD | M2 — Enforce in CI |
-| SEC-2 | BLOCKED | M3+ — Security hardening (dependency scanning) |
-| SEC-3 | BLOCKED | M3+ — Supply-chain & release hardening |
+| SEC-1 | PASS | M2 — Enforce in CI |
+| SEC-2 | PASS | M3+ — Security hardening (dependency scanning) |
+| SEC-3 | PASS | M3+ — Supply-chain & release hardening |
 | SEC-4 | BLOCKED | M3+ — Domain P0 tests (auth/CHD env invariants) |
-| CMP-1 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
-| CMP-2 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
-| CMP-3 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
-| MAI-1 | TBD | M3+ — Maintainability budgets |
+| CMP-1 | PASS | M0 — Freeze rubric + planning artifacts |
+| CMP-2 | PASS | M0 — Freeze rubric + planning artifacts |
+| CMP-3 | PASS | M0 — Freeze rubric + planning artifacts |
+| MAI-1 | PASS | M3+ — Maintainability budgets |
 | MAI-2 | BLOCKED | M3+ — Maintainability convergence |
 | MAI-3 | BLOCKED | M3+ — Canonical semantics (duplication control) |
-| DOC-1 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
-| DOC-2 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
-| DOC-3 | PASS (once merged) | M0 — Freeze rubric + planning artifacts |
-| DOC-4 | TBD | M0 — Freeze rubric + planning artifacts |
-| DOC-5 | TBD | M0 — Freeze rubric + planning artifacts |
+| DOC-1 | PASS | M0 — Freeze rubric + planning artifacts |
+| DOC-2 | PASS | M0 — Freeze rubric + planning artifacts |
+| DOC-3 | PASS | M0 — Freeze rubric + planning artifacts |
+| DOC-4 | PASS | M0 — Freeze rubric + planning artifacts |
+| DOC-5 | PASS | M0 — Freeze rubric + planning artifacts |
 
 ## Workstream tracking docs (when blockers require a dedicated plan)
 - Lint remediation: `hgm-infra/planning/lift-lint-green-roadmap.md`

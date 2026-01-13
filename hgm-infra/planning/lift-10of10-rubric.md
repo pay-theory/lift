@@ -40,7 +40,7 @@ Enforcement rule (anti-drift):
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
 | CON-1 | 3 | gofmt/formatter clean (no diffs) | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` (CON-1) |
-| CON-2 | 5 | Lint/static analysis green (pinned version) | `golangci-lint run --config .golangci.yml ./...` |
+| CON-2 | 5 | Lint/static analysis green (pinned version) | `golangci-lint run --config .golangci.yml --allow-parallel-runners ./...` |
 | CON-3 | 2 | Public boundary contract parity (if applicable) | `TODO: add contract parity checks for CLI/templates (currently BLOCKED)` |
 
 **10/10 definition:** CON-1 through CON-3 pass (or document why CON-3 is N/A and remove it with a version bump).
@@ -60,7 +60,7 @@ Enforcement rule (anti-drift):
 ## Security (SEC) — abuse-resilient and reviewable
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
-| SEC-1 | 3 | Static security scan green (pinned version) | `golangci-lint run --disable-all --enable=gosec --config .golangci.yml ./...` |
+| SEC-1 | 3 | Static security scan green (pinned version) | `golangci-lint run --enable-only=gosec --config .golangci.yml --allow-parallel-runners ./...` |
 | SEC-2 | 3 | Dependency vulnerability scan green | `TODO: add govulncheck in CI (currently BLOCKED)` |
 | SEC-3 | 2 | Supply-chain verification green | `TODO: add supply-chain verification (currently BLOCKED)` |
 | SEC-4 | 2 | Domain-specific P0 regression tests (auth/CHD env invariants) | `TODO: add P0 regression test suite (currently BLOCKED)` |

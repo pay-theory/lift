@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "action": "baseline",
+  "pack": {
+    "stage": "live",
+    "version": "ba1a734ab662",
+    "manifest_digest_sha256": "a73df10dc3ead5014e2a67c62fdce039104074bd07a2f6cfef432921d12801eb"
+  },
+  "project": {
+    "name": "lift",
+    "slug": "lift",
+    "domain": "custom",
+    "rubric_version": "v0.1.0"
+  },
+  "constraints": {
+    "read_scope": ["hgm-infra/**"],
+    "write_scope": ["hgm-infra/evidence/**"],
+    "prohibited_actions": [
+      "Do not modify application/source code",
+      "Do not change go.mod/go.sum",
+      "Do not change CI/workflow files",
+      "Do not run network-changing/deployment commands",
+      "Do not write outside hgm-infra/"
+    ]
+  },
+  "execution": {
+    "working_directory": "<repo-root>",
+    "shell": "bash",
+    "evidence_dir": "hgm-infra/evidence",
+    "primary_report": "hgm-infra/evidence/hgm-rubric-report.json",
+    "blocker_semantics": {
+      "exit_code_0": "PASS",
+      "exit_code_1": "FAIL_OR_BLOCKED",
+      "exit_code_2": "BLOCKED (tool missing / verifier-declared blocked)"
+    }
+  },
+  "steps": [
+    {
+      "id": "S1",
+      "name": "Run deterministic Hypergenium rubric verifier (single entrypoint)",
+      "command": "bash ./hgm-infra/verifiers/hgm-verify-rubric.sh",
+      "expected_outputs": [
+        "hgm-infra/evidence/hgm-rubric-report.json",
+        "hgm-infra/evidence/*-output.log",
+        "hgm-infra/evidence/DOC-5-parity.log",
+        "hgm-infra/evidence/coverage.out"
+      ],
+      "notes": [
+        "This verifier is the source of truth for rubric status; it writes per-ID logs under hgm-infra/evidence/.",
+        "The verifier fails closed: any TODO verifier is recorded as BLOCKED.",
+        "If golangci-lint is not installed locally, some items will FAIL/BLOCKED; record that as evidence (do not 'fix' by disabling checks)."
+      ]
+    },
+    {
+      "id": "S2",
+      "name": "Optional: run individual commands from the rubric to capture standalone logs (only if needed)",
+      "commands": [
+        {
+          "rubric_id": "QUA-1",
+          "command": "make test",
+          "evidence_hint": "Verifier already captures this to hgm-infra/evidence/QUA-1-output.log"
+        },
+        {
+          "rubric_id": "QUA-3",
+          "command": "make test-coverage",
+          "evidence_hint": "Verifier runs coverage via run_coverage and copies coverage.out to hgm-infra/evidence/coverage.out"
+        },
+        {
+          "rubric_id": "CON-2",
+          "command": "golangci-lint run --config .golangci.yml ./...",
+          "evidence_hint": "Verifier captures output to hgm-infra/evidence/CON-2-output.log"
+        },
+        {
+          "rubric_id": "COM-3",
+          "command": "golangci-lint config verify --config .golangci.yml",
+          "evidence_hint": "Verifier captures output to hgm-infra/evidence/COM-3-output.log"
+        },
+        {
+          "rubric_id": "SEC-1",
+          "command": "golangci-lint run --disable-all --enable=gosec --config .golangci.yml ./...",
+          "evidence_hint": "Verifier captures output to hgm-infra/evidence/SEC-1-output.log"
+        }
+      ],
+      "notes": [
+        "These are optional because the verifier already captures the command outputs.",
+        "Do not attempt to resolve failures by modifying repo code or configuration; only record evidence."
+      ]
+    },
+    {
+      "id": "S3",
+      "name": "Summarize results and ensure evidence completeness",
+      "instructions": [
+        "Confirm hgm-infra/evidence/hgm-rubric-report.json exists and is non-empty.",
+        "Confirm per-ID evidence logs exist for every rubric item ID in the report.",
+        "If any item is FAIL or BLOCKED, do not patch the repo. Instead, capture the exact error output already written in the *-output.log evidence files.",
+        "If the verifier itself errors unexpectedly (not FAIL/BLOCKED), capture the terminal output in a new file: hgm-infra/evidence/verifier-crash.log"
+      ]
+    }
+  ],
+  "rubric_item_surface": {
+    "entrypoint": "bash ./hgm-infra/verifiers/hgm-verify-rubric.sh",
+    "rubric_doc": "hgm-infra/planning/lift-10of10-rubric.md",
+    "evidence_plan": "hgm-infra/planning/lift-evidence-plan.md",
+    "evidence_map_notes": [
+      "Primary evidence locations are defined in lift-evidence-plan.md.",
+      "Planning documents (CMP/DOC file-existence items) are evidence by their presence under hgm-infra/planning/."
+    ]
+  },
+  "reporting_instructions": {
+    "what_to_return": [
+      "Overall status from hgm-infra/evidence/hgm-rubric-report.json (PASS/FAIL/BLOCKED)",
+      "List of FAIL items with their evidencePath + first 20 lines of the corresponding log",
+      "List of BLOCKED items with their evidencePath + why blocked (tool missing/TODO)"
+    ],
+    "safety": [
+      "Do not include secrets from environment variables; redact if accidentally printed.",
+      "Do not copy large logs verbatim; provide short excerpts and keep full logs in hgm-infra/evidence/*.log."
+    ]
+  }
+}

@@ -156,9 +156,9 @@ func TestContractTestSuite_Basics(t *testing.T) {
 	}
 
 	contract := &Contract{
-		ID:      "c1",
-		Name:    "contract",
-		Version: "v1",
+		ID:       "c1",
+		Name:     "contract",
+		Version:  "v1",
 		Provider: "provider",
 		Consumer: "consumer",
 	}
@@ -186,4 +186,3 @@ func TestChaosReporter_DefaultTemplate(t *testing.T) {
 		t.Fatalf("expected template sections")
 	}
 }
-

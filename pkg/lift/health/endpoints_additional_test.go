@@ -26,7 +26,7 @@ func (l *recordingLogger) Error(message string, fields ...map[string]any) {
 		l.lastFields = fields[0]
 	}
 }
-func (l *recordingLogger) WithField(string, any) lift.Logger   { return l }
+func (l *recordingLogger) WithField(string, any) lift.Logger     { return l }
 func (l *recordingLogger) WithFields(map[string]any) lift.Logger { return l }
 
 type failingResponseWriter struct {
@@ -123,4 +123,3 @@ func TestHealthEndpoints_LivenessAndReadiness_PlainTextAndMethodNotAllowed(t *te
 		}
 	})
 }
-

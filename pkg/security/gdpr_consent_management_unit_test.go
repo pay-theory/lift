@@ -47,9 +47,15 @@ func (f *failingConsentStore) WithdrawConsent(ctx context.Context, consentID str
 	return f.inner.WithdrawConsent(ctx, consentID, withdrawal)
 }
 
-func (f *failingConsentStore) GetExpiredConsents(context.Context) ([]*ConsentRecord, error)         { return nil, nil }
-func (f *failingConsentStore) GetConsentsForRenewal(context.Context) ([]*ConsentRecord, error)     { return nil, nil }
-func (f *failingConsentStore) RecordConsent(ctx context.Context, consent *ConsentRecord) error     { return f.StoreConsent(ctx, consent) }
+func (f *failingConsentStore) GetExpiredConsents(context.Context) ([]*ConsentRecord, error) {
+	return nil, nil
+}
+func (f *failingConsentStore) GetConsentsForRenewal(context.Context) ([]*ConsentRecord, error) {
+	return nil, nil
+}
+func (f *failingConsentStore) RecordConsent(ctx context.Context, consent *ConsentRecord) error {
+	return f.StoreConsent(ctx, consent)
+}
 func (f *failingConsentStore) ListConsents(ctx context.Context, dataSubjectID string) ([]*ConsentRecord, error) {
 	return f.GetAllConsents(ctx, dataSubjectID)
 }
@@ -63,7 +69,9 @@ type failingGDPRAuditLogger struct {
 	requestErr error
 }
 
-func (f *failingGDPRAuditLogger) LogConsentEvent(context.Context, *ConsentEvent) error          { return f.consentErr }
+func (f *failingGDPRAuditLogger) LogConsentEvent(context.Context, *ConsentEvent) error {
+	return f.consentErr
+}
 func (f *failingGDPRAuditLogger) LogDataSubjectRequest(context.Context, *DataSubjectRequestLog) error {
 	return f.requestErr
 }
@@ -73,7 +81,9 @@ func (f *failingGDPRAuditLogger) LogDataProcessingActivity(context.Context, *Dat
 func (f *failingGDPRAuditLogger) LogCrossBorderTransfer(context.Context, *CrossBorderTransferLog) error {
 	return nil
 }
-func (f *failingGDPRAuditLogger) LogPrivacyBreach(context.Context, *PrivacyBreachLog) error { return nil }
+func (f *failingGDPRAuditLogger) LogPrivacyBreach(context.Context, *PrivacyBreachLog) error {
+	return nil
+}
 
 type stubPIA struct {
 	lastRequest *PIARequest
@@ -86,14 +96,16 @@ func (s *stubPIA) ConductPIA(_ context.Context, assessment *PIARequest) (*PIARes
 	return s.result, s.err
 }
 
-func (s *stubPIA) GetPIATemplate(string) (*PIATemplate, error)                       { return nil, nil }
+func (s *stubPIA) GetPIATemplate(string) (*PIATemplate, error) { return nil, nil }
 func (s *stubPIA) ValidateDataProcessing(context.Context, *DataProcessingActivity) (*ProcessingValidation, error) {
 	return nil, nil
 }
-func (s *stubPIA) GetRiskAssessment(context.Context, string) (*RiskAssessment, error) { return nil, nil }
-func (s *stubPIA) UpdatePIA(context.Context, string, *PIAUpdate) error                { return nil }
-func (s *stubPIA) GetPIA(context.Context, string) (*PIAResult, error)                 { return nil, nil }
-func (s *stubPIA) ListPIAs(context.Context, *PIAFilters) ([]*PIAResult, error)        { return nil, nil }
+func (s *stubPIA) GetRiskAssessment(context.Context, string) (*RiskAssessment, error) {
+	return nil, nil
+}
+func (s *stubPIA) UpdatePIA(context.Context, string, *PIAUpdate) error         { return nil }
+func (s *stubPIA) GetPIA(context.Context, string) (*PIAResult, error)          { return nil, nil }
+func (s *stubPIA) ListPIAs(context.Context, *PIAFilters) ([]*PIAResult, error) { return nil, nil }
 
 func TestGDPRConsentManager_ErrorPathsAndRouting(t *testing.T) {
 	t.Parallel()

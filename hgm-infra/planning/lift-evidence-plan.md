@@ -28,7 +28,7 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | QUA-2 | Integration/contract output | `hgm-infra/evidence/QUA-2-output.log` | TODO (BLOCKED) |
 | QUA-3 | Coverage profile + summary | `hgm-infra/evidence/QUA-3-output.log` + `hgm-infra/evidence/coverage.out` | `make test-coverage` |
 | CON-1 | Formatter diff list | `hgm-infra/evidence/CON-1-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
-| CON-2 | Lint output | `hgm-infra/evidence/CON-2-output.log` | `golangci-lint run --config .golangci.yml ./...` |
+| CON-2 | Lint output | `hgm-infra/evidence/CON-2-output.log` | `golangci-lint run --config .golangci.yml --allow-parallel-runners ./...` |
 | CON-3 | Contract verification output | `hgm-infra/evidence/CON-3-output.log` | TODO (BLOCKED) |
 | COM-1 | Module compile check | `hgm-infra/evidence/COM-1-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-2 | Toolchain pin verification | `hgm-infra/evidence/COM-2-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
@@ -36,7 +36,7 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | COM-4 | Coverage threshold check | `hgm-infra/evidence/COM-4-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-5 | Security config validation | `hgm-infra/evidence/COM-5-output.log` | `bash ./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-6 | Logging standards check | `hgm-infra/evidence/COM-6-output.log` | TODO (BLOCKED) |
-| SEC-1 | SAST scan output | `hgm-infra/evidence/SEC-1-output.log` | `golangci-lint ... --enable=gosec` |
+| SEC-1 | SAST scan output | `hgm-infra/evidence/SEC-1-output.log` | `golangci-lint run --enable-only=gosec --config .golangci.yml --allow-parallel-runners ./...` |
 | SEC-2 | Vulnerability scan output | `hgm-infra/evidence/SEC-2-output.log` | TODO (BLOCKED) |
 | SEC-3 | Supply-chain verification | `hgm-infra/evidence/SEC-3-output.log` | TODO (BLOCKED) |
 | SEC-4 | Domain P0 regression tests | `hgm-infra/evidence/SEC-4-output.log` | TODO (BLOCKED) |

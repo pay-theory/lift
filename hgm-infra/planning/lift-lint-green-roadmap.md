@@ -14,8 +14,8 @@ reviewable and should not block unrelated remediation work (coverage/security/et
 Snapshot (2026-01-13):
 - Primary command: `golangci-lint run --config .golangci.yml ./...`
 - CI pin: `golangci/golangci-lint-action` version `v2.4.0` (from `.github/workflows/test.yml`)
-- Current status: TBD (run the verifier and record issue counts)
-- Top failure sources: TBD
+- Current status: FAIL
+- Top failure sources: Unused imports, typecheck failures in pkg/testing
 
 How to capture baseline evidence:
 ```bash
@@ -24,8 +24,8 @@ bash ./hgm-infra/verifiers/hgm-verify-rubric.sh
 ```
 
 ## Progress snapshots
-- Baseline (2026-01-13): TBD
-- After LINT-1 (DATE): TBD
+- Baseline (2026-01-13): FAIL (Typecheck errors)
+- After LINT-1 (2026-01-13): PASS (0 issues)
 - After LINT-2 (DATE): TBD
 
 ## Guardrails (no “green by dilution”)

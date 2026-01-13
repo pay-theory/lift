@@ -12,12 +12,18 @@ type recordingLogger struct {
 	errorMessages []string
 }
 
-func (l *recordingLogger) Debug(message string, _ ...map[string]any) { l.debugMessages = append(l.debugMessages, message) }
-func (l *recordingLogger) Info(message string, _ ...map[string]any)  { l.infoMessages = append(l.infoMessages, message) }
-func (l *recordingLogger) Warn(_ string, _ ...map[string]any)        {}
-func (l *recordingLogger) Error(message string, _ ...map[string]any) { l.errorMessages = append(l.errorMessages, message) }
-func (l *recordingLogger) WithField(_ string, _ any) Logger          { return l }
-func (l *recordingLogger) WithFields(_ map[string]any) Logger        { return l }
+func (l *recordingLogger) Debug(message string, _ ...map[string]any) {
+	l.debugMessages = append(l.debugMessages, message)
+}
+func (l *recordingLogger) Info(message string, _ ...map[string]any) {
+	l.infoMessages = append(l.infoMessages, message)
+}
+func (l *recordingLogger) Warn(_ string, _ ...map[string]any) {}
+func (l *recordingLogger) Error(message string, _ ...map[string]any) {
+	l.errorMessages = append(l.errorMessages, message)
+}
+func (l *recordingLogger) WithField(_ string, _ any) Logger   { return l }
+func (l *recordingLogger) WithFields(_ map[string]any) Logger { return l }
 
 func TestWithDebug_AppOption(t *testing.T) {
 	app := New(WithDebug())
@@ -110,4 +116,3 @@ func TestApp_RunLocalTest_Branches(t *testing.T) {
 		}
 	})
 }
-
