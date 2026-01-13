@@ -390,13 +390,16 @@ check_cli_template_contract_parity() {
   # Verifies that templates in internal/templates/ adhere to docs/cli-contract-v1.md.
   #
   # Checks per template:
+  # Base templates:
   # 1. lift.yaml.tmpl exists
   # 2. go.mod.tmpl exists
   # 3. cdk/ directory exists (for Go CDK contract)
   # 4. cmd/ directory exists (for Lambda entrypoints)
-  # 5. CI assets exist:
-  #    - Standard templates: .github/workflows/deploy.yml
-  #    - PT templates (*-pt): buildspec.yml and shell/deploy.sh
+  # 5. Default CI assets: .github/workflows/deploy.yml
+  #
+  # PT overlays (*-pt):
+  # 1. PT CI assets: buildspec.yml and shell/deploy.sh
+  # 2. Do NOT enforce base assets (go.mod, cmd/, etc.) as they are inherited from the base template.
 
   local templates_dir="${REPO_ROOT}/internal/templates"
   local failed=0
@@ -417,32 +420,8 @@ check_cli_template_contract_parity() {
       is_pt=1
     fi
 
-    # Check 1: lift.yaml or lift.yaml.tmpl
-    if [[ ! -f "${tmpl_path}/lift.yaml" ]] && [[ ! -f "${tmpl_path}/lift.yaml.tmpl" ]]; then
-      echo "FAIL [${tmpl}]: missing lift.yaml[.tmpl] (Project Root contract)" >&2
-      failed=1
-    fi
-
-    # Check 2: go.mod or go.mod.tmpl
-    if [[ ! -f "${tmpl_path}/go.mod" ]] && [[ ! -f "${tmpl_path}/go.mod.tmpl" ]]; then
-      echo "FAIL [${tmpl}]: missing go.mod[.tmpl]" >&2
-      failed=1
-    fi
-
-    # Check 3: cdk/ directory
-    if [[ ! -d "${tmpl_path}/cdk" ]]; then
-      echo "FAIL [${tmpl}]: missing cdk/ directory (Filesystem Layout contract)" >&2
-      failed=1
-    fi
-
-    # Check 4: cmd/ directory
-    if [[ ! -d "${tmpl_path}/cmd" ]]; then
-      echo "FAIL [${tmpl}]: missing cmd/ directory (Filesystem Layout contract)" >&2
-      failed=1
-    fi
-
-    # Check 5: CI assets
     if [[ $is_pt -eq 1 ]]; then
+      # --- PT Overlay Checks ---
       # Pay Theory mode contract: buildspec.yml and shell/deploy.sh
       if [[ ! -f "${tmpl_path}/buildspec.yml" ]] && [[ ! -f "${tmpl_path}/buildspec.yml.tmpl" ]]; then
         echo "FAIL [${tmpl}]: missing buildspec.yml[.tmpl] (PT CI contract)" >&2
@@ -452,8 +431,35 @@ check_cli_template_contract_parity() {
         echo "FAIL [${tmpl}]: missing shell/deploy.sh[.tmpl] (PT CI contract)" >&2
         failed=1
       fi
+      # NOTE: We do NOT check for go.mod, cmd/, or lift.yaml here because PT templates
+      # are overlays that inherit these from the base template (or override them optionally).
     else
-      # Default mode contract: .github/workflows/deploy.yml
+      # --- Base Template Checks ---
+      # Check 1: lift.yaml or lift.yaml.tmpl
+      if [[ ! -f "${tmpl_path}/lift.yaml" ]] && [[ ! -f "${tmpl_path}/lift.yaml.tmpl" ]]; then
+        echo "FAIL [${tmpl}]: missing lift.yaml[.tmpl] (Project Root contract)" >&2
+        failed=1
+      fi
+
+      # Check 2: go.mod or go.mod.tmpl
+      if [[ ! -f "${tmpl_path}/go.mod" ]] && [[ ! -f "${tmpl_path}/go.mod.tmpl" ]]; then
+        echo "FAIL [${tmpl}]: missing go.mod[.tmpl]" >&2
+        failed=1
+      fi
+
+      # Check 3: cdk/ directory
+      if [[ ! -d "${tmpl_path}/cdk" ]]; then
+        echo "FAIL [${tmpl}]: missing cdk/ directory (Filesystem Layout contract)" >&2
+        failed=1
+      fi
+
+      # Check 4: cmd/ directory
+      if [[ ! -d "${tmpl_path}/cmd" ]]; then
+        echo "FAIL [${tmpl}]: missing cmd/ directory (Filesystem Layout contract)" >&2
+        failed=1
+      fi
+
+      # Check 5: Default CI assets (.github/workflows/deploy.yml)
       if [[ ! -f "${tmpl_path}/.github/workflows/deploy.yml" ]] && [[ ! -f "${tmpl_path}/.github/workflows/deploy.yml.tmpl" ]]; then
         echo "FAIL [${tmpl}]: missing .github/workflows/deploy.yml[.tmpl] (Default CI contract)" >&2
         failed=1
