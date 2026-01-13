@@ -193,3 +193,27 @@ Add domain-specific milestones, such as:
 - **Evidence**: hgm-infra/evidence/COM-6-output.log shows clean scan, hgm-infra/evidence/hgm-rubric-report.json
 - **Anti-drift**: Updated lift-10of10-rubric.md, lift-evidence-plan.md to reference actual verifier command
 - **Scope**: Changes limited to hgm-infra/** only, no application code changes, narrow allowlist documented
+
+### 2026-01-13: M3-QUA-2-CON-3 Complete - Contract Tests Implemented! 🎯
+- **Status**: QUA-2 and CON-3 are now PASS (26/27 passing checks total, up from 24) - **1 BLOCKED item remains (SEC-4)**
+- **Achievement**: Implemented hermetic, deterministic contract test suite for Lift CLI v1 contract (docs/cli-contract-v1.md)
+- **Implementation**:
+  - Created `internal/contracts/cli_contract_test.go` with build tag `contract`
+  - Implemented 4 contract test categories:
+    1. **Stage Contract Parity** (TestStageContractParity): Validates ValidStages equals ["dev", "staging", "live"], ValidateStage accepts valid stages and rejects invalid ones
+    2. **Domain Derivation Contract** (TestDomainDerivationContract): Verifies default domain derivation for all stages (dev → dev.example.com, staging → staging.example.com, live → example.com)
+    3. **Domain Immutability Contract** (TestDomainImmutabilityContract): Tests CheckDomainLock enforces domain locking after deploy, returns DomainLockError with actionable `lift down` guidance
+    4. **CLI Surface Contract** (TestCLISurfaceContract): Verifies UpCommand.Usage() mentions all canonical stages ("dev", "staging", "live")
+- **Hermetic Design**: No AWS credentials, no network access, no CDK CLI, no filesystem dependencies (all in-memory config objects)
+- **Verifier Commands**:
+  - QUA-2: `go test -tags=contract ./internal/contracts -count=1`
+  - CON-3: `go test -tags=contract ./internal/contracts -count=1`
+  - Both run the same suite (contract parity covers both quality and consistency)
+- **Test Results**: All 4 test functions pass (12 sub-tests total), fast execution (~3-4ms)
+- **Evidence**: 
+  - hgm-infra/evidence/QUA-2-output.log - "ok github.com/pay-theory/lift/internal/contracts 0.003s"
+  - hgm-infra/evidence/CON-3-output.log - "ok github.com/pay-theory/lift/internal/contracts 0.004s"
+  - hgm-infra/evidence/hgm-rubric-report.json - QUA-2=PASS, CON-3=PASS
+- **Anti-drift**: Updated lift-10of10-rubric.md, lift-evidence-plan.md to reference actual contract test commands
+- **Scope**: Created new test package (internal/contracts/), updated hgm-infra planning docs and verifier
+- **No Contract Mismatches**: All tests pass on first run, implementation matches documented contract exactly
