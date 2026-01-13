@@ -100,7 +100,8 @@ run_check() {
   # IMPORTANT: run in the current bash context so verifier helper functions (e.g., run_coverage)
   # are available.
   set +e
-  ( eval "$cmd" ) >"$output_file" 2>&1
+  # Enable set -e inside the subshell to ensure helper functions fail fast on error (fail closed).
+  ( set -e; eval "$cmd" ) >"$output_file" 2>&1
   local ec=$?
   set -e
 
@@ -145,7 +146,11 @@ run_coverage() {
   cd "$REPO_ROOT"
 
   # The repo Makefile already excludes examples and uses sandbox-safe caches.
-  make test-coverage
+  # Capture exit code to ensure we fail if tests fail.
+  if ! make test-coverage; then
+    echo "make test-coverage failed" >&2
+    return 1
+  fi
 
   if [[ ! -f "${REPO_ROOT}/coverage.out" ]]; then
     echo "Expected coverage.out not found after make test-coverage" >&2
