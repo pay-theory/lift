@@ -1,4 +1,4 @@
-# Lift: Lint Green Roadmap (Rubric v0.7)
+# Lift: Lint Green Roadmap (Rubric v0.8)
 
 Goal: keep/get to a green `make lint` pass using the repo’s strict lint configuration, **without** weakening thresholds or
 adding blanket exclusions.

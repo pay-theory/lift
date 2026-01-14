@@ -1,8 +1,8 @@
-# Lift: 10/10 Roadmap (Rubric v0.7)
+# Lift: 10/10 Roadmap (Rubric v0.8)
 
 This roadmap maps milestones directly to rubric IDs with measurable acceptance criteria and verification commands.
 
-## Current scorecard (Rubric v0.7)
+## Current scorecard (Rubric v0.8)
 
 Scoring note: a check is only treated as “passing” if it is both green and enforced by a trustworthy verifier
 (pinned tooling, schema-valid configs, and no “green by dilution” shortcuts). Completeness failures invalidate “green by
@@ -144,4 +144,5 @@ Tracking document: `hgm-infra/planning/lift-coverage-roadmap.md`
 - Evidence artifacts (`hgm-infra/evidence/**`) are uploaded by CI.
 - Release automation is defined for `premain` (prereleases) and `main` (stable) via pinned release-please workflows.
 - Release asset publishing is driven from the release-please workflows (no tag-push chaining; no manual tokens).
+- Release automation remains compatible with "immutable releases" (draft, upload assets, then publish).
 - CodeQL workflow exists and runs on both `premain` and `main`.
