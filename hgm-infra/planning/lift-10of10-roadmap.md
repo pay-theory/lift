@@ -70,6 +70,7 @@ Evidence commands (refresh whenever behavior changes):
 
 ### M0 — Freeze rubric + planning artifacts
 **Closes:** CMP-1, CMP-2, CMP-3, DOC-1..DOC-5
+**Status:** DONE
 
 **Acceptance criteria**
 - Rubric exists and is versioned.
