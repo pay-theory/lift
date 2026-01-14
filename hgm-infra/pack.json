@@ -13,6 +13,8 @@
   },
   "artifacts": {
     "planning": [
+      "hgm-infra/README.md",
+      "hgm-infra/AGENTS.md",
       "hgm-infra/planning/lift-controls-matrix.md",
       "hgm-infra/planning/lift-threat-model.md",
       "hgm-infra/planning/lift-10of10-rubric.md",

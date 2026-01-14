@@ -9,8 +9,8 @@
 # commands, writes evidence under hgm-infra/evidence/, and emits a fixed JSON
 # report at hgm-infra/evidence/hgm-rubric-report.json.
 #
-# Usage:
-#   ./hgm-infra/verifiers/hgm-verify-rubric.sh
+# Usage (from repo root; scripts may be non-executable by default):
+#   bash hgm-infra/verifiers/hgm-verify-rubric.sh
 #
 # Exit codes:
 #   0 - All rubric items PASS
@@ -25,6 +25,9 @@ HGM_INFRA="${REPO_ROOT}/hgm-infra"
 PLANNING_DIR="${HGM_INFRA}/planning"
 EVIDENCE_DIR="${HGM_INFRA}/evidence"
 REPORT_PATH="${EVIDENCE_DIR}/hgm-rubric-report.json"
+
+# Always run checks from repo root so relative commands are stable.
+cd "${REPO_ROOT}"
 
 # Optional repo-local tools directory (to enforce pinned tool versions deterministically).
 # Tools are installed here (never system-wide) and put first on PATH.
@@ -213,6 +216,106 @@ prepare_check_env() {
   esac
 }
 
+hgm_check_go_coverage() {
+  if [[ ! -f "go.mod" ]]; then
+    echo "BLOCKED: go.mod not found"
+    return 2
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    echo "BLOCKED: go toolchain not available"
+    return 2
+  fi
+
+  local exclude_prefix="^github.com/pay-theory/lift/examples"
+  local pkgs
+  pkgs="$(go list ./... | grep -v "${exclude_prefix}" || true)"
+  pkgs="$(printf '%s\n' "${pkgs}" | sed '/^$/d' || true)"
+  if [[ -z "${pkgs}" ]]; then
+    echo "BLOCKED: no packages selected for coverage"
+    return 2
+  fi
+
+  go test -covermode=atomic -coverprofile="${EVIDENCE_DIR}/coverage.out" ${pkgs}
+
+  if [[ ! -f "${REPO_ROOT}/scripts/coverage-core-report.sh" ]]; then
+    echo "BLOCKED: scripts/coverage-core-report.sh not found"
+    return 2
+  fi
+
+  bash "${REPO_ROOT}/scripts/coverage-core-report.sh" "${EVIDENCE_DIR}/coverage.out" "${EVIDENCE_DIR}/coverage.core.out"
+}
+
+hgm_check_core_coverage_threshold() {
+  local threshold="90"
+
+  hgm_check_go_coverage >/dev/null
+
+  if [[ ! -f "${EVIDENCE_DIR}/coverage.core.out" ]]; then
+    echo "BLOCKED: coverage core report missing at ${EVIDENCE_DIR}/coverage.core.out"
+    return 2
+  fi
+
+  local total
+  total="$(go tool cover -func="${EVIDENCE_DIR}/coverage.core.out" | tail -n 1 | awk '{print $3}' | tr -d '%')"
+  if [[ -z "${total}" ]]; then
+    echo "BLOCKED: failed to parse core coverage percent"
+    return 2
+  fi
+
+  echo "core_coverage=${total}% threshold=${threshold}%"
+  awk -v c="${total}" -v t="${threshold}" 'BEGIN{exit (c+0 < t)}'
+}
+
+hgm_check_gofmt_clean() {
+  if ! command -v gofmt >/dev/null 2>&1; then
+    echo "BLOCKED: gofmt not available"
+    return 2
+  fi
+
+  local files
+  files="$(find . -type f -name '*.go' \
+    -not -path './.git/*' \
+    -not -path './.gocache/*' \
+    -not -path './.gomodcache/*' \
+    -not -path './.golangci-lint-cache/*' \
+    -not -path './hgm-infra/*' \
+    -print)"
+
+  if [[ -z "${files}" ]]; then
+    return 0
+  fi
+
+  local out
+  out="$(gofmt -l ${files} || true)"
+  if [[ -n "${out}" ]]; then
+    echo "gofmt changes required:"
+    printf '%s\n' "${out}"
+    return 1
+  fi
+}
+
+hgm_check_doc_integrity() {
+  local files=(
+    "hgm-infra/README.md"
+    "hgm-infra/AGENTS.md"
+    "hgm-infra/planning/lift-controls-matrix.md"
+    "hgm-infra/planning/lift-threat-model.md"
+    "hgm-infra/planning/lift-10of10-rubric.md"
+    "hgm-infra/planning/lift-10of10-roadmap.md"
+    "hgm-infra/planning/lift-evidence-plan.md"
+    "hgm-infra/planning/lift-ai-drift-recovery.md"
+  )
+
+  local f
+  for f in "${files[@]}"; do
+    test -f "${f}"
+    if grep -q "{{" "${f}"; then
+      echo "Unrendered template token found in ${f}"
+      return 1
+    fi
+  done
+}
+
 run_check() {
   local id="$1"
   local category="$2"
@@ -299,47 +402,41 @@ echo ""
 CMD_UNIT="./scripts/ci-check.sh"
 CMD_INTEGRATION="TODO: define integration/contract test surface"
 
-# Coverage is written under hgm-infra/evidence/ (avoid writing to repo root).
-CMD_COVERAGE="bash -lc 'set -euo pipefail; pkgs=$(go list ./... | grep -v "^github.com/pay-theory/lift/examples" || true); go test -covermode=atomic -coverprofile=hgm-infra/evidence/coverage.out $pkgs; bash ./scripts/coverage-core-report.sh hgm-infra/evidence/coverage.out hgm-infra/evidence/coverage.core.out'"
-
-CMD_FMT="bash -lc 'set -euo pipefail; files=$(find . -type f -name "*.go" \
-  -not -path "./.git/*" \
-  -not -path "./.gocache/*" \
-  -not -path "./.gomodcache/*" \
-  -not -path "./.golangci-lint-cache/*" \
-  -not -path "./hgm-infra/*" \
-  -print); test -z "$(gofmt -l $files)"'"
+# Avoid embedding shell variables in command strings (easy to break under `set -u` + `eval`).
+# For complex checks, prefer calling a function.
+CMD_COVERAGE="hgm_check_go_coverage"
+CMD_FMT="hgm_check_gofmt_clean"
 
 CMD_LINT="make lint"
 CMD_CONTRACT="TODO: add public API contract parity tests"
 
-CMD_MODULES="bash -lc 'set -euo pipefail; go build ./...'"
+CMD_MODULES="go build ./..."
 
-CMD_TOOLCHAIN="bash -lc 'set -euo pipefail; grep -q "^go 1.25$" go.mod; grep -q "1.25.x" .github/workflows/test.yml; grep -q "version: v2.4.0" .github/workflows/test.yml'"
+CMD_TOOLCHAIN="grep -q '^go 1.25$' go.mod; grep -q '1.25.x' .github/workflows/test.yml; grep -q 'version: v2.4.0' .github/workflows/test.yml"
 
-CMD_LINT_CONFIG="bash -lc 'set -euo pipefail; test -f .golangci.yml; grep -q "^version: \"2\"$" .golangci.yml; grep -q "modules-download-mode: readonly" .golangci.yml; grep -q "- gosec" .golangci.yml'"
+CMD_LINT_CONFIG="test -f .golangci.yml; grep -q '^version: \"2\"$' .golangci.yml; grep -q 'modules-download-mode: readonly' .golangci.yml; grep -q -- '- gosec' .golangci.yml"
 
-CMD_COV_THRESHOLD="bash -lc 'set -euo pipefail; pkgs=$(go list ./... | grep -v "^github.com/pay-theory/lift/examples" || true); go test -covermode=atomic -coverprofile=hgm-infra/evidence/coverage.out $pkgs >/dev/null; bash ./scripts/coverage-core-report.sh hgm-infra/evidence/coverage.out hgm-infra/evidence/coverage.core.out >/dev/null; total=$(go tool cover -func=hgm-infra/evidence/coverage.core.out | tail -n 1 | awk "{print \$3}" | tr -d "%"); echo "core_coverage=${total}% threshold=90%"; awk -v c="${total}" -v t="90" "BEGIN{exit (c+0 < t)}"'"
+CMD_COV_THRESHOLD="hgm_check_core_coverage_threshold"
 
-CMD_SEC_CONFIG="bash -lc 'set -euo pipefail; test -f .golangci.yml; grep -q "- gosec" .golangci.yml; grep -q "gosec:" .golangci.yml; grep -q "- G104" .golangci.yml; if grep -q "- G101" .golangci.yml; then echo "gosec excludes G101 (too high-signal)"; exit 1; fi'"
+CMD_SEC_CONFIG="test -f .golangci.yml; grep -q -- '- gosec' .golangci.yml; grep -q 'gosec:' .golangci.yml; grep -q -- '- G104' .golangci.yml; if grep -q -- '- G101' .golangci.yml; then echo 'gosec excludes G101 (too high-signal)'; exit 1; fi"
 
 # SAST is run as gosec only (separate from general lint), using pinned golangci-lint.
-CMD_SAST="bash -lc 'set -euo pipefail; golangci-lint run --config .golangci.yml --disable-all --enable=gosec ./...'"
+CMD_SAST="golangci-lint run --config .golangci.yml --disable-all --enable=gosec ./..."
 
 CMD_VULN="TODO: pin and run govulncheck (e.g., govulncheck ./...)"
 
 # Supply chain: require actions pinned by commit SHA (no @v2/@v5) and ensure go.sum exists.
-CMD_SUPPLY="bash -lc 'set -euo pipefail; test -f go.sum; if grep -R "^[[:space:]]*uses:[[:space:]].*@v[0-9]" .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null; then echo "Unpinned GitHub Action detected (uses @vN)"; exit 1; fi; echo "Actions appear SHA-pinned"'"
+CMD_SUPPLY="test -f go.sum; if grep -R -- '^[[:space:]]*uses:[[:space:]].*@v[0-9]' .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null; then echo 'Unpinned GitHub Action detected (uses @vN)'; exit 1; fi; echo 'Actions appear SHA-pinned'"
 
 CMD_P0="TODO: add domain P0 regression tests (secrets/logging/auth invariants)"
 
-CMD_CONTROLS="bash -lc 'test -f hgm-infra/planning/lift-controls-matrix.md'"
-CMD_EVIDENCE="bash -lc 'test -f hgm-infra/planning/lift-evidence-plan.md'"
-CMD_THREAT_MODEL="bash -lc 'test -f hgm-infra/planning/lift-threat-model.md'"
+CMD_CONTROLS="test -f hgm-infra/planning/lift-controls-matrix.md"
+CMD_EVIDENCE="test -f hgm-infra/planning/lift-evidence-plan.md"
+CMD_THREAT_MODEL="test -f hgm-infra/planning/lift-threat-model.md"
 
-CMD_DOCS="bash -lc 'test -f hgm-infra/planning/lift-10of10-rubric.md && test -f hgm-infra/planning/lift-10of10-roadmap.md'"
+CMD_DOCS="test -f hgm-infra/planning/lift-10of10-rubric.md && test -f hgm-infra/planning/lift-10of10-roadmap.md"
 
-CMD_DOC_INTEGRITY="bash -lc 'set -euo pipefail; files=(hgm-infra/planning/lift-controls-matrix.md hgm-infra/planning/lift-threat-model.md hgm-infra/planning/lift-10of10-rubric.md hgm-infra/planning/lift-10of10-roadmap.md hgm-infra/planning/lift-evidence-plan.md hgm-infra/planning/lift-ai-drift-recovery.md); for f in "${files[@]}"; do test -f "$f"; if grep -q "{{" "$f"; then echo "Unrendered template token found in $f"; exit 1; fi; done'"
+CMD_DOC_INTEGRITY="hgm_check_doc_integrity"
 
 CMD_FILE_BUDGET="TODO: implement file-size/complexity budgets"
 CMD_MAINTAINABILITY="TODO: maintainability verifier"
