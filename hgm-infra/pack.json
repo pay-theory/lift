@@ -1,0 +1,32 @@
+{
+  "$schema": "https://hgm.pai.dev/schemas/pack.schema.json",
+  "schemaVersion": 1,
+  "packStage": "live",
+  "packVersion": "4ae6c743d023",
+  "packDigest": "83338d5db82b9af9247475a62d08623a3e930b6b6e2466d68b254d6842c1f2c2",
+  "domain": "custom",
+  "projectSlug": "lift",
+  "generatedAt": "2026-01-14T00:00:00Z",
+  "source": {
+    "commitSha": "UNKNOWN",
+    "branch": "main"
+  },
+  "artifacts": {
+    "planning": [
+      "hgm-infra/planning/lift-controls-matrix.md",
+      "hgm-infra/planning/lift-threat-model.md",
+      "hgm-infra/planning/lift-10of10-rubric.md",
+      "hgm-infra/planning/lift-10of10-roadmap.md",
+      "hgm-infra/planning/lift-evidence-plan.md",
+      "hgm-infra/planning/lift-ai-drift-recovery.md",
+      "hgm-infra/planning/lift-coverage-roadmap.md",
+      "hgm-infra/planning/lift-lint-green-roadmap.md"
+    ],
+    "verifiers": [
+      "hgm-infra/verifiers/hgm-verify-rubric.sh"
+    ],
+    "evidence": [
+      "hgm-infra/evidence/hgm-rubric-report.json"
+    ]
+  }
+}
