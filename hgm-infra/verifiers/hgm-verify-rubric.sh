@@ -485,6 +485,7 @@ hgm_check_branch_release_supply_chain() {
     ".release-please-manifest.premain.json"
     ".github/workflows/prerelease.yml"
     ".github/workflows/release-please.yml"
+    ".github/workflows/release.yml"
     ".github/workflows/quality-gates.yml"
     ".github/workflows/codeql.yml"
   )
@@ -513,6 +514,10 @@ hgm_check_branch_release_supply_chain() {
   fi
 
   if [[ -f ".github/workflows/prerelease.yml" ]]; then
+    if grep -q 'RELEASE_PLEASE_TOKEN' ".github/workflows/prerelease.yml"; then
+      echo "branch-release: prerelease workflow must not require a manual token (RELEASE_PLEASE_TOKEN)"
+      failures=$((failures + 1))
+    fi
     grep -Eq 'branches:.*premain' ".github/workflows/prerelease.yml" || {
       echo "branch-release: prerelease workflow must target premain"
       failures=$((failures + 1))
@@ -533,9 +538,17 @@ hgm_check_branch_release_supply_chain() {
       echo "branch-release: prerelease workflow must reference .release-please-manifest.premain.json"
       failures=$((failures + 1))
     }
+    grep -q 'uses: ./.github/workflows/release.yml' ".github/workflows/prerelease.yml" || {
+      echo "branch-release: prerelease workflow must publish assets via reusable .github/workflows/release.yml"
+      failures=$((failures + 1))
+    }
   fi
 
   if [[ -f ".github/workflows/release-please.yml" ]]; then
+    if grep -q 'RELEASE_PLEASE_TOKEN' ".github/workflows/release-please.yml"; then
+      echo "branch-release: release workflow must not require a manual token (RELEASE_PLEASE_TOKEN)"
+      failures=$((failures + 1))
+    fi
     grep -Eq 'branches:.*main' ".github/workflows/release-please.yml" || {
       echo "branch-release: release workflow must target main"
       failures=$((failures + 1))
@@ -554,6 +567,29 @@ hgm_check_branch_release_supply_chain() {
     }
     grep -Eq 'manifest-file:[[:space:]]*\.release-please-manifest\.json' ".github/workflows/release-please.yml" || {
       echo "branch-release: release workflow must reference .release-please-manifest.json"
+      failures=$((failures + 1))
+    }
+    grep -q 'uses: ./.github/workflows/release.yml' ".github/workflows/release-please.yml" || {
+      echo "branch-release: release workflow must publish assets via reusable .github/workflows/release.yml"
+      failures=$((failures + 1))
+    }
+  fi
+
+  if [[ -f ".github/workflows/release.yml" ]]; then
+    grep -q 'workflow_call:' ".github/workflows/release.yml" || {
+      echo "branch-release: release.yml must support workflow_call (for cloud-token releases)"
+      failures=$((failures + 1))
+    }
+    grep -q 'workflow_dispatch:' ".github/workflows/release.yml" || {
+      echo "branch-release: release.yml must support workflow_dispatch (for manual reruns)"
+      failures=$((failures + 1))
+    }
+    if grep -Eq '^[[:space:]]+push:' ".github/workflows/release.yml"; then
+      echo "branch-release: release.yml must not rely on tag-push chaining"
+      failures=$((failures + 1))
+    fi
+    grep -q 'GITHUB_TOKEN: ${{ github.token }}' ".github/workflows/release.yml" || {
+      echo "branch-release: release.yml must use github.token (cloud token) for uploads"
       failures=$((failures + 1))
     }
   fi

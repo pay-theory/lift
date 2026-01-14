@@ -35,8 +35,12 @@ Recommended approach: **release-please** (merge-driven versioning + changelog up
 - release workflow producing stable `vX.Y.Z` tags and updating `CHANGELOG.md`.
 
 Publishing approach:
-- `release-please` creates the tag.
-- `.github/workflows/release.yml` builds and publishes Lift binaries on tag pushes.
+- `release-please` creates the tag + GitHub release (notes) using the built-in `GITHUB_TOKEN`.
+- `prerelease.yml` / `release-please.yml` call `.github/workflows/release.yml` (via `workflow_call`) to build and upload
+  Lift binaries to the GitHub Release (no tag-push chaining, no manual tokens).
+
+Commit discipline (required):
+- Use Conventional Commits (`fix:`, `feat:`, etc.) so release-please can detect user-facing changes and cut releases.
 
 ## Required workflow artifacts (Rubric COM-8)
 
