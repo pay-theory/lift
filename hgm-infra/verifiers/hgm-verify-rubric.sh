@@ -592,7 +592,25 @@ hgm_check_branch_release_supply_chain() {
       echo "branch-release: release.yml must use github.token (cloud token) for uploads"
       failures=$((failures + 1))
     }
+
+    grep -Eq 'draft:[[:space:]]*true' ".github/workflows/release.yml" || {
+      echo "branch-release: release.yml must upload assets while release is a draft"
+      failures=$((failures + 1))
+    }
+    grep -Fq '{"draft":false}' ".github/workflows/release.yml" || {
+      echo "branch-release: release.yml must publish the release after assets upload"
+      failures=$((failures + 1))
+    }
   fi
+
+  for cfg in "release-please-config.premain.json" "release-please-config.json"; do
+    if [[ -f "${cfg}" ]]; then
+      grep -q '"draft": true' "${cfg}" || {
+        echo "branch-release: ${cfg}: must create releases as drafts (immutable releases compatible)"
+        failures=$((failures + 1))
+      }
+    fi
+  done
 
   for wf in ".github/workflows/quality-gates.yml" ".github/workflows/codeql.yml"; do
     if [[ ! -f "${wf}" ]]; then

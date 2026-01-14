@@ -29,6 +29,9 @@ This repo should publish:
 - **Prereleases** on merges to `premain`.
 - **Releases** on merges to `main`.
 
+Versioning note:
+- The post-HGM baseline release line starts at `v1.1.0` (prereleases: `v1.1.0-rc.N`).
+
 Recommended approach: **release-please** (merge-driven versioning + changelog updates) with:
 
 - prerelease workflow producing tags like `vX.Y.Z-rc.N`, and
@@ -38,6 +41,8 @@ Publishing approach:
 - `release-please` creates the tag + GitHub release (notes) using the built-in `GITHUB_TOKEN`.
 - `prerelease.yml` / `release-please.yml` call `.github/workflows/release.yml` (via `workflow_call`) to build and upload
   Lift binaries to the GitHub Release (no tag-push chaining, no manual tokens).
+- Repos with "immutable releases" enabled must publish assets while the GitHub Release is still a **draft**, then publish
+  the release after assets upload completes.
 
 Commit discipline (required):
 - Use Conventional Commits (`fix:`, `feat:`, etc.) so release-please can detect user-facing changes and cut releases.

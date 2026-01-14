@@ -4,7 +4,7 @@ This rubric defines what “10/10” means and how category grades are computed.
 “green by dilution” by making scoring versioned, measurable, and repeatable.
 
 ## Versioning (no moving goalposts)
-- **Rubric version:** `v0.7` (2026-01-14)
+- **Rubric version:** `v0.8` (2026-01-14)
 - **Comparability rule:** grades are comparable only within the same version.
 - **Change rule:** bump the version + changelog entry for any rubric change (what changed + why).
 
@@ -16,6 +16,7 @@ This rubric defines what “10/10” means and how category grades are computed.
 - `v0.5`: Define verifier for SEC-2 (dependency vulnerability scan) via pinned govulncheck.
 - `v0.6`: Require CI rubric enforcement + branch/release automation (aligned with DynamORM release CI).
 - `v0.7`: Require cloud-token release asset publishing (no manual tokens; no tag-push chaining).
+- `v0.8`: Require immutable-release-compatible automation (draft release, upload assets, then publish).
 
 ## Scoring (deterministic)
 - Each category is scored 0–10.
@@ -65,7 +66,7 @@ Enforcement rule (anti-drift):
 | COM-5 | 1 | Security scan config not diluted (no excluded high-signal rules) | verifier COM-5 (fails if gosec excludes high-signal IDs like G101) |
 | COM-6 | 1 | Logging/operational standards enforced (if applicable) | verifier COM-6 (runs `go test -count=1 -run '^TestOps_' ./pkg/observability/zap ./pkg/middleware`) |
 | COM-7 | 2 | CI enforces the full rubric surface | verifier COM-7 (checks `quality-gates` workflow runs `make rubric` + uploads evidence) |
-| COM-8 | 2 | Branch + release automation enforced (main release, premain prerelease) | verifier COM-8 (checks release-please workflows + reusable asset publishing + policy doc + CodeQL/quality gates triggers) |
+| COM-8 | 2 | Branch + release automation enforced (main release, premain prerelease) | verifier COM-8 (checks release-please workflows + draft/publish asset publishing + policy doc + CodeQL/quality gates triggers) |
 
 **10/10 definition:** COM-1 through COM-8 pass.
 
