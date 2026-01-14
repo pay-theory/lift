@@ -4,7 +4,7 @@ This rubric defines what “10/10” means and how category grades are computed.
 “green by dilution” by making scoring versioned, measurable, and repeatable.
 
 ## Versioning (no moving goalposts)
-- **Rubric version:** `v0.3` (2026-01-14)
+- **Rubric version:** `v0.4` (2026-01-14)
 - **Comparability rule:** grades are comparable only within the same version.
 - **Change rule:** bump the version + changelog entry for any rubric change (what changed + why).
 
@@ -12,6 +12,7 @@ This rubric defines what “10/10” means and how category grades are computed.
 - `v0.1`: Initial rubric scaffold for Lift.
 - `v0.2`: Define and verify contract test surface for QUA-2 + CON-3.
 - `v0.3`: Define verifiers for COM-6 (ops/logging standards) and SEC-4 (domain P0 regressions).
+- `v0.4`: Define verifiers for MAI-1..MAI-3 (budgets, roadmap, duplicate code gate).
 
 ## Scoring (deterministic)
 - Each category is scored 0–10.
@@ -88,9 +89,9 @@ Enforcement rule (anti-drift):
 
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
-| MAI-1 | 4 | File-size/complexity budgets enforced | TODO: implement budgets (lines/complexity ceilings) |
-| MAI-2 | 3 | Maintainability roadmap current | TODO: maintainability verifier |
-| MAI-3 | 3 | Canonical implementations (no duplicate semantics) | TODO: singleton/canonical implementation verifier |
+| MAI-1 | 4 | File-size/complexity budgets enforced | verifier MAI-1 (file size budget + complexity budget assertions) |
+| MAI-2 | 3 | Maintainability roadmap current | verifier MAI-2 (requires `hgm-infra/planning/lift-maintainability-roadmap.md`) |
+| MAI-3 | 3 | Canonical implementations (no duplicate semantics) | verifier MAI-3 (runs `golangci-lint` with `dupl` only) |
 
 **10/10 definition:** MAI-1 through MAI-3 pass.
 

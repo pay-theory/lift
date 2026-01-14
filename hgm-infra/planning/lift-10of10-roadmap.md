@@ -1,8 +1,8 @@
-# Lift: 10/10 Roadmap (Rubric v0.3)
+# Lift: 10/10 Roadmap (Rubric v0.4)
 
 This roadmap maps milestones directly to rubric IDs with measurable acceptance criteria and verification commands.
 
-## Current scorecard (Rubric v0.3)
+## Current scorecard (Rubric v0.4)
 
 Scoring note: a check is only treated as “passing” if it is both green and enforced by a trustworthy verifier
 (pinned tooling, schema-valid configs, and no “green by dilution” shortcuts). Completeness failures invalidate “green by
@@ -20,7 +20,7 @@ Latest evidence: `hgm-infra/evidence/hgm-rubric-report.json`
 | Completeness | 10/10 | — |
 | Security | BLOCKED | SEC-2 |
 | Compliance Readiness | 10/10 | — |
-| Maintainability | BLOCKED | MAI-1, MAI-2, MAI-3 |
+| Maintainability | 10/10 | — |
 | Docs | 10/10 | — |
 
 Evidence commands (refresh whenever behavior changes):
@@ -54,9 +54,9 @@ Evidence commands (refresh whenever behavior changes):
 | CMP-1 | DONE | M0 (planning scaffold) |
 | CMP-2 | DONE | M0 (planning scaffold) |
 | CMP-3 | DONE | M0 (planning scaffold) |
-| MAI-1 | BLOCKED | M5 (maintainability budgets) |
-| MAI-2 | BLOCKED | M5 (maintainability budgets) |
-| MAI-3 | BLOCKED | M5 (maintainability budgets) |
+| MAI-1 | DONE | M5 (maintainability budgets) |
+| MAI-2 | DONE | M5 (maintainability budgets) |
+| MAI-3 | DONE | M5 (maintainability budgets) |
 | DOC-1 | DONE | M0 (planning scaffold) |
 | DOC-2 | DONE | M0 (planning scaffold) |
 | DOC-3 | DONE | M0 (planning scaffold) |
@@ -119,6 +119,7 @@ Tracking document: `hgm-infra/planning/lift-coverage-roadmap.md`
 
 ### M5 — Maintainability budgets (AI drift resilience)
 **Closes:** MAI-1, MAI-2, MAI-3
+**Status:** DONE
 
 **Acceptance criteria**
 - Add file-size/complexity budgets.

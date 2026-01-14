@@ -208,7 +208,7 @@ prepare_check_env() {
   [[ -f "${REPO_ROOT}/go.mod" ]] || return 0
 
   case "$id" in
-    CON-2|COM-3|SEC-1)
+    CON-2|COM-3|SEC-1|MAI-3)
       if [[ -f "${REPO_ROOT}/.golangci.yml" ]] || [[ "$cmd" == *"golangci-lint"* ]]; then
         ensure_golangci_lint_pinned
       fi
@@ -398,6 +398,80 @@ hgm_check_p0_regressions() {
   go test -count=1 -run '^TestP0_' "${pkgs[@]}"
 }
 
+hgm_check_file_budgets() {
+  local max_lines=2500
+
+  local report
+  report="$(find . -type f -name '*.go' \
+    -not -path './.git/*' \
+    -not -path './.gocache/*' \
+    -not -path './.gomodcache/*' \
+    -not -path './.golangci-lint-cache/*' \
+    -not -path './hgm-infra/*' \
+    -not -path './examples/*' \
+    -print0 | xargs -0 wc -l)"
+
+  if [[ -z "${report}" ]]; then
+    echo "BLOCKED: no Go files found for size budget check"
+    return 2
+  fi
+
+  echo "file_max_lines=${max_lines}"
+
+  local offenders
+  offenders="$(printf '%s\n' "${report}" | awk -v max="${max_lines}" '$2 != "total" && $1 > max {print $0}' | sed 's/^ *//')"
+  if [[ -n "${offenders}" ]]; then
+    echo "FAIL: files exceed line budget:"
+    printf '%s\n' "${offenders}"
+    return 1
+  fi
+
+  if [[ ! -f "${REPO_ROOT}/.golangci.yml" ]]; then
+    echo "BLOCKED: .golangci.yml not found for complexity budget verification"
+    return 2
+  fi
+
+  grep -q -- '- gocyclo' .golangci.yml
+  grep -q -- '- gocognit' .golangci.yml
+  grep -q -- 'min-complexity: 15' .golangci.yml
+}
+
+hgm_check_maintainability_roadmap() {
+  local file="${REPO_ROOT}/hgm-infra/planning/lift-maintainability-roadmap.md"
+
+  if [[ ! -f "${file}" ]]; then
+    echo "FAIL: maintainability roadmap missing at hgm-infra/planning/lift-maintainability-roadmap.md"
+    return 1
+  fi
+
+  if grep -q "{{" "${file}"; then
+    echo "FAIL: unrendered template token found in ${file}"
+    return 1
+  fi
+
+  grep -q '^## Budgets' "${file}"
+  grep -q '^## Duplicate Semantics' "${file}"
+}
+
+hgm_check_duplicate_semantics() {
+  if [[ ! -f "${REPO_ROOT}/go.mod" ]]; then
+    echo "BLOCKED: go.mod not found"
+    return 2
+  fi
+  if ! command -v golangci-lint >/dev/null 2>&1; then
+    echo "BLOCKED: golangci-lint not available"
+    return 2
+  fi
+
+  if [[ ! -f "${REPO_ROOT}/.golangci.yml" ]]; then
+    echo "BLOCKED: .golangci.yml not found"
+    return 2
+  fi
+
+  grep -q -- '- dupl' .golangci.yml
+  golangci-lint run --config .golangci.yml --enable-only=dupl ./...
+}
+
 run_check() {
   local id="$1"
   local category="$2"
@@ -521,9 +595,9 @@ CMD_DOCS="test -f hgm-infra/planning/lift-10of10-rubric.md && test -f hgm-infra/
 
 CMD_DOC_INTEGRITY="hgm_check_doc_integrity"
 
-CMD_FILE_BUDGET="TODO: implement file-size/complexity budgets"
-CMD_MAINTAINABILITY="TODO: maintainability verifier"
-CMD_SINGLETON="TODO: singleton/canonical implementation verifier"
+CMD_FILE_BUDGET="hgm_check_file_budgets"
+CMD_MAINTAINABILITY="hgm_check_maintainability_roadmap"
+CMD_SINGLETON="hgm_check_duplicate_semantics"
 
 # === Quality (QUA) ===
 run_check "QUA-1" "Quality" "$CMD_UNIT"

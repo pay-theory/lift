@@ -1,4 +1,4 @@
-# Lift Evidence Plan (Rubric v0.3)
+# Lift Evidence Plan (Rubric v0.4)
 
 Defines where evidence for rubric items is produced and how to regenerate it. Evidence should be reproducible from a
 commit SHA (no hand-assembled screenshots unless unavoidable).
@@ -48,9 +48,9 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | CMP-1 | Controls matrix exists | `hgm-infra/planning/lift-controls-matrix.md` | File existence check |
 | CMP-2 | Evidence plan exists | `hgm-infra/planning/lift-evidence-plan.md` | File existence check |
 | CMP-3 | Threat model exists | `hgm-infra/planning/lift-threat-model.md` | File existence check |
-| MAI-1 | File budget check | `hgm-infra/evidence/MAI-1-output.log` | TODO |
-| MAI-2 | Maintainability roadmap check | `hgm-infra/evidence/MAI-2-output.log` | TODO |
-| MAI-3 | Singleton/canonical check | `hgm-infra/evidence/MAI-3-output.log` | TODO |
+| MAI-1 | File budget check | `hgm-infra/evidence/MAI-1-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
+| MAI-2 | Maintainability roadmap check | `hgm-infra/evidence/MAI-2-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
+| MAI-3 | Duplicate semantics check | `hgm-infra/evidence/MAI-3-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | DOC-1 | Threat model present | `hgm-infra/planning/lift-threat-model.md` | File existence check |
 | DOC-2 | Evidence plan present | `hgm-infra/planning/lift-evidence-plan.md` | File existence check |
 | DOC-3 | Rubric + roadmap present | `hgm-infra/planning/lift-10of10-rubric.md` | File existence check |
