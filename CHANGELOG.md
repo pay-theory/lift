@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.0](https://github.com/pay-theory/lift/compare/v1.0.84...v1.1.0) (2026-01-14)
+
+
+### Bug Fixes
+
+* **ci:** align release line to v1.1.0 ([453b13d](https://github.com/pay-theory/lift/commit/453b13d2b188625d1d3856e2a9cae78e5901f3f7))
+* **ci:** publish release assets via github.token ([996a3bd](https://github.com/pay-theory/lift/commit/996a3bd1bb5d15bbeb510db608c62e7968de0071))
+* **ci:** publish release assets via github.token ([084f079](https://github.com/pay-theory/lift/commit/084f0796bca751000618cdd1574a06dd15c9c7d5))
+* **ci:** support immutable GitHub releases ([01c6855](https://github.com/pay-theory/lift/commit/01c68559f9b045816ef82d245b19319d3385dac8))
+* **ci:** support immutable GitHub releases ([d2fb7ca](https://github.com/pay-theory/lift/commit/d2fb7ca9453f8acbdf2c60f5825e611f0fae5e25))
+
 ## [1.0.85-rc](https://github.com/pay-theory/lift/compare/v1.0.84...v1.0.85-rc) (2026-01-14)
 
 
