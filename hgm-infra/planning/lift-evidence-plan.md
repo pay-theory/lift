@@ -1,4 +1,4 @@
-# Lift Evidence Plan (Rubric v0.1)
+# Lift Evidence Plan (Rubric v0.2)
 
 Defines where evidence for rubric items is produced and how to regenerate it. Evidence should be reproducible from a
 commit SHA (no hand-assembled screenshots unless unavoidable).
@@ -30,11 +30,11 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | Rubric ID | Primary evidence | Evidence path | How to refresh |
 | --- | --- | --- | --- |
 | QUA-1 | Unit test output | `hgm-infra/evidence/QUA-1-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
-| QUA-2 | Integration/contract output | `hgm-infra/evidence/QUA-2-output.log` | TODO |
+| QUA-2 | Integration/contract output | `hgm-infra/evidence/QUA-2-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` (runs `go test -tags=contract -count=1 ./pkg/contract/...`) |
 | QUA-3 | Coverage profile + summary | `hgm-infra/evidence/QUA-3-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | CON-1 | Formatter diff list | `hgm-infra/evidence/CON-1-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | CON-2 | Lint output | `hgm-infra/evidence/CON-2-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
-| CON-3 | Contract verification output | `hgm-infra/evidence/CON-3-output.log` | TODO |
+| CON-3 | Contract verification output | `hgm-infra/evidence/CON-3-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` (runs `go test -tags=contract -count=1 ./pkg/contract/...`) |
 | COM-1 | Module compile check | `hgm-infra/evidence/COM-1-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-2 | Toolchain pin verification | `hgm-infra/evidence/COM-2-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-3 | Lint config validation | `hgm-infra/evidence/COM-3-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |

@@ -157,10 +157,10 @@ func (c *Context) Query(key string) string {
 //
 //	authHeader := ctx.Header("Authorization")
 func (c *Context) Header(key string) string {
-	if c.Request == nil || c.Request.Headers == nil {
+	if c.Request == nil {
 		return ""
 	}
-	return c.Request.Headers[key]
+	return c.Request.GetHeader(key)
 }
 
 // Set stores a value in the context.

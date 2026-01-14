@@ -43,11 +43,17 @@ PIN_GOVULNCHECK_VERSION="TODO: pin govulncheck (e.g., v1.1.4)"
 
 mkdir -p "${EVIDENCE_DIR}"
 
+# Contract suite cache (so QUA-2 and CON-3 can share one run).
+CONTRACT_SUITE_LOG="${EVIDENCE_DIR}/contract-suite.log"
+CONTRACT_SUITE_EC="${EVIDENCE_DIR}/contract-suite.exitcode.log"
+
 # Clean previous run outputs to prevent stale evidence from being misattributed.
 rm -f \
   "${REPORT_PATH}" \
   "${EVIDENCE_DIR}/"*-output.log \
-  "${EVIDENCE_DIR}/DOC-5-parity.log"
+  "${EVIDENCE_DIR}/DOC-5-parity.log" \
+  "${CONTRACT_SUITE_LOG}" \
+  "${CONTRACT_SUITE_EC}"
 
 REPORT_SCHEMA_VERSION=1
 REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -294,6 +300,38 @@ hgm_check_gofmt_clean() {
   fi
 }
 
+hgm_check_contract_suite() {
+  if [[ ! -f "go.mod" ]]; then
+    echo "BLOCKED: go.mod not found"
+    return 2
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    echo "BLOCKED: go toolchain not available"
+    return 2
+  fi
+
+  if [[ -f "${CONTRACT_SUITE_EC}" ]]; then
+    if [[ -f "${CONTRACT_SUITE_LOG}" ]]; then
+      cat "${CONTRACT_SUITE_LOG}"
+    else
+      echo "FAIL: contract suite cache missing log file at ${CONTRACT_SUITE_LOG}"
+      return 1
+    fi
+    local ec
+    ec="$(cat "${CONTRACT_SUITE_EC}" 2>/dev/null || echo 1)"
+    return "${ec}"
+  fi
+
+  set +e
+  go test -tags=contract -count=1 ./pkg/contract/... >"${CONTRACT_SUITE_LOG}" 2>&1
+  local ec=$?
+  set -e
+
+  printf '%s' "${ec}" >"${CONTRACT_SUITE_EC}"
+  cat "${CONTRACT_SUITE_LOG}"
+  return "${ec}"
+}
+
 hgm_check_doc_integrity() {
   local files=(
     "hgm-infra/README.md"
@@ -400,7 +438,7 @@ echo ""
 
 # Commands are intentionally centralized here so the rubric docs and verifier stay aligned.
 CMD_UNIT="./scripts/ci-check.sh"
-CMD_INTEGRATION="TODO: define integration/contract test surface"
+CMD_INTEGRATION="hgm_check_contract_suite"
 
 # Avoid embedding shell variables in command strings (easy to break under `set -u` + `eval`).
 # For complex checks, prefer calling a function.
@@ -408,7 +446,7 @@ CMD_COVERAGE="hgm_check_go_coverage"
 CMD_FMT="hgm_check_gofmt_clean"
 
 CMD_LINT="make lint"
-CMD_CONTRACT="TODO: add public API contract parity tests"
+CMD_CONTRACT="hgm_check_contract_suite"
 
 CMD_MODULES="go build ./..."
 

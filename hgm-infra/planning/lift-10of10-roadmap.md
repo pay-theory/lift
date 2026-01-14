@@ -1,8 +1,8 @@
-# Lift: 10/10 Roadmap (Rubric v0.1)
+# Lift: 10/10 Roadmap (Rubric v0.2)
 
 This roadmap maps milestones directly to rubric IDs with measurable acceptance criteria and verification commands.
 
-## Current scorecard (Rubric v0.1)
+## Current scorecard (Rubric v0.2)
 
 Scoring note: a check is only treated as “passing” if it is both green and enforced by a trustworthy verifier
 (pinned tooling, schema-valid configs, and no “green by dilution” shortcuts). Completeness failures invalidate “green by
@@ -13,9 +13,9 @@ Because `hgm.init` does not execute verifiers, grades below are *expected to be 
 
 | Category | Grade | Blocking rubric items |
 | --- | ---: | --- |
-| Quality | BLOCKED | QUA-2, QUA-3 |
-| Consistency | BLOCKED | CON-3 |
-| Completeness | BLOCKED | COM-6 |
+| Quality | BLOCKED | QUA-3 |
+| Consistency | 10/10 | — |
+| Completeness | BLOCKED | COM-4, COM-6 |
 | Security | BLOCKED | SEC-2, SEC-4 |
 | Compliance Readiness | 10/10 | — |
 | Maintainability | BLOCKED | MAI-1, MAI-2, MAI-3 |
@@ -23,7 +23,7 @@ Because `hgm.init` does not execute verifiers, grades below are *expected to be 
 
 Evidence commands (refresh whenever behavior changes):
 - `./scripts/ci-check.sh`
-- TODO: integration/contract tests
+- `go test -tags=contract -count=1 ./pkg/contract/...`
 - `./hgm-infra/verifiers/hgm-verify-rubric.sh` (coverage, fmt, pins, parity)
 - `make lint`
 - `go build ./...`
@@ -34,11 +34,11 @@ Evidence commands (refresh whenever behavior changes):
 | Rubric ID | Status | Milestone |
 | --- | --- | --- |
 | QUA-1 | EXPECTED | M1 (core loop) |
-| QUA-2 | BLOCKED | M2 (contract/integration tests) |
+| QUA-2 | EXPECTED | M2 (contract/integration tests) |
 | QUA-3 | BLOCKED | M3 (coverage to 90%) |
 | CON-1 | EXPECTED | M1 (core loop) |
 | CON-2 | EXPECTED | M1 (core loop) |
-| CON-3 | BLOCKED | M2 (contract tests) |
+| CON-3 | EXPECTED | M2 (contract tests) |
 | COM-1 | EXPECTED | M1 (core loop) |
 | COM-2 | EXPECTED | M1 (core loop) |
 | COM-3 | EXPECTED | M1 (core loop) |
@@ -90,6 +90,7 @@ Evidence commands (refresh whenever behavior changes):
 
 ### M2 — Public API contract parity + integration tests
 **Closes:** QUA-2, CON-3
+**Status:** DONE
 
 **Acceptance criteria**
 - Add deterministic tests that lock down public behavior and prevent silent semantic drift.

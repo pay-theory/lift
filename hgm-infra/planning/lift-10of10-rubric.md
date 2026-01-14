@@ -4,12 +4,13 @@ This rubric defines what “10/10” means and how category grades are computed.
 “green by dilution” by making scoring versioned, measurable, and repeatable.
 
 ## Versioning (no moving goalposts)
-- **Rubric version:** `v0.1` (2026-01-14)
+- **Rubric version:** `v0.2` (2026-01-14)
 - **Comparability rule:** grades are comparable only within the same version.
 - **Change rule:** bump the version + changelog entry for any rubric change (what changed + why).
 
 ### Changelog
 - `v0.1`: Initial rubric scaffold for Lift.
+- `v0.2`: Define and verify contract test surface for QUA-2 + CON-3.
 
 ## Scoring (deterministic)
 - Each category is scored 0–10.
@@ -33,7 +34,7 @@ Enforcement rule (anti-drift):
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
 | QUA-1 | 4 | Unit tests stay green | `./scripts/ci-check.sh` |
-| QUA-2 | 3 | Integration or contract tests stay green | TODO: define integration/contract test surface |
+| QUA-2 | 3 | Integration or contract tests stay green | `go test -tags=contract -count=1 ./pkg/contract/...` |
 | QUA-3 | 3 | Coverage ≥ 90% (no denominator games) | `./hgm-infra/verifiers/hgm-verify-rubric.sh` (QUA-3/COM-4) |
 
 **10/10 definition:** QUA-1 through QUA-3 pass.
@@ -44,7 +45,7 @@ Enforcement rule (anti-drift):
 | --- | ---: | --- | --- |
 | CON-1 | 3 | gofmt/formatter clean (no diffs) | `./hgm-infra/verifiers/hgm-verify-rubric.sh` (CON-1) |
 | CON-2 | 5 | Lint/static analysis green (pinned version) | `make lint` (uses `.golangci.yml`; CI pins golangci-lint `v2.4.0`) |
-| CON-3 | 2 | Public boundary contract parity (if applicable) | TODO: add contract tests for public API semantics |
+| CON-3 | 2 | Public boundary contract parity (if applicable) | `go test -tags=contract -count=1 ./pkg/contract/...` |
 
 **10/10 definition:** CON-1 through CON-3 pass.
 

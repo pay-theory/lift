@@ -28,8 +28,8 @@ Notes:
 ## Working Rules (Humans + Agents)
 
 - Keep all governance outputs under `hgm-infra/`.
+- Treat the rubric/roadmap as living documents: they are not static; keep them versioned in git and evolve them intentionally.
 - Don’t relax gates by excluding directories, lowering thresholds, or disabling checks.
 - If a verifier depends on a missing tool/version pin, **fail closed** (`BLOCKED`) until pinned.
 - Don’t commit secrets into `hgm-infra/`.
 - If verifiers create `hgm-infra/.tools/` (pinned tool installs), treat it as local-only (don’t commit binaries).
-

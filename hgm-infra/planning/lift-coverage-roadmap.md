@@ -1,4 +1,4 @@
-# Lift: Coverage Roadmap (to 90%) (Rubric v0.1)
+# Lift: Coverage Roadmap (to 90%) (Rubric v0.2)
 
 Goal: raise and maintain meaningful coverage to **≥ 90%** as measured by the rubric verifier coverage command, without
 reducing the measurement surface.
