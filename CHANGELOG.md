@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.85-rc](https://github.com/pay-theory/lift/compare/v1.0.84...v1.0.85-rc) (2026-01-14)
+
+
+### Bug Fixes
+
+* **ci:** publish release assets via github.token ([996a3bd](https://github.com/pay-theory/lift/commit/996a3bd1bb5d15bbeb510db608c62e7968de0071))
+* **ci:** publish release assets via github.token ([084f079](https://github.com/pay-theory/lift/commit/084f0796bca751000618cdd1574a06dd15c9c7d5))
+
 ## v1.0.82 - 2026-01-04
 
 ### Added
