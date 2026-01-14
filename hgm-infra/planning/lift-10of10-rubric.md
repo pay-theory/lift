@@ -4,13 +4,14 @@ This rubric defines what “10/10” means and how category grades are computed.
 “green by dilution” by making scoring versioned, measurable, and repeatable.
 
 ## Versioning (no moving goalposts)
-- **Rubric version:** `v0.2` (2026-01-14)
+- **Rubric version:** `v0.3` (2026-01-14)
 - **Comparability rule:** grades are comparable only within the same version.
 - **Change rule:** bump the version + changelog entry for any rubric change (what changed + why).
 
 ### Changelog
 - `v0.1`: Initial rubric scaffold for Lift.
 - `v0.2`: Define and verify contract test surface for QUA-2 + CON-3.
+- `v0.3`: Define verifiers for COM-6 (ops/logging standards) and SEC-4 (domain P0 regressions).
 
 ## Scoring (deterministic)
 - Each category is scored 0–10.
@@ -58,7 +59,7 @@ Enforcement rule (anti-drift):
 | COM-3 | 2 | Lint config schema-valid (no silent skip) | verifier COM-3 (checks `.golangci.yml` present + version + key settings) |
 | COM-4 | 2 | Coverage threshold not diluted (≥ 90%) | verifier COM-4 (parses `coverage.core.out`) |
 | COM-5 | 1 | Security scan config not diluted (no excluded high-signal rules) | verifier COM-5 (fails if gosec excludes high-signal IDs like G101) |
-| COM-6 | 1 | Logging/operational standards enforced (if applicable) | TODO: define logging/operational standards verifier |
+| COM-6 | 1 | Logging/operational standards enforced (if applicable) | verifier COM-6 (runs `go test -count=1 -run '^TestOps_' ./pkg/observability/zap ./pkg/middleware`) |
 
 **10/10 definition:** COM-1 through COM-6 pass.
 
@@ -69,7 +70,7 @@ Enforcement rule (anti-drift):
 | SEC-1 | 3 | Static security scan green (pinned version) | verifier SEC-1 (gosec via pinned golangci-lint) |
 | SEC-2 | 3 | Dependency vulnerability scan green | TODO: pin and run govulncheck |
 | SEC-3 | 2 | Supply-chain verification green | verifier SEC-3 (action pins, go.sum present) |
-| SEC-4 | 2 | Domain-specific P0 regression tests | TODO: add P0 tests for auth/logging/JWT/tenant/guardrails |
+| SEC-4 | 2 | Domain-specific P0 regression tests | verifier SEC-4 (runs `go test -count=1 -run '^TestP0_' ./pkg/observability/zap ./pkg/middleware`) |
 
 **10/10 definition:** SEC-1 through SEC-4 pass.
 

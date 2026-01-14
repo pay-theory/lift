@@ -354,6 +354,50 @@ hgm_check_doc_integrity() {
   done
 }
 
+hgm_check_operational_standards() {
+  if [[ ! -f "go.mod" ]]; then
+    echo "BLOCKED: go.mod not found"
+    return 2
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    echo "BLOCKED: go toolchain not available"
+    return 2
+  fi
+
+  local pkgs=(./pkg/observability/zap ./pkg/middleware)
+
+  local listed
+  listed="$(go test -list '^TestOps_' "${pkgs[@]}" | grep -E '^TestOps_' || true)"
+  if [[ -z "${listed}" ]]; then
+    echo "FAIL: no operational standards tests found (expected TestOps_* in: ${pkgs[*]})"
+    return 1
+  fi
+
+  go test -count=1 -run '^TestOps_' "${pkgs[@]}"
+}
+
+hgm_check_p0_regressions() {
+  if [[ ! -f "go.mod" ]]; then
+    echo "BLOCKED: go.mod not found"
+    return 2
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    echo "BLOCKED: go toolchain not available"
+    return 2
+  fi
+
+  local pkgs=(./pkg/observability/zap ./pkg/middleware)
+
+  local listed
+  listed="$(go test -list '^TestP0_' "${pkgs[@]}" | grep -E '^TestP0_' || true)"
+  if [[ -z "${listed}" ]]; then
+    echo "FAIL: no P0 regression tests found (expected TestP0_* in: ${pkgs[*]})"
+    return 1
+  fi
+
+  go test -count=1 -run '^TestP0_' "${pkgs[@]}"
+}
+
 run_check() {
   local id="$1"
   local category="$2"
@@ -466,7 +510,8 @@ CMD_VULN="TODO: pin and run govulncheck (e.g., govulncheck ./...)"
 # Supply chain: require actions pinned by commit SHA (no @v2/@v5) and ensure go.sum exists.
 CMD_SUPPLY="test -f go.sum; if grep -R -- '^[[:space:]]*uses:[[:space:]].*@v[0-9]' .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null; then echo 'Unpinned GitHub Action detected (uses @vN)'; exit 1; fi; echo 'Actions appear SHA-pinned'"
 
-CMD_P0="TODO: add domain P0 regression tests (secrets/logging/auth invariants)"
+CMD_OPS="hgm_check_operational_standards"
+CMD_P0="hgm_check_p0_regressions"
 
 CMD_CONTROLS="test -f hgm-infra/planning/lift-controls-matrix.md"
 CMD_EVIDENCE="test -f hgm-infra/planning/lift-evidence-plan.md"
@@ -496,7 +541,7 @@ run_check "COM-2" "Completeness" "$CMD_TOOLCHAIN"
 run_check "COM-3" "Completeness" "$CMD_LINT_CONFIG"
 run_check "COM-4" "Completeness" "$CMD_COV_THRESHOLD"
 run_check "COM-5" "Completeness" "$CMD_SEC_CONFIG"
-run_check "COM-6" "Completeness" "TODO: define logging/operational standards verifier"
+run_check "COM-6" "Completeness" "$CMD_OPS"
 
 # === Security (SEC) ===
 run_check "SEC-1" "Security" "$CMD_SAST"

@@ -1,8 +1,8 @@
-# Lift: 10/10 Roadmap (Rubric v0.2)
+# Lift: 10/10 Roadmap (Rubric v0.3)
 
 This roadmap maps milestones directly to rubric IDs with measurable acceptance criteria and verification commands.
 
-## Current scorecard (Rubric v0.2)
+## Current scorecard (Rubric v0.3)
 
 Scoring note: a check is only treated as “passing” if it is both green and enforced by a trustworthy verifier
 (pinned tooling, schema-valid configs, and no “green by dilution” shortcuts). Completeness failures invalidate “green by
@@ -17,8 +17,8 @@ Latest evidence: `hgm-infra/evidence/hgm-rubric-report.json`
 | --- | ---: | --- |
 | Quality | 10/10 | — |
 | Consistency | 10/10 | — |
-| Completeness | BLOCKED | COM-6 |
-| Security | BLOCKED | SEC-2, SEC-4 |
+| Completeness | 10/10 | — |
+| Security | BLOCKED | SEC-2 |
 | Compliance Readiness | 10/10 | — |
 | Maintainability | BLOCKED | MAI-1, MAI-2, MAI-3 |
 | Docs | 10/10 | — |
@@ -46,11 +46,11 @@ Evidence commands (refresh whenever behavior changes):
 | COM-3 | DONE | M1 (core loop) |
 | COM-4 | DONE | M3 (coverage to 90%) |
 | COM-5 | DONE | M1 (core loop) |
-| COM-6 | BLOCKED | M4 (operational/logging standards) |
+| COM-6 | DONE | M4 (operational/logging standards) |
 | SEC-1 | DONE | M1.5 (security gates) |
 | SEC-2 | BLOCKED | M1.5 (security gates) |
 | SEC-3 | DONE | M1.5 (security gates) |
-| SEC-4 | BLOCKED | M4 (P0 regressions) |
+| SEC-4 | DONE | M4 (P0 regressions) |
 | CMP-1 | DONE | M0 (planning scaffold) |
 | CMP-2 | DONE | M0 (planning scaffold) |
 | CMP-3 | DONE | M0 (planning scaffold) |
@@ -111,6 +111,7 @@ Tracking document: `hgm-infra/planning/lift-coverage-roadmap.md`
 
 ### M4 — Operational/logging standards + domain P0 regressions
 **Closes:** COM-6, SEC-4
+**Status:** DONE
 
 **Acceptance criteria**
 - Add verifiers/tests asserting that sensitive inputs are not logged, secrets are handled safely, and defaults are
