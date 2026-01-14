@@ -1,4 +1,4 @@
-# Lift Evidence Plan (Rubric v0.4)
+# Lift Evidence Plan (Rubric v0.5)
 
 Defines where evidence for rubric items is produced and how to regenerate it. Evidence should be reproducible from a
 commit SHA (no hand-assembled screenshots unless unavoidable).
@@ -13,6 +13,7 @@ commit SHA (no hand-assembled screenshots unless unavoidable).
   - `hgm-infra/evidence/QUA-3-output.log`
 - Lint: `make lint` → `hgm-infra/evidence/CON-2-output.log`
 - SAST: verifier SEC-1 (gosec via pinned golangci-lint) → `hgm-infra/evidence/SEC-1-output.log`
+- Dependency vulnerability scan: verifier SEC-2 (govulncheck pinned) → `hgm-infra/evidence/SEC-2-output.log`
 - Supply-chain checks: verifier SEC-3 → `hgm-infra/evidence/SEC-3-output.log`
 
 ### Deterministic in-repo artifacts
@@ -42,7 +43,7 @@ Every rubric ID maps to exactly one verifier and one primary evidence location.
 | COM-5 | Security config validation | `hgm-infra/evidence/COM-5-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | COM-6 | Logging standards check | `hgm-infra/evidence/COM-6-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` (runs `go test -count=1 -run '^TestOps_' ./pkg/observability/zap ./pkg/middleware`) |
 | SEC-1 | SAST scan output | `hgm-infra/evidence/SEC-1-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
-| SEC-2 | Vulnerability scan output | `hgm-infra/evidence/SEC-2-output.log` | TODO |
+| SEC-2 | Vulnerability scan output | `hgm-infra/evidence/SEC-2-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | SEC-3 | Supply-chain verification | `hgm-infra/evidence/SEC-3-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` |
 | SEC-4 | Domain P0 regression tests | `hgm-infra/evidence/SEC-4-output.log` | `./hgm-infra/verifiers/hgm-verify-rubric.sh` (runs `go test -count=1 -run '^TestP0_' ./pkg/observability/zap ./pkg/middleware`) |
 | CMP-1 | Controls matrix exists | `hgm-infra/planning/lift-controls-matrix.md` | File existence check |

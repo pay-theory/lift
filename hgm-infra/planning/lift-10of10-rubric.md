@@ -4,7 +4,7 @@ This rubric defines what “10/10” means and how category grades are computed.
 “green by dilution” by making scoring versioned, measurable, and repeatable.
 
 ## Versioning (no moving goalposts)
-- **Rubric version:** `v0.4` (2026-01-14)
+- **Rubric version:** `v0.5` (2026-01-14)
 - **Comparability rule:** grades are comparable only within the same version.
 - **Change rule:** bump the version + changelog entry for any rubric change (what changed + why).
 
@@ -13,6 +13,7 @@ This rubric defines what “10/10” means and how category grades are computed.
 - `v0.2`: Define and verify contract test surface for QUA-2 + CON-3.
 - `v0.3`: Define verifiers for COM-6 (ops/logging standards) and SEC-4 (domain P0 regressions).
 - `v0.4`: Define verifiers for MAI-1..MAI-3 (budgets, roadmap, duplicate code gate).
+- `v0.5`: Define verifier for SEC-2 (dependency vulnerability scan) via pinned govulncheck.
 
 ## Scoring (deterministic)
 - Each category is scored 0–10.
@@ -69,7 +70,7 @@ Enforcement rule (anti-drift):
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
 | SEC-1 | 3 | Static security scan green (pinned version) | verifier SEC-1 (gosec via pinned golangci-lint) |
-| SEC-2 | 3 | Dependency vulnerability scan green | TODO: pin and run govulncheck |
+| SEC-2 | 3 | Dependency vulnerability scan green | verifier SEC-2 (govulncheck pinned) |
 | SEC-3 | 2 | Supply-chain verification green | verifier SEC-3 (action pins, go.sum present) |
 | SEC-4 | 2 | Domain-specific P0 regression tests | verifier SEC-4 (runs `go test -count=1 -run '^TestP0_' ./pkg/observability/zap ./pkg/middleware`) |
 

@@ -39,7 +39,7 @@ export PATH="${HGM_TOOLS_BIN}:${PATH}"
 # Tool pins.
 # If these are unset, checks that depend on them must be marked BLOCKED (never “use whatever is installed”).
 PIN_GOLANGCI_LINT_VERSION="v2.4.0"  # pinned in .github/workflows/test.yml
-PIN_GOVULNCHECK_VERSION="TODO: pin govulncheck (e.g., v1.1.4)"
+PIN_GOVULNCHECK_VERSION="v1.1.4"
 
 mkdir -p "${EVIDENCE_DIR}"
 
@@ -579,7 +579,7 @@ CMD_SEC_CONFIG="test -f .golangci.yml; grep -q -- '- gosec' .golangci.yml; grep 
 # SAST is run as gosec only (separate from general lint), using pinned golangci-lint.
 CMD_SAST="golangci-lint run --config .golangci.yml --enable-only=gosec ./..."
 
-CMD_VULN="TODO: pin and run govulncheck (e.g., govulncheck ./...)"
+CMD_VULN="govulncheck ./..."
 
 # Supply chain: require actions pinned by commit SHA (no @v2/@v5) and ensure go.sum exists.
 CMD_SUPPLY="test -f go.sum; if grep -R -- '^[[:space:]]*uses:[[:space:]].*@v[0-9]' .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null; then echo 'Unpinned GitHub Action detected (uses @vN)'; exit 1; fi; echo 'Actions appear SHA-pinned'"

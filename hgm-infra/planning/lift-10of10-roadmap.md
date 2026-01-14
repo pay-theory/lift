@@ -1,8 +1,8 @@
-# Lift: 10/10 Roadmap (Rubric v0.4)
+# Lift: 10/10 Roadmap (Rubric v0.5)
 
 This roadmap maps milestones directly to rubric IDs with measurable acceptance criteria and verification commands.
 
-## Current scorecard (Rubric v0.4)
+## Current scorecard (Rubric v0.5)
 
 Scoring note: a check is only treated as “passing” if it is both green and enforced by a trustworthy verifier
 (pinned tooling, schema-valid configs, and no “green by dilution” shortcuts). Completeness failures invalidate “green by
@@ -18,7 +18,7 @@ Latest evidence: `hgm-infra/evidence/hgm-rubric-report.json`
 | Quality | 10/10 | — |
 | Consistency | 10/10 | — |
 | Completeness | 10/10 | — |
-| Security | BLOCKED | SEC-2 |
+| Security | 10/10 | — |
 | Compliance Readiness | 10/10 | — |
 | Maintainability | 10/10 | — |
 | Docs | 10/10 | — |
@@ -26,10 +26,9 @@ Latest evidence: `hgm-infra/evidence/hgm-rubric-report.json`
 Evidence commands (refresh whenever behavior changes):
 - `./scripts/ci-check.sh`
 - `go test -tags=contract -count=1 ./pkg/contract/...`
-- `./hgm-infra/verifiers/hgm-verify-rubric.sh` (coverage, fmt, pins, parity)
+- `./hgm-infra/verifiers/hgm-verify-rubric.sh` (coverage, fmt, pins, parity, vuln scan)
 - `make lint`
 - `go build ./...`
-- TODO: govulncheck
 
 ## Rubric-to-milestone mapping
 
@@ -48,7 +47,7 @@ Evidence commands (refresh whenever behavior changes):
 | COM-5 | DONE | M1 (core loop) |
 | COM-6 | DONE | M4 (operational/logging standards) |
 | SEC-1 | DONE | M1.5 (security gates) |
-| SEC-2 | BLOCKED | M1.5 (security gates) |
+| SEC-2 | DONE | M1.5 (security gates) |
 | SEC-3 | DONE | M1.5 (security gates) |
 | SEC-4 | DONE | M4 (P0 regressions) |
 | CMP-1 | DONE | M0 (planning scaffold) |
@@ -81,14 +80,22 @@ Evidence commands (refresh whenever behavior changes):
 - Evidence plan maps rubric IDs → verifiers → evidence paths under `hgm-infra/`.
 
 ### M1 — Make core lint/build loop reproducible
-**Closes:** QUA-1, CON-1, CON-2, COM-1, COM-2, COM-3, COM-5, SEC-1, SEC-3
+**Closes:** QUA-1, CON-1, CON-2, COM-1, COM-2, COM-3, COM-5
 **Status:** DONE
 
 **Acceptance criteria**
 - `make lint` passes with pinned golangci-lint (CI uses `v2.4.0`).
 - Formatter check is deterministic.
 - Toolchain pin checks are deterministic.
-- SAST (gosec) runs with pinned tooling.
+
+### M1.5 — Security gates (dependency scan + supply chain)
+**Closes:** SEC-1, SEC-2, SEC-3
+**Status:** DONE
+
+**Acceptance criteria**
+- SAST (gosec) runs with pinned tooling and is green.
+- Dependency vulnerability scan (govulncheck) is green and pinned.
+- Supply-chain checks (action pinning, `go.sum`) stay enforced and green.
 
 ### M2 — Public API contract parity + integration tests
 **Closes:** QUA-2, CON-3
