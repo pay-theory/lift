@@ -182,4 +182,3 @@ func TestEnterpriseTestPatterns_GenerateReport(t *testing.T) {
 		t.Fatalf("expected report.Duration > 0, got %v", report.Duration)
 	}
 }
-

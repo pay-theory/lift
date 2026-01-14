@@ -373,7 +373,7 @@ func (dm *DashboardManager) buildWidgetProperties(widgetTemplate WidgetTemplate,
 
 	// Build metrics if present
 	if len(widgetTemplate.Metrics) > 0 {
-		metrics := [][]any{}
+		metrics := make([][]any, 0, len(widgetTemplate.Metrics))
 		for _, metric := range widgetTemplate.Metrics {
 			metricArray := []any{
 				dm.substituteVariables(metric.Namespace, variables),

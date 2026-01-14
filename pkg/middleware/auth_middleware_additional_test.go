@@ -340,4 +340,3 @@ func TestJWTValidator_CustomClaimsValidation(t *testing.T) {
 	_, err = validator.ValidateToken(badTenantToken)
 	require.Error(t, err)
 }
-

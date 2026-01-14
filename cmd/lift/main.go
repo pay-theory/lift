@@ -28,9 +28,13 @@ func run() int {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-sigCh
-		cancel()
+		select {
+		case <-sigCh:
+			cancel()
+		case <-ctx.Done():
+		}
 	}()
+	defer signal.Stop(sigCh)
 
 	// Create CLI with version
 	app := cli.NewCLI(Version)

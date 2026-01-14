@@ -3,6 +3,7 @@ package zap
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -278,7 +279,48 @@ func (z *ZapLogger) log(level zapcore.Level, message string, fieldMaps ...map[st
 
 // sanitizeFieldValue sanitizes field values to prevent sensitive data exposure
 func (z *ZapLogger) sanitizeFieldValue(key string, value any) any {
-	return sanitization.SanitizeFieldValue(key, value)
+	sanitized := sanitization.SanitizeFieldValue(key, value)
+
+	switch typed := sanitized.(type) {
+	case string:
+		return sanitizeLogString(typed)
+	case []byte:
+		return sanitizeLogString(string(typed))
+	case map[string]any:
+		return z.sanitizeFieldMap(typed)
+	case []any:
+		return z.sanitizeFieldSlice(key, typed)
+	default:
+		return sanitized
+	}
+}
+
+func (z *ZapLogger) sanitizeFieldMap(fields map[string]any) map[string]any {
+	if fields == nil {
+		return nil
+	}
+
+	sanitized := make(map[string]any, len(fields))
+	for k, v := range fields {
+		sanitized[k] = z.sanitizeFieldValue(k, v)
+	}
+	return sanitized
+}
+
+func (z *ZapLogger) sanitizeFieldSlice(key string, values []any) []any {
+	sanitized := make([]any, len(values))
+	for i, item := range values {
+		sanitized[i] = z.sanitizeFieldValue(key, item)
+	}
+	return sanitized
+}
+
+func sanitizeLogString(value string) string {
+	if value == "" {
+		return value
+	}
+	value = strings.ReplaceAll(value, "\r", "")
+	return strings.ReplaceAll(value, "\n", "")
 }
 
 // Flush syncs the logger (Zap handles this automatically)

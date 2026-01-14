@@ -49,4 +49,3 @@ func TestServiceMockRegistry_SetupAndCleanup(t *testing.T) {
 		t.Fatalf("mock_payments still present after cleanup")
 	}
 }
-

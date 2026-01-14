@@ -147,4 +147,3 @@ func TestHealthCheckers_BuiltinsAndAlias(t *testing.T) {
 
 	require.NotNil(t, HealthMiddleware(HealthConfig{}))
 }
-

@@ -373,7 +373,7 @@ func (mrs *MLRiskScorer) UpdateRiskModel(_ context.Context, feedback []*RiskFeed
 
 	// Update model if available - convert to []RiskFeedback
 	if mrs.model != nil {
-		var feedbackSlice []RiskFeedback
+		feedbackSlice := make([]RiskFeedback, 0, len(feedback))
 		for _, f := range feedback {
 			if f != nil {
 				feedbackSlice = append(feedbackSlice, *f)
@@ -397,8 +397,8 @@ func (mrs *MLRiskScorer) GetRiskFactors() []RiskFactor {
 
 // extractFeatures extracts features from an audit event
 func (mrs *MLRiskScorer) extractFeatures(ctx context.Context, event *AuditEvent) ([]float64, []RiskFactor, error) {
-	var features []float64
-	var riskFactors []RiskFactor
+	features := make([]float64, 0, 13)
+	riskFactors := make([]RiskFactor, 0, 4)
 
 	// Extract basic features
 	features = append(features, mrs.extractBasicFeatures(event)...)
@@ -423,7 +423,7 @@ func (mrs *MLRiskScorer) extractFeatures(ctx context.Context, event *AuditEvent)
 
 // extractBasicFeatures extracts basic features from an event
 func (mrs *MLRiskScorer) extractBasicFeatures(event *AuditEvent) []float64 {
-	var features []float64
+	features := make([]float64, 0, 5)
 
 	// Event type risk
 	eventTypeRisk := mrs.getEventTypeRisk(event.EventType)
@@ -453,8 +453,8 @@ func (mrs *MLRiskScorer) extractBasicFeatures(event *AuditEvent) []float64 {
 
 // extractTemporalFeatures extracts temporal features
 func (mrs *MLRiskScorer) extractTemporalFeatures(event *AuditEvent) ([]float64, []RiskFactor) {
-	var features []float64
-	var factors []RiskFactor
+	features := make([]float64, 0, 2)
+	factors := make([]RiskFactor, 0, 2)
 
 	// Time of day risk
 	hour := event.Timestamp.Hour()
@@ -496,8 +496,8 @@ func (mrs *MLRiskScorer) extractTemporalFeatures(event *AuditEvent) ([]float64, 
 
 // extractBehavioralFeatures extracts behavioral features
 func (mrs *MLRiskScorer) extractBehavioralFeatures(ctx context.Context, event *AuditEvent) ([]float64, []RiskFactor) {
-	var features []float64
-	var factors []RiskFactor
+	features := make([]float64, 0, 3)
+	factors := make([]RiskFactor, 0, 1)
 
 	// Frequency risk (too frequent = higher risk)
 	frequencyRisk := mrs.getFrequencyRisk(ctx, event)
@@ -529,8 +529,8 @@ func (mrs *MLRiskScorer) extractBehavioralFeatures(ctx context.Context, event *A
 
 // extractContextualFeatures extracts contextual features
 func (mrs *MLRiskScorer) extractContextualFeatures(_ context.Context, event *AuditEvent) ([]float64, []RiskFactor) {
-	var features []float64
-	var factors []RiskFactor
+	features := make([]float64, 0, 3)
+	factors := make([]RiskFactor, 0, 1)
 
 	// Data sensitivity risk
 	dataSensitivityRisk := mrs.getDataSensitivityRisk(event.DataAccessed)

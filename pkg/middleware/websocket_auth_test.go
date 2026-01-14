@@ -141,4 +141,3 @@ func TestWebSocketAuthFromQueryAndHeader(t *testing.T) {
 	require.Equal(t, "q", WebSocketAuthFromQuery("token")(ctx))
 	require.Equal(t, "h", WebSocketAuthFromHeader("Authorization")(ctx))
 }
-

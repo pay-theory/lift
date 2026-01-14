@@ -173,4 +173,3 @@ func TestDynamORMIdempotencyStore_Set_SetProcessing_Delete(t *testing.T) {
 	q2.AssertExpectations(t)
 	q3.AssertExpectations(t)
 }
-

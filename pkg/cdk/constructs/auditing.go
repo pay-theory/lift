@@ -960,7 +960,7 @@ func createLogMetricAlarm(scope constructs.Construct, id string, _ *AuditingProp
 
 // createAuditAlarms creates CloudWatch alarms for audit monitoring
 func createAuditAlarms(scope constructs.Construct, props *AuditingProps, appLogGroup awslogs.LogGroup, _ awslogs.LogGroup, auditLogGroup awslogs.LogGroup) []awscloudwatch.Alarm {
-	var alarms []awscloudwatch.Alarm
+	alarms := make([]awscloudwatch.Alarm, 0, 2)
 
 	// Failed login attempts alarm
 	failedLoginAlarm := createLogMetricAlarm(scope, "FailedLoginAlarm", props, struct {

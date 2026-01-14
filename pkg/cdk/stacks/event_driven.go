@@ -136,6 +136,8 @@ func NewEventDrivenStack(scope constructs.Construct, id string, props *EventDriv
 	// Create database table for event sourcing
 	eventStore := liftconstructs.NewLiftTable(stack, jsii.String("EventStore"), &liftconstructs.LiftTableProps{
 		TableName:                 jsii.String(props.AppName + "-events"),
+		PartitionKeyName:          jsii.String("PK"),
+		SortKeyName:               jsii.String("SK"),
 		EnableStreams:             jsii.Bool(true),
 		StreamViewType:            awsdynamodb.StreamViewType_NEW_AND_OLD_IMAGES,
 		EnablePointInTimeRecovery: jsii.Bool(true),

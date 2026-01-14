@@ -51,4 +51,3 @@ func TestEnhancedObservability_TracingAndErrorPaths(t *testing.T) {
 	require.Greater(t, afterErr.ErrorCount, before.ErrorCount)
 	require.Contains(t, metrics.metrics, "requests.errors")
 }
-

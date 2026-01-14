@@ -37,4 +37,3 @@ func TestMemoryCache_AdditionalMethods(t *testing.T) {
 	require.NoError(t, cache.Close())
 	require.False(t, cache.Exists("k3"))
 }
-

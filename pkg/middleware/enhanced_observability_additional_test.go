@@ -15,18 +15,22 @@ type stubMetricsCollector struct {
 	stats observability.MetricsStats
 }
 
-func (s *stubMetricsCollector) Counter(string, ...map[string]string) lift.Counter                { return &noopCounter{} }
-func (s *stubMetricsCollector) Histogram(string, ...map[string]string) lift.Histogram            { return &noopHistogram{} }
-func (s *stubMetricsCollector) Gauge(string, ...map[string]string) lift.Gauge                    { return &noopGauge{} }
-func (s *stubMetricsCollector) Flush() error                                                     { return nil }
-func (s *stubMetricsCollector) WithTags(map[string]string) observability.MetricsCollector        { return s }
-func (s *stubMetricsCollector) WithTag(string, string) observability.MetricsCollector            { return s }
-func (s *stubMetricsCollector) RecordBatch([]*observability.MetricEntry) error                   { return nil }
-func (s *stubMetricsCollector) Close() error                                                     { return nil }
-func (s *stubMetricsCollector) GetStats() observability.MetricsStats                             { return s.stats }
-func (s *stubMetricsCollector) RecordLatency(string, time.Duration)                              {}
-func (s *stubMetricsCollector) RecordError(string)                                               {}
-func (s *stubMetricsCollector) RecordSuccess(string)                                             {}
+func (s *stubMetricsCollector) Counter(string, ...map[string]string) lift.Counter {
+	return &noopCounter{}
+}
+func (s *stubMetricsCollector) Histogram(string, ...map[string]string) lift.Histogram {
+	return &noopHistogram{}
+}
+func (s *stubMetricsCollector) Gauge(string, ...map[string]string) lift.Gauge             { return &noopGauge{} }
+func (s *stubMetricsCollector) Flush() error                                              { return nil }
+func (s *stubMetricsCollector) WithTags(map[string]string) observability.MetricsCollector { return s }
+func (s *stubMetricsCollector) WithTag(string, string) observability.MetricsCollector     { return s }
+func (s *stubMetricsCollector) RecordBatch([]*observability.MetricEntry) error            { return nil }
+func (s *stubMetricsCollector) Close() error                                              { return nil }
+func (s *stubMetricsCollector) GetStats() observability.MetricsStats                      { return s.stats }
+func (s *stubMetricsCollector) RecordLatency(string, time.Duration)                       {}
+func (s *stubMetricsCollector) RecordError(string)                                        {}
+func (s *stubMetricsCollector) RecordSuccess(string)                                      {}
 
 type noopCounter struct{}
 
@@ -161,4 +165,3 @@ func TestHealthCheckObservability_DetectsUnhealthyLoggerAndMetrics(t *testing.T)
 	cfg3 := EnhancedObservabilityConfig{EnableMetrics: true, Metrics: metricsOK}
 	require.NoError(t, HealthCheckObservability(cfg3)())
 }
-

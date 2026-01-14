@@ -39,4 +39,3 @@ func TestGenerateKey_PrefersUserTenantThenIP(t *testing.T) {
 	require.Equal(t, "user:user-1", key.Identifier)
 	require.Equal(t, "user-1", key.Metadata["user_id"])
 }
-
