@@ -171,6 +171,39 @@ func TestSanitizeJSON_DeepNesting(t *testing.T) {
 	}
 }
 
+func TestSanitizeJSON_BodyFieldJSONString(t *testing.T) {
+	input := `{
+		"body": "{\"card_number\":\"4111111111111111\",\"safe\":\"ok\"}",
+		"other": "value"
+	}`
+
+	result := SanitizeJSON([]byte(input))
+
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(result), &parsed); err != nil {
+		t.Fatalf("SanitizeJSON() result is not valid JSON: %v\nResult: %s", err, result)
+	}
+
+	body, ok := parsed["body"].(string)
+	if !ok {
+		t.Fatalf("expected body to be a string, got %T", parsed["body"])
+	}
+	if strings.Contains(body, "4111111111111111") {
+		t.Fatalf("expected body JSON string to be sanitized, got %s", body)
+	}
+
+	var bodyParsed map[string]any
+	if err := json.Unmarshal([]byte(body), &bodyParsed); err != nil {
+		t.Fatalf("expected body to contain valid JSON: %v\nBody: %s", err, body)
+	}
+	if bodyParsed["card_number"] != "411111******1111" {
+		t.Fatalf("expected masked card_number in body, got %v", bodyParsed["card_number"])
+	}
+	if bodyParsed["safe"] != "ok" {
+		t.Fatalf("expected safe field preserved in body, got %v", bodyParsed["safe"])
+	}
+}
+
 func BenchmarkSanitizeJSON(b *testing.B) {
 	input := []byte(`{
 		"transaction": {

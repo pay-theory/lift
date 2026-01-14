@@ -11,11 +11,13 @@ drift”.
 Because `hgm.init` does not execute verifiers, grades below are *expected to be provisional* until
 `./hgm-infra/verifiers/hgm-verify-rubric.sh` is run and evidence is captured.
 
+Latest evidence: `hgm-infra/evidence/hgm-rubric-report.json`
+
 | Category | Grade | Blocking rubric items |
 | --- | ---: | --- |
-| Quality | BLOCKED | QUA-3 |
+| Quality | 10/10 | — |
 | Consistency | 10/10 | — |
-| Completeness | BLOCKED | COM-4, COM-6 |
+| Completeness | BLOCKED | COM-6 |
 | Security | BLOCKED | SEC-2, SEC-4 |
 | Compliance Readiness | 10/10 | — |
 | Maintainability | BLOCKED | MAI-1, MAI-2, MAI-3 |
@@ -33,21 +35,21 @@ Evidence commands (refresh whenever behavior changes):
 
 | Rubric ID | Status | Milestone |
 | --- | --- | --- |
-| QUA-1 | EXPECTED | M1 (core loop) |
-| QUA-2 | EXPECTED | M2 (contract/integration tests) |
-| QUA-3 | BLOCKED | M3 (coverage to 90%) |
-| CON-1 | EXPECTED | M1 (core loop) |
-| CON-2 | EXPECTED | M1 (core loop) |
-| CON-3 | EXPECTED | M2 (contract tests) |
-| COM-1 | EXPECTED | M1 (core loop) |
-| COM-2 | EXPECTED | M1 (core loop) |
-| COM-3 | EXPECTED | M1 (core loop) |
-| COM-4 | BLOCKED | M3 (coverage to 90%) |
-| COM-5 | EXPECTED | M1 (core loop) |
+| QUA-1 | DONE | M1 (core loop) |
+| QUA-2 | DONE | M2 (contract/integration tests) |
+| QUA-3 | DONE | M3 (coverage to 90%) |
+| CON-1 | DONE | M1 (core loop) |
+| CON-2 | DONE | M1 (core loop) |
+| CON-3 | DONE | M2 (contract tests) |
+| COM-1 | DONE | M1 (core loop) |
+| COM-2 | DONE | M1 (core loop) |
+| COM-3 | DONE | M1 (core loop) |
+| COM-4 | DONE | M3 (coverage to 90%) |
+| COM-5 | DONE | M1 (core loop) |
 | COM-6 | BLOCKED | M4 (operational/logging standards) |
-| SEC-1 | EXPECTED | M1.5 (security gates) |
+| SEC-1 | DONE | M1.5 (security gates) |
 | SEC-2 | BLOCKED | M1.5 (security gates) |
-| SEC-3 | EXPECTED | M1.5 (security gates) |
+| SEC-3 | DONE | M1.5 (security gates) |
 | SEC-4 | BLOCKED | M4 (P0 regressions) |
 | CMP-1 | DONE | M0 (planning scaffold) |
 | CMP-2 | DONE | M0 (planning scaffold) |
@@ -99,6 +101,7 @@ Evidence commands (refresh whenever behavior changes):
 
 ### M3 — Coverage to 90% (no denominator games)
 **Closes:** QUA-3, COM-4
+**Status:** DONE
 
 Tracking document: `hgm-infra/planning/lift-coverage-roadmap.md`
 

@@ -549,3 +549,36 @@ func TestGlobalFunctions(t *testing.T) {
 		t.Errorf("Global SanitizeMap() = %v, want test@example.com", mapResult["email"])
 	}
 }
+
+func TestSanitizeFieldValue_InternalErrorFields(t *testing.T) {
+	config := security.DataProtectionConfig{
+		DefaultClassification: security.DataPublic,
+		FieldClassifications: map[string]security.DataClassification{
+			"error": security.DataInternal,
+		},
+		EncryptionKey: "test-key",
+	}
+
+	dpm, err := security.NewDataProtectionManager(config)
+	if err != nil {
+		t.Fatalf("Failed to create data protection manager: %v", err)
+	}
+
+	s := New(dpm)
+
+	if got := s.SanitizeFieldValue("error", "file not found"); got != "file not found" {
+		t.Fatalf("expected short internal error to pass through, got %v", got)
+	}
+	if got := s.SanitizeFieldValue("error", "invalid input provided"); got != "[SANITIZED_ERROR]" {
+		t.Fatalf("expected suspicious internal error to be sanitized, got %v", got)
+	}
+}
+
+func TestApplySanitization_UnknownClassificationDefaultsToRedact(t *testing.T) {
+	s := Default()
+	processor := newFieldSanitizationProcessor(s, "mystery", "value")
+
+	if got := processor.applySanitization(security.DataClassification("mystery")); got != redactedValue {
+		t.Fatalf("expected unknown classification to redact, got %v", got)
+	}
+}

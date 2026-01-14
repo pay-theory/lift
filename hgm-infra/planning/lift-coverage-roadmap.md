@@ -14,7 +14,7 @@ intermediate milestones, guardrails, and repeatable measurement.
 Snapshot (2026-01-14):
 - Coverage gate:
   - `./hgm-infra/verifiers/hgm-verify-rubric.sh` (QUA-3/COM-4)
-- Current result: UNKNOWN until evidence is generated (run the verifier).
+- Current result: PASS (core_coverage=90.0%, threshold=90%; see `hgm-infra/evidence/COM-4-output.log`)
 - Measurement surface:
   - Includes: `go list ./...` excluding `github.com/pay-theory/lift/examples/...`
   - Reports: “core” coverage excluding `github.com/pay-theory/lift/pkg/testing/**` (via `scripts/coverage-core-report.sh`)

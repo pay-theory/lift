@@ -119,3 +119,119 @@ func TestValidate(t *testing.T) {
 		t.Errorf("expected aggregated error string to contain %d separators, got %d", len(validationErrs)-1, count)
 	}
 }
+
+func TestValidationErrors_ErrorEmpty(t *testing.T) {
+	var errs ValidationErrors
+	if errs.Error() != "validation failed" {
+		t.Fatalf("expected empty ValidationErrors to return generic message, got %q", errs.Error())
+	}
+}
+
+func TestValidate_IgnoresNonStructInputs(t *testing.T) {
+	type payload struct {
+		secret string `validate:"required"`
+	}
+
+	if err := Validate(payload{}); err != nil {
+		t.Fatalf("expected unexported fields to be ignored, got %v", err)
+	}
+	if err := Validate("not a struct"); err != nil {
+		t.Fatalf("expected non-struct inputs to be ignored, got %v", err)
+	}
+
+	var p *payload
+	if err := Validate(p); err != nil {
+		t.Fatalf("expected nil pointers to be ignored, got %v", err)
+	}
+
+	s := "ok"
+	if err := Validate(&s); err != nil {
+		t.Fatalf("expected pointer-to-non-struct inputs to be ignored, got %v", err)
+	}
+}
+
+func TestValidate_AdditionalKindsAndUnknownRules(t *testing.T) {
+	type payload struct {
+		Count      uint              `validate:"required"`
+		UintMin    uint              `validate:"min=1"`
+		Ratio      float64           `validate:"min=2"`
+		Enabled    bool              `validate:"required"`
+		Items      []string          `validate:"required"`
+		Config     map[string]string `validate:"required"`
+		Any        any               `validate:"required"`
+		Maybe      string            `validate:"oneof=admin user"`
+		EmailInt   int               `validate:"email"`
+		OneOfInt   int               `validate:"oneof=a b"`
+		Unknown    string            `validate:"nonsense"`
+		NotTagged  string
+		Trailing   string `validate:"required,"`
+		EmptyArray [0]int `validate:"required"`
+	}
+
+	err := Validate(payload{
+		Count:      0,
+		UintMin:    0,
+		Ratio:      1.0,
+		Enabled:    false,
+		Items:      nil,
+		Config:     map[string]string{},
+		Any:        nil,
+		Maybe:      "",
+		EmailInt:   123,
+		OneOfInt:   1,
+		Unknown:    "ok",
+		NotTagged:  "",
+		Trailing:   "",
+		EmptyArray: [0]int{},
+	})
+	if err == nil {
+		t.Fatalf("expected validation errors")
+	}
+
+	var validationErrs ValidationErrors
+	if !errors.As(err, &validationErrs) {
+		t.Fatalf("expected ValidationErrors, got %T", err)
+	}
+
+	seen := make(map[string]bool, len(validationErrs))
+	for _, vErr := range validationErrs {
+		seen[vErr.Field] = true
+	}
+
+	for _, field := range []string{"Count", "Ratio", "Enabled", "Items", "Config", "Any", "Trailing", "EmptyArray"} {
+		if !seen[field] {
+			t.Errorf("expected error for field %s", field)
+		}
+	}
+	for _, field := range []string{"UintMin", "Maybe", "EmailInt", "OneOfInt", "Unknown", "NotTagged"} {
+		if seen[field] {
+			t.Errorf("expected no error for field %s", field)
+		}
+	}
+}
+
+func TestValidateStruct_PrefixAndInvalidRuleValue(t *testing.T) {
+	type payload struct {
+		Name string `validate:"min=bogus"`
+	}
+
+	err := validateStruct(payload{Name: "x"}, "parent")
+	if err == nil {
+		t.Fatalf("expected validation error")
+	}
+
+	var validationErrs ValidationErrors
+	if !errors.As(err, &validationErrs) {
+		t.Fatalf("expected ValidationErrors, got %T", err)
+	}
+	if len(validationErrs) != 1 {
+		t.Fatalf("expected 1 validation error, got %d", len(validationErrs))
+	}
+
+	if validationErrs[0].Field != "parent.Name" {
+		t.Fatalf("expected prefixed field name, got %q", validationErrs[0].Field)
+	}
+	if !strings.Contains(validationErrs[0].Message, "invalid min rule value") {
+		t.Fatalf("expected invalid rule value message, got %q", validationErrs[0].Message)
+	}
+}

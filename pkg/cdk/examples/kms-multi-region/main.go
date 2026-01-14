@@ -25,6 +25,7 @@ func main() {
 
 	// Create primary region stack (us-east-1)
 	primaryStack := awscdk.NewStack(app, jsii.String(fmt.Sprintf("KMS-Primary-%s-%s", partner, stage)), &awscdk.StackProps{
+		CrossRegionReferences: jsii.Bool(true),
 		Env: &awscdk.Environment{
 			Region:  jsii.String("us-east-1"),
 			Account: jsii.String(os.Getenv("CDK_DEFAULT_ACCOUNT")),
@@ -101,6 +102,7 @@ func main() {
 
 	// Create secondary region stack (us-west-2)
 	secondaryStack := awscdk.NewStack(app, jsii.String(fmt.Sprintf("KMS-Secondary-%s-%s", partner, stage)), &awscdk.StackProps{
+		CrossRegionReferences: jsii.Bool(true),
 		Env: &awscdk.Environment{
 			Region:  jsii.String("us-west-2"),
 			Account: jsii.String(os.Getenv("CDK_DEFAULT_ACCOUNT")),
