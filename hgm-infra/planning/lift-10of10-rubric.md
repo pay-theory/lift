@@ -4,7 +4,7 @@ This rubric defines what “10/10” means and how category grades are computed.
 “green by dilution” by making scoring versioned, measurable, and repeatable.
 
 ## Versioning (no moving goalposts)
-- **Rubric version:** `v0.5` (2026-01-14)
+- **Rubric version:** `v0.6` (2026-01-14)
 - **Comparability rule:** grades are comparable only within the same version.
 - **Change rule:** bump the version + changelog entry for any rubric change (what changed + why).
 
@@ -14,6 +14,7 @@ This rubric defines what “10/10” means and how category grades are computed.
 - `v0.3`: Define verifiers for COM-6 (ops/logging standards) and SEC-4 (domain P0 regressions).
 - `v0.4`: Define verifiers for MAI-1..MAI-3 (budgets, roadmap, duplicate code gate).
 - `v0.5`: Define verifier for SEC-2 (dependency vulnerability scan) via pinned govulncheck.
+- `v0.6`: Require CI rubric enforcement + branch/release automation (aligned with DynamORM release CI).
 
 ## Scoring (deterministic)
 - Each category is scored 0–10.
@@ -56,14 +57,16 @@ Enforcement rule (anti-drift):
 
 | ID | Points | Requirement | How to verify |
 | --- | ---: | --- | --- |
-| COM-1 | 2 | All modules compile (no “mystery meat”) | `go build ./...` |
-| COM-2 | 2 | Toolchain pins align to repo (Go/lint/tool versions) | verifier COM-2 (checks `go 1.25` + CI uses `1.25.x` + golangci-lint pin) |
-| COM-3 | 2 | Lint config schema-valid (no silent skip) | verifier COM-3 (checks `.golangci.yml` present + version + key settings) |
-| COM-4 | 2 | Coverage threshold not diluted (≥ 90%) | verifier COM-4 (parses `coverage.core.out`) |
+| COM-1 | 1 | All modules compile (no “mystery meat”) | `go build ./...` |
+| COM-2 | 1 | Toolchain pins align to repo (Go/lint/tool versions) | verifier COM-2 (checks `go 1.25` + CI uses `1.25.x` + golangci-lint pin) |
+| COM-3 | 1 | Lint config schema-valid (no silent skip) | verifier COM-3 (checks `.golangci.yml` present + version + key settings) |
+| COM-4 | 1 | Coverage threshold not diluted (≥ 90%) | verifier COM-4 (parses `coverage.core.out`) |
 | COM-5 | 1 | Security scan config not diluted (no excluded high-signal rules) | verifier COM-5 (fails if gosec excludes high-signal IDs like G101) |
 | COM-6 | 1 | Logging/operational standards enforced (if applicable) | verifier COM-6 (runs `go test -count=1 -run '^TestOps_' ./pkg/observability/zap ./pkg/middleware`) |
+| COM-7 | 2 | CI enforces the full rubric surface | verifier COM-7 (checks `quality-gates` workflow runs `make rubric` + uploads evidence) |
+| COM-8 | 2 | Branch + release automation enforced (main release, premain prerelease) | verifier COM-8 (checks release-please workflows + policy doc + CodeQL/quality gates triggers) |
 
-**10/10 definition:** COM-1 through COM-6 pass.
+**10/10 definition:** COM-1 through COM-8 pass.
 
 ## Security (SEC) — abuse-resilient and reviewable
 
@@ -112,7 +115,7 @@ Enforcement rule (anti-drift):
 Minimum command surface CI should run on protected branches (pins required; no `latest` tools):
 
 ```bash
-./hgm-infra/verifiers/hgm-verify-rubric.sh
+make rubric
 ```
 
 (That verifier internally runs the repo-specific commands declared in `hgm-infra/verifiers/hgm-verify-rubric.sh`.)

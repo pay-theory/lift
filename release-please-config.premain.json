@@ -1,0 +1,10 @@
+{
+  "release-type": "go",
+  "include-v-in-tag": true,
+  "versioning": "prerelease",
+  "prerelease-type": "rc",
+  "prerelease": true,
+  "packages": {
+    ".": {}
+  }
+}

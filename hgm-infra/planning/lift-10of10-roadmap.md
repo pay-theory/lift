@@ -1,15 +1,15 @@
-# Lift: 10/10 Roadmap (Rubric v0.5)
+# Lift: 10/10 Roadmap (Rubric v0.6)
 
 This roadmap maps milestones directly to rubric IDs with measurable acceptance criteria and verification commands.
 
-## Current scorecard (Rubric v0.5)
+## Current scorecard (Rubric v0.6)
 
 Scoring note: a check is only treated as “passing” if it is both green and enforced by a trustworthy verifier
 (pinned tooling, schema-valid configs, and no “green by dilution” shortcuts). Completeness failures invalidate “green by
 drift”.
 
 Because `hgm.init` does not execute verifiers, grades below are *expected to be provisional* until
-`./hgm-infra/verifiers/hgm-verify-rubric.sh` is run and evidence is captured.
+`make rubric` is run and evidence is captured.
 
 Latest evidence: `hgm-infra/evidence/hgm-rubric-report.json`
 
@@ -26,7 +26,7 @@ Latest evidence: `hgm-infra/evidence/hgm-rubric-report.json`
 Evidence commands (refresh whenever behavior changes):
 - `./scripts/ci-check.sh`
 - `go test -tags=contract -count=1 ./pkg/contract/...`
-- `./hgm-infra/verifiers/hgm-verify-rubric.sh` (coverage, fmt, pins, parity, vuln scan)
+- `make rubric` (coverage, fmt, pins, parity, vuln scan)
 - `make lint`
 - `go build ./...`
 
@@ -46,6 +46,8 @@ Evidence commands (refresh whenever behavior changes):
 | COM-4 | DONE | M3 (coverage to 90%) |
 | COM-5 | DONE | M1 (core loop) |
 | COM-6 | DONE | M4 (operational/logging standards) |
+| COM-7 | DONE | M6 (release CI alignment) |
+| COM-8 | DONE | M6 (release CI alignment) |
 | SEC-1 | DONE | M1.5 (security gates) |
 | SEC-2 | DONE | M1.5 (security gates) |
 | SEC-3 | DONE | M1.5 (security gates) |
@@ -132,3 +134,13 @@ Tracking document: `hgm-infra/planning/lift-coverage-roadmap.md`
 - Add file-size/complexity budgets.
 - Add duplicate-semantics checks for key public helpers.
 - Keep a maintainability roadmap updated as code evolves.
+
+### M6 — Release CI alignment (rubric enforcement + branch/release automation)
+**Closes:** COM-7, COM-8
+**Status:** DONE
+
+**Acceptance criteria**
+- CI runs the full rubric surface via a single command (`make rubric`) on PRs/pushes to `premain` and `main`.
+- Evidence artifacts (`hgm-infra/evidence/**`) are uploaded by CI.
+- Release automation is defined for `premain` (prereleases) and `main` (stable) via pinned release-please workflows.
+- CodeQL workflow exists and runs on both `premain` and `main`.

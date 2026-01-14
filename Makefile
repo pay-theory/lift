@@ -1,4 +1,4 @@
-.PHONY: all test build clean lint fmt fmt-check vet tools sast verify-pins cdk-synth cdk-deploy cdk-diff test-coverage-core coverage-core-report
+.PHONY: all test build clean lint fmt fmt-check vet tools sast verify-pins rubric cdk-synth cdk-deploy cdk-diff test-coverage-core coverage-core-report
 
 # Local Go caches (sandbox-safe)
 GOCACHE ?= $(CURDIR)/.gocache
@@ -105,6 +105,9 @@ verify-pins:
 	grep -q '^go 1.25$$' go.mod
 	grep -q '1.25.x' .github/workflows/test.yml
 	grep -q 'version: v2.4.0' .github/workflows/test.yml
+
+rubric:
+	bash ./hgm-infra/verifiers/hgm-verify-rubric.sh
 
 # CDK targets
 cdk-synth:

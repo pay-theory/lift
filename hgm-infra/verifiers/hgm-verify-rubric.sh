@@ -398,6 +398,184 @@ hgm_check_p0_regressions() {
   go test -count=1 -run '^TestP0_' "${pkgs[@]}"
 }
 
+hgm_check_ci_rubric_enforced() {
+  # Verifies that CI runs the repo's rubric via a single command (`make rubric`) and uploads evidence artifacts.
+  #
+  # This is intentionally a deterministic, grep-based check. It is not a full YAML parser.
+
+  local wf=".github/workflows/quality-gates.yml"
+
+  if [[ ! -f "${wf}" ]]; then
+    echo "ci-rubric: FAIL (missing ${wf})"
+    return 1
+  fi
+
+  local failures=0
+
+  grep -Eq 'name:[[:space:]]*Quality Gates' "${wf}" || {
+    echo "ci-rubric: ${wf}: missing expected workflow name"
+    failures=$((failures + 1))
+  }
+
+  grep -Eq 'pull_request:' "${wf}" || {
+    echo "ci-rubric: ${wf}: missing pull_request trigger"
+    failures=$((failures + 1))
+  }
+
+  grep -Eq 'push:' "${wf}" || {
+    echo "ci-rubric: ${wf}: missing push trigger"
+    failures=$((failures + 1))
+  }
+
+  # Ensure the workflow uses go.mod as the Go version source of truth.
+  if grep -q 'actions/setup-go' "${wf}"; then
+    grep -Eq 'go-version-file:[[:space:]]*go.mod' "${wf}" || {
+      echo "ci-rubric: ${wf}: setup-go must use go-version-file: go.mod"
+      failures=$((failures + 1))
+    }
+  else
+    echo "ci-rubric: ${wf}: missing actions/setup-go step"
+    failures=$((failures + 1))
+  fi
+
+  # Ensure we run the rubric surface as a single command (prevents CI drift when rubric changes).
+  grep -Eq 'make rubric' "${wf}" || {
+    echo "ci-rubric: ${wf}: must run 'make rubric'"
+    failures=$((failures + 1))
+  }
+
+  # Ensure pinned tooling installs (if any) and action pins (no @latest).
+  if grep -Eq 'go install .*@latest' "${wf}"; then
+    echo "ci-rubric: ${wf}: contains @latest; pin versions"
+    failures=$((failures + 1))
+  fi
+
+  # Ensure the workflow uploads the evidence artifacts we rely on.
+  grep -q 'actions/upload-artifact' "${wf}" || {
+    echo "ci-rubric: ${wf}: missing upload-artifact step"
+    failures=$((failures + 1))
+  }
+  grep -q 'hgm-infra/evidence' "${wf}" || {
+    echo "ci-rubric: ${wf}: must upload hgm-infra/evidence artifacts"
+    failures=$((failures + 1))
+  }
+
+  if [[ "${failures}" -ne 0 ]]; then
+    echo "ci-rubric: FAIL (${failures} issue(s))"
+    return 1
+  fi
+
+  echo "ci-rubric: enforced"
+}
+
+hgm_check_branch_release_supply_chain() {
+  # Verifies required branch/release supply-chain artifacts exist and are wired for the expected flow:
+  # - `premain` -> prereleases
+  # - `main` -> stable releases
+  #
+  # This is a deterministic grep-based check (not a full YAML parser).
+
+  local failures=0
+
+  local required_files=(
+    "hgm-infra/planning/lift-branch-release-policy.md"
+    "release-please-config.json"
+    ".release-please-manifest.json"
+    "release-please-config.premain.json"
+    ".release-please-manifest.premain.json"
+    ".github/workflows/prerelease.yml"
+    ".github/workflows/release-please.yml"
+    ".github/workflows/quality-gates.yml"
+    ".github/workflows/codeql.yml"
+  )
+
+  local f
+  for f in "${required_files[@]}"; do
+    if [[ ! -f "${f}" ]]; then
+      echo "branch-release: missing ${f}"
+      failures=$((failures + 1))
+    fi
+  done
+
+  if [[ -f "hgm-infra/planning/lift-branch-release-policy.md" ]]; then
+    if grep -q "{{" "hgm-infra/planning/lift-branch-release-policy.md"; then
+      echo "branch-release: policy contains unrendered template tokens"
+      failures=$((failures + 1))
+    fi
+    grep -q -- '`premain`' "hgm-infra/planning/lift-branch-release-policy.md" || {
+      echo "branch-release: policy must mention premain"
+      failures=$((failures + 1))
+    }
+    grep -q -- '`main`' "hgm-infra/planning/lift-branch-release-policy.md" || {
+      echo "branch-release: policy must mention main"
+      failures=$((failures + 1))
+    }
+  fi
+
+  if [[ -f ".github/workflows/prerelease.yml" ]]; then
+    grep -Eq 'branches:.*premain' ".github/workflows/prerelease.yml" || {
+      echo "branch-release: prerelease workflow must target premain"
+      failures=$((failures + 1))
+    }
+    grep -Eq 'googleapis/release-please-action@[0-9a-fA-F]{40}.*\bv4\b' ".github/workflows/prerelease.yml" || {
+      echo "branch-release: prerelease workflow must pin release-please v4 by commit SHA"
+      failures=$((failures + 1))
+    }
+    grep -Eq 'contents:[[:space:]]*write' ".github/workflows/prerelease.yml" || {
+      echo "branch-release: prerelease workflow must request contents: write"
+      failures=$((failures + 1))
+    }
+    grep -Eq 'config-file:[[:space:]]*release-please-config\.premain\.json' ".github/workflows/prerelease.yml" || {
+      echo "branch-release: prerelease workflow must reference release-please-config.premain.json"
+      failures=$((failures + 1))
+    }
+    grep -Eq 'manifest-file:[[:space:]]*\.release-please-manifest\.premain\.json' ".github/workflows/prerelease.yml" || {
+      echo "branch-release: prerelease workflow must reference .release-please-manifest.premain.json"
+      failures=$((failures + 1))
+    }
+  fi
+
+  if [[ -f ".github/workflows/release-please.yml" ]]; then
+    grep -Eq 'branches:.*main' ".github/workflows/release-please.yml" || {
+      echo "branch-release: release workflow must target main"
+      failures=$((failures + 1))
+    }
+    grep -Eq 'googleapis/release-please-action@[0-9a-fA-F]{40}.*\bv4\b' ".github/workflows/release-please.yml" || {
+      echo "branch-release: release workflow must pin release-please v4 by commit SHA"
+      failures=$((failures + 1))
+    }
+    grep -Eq 'contents:[[:space:]]*write' ".github/workflows/release-please.yml" || {
+      echo "branch-release: release workflow must request contents: write"
+      failures=$((failures + 1))
+    }
+    grep -Eq 'config-file:[[:space:]]*release-please-config\.json' ".github/workflows/release-please.yml" || {
+      echo "branch-release: release workflow must reference release-please-config.json"
+      failures=$((failures + 1))
+    }
+    grep -Eq 'manifest-file:[[:space:]]*\.release-please-manifest\.json' ".github/workflows/release-please.yml" || {
+      echo "branch-release: release workflow must reference .release-please-manifest.json"
+      failures=$((failures + 1))
+    }
+  fi
+
+  for wf in ".github/workflows/quality-gates.yml" ".github/workflows/codeql.yml"; do
+    if [[ ! -f "${wf}" ]]; then
+      continue
+    fi
+    grep -Eq 'branches:.*premain.*main|branches:.*main.*premain' "${wf}" || {
+      echo "branch-release: ${wf}: expected triggers for both premain and main"
+      failures=$((failures + 1))
+    }
+  done
+
+  if [[ "${failures}" -ne 0 ]]; then
+    echo "branch-release: FAIL (${failures} issue(s))"
+    return 1
+  fi
+
+  echo "branch-release: PASS"
+}
+
 hgm_check_file_budgets() {
   local max_lines=2500
 
@@ -585,6 +763,8 @@ CMD_VULN="govulncheck ./..."
 CMD_SUPPLY="test -f go.sum; if grep -R -- '^[[:space:]]*uses:[[:space:]].*@v[0-9]' .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null; then echo 'Unpinned GitHub Action detected (uses @vN)'; exit 1; fi; echo 'Actions appear SHA-pinned'"
 
 CMD_OPS="hgm_check_operational_standards"
+CMD_CI_RUBRIC="hgm_check_ci_rubric_enforced"
+CMD_BRANCH_RELEASE="hgm_check_branch_release_supply_chain"
 CMD_P0="hgm_check_p0_regressions"
 
 CMD_CONTROLS="test -f hgm-infra/planning/lift-controls-matrix.md"
@@ -616,6 +796,8 @@ run_check "COM-3" "Completeness" "$CMD_LINT_CONFIG"
 run_check "COM-4" "Completeness" "$CMD_COV_THRESHOLD"
 run_check "COM-5" "Completeness" "$CMD_SEC_CONFIG"
 run_check "COM-6" "Completeness" "$CMD_OPS"
+run_check "COM-7" "Completeness" "$CMD_CI_RUBRIC"
+run_check "COM-8" "Completeness" "$CMD_BRANCH_RELEASE"
 
 # === Security (SEC) ===
 run_check "SEC-1" "Security" "$CMD_SAST"

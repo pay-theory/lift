@@ -40,15 +40,15 @@ to controls in `hgm-infra/planning/lift-controls-matrix.md`.
 
 | Threat ID | Title | What can go wrong | Primary controls (Control IDs) | Verification (gate) |
 | --- | --- | --- | --- | --- |
-| THR-1 | Authentication/authorization bypass | Misconfigured or vulnerable middleware allows requests to execute handlers without valid auth, or with forged claims. | SEC-4, CON-3 | P0 tests + contract tests (TODO) |
-| THR-2 | Sensitive data exposure via logs/telemetry | Secrets, JWTs, PII, or CHD-adjacent payloads are written to logs/traces/metrics; attackers or insiders can retrieve them. | COM-6, SEC-4 | Logging standards verifier + P0 tests (TODO) |
-| THR-3 | Injection/path traversal via unsafe input handling | Framework helpers make it easy to pass attacker-controlled values into exec/file/network calls without validation or allowlisting. | SEC-1, SEC-4 | gosec + targeted P0 tests (TODO) |
-| THR-4 | JWT algorithm/key confusion | Algorithm mismatch (HS vs RS), weak validation, or unsafe defaults lead to token forgery. | SEC-4, CON-3 | P0 tests + contract tests (TODO) |
-| THR-5 | Supply-chain compromise | Unpinned CI actions, dependency compromise, or tampered release artifacts introduce malicious code. | SEC-3, SEC-2 | Supply-chain verifier + govulncheck (TODO for govulncheck) |
-| THR-6 | Denial-of-service via payload size/timeouts | Large requests, expensive parsing/validation, or unbounded loops lead to timeouts/cost spikes/availability impact. | SEC-4, QUA-2 | P0 tests + integration tests (TODO) |
-| THR-7 | Control drift / false-green verification | Checks are loosened (exclusions, lowered thresholds, unpinned tools), producing a “green” signal that is not meaningful. | COM-2, COM-3, COM-4, DOC-4 | Hypergenium rubric verifier (`hgm-verify-rubric.sh`) |
-| THR-8 | WebSocket misuse / routing confusion | Incorrect route selection or handler mapping can leak data cross-tenant or enable unauthorized actions. | SEC-4, QUA-2 | P0 + integration tests (TODO) |
-| THR-9 | Insecure secret handling defaults | Secrets are stored in code/config, or helper functions encourage unsafe local secret storage. | SEC-1, SEC-4 | gosec + P0 tests (TODO) |
+| THR-1 | Authentication/authorization bypass | Misconfigured or vulnerable middleware allows requests to execute handlers without valid auth, or with forged claims. | SEC-4, CON-3 | P0 tests + contract tests |
+| THR-2 | Sensitive data exposure via logs/telemetry | Secrets, JWTs, PII, or CHD-adjacent payloads are written to logs/traces/metrics; attackers or insiders can retrieve them. | COM-6, SEC-4 | Logging standards verifier + P0 tests |
+| THR-3 | Injection/path traversal via unsafe input handling | Framework helpers make it easy to pass attacker-controlled values into exec/file/network calls without validation or allowlisting. | SEC-1, SEC-4 | gosec + targeted P0 tests |
+| THR-4 | JWT algorithm/key confusion | Algorithm mismatch (HS vs RS), weak validation, or unsafe defaults lead to token forgery. | SEC-4, CON-3 | P0 tests + contract tests |
+| THR-5 | Supply-chain compromise | Unpinned CI actions, dependency compromise, or tampered release artifacts introduce malicious code. | SEC-3, SEC-2 | Supply-chain verifier + govulncheck (pinned) |
+| THR-6 | Denial-of-service via payload size/timeouts | Large requests, expensive parsing/validation, or unbounded loops lead to timeouts/cost spikes/availability impact. | SEC-4, QUA-2 | P0 tests + contract tests |
+| THR-7 | Control drift / false-green verification | Checks are loosened (exclusions, lowered thresholds, unpinned tools), producing a “green” signal that is not meaningful. | COM-2, COM-3, COM-4, COM-7, DOC-4 | `make rubric` |
+| THR-8 | WebSocket misuse / routing confusion | Incorrect route selection or handler mapping can leak data cross-tenant or enable unauthorized actions. | SEC-4, QUA-2 | P0 + contract tests |
+| THR-9 | Insecure secret handling defaults | Secrets are stored in code/config, or helper functions encourage unsafe local secret storage. | SEC-1, SEC-4 | gosec + P0 tests |
 
 ## Parity Rule (no “named threat without control”)
 - Every `THR-*` listed above must appear at least once in the controls matrix “Threat IDs” column.

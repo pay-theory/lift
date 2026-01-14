@@ -1,4 +1,4 @@
-# Lift: Maintainability Roadmap (Rubric v0.5)
+# Lift: Maintainability Roadmap (Rubric v0.6)
 
 Goal: prevent AI/agent-driven drift that makes security fixes risky by enforcing lightweight budgets and keeping a clear,
 reviewable plan for paydown.
