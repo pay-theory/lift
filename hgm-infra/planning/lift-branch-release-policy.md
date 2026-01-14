@@ -29,6 +29,9 @@ This repo should publish:
 - **Prereleases** on merges to `premain`.
 - **Releases** on merges to `main`.
 
+Versioning note:
+- The post-HGM baseline release line starts at `v1.1.0` (prereleases: `v1.1.0-rc.N`).
+
 Recommended approach: **release-please** (merge-driven versioning + changelog updates) with:
 
 - prerelease workflow producing tags like `vX.Y.Z-rc.N`, and
