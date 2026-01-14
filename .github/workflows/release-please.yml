@@ -14,6 +14,26 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Force initial stable release line (v1.1.0)
+        id: release_as
+        shell: bash
+        run: |
+          set -euo pipefail
+          want="1.1.0"
+          current="$(node -p "require('./.release-please-manifest.json')['.']")"
+          echo "manifest_version=${current}"
+          if [[ "${current}" == "${want}" ]]; then
+            echo "release_as=" >> "${GITHUB_OUTPUT}"
+          else
+            echo "release_as=${want}" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Release Please (Stable)
         uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4
         with:
@@ -21,3 +41,4 @@ jobs:
           target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          release-as: ${{ steps.release_as.outputs.release_as }}
