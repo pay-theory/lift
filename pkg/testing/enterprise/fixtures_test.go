@@ -41,4 +41,3 @@ func TestDataFixtureManager_SetupAndCleanup(t *testing.T) {
 		t.Fatalf("fixture_orders still present after cleanup")
 	}
 }
-

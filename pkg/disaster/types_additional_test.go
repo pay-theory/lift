@@ -123,4 +123,3 @@ func TestNotificationAndManagerStubs_ReturnNil(t *testing.T) {
 		t.Fatalf("expected nil error, got %v", err)
 	}
 }
-

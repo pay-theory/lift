@@ -46,28 +46,28 @@ func TestWebSocketContext_HTTPClient_DrivenOperations(t *testing.T) {
 					status = 410
 					body = `{"message":"Gone"}`
 				}
-				case http.MethodGet:
-					if connID == "gone" {
-						status = 410
-						body = `{"message":"Gone"}`
-					} else {
-						body = `{"identity":{"sourceIp":"203.0.113.10"},"connectedAt":"2024-01-01T00:00:00Z"}`
-					}
+			case http.MethodGet:
+				if connID == "gone" {
+					status = 410
+					body = `{"message":"Gone"}`
+				} else {
+					body = `{"identity":{"sourceIp":"203.0.113.10"},"connectedAt":"2024-01-01T00:00:00Z"}`
 				}
+			}
 
-				headers := http.Header{"Content-Type": []string{"application/json"}}
-				if status == 410 {
-					headers.Set("x-amzn-errortype", "GoneException")
-				}
+			headers := http.Header{"Content-Type": []string{"application/json"}}
+			if status == 410 {
+				headers.Set("x-amzn-errortype", "GoneException")
+			}
 
-				return &http.Response{
-					StatusCode: status,
-					Header:     headers,
-					Body:       io.NopCloser(strings.NewReader(body)),
-					Request:    r,
-				}, nil
-			},
-		}
+			return &http.Response{
+				StatusCode: status,
+				Header:     headers,
+				Body:       io.NopCloser(strings.NewReader(body)),
+				Request:    r,
+			}, nil
+		},
+	}
 
 	cfg := aws.Config{
 		Region:      "us-east-1",

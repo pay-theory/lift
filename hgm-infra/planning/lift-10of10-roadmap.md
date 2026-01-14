@@ -80,6 +80,7 @@ Evidence commands (refresh whenever behavior changes):
 
 ### M1 — Make core lint/build loop reproducible
 **Closes:** QUA-1, CON-1, CON-2, COM-1, COM-2, COM-3, COM-5, SEC-1, SEC-3
+**Status:** DONE
 
 **Acceptance criteria**
 - `make lint` passes with pinned golangci-lint (CI uses `v2.4.0`).

@@ -63,4 +63,3 @@ func TestGDPRComplianceTester_RightsAndAudit(t *testing.T) {
 		t.Fatalf("GetAuditTrail trail=%#v err=%v", trail, err)
 	}
 }
-

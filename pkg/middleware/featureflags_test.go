@@ -73,4 +73,3 @@ func TestEventAwareMiddleware_AppliesToEvents(t *testing.T) {
 	var m eventAwareMiddleware
 	require.True(t, m.AppliesToEvents())
 }
-

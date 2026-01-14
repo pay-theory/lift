@@ -149,7 +149,7 @@ func TestRouteEventBus_AddsBatchFailureOnStreamImageError(t *testing.T) {
 				"eventSource": "aws:dynamodb",
 				"eventName":   "REMOVE",
 				"eventID":     "rec-1",
-				"dynamodb": map[string]any{
+				"dynamodb":    map[string]any{
 					// REMOVE with missing OldImage triggers stream image error handling.
 				},
 			},

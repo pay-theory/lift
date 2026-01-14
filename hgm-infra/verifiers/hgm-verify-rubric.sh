@@ -421,7 +421,7 @@ CMD_COV_THRESHOLD="hgm_check_core_coverage_threshold"
 CMD_SEC_CONFIG="test -f .golangci.yml; grep -q -- '- gosec' .golangci.yml; grep -q 'gosec:' .golangci.yml; grep -q -- '- G104' .golangci.yml; if grep -q -- '- G101' .golangci.yml; then echo 'gosec excludes G101 (too high-signal)'; exit 1; fi"
 
 # SAST is run as gosec only (separate from general lint), using pinned golangci-lint.
-CMD_SAST="golangci-lint run --config .golangci.yml --disable-all --enable=gosec ./..."
+CMD_SAST="golangci-lint run --config .golangci.yml --enable-only=gosec ./..."
 
 CMD_VULN="TODO: pin and run govulncheck (e.g., govulncheck ./...)"
 

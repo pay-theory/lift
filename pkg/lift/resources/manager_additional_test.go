@@ -31,8 +31,8 @@ func (p *stubPreWarmPool) Put(resource any) error {
 	return p.putErr
 }
 
-func (p *stubPreWarmPool) Close() error               { return nil }
-func (p *stubPreWarmPool) Stats() PoolStats           { return PoolStats{} }
+func (p *stubPreWarmPool) Close() error                      { return nil }
+func (p *stubPreWarmPool) Stats() PoolStats                  { return PoolStats{} }
 func (p *stubPreWarmPool) HealthCheck(context.Context) error { return nil }
 
 func TestDefaultPreWarmer_NameAndErrorPaths(t *testing.T) {
@@ -84,15 +84,15 @@ func (p *stubPool) Close() error {
 	}
 	return p.closeErr
 }
-func (p *stubPool) Stats() PoolStats                      { return p.stats }
-func (p *stubPool) HealthCheck(context.Context) error      { return p.healthErr }
+func (p *stubPool) Stats() PoolStats                  { return p.stats }
+func (p *stubPool) HealthCheck(context.Context) error { return p.healthErr }
 
 type stubPreWarmer struct {
 	err error
 }
 
 func (pw stubPreWarmer) PreWarm(context.Context, ConnectionPool) error { return pw.err }
-func (pw stubPreWarmer) Name() string                                 { return "pw" }
+func (pw stubPreWarmer) Name() string                                  { return "pw" }
 
 func TestResourceManager_ErrorPaths(t *testing.T) {
 	rm := NewResourceManager(ResourceManagerConfig{ShutdownTimeout: 10 * time.Millisecond})

@@ -138,4 +138,3 @@ func TestSecurityMiddleware_AuditLoggerAndCustomHandler(t *testing.T) {
 	require.False(t, nextCalled)
 	require.True(t, auditCalled)
 }
-

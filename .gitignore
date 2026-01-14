@@ -105,6 +105,9 @@ reference
 .gocache/
 .golangci-lint-cache/
 
+# Hypergenium local tool installs (never commit)
+hgm-infra/.tools/
+
 # Local upstream clones (never commit)
 upstream/
 .upstream/

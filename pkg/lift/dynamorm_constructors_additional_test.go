@@ -37,20 +37,20 @@ func TestInitializeDynamORM_AndConstructors(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = NewDynamoDBConnectionStore(context.Background(), DynamoDBConnectionStoreConfig{
-		TableName:   "test-table",
-		Region:      "us-east-1",
-		Endpoint:    "http://localhost:8000",
-		TTLHours:    1,
-		MaxRetries:  1,
+		TableName:  "test-table",
+		Region:     "us-east-1",
+		Endpoint:   "http://localhost:8000",
+		TTLHours:   1,
+		MaxRetries: 1,
 	})
 	require.NoError(t, err)
 
 	_, err = NewDynamoDBSubscriptionStore(context.Background(), DynamoDBSubscriptionStoreConfig{
-		TableName:   "test-table",
-		Region:      "us-east-1",
-		Endpoint:    "http://localhost:8000",
-		TTLHours:    1,
-		MaxRetries:  1,
+		TableName:  "test-table",
+		Region:     "us-east-1",
+		Endpoint:   "http://localhost:8000",
+		TTLHours:   1,
+		MaxRetries: 1,
 	})
 	require.NoError(t, err)
 

@@ -99,9 +99,9 @@ func (a *recordingEnhancedAuditor) StartAudit(LiftContext) string {
 	a.lastAuditID = "audit-id"
 	return a.lastAuditID
 }
-func (a *recordingEnhancedAuditor) LogRequest(string, *AuditRequest) error      { return nil }
-func (a *recordingEnhancedAuditor) LogResponse(string, *AuditResponse) error    { return nil }
-func (a *recordingEnhancedAuditor) LogDataAccess(string, *DataAccessLog) error  { return nil }
+func (a *recordingEnhancedAuditor) LogRequest(string, *AuditRequest) error        { return nil }
+func (a *recordingEnhancedAuditor) LogResponse(string, *AuditResponse) error      { return nil }
+func (a *recordingEnhancedAuditor) LogDataAccess(string, *DataAccessLog) error    { return nil }
 func (a *recordingEnhancedAuditor) LogSecurityEvent(string, *SecurityEvent) error { return nil }
 
 func (a *recordingEnhancedAuditor) StartSOC2Audit(LiftContext) string {
@@ -166,10 +166,10 @@ type stubTemplate struct {
 	controls []ComplianceControl
 }
 
-func (s *stubTemplate) GetIndustry() string                   { return "stub" }
-func (s *stubTemplate) GetRegulations() []string              { return nil }
-func (s *stubTemplate) GetControls() []ComplianceControl       { return s.controls }
-func (s *stubTemplate) GetAudits() []AuditRequirement          { return nil }
+func (s *stubTemplate) GetIndustry() string                                 { return "stub" }
+func (s *stubTemplate) GetRegulations() []string                            { return nil }
+func (s *stubTemplate) GetControls() []ComplianceControl                    { return s.controls }
+func (s *stubTemplate) GetAudits() []AuditRequirement                       { return nil }
 func (s *stubTemplate) ApplyToFramework(*EnhancedComplianceFramework) error { return nil }
 
 func TestEnhancedComplianceFramework_SOC2TypeII(t *testing.T) {

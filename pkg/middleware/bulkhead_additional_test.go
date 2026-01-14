@@ -86,4 +86,3 @@ func TestSemaphore_InsertWaiterAndReleaseBranches(t *testing.T) {
 	s2.release()
 	require.Equal(t, 0, s2.active())
 }
-

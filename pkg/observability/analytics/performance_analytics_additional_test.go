@@ -435,7 +435,7 @@ func TestHealthScoreRecommendationsAndAlerts(t *testing.T) {
 		violationsByMetric: map[string][]ThresholdViolation{
 			"latency": {
 				{
-					Threshold: Threshold{Name: "max", Severity: AlertSeverityError, Value: 10},
+					Threshold:   Threshold{Name: "max", Severity: AlertSeverityError, Value: 10},
 					ActualValue: 100,
 				},
 			},
@@ -447,7 +447,7 @@ func TestHealthScoreRecommendationsAndAlerts(t *testing.T) {
 			{Name: "latency", Value: 100, Timestamp: time.Now()},
 		},
 		Statistics: PerformanceStatistics{
-			Mean:  10,
+			Mean:   10,
 			StdDev: 11,
 		},
 		Anomalies: []PerformanceAnomaly{
@@ -557,4 +557,3 @@ func TestAnomalyDetectorSensitivityAccessors(t *testing.T) {
 		t.Fatalf("expected sensitivity 0.75, got %v", detector.GetDetectionSensitivity())
 	}
 }
-

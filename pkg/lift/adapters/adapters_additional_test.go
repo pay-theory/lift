@@ -197,4 +197,3 @@ func TestValidateRecordsEvent_ErrorPaths(t *testing.T) {
 		t.Fatal("expected error when required field is missing")
 	}
 }
-
